@@ -1,0 +1,213 @@
+/* === Body Styles Section === */
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-image: url('../images/background.jpg');
+    background-repeat: repeat-y;
+    color: #333333;
+    padding: 0;
+    margin: 0;
+    font-size: 16px;
+    line-height: 24px;
+    height: 100%;
+    position: relative;
+}
+
+/* Circle Shape in the Middle */
+#centered-circle {
+    width: 150px;
+    height: 150px;
+    background-color: rgba(255, 0, 0, 0.8);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99999;
+}
+
+/* === Container Styles Section === */
+.container {
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* === Media Queries for Large Screens Section === */
+@media (min-width: 1920px) {
+    body {
+        font-size: 18px;
+        line-height: 28px;
+    }
+    .container {
+        max-width: 100%;
+        padding: 10px;
+    }
+}
+
+/* === Header, Footer, and Card Styles === */
+.header, .footer {
+    background-color: #EEEEEE;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* === Info Box and Card Container Styles === */
+.info-box, .card-container {
+    padding: 10px;
+    border-radius: 4px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    display: none;
+    overflow: hidden;
+    min-height: 350px;
+    max-height: 350px;
+}
+.active-card {
+    display: block;
+}
+
+/* === Image Responsive Styles === */
+.img-responsive {
+    max-width: 100%;
+    height: auto;
+}
+
+/* === Underline Styling === */
+.full-width-underline {
+    width: 100%;
+    height: 2px;
+    background-color: #FF0000;
+    margin-bottom: 10px;
+}
+
+/* === Card Block Styles === */
+.card-block {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 0;
+}
+
+/* === Table Styles === */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+    background-color: white;
+}
+th, td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+th {
+    background-color: #333;
+    color: white;
+}
+td {
+    background-color: #666;
+    color: white;
+}
+tr:hover {
+    background-color: #555;
+}
+
+/* === Card Content Container === */
+.card-content {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+.card-section {
+    margin-bottom: 15px;
+}
+.card-heading {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    color: #333;
+    font-weight: bold;
+}
+.section-divider {
+    border: none;
+    border-top: 2px solid #ddd;
+    margin: 15px 0;
+}
+.highlight {
+    color: #FF0000;
+    font-weight: bold;
+}
+
+/* === Animations === */
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.5s ease-out;
+}
+.fade-in {
+    opacity: 1;
+    transition: opacity 0.5s ease-in;
+}
+
+/* === Progress Bar === */
+.progress-bar-container {
+    flex-grow: 1;
+    height: 5px;
+    background-color: #e0e0e0;
+    position: relative;
+    margin-top: 0;
+    margin-left: 10px;
+}
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: green;
+    transition: width 0.1s linear;
+    position: absolute;
+    bottom: 0;
+}
+
+/* === Confetti Styles === */
+#confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 99999;
+}
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    opacity: 0.9;
+    border-radius: 50%;
+    animation: confettiFall 3s ease-out forwards, confettiRotate 2s infinite;
+}
+@keyframes confettiFall {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* === Utility Classes === */
+.d-flex {
+    display: flex;
+}
+.align-items-start {
+    align-items: flex-start;
+}
+.justify-content-between {
+    justify-content: space-between;
+}

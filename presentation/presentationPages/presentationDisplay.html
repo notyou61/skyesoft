@@ -1,0 +1,1756 @@
+<!-- DOCTYPE Tag -->
+<!DOCTYPE html>
+<!-- HTML Tag -->
+<html lang="en">
+<!-- Head Tag -->
+<head>
+    <!-- UTF-8 Tag -->
+	<meta charset="UTF-8">
+    <!-- HTML  Equiv Tag -->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Viewport Tag -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Title Tag --> 
+	<title>Conference Room Presentation</title>
+    <!-- Bootstrap Style Sheet Tag -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <!-- Font Awesome Style Tag -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+	<!-- Audio -->
+	<audio id="confetti-sound" src="https://azsignpermits.com/audio/boom.mp3" preload="auto"></audio>
+	<!-- CSS -->
+	<style>
+		/* === Body Styles Section === */
+		body {
+			font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			background-image: url('../images/background.jpg');
+			background-repeat: repeat-y;
+			color: #333333;
+			padding: 0; /* No padding on body, control spacing with container */
+			margin: 0;
+			font-size: 16px; /* Base font size */
+			line-height: 24px; /* Line height for readability */
+			height: 100%;
+			position: relative;
+		}
+		/* Circle Shape in the Middle */
+		#centered-circle {
+			width: 150px;
+			height: 150px;
+			background-color: rgba(255, 0, 0, 0.8); /* Red color with some transparency */
+			border-radius: 50%; /* Makes it a circle */
+			position: absolute; /* Absolute position relative to the body */
+			top: 50%; /* Move to the vertical center */
+			left: 50%; /* Move to the horizontal center */
+			transform: translate(-50%, -50%); /* Adjust for the circle's size */
+			z-index: 99999; /* Ensures it's on top of everything */
+		}
+		/* === Container Styles Section === */
+		.container {
+			width: 100%;
+			position: relative;
+			max-width: 1920px; /* Set max-width to Full HD for standard monitors */
+			margin: 0 auto; /* Center container */
+			padding: 10px 10px 0 10px; /* 10px top and sides, 0px bottom */
+			box-sizing: border-box; /* Include padding in width/height calculation */
+		}
+		/* === Media Queries for Large Screens Section === */
+		@media (min-width: 1920px) { /* Full HD screens and above */
+			 /* Body */
+			body {
+				font-size: 18px; /* Increase font size for better legibility */
+				line-height: 28px; /* Adjust line height */
+			}
+			 /* Container */
+			.container {
+				max-width: 100%; /* Utilize full width */
+				padding: 10px; /* Uniform padding */
+			}
+			 /* Info-Box, Card-Container */
+			.info-box, .card-container {
+				min-height: 300px; /* Consistent height for visibility */
+				max-height: 300px;
+				font-size: 18px; /* Increase font size inside cards */
+				line-height: 28px;
+			}
+		}
+		/* === Header, Footer, and Card Styles === */
+		.header, .footer, .card, .card-inverse {
+			background-color: #EEEEEE;
+			padding: 10px;
+			margin: 0;
+			margin-bottom: 0px;
+			border-radius: 4px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		}
+		/* === Info Box and Card Container Styles === */
+		.info-box, .card-container {
+			padding: 10px;
+			border-radius: 4px;
+			background-color: white;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+			margin: 0;
+			display: none; /* Hide all cards initially */
+			overflow: hidden; /* Prevent content overflow */
+			min-height: 350px;
+			max-height: 350px;
+		}
+		/* === Template Element Styles === */
+		.template-element {
+			position: fixed;
+			top: 10px;
+			right: 10px;
+			text-align: right;
+		}
+		/* === Active Card Styles === */
+		.active-card {
+			display: block; /* Only the active card will be displayed */
+		}
+		/* === Image Responsive Styles === */
+		.img-responsive {
+			max-width: 100%;
+			height: auto;
+		}	
+		/* === Modal and Info Window Legend Styles === */
+		.modalLegend, .infoWindowLegend {
+			display: block;
+			width: 100%;
+			padding: 0;
+			margin-bottom: 10px;
+			font-size: 10px;
+			font-weight: bold;
+			line-height: 32px;
+			color: #333333;
+			border: 0;
+			border-bottom: 1px solid #FF0000;
+		}	
+		/* === Flex Container Styles === */
+		.d-flex {
+			display: flex;
+		}	
+		/* === Flex Align and Justify Styles === */
+		/* Align-Items-Start */
+		.align-items-start {
+			align-items: flex-start;
+		}
+		/* Justify-Content-Between */
+		.justify-content-between {
+			justify-content: space-between;
+		}
+		/* === Logo Container Styles === */
+		.logo-container {
+			flex-shrink: 0;
+			margin-top: 0;
+		}
+		/* === Header Content Styles === */
+		.header-content {
+			flex-grow: 1;
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-start;
+		}
+		/* === Underline Styling === */
+		.full-width-underline {
+			width: 100%;
+			height: 2px;
+			background-color: #FF0000;
+			margin-bottom: 10px;
+		}
+		/* === Card Block Styles === */
+		.card-block {
+			display: flex;
+			align-items: flex-start;
+			padding: 10px 0;
+		}
+		/* === Margin Adjustments === */
+		.ml-3 {
+			margin-left: 15px;
+		}
+		/* === Updated Table Styles Section === */		
+		/* Table Base */
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+			font-size: 14px; /* Adjusted for readability */
+			background-color: white;
+		}
+		/* Table Header and Data Cells */
+		th, td {
+			padding: 4px 6px; /* Adjusted padding for reduced space */
+			text-align: left;
+			border-bottom: 1px solid #ddd;
+			color: white;
+			max-width: 150px; /* Restrict cell width to prevent overflow */
+			white-space: nowrap; /* Prevent text from wrapping */
+			overflow: hidden; /* Hide overflow */
+			text-overflow: ellipsis; /* Add ellipsis for text overflow */
+		}
+		/* Table Header Row */
+		th {
+			background-color: #333;
+		}
+		/* Table Data Row */
+		td {
+			background-color: #666;
+		}
+		/* Table Row Hover Effect */
+		tr:hover {
+			background-color: #555;
+		}
+		/* Card Container Adjustments */
+		.card-container {
+			overflow-y: auto;
+			max-height: 300px;
+		}
+		/* === New Styles for Standard Card Enhancement === */
+		/* Card Content Container */
+		.card-content {
+			padding: 20px;
+			background-color: #f9f9f9;
+			border-radius: 8px;
+		}
+		/* Card Section */
+		.card-section {
+			margin-bottom: 15px;
+		}
+		/* Card Heading */
+		.card-heading {
+			font-size: 1.2em;
+			margin-bottom: 10px;
+			color: #333;
+			font-weight: bold;
+		}
+		/* Section Divider */
+		.section-divider {
+			border: none;
+			border-top: 2px solid #ddd;
+			margin: 15px 0;
+		}
+		/* Highlight Text */
+		.highlight {
+			color: #FF0000; /* Light Red */
+			font-weight: bold;
+		}
+		/* Span Highlight */
+		span.highlight {
+			display: inline-block;
+			margin: 0;
+		}
+		/* === End: Enhanced Standard Card Styles Section === */
+		/* === Animations === */
+		/* Fading out animations */
+		.fade-out {
+			opacity: 0;
+			transition: opacity 0.5s ease-out; /* Adjust timing as needed */
+		}
+		/* Fading in animations */
+		.fade-in {
+			opacity: 1;
+			transition: opacity 0.5s ease-in; /* Adjust timing as needed */
+		}
+		/* === End: Animations === */
+		/* == H2, H3 == */
+		h2, h3 {
+			font-weight: bold;
+			margin-bottom: 10px;
+			font-size: 1.5em;
+		}
+		/* == HR Section Divider == */
+		hr.section-divider {
+			border: 1px solid #333;
+			margin: 10px 0;
+		}
+		/* == Card Content == */
+		.card-content {
+			padding: 20px;
+		}
+		/* == Card Section == */
+		.card-section {
+			margin-bottom: 15px;
+		}
+		/* Standard Card H2 */
+		#standardCard h2 {
+			padding: 0; /* No extra padding */
+			line-height: normal; /* Remove any extra height */
+		}	
+		/* Standard Card HR Section Divider */
+		#standardCard hr.section-divider {
+			margin-top: 0.2rem;  /* Adjust the space above the horizontal line */
+			border-color: #ccc; /* Ensure consistency with other cards */
+		}
+		/* Main Card H2, Minor Card H2,Proect Showcase Card H2 */
+		#mainCard h2, #minorCard h2, #projectShowcaseCard h2 {
+			margin-bottom: 0.2rem; 
+		}
+		/* Main Card HR, Minor Card HR,Proect Showcase Card HR */
+		#mainCard hr.section-divider, #minorCard hr.section-divider, #projectShowcaseCard hr.section-divider {
+			margin-top: 0.2rem;
+		}
+		/* Standard Card HR */
+		#standardCard hr.section-divider {
+			border: 1px solid black; /* Make the line black and 1px in height */
+			margin-top: 0.2rem; /* Adjust spacing as needed */
+		}
+		/* Main Card H2, Minor Card H2, Showcase Card H2 */
+		#mainCard hr.section-divider, 
+		#minorCard hr.section-divider, 
+		#projectShowcaseCard hr.section-divider {
+			border: 1px solid black; /* Apply the same style for other cards if needed */
+			margin-top: 0.2rem; /* Adjust spacing for consistency */
+		}
+		/* Card Section H3 */
+		.card-section h3 {
+			margin-bottom: 0.2rem; /* Adjust the space below the title */
+			font-size: 1.25rem; /* Adjust font size if needed */
+		}
+		/* Card Section P */
+		.card-section p {
+			margin-top: 0; /* Remove top margin from the paragraph */
+			font-size: 1rem; /* Adjust font size if needed */
+		}
+		/* Standard Card Card Content */
+		#standardCard .card-content {
+			max-height: calc(100vh - 200px); /* Example: Adjust based on screen height */
+			overflow-y: auto; /* Ensure content can scroll if it overflows */
+			padding: 0.5rem 1rem; /* Adjust padding to reduce content size */
+		}
+		/* Card Content HR Section Divder */
+		.card-content hr.section-divider {
+			margin-top: 0.2rem; /* Reduce space above hr */
+			margin-bottom: 0.5rem; /* Reduce space below hr */
+		}
+		/* Card Content */
+		.card-content {
+			border: 1px solid black;  /* Thin black border */
+			border-radius: 4px;       /* Slight rounding of corners for a softer look */
+			padding: 1rem;            /* Ensure content has enough padding inside the border */
+			box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.1); /* Optional: Add a slight shadow for depth */
+		}
+		/* Main Card */
+		#mainCard {
+			max-height: 300px;    /* Maximum height for the main card to ensure content scrolls */
+			overflow: hidden;     /* Hide any overflow to prevent child elements from being affected */
+		}	
+		/* Table Container */
+		.table-container {
+			max-height: 300px;  /* Adjust this height to fit within the card */
+			overflow-y: auto;   /* Enable vertical scrolling */
+			position: relative; /* Necessary for fixed header (next step) */
+		}
+		/* Sticky Table Headers (fixed) */
+		thead {
+			position: sticky;
+			top: 0;  /* Stick the header to the top of the container */
+			z-index: 1;  /* Ensure the header stays above the table rows */
+			background-color: white;  /* Set a background color so it doesn’t overlap rows */
+		}		
+		/* Table Body */
+		.table-body {
+			overflow: visible;    /* Ensure the table body content is visible without restriction */
+		}
+		/* == Confetti Section == */
+		/* Confetti Container Overlay */
+		#confetti-container {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			pointer-events: none; /* Prevent interaction with the page */
+			z-index: 99999; /* Ensure it's on top of everything */
+		}
+		/* Individual Confetti Pieces */
+		.confetti {
+			position: absolute;
+			width: 10px;
+			height: 10px;
+			background-color: red;
+			opacity: 0.9;
+			border-radius: 50%;
+			animation: confettiFall 3s ease-out forwards, confettiRotate 2s infinite;
+		}
+		/* Confetti Falling Animation */
+		@keyframes confettiFall {
+			0% {
+				transform: translateY(0) rotate(0deg);
+				opacity: 1;
+			}
+			100% {
+				transform: translateY(100vh) rotate(360deg);
+				opacity: 0;
+			}
+		}
+		/* Confetti Canvas */
+		#confetti-canvas {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+			pointer-events: none;
+			z-index: 99999;
+		}
+		/* Connfetti Message Style */
+		.centered-message {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			font-size: 48px;
+			font-weight: bold;
+			color: #ff0000; /* Red color for visibility */
+			z-index: 9999; /* Ensure it's above everything */
+			text-align: center;
+			pointer-events: none; /* Prevent interaction */
+			opacity: 1; /* Start with full opacity */
+			transition: opacity 1.5s ease-out; /* 3-second fade-out effect */
+		}
+		/* Place Name Here */
+		#confetti-message {
+			transition: opacity 1.5s ease-out;  /* Smooth fade-out transition */
+			opacity: 1;  /* Start with full opacity */
+		}
+		/* == Confetti Section == */
+		.blink {
+			animation: blink 1s steps(5, start) infinite;
+		}
+		/* == Confetti Section == */
+		@keyframes blink {
+			to {
+				visibility: hidden;
+			}
+		}
+		/* == Confetti Section == */
+		.shake {
+			animation: shake 0.5s;
+		}
+		/* == Confetti Section == */
+		@keyframes shake {
+			0%, 100% { transform: translateX(0); }
+			25%, 75% { transform: translateX(-10px); }
+			50% { transform: translateX(10px); }
+		}
+		/* Interval Notice Effect */
+		.interval-notice-effect {
+			animation: pulse 1s infinite;
+		}
+		/* Simple pulse animation */
+		@keyframes pulse {
+			0% {
+				transform: scale(1);
+			}
+			50% {
+				transform: scale(1.1);
+			}
+			100% {
+				transform: scale(1);
+			}
+		}
+		/* == Card Progress Bar Section == */
+		/* Header Progress Container h2 */
+		.header-progress-container h2 {
+			background-color: transparent; /* Ensure no background color */
+			margin: 0; /* No margin */
+			padding: 0; /* No padding */
+			white-space: nowrap; /* Prevent wrapping */
+			overflow: visible; /* Ensure text is not clipped */
+			text-overflow: clip; /* No ellipsis */
+			line-height: normal; /* Ensure normal line height to remove potential extra spacing */
+		}
+		/* Header Progress Container */
+		.header-progress-container {
+			display: flex; /* Allows header and progress bar to be in the same line */
+			align-items: flex-end; /* Vertically aligns the progress bar with the bottom of the header */
+			justify-content: space-between; /* Spaces them evenly */
+			padding: 0; /* Removes unnecessary padding */
+			margin: 0; /* Removes unnecessary margin */
+			position: relative; /* Ensures container respects its own boundaries */
+		}
+		/* Progress Bar Container */
+		.progress-bar-container {
+			flex-grow: 1; /* Fills available space next to the header */
+			height: 5px; /* Sets a fixed height for the progress bar */
+			background-color: #e0e0e0; /* Light gray background for progress bar container */
+			position: relative;
+			margin-top: 0; /* Ensures no gap between header and progress bar */
+			margin-left: 10px; /* Adjust to separate the progress bar from the header */
+		}
+		/* Progress Bar */
+		.progress-bar {
+			height: 100%; /* Full height of the container */
+			width: 0%; /* Start with 0 width */
+			background-color: green; /* Green progress bar */
+			transition: width 0.1s linear; /* Smooth transition */
+			position: absolute; /* Positioning the progress bar within the container */
+			bottom: 0; /* Ensure it stays at the bottom of the container */
+		}
+		/* Card Header Text */
+		.card-header {
+			background-color: transparent; /* Ensure no background color */
+			padding: 0; /* Remove padding */
+			margin: 0; /* Remove margin */
+			line-height: normal; /* Ensure normal line height */
+			border: none; /* Remove any potential borders */
+		}
+		/* Minor Card Table Container */
+		#minorCard .table-container {
+			margin-top: 0;
+			padding: 0; /* Ensure no padding */
+			overflow-y: hidden; /* Hide the vertical scrollbar */
+		}
+		/* Minor Card Table */
+		#minorCard table {
+			border-collapse: collapse; /* Ensure no extra space between table cells */
+		}
+		/* Minor Card TH TDr */
+		#minorCard th, #minorCard td {
+			padding: 4px 6px; /* Adjust padding to ensure no extra space */
+		}
+		/* Minor Card GE Section Divider */
+		#minorCard hr.section-divider {
+			margin-bottom: 0; /* Remove the space below the horizontal line */
+		}
+		/* Slide */
+		slide {
+			display: none;
+			text-align: center;
+			padding: 20px;
+			background-color: white;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+			border-radius: 8px;
+		}
+		/* Slide Active Card */
+		.slide.active-card {
+			display: block;
+		}
+		/* Slide Media */
+		.slide-media {
+			margin-top: 20px;
+			text-align: center;
+		}
+		/* Slide Media Images */
+		.slide-media img, .slide-media svg, .slide-media iframe {
+			max-width: 100%;
+			height: auto;
+			margin: 10px 0;
+		}
+		/* Slide Media Graph */
+		.slide-media .graph {
+			/* Specific styling for graph elements if needed */
+		}
+		/* Slide Media Visualization */
+		.slide-media .data-visualization {
+			/* Specific styling for data visualizations */
+		}
+	</style>
+    <!-- JQuery Script -->
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<!-- Bootstrap Script -->
+	<script defer src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <!-- Include alertDisplay.js -->
+    <script src="scripts/alertDisplay.js"></script>
+</head>
+<!-- Body Tag -->
+<body>
+	<!-- Dynamic Audio -->
+	<audio id="dynamic-audio" preload="auto"></audio>
+	<!-- Confetti Container -->
+	<canvas id="confetti-canvas"></canvas>
+	<!-- Confetti Message Div -->
+	<div id="confetti-message" class="centered-message" style="display: none;"></div>
+	<!-- Alert Modal -->
+	<div id="mdlAlertPage" class="modal fade in" tabindex="-1" role="dialog" aria-labelledby="mdlLabel" aria-hidden="false">
+		<!-- Modal Dialog -->
+		<div id="divModalDialog" class="modal-dialog">
+			<!-- Modal Content -->
+			<div id="divModalContent" class="modal-content">
+				<!-- Modal Header -->
+				<div id="divModalHeaderForm" class="modal-header">
+					<!--<h5 id="alert-header" class="modal-title"></h5>-->
+					<div id="alert-header" class="modal-title" style="width: 100%;"></div>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<!--<span aria-hidden="true">&times;</span>-->
+					</button>
+				</div>
+				<!-- Modal Body -->
+				<div id="divModalBodyForm" class="modal-body">
+					<div id="alert-message"></div>
+					<div id="alert-details"></div>
+				</div>
+				<div id="divModalFooterForm" class="modal-footer">
+					<!-- Add the copyright text aligned to the left -->
+					<div style="text-align: left; width: 100%;">
+						© 2024 MayChrist Corporation. All rights reserved.
+					</div>
+					<!--<button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>-->
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- Nav Container -->
+	<nav class="container">
+		<!-- Page Header Card Inverse -->
+		<div id="divDesktopHeader" class="card card-inverse visible-lg">
+			<!-- Flex Container for Logo and Header -->
+			<div class="d-flex align-items-start justify-content-between">
+				<!-- Logo -->
+				<div class="logo-container">
+					<!-- Logo -->
+					<img id="imgLogo" src="../images/logos/christyLogo.png" alt="Christy Signs" style="height: 79px; width: auto;" class="img-responsive"/>
+				</div>
+				<!-- Page Header and Content -->
+				<div class="header-content ml-3">
+					<!-- Meeting Title -->
+					<h4 id="meetingTitle" style="margin: 0;"></h4>
+					<!-- Full Underline -->
+					<div class="full-width-underline"></div>
+					<!-- Meeting Number -->
+					<span id="meetingNumber" style="display: block;">Loading...</span>
+					<!-- Date and Time Combined -->
+					<span id="meetingDateTime" style="display: block;">Loading...</span>
+					<!-- Meeting Timer -->
+					<span id="meetingTimer" style="display: block;">Loading...</span>
+					<!-- Current Site News Element -->
+					<span id="scurrentSiteNews" style="display: block;"><strong>Current Site News:</strong> <span id="scurrentSiteNewsData">Loading...</span></span>
+				</div>
+			</div>
+		</div>
+	</nav>
+	<!-- Main Content -->
+	<div class="container">
+		<!-- Slide -->
+		<div id="slideDiv" class="info-box active-card slide">
+			<!-- Slide Header -->
+			<h2 id="slideHeader" class="card-header">Loading...</h2>
+			<!-- Black Line Under Header -->
+			<div style="width: 100%; height: 2px; background-color: black; margin: 2px 0;"></div>
+			<!-- Slide Paragraph -->
+			<p id="slideParagraph">Loading...</p>
+			<!-- Slide Media -->
+			<div id="slideMedia" class="slide-media">Loading...</div>
+		</div>
+	</div>
+    <!-- Footer -->
+    <div class="container">
+        <!-- Desktop Page Header Card Inverse -->
+        <div id="divDesktopHeader" class="card card-inverse visible-lg">
+        	<!-- Copyright -->
+			<p>&copy; 2024 MayChrist Corporation. All rights reserved.</p>
+		</div>
+    </div>
+	<!-- Script Tag -->
+    <script>
+		// Monitor Type (Office Monitor)
+		const monitorType = 0; // Office Monitor - 0
+        // Let Event Source
+		let eventSource;
+        // Let Reconnect Interval
+		let reconnectInterval = 1000; // Start with 1 second for the first reconnect attempt
+		// Let Dynamic Data
+		let dynamicData = {};
+		// Let Stream Count
+		streamCount = 0;
+		// Let Card Display Counter
+		let cardDisplayCounter = 0; // Initialize the counter
+		// Let Refresh Counter
+		let refreshCounter = 0; // New counter for refresh
+		// Let Refresh Threshold 
+		const refreshThreshold = 1800; // Adjust this value as needed (e.g., 5 minutes if SSE is every second)
+		// Let Cards Cycling
+		let cardsCycling = false; // Flag to prevent multiple initializations
+		// let Current Card Index
+		let currentCardIndex = 0; // Tracks the current card being displayed
+		// Let Sections
+		let sections = []; // Global variable to hold the sections array
+		// Let Display Sections (Object)
+		let displayedSections = []; // Track currently displayed sections and total rotations
+		// Let Section Rotation Counter
+		let sectionRotationCounter = 0; // Initialize the section rotation counter
+		// Let Total Rotations
+		let totalRotations = 0; // Track how many rotations have occurred
+		// Set Card Durations
+		// === Begin: Set Card Durations Section ===
+			// Set Main Card Duration (Counts)
+			const mainCardDuration = 300; // 300 counts
+			// Set Minor Card Duration (Counts)
+			const minorCardDuration = 180; // 180 counts
+			// Set Standard Card Duration (Counts)
+			const standardCardDuration = 120; // 120 counts
+			// Set Project Showcase Card Duration (Counts)
+			const projectCardDuration = 120; // 120 counts
+		// === End: Set Card Durations Section ===
+		// Set Total Transitions
+		const totalTransitions = 10 // We want 5 transitions during the Standard Card
+		// Set Transition Interval
+		const transitionInterval = Math.floor(standardCardDuration / totalTransitions); // Calculate the interval at which each transition should happen
+		// Initialize Section Rotation Threshold
+		let sectionFadeCounter = 0;
+		// Set Fade Threshold (10)
+		const fadeThreshold = 10;
+		// Define Cards Data
+		const cardsData = {
+			// Main Card
+			mainCard: {
+				// Title (Department Summary)
+				title: "Department Summary",
+				// Content
+				content: "Details specific to this department, such as KPIs or key deadlines."
+			},
+			// Minor Card
+			minorCard: {
+				// Title (Department Performance Metrics)
+				title: "Department Performance Metrics",
+				// Content
+				content: "Additional data to provide context to the main card, such as project statuses or secondary metrics."
+			},
+			// Standard Card
+			standardCard: {
+				// Title (Company Annoucements)
+				title: "Company Announcement",
+				// Content
+				content: "There is a WIP meeting scheduld for 9:00 AM this Tuesday (11/05).  Please be ready to attend."
+			},
+			// Project Showcase Card
+			projectShowcaseCard: {
+				// Title (DProject Showcase)
+				title: "Project Showcase",
+				// Content
+				content: "Photos and descriptions of recently completed projects to highlight successes and capabilities."
+			}
+		};
+		// Define Cards
+		const cards = [
+			// Main Card
+			{ id: '#mainCard', data: cardsData.mainCard, duration: mainCardDuration }, // Display for 300 SSE messages
+			// Minor Card
+			{ id: '#minorCard', data: cardsData.minorCard, duration: minorCardDuration }, // Display for 180 SSE messages
+			// Standard Card
+			{ id: '#standardCard', data: cardsData.standardCard, duration: standardCardDuration }, // Display for 120 SSE messages
+			// Project Showcase Card
+			{ id: '#projectShowcaseCard', data: cardsData.projectShowcaseCard, duration: projectCardDuration } // Display for 180 SSE messages
+		];		
+		// Let Report Files
+		let reportFiles = []; // Define reportFiles in the outer scope so it's accessible globally
+		// Let Current Image Index
+		let currentImageIndex = 0; // 0 - Default Index
+		// Let Current Count (Default - Zero)
+		let currentCount = 0; // Counter to track the total duration elapsed
+		// Let Image Display Duration (Default - Zero)
+		let imageDisplayDuration = 0;
+		// Update Project Image Function
+		const updateProjectImage = () => {
+			// Report Files Conditional
+			if (reportFiles.length > 0) {
+				// Set Image File
+				const imageFile = reportFiles[currentImageIndex];
+				// Set Image Path
+				const imagePath = `https://azsignpermits.com/orderFiles/${imageFile.fileName}`;
+				// Set Project Inmage
+				document.querySelector('#projectImage').src = imagePath; // Update the image source
+				// Set Current Image Index
+				currentImageIndex = (currentImageIndex + 1) % reportFiles.length; // Cycle to the next image and loop back if at the end
+			}
+		};
+		// Let Previous Data
+		let previousData = null;  // To store the previous SSE data
+		// Let Scroll Position
+		let scrollPosition = 0; // Track the current scroll position
+		// Let Scroll Step
+		let scrollStep = 1; // How many pixels to scroll per SSE message
+		// Let Scroll Interval
+		let scrollInterval = null; // Reference to the scroll interval
+		// Let Pause Counter
+		let pauseCounter = 0; // Initialize pauseCounter
+		// Set Pause Intervals
+		const pauseIntervals = 150;  // Number of intervals to pause at the end
+		// Scroll Table Function
+		function scrollTable() {
+			// Set Table Container
+			const tableContainer = document.querySelector('.table-container');
+			// Clear Interval
+			clearInterval(scrollInterval); // Clear existing Scroll Interval
+			// Set Scroll Interval (Start New Scroll Interval)
+			scrollInterval = setInterval(() => {
+				// Table Container Conditional
+				if (tableContainer.scrollTop + tableContainer.clientHeight >= tableContainer.scrollHeight) {
+					// Pause Counter / Pause Interval Condtional
+					if (pauseCounter >= pauseIntervals) {
+						// Set Scroll Position (Zero)
+						scrollPosition = 0;  // Reset scroll to top
+						// Set Table Container (Scroll Top)
+						tableContainer.scrollTop = scrollPosition;  // Apply the reset
+						// Set Paus Counter (Zero)
+						pauseCounter = 0;  // Reset pause counter
+					} else {
+						// Increment Pause Counter
+						pauseCounter++;  // Increment pause counter only when at the bottom
+					}
+				} else {
+					// Increment Scroll Position 
+					scrollPosition += scrollStep;  // Continue scrolling if not at the bottom
+					// Set Table Container (Scroll Top)
+					tableContainer.scrollTop = scrollPosition;  // Set the scroll position
+				}
+			}, 50); // Adjust Scroll Speed
+		}
+		// Initialize Last Action ID Triggered
+		let lastActionIDTriggered = null;
+		// Update Company Announcements Function
+		function updateCompanyAnnouncements(data) {
+			// Section Element
+			const sectionElement = document.getElementById('company-announcements'); // Check if the section for company announcements is currently in the DOM
+			// Section Element Conditional
+			if (!sectionElement) {
+				// Return
+				return;
+			}
+			// Updatable Database Array Conditional
+			if (data.updatableDatabaseArray && data.updatableDatabaseArray.companyAnnouncementsArray) {
+				// Announcement
+				const announcements = data.updatableDatabaseArray.companyAnnouncementsArray;
+				// Annoucment Title Element
+				const announcementTitleElement = document.getElementById('announcementTitle');
+				// Annoucment Time Element
+				const announcementTimeElement = document.getElementById('announcementTime');
+				// Annoucment Detail Element
+				const announcementDetailsElement = document.getElementById('announcementDetails');
+				// Annoucment Elements Conditional
+				if (announcementTitleElement && announcementTimeElement && announcementDetailsElement) {
+					// Update Announcement Title
+					announcementTitleElement.textContent = announcements.announcementTitle || 'No announcement available';
+					// Update Announcement Time
+					announcementTimeElement.textContent = announcements.announcementTime || 'TBD';
+					// Update Announcement Details
+					announcementDetailsElement.textContent = announcements.announcementDetails || 'Details not available';
+				} else {
+					// Console Error
+					console.error('Announcement elements not found in the DOM.');
+				}
+			} else {
+				// Console Error
+				console.error('No announcement data available.');
+			}
+		}
+		// Update Progress Bar Function
+		function updateProgressBar(cardId, cardDisplayCounter, totalDuration) {
+			// Progress Bar
+			const progressBar = document.querySelector(`${cardId} .progress-bar`);
+			// Progress Bar Conditional
+			if (progressBar) {
+				// Percentage Completed
+				const percentageCompleted = (cardDisplayCounter / totalDuration) * 100; // Calculate the percentage of time that has passed for the current card
+				// Progress Bar Style
+				progressBar.style.width = `${percentageCompleted}%`; // Set the progress bar's width based on the percentage
+				// Card Display Counter / Total Duration Conditioal
+				if (cardDisplayCounter >= totalDuration) {
+					// Progress Bar Style
+					progressBar.style.width = '100%';
+				}
+			}
+		}
+		// Assign Meeting Header Function
+		function assignMeetingHeader(data) {
+			// Console Log (Commented Out)
+			//console.log("Dynamic Data:", data);
+			// Update Meeting Header
+			{
+				// Assign Meeting Variables
+				let meetingNumber, meetingTitle, meetingStartTimeUnix, currentNews, meetingDate;
+				// Assign Time Variables
+				let timeOptions, formattedDate, formattedTime, formattedDateTime;
+				// Assign Element Variables
+				let titleElement, numberElement, dateTimeElement, newsElement;
+				// Assign Meeting Details
+				{
+					// Assign Meeting Number
+					meetingNumber = data.updatableDatabaseArray?.presentationDetails?.meetingNumber || "MET-0001";
+					// Assign Meeting Title
+					meetingTitle = data.updatableDatabaseArray?.presentationDetails?.title || "Conference Room Presentation";
+					// Assign Meeting Start Tme Unix
+					meetingStartTimeUnix = data.updatableDatabaseArray?.presentationDetails?.startTimeUnix || 1738067400; // Default example timestamp
+					// Assign Current News
+					currentNews = data.liveDashboardArray?.liveDashboardAlertsArray?.currentAlertMessage || "No news available.";
+					// Assign Meeting Date
+					meetingDate = new Date(meetingStartTimeUnix * 1000);
+					// Assign Options
+					const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+					// Assign Time Options
+					timeOptions = { hour: '2-digit', minute: '2-digit' };
+					// Assign Formatted Date
+					formattedDate = meetingDate.toLocaleDateString('en-US', options);
+					// Assign Formatted Time
+					formattedTime = meetingDate.toLocaleTimeString('en-US', timeOptions);
+					// Assign Formatted Date Time
+					formattedDateTime = `${formattedDate} at ${formattedTime}`; // Combine Date / Time
+				}
+				// Update DOM elements
+				{
+					// Assign Title Element
+					titleElement = document.getElementById("meetingTitle");
+					// Assign Number Element
+					numberElement = document.getElementById("meetingNumber");
+					// Assign Date Time Element
+					dateTimeElement = document.getElementById("meetingDateTime");
+					// Assign News Element
+					newsElement = document.getElementById("scurrentSiteNewsData");
+				}
+				// Assigh Inner HTML
+				{
+					// Meeting Title
+					if (titleElement) titleElement.innerHTML = `<strong>Scheduled Meeting:</strong> ${meetingTitle}`;
+					// Meeting Number
+					if (numberElement) numberElement.innerHTML = `<strong>Meeting Number:</strong> ${meetingNumber}`;
+					// Meeting Date / Time
+					if (dateTimeElement) dateTimeElement.innerHTML = `<strong>Meeting Date/Time:</strong> ${formattedDateTime}`;
+					// Current News
+					if (newsElement) newsElement.innerHTML = currentNews;
+				}
+			}
+			// Update Countdown Timer
+			{
+				// Assign Elapsed Variables
+				let elapsedTime, elapsedHours, elapsedMinutes, elapsedSeconds;
+				// Assign Till Variables
+				let timeTill, hoursTill, minutesTill, secondsTill; 
+				// Assign Timer Element
+				const meetingTimerElement = document.getElementById("meetingTimer");
+				// Assign Current Unix Time
+				const currentUnixTime = data.timeDateArray?.currentUnixTime;
+				// Assign Meeting Start Time Unix
+				const meetingStartTimeUnix = data.updatableDatabaseArray?.presentationDetails?.startTimeUnix || 1738069200; // Example timestamp for 9:00 AM
+				// Current Unix Time / Meeting Start Time Unix Conditional
+				if (currentUnixTime !== undefined && meetingStartTimeUnix !== undefined) {
+					// Assign Remaining Time
+					timeTill = meetingStartTimeUnix - currentUnixTime; // Calculate remaining time in seconds
+					// Remaining Time Conditional
+					if (timeTill > 0) {
+						// Calculate hours, minutes, & seconds
+						{
+							// Assign Hours
+							hoursTill = Math.floor(timeTill / 3600); // Calculate hours from remaining time
+							// Assign Minutes
+							minutesTill = Math.floor((timeTill % 3600) / 60); // Calculate minutes from remaining time
+							// Assign Seconds
+							secondsTill = timeTill % 60; // Calculate seconds from remaining time
+						}
+						// Meeting Timer Element Conditional
+						if (meetingTimerElement) {
+							// Assign Meeting Timer Element (Meeting Starts)
+							meetingTimerElement.innerHTML = `<strong>Meeting Starts In:</strong> ${hoursTill} hours ${minutesTill} minutes ${secondsTill.toString().padStart(2, "0")} seconds`;
+						}
+					} else {
+						// Assign Elapsed Time
+						elapsedTime = Math.abs(timeTill); // Calculate elapsed time in seconds
+						// Calculate hours, minutes, & seconds for elapsed time
+						{
+							// Assign Elapsed Hours
+							elapsedHours = Math.floor(elapsedTime / 3600); // Calculate hours from elapsed time
+							// Assign Elapsed Minutes
+							elapsedMinutes = Math.floor((elapsedTime % 3600) / 60); // Calculate minutes from elapsed time
+							// Assign Elapsed Seconds
+							elapsedSeconds = elapsedTime % 60; // Calculate seconds from elapsed time
+						}
+						// Meeting Timer Element Conditional
+						if (meetingTimerElement) {
+							// Assign Meeting Timer Element (Elapsed Time)
+							meetingTimerElement.innerHTML = `<strong>Meeting Timer:</strong> ${elapsedHours} hours, ${elapsedMinutes} minutes, ${elapsedSeconds.toString().padStart(2, "0")} seconds ago.`;
+						}
+					}
+				} else if (meetingTimerElement) {
+					// Assign Meeting Timer Element (Countdown Unavailable)
+					meetingTimerElement.textContent = "Countdown unavailable.";
+				}
+			}
+		}
+		// Update Slide Function
+		function updateSlide() {
+			// Assign Current Slide
+			const currentSlide = dynamicData?.updatableDatabaseArray?.presentationArray?.currentSlide;
+		
+			// Console Log (Commented Out)
+			// console.log('Current Slide: ', currentSlide);
+		
+			// Current Slide Conditional
+			if (currentSlide) {
+				// Assign Header Element
+				const headerElement = document.getElementById("slideHeader");
+				if (headerElement) headerElement.textContent = currentSlide.title || "Untitled Slide";
+		
+				// Assign Slide Paragraph Element
+				const paragraphElement = document.getElementById("slideParagraph");
+				if (paragraphElement) paragraphElement.textContent = currentSlide.content || "No content available.";
+		
+				// Assign Media Container
+				const slideMedia = document.getElementById("slideMedia");
+				if (slideMedia) {
+					// Clear existing media content
+					slideMedia.innerHTML = "";
+		
+					// Check if media exists in the current slide
+					if (currentSlide.media && currentSlide.media.type === "image") {
+						const mediaElement = document.createElement("img");
+						mediaElement.src = currentSlide.media.src || "assets/images/default.png"; // Default image if src is missing
+						mediaElement.alt = currentSlide.media.alt || "Slide Media";
+						mediaElement.style.maxWidth = "100%"; // Ensure responsive sizing
+						mediaElement.style.height = "auto";  // Maintain aspect ratio
+						slideMedia.appendChild(mediaElement);
+					} else {
+						slideMedia.textContent = "No media available for this slide.";
+					}
+				}
+		
+				// Assign Dynamic Content Element
+				const dynamicContentElement = document.getElementById("dynamicContent");
+				if (dynamicContentElement) {
+					// Clear existing dynamic content
+					dynamicContentElement.innerHTML = "";
+		
+					// Add live data paragraph
+					const liveData = document.createElement("p");
+					liveData.textContent = currentSlide.slideParagraph || "Additional details or insights are not available.";
+					liveData.style.fontStyle = "italic";
+					dynamicContentElement.appendChild(liveData);
+		
+					// Placeholder for future enhancements (e.g., tables, graphs)
+					// Add more types of dynamic content here
+				}
+			} else {
+				// Console Warn (No Current Slide)
+				console.warn("No current slide data found in dynamicData.");
+			}
+		}
+		// Start Event Source Function
+        function startEventSource() {
+            // Event Source
+			eventSource = new EventSource('https://azsignpermits.com/functionPages/serverSideEvents.php');
+			// Event Source On Open
+            eventSource.onopen = function(event) {
+                // Set Reconnect Interval
+				reconnectInterval = 1000; // Reset reconnect interval upon a successful connection
+            };
+			// Event Source On Message
+			eventSource.onmessage = function(event) {
+				// Data (JSON)
+				const data = JSON.parse(event.data);
+				// Assign Dynamic Data Global Variable
+				dynamicData = data; // Parse data from SSE and assign to global variable
+				// Console Log (Used For Testing - Commneted Out)
+				//console.log(dynamicData);
+				// Refresh Bulletin Board Code
+				// === Begin: Refresh Bulletin Board Section ===
+					// Current Interval
+					const currentInterval = data.intervalsArray?.currentIntervalTypeArray;
+					// Workday Durations
+					const workdayDurations = data.intervalsArray?.workdayIntervalsArray?.workdayDurationsArray;
+					// Fifteen Minutes Before Work
+					const fifteenMinutesBeforeWork = 15 * 60; // 15 minutes in seconds
+					// Is Before Or During Workhours
+					const isBeforeOrDuringWorkHours = 
+						(currentInterval.isWorkday && currentInterval.isWorkdayTypeArray.isBeforeWorkday && workdayDurations.officeWorkdaySecondsRemaining <= fifteenMinutesBeforeWork) || 
+						(currentInterval.isWorkday && currentInterval.isWorkdayTypeArray.isDuringWorkday);
+					// Is Before Or During Work Hours Conditional
+					if (isBeforeOrDuringWorkHours) {
+						// Refresh Counter / Refresh Threshold Conditional
+						if (refreshCounter >= refreshThreshold) {
+							// Check if the current card is the main card (index 0)
+							if (currentCardIndex === 0) {
+								// Set Refresh Counter (Zero)
+								refreshCounter = 0; // Reset the refresh counter
+								// Refresh Page
+								location.reload(); // Refresh the page
+							}
+						}
+					}
+				// === End: Refresh Bulletin Board Section ===
+				// Incrememt Counters
+				// === Begin: Increment Counters Section ===
+					// Increment Stream Count
+					streamCount++;
+					// Increment Display Counter
+					cardDisplayCounter++; // Increment the display counter with each SSE message
+					// Increment Refresh Counter
+					refreshCounter++; // Increment the refresh counter with each SSE message
+					// Increment Section Rotation Counter
+					sectionRotationCounter++;
+				// === End: Increment Counters Section ===
+				// Rotation Section Countdown Code
+				// === Begin: Rotation Section Countdown Section ===
+					// Remaining Count
+					const remainingCount = transitionInterval - sectionRotationCounter; // Counts remaining until rotation
+					// Console Log <Used For Tesing - Commented Out)
+					//console.log('Transition Interval:', transitionInterval, 'Section Counter:', sectionRotationCounter, 'Remaining Count:', remainingCount);
+					// Countdown Element
+					const countdownElement = document.getElementById('kpiCountdownValue');				
+					// Countdown Element Conditional
+					if (countdownElement) {
+						// Time Label
+						const timeLabel = remainingCount === 1 ? 'second' : 'seconds'; // Determine the correct label for "count" or "counts" (instead of seconds)
+						// Update Countdown Text
+						countdownElement.textContent = `${remainingCount} ${timeLabel}`; // Update the countdown text with the correct format
+					}
+				// === End: Rotation Section Countdown Section ===
+				// Card Display Counter / Current Card Index Conditional
+				if (cardDisplayCounter >= cards[currentCardIndex].duration) {
+					// Assign Card Display Counter
+					cardDisplayCounter = 0; // Reset the counter
+					// Remove Current Card
+					$(cards[currentCardIndex].id).removeClass('active-card'); // Hide the current card
+					// Assign Current Card Index (Move to the next card, looping back to the first one)
+					currentCardIndex = (currentCardIndex + 1) % cards.length; // Use modulus to loop through cards
+					// Show New Current Card
+					$(cards[currentCardIndex].id).addClass('active-card');
+					// Update Card Content
+					const cardId = cards[currentCardIndex].id;
+					const cardTitle = cards[currentCardIndex].data.title;
+					const cardContent = cards[currentCardIndex].data.content;
+					// Update Card Title and Content
+					$(cardId + ' h2').html(cardTitle + '<hr style="border: 1px solid black; margin: 0;">'); // Update title with a styled HR
+					$(cardId + ' p').html(cardContent); // Update content
+				}
+				// Current Card Index Conditional (Main Card - 0)
+				if (currentCardIndex === 1) {
+					// Call Function
+					// Code Goes Here
+				}
+				// Current Card Index Conditional (Mionor Card - 1)
+				if (currentCardIndex === 1) {
+					// Call Function
+					// Code Goes Here
+				}
+				// Current Card Index Conditional (Standard Card - 2)
+				if (currentCardIndex === 2) {
+					// Call Update Company Announcements Function
+					updateCompanyAnnouncements(data); // Real Time Update
+				}
+				// Current Card Index Conditional (Special Project Card - 3)
+				if (currentCardIndex === 3) {
+					// Increment the total card duration counter for Special Projects
+					currentCount++;
+					// Current Count / Project Card Duration
+					if (currentCount <= projectCardDuration) {
+						// Current Count / Image Display Duration
+						if (currentCount % imageDisplayDuration === 0) {
+							// Call Update Project Image
+							updateProjectImage(); // Call to change the image
+						}
+					} else {
+						// Set Current Count (Zero)
+						currentCount = 0; // Once the total duration is over, reset both the count and the image index
+						// Set Current Image Index (Zero)
+						currentImageIndex = 0;
+					}
+				}				
+				// Data Changed Conditional
+				if (JSON.stringify(data) !== JSON.stringify(previousData)) {
+					// Console Log (Commented Out)
+					//console.log('Data: ', data);
+					// Call Assign Meeting Header Function
+					assignMeetingHeader(data);
+					// Call Update Slide
+					updateSlide();
+				} else {
+					// Console Log
+					console.log('Data has not changed, skipping update.');
+				}
+				// Update Progress Bar
+				updateProgressBar(cards[currentCardIndex].id, cardDisplayCounter, cards[currentCardIndex].duration);
+			};
+			// Event Source On Error
+			eventSource.onerror = function() {
+				// Event Source Conditional
+				if (eventSource.readyState === EventSource.CLOSED) {
+					// Console Error
+					console.error("EventSource error. Reconnecting in", reconnectInterval / 1000, "seconds...");
+					// Set Timeout
+					setTimeout(() => {
+						// Event Source Open
+						eventSource.close();
+						// Start Event Source
+						startEventSource();
+					}, reconnectInterval);
+					// Set Reconnect Interval
+					reconnectInterval = Math.min(reconnectInterval * 2, 30000); // Cap the interval at 30 seconds
+				}
+			};
+		}
+		// Update Dynamic Card Content Function
+		function updateDynamicCardContent(data) {
+			// Main Card
+			if (currentCardIndex === 0) {
+				// Main Card Data (Test Data - Needs Live Data !!)
+				const mainCardData = [
+					{ customerName: "Federal Heath Sign Company", jobsite: "Crash Champions", jurisdiction: "Phoenix", feeDue: "$ 225.00", status: "Ready To Issue" },
+					{ customerName: "Walton Signage", jobsite: "Bank Of America", jurisdiction: "Tempe", feeDue: "$ 893.00", status: "Ready To Issue" },
+					{ customerName: "Sun Valley Wellness", jobsite: "Sun Valley Wellness", jurisdiction: "Scottsdale", feeDue: "$ 545.00", status: "Ready To Issue" },
+					{ customerName: "Switch Electric", jobsite: "Switch Electric", jurisdiction: "Tempe", feeDue: "$ 356.00", status: "Ready To Issue" },
+					{ customerName: "Printing Solutions", jobsite: "Ten Figures", jurisdiction: "Phoenix", feeDue: "$ 225.00", status: "Ready To Issue" },
+					{ customerName: "Jas Diesel", jobsite: "Jas Diesel", jurisdiction: "Phoenix", feeDue: "$ 1,080.00", status: "Need To Submit" },
+					{ customerName: "El Shaddai", jobsite: "El Shaddai", jurisdiction: "Phoenix", feeDue: "$ 1,080.00", status: "Need To Submit" },
+					{ customerName: "U-Haul", jobsite: "U-Haul (Grand/Bell Rd)", jurisdiction: "Surprise", feeDue: "$ 154.00", status: "Ready To Issue" },
+					{ customerName: "Penchetta Pen & Knife", jobsite: "Penchetta Pen & Knife", jurisdiction: "Phoenix", feeDue: "$ 225.00", status: "Ready To Issue" },
+					{ customerName: "Printing Solutions", jobsite: "Rhino Shield", jurisdiction: "Chandler", feeDue: "$ 248.25", status: "Ready To Issue" },
+					{ customerName: "Mellow Mushroom Pizza", jobsite: "Mellow Mushroom Pizza", jurisdiction: "Phoenix", feeDue: "$ 300.00", status: "Under Review" }
+				];
+				// Main Card Headers
+				const mainCardHeaders = ["Customer Name", "Jobsite", "Jurisdiction", "Fee Due", "Status"];
+				// Main Card Header Key Map
+				const mainCardHeaderKeyMap = {
+					"Customer Name": "customerName",
+					"Jobsite": "jobsite",
+					"Jurisdiction": "jurisdiction",
+					"Fee Due": "feeDue",
+					"Status": "status"
+				};
+				// Generate Main Card Table
+				let tableHTML = `
+					<div class="header-progress-container">
+						<h2 class="card-header">Sign Permit Application Status</h2>
+						<div class="progress-bar-container">
+							<div class="progress-bar" id="mainCardProgressBar"></div>
+						</div>
+					</div>
+					<hr class="section-divider">
+					<div class="table-container">
+						<table style="width: 100%; border-collapse: collapse;">
+							<thead>
+								<tr>
+									${mainCardHeaders.map(header => `<th style="padding: 8px; border: 1px solid black;">${header}</th>`).join('')}
+								</tr>
+							</thead>
+							<tbody>
+								${mainCardData.map(row => `
+									<tr>
+										<td style="padding: 8px; border: 1px solid black;">${row.customerName}</td>
+										<td style="padding: 8px; border: 1px solid black;">${row.jobsite}</td>
+										<td style="padding: 8px; border: 1px solid black;">${row.jurisdiction}</td>
+										<td style="padding: 8px; border: 1px solid black; text-align: right;">${row.feeDue}</td>
+										<td style="padding: 8px; border: 1px solid black;">${row.status}</td>
+									</tr>
+								`).join('')}
+							</tbody>
+						</table>
+					</div>
+				`;
+				// Inject HTML Table
+				document.querySelector('#mainCard').innerHTML = tableHTML;
+				// Call Scroll Table Function
+				scrollTable(); // scrollTable to handle scrolling after the table is populated
+			// Minor Card
+			} else if (currentCardIndex === 1) {
+				// Minor Card Data (Test Data - Needs Live Data !!)
+				const minorCardData = [
+					{ metric: "Total Applications", explanation: "All submitted applications", value: "150" },
+					{ metric: "Applications 'Need to Submit'", explanation: "Applications pending submission", value: "15" },
+					{ metric: "Applications 'Under Review'", explanation: "Currently under review", value: "30" },
+					{ metric: "Applications 'Ready to Issue'", explanation: "Approved and ready to issue", value: "45" },
+					{ metric: "Average Processing Time", explanation: "Average time to process", value: "3 days" },
+					{ metric: "Current Active Applications", explanation: "Currently active and pending", value: "60" },
+				];
+				// Minor Card Headers
+				const minorCardHeaders = ["Metric", "Explanation", "Value"];
+				// Minor Card Key Map
+				const minorCardHeaderKeyMap = {
+					"Metric": "metric",
+					"Value": "value"
+				};
+				// Generate Minor Card Table
+				let tableHTML = `
+					<div class="header-progress-container">
+						<h2 class="card-header">Sign Permits Statistics</h2>
+						<div class="progress-bar-container">
+							<div class="progress-bar" id="minorCardProgressBar"></div>
+						</div>
+					</div>
+					<hr class="section-divider">
+					<div class="table-container">
+						<table style="width: 100%; border-collapse: collapse;">
+							<thead>
+								<tr>
+									${minorCardHeaders.map(header => `<th style="padding: 8px; border: 1px solid black;">${header}</th>`).join('')}
+								</tr>
+							</thead>
+							<tbody>
+								${minorCardData.map(row => `
+									<tr>
+										<td style="padding: 8px; border: 1px solid black;">${row.metric}</td>
+										<td style="padding: 8px; border: 1px solid black;">${row.explanation}</td>
+										<td style="padding: 8px; border: 1px solid black;">${row.value}</td>
+									</tr>
+								`).join('')}
+							</tbody>
+						</table>
+					</div>
+				`;
+				// Inject HTML Table
+				document.querySelector('#minorCard').innerHTML = tableHTML;
+			// Standard Card
+			} else if (currentCardIndex === 2) {
+				// Assign Greeting / Day Content
+				// === Begin: Greeting / Day Content Section ===
+					// Obtain Current Hour
+					const currentHour = new Date().getHours(); // Determine the dynamic greeting based on the time of day
+					// Let Dynamic Greeting
+					let dynamicGreeting = '';
+					// Current Hour Conditional (Greeting)
+					if (currentHour >= 5 && currentHour < 12) {
+						// Assign Dynamic Greeting (Good Morning)
+						dynamicGreeting = 'Good Morning';
+					} else if (currentHour >= 12 && currentHour < 18) {
+						// Assign Dynamic Greeting (Good Afternoon)
+						dynamicGreeting = 'Good Afternoon';
+					} else if (currentHour >= 18 && currentHour < 22) {
+						// Assign Dynamic Greeting (Good Evening)
+						dynamicGreeting = 'Good Evening';
+					} else {
+						// Assign Dynamic Greeting (Hello)
+						dynamicGreeting = 'Hello';
+					}
+					// Obtain Current Week Day
+					const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+					// Current Year Details
+					const { 
+						// Current year Total Days
+						currentYearTotalDays = "unknown", // Default values to handle undefined cases
+						// Customer Year Day Number
+						currentYearDayNumber = "unknown",
+						// Current Year Days Remaining
+						currentYearDaysRemaining = "unknown"
+					} = dynamicData.timeDateArray;
+				// === End: Greeting / Day Content Section ===
+				// Assign Daylight Start / End Content
+				// === Begin: Daylight Start / End Content Section ===
+					// Format Time to 12-hour Format Function
+					function formatTimeTo12Hour(time24) {
+						// Assign Hours, Minutes, Seconds
+						const [hours, minutes, seconds] = time24.split(':').map(Number);
+						// Assign Suffix
+						const suffix = hours >= 12 ? 'PM' : 'AM';
+						// Assign Hours 12
+						const hours12 = ((hours + 11) % 12 + 1); // Convert 24-hour format to 12-hour format
+						// Return
+						return `${hours12}:${minutes.toString().padStart(2, '0')} ${suffix}`;
+					}
+					// Convert Time to Total Minutes Function
+					function timeToMinutes(time24) {
+						// Split Hours and Minutes
+						const [hours, minutes] = time24.split(':').map(Number);
+						// Return Total Minutes
+						return hours * 60 + minutes;
+					}
+					// Format Duration to Hours and Minutes
+					function formatDuration(totalMinutes) {
+						// Calculate Hours
+						const hours = Math.floor(totalMinutes / 60);
+						// Calculate Minutes
+						const minutes = totalMinutes % 60;
+						// Return Formatted String
+						return `${hours} ${hours === 1 ? 'hour' : 'hours'}, ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+					}
+					// Obtain Daylight Start in 12-hour Format
+					const daylightStart = formatTimeTo12Hour(dynamicData.timeDateArray.daylightStartEndArray.daylightStart);
+					// Obtain Daylight End in 12-hour Format
+					const daylightEnd = formatTimeTo12Hour(dynamicData.timeDateArray.daylightStartEndArray.daylightEnd);
+					// Calculate Daytime and Nighttime Durations
+					// === Begin: Daytime and Nighttime Durations Section ===
+						// Assign Daylight Start Minutes
+						const daylightStartMinutes = timeToMinutes(dynamicData.timeDateArray.daylightStartEndArray.daylightStart);
+						// Assign Daylight End Minutes
+						const daylightEndMinutes = timeToMinutes(dynamicData.timeDateArray.daylightStartEndArray.daylightEnd);
+						// Assign Total Minutes In Day
+						const totalMinutesInDay = 24 * 60;
+					// === End: Daytime and Nighttime Durations Section ===
+					// Daytime Duration in Minutes
+					const daytimeDuration = daylightEndMinutes - daylightStartMinutes;
+					// Nighttime Duration in Minutes
+					const nighttimeDuration = totalMinutesInDay - daytimeDuration;
+					// Format Daytime and Nighttime Durations
+					// === Begin: Formt Daytime and Nighttime Durations Section ===
+						// Formatted Daytime
+						const formattedDaytime = formatDuration(daytimeDuration);
+						// Formatted Nighttime
+						const formattedNighttime = formatDuration(nighttimeDuration);
+					// === End: Format Daytime and Nighttime Durations Section ===
+					// Output Example (Daylight Start and End with Durations)
+					// === Begin: Daytime and Nighttime Output Section ===
+						// Console Log (Start / End Time)
+						console.log(`Daylight starts at ${daylightStart} and ends at ${daylightEnd}.`);
+						// Console Log (Formatted Day / Night
+						console.log(`(Daytime: ${formattedDaytime} / Nighttime: ${formattedNighttime})`);
+					// === Begin: Daytime and Nighttime Output Section ===
+				// === End: Daylight Start / End Content Section ===
+				// Assign Next Holiday Content
+				// === Begin: Next Holiday Time Calculation Section ===
+					// Let Next Holiday
+					let nextHoliday = null; // Find the next holiday from the holidaysArray
+					// For Each Holiday
+					for (const key in dynamicData.holidaysArray) {
+						// Assign Holiday
+						const holiday = dynamicData.holidaysArray[key];
+						// Is Holiday Next Conditional
+						if (holiday.isNextHoliday === 1) {
+							// Assign Bext Holiday
+							nextHoliday = holiday;
+							// Break
+							break; // Exit the loop once we find the next holiday
+						}
+					}
+					// Next Holiday Conditional (New Year's Day Fallback)
+					if (!nextHoliday) {
+						// Assign New Year
+						const nextYear = new Date().getFullYear() + 1; // Calculate next year
+						// Assign Next Holiday Object
+						nextHoliday = {
+							// Set Holiday Name
+							holidayName: `New Year&#39;s Day (${nextYear})`,
+							// Set Till Since Holiday
+							tillSinceHoliday: Math.floor((new Date(nextYear, 0, 1) - Date.now()) / 1000), // Time until January 1st
+						};
+					}
+					// Let Time Unitl Next Holiday
+					let timeUntilNextHoliday = ''; // Calculate time remaining until the next holiday				
+					// Next Holiday Conditional
+					if (nextHoliday) {
+						// Remaining Seconds
+						let remainingSeconds = nextHoliday.tillSinceHoliday;
+						// Calculate months
+						const months = Math.floor(remainingSeconds / (30 * 24 * 3600)); // Approximate 1 month as 30 days
+						// Remaining Seconds
+						remainingSeconds %= (30 * 24 * 3600);
+						// Calculate Days
+						const days = Math.floor(remainingSeconds / (24 * 3600));
+						// Remaining Seconds
+						remainingSeconds %= (24 * 3600);
+						// Calculate Hours
+						const hours = Math.floor(remainingSeconds / 3600);
+						// Remaining Seconds
+						remainingSeconds %= 3600;
+						// Calculate minutes
+						const minutes = Math.floor(remainingSeconds / 60);
+						// Calculate seconds
+						const seconds = remainingSeconds % 60;
+						// Initialize Parts
+						const parts = []; // Create a formatted string
+						// Months Conditional
+						if (months > 0) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`);
+						// Days Conditional
+						if (days > 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+						// Hours Conditional
+						if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
+						// Minutes Conditional
+						if (minutes > 0 || hours > 0 || days > 0 || months > 0) {
+							// Show Mintues
+							parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`);
+						}
+						// Show Seconds
+						parts.push(`${seconds} ${seconds === 1 ? 'second' : 'seconds'}`); // Always show seconds, even if it's 0
+						// Assign Time Until Next Holiday
+						timeUntilNextHoliday = parts.join(', '); // Join the parts to form the final string
+						// Holiday Name Element
+						const holidayNameElement = document.getElementById('nextHolidayName');
+						// Holiday Countdown Element
+						const holidayCountdownElement = document.getElementById('timeUntilNextHoliday');
+						// Holiday Name Element / Holiday Countdown Element Conditional
+						if (holidayNameElement && holidayCountdownElement) {
+							// Holiday Name Element Inner HTML
+							holidayNameElement.innerHTML = nextHoliday.holidayName; // Update the holiday name
+							// Holiday Countdown Element Inner HTML
+							holidayCountdownElement.innerHTML = timeUntilNextHoliday; // Update the countdown dynamically
+						}
+					}
+				// === End: Next Holiday Time Calculation Section ===
+				// Assign Sections Based on Live Data
+				const sections = [
+					// Section 1: Today's Date
+					{
+						// ID
+						id: 'section1',
+						// Title
+						title: "Today's Date",
+						// Content includes dynamic greeting and current day details
+						content: `<p><strong>${dynamicGreeting}</strong>, today is 
+								  <span class="highlight">${currentDay}</span>. It is day 
+								  <span class="highlight">${currentYearDayNumber}</span> of 
+								  <span class="highlight">${currentYearTotalDays}</span>, with 
+								  <span class="highlight">${currentYearDaysRemaining}</span> days remaining in the year.</p>`
+					},
+					// Section 2: Daylight Hours
+					{
+						// ID
+						id: 'section2',
+						// Title
+						title: "Daylight Hours",
+						// Content includes dynamic daylight start and end times
+						content: `<p>Daylight starts at 
+								  <span class="highlight">${daylightStart}</span> and ends at 
+								  <span class="highlight">${daylightEnd}</span> today. &nbsp;(Daytime: <span class="highlight">${formattedDaytime}</span> / Nighttime: <span class="highlight">${formattedNighttime}</span>)
+								  </p>`
+					},
+					// Section 3: Upcoming Holiday
+					{
+						// ID
+						id: 'section3',
+						// Title
+						title: "Upcoming Holiday",
+						// Content includes dynamic next holiday information and time remaining
+						content: `<p>The next holiday is 
+								  <span class="highlight" id="nextHolidayName">${nextHoliday ? nextHoliday.holidayName : 'unknown'}</span> 
+								  in <span class="highlight" id="timeUntilNextHoliday">${timeUntilNextHoliday}</span>.</p>`
+					},
+					// Section 4: Company Announcements
+					{
+						// ID
+						id: 'section4',
+						// Title
+						title: "Company Announcements",
+						// Content
+						content: `
+							<!-- Announcement Div -->
+							<div id="company-announcements">
+								<!-- Announcement Header -->
+								<p><strong>Announcement:</strong> 
+								<!-- Announcement Title Content -->
+								<span id="announcementTitle" class="highlight" style="color:red;">
+									${dynamicData.updatableDatabaseArray.companyAnnouncementsArray.announcementTitle || 'No announcement available'}
+								</span>
+								<!-- Announcement Time Header -->
+								<strong>Time:</strong> 
+								<!-- Announcement Time Content -->
+								<span id="announcementTime" class="highlight" style="color:red;">
+									${dynamicData.updatableDatabaseArray.companyAnnouncementsArray.announcementTime || 'TBD'}
+								</span>
+								<!-- Announcement Details Header -->
+								<strong>Details:</strong> 
+								<!-- Announcement Details Content -->
+								<span id="announcementDetails" class="highlight" style="color:red;">
+									${dynamicData.updatableDatabaseArray.companyAnnouncementsArray.announcementDetails || 'Details not available'}
+								</span></p>
+							</div>
+						`
+					},
+					// Section 5: Meetings / Deadlines (Needs Live Data !!)
+					{
+						// ID
+						id: 'section5',
+						// Title
+						title: "Meetings/Deadlines",
+						// Content
+						content: `
+									<!-- Meetings/Deadlines Div -->
+									<div id="upcoming-meetings">
+										<!-- Meeting/Deadline Header -->
+										<p><strong>Meeting:</strong> 
+										<!-- Meeting Title Content -->
+										<span id="meetingTitle" class="highlight" style="color:red;">Project Planning Session</span>
+										<!-- Meeting Time Header -->
+										<strong>Time:</strong> 
+										<!-- Meeting Time Content -->
+										<span id="meetingTime" class="highlight" style="color:red;">2:00 PM</span>
+										<!-- Meeting Details Header -->
+										<strong>Details:</strong> 
+										<!-- Meeting Details Content -->
+										<span id="meetingDetails" class="highlight" style="color:red;">Discuss upcoming project timelines and key milestones.</span></p>
+									</div>
+								  `
+					},
+					// Section 6: KPI Summary
+					{
+						// ID
+						id: 'section6',
+						// Title
+						title: "KPI Summary",
+						// Static content for KPI summary with live metrics
+						content: `
+							<!-- KPI Summary Div -->
+							<div id="kpi-summary">
+								<!-- Countdown Timer Header -->
+								<p><strong>Next Rotation In:</strong> 
+								<!-- Countdown Timer Value -->
+								<span id="kpiCountdownValue" class="highlight" style="color:red;">
+								${Math.ceil(transitionInterval / 1000)} ${Math.ceil(transitionInterval / 1000) === 1 ? 'second' : 'seconds'}
+								</span>
+								</p>
+							</div>
+						`
+					}
+				];		
+				// Card Display Counter
+				if (cardDisplayCounter === 0) {
+					// Shuffle Sections for Random Display
+					const shuffledSections = sections.sort(() => 0.5 - Math.random()).slice(0, 3);
+					// Track the IDs of the displayed sections
+					displayedSections = shuffledSections.map(section => section.id);
+					// Standard Card Element
+					const standardCard = document.querySelector('#standardCard');
+					// Standard Card Conditional
+					if (standardCard) {
+						// Set Standard Card HTML (Clear)
+						standardCard.innerHTML = ''; // Clear previous content before injecting new content 
+						// Set the Standard Card (Header / Content)
+						standardCard.innerHTML = `
+							<!-- Standard Card Header with Progress Bar -->
+							<div class="header-progress-container">
+								<!-- Header Text -->
+								<h2 class="card-header">Daily Briefing</h2>
+								<!-- Progress Bar Container -->
+								<div class="progress-bar-container">
+									<!-- Progress Bar -->
+									<div class="progress-bar" id="standardCardProgressBar"></div>
+								</div>
+							</div>
+							<!-- Horizontal Line -->
+							<hr class="section-divider">
+							<!-- Card Content -->
+							<div class="card-content">
+								<!-- Section 1 -->
+								<div class="card-section" id="standardCardSection1">
+									<!-- Title -->
+									<h3>${shuffledSections[0].title}</h3>
+									<!-- Content -->
+									<p>${shuffledSections[0].content}</p>
+								</div>
+								<!-- Section Divider -->
+								<hr class="section-divider">
+								<!-- Section 2 -->
+								<div class="card-section" id="standardCardSection2">
+									<!-- Title -->
+									<h3>${shuffledSections[1].title}</h3>
+									<!-- Content -->
+									<p>${shuffledSections[1].content}</p>
+								</div>
+								<!-- Section Divider -->
+								<hr class="section-divider">
+								<!-- Section 3 -->
+								<div class="card-section" id="standardCardSection3">
+									<!-- Title -->
+									<h3>${shuffledSections[2].title}</h3>
+									<!-- Content -->
+									<p>${shuffledSections[2].content}</p>
+								</div>
+							</div>
+						`;
+					}
+				}
+				// Section Rotation Counter / Transition Interval Conditional
+				if (sectionRotationCounter >= transitionInterval) {
+					// Reset the section rotation counter after reaching the transition interval
+					sectionRotationCounter = 0;
+					// Generate a random index to determine which section to rotate (1, 2, or 3)
+					const rotatingIndex = Math.floor(Math.random() * 3) + 1;
+					// Find a new section that is not currently being displayed
+					let sectionToRotate;
+					// Do-While Loop to ensure the new section isn't already displayed
+					do {
+						sectionToRotate = sections[Math.floor(Math.random() * sections.length)];
+					} while (displayedSections.includes(sectionToRotate.id));
+					// Target the specific section on the card by its index
+					const parentElement = document.querySelector(`#standardCardSection${rotatingIndex}`);
+					// Check if the target section exists before updating its content
+					if (parentElement) {
+						// Clear the content of the section before updating
+						parentElement.innerHTML = '';
+						// Insert the new title and content for the rotated section
+						parentElement.innerHTML = `
+							<!-- Title -->
+							<h3>${sectionToRotate.title}</h3>
+							<!-- Content -->
+							<p>${sectionToRotate.content}</p>
+						`;
+						// Update the displayedSections tracker with the newly displayed section
+						displayedSections[rotatingIndex - 1] = sectionToRotate.id;
+						// Call Play Sound Function (Commneted Out)
+        				playSound('randomSectionDisplay');
+					}
+				}
+			// Showcase Special Projects
+			} else if (currentCardIndex === 3) {
+				// Updatable Database Array Conditional
+				if (dynamicData.updatableDatabaseArray && dynamicData.updatableDatabaseArray.ordersArray) {
+					// Get the latest order data from the SSE stream
+					const latestOrder = dynamicData.updatableDatabaseArray.ordersArray[dynamicData.updatableDatabaseArray.ordersArray.length - 1];
+					// Latest Order Conditional
+					if (latestOrder) {
+						// Extract the location name from the dynamic data locations array
+						const location = dynamicData.updatableDatabaseArray.locationsArray.find(loc => loc.locationID === latestOrder.orderJobsiteLocationID);
+						// Format the order number with leading zeros
+						const orderNumberFormatted = `ORD-${latestOrder.orderID.toString().padStart(5, '0')}`;
+						// Title for the card, replacing "Order #" with the location name if available
+						const projectTitle = `Featured Project: ${location ? location.locationName : 'Unknown Location'}`;
+						// Get the report files matching the orderID
+						reportFiles = dynamicData.updatableDatabaseArray.orderReportFilesArray.filter(file => file.orderID === latestOrder.orderID.toString().padStart(5, '0'));
+						// Calculate the Image Display Duration based on the number of report files
+						imageDisplayDuration = reportFiles.length > 0 
+							? Math.max(Math.floor(projectCardDuration / reportFiles.length), 1) 
+							: projectCardDuration; // Ensure a minimum of 1 count per image
+						// Update Project Image Function
+						const updateProjectImage = () => {
+							// Check if there are report files, otherwise use placeholder
+							if (reportFiles.length > 0) {
+								// Image File
+								const imageFile = reportFiles[currentImageIndex]; // Get the current image
+								// Image Path
+								const imagePath = `https://azsignpermits.com/orderFiles/${imageFile.fileName}`;
+								// Set Project Image
+								document.querySelector('#projectImage').src = imagePath; // Update the image source
+								// Current Imae Index
+								currentImageIndex = (currentImageIndex + 1) % reportFiles.length; // Loop back to the first image
+							}
+						};				
+						// Project Content
+						const projectContent = `
+							<!-- Project Wrapper -->
+							<div class="project-wrapper" style="display: flex; align-items: flex-start; margin: 10px 0; padding: 5px; border: 1px solid black; box-sizing: border-box; width: 100%; background-color: #f9f9f9;">
+								<!-- Image Section -->
+								<div class="project-image" style="flex: 0 0 40%; margin-right: 10px;">
+									<!-- Project Image -->
+									<img id="projectImage" src="https://azsignpermits.com/orderFiles/${reportFiles.length > 0 ? reportFiles[currentImageIndex].fileName : 'placeholder.jpg'}" alt="Project Image" style="width: 100%; height: auto; object-fit: cover; border: 1px solid black;">
+								</div>
+								<!-- Description Section -->
+								<div class="project-description" style="flex: 1; padding: 5px; border: 1px solid black; background-color: #ffffff;">
+									<p style="margin: 5px 0;"><strong>Order Number:</strong> ${orderNumberFormatted}</p>
+									<p style="margin: 5px 0;"><strong>Order Scope:</strong> ${latestOrder.orderScope}</p>
+									<p style="margin: 5px 0;"><strong>Order Date:</strong> ${new Date(latestOrder.orderDate * 1000).toLocaleDateString()}</p>
+									<p style="margin: 5px 0;"><strong>Completion Date:</strong> ${latestOrder.orderCompletionDate != 0 ? new Date(latestOrder.orderCompletionDate * 1000).toLocaleDateString() : 'In Progress'}</p>
+								</div>
+							</div>
+						`;
+						// Set Project Showcase Card Container
+						document.querySelector('#projectShowcaseCard').innerHTML = `
+							<!-- Header -->
+							<div class="header-progress-container">
+								<!-- Card Header -->
+								<h2 class="card-header">${projectTitle}</h2>
+								<!-- Progress Bar Container -->
+								<div class="progress-bar-container">
+									<!-- Project Bar -->
+									<div class="progress-bar" id="projectShowcaseCardProgressBar"></div>
+								</div>
+							</div>
+							<!-- Horizontal Bar -->
+							<hr class="section-divider">
+							<!-- Project Content -->
+							${projectContent}
+						`;
+					} else {
+						// Fallback content if no order is found
+						const fallbackContent = `
+							<div class="card-content" style="border: 1px solid black; padding: 10px; margin-bottom: 10px; margin-top: 10px; background-color: #f9f9f9;">
+								<p>No active project orders at the moment.</p>
+							</div>
+						`;
+					}
+				} else {
+					// Fallback content if no data is available
+					const fallbackContent = `
+						<div class="card-content" style="border: 1px solid black; padding: 10px; margin-bottom: 10px; margin-top: 10px; background-color: #f9f9f9;">
+							<p>No data available.</p>
+						</div>
+					`;
+				}
+			}
+		}
+        // Call Start Event Source Function
+        startEventSource(); // Start the EventSource connection and fetch weather data
+    </script>
+</body>
+</html>
