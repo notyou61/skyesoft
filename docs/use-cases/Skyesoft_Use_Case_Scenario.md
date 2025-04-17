@@ -1,3 +1,13 @@
+---
+title: "Use Case: Geo‑Tagged Service Completion Workflow"
+---
+
+<!-- pull in the shared styling from your proposal folder -->
+<link rel="stylesheet" href="../proposals/skyesoft/markdown-pdf.css">
+
+<!-- logo stays in the proposal folder, so reference it relatively too -->
+<img src="../proposals/skyesoft/logo.png" alt="Skyesoft Logo" style="display:block; margin-bottom:0.5em; page-break-after: avoid;">
+
 # Use Case: Geo‑Tagged Service Completion Workflow
 
 ## Document Type & Naming
