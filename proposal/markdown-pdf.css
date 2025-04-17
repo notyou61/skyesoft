@@ -41,11 +41,13 @@ img {
 }
 
 .no-break {
-  display: block !important;
+  display: block;
   page-break-inside: avoid !important;
   break-inside: avoid !important;
-  padding: 0.01pt !important;
-  border: 1px solid transparent !important;
+  page-break-before: auto !important;
+  break-before: auto !important;
+  page-break-after: auto !important;
+  break-after: auto !important;
 }
 
 .break-before {

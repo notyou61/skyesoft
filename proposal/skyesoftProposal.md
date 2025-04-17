@@ -2,17 +2,27 @@
 
 # Skyesoft – Smart Workflow
 
-_Streamlining Operations, Empowering Teams_
+_Streamlining Operations, Empowering Teams_  
 
 ---
+
+<div class="no-break">
 
 ## Executive Summary
 
 **Skyesoft** is a lightweight, fully customizable platform designed to simplify and automate daily operations across departments like Sales, Design, Service, and Production. Born within the signage industry, Skyesoft transcends generic software by addressing the real-world needs of teams on the ground—offering unmatched flexibility to scale with your business.
 
+</div>
+
+<div class="no-break">
+
 ## Mission Statement
 
 Skyesoft is your team’s daily launchpad. From the first login to the end-of-day wrap-up, it’s the dashboard, task list, and smart assistant your team didn’t know they needed—until now.
+
+</div>
+
+<div class="no-break">
 
 ## The Problem
 
@@ -21,6 +31,10 @@ Most off-the-shelf software, like Jobscope or NetSuite, falls short for niche in
 - **Overly complex**: Bloated interfaces that overwhelm users.
 - **Costly**: Expensive deployment and maintenance fees.
 - **Generic**: Not tailored to the unique workflows of sign companies or field-based operations. Teams often rely on fragmented tools—email, spreadsheets, CRMs—that lack real-time coordination and context, leading to inefficiency and missed opportunities.
+
+</div>
+
+<div class="no-break">
 
 ## The Skyesoft Solution
 
@@ -31,6 +45,10 @@ Skyesoft replaces chaos with clarity, offering:
 - **Custom Data Models**: A flexible schema tailored to your operations—entities, orders, inspections, fees, and timelines.
 - **Event-Based Architecture**: Server-Sent Events (SSE) for instant updates.
 - **Mobile-Friendly Design**: Built for crews in the field and managers in the office.
+
+</div>
+
+<div class="no-break">
 
 ## Core Features
 
@@ -44,6 +62,10 @@ Skyesoft empowers teams with tools designed for efficiency:
 - **KPI Boards**: Live metrics on permit turnaround times, job site milestones, and revenue.
 - **User Actions**: Track every action with geolocation mapping.
 
+</div>
+
+<div class="no-break break-before">
+
 ## Future Automations Powered by AI
 
 Skyesoft is built to evolve, with upcoming features like:
@@ -53,6 +75,10 @@ Skyesoft is built to evolve, with upcoming features like:
 3. Scanning locations to detect maintenance needs.
 4. Sending reminders for licenses, insurance, evaluations, and renewals.
 5. ChatGPT-style prompts to initiate contact entries or update records.
+
+</div>
+
+<div class="no-break">
 
 ## Why Skyesoft Over Jobscope or NetSuite?
 
@@ -64,6 +90,10 @@ Skyesoft stands apart by being:
 - **Seamlessly Integrated**: Works with your existing GoDaddy server and frontend stack (jQuery, PHP).
 - **Rapidly Evolving**: AI-driven updates ensure continuous improvement.
 
+</div>
+
+<div class="no-break">
+
 ## Business Model & Growth Strategy
 
 Skyesoft is poised for impact:
@@ -72,6 +102,12 @@ Skyesoft is poised for impact:
 - **Commercial SaaS**: Expand into a subscription-based platform for similar businesses.
 - **Scalable Offerings**: Provide modular pricing or industry-specific templates (e.g., signage, HVAC).
 
+</div>
+
+<div class="no-break">
+
 ## Conclusion
 
 **Skyesoft isn’t just software—it’s your company’s operating system.** Built to streamline workflows, empower teams, and grow with your business, Skyesoft is the smarter way to work.
+
+</div>
