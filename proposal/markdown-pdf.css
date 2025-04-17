@@ -1,38 +1,45 @@
 
 body {
   font-family: Arial, sans-serif !important;
-  margin: 0.4in 0.5in 0.5in 0.5in !important;
+  margin: 0.4in 0.5in 0.5in 0.5in !important; /* top, right, bottom, left */
   font-size: 10pt !important;
   line-height: 1.4 !important;
   hyphens: none !important;
 }
+
 h1, h2, h3 {
   margin-top: 10px !important;
   margin-bottom: 6px !important;
 }
+
 h2 {
-  border-bottom: 1px solid #ccc;
-  padding-bottom: 0.25em;
-  margin-bottom: 1em;
+  border-bottom: 1px solid #ccc;  /* Light gray line below the header */
+  padding-bottom: 0.25em;         /* Space between text and line */
+  margin-bottom: 1em;             /* Space between line and next content */
 }
+
 p, ul, ol {
   margin-top: 4px !important;
   margin-bottom: 4px !important;
   page-break-inside: avoid !important;
 }
+
 li {
   page-break-inside: avoid !important;
 }
+
 ul, ol {
   orphans: 3 !important;
   widows: 3 !important;
 }
+
 img {
   width: 80px !important;
   height: auto !important;
   display: block;
   margin-bottom: 10px !important;
 }
+
 .no-break {
   display: block !important;
   page-break-inside: avoid !important;
@@ -40,6 +47,7 @@ img {
   padding: 0.01pt !important;
   border: 1px solid transparent !important;
 }
+
 .break-before {
   page-break-before: always !important;
   break-before: page !important;
