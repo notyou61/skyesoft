@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build:pdf": "markdown-pdf --css-path docs/proposals/skyesoft/markdown-pdf.css docs/proposals/skyesoft/skyesoftProposal.md -o docs/proposals/skyesoft/skyesoftProposal.pdf && markdown-pdf --css-path docs/proposals/skyesoft/markdown-pdf.css docs/use-cases/Skyesoft_Use_Case_Scenario.md -o docs/use-cases/Skyesoft_Use_Case_Scenario.pdf"
+  },
+  "devDependencies": {
+    "markdown-pdf": "^11.0.0"
+  }
+}
