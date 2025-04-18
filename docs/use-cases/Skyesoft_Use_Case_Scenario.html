@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <style>
+    body {
+      font-family: Arial, sans-serif !important;
+      margin: 0.4in 0.5in 0.5in 0.5in !important;
+      font-size: 10pt !important;
+      line-height: 1.4 !important;
+      hyphens: none !important;
+    }
+
+    h1, h2, h3 {
+      margin-top: 10px !important;
+      margin-bottom: 6px !important;
+    }
+
+    h2 {
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.25em;
+      margin-bottom: 1em;
+    }
+
+    p, ul, ol {
+      margin-top: 4px !important;
+      margin-bottom: 4px !important;
+      page-break-inside: avoid !important;
+    }
+
+    li {
+      page-break-inside: avoid !important;
+    }
+
+    .no-break {
+      display: block;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .break-before {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
+
+    .body-wrapper {
+      margin-top: 1.5em !important; /* Adjust vertical spacing below header */
+    }
+  </style>
+</head>
+<body>
+  <!-- wkhtmltopdf header/footer injected externally -->
+  <div class="body-wrapper">
+    <h2 id="document-type-naming">Document Type &amp; Naming</h2>
+    <p>This document is a <strong>Use Case</strong> (also known as a
+    <strong>Feature Use Case</strong> or <strong>User Story</strong>).
+    Use cases are standard practice for capturing how a system’s
+    features support real‑world workflows, detailing actors,
+    preconditions, and step‑by‑step flows to illustrate value.</p>
+    <h2 id="purpose">Purpose</h2>
+    <p>To demonstrate how <strong>Skyesoft</strong> streamlines on‑site
+    service close‑out, enforces quality through geo‑tagging, and
+    maintains accountability—ultimately delivering superior customer
+    service and embodying Stephen Covey’s <strong>Habit 7: Sharpen the
+    Saw</strong>.</p>
+    <hr />
+    <h2 id="actors-roles">Actors &amp; Roles</h2>
+    <ul>
+    <li><strong>Receptionist</strong>: Receives customer calls and views
+    order status.</li>
+    <li><strong>Install Crew</strong>: Executes on‑site work and
+    interacts with the mobile app.</li>
+    <li><strong>Install Manager</strong>: Oversees crew activities and
+    reviews completion.</li>
+    <li><strong>Account Representative</strong>: Monitors orders,
+    communicates with the customer.</li>
+    </ul>
+    <h2 id="preconditions">Preconditions</h2>
+    <ol type="1">
+    <li>Order “Patch &amp; Paint Wall” is created in Skyesoft and tagged
+    <strong>Completion Photos Required</strong>.</li>
+    <li>Site coordinates geo‑fence defined for the location (e.g.,
+    10411 N 35th Ave).</li>
+    <li>Crew has company‑issued mobile device with Skyesoft mobile
+    app.</li>
+    </ol>
+    <hr />
+    <h2 id="main-flow">Main Flow</h2>
+    <ol type="1">
+    <li><strong>Crew Arrival &amp; Geo‑Check</strong>: When the crew
+    reaches the site, their phone’s GPS triggers a check‑in—Skyesoft
+    marks them <strong>On Site</strong> only within the geo‑fence
+    radius.</li>
+    <li><strong>Perform Work</strong>: Crew patches and paints the wall
+    according to the order scope.</li>
+    <li><strong>Request to Leave Protocol</strong>:
+    <ul>
+    <li>Crew remains geo‑tagged inside the boundary until all tasks
+    complete.</li>
+    <li>Tapping <strong>Request to Leave</strong> outside the fence
+    without approval triggers an alert.</li>
+    </ul></li>
+    <li><strong>Photo Verification</strong>:
+    <ul>
+    <li>Crew uploads timestamped photos of the completed patch and
+    paint.</li>
+    <li>Skyesoft flags these for review by the Install Manager.</li>
+    </ul></li>
+    <li><strong>Automated Alerts</strong>:
+    <ul>
+    <li>If the crew exits early, Skyesoft alerts the Install Manager and
+    Account Rep via in‑app and SMS notifications.</li>
+    </ul></li>
+    <li><strong>Manager &amp; Rep Review</strong>:
+    <ul>
+    <li>Install Manager approves photos or requests corrections.</li>
+    <li>Account Representative can join the in‑order chat to add notes
+    or confirmations.</li>
+    </ul></li>
+    <li><strong>Order Close‑Out &amp; Customer Communication</strong>:
+    <ul>
+    <li>Upon approval, Skyesoft emails completion photos to the customer
+    in real time.</li>
+    <li>Order status changes to <strong>Closed</strong>.</li>
+    </ul></li>
+    </ol>
+    <hr />
+    <h2 id="features-highlighted">Features Highlighted</h2>
+    <ul>
+    <li><strong>Real‑Time Location Tracking</strong> via
+    geo‑fencing</li>
+    <li><strong>Controlled Exit Protocol</strong> to enforce
+    completion</li>
+    <li><strong>Photo‑Verified Close‑Out</strong> workflow</li>
+    <li><strong>In‑App Chat &amp; Alerts</strong> for seamless
+    collaboration</li>
+    <li><strong>Automated Customer Notifications</strong> for instant
+    confirmation</li>
+    </ul>
+    <hr />
+    <h2 id="covey-habit-7-sharpen-the-saw">Covey Habit 7: Sharpen the
+    Saw</h2>
+    <p>This use case embodies continuous improvement by: -
+    <strong>Streamlining Processes</strong>: Automates manual follow‑ups
+    and reduces re‑work. - <strong>Enhancing Accountability</strong>:
+    Geo‑tagging and exit protocols prevent service gaps. -
+    <strong>Empowering Teams</strong>: Provides clear, data‑driven steps
+    and collaboration tools. - <strong>Renewing Workflows</strong>:
+    Transforms paper‑based close‑out into agile, digital protocols.</p>
+    <p>By constantly refining these workflows and leveraging technology,
+    Skyesoft keeps the organization—and its people—sharpened for
+    long‑term excellence.</p>
+  </div>
+</body>
+</html>

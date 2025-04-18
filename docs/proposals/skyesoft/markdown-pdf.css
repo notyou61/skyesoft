@@ -54,3 +54,24 @@ img {
   page-break-before: always !important;
   break-before: page !important;
 }
+.pdf-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75em !important;
+}
+.logo {
+  width: 100px !important;
+  margin-right: 0.5em !important;
+}
+.doc-title {
+  font-size: 16pt !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+.pdf-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.2em !important; /* Increased for visual breathing room */
+}
+
+
