@@ -49,10 +49,12 @@ To demonstrate how **Skyesoft** streamlines on‑site service close‑out, enfor
 ---
 
 ## Covey Habit 7: Sharpen the Saw
+
 This use case embodies continuous improvement by:
-- **Streamlining Processes**: Automates manual follow‑ups and reduces re‑work.
-- **Enhancing Accountability**: Geo‑tagging and exit protocols prevent service gaps.
-- **Empowering Teams**: Provides clear, data‑driven steps and collaboration tools.
+
+- **Streamlining Processes**: Automates manual follow‑ups and reduces re‑work.  
+- **Enhancing Accountability**: Geo‑tagging and exit protocols prevent service gaps.  
+- **Empowering Teams**: Provides clear, data‑driven steps and collaboration tools.  
 - **Renewing Workflows**: Transforms paper‑based close‑out into agile, digital protocols.
 
-By constantly refining these workflows and leveraging technology, Skyesoft keeps the organization—and its people—sharpened for long‑term excellence.
+By constantly refining these workflows and leveraging technology, **Skyesoft** keeps the organization—and its people—sharpened for long‑term excellence.
