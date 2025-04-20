@@ -1,9 +1,0 @@
-{
-    "markdown-pdf.styles": [
-      "./proposal/markdown-pdf.css"
-    ],
-    "markdown-pdf.displayHeaderFooter": false,
-    "editor.wordWrap": "on",
-    "files.autoSave": "afterDelay"
-  }
-  
