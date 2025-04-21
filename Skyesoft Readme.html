@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Skyesoft README</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 40px;
+      color: #222;
+    }
+    h1, h2, h3 {
+      color: #003366;
+      margin-top: 1em;
+    }
+    pre, code {
+      background-color: #f4f4f4;
+      font-family: Consolas, monospace;
+      padding: 6px;
+      display: block;
+      border-radius: 4px;
+      white-space: pre-wrap;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 20px 0;
+    }
+    ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+<h1>📘 Skyesoft Directory Structure &amp; Purpose</h1>
+<p>Welcome to the <strong>Skyesoft</strong> project. This README provides a clear overview of the project folder layout, what each directory is for, and how it supports proposal-driven development, JSON document rendering, and modular UI tools.</p>
+<hr>
+<h2>📂 Root Folders</h2>
+<pre><code>skyesoft/
+├── assets/
+├── config/
+├── docs/
+├── src/
+├── .gitignore
+├── README.md
+</code></pre>
+<h3>📁 <code>assets/</code></h3>
+<p>Static media and file templates. Use this for logos, image assets, or starter files that support proposals and viewers.</p>
+<h3>📁 <code>config/</code></h3>
+<p>Reserved for configuration files or environment-specific constants, such as settings for viewers, file naming conventions, or automated build tools.</p>
+<h3>📁 <code>docs/</code></h3>
+<p>Main location for all documentation, structured content, and rendered output.</p>
+<pre><code>docs/
+├── pdf_output/          # Generated proposal PDFs or export files
+├── proposal/            # Proposal content and data (JSON + MD)
+│   └── json/            # Structured JSON versions of proposals
+├── use_cases/           # Future or current real-world use case documents
+└── viewer/              # Shared HTML/CSS viewer to render JSON proposals
+</code></pre>
+<ul>
+<li><code>json/</code>: Machine-readable versions of proposals and use cases</li>
+<li><code>viewer/</code>: Contains <code>viewer.html</code> and <code>proposal.css</code>, the UI to load and display proposal data</li>
+</ul>
+<h3>📁 <code>src/</code></h3>
+<p>Internal scripts and tooling for handling JSON files, CLI interactions, and PDF generation.</p>
+<pre><code>src/
+├── cli_tools/           # Developer tools and scripts
+├── json_parser/         # Code for processing and validating JSON content
+└── pdf_generator/       # Logic to convert JSON to styled PDF output
+</code></pre>
+<hr>
+<h2>✅ Best Practices in This Repo</h2>
+<ul>
+<li>Keep all JSON documents versioned and inside <code>docs/proposal/json/</code></li>
+<li>Use <code>index.json</code> to track available proposals or use cases</li>
+<li>Keep viewer assets shared between <code>proposal/</code> and <code>use_cases/</code></li>
+<li>Follow the naming format: <code>type_title_vX.X.json</code></li>
+<li>Future: Introduce changelogs and contributors per proposal if needed</li>
+</ul>
+<hr>
+<h2>📄 Proposal Types</h2>
+<ul>
+<li><strong>Proposals</strong> = Formal structured ideas, plans, and workflows (leadership, product, system-wide)</li>
+<li><strong>Use Cases</strong> = Supporting or contextual real-world examples, often referencing a proposal</li>
+</ul>
+<hr>
+<h2>👤 Maintained by</h2>
+<p><strong>Steve Skye</strong><br>
+Version: v1.1<br>
+Date: April 21, 2025</p>
+<p>For questions, contributions, or version updates, please reach out or submit a proposal entry in the proper <code>json/</code> folder.</p>
+</body>
+</html>
