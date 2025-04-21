@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skyesoft Proposal Viewer</title>
+  <link rel="stylesheet" href="proposal.css" />
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <h1 id="title">Skyesoft Proposal</h1>
+  <div id="subtitle" style="font-style: italic; font-size: 1.2rem; margin: 0.5rem 0 1.5rem 0; color: #444;"></div>
+  <div id="proposal"></div>
+
+  <script>
+    async function loadProposal() {
+      const res = await fetch('skyesoft_proposal_final_v1.1.json');
+      const data = await res.json();
+
+      document.getElementById('title').textContent = data.title;
+      if (data.quote) document.getElementById('subtitle').textContent = data.quote;
+
+      const container = document.getElementById('proposal');
+
+      data.sections.forEach(section => {
+        const secDiv = document.createElement('div');
+        secDiv.className = 'section';
+
+        const heading = document.createElement('h2');
+        heading.innerHTML = section.icon ? `<span data-lucide="${section.icon}" style="margin-right: 0.5rem;"></span>${section.title}` : section.title;
+        secDiv.appendChild(heading);
+
+        if (section.content) {
+          const blocks = section.content.split(/\n\n+/);
+          blocks.forEach(block => {
+            if (block.trim().startsWith('“') || block.trim().startsWith('"')) {
+              const quote = document.createElement('blockquote');
+              quote.textContent = block.trim();
+              quote.style.fontStyle = 'italic';
+              quote.style.margin = '1rem 0';
+              secDiv.appendChild(quote);
+            } else {
+              const para = document.createElement('p');
+              para.textContent = block.trim();
+              secDiv.appendChild(para);
+            }
+          });
+        }
+
+        if (section.habits) {
+          const table = document.createElement('table');
+          table.className = 'habit-table';
+          const thead = document.createElement('thead');
+          thead.innerHTML = '<tr><th>Habit</th><th>How Skyesoft Embodies It</th></tr>';
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          section.habits.forEach(h => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${h.habit}</td><td>${h.example}</td>`;
+            tbody.appendChild(row);
+          });
+
+          table.appendChild(tbody);
+          secDiv.appendChild(table);
+        }
+
+        if (section.departments) {
+          for (const [dept, tools] of Object.entries(section.departments)) {
+            const deptHeading = document.createElement('h3');
+            deptHeading.textContent = dept;
+            deptHeading.style.marginTop = '1rem';
+            secDiv.appendChild(deptHeading);
+
+            const ul = document.createElement('ul');
+            tools.forEach(tool => {
+              const li = document.createElement('li');
+              li.innerHTML = `<span data-lucide="check-circle" style="margin-right: 0.4rem;"></span>${tool}`;
+              ul.appendChild(li);
+            });
+            secDiv.appendChild(ul);
+          }
+        }
+
+        if (section['Meeting Tools']) {
+          const meetingHeading = document.createElement('h3');
+          meetingHeading.textContent = 'Meeting Tools';
+          secDiv.appendChild(meetingHeading);
+
+          const ul = document.createElement('ul');
+          ul.style.listStyle = 'none';
+          section['Meeting Tools'].forEach(tool => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span data-lucide="calendar-check" style="margin-right: 0.4rem;"></span>${tool}`;
+            ul.appendChild(li);
+          });
+          secDiv.appendChild(ul);
+        }
+
+        if (section.steps) {
+          const ol = document.createElement('ol');
+          section.steps.forEach(step => {
+            const li = document.createElement('li');
+            li.textContent = step;
+            ol.appendChild(li);
+          });
+          secDiv.appendChild(ol);
+        }
+
+        if (section.shimkin_mapping) {
+          const table = document.createElement('table');
+          table.className = 'habit-table';
+          const thead = document.createElement('thead');
+          thead.innerHTML = '<tr><th>Shimkin’s Question</th><th>Skyesoft Mapping</th></tr>';
+          table.appendChild(thead);
+          const tbody = document.createElement('tbody');
+          for (const key in section.shimkin_mapping) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${key}</td><td>${section.shimkin_mapping[key]}</td>`;
+            tbody.appendChild(row);
+          }
+          table.appendChild(tbody);
+          secDiv.appendChild(table);
+        }
+
+        container.appendChild(secDiv);
+      });
+
+      lucide.createIcons();
+    }
+
+    loadProposal();
+  </script>
+</body>
+</html>

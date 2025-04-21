@@ -1,0 +1,16 @@
+[
+  {
+    "id": "skyesoft_smart_workflow",
+    "title": "Skyesoft \u2013 Smart Workflow Proposal",
+    "author": "Steve Skye",
+    "version": "v1.1",
+    "path": "docs/proposal/json/skyesoft_proposal_final_v1.1.json"
+  },
+  {
+    "id": "leadership_lead_or_sell",
+    "title": "Leadership Proposal: Lead or Sell \u2013 Not Both",
+    "author": "Steve Skye",
+    "version": "v1.1",
+    "path": "docs/proposal/json/leadership_lead_or_sell_v1.1.json"
+  }
+]
