@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "puppeteer": "^24.6.1",
+    "twemoji": "^14.0.2"
+  }
+}
