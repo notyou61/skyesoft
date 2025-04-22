@@ -1,6 +1,22 @@
 # 📘 Skyesoft Directory Structure & Purpose
 
-Welcome to the **Skyesoft** project. This README provides a clear overview of the project folder layout, what each directory is for, and how it supports proposal-driven development, JSON document rendering, and modular UI tools.
+Welcome to the **Skyesoft** project. This README provides a clear overview of the project folder layout, how documents are managed using a centralized JSON object, and how this supports proposal-driven development, modular UI tools, and exportable content formats.
+
+---
+
+## 🧠 Central Source of Truth
+
+All structured documents (proposals, use cases, memos) are defined in:
+
+```
+docs/master_content.json
+```
+
+This file contains a `documents[]` array where each object includes:
+- A `meta` block (title, id, author, version, tags, status, etc.)
+- A `content` block (sections, headings, body, etc.)
+
+This file powers all renderers, viewers, and export tools.
 
 ---
 
@@ -8,66 +24,52 @@ Welcome to the **Skyesoft** project. This README provides a clear overview of th
 
 ```
 skyesoft/
-├── assets/
-├── config/
 ├── docs/
-├── src/
+│   ├── master_content.json
+│   ├── proposals/
+│   │   ├── lead_or_sell/
+│   │   │   ├── lead_or_sell.md
+│   │   │   ├── lead_or_sell.pdf
+│   │   │   ├── lead_or_sell.html
+│   │   │   └── lead_or_sell.json
+│   │   └── skyesoft_proposal/
+│   │       └── skyesoft_proposal.json
+│   ├── use_cases/
+│   │   └── skyesoft_scheduling/
+│   ├── memos/
+│   ├── presentations/
+│   └── viewer/
+│       ├── proposal-template.html
+│       └── twemoji.min.js
 ├── .gitignore
 ├── README.md
-```
-
-### 📁 `assets/`
-Static media and file templates. Use this for logos, image assets, or starter files that support proposals and viewers.
-
-### 📁 `config/`
-Reserved for configuration files or environment-specific constants, such as settings for viewers, file naming conventions, or automated build tools.
-
-### 📁 `docs/`
-Main location for all documentation, structured content, and rendered output.
-
-```
-docs/
-├── pdf_output/          # Generated proposal PDFs or export files
-├── proposal/            # Proposal content and data (JSON + MD)
-│   └── json/            # Structured JSON versions of proposals
-├── use_cases/           # Future or current real-world use case documents
-└── viewer/              # Shared HTML/CSS viewer to render JSON proposals
-```
-
-- `json/`: Machine-readable versions of proposals and use cases
-- `viewer/`: Contains `viewer.html` and `proposal.css`, the UI to load and display proposal data
-
-### 📁 `src/`
-Internal scripts and tooling for handling JSON files, CLI interactions, and PDF generation.
-
-```
-src/
-├── cli_tools/           # Developer tools and scripts
-├── json_parser/         # Code for processing and validating JSON content
-└── pdf_generator/       # Logic to convert JSON to styled PDF output
+├── package.json
+├── package-lock.json
 ```
 
 ---
 
-## ✅ Best Practices in This Repo
-- Keep all JSON documents versioned and inside `docs/proposal/json/`
-- Use `index.json` to track available proposals or use cases
-- Keep viewer assets shared between `proposal/` and `use_cases/`
-- Follow the naming format: `type_title_vX.X.json`
-- Future: Introduce changelogs and contributors per proposal if needed
+## ✅ Best Practices
+
+- 📁 Store all structured content in `master_content.json`
+- 🧩 Add supporting PDFs, Markdown, or HTML to a matching folder by ID
+- 🔎 Reference documents by `meta.id` (e.g., `lead_or_sell`)
+- 🗂 Use the `type` field in each document to distinguish proposals, use cases, memos, etc.
 
 ---
 
-## 📄 Proposal Types
-- **Proposals** = Formal structured ideas, plans, and workflows (leadership, product, system-wide)
-- **Use Cases** = Supporting or contextual real-world examples, often referencing a proposal
+## 📄 Document Types
+
+- **Proposals** = Formal structured workflows, frameworks, or platform designs
+- **Use Cases** = Contextual examples supporting proposals
+- **Memos** = Team-facing summaries or communications
+- **Presentations** = Viewer-ready slides or walkthroughs
 
 ---
 
 ## 👤 Maintained by
 **Steve Skye**  
 Version: v1.1  
-Date: April 21, 2025
+Last updated: April 22, 2025
 
-For questions, contributions, or version updates, please reach out or submit a proposal entry in the proper `json/` folder.
-
+For updates or new entries, append to `master_content.json` and add your supporting content in the appropriate folder.
