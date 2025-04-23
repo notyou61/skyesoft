@@ -1,0 +1,271 @@
+{
+  "documents": [
+    {
+      "meta": {
+        "id": "lead_or_sell",
+        "title": "Lead or Sell \u2013 Not Both",
+        "type": "proposal",
+        "author": "Steve Skye",
+        "version": "1.1",
+        "date": "2025-04-21",
+        "status": "approved",
+        "tags": [
+          "leadership",
+          "ethics",
+          "proposal",
+          "compensation"
+        ]
+      },
+      "content": {
+        "sections": [
+          {
+            "heading": "Purpose",
+            "body": "To eliminate structural conflicts of interest by ending the practice of allowing managers to function as commissioned salespeople. This proposal addresses the operational, financial, and cultural consequences of this dual-role arrangement and provides a clear pathway to restore fairness, accountability, and client trust."
+          },
+          {
+            "heading": "Executive Summary",
+            "body": "Currently, managers are permitted to operate as commissioned salespeople. This has led to a pattern of behavior that prioritizes personal profit over team success and customer satisfaction. These manager-salespeople leverage their internal authority to:\n\n- Prioritize their own jobs in scheduling and production queues\n- Push their material orders and change requests ahead of others\n- Collect commissions on expedited projects while other salespeople\u2019s jobs stall\n\nWorse still, they use deposit funds from other reps\u2019 customers to finance their own projects, leaving those original jobs unfunded, delayed, and exposed.\n\nIn many cases, vendors, subcontractors, permit fees, and sales tax obligations go unpaid\u2014not due to oversight, but because funds are redirected to satisfy internal favoritism. The salesperson who sold the job is left answering for missed deadlines and legal non-compliance, despite following the process.\n\nThis is not just a leadership misstep. It is a system built to benefit those in power at the expense of those doing the work."
+          },
+          {
+            "heading": "Observed Impacts",
+            "body": "- \ud83d\ude80 Fast-tracked jobs for managers, bypassing internal approval gates\n- \ud83d\udcb0 Misuse of job deposits, depriving original projects of timely funding\n- \u26a0\ufe0f Unpaid permit fees and unremitted sales tax, exposing the company to liability\n- \ud83d\ude14 Disengaged sales team, demoralized by a visibly rigged system\n- \u23f3 Client dissatisfaction, stemming from preventable delays on paid work\n- \ud83d\udcc9 Loss of credibility, internally and externally"
+          },
+          {
+            "heading": "Recommendations",
+            "body": "1. \ud83d\udeab Eliminate Commission for Managers\n   - \ud83d\udc54 Managers should not earn commissions while exercising control over production, scheduling, or resource allocation.\n   - \ud83d\udd04 If a manager wishes to earn commission, they must step out of leadership and join the sales force on equal footing.\n\n2. \ud83d\udcbc Realign Manager Compensation\n   - Transition to salary + bonus structure, where bonuses are tied to:\n     - Team performance metrics\n     - On-time project delivery\n     - Client satisfaction ratings\n     - Backlog reduction and internal compliance\n\n3. \ud83d\udcd1 Enforce Deposit Integrity\n   - Deposits must be applied only to the project they were received for\n   - No cross-allocation without written approval and documentation\n\n4. \ud83d\udccb Require Financial Compliance Before Scheduling\n   - No job should enter production or installation without:\n     - Permit fees paid\n     - Sales tax properly logged\n     - Job cost allocations verified\n\n5. \ud83d\udd0d Establish Resource Allocation Transparency\n   - Job queue priorities should be auditable and enforced without exceptions\n   - No individual should be allowed to move their own job ahead of others without process-based justification\n\n6. \ud83d\udde3\ufe0f Center Transparency and Communication in All Leadership Practices\n   - Make internal decisions visible and explainable to team members.\n   - Share not just what decisions are made\u2014but why.\n   - This builds trust, empowers collaboration, and reinforces Habit 5 from *The 7 Habits of Highly Effective People*: Seek First to Understand, Then to Be Understood.\n   - When people understand the reasoning behind actions, resistance drops and alignment increases."
+          },
+          {
+            "heading": "Conclusion",
+            "body": ""
+          }
+        ]
+      }
+    },
+    {
+      "meta": {
+        "id": "skyesoft_proposal",
+        "title": "Skyesoft \u2013 Smart Workflow Proposal",
+        "type": "proposal",
+        "author": "Steve Skye",
+        "version": "v1.1",
+        "date": "April 21, 2025",
+        "status": "in-review",
+        "tags": [
+          "workflow",
+          "platform",
+          "system",
+          "process"
+        ]
+      },
+      "content": {
+        "sections": [
+          {
+            "title": "Executive Summary",
+            "icon": "file-text",
+            "content": "Skyesoft is a lightweight, customizable platform that streamlines daily operations across departments like Sales, Design, Service, and Production. It\u2019s built specifically for the signage industry and tailored for real-world efficiency and clarity.\n\nSkyesoft functions as a modular Operating System for business, connecting teams through integrated dashboards, smart workflows, and continuous improvement tools.\n\nIts foundation is built on real-time technology\u2014leveraging server-sent events (SSE), intelligent CRUD operations, and location-aware actions to create a live, responsive operational environment.\n\n\u201cWisdom is knowing what to do next.\u201d \u2014 David Starr Jordan\nSkyesoft brings that wisdom to the fingertips of every team member, every day."
+          },
+          {
+            "title": "Mission Statement",
+            "icon": "target",
+            "content": "Skyesoft is your team\u2019s launchpad\u2014an integrated dashboard, smart assistant, and task manager that enhances field and office collaboration from login to wrap-up."
+          },
+          {
+            "title": "Guiding Philosophy \u2013 Built on the 7 Habits",
+            "icon": "lightbulb",
+            "content": "Skyesoft isn\u2019t just software\u2014it\u2019s a philosophy of work, inspired by Stephen Covey\u2019s 7 Habits of Highly Effective People. These habits form the foundation of how Skyesoft helps teams operate with clarity, accountability, and purpose.\n\nFirst published in 1989, The 7 Habits remains one of the most influential books in business history\u2014transforming how individuals, teams, and organizations define effectiveness, responsibility, and growth. It is the quintessential guide to principled leadership and sustainable productivity.\n\nSkyesoft reflects these same principles in its design:",
+            "habits": [
+              {
+                "habit": "1. Be Proactive",
+                "example": "Tasks, alerts, and reminders reduce reactivity and keep teams ahead of issues."
+              },
+              {
+                "habit": "2. Begin with the End in Mind",
+                "example": "Every job starts with a clear scope, defined roles, and outcome-based tracking."
+              },
+              {
+                "habit": "3. Put First Things First",
+                "example": "Prioritized task queues and milestone flags help teams focus on what matters most."
+              },
+              {
+                "habit": "4. Think Win-Win",
+                "example": "Shared dashboards promote transparency and trust between departments and clients."
+              },
+              {
+                "habit": "5. Seek First to Understand...",
+                "example": "Embedded notes, revision logs, and team chat ensure clarity and reduce miscommunication."
+              },
+              {
+                "habit": "6. Synergize",
+                "example": "All modules\u2014Sales, Service, Production, Design\u2014work as one system, eliminating silos."
+              },
+              {
+                "habit": "7. Sharpen the Saw",
+                "example": "Built-in proposal \u2192 spec \u2192 use case loops create continuous improvement and learning at every level of the organization."
+              }
+            ]
+          },
+          {
+            "title": "The Problem",
+            "icon": "alert-circle",
+            "content": "Most businesses rely on a variety of software tools\u2014each serving a single department or function\u2014but these tools often don\u2019t communicate with each other.\n\nThis creates disconnected systems, scattered data, and a lack of coordination between the office and the field.\n\nThe result?\n\n- Processes that are harder to track\n- Teams that work in silos\n- Delays, inefficiencies, and miscommunication that cost time and money"
+          },
+          {
+            "title": "The Skyesoft Solution",
+            "icon": "layers",
+            "content": "Skyesoft is a modular Operating System for business, designed specifically for industries where day-to-day workflows span across departments but the tools don\u2019t.\n\nInstead of relying on disconnected apps, spreadsheets, emails, and siloed platforms, Skyesoft brings everything into a unified system that:\n\n\u2705 Connects departments through shared dashboards, status syncing, and real-time visibility\n\ud83d\udd17 Replaces fragmented tools with role-based modules that handle sales, service, scheduling, documentation, and reporting\u2014all in one place\n\ud83c\udf10 Coordinates field and office in real time using server-sent events (SSE), geolocation, intelligent CRUD actions, and mobile-friendly design\n\ud83d\udcb0 Runs on your existing infrastructure with no per-seat licensing or reliance on expensive vendor stacks\n\nSkyesoft runs on modern, open web standards\u2014built with a clean and proven architecture:\nHTML for structure, JavaScript and jQuery for interactivity, CSS for design, PHP for server-side logic, Server-Sent Events (SSE) for real-time updates, and API integrations for AI-powered automation and intelligent data flow.\n\nThe result: fewer handoffs, faster decisions, and a team that\u2019s finally operating on the same page."
+          },
+          {
+            "title": "Skyesoft Modules by Department",
+            "icon": "package",
+            "departments": {
+              "Sales": [
+                "Prospect Tracker \u2013 Manage leads with assignable follow-ups and conversion tracking",
+                "AI Contact Parser \u2013 Convert email/text into structured contact records",
+                "Photo Uploads \u2013 Quickly add jobsite visuals and reference images",
+                "Job Folder Creation \u2013 Auto-create standardized folders when a prospect converts"
+              ],
+              "Permitting": [
+                "Permit Tracker \u2013 Track submittals by status, reviewer, and jurisdiction",
+                "Ordinance Reference \u2013 Attach relevant sign code docs",
+                "AI Ordinance Reader \u2013 Auto-scan regulations for sign limits",
+                "Auto-Fill Permit Forms \u2013 Pre-fill paperwork from job data",
+                "Automated Renewal Reminders \u2013 Keep expirations in check"
+              ],
+              "Production": [
+                "Material Board \u2013 Track usage and vendor-specific components",
+                "Cut Sheet Organizer \u2013 Store specs, layouts, and artwork",
+                "Production Task Scheduler \u2013 Assign and update shop-floor tasks",
+                "Digital Job Board \u2013 Visualize progress in real time"
+              ],
+              "Design": [
+                "Artwork Request System \u2013 Structured form for design requests",
+                "Revision Log \u2013 Track changes and feedback across versions",
+                "Design-to-Production Sync \u2013 Approved files pass directly to production",
+                "Permit Artwork Bundles \u2013 Auto-package art with support files",
+                "Template Library \u2013 Reuse layouts and formats"
+              ],
+              "Installation": [
+                "Site Readiness Checklist \u2013 Confirm utilities, access, and conditions",
+                "Geo-Tagged Check-In/Out \u2013 Location-based crew tracking",
+                "Photo-Verified Close-Out \u2013 Time-stamped photo uploads",
+                "Install Chat Log \u2013 In-app messaging stored in order history"
+              ],
+              "Service": [
+                "Night Patrol Module \u2013 Log damaged or unlit signs",
+                "Service Request Forms \u2013 Create structured repair tickets",
+                "Before/After Photo Logging \u2013 Visual work proof",
+                "Repeat Issue Detection \u2013 Spot recurring failures",
+                "Scan Sites for Maintenance Needs \u2013 AI detects service flags from logs or images"
+              ],
+              "Purchasing": [
+                "PO Request Generator \u2013 Submit job-tied material and equipment requests",
+                "Vendor Tracking \u2013 Link vendors to pricing and delivery metrics",
+                "Order Status Dashboard \u2013 Track open/closed orders in one view",
+                "Material Reorder Alerts \u2013 Trigger based on stock levels",
+                "Documented Approvals \u2013 Capture digital sign-off history"
+              ],
+              "Operations": [
+                "Task Engine \u2013 Automate recurring assignments",
+                "KPI Boards \u2013 Visualize daily and weekly performance",
+                "Live Dashboard \u2013 View job flow across departments",
+                "User Actions Log \u2013 Timestamped event history",
+                "Prompt-Based Data Entry via AI \u2013 Log tasks or updates using natural language"
+              ],
+              "Administration": [
+                "Document Center \u2013 Centralize SOPs, HR docs, and forms",
+                "Change Proposal System \u2013 Submit and scope new workflows",
+                "AI-Enhanced Reports \u2013 Generate summaries and alerts",
+                "Audit Trail \u2013 Log every key action",
+                "License & Renewal Reminders \u2013 Track time-sensitive certifications"
+              ]
+            }
+          },
+          {
+            "title": "Growth Strategy & Continuous Improvement",
+            "icon": "refresh-ccw",
+            "Meeting Tools": [
+              "Scheduler \u2013 Plan and notify attendees with automatic reminders",
+              "Agenda Builder \u2013 Define key topics with 7 Habits alignment",
+              "Live Notes & Recaps \u2013 Assign note takers or generate AI summaries",
+              "Task Assignment \u2013 Create role-based follow-ups with deadlines",
+              "7 Habits Format \u2013 Encourage focused, values-driven discussions"
+            ],
+            "steps": [
+              "Proposal \u2013 Capture the issue",
+              "Specification \u2013 Draft a solution",
+              "Use Case \u2013 Validate it in real work"
+            ],
+            "shimkin_mapping": {
+              "What is the problem?": "Proposal: 'Problem' field",
+              "What is the cause of the problem?": "Proposal: 'Impact / Cause'",
+              "What are the possible solutions?": "Proposal: 'Solution Options'",
+              "What is the best possible solution?": "Specification \u2192 Use Case"
+            }
+          },
+          {
+            "title": "Conclusion",
+            "icon": "check-circle",
+            "content": "Skyesoft is more than software\u2014it\u2019s your organization's operating system.\nIt empowers your people, eliminates guesswork, and ensures that everyone knows what to do next."
+          }
+        ]
+      }
+    },
+    {
+      "meta": {
+        "id": "skyesoft_use_case_geo_service",
+        "title": "Geo-Tagged Service Completion Workflow",
+        "type": "use_case",
+        "author": "Steve Skye",
+        "version": "1.0",
+        "date": "2025-04-21",
+        "status": "final",
+        "tags": [
+          "use case",
+          "field operations",
+          "geo-tagging",
+          "workflow"
+        ]
+      },
+      "content": {
+        "sections": [
+          {
+            "heading": "The Call (Narrative Introduction)",
+            "body": "It's late afternoon when the phone rings at Christy Signs' front desk. Coast Signs explains that a patch and paint job hasn't been completed, though the customer expects it closed out immediately. Without leadership present, the crew risks leaving the job unfinished."
+          },
+          {
+            "heading": "Purpose",
+            "body": "Demonstrate how Skyesoft streamlines on-site service close-out using geo-tagging, photo verification, and alerting\u2014delivering exceptional service while embodying Covey\u2019s Habit 7: Sharpen the Saw."
+          },
+          {
+            "heading": "Actors & Roles",
+            "body": "- Receptionist\n- Install Crew\n- Install Manager\n- Account Rep"
+          },
+          {
+            "heading": "Preconditions",
+            "body": "- Order created and tagged 'Completion Photos Required'\n- Geo-fence set (e.g., 10411 N 35th Ave)\n- Crew equipped with Skyesoft mobile app"
+          },
+          {
+            "heading": "Main Flow",
+            "body": "1. Crew Arrival & Geo-Check\n2. Perform Work\n3. Request to Leave Protocol\n4. Photo Verification\n5. Automated Alerts\n6. Manager & Rep Review\n7. Close-Out & Customer Notification"
+          },
+          {
+            "heading": "Problem-Solving Framework",
+            "body": "1. What is the Problem?\nCrews leave jobs incomplete.\n\n2. Cause?\nNo real-time tracking, paper-based workflows.\n\n3. Solutions?\nManual follow-ups, third-party apps, or Skyesoft\u2019s native protocol.\n\n4. Best Solution?\nSkyesoft geo-exit workflow with alerts and media tracking."
+          },
+          {
+            "heading": "Features Highlighted",
+            "body": "- Real-Time Location Tracking\n- Controlled Exit Protocol\n- Photo-Verified Close-Out\n- In-App Chat & Alerting\n- Automated Customer Notifications"
+          },
+          {
+            "heading": "Key Benefits",
+            "body": "- Reduces rework 30%\n- Builds trust\n- Enforces complete close-out\n- Empowers field teams\n- Logs all interactions"
+          },
+          {
+            "heading": "Sharpening the Saw - Covey Habit 7",
+            "body": "This use case shows continuous improvement via:\n- Streamlining Processes\n- Enhancing Accountability\n- Empowering Teams\n- Renewing Workflows"
+          }
+        ]
+      }
+    }
+  ]
+}
