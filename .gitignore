@@ -3,4 +3,6 @@ tree_cleaned.txt
 project-tree.txt 
 structure.txt 
 docs/proposal/debug.png 
-node_modules/ 
+node_modules/
+twemoji/
+
