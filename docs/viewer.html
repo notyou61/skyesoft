@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skyesoft Proposal Viewer</title>
+  <link rel="stylesheet" href="proposal.css" />
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      background: #f9f9f9;
+      padding: 2rem;
+      max-width: 900px;
+      margin: auto;
+      color: #222;
+    }
+    h1, h2 {
+      color: #003366;
+    }
+    .section {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    .meta {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+    blockquote {
+      border-left: 4px solid #ccc;
+      padding-left: 1rem;
+      font-style: italic;
+      color: #555;
+      margin: 1rem 0;
+    }
+    ul {
+      padding-left: 1.4em;
+      margin-bottom: 1em;
+    }
+    li {
+      margin-bottom: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="docTitle"></h1>
+  <div class="meta" id="metaInfo"></div>
+  <div id="proposal"></div>
+
+  <script>
+    async function loadProposal(docKey = 'lead_or_sell') {
+      const res = await fetch('master_content.json');
+      const data = await res.json();
+      const proposal = data[docKey];
+
+      document.getElementById('docTitle').textContent = proposal.title;
+      document.getElementById('metaInfo').textContent = `Version ${proposal.version} • ${proposal.date} • by ${proposal.author}`;
+
+      const container = document.getElementById('proposal');
+      container.innerHTML = '';
+
+      proposal.sections.forEach(section => {
+        const secDiv = document.createElement('div');
+        secDiv.className = 'section';
+
+        const heading = document.createElement('h2');
+        heading.innerHTML = section.icon ? `<span data-lucide="${section.icon}" style="margin-right: 0.5rem;"></span>${section.title}` : section.title;
+        secDiv.appendChild(heading);
+
+        const lines = section.content.split('\n');
+        lines.forEach(line => {
+          line = line.trim();
+          if (!line) return;
+          if (line.startsWith('•') || line.startsWith('-')) {
+            if (!secDiv.lastElementChild || secDiv.lastElementChild.tagName !== 'UL') {
+              secDiv.appendChild(document.createElement('ul'));
+            }
+            const li = document.createElement('li');
+            li.textContent = line.replace(/^[-•]\s*/, '');
+            secDiv.lastElementChild.appendChild(li);
+          } else if (line.startsWith('“') || line.startsWith('"')) {
+            const quote = document.createElement('blockquote');
+            quote.textContent = line;
+            secDiv.appendChild(quote);
+          } else {
+            const para = document.createElement('p');
+            para.textContent = line;
+            secDiv.appendChild(para);
+          }
+        });
+
+        container.appendChild(secDiv);
+      });
+
+      lucide.createIcons();
+    }
+
+    loadProposal();
+  </script>
+</body>
+</html>
