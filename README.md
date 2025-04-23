@@ -1,75 +1,84 @@
 # 📘 Skyesoft Directory Structure & Purpose
 
-Welcome to the **Skyesoft** project. This README provides a clear overview of the project folder layout, how documents are managed using a centralized JSON object, and how this supports proposal-driven development, modular UI tools, and exportable content formats.
+Welcome to the **Skyesoft** project. This `README.md` provides a clear, updated overview of the folder structure, content management workflow, and core principles for working within this proposal-driven, modular documentation system.
 
 ---
 
 ## 🧠 Central Source of Truth
 
-All structured documents (proposals, use cases, memos) are defined in:
+All proposals, use cases, and memos are structured in:
 
 ```
 docs/master_content.json
 ```
 
-This file contains a `documents[]` array where each object includes:
-- A `meta` block (title, id, author, version, tags, status, etc.)
-- A `content` block (sections, headings, body, etc.)
+This file serves as the **canonical record** of all Skyesoft documents. It includes:
 
-This file powers all renderers, viewers, and export tools.
+- A `meta` block: ID, title, tags, status, author, version, etc.
+- A `content` block: Headings, sections, body content
+- References to supporting file formats: `.md`, `.pdf`, `.html`
 
 ---
 
-## 📂 Root Folders
+## 📂 Root Folder Structure
 
 ```
 skyesoft/
 ├── docs/
-│   ├── master_content.json
+│   ├── master_content.json                 # Central source of truth
+│   ├── assets/                             # CSS and visual styling
+│   ├── memos/                              # Internal communication
+│   ├── presentations/                      # Slide decks, .html viewers
 │   ├── proposals/
-│   │   ├── lead_or_sell/
-│   │   │   ├── lead_or_sell.md
-│   │   │   ├── lead_or_sell.pdf
-│   │   │   ├── lead_or_sell.html
-│   │   │   └── lead_or_sell.json
-│   │   └── skyesoft_proposal/
-│   │       └── skyesoft_proposal.json
+│   │   ├── lead_or_sell/                   # Leadership workflow doc
+│   │   └── branch_office/                  # 🆕 East Valley Branch Proposal (added 04/23)
 │   ├── use_cases/
-│   │   └── skyesoft_scheduling/
-│   ├── memos/
-│   ├── presentations/
-│   └── viewer/
-│       ├── proposal-template.html
-│       └── twemoji.min.js
+│   │   └── skyesoft_scheduling/            # Real-world workflow context
+│   └── viewer/                             # Web viewer template & twemoji
+├── tools/                                  # Scripts for rendering and maintenance
 ├── .gitignore
 ├── README.md
-├── package.json
-├── package-lock.json
 ```
+
+---
+
+## 🛠 Tools
+
+```
+tools/
+├── emoji_embedder.js
+├── emoji_render_to_pdf.js
+├── generate_tree.js
+├── render_pdf_chrome.js
+├── organize-skyesoft.ps1
+```
+
+These tools assist with:
+- Markdown ➜ HTML ➜ PDF generation
+- Tree structure visualization
+- Directory cleanup and folder reshaping
+- Embedding emojis and templating exports
 
 ---
 
 ## ✅ Best Practices
 
-- 📁 Store all structured content in `master_content.json`
-- 🧩 Add supporting PDFs, Markdown, or HTML to a matching folder by ID
-- 🔎 Reference documents by `meta.id` (e.g., `lead_or_sell`)
-- 🗂 Use the `type` field in each document to distinguish proposals, use cases, memos, etc.
+- 📁 Store all structured documents in `docs/`, organized by type and ID
+- 🔗 Register every entry in `master_content.json`
+- 🧩 Place `.md`, `.pdf`, and optional `.html` in matching subfolders
+- 🗃 Use `.keep` files to preserve folder scaffolding across machines
+- 🌿 Use named snapshot branches (e.g. `office-snapshot-*`) before pulling or reorganizing
+- 📌 Commit changes with descriptive messages and sync before switching locations
 
 ---
 
-## 📄 Document Types
+## 🧑‍💼 Maintained By
 
-- **Proposals** = Formal structured workflows, frameworks, or platform designs
-- **Use Cases** = Contextual examples supporting proposals
-- **Memos** = Team-facing summaries or communications
-- **Presentations** = Viewer-ready slides or walkthroughs
-
----
-
-## 👤 Maintained by
 **Steve Skye**  
 Version: v1.1  
-Last updated: April 22, 2025
+Last updated: April 23, 2025
 
-For updates or new entries, append to `master_content.json` and add your supporting content in the appropriate folder.
+To contribute or add a new document:
+- Update `master_content.json`
+- Add your files to the appropriate folder
+- Commit using the format: `"Add [Title] [Type] - [Date]"`
