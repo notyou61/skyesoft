@@ -1,88 +1,100 @@
-# Skyesoft Proposal Renderer
+# 🌐 Skyesoft – Smart Workflow Platform
 
-This project renders structured business artifacts (e.g., proposals, use cases, workflows) from a centralized `master_content.json` into styled HTML outputs, suitable for both on-screen review and PDF export.
+**Skyesoft** is a modular, real-time operations system designed for field-based industries—starting with the signage sector. It streamlines workflows, empowers teams, and scales across departments like Sales, Design, Service, and Permitting.
 
 ---
 
-## 🗂 Project Structure
+## 🚀 Executive Overview
+
+Skyesoft replaces fragmented tools (email, spreadsheets, CRMs) with a unified, AI-enhanced platform. It automates daily tasks, integrates real-time updates using Server-Sent Events (SSE), and adapts to your company’s structure—no recurring license fees or vendor delays.
+
+- 📡 Built on modern open-source stacks (HTML, JS, PHP, SSE)
+- 🧠 Uses centralized content stored in JSON for document-driven development
+- 📱 Mobile-first UI for field reps, real-time dashboards for managers
+
+---
+
+## 🧠 Architecture & Core Logic
+
+### 🔐 Master Content System
+
+All documents—proposals, use cases, memos—are stored in:
+
+```
+docs/master_content.json
+```
+
+Each entry includes:
+- `meta`: ID, title, author, tags, version, etc.
+- `content`: Array of section blocks (`title`, `icon`, `body`, etc.)
+
+This file is the **source of truth** for all exports and renderers.
+
+---
+
+## 📂 Folder Structure
 
 ```
 skyesoft/
 ├── docs/
+│   ├── master_content.json       # 📘 Central source of all artifacts
 │   ├── assets/
-│   │   ├── template.html      # HTML template (GitHub Markdown style)
-│   │   ├── style.css          # Custom styling enhancements
-│   └── master_content.json    # Source of truth for all artifacts
-├── output/
-│   └── lead_or_sell.html      # Rendered HTML output
-├── render.js                  # Rendering logic to transform JSON into HTML
-├── README.md                  # Project overview and instructions
+│   │   ├── template.html         # 🧩 Markdown-styled rendering template
+│   │   ├── style.css             # 🎨 Print and layout enhancements
+│   │   └── github-markdown.css   # 🧱 GitHub-flavored markdown styling
+│   ├── proposals/
+│   │   └── lead_or_sell/         # 📝 Rendered outputs per proposal
+│   └── presentations/            # 🖥️ Future presentation files
+├── output/                       # 📤 Exported HTML files
+├── render.js                     # 🛠️ JSON → HTML renderer
+├── generate_pdf.js               # 📄 HTML → PDF generator
+├── export.js                     # 🔁 Proposal/task automation (future)
+├── build-proposal.bat            # 🖱️ Batch wrapper for rendering pipeline
+├── package.json / lock           # 📦 Node dependencies
+└── README.md                     # 📚 This file
 ```
 
 ---
 
-## 🛠 How It Works
+## 📄 Document Types
 
-1. **JSON Input**  
-   All artifacts (proposals, use cases, etc.) are stored in `master_content.json` under the `artifacts` key. Each artifact has `meta` and `content.sections`.
-
-2. **HTML Rendering**  
-   `render.js` reads the JSON and inserts the parsed content into `template.html`, producing a clean, readable HTML file in the `/output` folder.
-
-3. **GitHub Markdown Styling**  
-   The template uses the [GitHub Markdown CSS](https://cdnjs.com/libraries/github-markdown-css) for a familiar, professional appearance.
+- **Proposals**: Strategic plans, frameworks, or leadership actions
+- **Use Cases**: Real-world implementation flows and task scenarios
+- **Memos**: Internal communications and team directives
+- **Presentations**: Slide-based overviews for meetings or training
 
 ---
 
-## 🚀 Usage
+## 🛠 Key Features (Planned & Live)
 
-```bash
-node render.js lead_or_sell
-```
-
-- Generates: `output/lead_or_sell.html`
-- Replace `lead_or_sell` with any valid artifact ID from the JSON.
-
-To automate this (optional):
-```bat
-@echo off
-node render.js %1
-pause
-```
-Save as `build-proposal.bat` and run with:
-```bash
-build-proposal.bat lead_or_sell
-```
+- ✅ Real-time job dashboards
+- ✅ Proposal-to-PDF automation
+- ✅ Geo-verified site check-ins
+- ✅ Contact parsing via AI
+- 🧪 Ordinance scanning and form autofill (coming soon)
+- 📊 Permit + KPI analytics boards (coming soon)
 
 ---
 
-## 🎨 Styling Notes
+## 🌍 Deployment & Usage
 
-- Layout: Centered, max-width, printable with 1-inch margins.
-- Lists:
-  - Top-level items can include emoji headers (e.g., 🚫, 📋)
-  - Sub-items indent as bullets
-- Typography: Clean, modern sans-serif stack.
+- All rendering uses `master_content.json`
+- Run `node render.js lead_or_sell` to generate HTML
+- Customize presentation via `template.html` + `style.css`
 
 ---
 
-## ✅ Current Artifacts
-
-- `lead_or_sell` – Leadership and compensation reform proposal
-- `skyesoft_proposal` – Smart workflow system overview
-- `skyesoft_use_case_geo_service` – Geo-tagged service exit protocol
-
----
-
-## 📦 Dependencies
-
-- Node.js (≥ v16)
-- GitHub Markdown CSS (via CDN)
-
----
-
-## 📍 Author
+## 📢 Maintained By
 
 **Steve Skye**  
 Christy Signs | Phoenix, AZ  
-Project Lead – Skyesoft Platform
+_Last updated: April 2025_
+
+---
+
+## 💡 Contribute / Extend
+
+For new proposals:
+- Add a new object to `master_content.json`
+- Place any Markdown, PDF, or rendered HTML inside `docs/proposals/{id}/`
+- Use the provided tools (`render.js`, `build-proposal.bat`) to generate outputs
