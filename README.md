@@ -1,95 +1,88 @@
-# 📘 Skyesoft Directory Structure & Purpose
+# Skyesoft Proposal Renderer
 
-Welcome to the **Skyesoft** project. This `README.md` provides a clear, updated overview of the folder structure, content management workflow, and core principles for working within this proposal-driven, modular documentation system.
-
----
-
-## 🧠 Central Source of Truth
-
-All proposals, use cases, and memos are structured in:
-
-```
-docs/master_content.json
-```
-
-This file serves as the **canonical record** of all Skyesoft documents. It includes:
-
-- A `meta` block: ID, title, tags, status, author, version, etc.
-- A `content` block: Headings, sections, body content
-- References to supporting file formats: `.md`, `.pdf`, `.html`
+This project renders structured business artifacts (e.g., proposals, use cases, workflows) from a centralized `master_content.json` into styled HTML outputs, suitable for both on-screen review and PDF export.
 
 ---
 
-## 📂 Root Folder Structure
+## 🗂 Project Structure
 
 ```
 skyesoft/
 ├── docs/
-│   ├── master_content.json                 # Central source of truth
-│   ├── assets/                             # CSS and visual styling
-│   ├── memos/                              # Internal communication
-│   ├── presentations/                      # Slide decks, .html viewers
-│   ├── proposals/
-│   │   ├── lead_or_sell/                   # Leadership workflow doc
-│   │   └── branch_office/                  # 🆕 East Valley Branch Proposal (added 04/23)
-│   ├── use_cases/
-│   │   └── skyesoft_scheduling/            # Real-world workflow context
-│   └── viewer/                             # Web viewer template & twemoji
-├── tools/                                  # Scripts for rendering and maintenance
-├── .gitignore
-├── README.md
+│   ├── assets/
+│   │   ├── template.html      # HTML template (GitHub Markdown style)
+│   │   ├── style.css          # Custom styling enhancements
+│   └── master_content.json    # Source of truth for all artifacts
+├── output/
+│   └── lead_or_sell.html      # Rendered HTML output
+├── render.js                  # Rendering logic to transform JSON into HTML
+├── README.md                  # Project overview and instructions
 ```
 
 ---
 
-## 🛠 Tools
+## 🛠 How It Works
 
-```
-tools/
-├── emoji_embedder.js
-├── emoji_render_to_pdf.js
-├── generate_tree.js
-├── render_pdf_chrome.js
-├── organize-skyesoft.ps1
-```
+1. **JSON Input**  
+   All artifacts (proposals, use cases, etc.) are stored in `master_content.json` under the `artifacts` key. Each artifact has `meta` and `content.sections`.
 
-These tools assist with:
-- Markdown ➜ HTML ➜ PDF generation
-- Tree structure visualization
-- Directory cleanup and folder reshaping
-- Embedding emojis and templating exports
+2. **HTML Rendering**  
+   `render.js` reads the JSON and inserts the parsed content into `template.html`, producing a clean, readable HTML file in the `/output` folder.
+
+3. **GitHub Markdown Styling**  
+   The template uses the [GitHub Markdown CSS](https://cdnjs.com/libraries/github-markdown-css) for a familiar, professional appearance.
 
 ---
 
-## ✅ Best Practices
+## 🚀 Usage
 
-- 📁 Store all structured documents in `docs/`, organized by type and ID
-- 🔗 Register every entry in `master_content.json`
-- 🧩 Place `.md`, `.pdf`, and optional `.html` in matching subfolders
-- 🗃 Use `.keep` files to preserve folder scaffolding across machines
-- 🌿 Use named snapshot branches (e.g. `office-snapshot-*`) before pulling or reorganizing
-- 📌 Commit changes with descriptive messages and sync before switching locations
+```bash
+node render.js lead_or_sell
+```
+
+- Generates: `output/lead_or_sell.html`
+- Replace `lead_or_sell` with any valid artifact ID from the JSON.
+
+To automate this (optional):
+```bat
+@echo off
+node render.js %1
+pause
+```
+Save as `build-proposal.bat` and run with:
+```bash
+build-proposal.bat lead_or_sell
+```
 
 ---
 
-## 🧑‍💼 Maintained By
+## 🎨 Styling Notes
+
+- Layout: Centered, max-width, printable with 1-inch margins.
+- Lists:
+  - Top-level items can include emoji headers (e.g., 🚫, 📋)
+  - Sub-items indent as bullets
+- Typography: Clean, modern sans-serif stack.
+
+---
+
+## ✅ Current Artifacts
+
+- `lead_or_sell` – Leadership and compensation reform proposal
+- `skyesoft_proposal` – Smart workflow system overview
+- `skyesoft_use_case_geo_service` – Geo-tagged service exit protocol
+
+---
+
+## 📦 Dependencies
+
+- Node.js (≥ v16)
+- GitHub Markdown CSS (via CDN)
+
+---
+
+## 📍 Author
 
 **Steve Skye**  
-Version: v1.1  
-Last updated: April 23, 2025
-
-To contribute or add a new document:
-- Update `master_content.json`
-- Add your files to the appropriate folder
-- Commit using the format: `"Add [Title] [Type] - [Date]"`
-### Artifact IDs
-
-Each artifact is assigned a unique numeric ID (starting at 1) to ensure consistency and traceability across the Skyesoft platform.
-
-Artifacts are categorized as one of the following types:
-- `proposal` – Strategic frameworks and leadership recommendations
-- `workflow` – Real-world execution processes and models
-- `memo` – Operational updates or internal guidance
-
-The primary artifact registry is stored in:
-`docs/master_content.json`
+Christy Signs | Phoenix, AZ  
+Project Lead – Skyesoft Platform
