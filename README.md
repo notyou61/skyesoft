@@ -82,3 +82,14 @@ To contribute or add a new document:
 - Update `master_content.json`
 - Add your files to the appropriate folder
 - Commit using the format: `"Add [Title] [Type] - [Date]"`
+### Artifact IDs
+
+Each artifact is assigned a unique numeric ID (starting at 1) to ensure consistency and traceability across the Skyesoft platform.
+
+Artifacts are categorized as one of the following types:
+- `proposal` – Strategic frameworks and leadership recommendations
+- `workflow` – Real-world execution processes and models
+- `memo` – Operational updates or internal guidance
+
+The primary artifact registry is stored in:
+`docs/master_content.json`
