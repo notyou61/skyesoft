@@ -1,0 +1,64 @@
+/* Override container for better print layout */
+.markdown-body {
+  max-width: 850px;
+  margin: 1in auto;
+  padding: 0 1em;
+}
+
+/* Optional font tuning (GitHub uses system fonts already) */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: #fff;
+  color: #24292f;
+}
+
+/* Section spacing */
+h1, h2, h3 {
+  margin-top: 2.25em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #eaecef;
+}
+
+h1 { font-size: 26px; }
+h2 { font-size: 22px; }
+h3 { font-size: 18px; }
+
+/* List refinement */
+ul {
+  margin-top: 0.5em;
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+li {
+  margin-bottom: 0.5em;
+}
+
+/* Quote box */
+blockquote {
+  border-left: 4px solid #dfe2e5;
+  color: #6a737d;
+  padding: 0.5em 1em;
+  background: #f6f8fa;
+  font-style: italic;
+}
+
+/* Optional: make emoji bullets bold if wrapped in <strong> */
+li strong {
+  font-weight: bold;
+}
+ol.numbered {
+  list-style-type: decimal;
+  padding-left: 2em;
+}
+ul.bulleted {
+  list-style-type: disc;
+  padding-left: 2em;
+}
+ul.nested {
+  list-style-type: disc;
+  padding-left: 2em;
+  margin-top: 0.5em;
+}
