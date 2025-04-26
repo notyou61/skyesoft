@@ -69,22 +69,27 @@ Skyesoft is not an "add-on" — it is the **new backbone** of how Christy Signs 
 
 ## 🔄 Phase 1: Core Launch
 - Core Database (Entities, Locations, Contacts, Orders, Applications, Notes)
-- Attendance Suite
-- File Management Suite
-- Bulletin Boards
-- AI OLT Prompt
-- Mobile-First Modals
-- SSE Updates
-- Secure Authentication
+- Attendance Suite (GPS Check-In & Monitoring)
+- Permit Management Suite (Applications, Statuses, Fees, Notes)
+- Service Management Suite (Service Orders, Scheduling, Tracking)
+- File Management Suite (Survey, WIP, Completion Photo Uploads)
+- Office Bulletin Board System (Real-Time KPI Dashboards)
+- AI One Line Tasking (OLT) Prompt for CRUD
+- Mobile-First Bootstrap Modal Pages
+- Real-Time Server-Sent Events (SSE)
+- Secure Authentication and Encryption
 
 ## 📈 Phase 2: Financial Strength & Branch Expansion
-- Purchasing, Estimating, Job Costing Suites
+- Purchasing Suite
+- Estimating Suite
+- Job Costing Suite
+- Assigned Task Management Suite
 - Branch Office Launch Playbooks
 - KPI Reporting
 - Escalation Trees and Management Oversight
 
-## 🌟 Phase 3: Scaling the Platform
-- Service Department Workflow Automation
+## 🌟 Phase 3: Workflow Automation and Advanced Scaling
+- Workflow Automation across all departments
 - Sales CRM Modules
 - Scheduling Systems
 - Advanced AI integrations
