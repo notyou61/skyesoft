@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>file_management</title>
+  <link rel="stylesheet" href="../docs/assets/github-markdown.css">
+  <link rel="stylesheet" href="../docs/assets/style.css">
+  <link rel="stylesheet" href="../docs/assets/pdf.css">
+</head>
+<body class="markdown-body">
+<h1>🖼️ File Management (Survey, WIP, Completion Photo Uploads)</h1>
+<h2>🏷️ Purpose</h2>
+<p>Organize project photos (survey, work-in-progress, and completion) efficiently under each order for easy retrieval, reporting, and project tracking.</p>
+<h2>🛠️ Technical Details</h2>
+<ul>
+<li>Server Storage: Folder structure per OrderID</li>
+<li>Subfolders: <code>/survey/</code>, <code>/wip/</code>, <code>/completion/</code></li>
+<li>Upload Modal: Drag/drop or mobile capture</li>
+<li>Filename Convention: OrderID_ReportType_Timestamp.jpg</li>
+<li>File Summaries: Maintain metadata for easy search</li>
+</ul>
+<h2>🎯 Key Features</h2>
+<ul>
+<li>Centralized access to all job photos</li>
+<li>File versioning for re-uploads</li>
+<li>Image resizing for storage optimization</li>
+<li>Attach files to work orders and reports</li>
+</ul>
+<h2>🏗️ Implementation Notes</h2>
+<ul>
+<li>Security: Restrict file types (jpg, png, pdf)</li>
+<li>Optional S3 or cloud backup integration</li>
+<li>Photo upload notifications</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>skyesoft-workflowy-legacy</title>
+  <link rel="stylesheet" href="../docs/assets/github-markdown.css">
+  <link rel="stylesheet" href="../docs/assets/style.css">
+  <link rel="stylesheet" href="../docs/assets/pdf.css">
+</head>
+<body class="markdown-body">
+<p>Sign Permit Service #notcomplete #inprogress</p>
+<blockquote>
+<p>Website to store &amp; track sign permit applications.</p>
+</blockquote>
+<ul>
+<li>Goals # #inprogress
+<blockquote>
+<p>The site is used to store files, apply for permits, manage their application &amp; track their progress.</p>
+</blockquote></li>
+<li>Functions #notcomplete
+<blockquote>
+<p>What the site will do using the CRUD operations of persistent storage.</p>
+</blockquote>
+<ul>
+<li>Data Entry #notcomplete
+<blockquote>
+<p>Creating or editing the database records.</p>
+</blockquote></li>
+<li>Save Files #notcomplete
+<blockquote>
+<p>Uploading images / files.</p>
+</blockquote></li>
+<li>Produce Reports #notcomplete
+<blockquote>
+<p>These can be emails or printed.</p>
+</blockquote></li>
+</ul></li>
+<li>Structure #notcomplete
+<blockquote>
+<p>Website &amp; database details.</p>
+</blockquote>
+<ul>
+<li>Website #notcomplete
+<blockquote>
+<p>Controls on the site.
+- Grid #notcomplete #inprogress
+&gt; Links to modal pages.  These can be sort and filter as needed,
+&gt;
+- Actions #notcomplete
+&gt; All activity on the website is tracked &amp; classified
+&gt;
+- Entities #notcomplete
+- Locations #notcomplete
+- Orders #notcomplete
+- Contacts #notcomplete
+- Applications #notcomplete
+- Modal Page #notcomplete
+&gt; Used to perform CRUD functions.
+&gt;
+- Live Dashboard #complete
+&gt; Provides key performance indicators and other relevant data in real-time.
+- Alerts
+&gt; Messages concerning events taking place on the site.
+&gt;
+- Login / Logout
+&gt; Notes the user has logged in or out of the site.
+- CRUD Actions
+&gt; Message of real time updates to the database records.
+&gt;
+- Key Performance Indicators (KPI)
+&gt; Showcased metrics of operations.
+- Applications Total Count
+&gt; Number of applications entered.
+- Current Applications Count
+&gt; Count of the applications current open.
+&gt;
+- Average Turn-Around Time
+&gt; The overall average turn around of applications.
+&gt;
+- Intervals
+&gt; The current status of the progression of certain time periods.
+- Current Day
+&gt; The length of the current day.
+&gt;
+- Workday
+&gt; What portion of the workday is and its duration.
+&gt;
+- Holiday
+&gt; When &amp; how long till the next holiday.
+&gt;
+- Chatgpt
+- Sign code check
+- Reports #notcomplete
+&gt; Used to select a report and print it.
+&gt;</p>
+</blockquote></li>
+<li>Database #complete
+<blockquote>
+<p>The database stored in a serialized file on the server.</p>
+</blockquote>
+<ul>
+<li>CRUD Action Types #complete
+<blockquote>
+<p>The type of CRUD actions a user can make
+- CRUD ActionType ID #complete
+&gt; The unique value for the event type.
+&gt;
+- Create #complete
+&gt; Making a new record.
+&gt;
+- Login #complete
+- Logout #complete
+- Entity #complete
+- Contact #complete
+- Order #complete
+- Application #complete
+- Application Fee #complete
+- Application Note #complete
+- Read #complete
+&gt; Opening a record.
+- Entity #complete
+- Contact #complete
+- Order #complete
+- Application #complete
+- Application Note #complete
+- Update #complete
+&gt; Making changes to a record.
+- Entity #complete
+- Contact #complete
+- Order #complete
+- Application #complete
+- Application Fee #complete
+- Application Status #complete
+- Application Note #complete
+- Delete #complete
+&gt; Used to cancel a record which is not longer valid.
+- Entity #complete
+- Contact #complete
+- Order #complete
+- Application #complete
+- Application Note #complete
+- Actions #complete
+&gt; The CRUD Actions taken by users made on the site.
+- Action ID #complete
+&gt; The unique number for the event.
+- Action Timestamp #complete
+&gt; The datetime when the event took place.
+- Action CRUD Type ID #complete
+&gt; The CRUD operation that took place.
+&gt;
+- Contact ID #complete
+&gt; The contact that performed the event.
+- Action Latitude #complete
+&gt; Latitude where the event occurred.
+&gt;
+- Action Longitude #complete
+&gt; Longitude where the event occurred.
+- Locations #complete
+&gt; Typically each vendor has one location.
+- Location ID #complete
+&gt; A unique ID for the location.
+&gt;
+- Location Name #complete
+&gt; A name to identify the location.
+&gt;
+- Location Place ID #complete
+&gt; The Google place ID for the location.
+&gt;
+- Location Latitude #complete
+&gt; The location latitude.
+- Location Longitude #complete
+&gt; The location longitude.
+- Location Address #complete
+&gt; Address of the location
+&gt;
+- Location Address Suite #complete
+&gt; The suite of the address (if needed).
+- Location City #complete
+&gt; Municipality of the location.
+- Location State #complete
+&gt; State of the location.
+&gt;
+- Location Zip Code #complete
+&gt; The location zip code.
+&gt;
+- Location Parcel Number #complete
+&gt; The parcel ID.  Uses an API to provide additional details for the location.
+&gt;
+- Location Jurisdiction #complete
+&gt; The entity which governs the location.
+&gt;
+- Location Is Billing Address #complete
+&gt; True of false if the location is used to send invoices.
+- Location Note #complete
+&gt; A note concerning the location.
+&gt;
+- Location Last Update #complete
+&gt; The date the last update was made for the location.
+- Location Is Not Valid #complete
+&gt; A Boolean value to not if the location no longer valid.
+&gt;
+- Entities #complete
+&gt; An entity is a business or agency.
+&gt;
+- Entity ID #complete
+&gt; A unique number for the vendor.
+&gt;
+- Entity Name #complete
+&gt; The name of the entity.
+&gt;
+- Entity Location ID #complete
+&gt; The location ID
+&gt;
+- Entity Note #complete
+&gt; Information about the Entity
+- Entity Type #complete
+&gt; Company, Customer, Vendor or Governmental.
+&gt;
+- Entity Is Not Valid #complete
+&gt; A Boolean value to not if the entity no longer valid.
+&gt;
+- Contacts #complete
+&gt; Many contacts for each vendor.
+- Contact ID #complete
+&gt; The unique ID of the contact.
+- Contact Entity ID #complete
+&gt; The ID of the contacts entity.
+&gt;
+- Contact Salutation #complete
+&gt; Mr. or Ms.
+- Contact First Name #complete
+&gt; Contact first name
+&gt;
+- Contact Last Name #complete
+&gt; The contacts last name.
+- Contact Title #complete
+&gt; Job title of the contact.
+- Contact Location ID #complete
+&gt; Location Id of the contact
+- Contact Primary Phone #complete
+&gt; Typically the office number.
+- Contact Primary Phone #complete
+&gt; The extension of the primary number.
+- Contact Secondary Phone #complete
+&gt; Cell phone or other number.
+- Contact Email #complete
+&gt; Email address of the contact.
+- Contact Note #complete
+&gt; Information about the contact.
+- Contact Is Not Valid #complete
+&gt; A Boolean value to not if the contact no longer valid.
+&gt;
+- Orders #complete
+&gt; Details about the work order
+- Order ID #complete
+&gt; The unique number for the order.
+&gt;
+- Entity ID #complete
+&gt; The ID of the entity for the order.
+&gt;
+- Order Contact ID #complete
+&gt; The contact responsible for the order.
+- Order Billing Location ID #complete
+&gt; The location for the invoice.
+&gt;
+- Order Jobsite Location ID #complete
+&gt; The location of the work.
+- Order Work Order Number #complete
+&gt; The company provided work order number.
+- Order Scope #complete
+&gt; The scope of work being performed.
+&gt;
+- Order Is Not Valid #complete
+&gt; A Boolean value to not if the order no longer valid.
+&gt;
+- Application Status Types #complete
+&gt; Different statuses of the application
+&gt;
+- Application Status Type ID #complete
+&gt; The unique ID of the status type
+&gt;
+- Design Review #complete
+&gt; Preparing the application.
+&gt;
+- Quality Review #complete
+&gt; Application submitted and is being check for completeness.
+- Application Review #complete
+&gt; A determination if the application meets the sign code.
+- Corrections Needed #complete
+&gt; The permit has been reviewed and revisions are required.
+- Is Accepted #complete
+&gt; True of false if application has been accepted.
+&gt;
+- Applications #complete
+&gt; Various fields for the application table.
+&gt;
+- Application ID #complete
+&gt; A unique number for each application.
+&gt;
+- Order ID #complete
+&gt; The is the ID of the order..
+- Application Receipt Timestamp #complete
+&gt; The date the application was received.
+&gt;
+- Application Description #complete
+&gt; Used to provide important information about the application.
+&gt;
+- Has Property Owner Approval #complete
+&gt; True / False if the property owner has approved of the application.
+- Application Submitted Timestamp #complete
+&gt; The date the application was submitted to the judication.
+&gt;
+- Application Permit Number #complete
+&gt; Provided by the jurisdictional entity.
+&gt;
+- Application Status ID #complete
+&gt; The ID of the status of the permit.
+- Application Requires Inspection #complete
+&gt; True / false if the application requires an inspection.
+- Application Inspection Note #complete
+&gt; Information about the inspection required.
+&gt;
+- Application Completion Timestamp #complete
+&gt; The date the application process is complete.
+&gt;
+- Application Is Not Valid #complete
+&gt; A Boolean value to not if the application no longer valid.
+&gt;
+- Application Fee Types #complete
+&gt; The different types of permit fees.
+- Application Fee Type ID #complete
+&gt; Unique number for the type of fee.
+&gt;
+- Review Fee #complete
+&gt; Paid so the permit can be reviewed.
+- Permit Fee #complete
+&gt; The fee for the permit.
+- Amendment Fee #complete
+&gt; A fee paid for reviewing a criteria / plan.
+&gt;
+- Renewal Fee #complete
+&gt; Fee to reinstate an application.
+- Application Fees #complete
+&gt; Details of the cost of the application.
+&gt;
+- Application Fee ID #complete
+&gt; A unique number for the fee.
+- Application Note ID #complete
+&gt; The ID for application note for the fee.
+&gt;
+- Fee Type ID #complete
+&gt; The ID of the fee type.
+&gt;
+- Fee Timestamp #complete
+&gt; Date of the fee.
+- Fee Amount #complete
+&gt; The amount of the fee.
+- Fee Paid Timestamp #complete
+&gt; The date the fee was paid.
+- Application Correction Types #complete
+&gt; The types of application corrections
+&gt;
+- Application Correction Type ID #complete
+&gt; The unique ID for the type of correction.
+&gt;
+- Application Correction #complete
+&gt; Description of the correction.
+&gt;
+- Application Notes #complete
+&gt; Notes concerning actions taken about the application.
+- Application Note ID #complete
+&gt; The unique ID for the note.
+&gt;
+- Application Note Action ID #complete
+&gt; Provides when &amp; who made the note
+&gt;
+- Application Note #complete
+&gt; The application note.
+- Application Note Correction Type ID #complete
+&gt; Noting that revisions to the application are required.
+&gt;
+- Application Note Fee ID #complete
+&gt; There is a fee associated with the note.
+- Application Note Has File #complete
+&gt; A true / false value if the not has an associated file.
+&gt;
+- Application Note Is Not Valid #complete
+&gt; A Boolean value to not if the application note no longer valid.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Cron Job #complete
+<blockquote>
+<p>The job is creating files on the server that need to be deleted.  Create code that will removing them as they are made.</p>
+</blockquote></li>
+<li>Global Variable Stream  #complete
+<blockquote>
+<p>All of the data for the site is placed in this global variable (gblVar).  Some are provided by the database while other a hard coded.  Information from the server (database / text files) is streamed to the client (web browser).  Updates are made and the stream data is changed.</p>
+</blockquote>
+<ul>
+<li>Stream Variables (glbVar.stream) #complete
+<blockquote>
+<p>Details about the stream
+- glbVar.streamCount
+&gt; The stream increment count.
+&gt;
+- glbVar.streamInterval
+&gt; The amount of time from the current and previous stream.
+&gt;
+- glbVar.streamSize
+&gt; The count of the number of stream arrays
+- Time / Date Variables (glbVar.timeDate) #complete
+&gt; The current time &amp; date.
+&gt;
+- glbVar.currentUnixTime
+&gt; Current unix timestamp
+- glbVar.currentDate
+&gt; This is the current short date.
+- glbVar.currentYearTotalDays
+&gt; Total number of days for the current year.
+&gt;
+- glbVar.currentYearDayNumber
+&gt; The day number of the current year.
+- glbVar.currentYearDaysRemaining
+&gt; How many days remain in the current year.
+- glbVar.currentMonthNumber
+&gt; The number of the current month (i.e. January - 1)
+- glbVar.currentWeekdayNumber
+&gt; Weekday number (Sunday - 0)
+- glbVar.currentDayNumber
+&gt; The number day in the current month.
+- glb.Timezone
+&gt; What time zone the sever is in
+- glbVar.isWorkday
+&gt; True if the current day is not a weekend or holiday, false otherwise.
+- glbVar.isWeekday
+&gt; True when the current day is between Monday - Friday.
+&gt;
+- glbVar.isWeekend
+&gt; This is true on Saturday or Sunday; false otherwise.
+&gt;
+- glbVar.isHoliday
+&gt; True or false depending if the current day is a holiday.
+- Holiday Variables (glbVar.holidays) #complete
+&gt; Details about the holidays.
+- glbVar.holidayID
+&gt; Unique number for the holiday.
+- glbVar.holidayName
+&gt; Name of the holiday.
+&gt;
+- glbVar.isHolidayToday
+&gt; True if today is the holiday, false otherwise.
+- glbVar.isNextHoliday
+&gt; If this is the next holiday it is true otherwise false.
+&gt;
+- glbVar.isPreviousHoliday
+&gt; False unless this was the last holiday, then true.
+- glbVar.holidayDate
+&gt; The unix time stamp (at midnight) fro the holiday
+- glbVar.tillSinceHoliday
+&gt; The time since the date of the holiday date. (negative number means the date has passed)
+&gt;
+- Intervals Variables (glbVar.eventIntervals) #complete
+&gt; Provides the intervals to various events.
+- Current Interval Type Variables (glbVar.currentInvertalType)
+&gt; Interval that need to be tracked.
+- Is Workday (glbVar.isWorkday)
+&gt; Returns true / false  depending on of the day is worked or not.
+&gt;
+- Is Workday Type Array (glbVar.isWorkdayType)
+&gt; Periods of the workday.
+&gt;
+- Is Before Workday (glbVar.isBeforeWorkday)
+&gt; Before the workday begins.
+&gt;
+- Is During Workday (glbVar.isDuringWorkday)
+&gt; Time when the work day occurs.
+&gt;
+- Is After Workday (glbVar.isAfterWorkday)
+&gt; After the work day is completed.
+- Is Weekend (glbVar.isWeekend)
+&gt; If the day is a weekend this is true, otherwise is false.
+- Is Holiday (glbVar.isHoliday)
+&gt; Is true on a holiday.
+- Current Day Variables (glbVar.currentDayDurations) #complete
+&gt; The interval of the current day.
+- Day Spent (glbVar.currentDaySpent)
+&gt; Seconds spent of the days
+- Day Remaining (glbVar.currentDayRemaining)
+&gt; Remaining seconds of the day.
+&gt;
+- Day Duration (glbVar.currentDayDurationTotal)
+&gt; The total seconds of the day (86400 seconds).
+&gt;
+- Workday Intervals Variables (glbVar.workdayIntervals) #complete
+&gt; Various intervals used by the website.
+- Worktime Range Variables (glbVar.worktimeRange) #notcomplete
+&gt; Work start / end periods.
+&gt;
+- glbVar.officeStartTime
+&gt; Set for 7:30 AM.
+&gt;
+- glbVar.officeEnd
+&gt; End time for the office is set for 3:30 PM (15:30 hrs.)
+&gt;
+- glbVar.shopStartTime
+&gt; The start time for the shop
+&gt;
+- glbVar.shopEndTime
+&gt; End time for the shop.
+&gt;
+- Workday Variables (glbVar.workdayIntervals) #complete
+&gt; The work day intervals.
+- glbVar.lastWorkingDay
+&gt; The last day of work.
+&gt;
+- glbVar.nextWorkingDay
+&gt; The next day to work.
+&gt;
+- Workday Range (glbVar.workdayRange) #complete
+&gt; The start and end time of the time between workdays.
+- glbVar.intervalStartTime
+&gt; The start / end of the work day depending on the current day.
+&gt;
+- glbVar.intervalEndTime
+&gt; This also is the start / end of the work day depending on the current day.
+&gt;
+- Workday Durations Variables (glbVar.workdayDurations) #complete
+&gt; The calculated seconds spent between the Workday Range Intervals.
+&gt;
+- Workday Spent (glbVar.workdaySpent)
+&gt; Seconds spent of the workday interval
+&gt;
+- Workday Remaining (glbVar.workdayRemaining)
+&gt; Remaining seconds of the workday interval.
+&gt;
+- Workday Duration (glbVar.workdayDurationTotal)
+&gt; The total seconds of the interval (depends on workday range).
+&gt;
+- Holiday Variables (glbVar.holidayIntervals) #notcomplete
+&gt; Interval of elapse &amp; remain time for holidays.
+&gt;
+- Previous Holiday Variable (glbVar.previousHoliday) #complete
+&gt; Time elapsed during the holiday.
+&gt;
+- glbVar.previousHoliday
+&gt; The name of the holiday.
+&gt;
+- glbVar.previousHolidayDate
+&gt; Unix timestamp of the day (midnight)
+&gt;
+- glbVar.previousHolidaySince
+&gt; How long ago (in seconds) from the current time.
+&gt;
+- Next Holiday Variable (glbVar.nextHoliday) #complete
+&gt; Time till the next holiday.
+&gt;
+- glbVar.nextHoliday
+&gt; Name of the holiday.
+&gt;
+- glbVar.nextHolidayDate
+&gt; Unix timestamp when midnight occurs on the holiday.
+&gt;
+- glbVar.previousHolidaySince
+&gt; Number of seconds till the holiday
+&gt;
+- Holiday Durations Variable (glbVar.holidayDurations) #complete
+&gt; The amount of time (seconds) between the holidays
+&gt;
+- glbVar.holidaySpent
+&gt; Time since the last holiday has passed.
+- glbVar.holidayRemaining
+&gt; Remaining time till the holiday.
+&gt;
+- glbVar.holidayDurationTotal
+&gt; Total seconds between the holidays.
+- Site Details Variables (glbVar.siteDetails) #complete
+&gt; Details about the website.
+&gt;
+- Site Name Variables (glbVar.siteName) #complete
+&gt; Names used for the site.
+- glbVar.siteName
+&gt; Name of the site.
+- glbVar.pageTitle
+&gt; The page title.
+&gt;
+- glbVar.pageHeader
+&gt; Initial page header.
+&gt;
+- glbVar.standardPageHeader
+&gt; The standard page header.
+&gt;
+- glbVar.siteBeginDate
+&gt; The date the site began.
+- Site Cron Count Variables (glbVar.siteCronCount) #complete
+&gt; Cron count information.
+- glbVar.siteCronCount
+- glbVar.siteLastCronJob
+- glbVar.siteNextCronJob
+- glbVar.timeTillNewCronJob
+- glbVar.timeSinceLastCronJob
+- Site Testing Variables (glbVar.siteFunctions) #complete
+&gt; Site testing details
+- glbVar.siteErrorsCount
+&gt; The number of PHP errors for the code
+- glbVar.siteTestingStatus
+&gt; True if the site is being testing, otherwise false.
+&gt;
+- glbVar.siteIPAddress
+&gt; The IP address.
+&gt;
+- siteDatabaseTextFilesSize
+&gt; The size of both the static and updatable database text files (in bytes).
+&gt;
+- Site Functions Variables (glbVar.siteFunctions) #complete
+&gt; The use of PHP code functions.
+- glbVar.functionID
+&gt; A unique  number for the function.
+- glbVar.functionName
+&gt; The name of the function.
+- glbVar.functionUseCount
+&gt; Number of times it has been called
+- glbVar.functionFirstUse
+&gt; The first time it was called.
+- glbVar.functionLastUse
+&gt; Last time the function was used.
+- glbVar.timeSinceLastFunctionUse
+&gt; Seconds since the last use.
+&gt;
+- glbVar.functionSessionRequired
+&gt; True / false if a session if required to use the function.
+&gt;
+- User Details Variables (glbVar.userDetails) #complete
+&gt; User details.
+- glbVar.userID
+&gt; The unique contact ID for the user.
+- glbVar.userFirstName
+&gt; First name of the user.
+- glbVar.userLastName
+&gt; The users last name.
+&gt;
+- glbVar.rememberMe
+&gt; Check if the user has unable cookies (0-False, 1-True).
+- glbVar.userEmailAddress
+&gt; The unique name the user has provided.
+&gt;
+- glbVar.passwordConfirmed
+&gt; Noting the the password has been confirmed (0-False, 1-True).
+- glbVar.sessionStatus
+&gt; Default Set To False (0-False, 1-True).
+- User Last Action Variables (glbVar.userLastAction) #complete
+&gt; Details about the last action performed by the user.
+&gt;
+- glbVar.userLastActionID
+&gt; ID of the users last action.
+&gt;
+- glbVar.userLastActionTime
+&gt; Time of the last action.
+- glbVar.userLastActionTypeID
+&gt; The ID of the last action taken.
+&gt;
+- glbVar.userLastActionContactID
+&gt; The action type and name makes up the description.
+&gt;
+- glbVar.userLastActionLatitude
+&gt; Action Latitude
+- glbVar.userLastActionLongitude
+&gt; The action longitude.
+&gt;
+- Idle Variables (glbVar.userIdleVariables) #complete
+&gt; Variables used for the idle user log out.
+&gt;
+- glbVar.idleLogoutInterval
+&gt; Set to 900 seconds (15 minutes).
+&gt;
+- glbVar.idleLogoutSpent
+&gt; The increment count to the logout.
+- glbVar.idleLogoutRemaining
+&gt; Seconds till idle logout
+&gt;
+- glbVar.idleLogoutTime
+&gt; What time the user will be idle logged out.
+&gt;
+- glbVar.userIdleStatus
+&gt; False when action is taken or detected (true if idle).
+&gt;
+- Database Count Variables (glbVar.databaseCount) #complete
+&gt; Counts of the database tables.
+&gt;
+- glbVar.actionsCount
+&gt; Used to determine if a new action has taken place.
+&gt;
+- glbVar.currentActionsCount
+&gt; The number of actions counted in the database.
+&gt;
+- glbVar.previousActionsCount
+&gt; A count of the number of actions from the previous stream.
+- glbVar.newActionAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.entitiesCount
+&gt; A count of all entity records.
+- glbVar.currentEntitiesCount
+&gt; The number of entities counted in the database.
+&gt;
+- glbVar.previousEntitiesCount
+&gt; A count of the number of entities from the previous stream.
+- glbVar.newEntityAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.locationsCount
+&gt; The number of locations in the database.
+- glbVar.currentLocationsCount
+&gt; The number of locations counted in the database.
+&gt;
+- glbVar.previousLocationsCount
+&gt; A count of the number of locations from the previous stream.
+- glbVar.newLocationAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.contactsCount
+&gt; How many contacts there are.
+&gt;
+- glbVar.currentContactsCount
+&gt; The number of contact counted in the database.
+&gt;
+- glbVar.previousContactsCount
+&gt; A count of the number of contacts from the previous stream.
+- glbVar.newContactAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.ordersCount
+&gt; The number of orders.
+- glbVar.currentOrdersCount
+&gt; The number of order counted in the database.
+&gt;
+- glbVar.previousOrdersCount
+&gt; A count of the number of orders from the previous stream.
+- glbVar.newOrderAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.applicationsCounts
+&gt; This is how many application records there are.
+&gt;
+- glbVar.currentApplicationsCount
+&gt; The number of applications counted in the database.
+&gt;
+- glbVar.previousApplicationsCount
+&gt; A count of the number of applications from the previous stream.
+- glbVar.newApplicationAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.applicationFeesCount
+&gt; The count of fees for the applications.
+- glbVar.currentApplicationFeesCount
+&gt; The number of application fees counted in the database.
+&gt;
+- glbVar.previousApplicationFeesCount
+&gt; A count of the number of application fees from the previous stream.
+&gt;
+- glbVar.newApplicationFeeAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- glbVar.applicationNotesCount
+&gt; A count of the notes made on the applications.
+- glbVar.currentApplicationNotesCount
+&gt; The number of application note counted in the database.
+&gt;
+- glbVar.previousApplicationNotesCount
+&gt; A count of the number of application notes from the previous stream.
+&gt;
+- glbVar.newApplicationNoteAdded
+&gt; True if there is a difference between the counts, false otherwise.
+&gt;
+- Updatable Database Variables (glbVar.updatableDatabase) #complete
+&gt; The data that populates the datatables.
+&gt;
+- glbVar.actions
+&gt; List of actions taken by users on the site.
+&gt;
+- glbVar.actionID
+&gt; Unique number for the action.
+&gt;
+- glbVar.actionTimestamp
+&gt; Unix time when the action occured.
+- glbVar.actionTypeID
+&gt; The value of the action from the actions type table.
+&gt;
+- glbVar.actionContactID
+&gt; The ID of the user that performed the action.
+- glbVar.actionLatitude
+&gt; Latitude of the action.
+- glbVar.actionLongitude
+&gt; The longitude of the action.
+- glbVar.entities
+&gt; Companies, vendors, jurisdictions &amp; customers.
+&gt;
+- glbVar.entityID
+&gt; Unique ID for the entity.
+- glbVar.entityName
+&gt; The name of the entity.
+- glbVar.entityLocationID
+&gt; Location ID for the entity.
+&gt;
+- glbVar.entityNote
+&gt; A note about the entity.
+&gt;
+- glbVar.entityType
+&gt; ID of the entity type.
+- glbVar.entityIsNotValid
+&gt; True if the entity is not valid, false otherwise.
+&gt;
+- glbVar.contacts
+&gt; Contacts of the entities.
+- glbVar.contactID
+&gt; Unique ID for the contact.
+&gt;
+- glbVar.contactEntityID
+&gt; The ID of the entity for the contact.
+- glbVar.contactSalutation
+&gt; Salutation of the contact.
+&gt;
+- glbVar.contactFirstName
+&gt; Contact first name.
+&gt;
+- glbVar.contactLastName
+&gt; Last name of the contact.
+- glbVar.contactTitle
+&gt; Title of the contact,
+- glbVar.contactLocationID
+&gt; Location ID for the contact.
+&gt;
+- glbVar.contactPrimaryPhone
+&gt; Primary phone number.
+&gt;
+- glbVar.contactPrimaryPhoneExtension
+&gt; Extension of the primary phone.
+&gt;
+- glbVar.contactSecondaryPhone
+&gt; Secondary phone number.
+&gt;
+- glbVar.contactEmail
+&gt; Email for the contact.
+- glbVar.contactNote
+&gt; Contact note,
+- glbVar.contactIsNotValid
+&gt; True if the contact is not valid, false otherwise.
+- glbVar.locations
+&gt; Entity locations
+- glbVar.locationID
+&gt; Unique ID for the location.
+&gt;
+- glbVar.locationName
+&gt; Name of the location.
+- glbVar.locationPlaceID
+&gt; Google place ID.
+- glbVar.locationLatitude
+&gt; The latitude of the location.
+- glbVar.locationLongitude
+&gt; Longitude of the location.
+- glbVar.locationAddress
+&gt; Street address of the location.
+- glbVar.locationAddressSuite
+&gt; Suite for the location.
+- glbVar.locationCity
+&gt; City of the location.
+- glbVar.locationState
+&gt; Location state
+&gt;
+- glbVar.locationZipCode
+&gt; The zip code for the location.
+&gt;
+- glbVar.locationParcelNumber
+&gt; Parcel number for the location.
+&gt;
+- glbVar.locationJurisdiction
+&gt; Location jurisdiction.
+- glbVar.locationIsBillingAddress
+&gt; Is location a billing address.
+&gt;
+- glbVar.locationNote
+&gt; Note for the location.
+- glbVar.locationLastUpdated
+&gt; Last update for the location.
+- glbVar.locationIsNotValid
+&gt; This is true if the location is not valid, falsr otherwise.
+- glbVar.orders
+&gt; Orders for customers
+- glbVar.orderID
+&gt; The unique ID for the order.
+&gt;
+- glbVar.entityID
+&gt; Entity ID for the order,
+- glbVar.orderContactID
+&gt; Contact ID for the order.
+- glbVar.orderBillingLocationID
+&gt; Billing location ID for the order.
+&gt;
+- glbVar.orderJobsiteLocationID
+&gt; The jobsite location ID for the order.
+&gt;
+- glbVar.orderWorkOrderNumber
+&gt; Work order number.
+&gt;
+- glbVar.orderScope
+&gt; Scope of work for the order.
+&gt;
+- glbVar.orderIsNotValid
+&gt; True is the order is not valid, false otherwise.
+- glbVar.applications
+&gt; The sign permit applications for orders.
+&gt;
+- glbVar.applicationID
+&gt; Unique ID for the application.
+- glbVar.orderID
+&gt; Order ID for the application.
+- glbVar.applicationReceiptTimestamp
+&gt; Date (timestamp) when the application was received.
+&gt;
+- glbVar.applicationDescription
+&gt; Description of the application.
+- glbVar.hasPropertyOwnerApproval
+&gt; True / False if the property owner approval has been received.
+&gt;
+- glbVar.applicationSubmittedTimestamp
+&gt; When the application was submitted to the jurisdiction (timestamp).
+&gt;
+- glbVar.applicationPermitNumber
+&gt; The permit application number.
+&gt;
+- glbVar.applicationStatusID
+&gt; Application status ID.
+- glbVar.applicationRequiresInspection
+&gt; True / False if the application requires an inspection.
+&gt;
+- glbVar.applicationInspectionNote
+&gt; Note for the application.
+&gt;
+- glbVar.applicationCompletionTimestamp
+&gt; The date the application was completed.
+- glbVar.applicationIsNotValid
+&gt; This is true if the application is not valid, false otherwise.
+&gt;
+- glbVar.applicationFees
+&gt; Fees for the applications
+- glbVar.applicationFeeID
+&gt; Unique fee for the application fee.
+- glbVar.applicationNoteID
+&gt; Note ID for the application note.
+- glbVar.feeTypeID
+&gt; Fee type ID
+- glbVar.feeTimestamp
+&gt; The fee timestamp.
+- glbVar.feeAmount
+&gt; Amount of the fee,
+- glbVar.feePaidTimestamp
+&gt; Date (timestamp) the the fee was paid.
+- glbVar.applicationNotes
+&gt; Notes made concerning the applications.
+- glbVar.applicationNoteID
+&gt; Unique ID for the application.
+&gt;
+- glbVar.applicationNoteActionID
+&gt; Note action ID for the note.
+- glbVar.applicationNote
+&gt; The application note.
+- glbVar.applicationNoteCorrectionTypeID
+&gt; Application note correction type ID
+- glbVar.applicationNoteFeeID
+&gt; The application not fee ID.
+&gt;
+- glbVar.applicationNoteHasFile
+&gt; True / False if the note has a file.
+&gt;
+- glbVar.applicationNoteIsNotValid
+&gt; True if the not is not valid, false otherwise,
+&gt;
+- Static Database Variables (glbVar.staticDatabase) #complete
+&gt; Data from the database which doesn't require frequent updates.
+&gt;
+- glbVar.actionTypes
+&gt; The actions a user can perform on the website.
+- glbVar.actionTypeID
+&gt; Unique number for the action
+- glbVar.actionType
+&gt; The CRUD type of the action (Create, Read, Update or Delete)
+&gt;
+- glbVar.actionName
+&gt; The name that describes the action.
+&gt;
+- glbVar.applicationCorrectionTypes
+&gt; Categories of the application corrections.
+&gt;
+- glbVar.applicationCorrectionTypeID
+&gt; The unique number for the correction type
+&gt;
+- glbVar.applicationCorrectionType
+&gt; The type of correction.
+&gt;
+- glbVar.applicationCorrectionDescription
+&gt; A description of the correction.
+- glbVar.applicationFeeTypes
+&gt; Types of fees for permit applications.
+- applicationFeeTypeID
+&gt; Unique number for the fee type.
+- applicationFeeType
+&gt; Description of the fee.
+- glbVar.applicationStatus
+&gt; Used to assign the current status of an application.
+- glbVar.applicationStatusTypeID
+&gt; Unique number for the status type.
+&gt;
+- glbVar.applicationStatus
+&gt; Description of the application status.
+- Dashboard Variables (glbVar.liveDashboard) #complete
+&gt; Provides key performance indicators and other relevant data in real-time.
+&gt;
+- glbVar.liveDashboardIntervals #complete
+&gt; The current status of the progression of certain time periods.
+- Current Day #complete
+&gt; The length of the current day.
+&gt;
+- Workday #complete
+&gt; What portion of the workday is and its duration.
+&gt;
+- Holiday #complete
+&gt; When &amp; how long till the next holiday.
+&gt;
+- glbVar.liveDashboardAlerts #complete
+&gt; Key Performance Indicators (KPI) which showcase operational metrics.
+&gt;
+- Current CRUD Action
+&gt; Notice that an action has taken place.
+&gt;
+- Last CRUD Action
+&gt; Refers to the last action performed.
+&gt;
+- Applications Total Count
+&gt; Number of applications entered.
+- Current Applications Count
+&gt; Count of the applications current open.
+&gt;
+- Average Turn-Around Time
+&gt; The overall average turn around of applications.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Chat GPT #notcomplete
+<blockquote>
+<p>API to query database and text files.  Upload sign permit codes so they can be queried.</p>
+</blockquote></li>
+</ul></li>
+<li>Steps #notcomplete
+<blockquote>
+<p>Actions to be taken to create the site.</p>
+</blockquote>
+<ul>
+<li>Login Cookie #notcomplete
+<blockquote>
+<p>Set up the cookie to recognize a user and provide the username in the login input.
+- User Cookie Check
+&gt; Determine if a cookie is present.  This return true or false.
+&gt;
+- User Cookie
+&gt; The value is to be the users contact ID number rather than the name.
+&gt;
+- Cookie Ajax Call
+&gt; Must obtain the user ID if the cookie is present.
+- Login
+&gt; Creates a cookie when the user logs in.  The 'userCookie' is to be the contact ID.
+&gt;</p>
+</blockquote></li>
+<li>Site Errors #notcomplete
+<blockquote>
+<p>Update the server side errors and make them part of the stream.</p>
+</blockquote></li>
+<li>Call Create New Action Function #complete
+<blockquote>
+<p>Review the code to call a new action &amp; test that the SSE updates the text files with a new array value.</p>
+</blockquote></li>
+<li>Global Variable Stream #notcomplete
+<blockquote>
+<p>Obtain the counts of the saved arrays &amp; compare them to the database table counts.  Update the saved array if there is a count difference.  Use the saved arrays to populate the website.</p>
+</blockquote></li>
+<li>Login / Logout  #notcomplete
+<blockquote>
+<p>Set up the site for a user to login / logout.  Update the database records when this is performed.
+- Session Variables #notcomplete
+&gt; Review how the site will use session variables to determine the user and provide permissions to the site.
+&gt;
+- Database Records #notcomplete
+&gt; Update the database as the user logs in/out.
+&gt;
+- Website Changes #notcomplete
+&gt; Show / Hide portions of the site based on the users login status.
+&gt;
+- Idle Logout #notcomplete
+&gt; Set up the cron job to log a user out after 15 minutes of inactivity.
+&gt;</p>
+</blockquote></li>
+<li>Update Site Arrays #notcomplete
+<blockquote>
+<p>New array values are to be made on the Updateable Database Array text file as the database records are made.</p>
+</blockquote>
+<ul>
+<li>Actions Count #notcomplete
+<blockquote>
+<p>Update the action array when there is a difference between previous &amp; current action counts.</p>
+</blockquote></li>
+<li>Action Types #notcomplete
+<blockquote>
+<p>Update arrays based on the action name &amp; type of action that has taken place.
+- Create #notcomplete
+&gt; The following are actions that create a new record in the database and require an update in the text file array.
+- 03 - Create Entity
+&gt; Updates the entity array.
+&gt;
+- 04 - Create Location
+&gt; Location array is updated.
+- 05 - Create Contact
+&gt; Contacts has a new record.
+- 06 - Create Order
+&gt; A new record was created in the order table.
+&gt;
+- 07 - Create Application
+&gt; The application array has a newly created record.
+- 08 - Create Application Note
+&gt; Make a new item in the application notes array.
+&gt;
+- 09 - Create Application Fee
+&gt; An application fee has been added to the table record.
+&gt;
+- Update #notcomplete
+&gt; These are update actions which make changes to the database records.
+&gt;
+- 19 - Update Entity #notcomplete
+&gt; The entity record has been updated.
+&gt;
+- 20 - Update Location #notcomplete
+&gt; A location has new information.
+&gt;
+- 21 - Update Contact #notcomplete
+&gt; The array for the contact is to be updated with a change in the records.
+&gt;
+- 22 - Update Application #notcomplete
+&gt; An application is updated.
+&gt;
+- 23 - Update Application Fee #notcomplete
+&gt; A record in the application fee table has been changed.
+&gt;
+- 24 - Update Application Status #notcomplete
+&gt; Status of an application has changed in the database.
+- 25 - Update Application Note #notcomplete
+&gt; An application note change requires the array be updated.
+&gt;
+- Delete #notcomplete
+&gt; These are invalidations of database records which require an update in the text files.
+&gt;
+- 26 - Delete Entity #notcomplete
+&gt; The entity record has been deleted.
+&gt;
+- 27 - Delete Location #notcomplete
+&gt; A location is no longer valid.
+&gt;
+- 28 - Delete Contact #notcomplete
+&gt; The contacts array has a records that has been invalidated.
+&gt;
+- 29 - Delete Application #notcomplete
+&gt; An application is now invalid.
+&gt;
+- 30 - Delete Application Fee #notcomplete
+&gt; A record in the application fee table has been deleted.
+&gt;
+- 31 - Delete Application Status #notcomplete
+&gt; Status of an application has changed to invalid in the database.
+- 32 - Delete Application Note #notcomplete
+&gt; An application note change requires the array noted as not valid.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Cron Job #notcomplete
+<blockquote>
+<p>Review the code that is called with the cron job.</p>
+</blockquote>
+<ul>
+<li>Idle Logout #notcomplete
+<blockquote>
+<p>Used to perform the logout function of a user that hasn't performed an action for 15 minutes.</p>
+</blockquote></li>
+<li>Update Users Task #notcomplete
+<blockquote>
+<p>All tasks for the day are to be reset a midnight.
+- Backup Files / Database #notcomplete
+&gt; Copies of the files and database to be made on the server and remotely.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Site Errors #notcomplete
+<blockquote>
+<p>Obtaining the current errors &amp; updating the array of total errors.</p>
+</blockquote>
+<ul>
+<li>Current Errors</li>
+</ul></li>
+</ul></li>
+<li>Code Formatting Guidelines
+<blockquote>
+<p>Clean, Readable, and Maintainable Codebase. By adhering to these guidelines, we not only aim to elevate the quality of our code but also ensure that it stands as a testament to our dedication to craftsmanship. Our commitment is to foster a development environment where clarity, efficiency, and maintainability are paramount. These practices are not just rules but principles that guide us toward excellence in every line of code we write. Embracing these standards is our collective step towards building software that is not only robust and efficient but also a joy to work with for every member of our team.</p>
+</blockquote>
+<ul>
+<li>Variable Naming Conventions
+<blockquote>
+<p>Use camelCase and prefix variables with var for clarity and scope definition, ensuring they are easily recognizable and logically grouped.
+- CamelCase Usage
+&gt; Adopt camelCase for variable names (e.g., userProfile) to enhance readability and differentiate between variables, functions, or constants.
+- Var Prefix
+&gt; Begin variable declarations with var to define scope explicitly and prevent unintended global variables (e.g., var itemCount).</p>
+</blockquote></li>
+<li>Commenting Strategy
+<blockquote>
+<p>Maintain concise and descriptive comments, with title-cased statements above the code lines for quick understanding. Provide additional details next to the code for context, and align complex explanations to the right, creating clear code narration.
+- Above-Line Comments
+&gt; Place a succinct, title-cased comment above each line of code, focusing on the action or purpose (e.g., // Initialize Array).
+- Parenthetical Clarifications
+&gt; Use parentheses for additional context or nuances next to comments (e.g., // Initialize array (empty if no data)).
+- Right-Aligned Explanations
+&gt; For detailed explanations, align comments to the right of the code, ensuring the primary focus remains on the code itself.
+- Detailed Inline Comments
+&gt; Include comments for complex operations or variable initializations, explaining their purpose succinctly and directly above the code.</p>
+</blockquote></li>
+<li>Conditional Statements
+<blockquote>
+<p>Clearly label conditionals with comments to outline logic flow and maintain code continuity.
+- Initial Above-Line Comment
+&gt; Start each conditional block with a concise comment that ends with 'Conditional' for immediate context.
+- Clear Labeling
+&gt; Provide straightforward comments before conditionals to make the code's flow easily understandable.</p>
+</blockquote></li>
+<li>Explicit Loop Descriptions
+<blockquote>
+<p>Describe loops' purposes before they begin, stating what is being iterated over and why.</p>
+</blockquote></li>
+<li>Return Statement Precision
+<blockquote>
+<p>Ensure return statements are direct and formatted without superfluous spaces, clearly grouping all related properties.</p>
+</blockquote></li>
+<li>Setting Attributes
+<blockquote>
+<p>Detail HTML attributes to enhance code clarity and understanding, promoting a uniform and accessible codebase.
+- Comment Every Attribute
+&gt; Add a comment before each attribute assignment describing its purpose, starting with 'Assign' for setting a value and 'Initialize' for placeholders.
+- Clarify Purpose and Value
+&gt; Clarify the source or purpose when setting values, especially for dynamic ones (e.g., // Assign Current Contact Primary Phone).
+- Maintain Readability
+&gt; Align attribute settings and their comments to improve readability and comprehension.
+- Consistent Commenting Style
+&gt; Adopt a consistent style for attribute comments across the codebase for uniformity.
+&gt;</p>
+</blockquote></li>
+<li>Overall Structure
+<blockquote>
+<p>Structure code blocks with clear, introductory comments and consistent indentation and spacing for better navigability and readability.
+- Block Introduction
+&gt; Precede significant code blocks with a clear, concise comment outlining their purpose, aiding navigation and comprehension.
+- Avoid Empty Lines
+&gt; Eliminate unnecessary space between related code blocks to maintain logical flow.
+- Consistent Indentation and Spacing
+&gt; Use uniform indentation and spacing to make the code more accessible and easier to read.
+- Dynamic Content Handling
+&gt; Provide guidelines for handling dynamic content, especially with global variables or data streams, to ensure data integrity and responsive updates.
+- Error Handling and Logging
+&gt; :Gracefully implement error handling and logging within the code to effectively manage and debug issues.</p>
+</blockquote></li>
+</ul></li>
+<li>Other Stuff #notcomplete
+<blockquote>
+<p>Things I might not need</p>
+</blockquote>
+<ul>
+<li>Code Functions #notcomplete
+<blockquote>
+<p>Details about the code that are saved to track their utility.</p>
+</blockquote>
+<ul>
+<li>Function Usage Steps #notcomplete
+<blockquote>
+<p>The manner in which a function use is accounted for.</p>
+</blockquote>
+<ul>
+<li>Function Authorization Check</li>
+<li>Block Unauthorized IP Addresses</li>
+<li>Update Function Unauthorized Use</li>
+<li>Update Function Usage</li>
+<li>Check If Function Exists</li>
+<li>Create New Function</li>
+<li>Obtain Function Usage Count</li>
+<li>Update Function Count</li>
+<li>Obtain Session Authorization Status</li>
+</ul></li>
+<li>Function Usage Count #notcomplete
+<blockquote>
+<p>A list of all the functions &amp; their usage.</p>
+</blockquote>
+<ul>
+<li>Function Name #notcomplete
+<blockquote>
+<p>The name of the function.
+- Function Usage Count #notcomplete
+&gt; Number of times it was called.
+&gt;
+- Function Last Use #notcomplete
+&gt; A unix timestamp of when it was last used.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+</ul></li>
+<li>Folders/Files #notcomplete
+<blockquote>
+<p>Create the folders &amp; files that are to run the site.</p>
+</blockquote>
+<ul>
+<li>Index Page #notcomplete
+<blockquote>
+<p>Used to securely login to the site.</p>
+</blockquote></li>
+<li>Server Pages
+<blockquote>
+<p>PHP pages used by the site.</p>
+</blockquote>
+<ul>
+<li>General Page #notcomplete
+<blockquote>
+<p>Used for basic server side functions.
+- Cron Job Page #notcomplete
+&gt; Updates the database &amp; performing functions every minute.
+&gt;
+- Federal Holiday #notcomplete
+&gt; Used to account for the holidays.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+</ul></li>
+<li>Landing Page #notcomplete
+<blockquote>
+<p>Use the same landing page &amp; login structure as before.</p>
+</blockquote></li>
+<li>Grids #notcomplete
+<blockquote>
+<p>The data is to be presented on the website using DataTables.  See <a href="https://datatables.net/">https://datatables.net/</a> to determine which bootstrap style will be used.</p>
+</blockquote>
+<ul>
+<li>Events #notcomplete</li>
+<li>Entities #notcomplete</li>
+<li>Contacts #notcomplete</li>
+<li>Locations #notcomplete</li>
+<li>Orders #notcomplete</li>
+<li>Applications #notcomplete</li>
+</ul></li>
+<li>Model Pages #notcomplete
+<blockquote>
+<p>Set up pages with tabs and controls.</p>
+</blockquote></li>
+<li>Alerts #notcomplete
+<blockquote>
+<p>Provide updates using server side events.</p>
+</blockquote></li>
+<li>Dynamic Code #notcomplete
+<blockquote>
+<p>Make code to update the databse from the pages using server side events.</p>
+</blockquote></li>
+<li>Read Pages #notcomplete
+<blockquote>
+<p>The pages are to read the database &amp; display the data.</p>
+</blockquote></li>
+<li>Reports #notcomplete
+<blockquote>
+<p>Provide reports available from selecting menu.</p>
+</blockquote>
+<ul>
+<li>Current Status</li>
+<li>Fees Due</li>
+<li>Weekly Report</li>
+<li>Permit Timeline</li>
+</ul></li>
+<li>Audio #notcomplete
+<blockquote>
+<p>Review the audio files and create their CRUD functionality.  Use this in links, buttons and other controls to signify what action took place.</p>
+</blockquote></li>
+</ul></li>
+<li>Current Stuff #inprogress
+<blockquote>
+<p>Things being worked on</p>
+</blockquote>
+<ul>
+<li>File Naming Conventions #complete
+<blockquote>
+<p>The files for the reports are renamed when saved on the server. (i.e. 00001_00_01_001_00001_1626452135.jpg)  The sample of the components of the 36 characters that make up the file name.  This includes the underscores and file extension</p>
+</blockquote>
+<ul>
+<li>Order ID
+<blockquote>
+<p>A 5-digit padded number representing the order ID. (e.g., 00001)
+- Report Type
+&gt; A two-digit code representing the type of report (e.g., 00 - survey, 01 - completion).
+&gt;
+- Report Instance Number
+&gt; A two-digit padded number representing the instance number of the report.(e.g., 01)
+- File Index
+&gt; A three-digit padded number representing the index of the file within the report instance. (e.g., 001)
+- User ID
+&gt; A 5-digit padded number representing the user ID who uploaded the file. (e.g., 00001)
+- Timestamp:
+&gt; A 10-digit Unix timestamp representing the time of the upload. (e.g., 1626452135)
+- Underscores
+&gt;  6 underscores (_)
+- File Extension
+&gt; 3 characters for common extensions like jpg,  Only .jpg .png .gif &amp; .pdf files are to be used.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Code Backup #notcomplete
+<blockquote>
+<p>We have code set up to back up the site.  Currently the database is not being backed up.
+- Database Backup #complete
+&gt; Determine why the database is not being backed up and correct the issue.
+- Dropbox #notcomplete
+&gt; We want to place the updates on Dropbox via the API however it is not working.
+&gt;</p>
+</blockquote></li>
+<li>Order Notes #complete
+<blockquote>
+<p>We restarted the database text files and now the notes are missing.  We can not create a new one.</p>
+</blockquote></li>
+<li>Photo Report Summaries #inprogress
+<blockquote>
+<p>The summary of a report will be store in a global variables.</p>
+</blockquote>
+<ul>
+<li>Global Variable Setup #inprogress
+<blockquote>
+<p>Review the current code and determine how it is set up.  Make changes to place it in working order.
+- Summary Editing #notcomplete
+&gt; The summary will need to be updatable.
+&gt;</p>
+</blockquote></li>
+</ul></li>
+<li>Report Summaries #notcomplete
+<blockquote>
+<p>Prepare the AI summaries for the reports so they are more accurate &amp; pithy.</p>
+</blockquote></li>
+<li>Applications #notcomplete
+<blockquote>
+<p>Set up the applications grid like the orders.</p>
+</blockquote></li>
+<li>Reports #notcomplete
+<blockquote>
+<p>The purpose of collecting and storing photos and files on the server is to centralize data collection, ensuring a universal approach that facilitates the creation of comprehensive reports. These reports will provide detailed information about each order, enabling users to review progress and make informed decisions on how to proceed with order completion.</p>
+</blockquote>
+<ul>
+<li>Photo Reports #notcomplete
+<blockquote>
+<p>Types of photo reports
+- Survey Photos
+&gt; Initial assessment images of the site.
+- WIP (Work in Progress) Photos
+&gt; Images showing the ongoing progress of the work.
+- Completion Photos
+&gt; Final images taken upon the completion of the work.
+- Other Photos
+&gt; Any additional images that might be relevant to the order.
+- File Reports #notcomplete
+&gt; Type of file reports
+&gt;
+- Customer Documents
+&gt; Important documents provided by the customer.
+- Other Documents
+&gt; Additional documents that are pertinent to the order.
+- Summary #notcomplete
+&gt; To achieve this, we will store the photos and files in folders on the server. Each order will have a dedicated folder named after the order number, which is the order's primary key. Within this folder, there will be subfolders to store items for the various reports. This structure ensures that the reports are comprehensive and easily accessible for order management and decision-making processes.</p>
+</blockquote></li>
+</ul></li>
+<li>Electronic Bulletin Boards #notcomplete
+<blockquote>
+<p>The electronic bulletin boards are strategically placed monitors across different areas of our office to enhance communication and keep everyone updated on vital information. Each monitor will display tailored content relevant to its location, ensuring that all departments have real-time access to the information they need most.
+- Monitor Placements and Their Specific Displays
+&gt; We will have the monitors in various places throughout the facility for different departments.
+- Reception Area
+&gt; Front office entrance
+- Purpose
+&gt; To create a welcoming and informative environment for visitors and clients.
+- Content Displayed
+&gt; What will be displayed.
+- Company Information
+&gt; Details about the company, including our mission, values, and services.
+- Project Showcasing
+&gt; Photos and brief descriptions of recently completed projects to showcase our work and capabilities.
+- Customer Testimonials
+&gt; Highlighting successful projects.
+- General Information
+&gt; Business hours, contact details, and announcements
+- Office Area
+&gt; Central workspace for the office team.
+- Purpose
+&gt; To keep the office team updated on ongoing projects and sales activities, fostering awareness and collaboration.
+- Content Displayed
+&gt; Information relevant to the office staff.
+- Work in Progress
+&gt; Status of work in progress, including key milestones and deadlines for various projects.
+- Permit Status
+&gt; Real-time updates on permit statuses to ensure regulatory compliance.
+- Sales Data
+&gt; Sales data and updates, including targets, achievements, and upcoming opportunities.
+- Company Announcements
+&gt; Relevant updates for all office staff.
+- Design Department
+&gt; Design team area.
+- Purpose
+&gt; To streamline design workflow and prioritize requests.
+- Content Displayed
+&gt; Design-related information.
+- Design Requests
+&gt; A list of design requests, including deadlines, assigned designers, and current progress.
+- Project Status
+&gt; Status of ongoing design projects, including feedback loops and revision requests.
+- Inspirations &amp; Tips
+&gt; Tips, inspirations, and internal resources to foster creativity and efficiency.
+- Service Department
+&gt; Service team workspace.
+- Purpose
+&gt; To ensure timely and accurate service delivery by keeping the team informed about their current workload.
+- Content Displayed
+&gt; Service-related information.
+- Service Orders
+&gt; A list of service orders, their current status, and any upcoming deadlines.
+- Team Assignments
+&gt; Service team assignments and schedules to help manage time and resources effectively.
+- Urgent Alerts
+&gt; Alerts for urgent service requests or changes in client priorities.
+- Production Area
+&gt; Fabrication and production workspace.
+- Purpose
+&gt; To keep production staff updated on work orders and streamline fabrication processes
+- Content Displayed
+&gt; Production-related information.
+- Work Orders
+&gt; A list of work orders assigned for fabrication, including details such as materials required, deadlines, and production stage.
+- Order Changes
+&gt; Updates on any changes to work orders, such as revisions or cancellations.
+- Safety Guidelines
+&gt; Safety reminders and guidelines to ensure a safe working environment.
+- Benefits of Electronic Bulletin Boards
+&gt; Advantages of implementing electronic bulletin boards.
+- Key Performance Indicators (KPIs)
+&gt; Display the company’s KPIs to provide transparency on performance metrics and promote a results-driven culture.
+- Purpose of Displaying KPIs
+&gt; The value of placing these on the bulletin boards.
+&gt;
+- Company’s Performance
+&gt; To keep all employees informed about the company’s performance against strategic goals and objectives.
+- Accountability &amp; Improvement
+&gt; To foster a culture of accountability and continuous improvement by making performance metrics visible to everyone.
+- Examples of KPIs to Display
+&gt; Things to consider as Key Performance Indicators,
+- Sales Targets vs. Achievements
+&gt; Show sales goals and progress towards them, updated in real-time.
+- Production Efficiency
+&gt; Display metrics on production speed, quality control, and output rates.
+- Customer Satisfaction Scores
+&gt; Include feedback and satisfaction metrics from customers to highlight service quality.
+- Project Timelines and Deadlines
+&gt; Visualize upcoming project deadlines and status updates to ensure timely completion.
+- Financial Metrics
+&gt; Show key financial indicators like revenue growth, cost savings, and profit margins.
+- Increased Transparency
+&gt; By displaying real-time information, everyone stays informed about what other departments are working on, leading to better collaboration and understanding.
+- Enhanced Productivity
+&gt; Easy access to current tasks, deadlines, and updates helps employees prioritize their work more effectively and reduces the need for frequent meetings or check-ins.
+- Improved Communication
+&gt; The bulletin boards serve as a centralized information source, reducing information silos and ensuring all team members have access to the latest updates.
+- Boosted Morale and Engagement
+&gt; Regular updates, countdowns to holidays, and showcasing achievements help maintain a positive and engaged workplace environment.
+- Main Card and Minor Cards Concept
+&gt; An essential component of each Electronic Bulletin Board (BB) is the use of &quot;main cards&quot; and &quot;minor cards&quot; to display the most relevant information for each department. These cards are designed to keep employees informed with up-to-date and essential data tailored to their specific work environment.
+- Main Card
+&gt; The main card is the central focus on each BB, showing the most critical information specific to the department or location. Typically formatted as a list, it highlights key data points such as dates, counts, and Key Performance Indicators (KPIs).
+- Purpose
+&gt; To provide an at-a-glance view of the most important tasks, deadlines, or metrics relevant to each department. This includes showcasing KPIs that drive performance and transparency within the company.
+- Content Displayed
+&gt; Main card content
+- Key Performance Indicators (KPIs)
+&gt; Metrics such as sales targets, project completion rates, or production efficiency to track departmental performance.
+- Dates
+&gt; Upcoming deadlines or scheduled tasks to keep teams aware of time-sensitive responsibilities.
+- Counts
+&gt; Quantities such as the number of units produced or tasks completed to give a quick snapshot of ongoing activities.
+- Minor Cards
+&gt; Minor cards provide additional context and supplementary data to support the main card’s information. These cards rotate periodically to keep the content fresh and engaging, offering deeper insights into specific areas of interest.
+- Purpose
+&gt; To offer more detailed information and context that enhances the understanding of the main card’s data. This helps employees grasp a fuller picture of departmental performance and operational priorities.
+- Content Displayed
+&gt; Minor card details
+- Additional Metrics
+&gt; Information like turnaround times, daily totals, or detailed counts to provide a more comprehensive view.
+- Supplementary Data
+&gt; Details such as recent achievements, specific challenges, or highlights from ongoing projects.
+- Rotating Content
+&gt; Periodically updated information to maintain viewer engagement and ensure all relevant details are covered.
+- Standard Cards
+&gt; General content that will be visible on all monitors regardless of location.
+- Workday Hours Left
+&gt; A countdown to the end of the workday to help staff manage their time effectively.
+- Time to Next Holiday
+&gt; A countdown to the next company holiday to keep morale high and help with planning.
+- Weather Forecast
+&gt; A daily weather update to assist with planning, particularly for those working outside or managing deliveries.
+- Showcase of Completed Work
+&gt; A rotating gallery of recently completed projects across all departments to celebrate achievements and encourage cross-departmental awareness.
+- Alert Messages
+&gt; The use of alerts to improve engagement and communication through your electronic bulletin boards
+- Current Interval: Hourly Notice
+&gt; Display a notification on the screen reminding users of the time remaining in the current work interval.
+- Header
+&gt; &quot;Current Interval Update&quot;
+&gt;
+- Content
+&gt; &quot;There are XX minutes remaining in this work interval.&quot;
+- Visual
+&gt; A subtle transition effect, possibly a fade-in with a small confetti effect, or another smooth visual cue.
+- Sound
+&gt; A soft chime that isn’t too disruptive but grabs attention.
+- Breaking News: Milestones &amp; Key Actions
+&gt; This would be used when significant actions occur, such as an initial login, a sold job, an order completed.  Performance milestones (e.g., record-breaking monthly sales).
+&gt;
+- Header
+&gt;  &quot;Breaking News&quot;
+- Content
+&gt; The specific event, such as “New Sale! Order XYZ has been completed.&quot;
+&gt;
+- Visual
+&gt; More intense than the Current Interval notice. It could include a more noticeable splash on the screen with larger confetti, dynamic color changes, or some bold animation.
+- Sound
+&gt; A celebratory sound (a “breaking news” type audio alert) that plays once for impact.
+- Celebrations: Birthdays &amp; Holidays
+&gt; Celebrate key moments (birthdays, holidays) at half-hour intervals throughout the day.
+- Header
+&gt; &quot;Celebrate!&quot;
+- Content
+&gt; “Happy Birthday to [Employee Name]!” or “Happy [Holiday Name]!”
+- Visuals
+&gt; Colorful confetti and maybe balloons or other celebratory animations.
+- Sounds
+&gt;  A festive sound, possibly a short jingle, to accompany the visual.
+- Implementation Plan
+&gt; Steps to set up the electronic bulletin boards.
+- Assess Monitor Placement
+&gt; Identify the best locations for each department to place the monitors, ensuring high visibility without disrupting workflow.
+- Content Management System (CMS)
+&gt; Develop or integrate a CMS that allows easy updates and management of the content displayed on each monitor.
+- Set Up and Test
+&gt; Install the monitors and test the content display for functionality and visibility.
+- Continuous Improvement
+&gt; Gather feedback from each department to refine the content and presentation continuously.</p>
+</blockquote></li>
+<li>Contact Entries #notcomplete
+<blockquote>
+<p>Using a text field to enter raw contact data and have the database updated with proper contacts.</p>
+</blockquote>
+<ul>
+<li>Contact Entry Types #notcomplete
+<blockquote>
+<p>These are the different types of entrances that the code is set up to make.</p>
+</blockquote>
+<ul>
+<li>Unacceptable Data
+<blockquote>
+<p>This indicates that there was a conflict in the data provided that could not be automatically resolved. It is used when there is a mismatch between user-provided data and API-verified data, or other critical issues that prevent processing.  Any status (entity, contact, location) marked as <code>0</code> is considered unacceptable due to incomplete or flawed data.</p>
+<ul>
+<li>In the case of a duplicate, while the data may be verified, it is flagged as unacceptable (<code>contactStatus = 0</code>) due to being non-actionable.</li>
+</ul>
+</blockquote>
+<ul>
+<li>Missing Data
+<blockquote>
+<p>Critical fields necessary for creating or updating entries are incomplete. Criteria:
+- Contact Information
+&gt; Missing firstName, lastName, or both email and primaryPhone (at least one is required).
+- Entity Information
+&gt; Missing entityName.
+- Location Information
+&gt;  Missing locationAddress, locationCity, locationState, or locationZipCode.  Set proposedContactStatus to 0 and flag as &quot;Missing Data&quot;. Add proposedContactNotes to specify which fields are missing (e.g., &quot;Missing critical fields: firstName, locationAddress&quot;).
+- Data Conflict
+&gt; Highlights mismatches between user-provided data and API-verified data.Focus: Address mismatches (e.g., <code>locationAddress</code>, <code>locationCity</code>) or significant differences in entity/contact details.  Set proposedContactStatus to 0 and flag as &quot;Data Conflict&quot;.  Add proposedContactNotes to describe the specific discrepancy (e.g., &quot;Mismatch between user-provided city and API-verified city&quot;).
+&gt;
+- Duplicate Contact
+&gt; Flags entries as duplicates when a matching contact already exists for the same entity and location.Criteria: Matching <code>firstName</code>, <code>lastName</code>, <code>email</code>, and <code>jobTitle</code> within the same <code>entityID</code> and <code>locationID</code>.  Set proposedContactStatus to 0 and flag as &quot;Duplicate Contact&quot;.  Add proposedContactNotes to provide details of the existing contact (e.g., &quot;The contact already exists under the same entity and location&quot;).
+&gt;
+- Acceptable Data
+&gt; If all the data is provided and correct, we create a scenario that describes how the database will be updated.  All statuses (entity, contact, location) must be <code>1</code> to indicate complete, verified, and acceptable data.  Acceptable data describes a scenario for database updates, such as creating or associating new entities, locations, or contacts.
+&gt;
+- New Entity, New Location, New Contact
+&gt; Automatically creates a new entity and associated location if they don't exist, along with a new contact.
+- Existing Entity, New Location, New Contact
+&gt; Creates a new location for an existing entity and adds a new contact.
+- Existing Entity, Existing Location, New Contact
+&gt; Adds a contact to an already existing location for an existing entity.
+- Database Tables Details #notcomplete
+&gt; The contact details are drawn from the tblEntities, tblLocations, and tblContacts tables. Each table requires certain fields to be filled to create or update records when entering a new contact.
+&gt;
+- Entity Information
+&gt; Details required to create an Entity in the database.
+&gt;
+- Entity ID
+&gt; The primary key for the entity. This is auto-generated.
+- Entity Name
+&gt; The name of the entity (e.g., company or organization).
+- Entity Location ID
+&gt; The ID of the primary location of the entity (links to the tblLocations table).
+- Entity Note
+&gt; Optional notes about the entity.
+- Entity Type
+&gt; Defines whether the entity is a 0 = Company, 1 = Customer, 2 = Vendor, or 3 = Jurisdiction.
+- Entity Is Not Valid
+&gt; This will be set to 0 for valid entities.
+- Location Information
+&gt; Requirements for the location table.
+- Location ID
+&gt; The primary key for the location. This is auto-generated.
+- Location Entity ID
+&gt; The ID of the entity associated with this location (links to the tblEntities table).
+- Location Name
+&gt; The unique name for the location (default: the entity name).
+- Location Place ID
+&gt;  The Google Place_ID for the location.
+- Location Latitude
+&gt; Latitude coordinate of the location.
+- Location Longitude
+&gt;  Longitude coordinate of the location.
+- Location Address
+&gt; The address of the location (street, number).
+- Location Address Suite
+&gt; The suite number or apartment number (optional).
+- Location City
+&gt; The city of the location.
+- Location State
+&gt; The state of the location.
+- Location Zip Code
+&gt; The postal code of the location.
+- Location Parcel Number
+&gt;  Parcel number of the location (optional).
+- Location Is Billing
+&gt; Set to 0 for false, 1 for true if the location is the billing address.
+- Location Note
+&gt; Any additional notes about the location (optional).
+- Location Is Not Valid
+&gt; Always set to 0 for valid locations.
+- Contact Information
+&gt; Needed for the contact.
+&gt;
+- Contact ID
+&gt; The primary key for the contact. This is auto-generated.
+- Contact Entity ID
+&gt; The ID of the entity associated with this contact (links to the tblEntities table).
+- Contact Salutation
+&gt; Salutation of the contact (0 = Ms., 1 = Mr.).
+- Contact First Name
+&gt; The first name of the contact.
+- Contact Last Name
+&gt; The last name of the contact.
+- Contact Title
+&gt; The job title of the contact (e.g., Project Manager, Supervisor).
+- Contact Is Billing
+&gt; Set to 0 for false, 1 for true if the contact is a billing contact.
+- Contact Location ID
+&gt; The ID of the location associated with this contact (links to the tblLocations table).
+- Contact Primary Phone
+&gt; The primary phone number of the contact.
+- Contact Primary Phone Extension
+&gt; The extension of the primary phone (optional).
+- ContactSecondaryPhone
+&gt; The secondary phone number (optional).
+- Contact Email
+&gt; The email address of the contact.
+- Contact Note
+&gt; Any additional notes about the contact (optional).
+- Contact Is Not Valid
+&gt; Set to 0 for valid contacts.
+- Specific Entry Requirements
+&gt; Information needed to properly create a contact
+- Entity Information
+&gt; Entity name, type, and optional notes.
+- Location Information
+&gt; Location name, address, latitude, longitude, and billing status.
+- Contact Information
+&gt; Contact name, salutation, job title, phone numbers, and email.
+&gt; Billing contact status, if applicable.
+- Data Categories
+&gt; The different type of data provided.
+&gt;
+- Parsed Data (User-Provided Data)
+&gt; Source: Raw input from the user, parsed by the AI or input processing logic.
+&gt; Purpose: Serves as the initial dataset to verify and cross-check against other sources.
+&gt; Challenges: May contain inconsistencies, missing fields, or formatting errors.
+- API Data (Verified Data)
+&gt; Source: External API responses (e.g., Google Address Validation API).
+&gt; Purpose: Used to validate and enhance the parsed data, such as verifying addresses or extracting geographic components.
+&gt; Challenges: API responses may differ from the parsed data, lack context, or omit critical components (e.g., suite information).
+- Database Data (Existing Data)
+&gt; Source: Database queries that return information about existing entities, locations, or contacts.
+&gt; Purpose: Used to identify duplicates, verify the existence of entities or locations, and establish relationships between data components.
+&gt; Challenges: Database data may be outdated, incomplete, or formatted differently from the parsed and API data.
+- Helper Notes #notcomplete
+&gt; Helper notes are phrases or keywords included in the raw text to guide the AI in assigning specific attributes. Examples include phrases like &quot;This contact is a jurisdiction,&quot; &quot;billing contact,&quot; or &quot;He knows Bob in Accounting.&quot; These notes help ensure that critical details are captured accurately in the final parsed data.
+- Review Process #notcomplete
+&gt; The server-side code generates a JSON object containing parsed contact details, which will be prefilled in a modal form for the user to review. The form will allow users to view, edit, and confirm or reject each proposed contact entry.
+&gt;
+- Modal Page Overview
+&gt; The review form will look similar to the existing contact entry form (as shown in the attachment). Each field will be editable so the user can make changes before accepting or rejecting the proposed contact.
+- Entity
+&gt;  Entity name, selected from a dropdown list or auto-filled if detected.
+- Location Name
+&gt; Editable field for the location's name.
+- Location Address
+&gt; Editable address field.
+- Contact Name
+&gt; Editable field for the contact’s full name, divided into First and Last Name.
+- Title
+&gt; Editable field for the contact’s job title.
+- Phone Number
+&gt; Editable field for the primary and secondary contact numbers.
+- Email
+&gt; Editable field for the contact's email.
+- Billing Contact
+&gt; Checkbox indicating if the contact is a billing contact.
+- Notes
+&gt; Editable notes about the contact.
+- Pagination and Navigation
+&gt; Pagination and Navigation
+- Accept/Reject Options
+&gt; The user will review and choose to accept or reject the proposed contact.
+&gt;
+- Accept
+&gt; If the user accepts a proposed contact, the details will be confirmed and prepared for insertion into the database.
+- Reject
+&gt; If the user rejects the proposed contact, it will be removed from the current JSON object, and the next proposed contact will be shown.
+- Final Review and Updates
+&gt; After reviewing all the proposed contacts, the JSON object will be updated with any accepted contacts, and any rejected contacts will be discarded.  The user can accept multiple contacts in a session, but each contact must be reviewed before it is added to the system.
+&gt;
+- Adding New Contacts
+&gt; If new bulk contacts are added while there are still pending contacts to be reviewed, the new contacts will be appended to the existing JSON object. This allows for continuous processing without losing any pending entries.</p>
+</blockquote></li>
+</ul></li>
+</ul></li>
+</ul></li>
+<li>Single Session Enforcement #notcomplete
+<blockquote>
+<p>The site has a login / logout architecture that maintains a clean and consistent user activity log.</p>
+</blockquote></li>
+<li>Code Guidlines
+<blockquote>
+<p>Here they are
+- 1. Define the Instructions as Persistent Guidelines
+- Log Messages
+- Header Comment:
+- Every log message should be preceded by a comment beginning with // Log Message, followed by a parenthetical description in Title Case.
+- The parenthetical description should match the log message content (second argument in logMessage()).
+- Comment Format:
+- Example:
+- php
+- Copy code
+- // Log Message (Processing Contact)
+- logMessage('S', &quot;Processing Contact #&quot; . $index, null, false, null);
+- Title Case Rules:
+- Capitalize main words in the description, avoiding excessive capitalization.
+- Variable Assignment Comments
+- Always Use 'Assign':
+- Start each comment with // Assign [Variable Name] to describe what is being assigned.
+- Example:
+- php
+- Copy code
+- // Assign Parsed Contact
+- $parsedContact = processContactData($rawData);
+- Follow with a Brief Description:
+- Add a concise narrative explanation after the code, separated by a comment:
+- php
+- Copy code
+- // Assign Parsed Contact
+- $parsedContact = processContactData($rawData); // Process and parse raw contact data
+- 2. Embed These Guidelines in Context for Consistency
+- You can request that the AI:
+- Use the Guidelines by Default:
+- Incorporate these as default practices whenever coding examples are generated.
+- Include the Preferences in the User Profile:
+- Add the instructions as coding preferences in the AI's persistent user profile to ensure adherence across sessions.
+- 3. Example Context Update for AI
+- Here’s how you can relay this information to the AI for future use:
+- Coding Preferences:
+- Log Messages: Use // Log Message as the header for all log statements. Include a parenthetical description in Title Case, matching the log message content.
+- Variable Assignments: Use // Assign [Variable Name] as the comment for variable assignments, followed by a brief narrative description after the code.
+- 4. Test the Implementation
+- To ensure these guidelines are consistently followed:
+- Provide a small test task with specific requirements.
+- Evaluate whether the generated code adheres to the guidelines.
+- Adjust the instructions as needed for clarity or specificity.</p>
+</blockquote></li>
+<li>Tasks Overview #notcomplete
+<blockquote>
+<p>Organize and manage tasks efficiently by storing them in server folders with corresponding text files for details, notes, schedule dates, and reminders.
+- Standard Tasks #notcomplete
+&gt; Routine tasks aligned with the mission, scheduled for every workday, and categorized by their nature. Folders will be created with task ID numbers, and notes will be stored in text files within each folder. Users are responsible for rescheduling these tasks daily; a cron job will automatically reschedule them to the next workday if missed.
+- Start of Day Tasks (SOD)
+&gt; Routine checks and preparations at the start of the workday.
+&gt;
+- Schedule Date
+&gt; Scheduled for the start of every workday.
+- Reminder
+&gt; Notification set for the beginning of office hours each day.
+- Notes
+&gt; All notes and progress updates stored in 001_details.txt within the folder.
+- Rescheduling
+&gt; User responsibility; auto-rescheduled by cron job if missed.
+- End of Day Tasks (EOD)
+&gt; Summary and wrap-up activities at the end of the day.
+- Schedule Date
+&gt; Scheduled for the end of every workday.
+- Reminder
+&gt; Notification set for 30 minutes before the end of office hours each day.
+- Notes
+&gt; All notes and progress updates stored in 002_details.txt within the folder.
+- Rescheduling
+&gt; User responsibility; auto-rescheduled by cron job if missed.
+- Special Projects #notcomplete
+&gt; User-initiated projects focusing on growth, innovation, or long-term goals. Each project has a dedicated folder on the server for all related files and notes. Users are responsible for setting and rescheduling project dates; a cron job will reschedule them to the next day if missed.
+- Schedule Date
+&gt; User-defined date and time.
+- Reminder
+&gt; Notification set based on the user-defined schedule.
+- Notes
+&gt; All notes, progress updates, and next steps stored in 003_details.txt. Additional files related to the project will be stored in this folder.
+- Rescheduling
+&gt; User responsibility; auto-rescheduled by cron job if missed.
+- Order &amp; Application Tasks #notcomplete
+&gt; Tasks related to specific orders or sign permit applications, with corresponding folders and text files for notes, details, and schedules. Users are responsible for rescheduling; a cron job will reschedule them to the next day if missed.
+- OrderTask
+&gt; A task which is created from the order.
+- Schedule Date
+&gt; User-defined date and time.
+- Reminder
+&gt; Notification set based on the user-defined schedule.
+- Notes
+&gt; All notes, progress updates, and next steps stored in 004_details.txt. Order-related files are saved in the same folder.
+- Rescheduling
+&gt; User responsibility; auto-rescheduled by cron job if missed.
+- Application Task
+&gt; Task related to a specific sign permit application (Application ID: 54321).
+- Reminder
+&gt; Notification set based on the user-defined schedule.
+- Notes
+&gt; All notes, progress updates, and next steps stored in 005_details.txt. Application-related files are saved in the same folder.
+- Rescheduling
+&gt; User responsibility; auto-rescheduled by cron job if missed.
+- Task Management Implementation #notcomplete
+&gt; Steps to implement the task management system with global variables, server folders, scheduling, and automatic rescheduling:
+- Step 1
+&gt; Create a global variable structure to manage task details, schedule dates, and reminders.
+- Subtask
+&gt; Ensure that the variable tracks task ID, description, notes, schedule date, and reminders.
+- Step 2
+&gt; Set up server folders for each task using their unique ID numbers.
+- Subtask
+&gt; Automatically generate folders and details.txt files for notes when a new task is created.
+- Step 3
+&gt; Implement scheduling and reminders for tasks.
+- Subtask
+&gt; Set up automatic scheduling and reminder notifications for Standard Tasks (SOD/EOD) and user-defined schedules for Special Projects and Order/Application Tasks.
+- Step 4
+&gt; Integrate file storage within task folders.
+- Subtask
+&gt; Allow users to upload and store files within the appropriate task folder for easy access and organization.
+- Step 5
+&gt; Set up a cron job for automatic rescheduling.
+- Subtask
+&gt; The cron job will check daily for any missed tasks and automatically reschedule them to the next workday</p>
+</blockquote></li>
+</ul></li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>real_time_sse</title>
+  <link rel="stylesheet" href="../docs/assets/github-markdown.css">
+  <link rel="stylesheet" href="../docs/assets/style.css">
+  <link rel="stylesheet" href="../docs/assets/pdf.css">
+</head>
+<body class="markdown-body">
+<h1>🔄 Real-Time Server-Sent Events (SSE) Updates</h1>
+<h2>🏷️ Purpose</h2>
+<p>Enable real-time data streaming to all users without needing page reloads — so actions taken by one user immediately reflect to all.</p>
+<h2>🛠️ Technical Details</h2>
+<ul>
+<li>SSE Endpoint: <code>server-sent-events.php</code></li>
+<li>Event Channels: CRUD Logs, File Uploads, Login Events</li>
+<li>Broadcast to all connected sessions</li>
+<li>Stream Delta Updates Only (not full page reloads)</li>
+</ul>
+<h2>🎯 Key Features</h2>
+<ul>
+<li>See new orders appear instantly</li>
+<li>Instant alerts for new applications or permit changes</li>
+<li>Real-time attendance tracking</li>
+</ul>
+<h2>🏗️ Implementation Notes</h2>
+<ul>
+<li>Server connection keep-alive every 30 seconds</li>
+<li>Lightweight JSON payloads to minimize server strain</li>
+<li>Built-in reconnect attempts if stream fails</li>
+</ul>
+
+</body>
+</html>
