@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>core_database</title>
+  <link rel="stylesheet" href="../docs/assets/github-markdown.css">
+  <link rel="stylesheet" href="../docs/assets/style.css">
+  <link rel="stylesheet" href="../docs/assets/pdf.css">
+</head>
+<body class="markdown-body">
+<h1>📂 Core Database (Entities, Locations, Contacts, Orders, Applications, Notes)</h1>
+<h2>🏷️ Purpose</h2>
+<p>The Core Database is the foundation of Skyesoft. It holds all operational records — entities, locations, contacts, orders, applications, and internal notes — ensuring everything the business tracks is organized and accessible.</p>
+<h2>🛠️ Technical Details</h2>
+<ul>
+<li>Database: MySQL</li>
+<li>Relationships: Normalized (1-to-many) with foreign key integrity</li>
+<li>Tables: tblEntities, tblLocations, tblContacts, tblOrders, tblApplications, tblNotes</li>
+<li>Metadata: CRUD Action Logs (user, GPS, timestamp)</li>
+<li>SSE Streaming: Database changes reflected in real-time frontend via server-sent events</li>
+<li>Global Variables: gblVar mirrored to keep frontend lightning fast</li>
+</ul>
+<h2>🎯 Key Features</h2>
+<ul>
+<li>Fast lookups and search</li>
+<li>Redundancy minimized through normalized structure</li>
+<li>Flexible enough to grow with company needs</li>
+</ul>
+<h2>🏗️ Implementation Notes</h2>
+<ul>
+<li>Index critical columns for speed</li>
+<li>Auto-log all actions with CRUD ID and GPS</li>
+<li>Treat all deletes as &quot;soft deletes&quot; (set IsNotValid = 1)</li>
+</ul>
+
+</body>
+</html>

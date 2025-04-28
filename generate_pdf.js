@@ -1,31 +1,43 @@
-const puppeteer = require('puppeteer');
+
+const fs = require('fs');
 const path = require('path');
+const puppeteer = require('puppeteer');
 
 (async () => {
+  const artifactId = process.argv[2];
+
+  if (!artifactId) {
+    console.error('❌ Usage: node generate_pdf.js <artifact_id>');
+    process.exit(1);
+  }
+
+  const inputPath = path.resolve(__dirname, 'output', `${artifactId}.html`);
+  const outputPath = path.resolve(__dirname, 'output', `${artifactId}.pdf`);
+
+  if (!fs.existsSync(inputPath)) {
+    console.error(`❌ HTML file not found at ${inputPath}`);
+    process.exit(1);
+  }
+
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
-  // Construct the local path to your rendered HTML
-  const filePath = path.resolve(__dirname, 'lead_or_sell_rendered.html');
-  const fileUrl = `file://${filePath}`;
+  await page.goto('file://' + inputPath, {
+    waitUntil: 'networkidle0'
+  });
 
-  console.log(`Opening ${fileUrl}...`);
-  await page.goto(fileUrl, { waitUntil: 'networkidle0' });
-
-  // Output PDF
-  const outputPath = path.resolve(__dirname, 'lead_or_sell.pdf');
   await page.pdf({
     path: outputPath,
     format: 'A4',
     printBackground: true,
     margin: {
       top: '1in',
+      right: '0.75in',
       bottom: '1in',
-      left: '0.75in',
-      right: '0.75in'
+      left: '0.75in'
     }
   });
 
-  console.log(`PDF saved to ${outputPath}`);
   await browser.close();
+  console.log(`✅ PDF generated at ${outputPath}`);
 })();
