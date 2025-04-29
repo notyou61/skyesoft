@@ -1,8 +1,21 @@
 const fs = require('fs');
 const path = require('path');
-const { Remarkable } = require('remarkable');
+const markdownIt = require('markdown-it');
+const mdContainer = require('markdown-it-container');
 
-const md = new Remarkable();
+// Initialize markdown-it with container plugin
+const md = markdownIt({
+  html: true,
+  breaks: true,
+  linkify: true
+});
+
+md.use(mdContainer, 'no-break', {
+  render(tokens, idx) {
+    const token = tokens[idx];
+    return token.nesting === 1 ? '<div class="no-break">\n' : '</div>\n';
+  }
+});
 
 // Base paths
 const baseDocsDir = path.resolve(__dirname, 'docs');
@@ -13,6 +26,7 @@ if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir);
 }
 
+// Walk through all markdown files in docs/
 function walkDirectory(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -27,6 +41,7 @@ function walkDirectory(dir) {
   });
 }
 
+// Convert each .md file to .html
 function convertMarkdownToHTML(mdPath) {
   const markdownText = fs.readFileSync(mdPath, 'utf-8');
   const htmlBody = md.render(markdownText);
