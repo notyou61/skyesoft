@@ -1,7 +1,7 @@
-# 📚 Skyesoft Documentation Overview
+# 🚀 Skyesoft Project Repository
 
-Welcome to the Skyesoft Documentation Repository.  
-This structure supports development, leadership review, proposals, and operational rollout.
+Welcome to the Skyesoft development repository!  
+This repository contains the core documentation, proposals, operational structures, and system planning for Skyesoft — a smart, scalable business operations platform.
 
 ---
 
@@ -9,36 +9,37 @@ This structure supports development, leadership review, proposals, and operation
 
 | Folder | Purpose |
 |:-------|:--------|
-| `/agreements/` | Developer and Employee Usage Agreements (Skyesoft compliance policies). |
-| `/archive/` | Legacy and superseded documents kept for historical reference. |
-| `/assets/` | CSS, HTML templates used for rendering PDF or Markdown outputs. |
-| `/leadership/` | Core leadership documents: Executive Summary and Organizational Analysis. |
-| `/memos/` | Reserved for internal memos and operational notes (currently empty). |
-| `/pdf_output/` | Storage for generated PDFs (reports, proposals, etc.). |
-| `/presentations/` | Placeholder for slide decks and formal presentation materials. |
-| `/proposals/` | Business and system proposals (Skyesoft, Branch Office, Lead or Sell). |
-| `/skyesoftBlueprint/` | Skyesoft system master strategy, architectural plans, and core components. |
-| `/use_cases/` | Placeholder for future use cases (scheduling, service task management, etc.). |
-| `/viewer/` | HTML and JavaScript tools for previewing proposals and documents live. |
+| `/docs/` | Core leadership documents, proposals, agreements, Skyesoft system blueprints. |
+| `/viewer/` | HTML/JS templates for proposal rendering and document preview. |
+| `/pdf_output/` | Output folder for generated PDF documents. |
+| `/assets/` | CSS and template files for formatting outputs. |
+| `/presentations/` | Placeholder for future slide decks and meeting materials. |
+| `/use_cases/` | Placeholder for scheduling, service task management, and operational workflows. |
+| `/archive/` | Legacy drafts and older versions stored for reference. |
 
 ---
 
-## 🚀 Core Meeting Package
+## 📚 `/docs/` Highlights
 
-Located primarily in:
-- `/leadership/`
-- `/agreements/`
-- `/skyesoftBlueprint/strategy/`
+The `/docs/` folder contains the following:
 
-These documents form the official handout set for leadership presentations.
+- 📄 **Executive Summaries and Organizational Analysis**  
+- 📂 **Leadership-Ready Meeting Packages**  
+- 📜 **Employee and Developer Agreements**  
+- 🏗️ **Skyesoft System Blueprints and Strategy Documents**
+
+✅ Organized for clarity, leadership presentation, and operational rollout planning.
 
 ---
 
-## 📋 Notes
+## 🛡️ Branch Strategy
 
-- Legacy and experimental drafts have been moved to `/archive/`.
-- All new official documents (meeting documents, proposals, agreements) are placed under clearly labeled folders.
-- This structure supports rapid navigation, clean presentation, and scalable future growth.
+| Branch | Purpose |
+|:-------|:--------|
+| `main` | Production-ready, clean and organized repository |
+| `presentation-prep` | Backup branch for original weekend reorganization work |
+
+✅ **`main` branch** now reflects the finalized and polished structure.
 
 ---
 
