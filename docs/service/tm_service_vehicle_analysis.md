@@ -35,6 +35,8 @@ The goal is to determine the productivity, cost structure, and sales targets nec
 
 ## 🛠️ 4. Productivity and Revenue Calculations
 
+::: no-break
+
 | Timeframe | Result |
 |:---|:---|
 | Billable Hours Per Day | 6.5 hours |
@@ -45,6 +47,8 @@ The goal is to determine the productivity, cost structure, and sales targets nec
 | Labor Revenue Per Year | $170,625 |
 
 *Material revenue will vary based on parts used per ticket, using the 2.5× markup model.*
+
+:::
 
 ---
 
@@ -96,20 +100,14 @@ Labor Revenue (Hours × $105)
 
 ---
 
-# ✅ Current Status
+## ✅ Summary Status
 
-| Section | Status |
+| Area | Current Position |
 |:---|:---|
 | Confirmed Billing Rate | ✅ $105.00/hour |
 | Billable Hours Productivity | ✅ 6.5 hours/day baseline |
 | Labor Revenue Projections | ✅ Calculated (daily, weekly, monthly, yearly) |
 | Material Markup Plan | ✅ Standardized at 2.5× average vendor cost |
-| Cost Estimating | ⏸️ (On hold) |
+| Cost Estimating | ⏸️ On hold |
 
----
-
-# 🏁 End of Draft
-
----
-
-*Prepared for internal development and financial modeling of service operations under Skyesoft framework.*
+*Prepared for internal development and financial modeling of service operations under the Skyesoft framework.*
