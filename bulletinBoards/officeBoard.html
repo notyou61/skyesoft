@@ -18,7 +18,7 @@
       align-items: center;
     }
 
-    header, footer, #mainBoard {
+    header, footer {
       width: 92vw;
       max-width: 1200px;
       background: #ffffff;
@@ -53,6 +53,8 @@
     }
 
     #mainBoard {
+      width: 92vw;
+      max-width: 1200px;
       flex-grow: 1;
       margin: 6px 0;
       padding: 0;
@@ -62,6 +64,10 @@
       position: relative;
       min-height: 400px;
       max-height: 44vh;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border: 1px solid #ccc;
       overflow: hidden;
     }
 
@@ -104,22 +110,6 @@
       margin: 8px 0;
     }
 
-    .kpi {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-      gap: 30px;
-      font-size: 1.6vw;
-      margin-top: 20px;
-    }
-
-    .kpi-column {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-    }
-
     footer {
       text-align: center;
       font-size: 0.9em;
@@ -130,7 +120,7 @@
 
     @media (max-width: 768px) {
       .card h2 { font-size: 5vw; }
-      .card ul, .kpi { font-size: 4vw; }
+      .card ul { font-size: 4vw; }
       header div { text-align: center; }
     }
   </style>
@@ -147,35 +137,6 @@
 
   <div id="mainBoard">
     <div class="card active">
-      <h2>📊 KPIs</h2>
-      <div class="kpi">
-        <div class="kpi-column">
-          <div>Contacts Created: <strong>36</strong></div>
-          <div>Orders Submitted: <strong>22</strong></div>
-        </div>
-        <div class="kpi-column">
-          <div>Approvals: <strong>3</strong></div>
-          <div>Estimates Pending: <strong>7</strong></div>
-        </div>
-        <div class="kpi-column">
-          <div>Site Surveys: <strong>12</strong></div>
-          <div>Photos Uploaded: <strong>58</strong></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>📣 Announcements</h2>
-      <ul>
-        <li>🎯 Safety Meeting: Friday at 2PM</li>
-        <li>📁 Permit Deadline: Submit T30122</li>
-        <li>🔧 LED Retrofit at Mellow Mushroom Completed</li>
-        <li>🛠 New Pole Sign Install – Blue Sushi</li>
-        <li>🗓 Team Lunch: Friday May 3rd</li>
-      </ul>
-    </div>
-
-    <div class="card">
       <h2>📅 Next Holiday</h2>
       <p>Memorial Day – Monday, May 26, 2025</p>
       <ul>
@@ -184,12 +145,6 @@
         <li>📢 Return Tuesday, May 27, 8:00 AM</li>
       </ul>
     </div>
-
-    <div class="card">
-      <h2>💡 Quote of the Day</h2>
-      <p>“Be so good they can’t ignore you.”</p>
-      <p><em>– Steve Martin</em></p>
-    </div>
   </div>
 
   <footer>
@@ -197,16 +152,6 @@
   </footer>
 
   <script>
-    const cards = document.querySelectorAll('.card');
-    let currentIndex = 0;
-    const intervalTime = 15000;
-
-    setInterval(() => {
-      cards[currentIndex].classList.remove('active');
-      currentIndex = (currentIndex + 1) % cards.length;
-      cards[currentIndex].classList.add('active');
-    }, intervalTime);
-
     function updateTime() {
       const now = new Date();
       const hours = now.getHours().toString().padStart(2, '0');
