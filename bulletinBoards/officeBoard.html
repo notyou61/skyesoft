@@ -22,8 +22,8 @@
       margin: 6px auto;
       padding: 12px 20px;
       border-radius: 12px;
-      max-width: 1200px;
-      width: 92%;
+      max-width: 90vw;
+      width: 100%;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       border: 1px solid #ccc;
     }
@@ -36,7 +36,7 @@
     }
 
     header img {
-      height: 108px; /* 20% larger than previous 90px */
+      height: 108px;
       margin-right: 20px;
     }
 
@@ -59,7 +59,8 @@
       text-align: center;
       position: relative;
       overflow: hidden;
-      padding: 10px;
+      padding: 16px;
+      min-height: 450px;
     }
 
     .card {
@@ -68,12 +69,15 @@
       transition: opacity 1s ease-in-out;
       background: #f8f8f8;
       color: #000;
-      padding: 20px 30px;
+      padding: 40px 60px;
       border-radius: 12px;
-      max-width: 85%;
       width: 100%;
+      max-width: 1000px;
       box-sizing: border-box;
       border: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .card.active {
@@ -83,7 +87,7 @@
 
     .card h2 {
       margin-top: 0;
-      font-size: 2.6vw;
+      font-size: 2.8vw;
       font-weight: bold;
       letter-spacing: 0.5px;
     }
@@ -95,15 +99,16 @@
     }
 
     .card ul li {
-      margin: 4px 0;
+      margin: 8px 0;
     }
 
     .kpi {
       display: flex;
       justify-content: space-around;
       flex-wrap: wrap;
-      gap: 20px;
+      gap: 30px;
       font-size: 1.8vw;
+      margin-top: 20px;
     }
 
     footer {
@@ -134,6 +139,10 @@
     <div class="card active">
       <h2>📅 Next Holiday</h2>
       <p>Memorial Day – May 26, 2025</p>
+      <div class="kpi">
+        <div>🎉 Special: End of Month Lunch – April 30</div>
+        <div>🎓 Training Signup Closes Friday</div>
+      </div>
     </div>
 
     <div class="card">
@@ -142,6 +151,7 @@
         <li>🎯 Safety Meeting: Friday at 2PM</li>
         <li>📁 Permit Deadline: Submit T30122</li>
         <li>🔧 Service Win: LED retrofit at Mellow Mushroom</li>
+        <li>🛠 Ongoing: New pole sign install at Blue Sushi</li>
       </ul>
     </div>
 
@@ -151,12 +161,14 @@
         <div>Contacts Created: <strong>36</strong></div>
         <div>Orders Submitted: <strong>22</strong></div>
         <div>Approvals: <strong>3</strong></div>
+        <div>Pending Estimates: <strong>7</strong></div>
       </div>
     </div>
 
     <div class="card">
       <h2>💡 Quote of the Day</h2>
       <p>“Be so good they can’t ignore you.”</p>
+      <p><em>– Steve Martin</em></p>
     </div>
   </div>
 
