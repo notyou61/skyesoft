@@ -52,15 +52,15 @@
     }
 
     #mainBoard {
-      flex-grow: 1;
+      flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
       text-align: center;
       position: relative;
       overflow: hidden;
-      padding: 16px;
-      min-height: 450px;
+      padding: 0;
+      min-height: 500px;
     }
 
     .card {
@@ -69,10 +69,11 @@
       transition: opacity 1s ease-in-out;
       background: #f8f8f8;
       color: #000;
-      padding: 40px 60px;
+      padding: 30px 40px;
       border-radius: 12px;
-      width: 100%;
-      max-width: 1000px;
+      width: 95%;
+      height: 100%;
+      max-width: 1100px;
       box-sizing: border-box;
       border: 1px solid #ddd;
       display: flex;
@@ -87,7 +88,7 @@
 
     .card h2 {
       margin-top: 0;
-      font-size: 2.8vw;
+      font-size: 2.6vw;
       font-weight: bold;
       letter-spacing: 0.5px;
     }
@@ -114,8 +115,9 @@
     footer {
       text-align: center;
       font-size: 0.9em;
-      padding: 6px;
+      padding: 8px 10px;
       color: #000;
+      margin-top: auto;
     }
 
     @media (max-width: 768px) {
@@ -140,7 +142,7 @@
       <h2>📅 Next Holiday</h2>
       <p>Memorial Day – May 26, 2025</p>
       <div class="kpi">
-        <div>🎉 Special: End of Month Lunch – April 30</div>
+        <div>🎉 End of Month Lunch – April 30</div>
         <div>🎓 Training Signup Closes Friday</div>
       </div>
     </div>
@@ -151,7 +153,7 @@
         <li>🎯 Safety Meeting: Friday at 2PM</li>
         <li>📁 Permit Deadline: Submit T30122</li>
         <li>🔧 Service Win: LED retrofit at Mellow Mushroom</li>
-        <li>🛠 Ongoing: New pole sign install at Blue Sushi</li>
+        <li>🛠 Pole Sign Install – Blue Sushi</li>
       </ul>
     </div>
 
@@ -161,7 +163,7 @@
         <div>Contacts Created: <strong>36</strong></div>
         <div>Orders Submitted: <strong>22</strong></div>
         <div>Approvals: <strong>3</strong></div>
-        <div>Pending Estimates: <strong>7</strong></div>
+        <div>Estimates Pending: <strong>7</strong></div>
       </div>
     </div>
 
