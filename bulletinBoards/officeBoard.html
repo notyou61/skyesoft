@@ -179,7 +179,7 @@
 
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.04.30.1205</div>
+    <div class="version">v2025.04.30.1210</div>
   </footer>
 
   <script>
@@ -201,20 +201,39 @@
       document.getElementById('currentTime').textContent = `${standardHours}:${minutes}:${seconds} ${ampm}`;
 
       const start = new Date();
-      start.setHours(8, 0, 0, 0);
+      start.setHours(7, 30, 0, 0);
       const end = new Date();
-      end.setHours(16, 0, 0, 0);
+      end.setHours(15, 30, 0, 0);
 
-      let remaining = Math.max(0, Math.floor((end - now) / 1000));
-      const rH = Math.floor(remaining / 3600);
-      const rM = Math.floor((remaining % 3600) / 60);
-      const rS = remaining % 60;
+      const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+      const isWeekend = (day === 0 || day === 6);
+      const isHoliday = false; // replace with actual holiday check if needed
 
-      const text = remaining > 0
-        ? `${rH}h ${rM}m ${rS}s`
-        : "Interval complete";
-
-      document.getElementById("intervalRemainingData").textContent = text;
+      if (isHoliday) {
+        document.getElementById("intervalRemainingData").textContent = "Enjoy the holiday!";
+      } else if (isWeekend) {
+        document.getElementById("intervalRemainingData").textContent = "Enjoy your weekend!";
+      } else if (now < start) {
+        const untilStart = Math.floor((start - now) / 1000);
+        const h = Math.floor(untilStart / 3600);
+        const m = Math.floor((untilStart % 3600) / 60);
+        const s = untilStart % 60;
+        document.getElementById("intervalRemainingData").textContent = `Workday begins in ${h}h ${m}m ${s}s`;
+      } else if (now >= start && now <= end) {
+        const untilEnd = Math.floor((end - now) / 1000);
+        const h = Math.floor(untilEnd / 3600);
+        const m = Math.floor((untilEnd % 3600) / 60);
+        const s = untilEnd % 60;
+        document.getElementById("intervalRemainingData").textContent = `Workday ends in ${h}h ${m}m ${s}s`;
+      } else {
+        const tomorrowStart = new Date(start);
+        tomorrowStart.setDate(now.getDate() + 1);
+        const untilTomorrow = Math.floor((tomorrowStart - now) / 1000);
+        const h = Math.floor(untilTomorrow / 3600);
+        const m = Math.floor((untilTomorrow % 3600) / 60);
+        const s = untilTomorrow % 60;
+        document.getElementById("intervalRemainingData").textContent = `Next workday starts in ${h}h ${m}m ${s}s`;
+      }
     }
 
     setInterval(updateTime, 1000);
