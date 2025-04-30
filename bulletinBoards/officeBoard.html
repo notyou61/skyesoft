@@ -67,11 +67,6 @@
 
     .card {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      margin: auto;
       opacity: 0;
       transition: opacity 1s ease-in-out;
       background: #f8f8f8;
@@ -123,6 +118,11 @@
       margin-top: 2px;
     }
 
+    #intervalRemaining {
+      margin-top: 4px;
+      font-size: 0.95em;
+    }
+
     @media (max-width: 768px) {
       .card h2 { font-size: 4.8vw; }
       .card ul { font-size: 4vw; }
@@ -137,6 +137,7 @@
       <h1>Office Electronic Bulletin Board</h1>
       <p>Weather: Mostly Sunny | Temp: 75°F</p>
       <p>Time: <span id="currentTime">--:--:--</span></p>
+      <p id="intervalRemaining"><strong>Interval Remaining:</strong> <span id="intervalRemainingData">--</span></p>
     </div>
   </header>
 
@@ -181,7 +182,7 @@
 
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.04.30.1145</div>
+    <div class="version">v2025.04.30.1200</div>
   </footer>
 
   <script>
@@ -199,6 +200,22 @@
       const minutes = now.getMinutes().toString().padStart(2, '0');
       const seconds = now.getSeconds().toString().padStart(2, '0');
       document.getElementById('currentTime').textContent = `${hours}:${minutes}:${seconds}`;
+
+      const start = new Date();
+      start.setHours(8, 0, 0, 0);
+      const end = new Date();
+      end.setHours(16, 0, 0, 0);
+
+      let remaining = Math.max(0, Math.floor((end - now) / 1000));
+      const rH = Math.floor(remaining / 3600);
+      const rM = Math.floor((remaining % 3600) / 60);
+      const rS = remaining % 60;
+
+      const text = remaining > 0
+        ? `${rH}h ${rM}m ${rS}s`
+        : "Interval complete";
+
+      document.getElementById("intervalRemainingData").textContent = text;
     }
 
     setInterval(updateTime, 1000);
