@@ -12,19 +12,20 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('../assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
-      color: white;
+      color: #222;
       display: flex;
       flex-direction: column;
     }
 
     header, footer, #mainBoard {
-      background: rgba(0, 0, 0, 0.6);
+      background: #ffffff;
       margin: 20px auto;
       padding: 20px 30px;
       border-radius: 16px;
       max-width: 1200px;
       width: 90%;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      border: 2px solid #ccc;
     }
 
     header {
@@ -47,6 +48,7 @@
     header h1 {
       margin: 0;
       font-size: 2em;
+      color: #000;
     }
 
     #mainBoard {
@@ -63,12 +65,14 @@
       position: absolute;
       opacity: 0;
       transition: opacity 1s ease-in-out;
-      background: rgba(0, 0, 0, 0.5);
+      background: #f8f8f8;
+      color: #000;
       padding: 30px 40px;
       border-radius: 16px;
       max-width: 80%;
       width: 100%;
       box-sizing: border-box;
+      border: 2px solid #ddd;
     }
 
     .card.active {
@@ -104,6 +108,7 @@
     footer {
       text-align: center;
       font-size: 1em;
+      color: #000;
     }
 
     @media (max-width: 768px) {
@@ -118,6 +123,7 @@
       right: 20px;
       font-size: 1.5em;
       background: rgba(0, 0, 0, 0.5);
+      color: #fff;
       padding: 8px 12px;
       border-radius: 8px;
       z-index: 1000;
