@@ -8,27 +8,29 @@
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('../assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
       color: #222;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
     }
 
     header, footer, #mainBoard {
-      background: #ffffff;
-      margin: 6px auto;
-      padding: 12px 20px;
-      border-radius: 12px;
-      width: 92%;
+      width: 92vw;
       max-width: 1200px;
+      background: #ffffff;
+      border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       border: 1px solid #ccc;
     }
 
     header {
+      margin-top: 6px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -53,14 +55,15 @@
 
     #mainBoard {
       flex-grow: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+      margin: 6px 0;
+      padding: 0;
       position: relative;
       overflow: hidden;
-      padding: 0;
-      min-height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 380px;
+      max-height: 45vh;
     }
 
     .card {
@@ -87,7 +90,7 @@
 
     .card h2 {
       margin-top: 0;
-      font-size: 2.6vw;
+      font-size: 2.4vw;
       font-weight: bold;
       letter-spacing: 0.5px;
     }
@@ -116,7 +119,7 @@
       font-size: 0.9em;
       padding: 8px 10px;
       color: #000;
-      margin-top: auto;
+      margin-bottom: 6px;
     }
 
     @media (max-width: 768px) {
