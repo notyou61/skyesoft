@@ -16,7 +16,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
     }
 
     header, footer, #mainBoard {
@@ -57,13 +56,13 @@
       flex-grow: 1;
       margin: 6px 0;
       padding: 0;
-      position: relative;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 380px;
-      max-height: 45vh;
+      position: relative;
+      min-height: 400px;
+      max-height: 44vh;
+      overflow: hidden;
     }
 
     .card {
@@ -110,8 +109,15 @@
       justify-content: space-around;
       flex-wrap: wrap;
       gap: 30px;
-      font-size: 1.8vw;
+      font-size: 1.6vw;
       margin-top: 20px;
+    }
+
+    .kpi-column {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
 
     footer {
@@ -141,11 +147,20 @@
 
   <div id="mainBoard">
     <div class="card active">
-      <h2>📅 Next Holiday</h2>
-      <p>Memorial Day – May 26, 2025</p>
+      <h2>📊 KPIs</h2>
       <div class="kpi">
-        <div>🎉 End of Month Lunch – April 30</div>
-        <div>🎓 Training Signup Closes Friday</div>
+        <div class="kpi-column">
+          <div>Contacts Created: <strong>36</strong></div>
+          <div>Orders Submitted: <strong>22</strong></div>
+        </div>
+        <div class="kpi-column">
+          <div>Approvals: <strong>3</strong></div>
+          <div>Estimates Pending: <strong>7</strong></div>
+        </div>
+        <div class="kpi-column">
+          <div>Site Surveys: <strong>12</strong></div>
+          <div>Photos Uploaded: <strong>58</strong></div>
+        </div>
       </div>
     </div>
 
@@ -154,19 +169,20 @@
       <ul>
         <li>🎯 Safety Meeting: Friday at 2PM</li>
         <li>📁 Permit Deadline: Submit T30122</li>
-        <li>🔧 Service Win: LED retrofit at Mellow Mushroom</li>
-        <li>🛠 Pole Sign Install – Blue Sushi</li>
+        <li>🔧 LED Retrofit at Mellow Mushroom Completed</li>
+        <li>🛠 New Pole Sign Install – Blue Sushi</li>
+        <li>🗓 Team Lunch: Friday May 3rd</li>
       </ul>
     </div>
 
     <div class="card">
-      <h2>📊 KPIs</h2>
-      <div class="kpi">
-        <div>Contacts Created: <strong>36</strong></div>
-        <div>Orders Submitted: <strong>22</strong></div>
-        <div>Approvals: <strong>3</strong></div>
-        <div>Estimates Pending: <strong>7</strong></div>
-      </div>
+      <h2>📅 Next Holiday</h2>
+      <p>Memorial Day – Monday, May 26, 2025</p>
+      <ul>
+        <li>🚫 Office Closed</li>
+        <li>📞 Service team on call</li>
+        <li>📢 Return Tuesday, May 27, 8:00 AM</li>
+      </ul>
     </div>
 
     <div class="card">
