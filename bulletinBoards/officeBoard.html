@@ -19,8 +19,8 @@
 
     header, footer, #mainBoard {
       background: #ffffff;
-      margin: 20px auto;
-      padding: 20px 30px;
+      margin: 10px auto; /* tighter spacing */
+      padding: 16px 24px;
       border-radius: 16px;
       max-width: 1200px;
       width: 90%;
@@ -36,7 +36,7 @@
     }
 
     header img {
-      height: 50px;
+      height: 90px; /* larger logo */
       margin-right: 20px;
     }
 
@@ -116,23 +116,9 @@
       .card ul, .kpi { font-size: 4vw; }
       header div { text-align: center; }
     }
-
-    #floatingClock {
-      position: fixed;
-      top: 10px;
-      right: 20px;
-      font-size: 1.5em;
-      background: rgba(0, 0, 0, 0.5);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 8px;
-      z-index: 1000;
-    }
   </style>
 </head>
 <body>
-  <div id="floatingClock">--:--</div>
-
   <header>
     <img src="../assets/images/christyLogo.png" alt="Christy Signs Logo">
     <div>
@@ -192,7 +178,6 @@
       const hours = now.getHours().toString().padStart(2, '0');
       const minutes = now.getMinutes().toString().padStart(2, '0');
       document.getElementById('currentTime').textContent = `${hours}:${minutes}`;
-      document.getElementById('floatingClock').textContent = `${hours}:${minutes}`;
     }
 
     setInterval(updateTime, 1000);
