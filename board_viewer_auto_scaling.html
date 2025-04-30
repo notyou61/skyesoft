@@ -1,0 +1,120 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electronic Bulletin Board - Auto Scaling</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #mainBoard {
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card {
+      position: absolute;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 30px 40px;
+      border-radius: 16px;
+      max-width: 80%;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .card.active {
+      opacity: 1;
+      z-index: 10;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 2.5vw;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      font-size: 1.8vw;
+    }
+
+    .card ul li {
+      margin: 6px 0;
+    }
+
+    .kpi {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 30px;
+      font-size: 2vw;
+    }
+
+    @media (max-width: 768px) {
+      .card h2 { font-size: 5vw; }
+      .card ul, .kpi { font-size: 4vw; }
+    }
+  </style>
+</head>
+<body>
+  <div id="mainBoard">
+    <div class="card active">
+      <h2>📅 Next Holiday</h2>
+      <p>Memorial Day – May 26, 2025</p>
+    </div>
+
+    <div class="card">
+      <h2>📣 Announcements</h2>
+      <ul>
+        <li>🎯 Safety Meeting: Friday at 2PM</li>
+        <li>📁 Permit Deadline: Submit T30122</li>
+        <li>🔧 Service Win: LED retrofit at Mellow Mushroom</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>📊 KPIs</h2>
+      <div class="kpi">
+        <div>Contacts Created: <strong>36</strong></div>
+        <div>Orders Submitted: <strong>22</strong></div>
+        <div>Approvals: <strong>3</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💡 Quote of the Day</h2>
+      <p>“Be so good they can’t ignore you.”</p>
+    </div>
+  </div>
+
+  <script>
+    const cards = document.querySelectorAll('.card');
+    let currentIndex = 0;
+    const intervalTime = 15000; // 15 seconds
+
+    setInterval(() => {
+      cards[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % cards.length;
+      cards[currentIndex].classList.add('active');
+    }, intervalTime);
+  </script>
+</body>
+</html>
