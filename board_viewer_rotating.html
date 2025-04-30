@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electronic Bulletin Board - Rotating View</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #viewerToolbar {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    button {
+      background-color: #1e88e5;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #mainBoard {
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+      position: relative;
+    }
+
+    .card {
+      position: absolute;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 30px 40px;
+      border-radius: 16px;
+      max-width: 80%;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .card.active {
+      opacity: 1;
+      z-index: 10;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.5em;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      font-size: 1.2em;
+    }
+
+    .card ul li {
+      margin: 6px 0;
+    }
+
+    .kpi {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 30px;
+      font-size: 1.5em;
+    }
+
+    @media (max-width: 768px) {
+      .kpi {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="viewerToolbar">
+    <button onclick="location.reload()">🔄 Reload</button>
+    <button onclick="setScale(1)">👁️ Desktop</button>
+    <button onclick="setScale(0.5)">📱 Mobile</button>
+    <button onclick="setScale(1.5)">📺 TV View</button>
+  </div>
+
+  <div id="mainBoard">
+    <div class="card active">
+      <h2>📅 Next Holiday</h2>
+      <p>Memorial Day – May 26, 2025</p>
+    </div>
+
+    <div class="card">
+      <h2>📣 Announcements</h2>
+      <ul>
+        <li>🎯 Safety Meeting: Friday at 2PM</li>
+        <li>📁 Permit Deadline: Submit T30122</li>
+        <li>🔧 Service Win: LED retrofit at Mellow Mushroom</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>📊 KPIs</h2>
+      <div class="kpi">
+        <div>Contacts Created: <strong>36</strong></div>
+        <div>Orders Submitted: <strong>22</strong></div>
+        <div>Approvals: <strong>3</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💡 Quote of the Day</h2>
+      <p>“Be so good they can’t ignore you.”</p>
+    </div>
+  </div>
+
+  <script>
+    function setScale(scale) {
+      document.body.style.transform = `scale(${scale})`;
+      document.body.style.transformOrigin = 'top center';
+    }
+
+    const cards = document.querySelectorAll('.card');
+    let currentIndex = 0;
+    const intervalTime = 15000; // 15 seconds
+
+    setInterval(() => {
+      cards[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % cards.length;
+      cards[currentIndex].classList.add('active');
+    }, intervalTime);
+  </script>
+</body>
+</html>
