@@ -135,8 +135,8 @@
     <img src="../assets/images/christyLogo.png" alt="Christy Signs Logo">
     <div>
       <h1>Office Electronic Bulletin Board</h1>
-      <p>Weather: Mostly Sunny | Temp: 75°F</p>
-      <p>Time: <span id="currentTime">--:--:--</span></p>
+      <p><strong>Weather:</strong> ☀️ Mostly Sunny | Temp: 75°F</p>
+      <p><strong>Time:</strong> <span id="currentTime">--:--:--</span></p>
       <p id="intervalRemaining"><strong>Interval Remaining:</strong> <span id="intervalRemainingData">--</span></p>
     </div>
   </header>
@@ -151,7 +151,6 @@
         <li>📢 Return Tuesday, May 27, 8:00 AM</li>
       </ul>
     </div>
-
     <div class="card">
       <h2>📣 Announcements</h2>
       <ul>
@@ -162,7 +161,6 @@
         <li>🗓 Team Lunch: Friday May 3rd</li>
       </ul>
     </div>
-
     <div class="card">
       <h2>📊 KPIs</h2>
       <ul>
@@ -172,7 +170,6 @@
         <li>Estimates Pending: <strong>7</strong></li>
       </ul>
     </div>
-
     <div class="card">
       <h2>💡 Quote of the Day</h2>
       <p>“Be so good they can’t ignore you.”</p>
@@ -182,7 +179,7 @@
 
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.04.30.1200</div>
+    <div class="version">v2025.04.30.1205</div>
   </footer>
 
   <script>
@@ -196,10 +193,12 @@
 
     function updateTime() {
       const now = new Date();
-      const hours = now.getHours().toString().padStart(2, '0');
+      const hours = now.getHours();
       const minutes = now.getMinutes().toString().padStart(2, '0');
       const seconds = now.getSeconds().toString().padStart(2, '0');
-      document.getElementById('currentTime').textContent = `${hours}:${minutes}:${seconds}`;
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const standardHours = (hours % 12 || 12).toString().padStart(2, '0');
+      document.getElementById('currentTime').textContent = `${standardHours}:${minutes}:${seconds} ${ampm}`;
 
       const start = new Date();
       start.setHours(8, 0, 0, 0);
