@@ -21,35 +21,44 @@ const glbVar = {
   }
 };
 
-function updateGlbVar(now) {
+function calculateIntervalRemaining(now) {
   const day = now.getDay();
-  glbVar.isWeekend = (day === 0 || day === 6);
-  glbVar.isHoliday = false;
+  const isWeekend = (day === 0 || day === 6);
+  const isHoliday = false;
+
+  glbVar.isWeekend = isWeekend;
+  glbVar.isHoliday = isHoliday;
 
   const startParts = glbVar.workdayIntervals.start.split(":");
   const endParts = glbVar.workdayIntervals.end.split(":");
-  const start = new Date(now); start.setHours(startParts[0], startParts[1], 0, 0);
-  const end = new Date(now); end.setHours(endParts[0], endParts[1], 0, 0);
 
-  let msg = "";
-  if (glbVar.isHoliday) {
-    msg = "Enjoy the holiday!";
-  } else if (glbVar.isWeekend) {
-    msg = "Enjoy your weekend!";
+  const start = new Date(now);
+  start.setHours(startParts[0], startParts[1], 0, 0);
+
+  const end = new Date(now);
+  end.setHours(endParts[0], endParts[1], 0, 0);
+
+  let prefix = "";
+  let seconds = 0;
+
+  if (isHoliday) {
+    return "Enjoy the holiday!";
+  } else if (isWeekend) {
+    return "Enjoy your weekend!";
   } else if (now < start) {
-    let remaining = Math.ceil((start - now) / 1000);
-    msg = formatInterval("Workday begins in", remaining);
+    seconds = Math.ceil((start - now) / 1000);
+    prefix = "Workday begins in";
   } else if (now >= start && now <= end) {
-    let remaining = Math.ceil((end - now) / 1000);
-    msg = formatInterval("Workday ends in", remaining);
+    seconds = Math.ceil((end - now) / 1000);
+    prefix = "Workday ends in";
   } else {
     const tomorrowStart = new Date(start);
     tomorrowStart.setDate(now.getDate() + 1);
-    let remaining = Math.ceil((tomorrowStart - now) / 1000);
-    msg = formatInterval("Next workday starts in", remaining);
+    seconds = Math.ceil((tomorrowStart - now) / 1000);
+    prefix = "Next workday starts in";
   }
 
-  glbVar.intervalRemaining = msg;
+  return formatInterval(prefix, seconds);
 }
 
 function formatInterval(prefix, seconds) {
@@ -67,6 +76,8 @@ function formatInterval(prefix, seconds) {
 
 function updateDOMFromGlbVar() {
   const now = glbVar.timeDate.now;
+
+  // Time formatting
   const hours = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, '0');
   const seconds = now.getSeconds().toString().padStart(2, '0');
@@ -81,10 +92,10 @@ function updateDOMFromGlbVar() {
   if (intervalEl) intervalEl.textContent = glbVar.intervalRemaining;
 }
 
-// Main update loop — single timestamp
+// Main update loop
 setInterval(() => {
   const now = new Date();
   glbVar.timeDate.now = now;
-  updateGlbVar(now);
+  glbVar.intervalRemaining = calculateIntervalRemaining(now);
   updateDOMFromGlbVar();
 }, 1000);
