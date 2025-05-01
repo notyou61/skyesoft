@@ -103,3 +103,5 @@ setInterval(() => {
   glbVar.intervalRemaining = calculateIntervalRemaining(now);
   updateDOMFromGlbVar();
 }, 1000);
+
+// forced update
