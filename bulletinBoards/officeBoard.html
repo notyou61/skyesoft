@@ -16,28 +16,38 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
   color: #222;
 }
     header, #mainBoard, footer {
-      width: 92vw;
-      max-width: 1200px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      border: 1px solid #ccc;
-    }
+  width: 92vw;
+  max-width: 1200px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #ccc;
+  text-align: center;
+  font-size: 0.9em;
+  padding: 12px 20px;
+  color: #000;
+  margin-bottom: 6px;
+}
     header {
-      margin-top: 6px;
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
+  width: 92vw;
+  max-width: 1200px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #ccc;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
     header img {
       height: 140px;
       margin-right: 20px;
@@ -63,8 +73,7 @@
   border: 1px solid #ccc;
   position: relative;
   overflow: hidden;
-  margin-top: 6px;
-  margin-bottom: 6px;
+  margin: 6px 0;
 }
     .card {
   position: absolute;
@@ -113,12 +122,18 @@
       font-weight: bold;
     }
     footer {
-      text-align: center;
-      font-size: 0.9em;
-      padding: 12px 20px;
-      color: #000;
-      margin-bottom: 6px;
-    }
+  width: 92vw;
+  max-width: 1200px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #ccc;
+  text-align: center;
+  font-size: 0.9em;
+  padding: 12px 20px;
+  color: #000;
+  margin-bottom: 6px;
+}
     .version {
       font-size: 0.8em;
       color: #888;
@@ -167,7 +182,7 @@
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-<div class="version" id="versionDisplay">v2025.05.01.1405</div>
+<div class="version" id="versionDisplay">v2025.05.01.1435</div>
 </footer>
 <script>
     const cards = document.querySelectorAll('.card');
