@@ -164,8 +164,20 @@
   </div>
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.05.01.0725</div>
+    <div class="version" id="versionDisplay"></div>
   </footer>
-  
+  <script>
+    const cards = document.querySelectorAll('.card');
+    let currentIndex = 0;
+    setInterval(() => {
+      cards[currentIndex].classList.remove('active');
+      currentIndex = (currentIndex + 1) % cards.length;
+      cards[currentIndex].classList.add('active');
+    }, 15000);
+
+    if (glbVar?.version && document.getElementById("versionDisplay")) {
+      document.getElementById("versionDisplay").textContent = glbVar.version;
+    }
+  </script>
 </body>
 </html>
