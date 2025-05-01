@@ -29,7 +29,7 @@
     }
     header {
       margin-top: 6px;
-      padding: 12px 20px;
+      padding: 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -49,13 +49,12 @@
     }
     #mainBoard {
       margin: 6px 0;
-      padding: 8px 20px;
+      padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       flex: 1;
       height: 100%;
-      min-height: 30vh;
       position: relative;
       overflow: hidden;
     }
@@ -68,24 +67,40 @@
       padding: 24px 30px;
       border-radius: 12px;
       border: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      text-align: left;
     }
     .card.active {
       opacity: 1;
       z-index: 10;
+    }
+    .scroll-container {
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    .scroll-content {
+      display: block;
+      animation: scroll-up 60s linear infinite;
+    }
+    @keyframes scroll-up {
+      from { transform: translateY(100%); }
+      to { transform: translateY(-100%); }
     }
     .card h2 {
       font-size: 2.4vw;
     }
     .card p, .card ul {
       font-size: 1.6vw;
+    }
+    .permit-entry {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+    .permit-entry strong {
+      font-weight: bold;
     }
     footer {
       text-align: center;
@@ -113,30 +128,54 @@
   </header>
   <div id="mainBoard">
     <div class="card active">
-      <h2>📅 Next Holiday</h2>
-      <p>Memorial Day – Monday, May 26, 2025</p>
-      <ul>
-        <li>🚫 Office Closed</li>
-        <li>📞 Service team on call</li>
-        <li>📢 Return Tuesday, May 27, 8:00 AM</li>
-      </ul>
+      <h2>📄 Permit Status</h2>
+      <div class="scroll-container">
+        <div class="scroll-content">
+          <div class="permit-entry"><strong>26312</strong> – Sun Valley Wellness, Scottsdale – 💵 $545.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26036</strong> – Switch Electric, Tempe – 💵 $356.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>25674</strong> – Ten Figures, Phoenix – 💵 $225.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26335</strong> – U-Haul, Surprise – 💵 $154.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26513</strong> – Penchetta Pen & Knife, Phoenix – 💵 $225.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26216</strong> – Bank Of America, Avondale – 💵 $440.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26630</strong> – Williams Sonoma, Scottsdale – 💵 $620.00 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26585</strong> – NRS, Casa Grande – 💵 $254.77 – ✅ Ready</div>
+          <div class="permit-entry"><strong>26606</strong> – Verizon BeMobile, Goodyear – 💵 $388.00 – ✅ Ready</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>💡 Quote of the Day</h2>
+      <p>“To begin with the end in mind means to start with a clear understanding of your destination. It means to know where you’re going so that you better understand where you are now and so that the steps you take are always in the right direction.”</p>
+      <p><em>— Stephen R. Covey</em></p>
+    </div>
+    <div class="card">
+      <h2>🏗️ Featured Project</h2>
+      <p><strong>🛠️ El Shaddai – Sign Programming & Finalization</strong><br>
+      📍 8724 N Black Canyon Hwy, Phoenix, AZ 85051</p>
+      <img src="/skyesoft/assets/images/featuredProject.jpg" alt="El Shaddai Project" style="width:90%;max-width:800px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
     </div>
   </div>
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.05.01.1958</div>
+    <div class="version" id="versionDisplay">v2025.05.01.2013</div>
   </footer>
   <script>
     const cards = document.querySelectorAll('.card');
     let currentIndex = 0;
-    setInterval(() => {
-      cards[currentIndex].classList.remove('active');
-      currentIndex = (currentIndex + 1) % cards.length;
-      cards[currentIndex].classList.add('active');
-    }, 15000);
+    const durations = [60000, 15000, 15000]; // 60s for main, 15s each minor
 
-    if (glbVar?.version && document.querySelector(".version")) {
-      document.querySelector(".version").textContent = glbVar.version;
+    function cycleCards() {
+      cards.forEach(card => card.classList.remove('active'));
+      cards[currentIndex].classList.add('active');
+      setTimeout(() => {
+        currentIndex = (currentIndex + 1) % cards.length;
+        cycleCards();
+      }, durations[currentIndex]);
+    }
+    cycleCards();
+
+    if (glbVar?.version && document.getElementById("versionDisplay")) {
+      document.getElementById("versionDisplay").textContent = glbVar.version;
     }
   </script>
 </body>
