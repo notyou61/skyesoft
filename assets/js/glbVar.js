@@ -59,7 +59,7 @@ function formatInterval(prefix, seconds) {
   let parts = [];
   if (h > 0) parts.push(h + "h");
   if (m > 0) parts.push(m + "m");
-  if (h === 0 && m === 0) parts.push(s + "s");
+  parts.push(s + "s"); // Always include seconds
   return `${prefix} ${parts.join(" ")}`;
 }
 
