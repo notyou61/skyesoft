@@ -34,17 +34,23 @@
       flex-wrap: wrap;
     }
     header img {
-      height: 108px;
+      height: 140px;
+      max-height: 100%;
       margin-right: 20px;
     }
-    header div {
+    header .header-info {
       text-align: right;
       flex-grow: 1;
+      padding-top: 6px;
     }
-    header h1 {
-      margin: 0;
+    .header-info h1 {
+      margin: 0 0 6px 0;
       font-size: 1.9em;
       color: #000;
+    }
+    .header-info p {
+      margin: 0 0 2px 0;
+      font-size: 0.95em;
     }
     #mainBoard {
       margin: 6px 0;
@@ -111,20 +117,20 @@
     @media (max-width: 768px) {
       .card h2 { font-size: 4.8vw; }
       .card ul { font-size: 4vw; }
-      header div { text-align: center; }
+      header .header-info { text-align: center; }
     }
   </style>
-  <script src="../assets/js/weatherConfig.js"></script>
-  <script src="../assets/js/weather.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
 </head>
 <body>
   <header>
     <img src="../assets/images/christyLogo.png" alt="Christy Signs Logo">
-    <div>
+    <div class="header-info">
       <h1>Office Electronic Bulletin Board</h1>
-      <p><strong>Weather:</strong> <span id="weatherDisplay">Loading...</span></p>
-      <p><strong>Time:</strong> ⏰ <span id="currentTime">--:--:--</span></p>
-      <p id="intervalRemaining"><strong>Interval Remaining:</strong> <span id="intervalIcon">🕒</span> <span id="intervalRemainingData">--</span></p>
+      <p>🌤 <strong>Weather:</strong> <span id="weatherDisplay">Loading...</span></p>
+      <p>⏰ <strong>Time:</strong> <span id="currentTime">--:--:--</span></p>
+      <p id="intervalRemaining">🕒 <strong>Interval Remaining:</strong> <span id="intervalIcon"></span> <span id="intervalRemainingData">--</span></p>
     </div>
   </header>
   <div id="mainBoard">
