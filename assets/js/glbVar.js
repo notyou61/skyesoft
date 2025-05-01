@@ -9,6 +9,7 @@ const glbVar = {
     end: "15:30"
   },
   intervalRemaining: "",
+  version: "v2025.05.01.1425",
   weather: {
     temp: null,
     icon: "❓",
@@ -68,8 +69,8 @@ function formatInterval(prefix, seconds) {
 
   let parts = [];
   if (h > 0) parts.push(h + "h");
-  if (m > 0 || h > 0) parts.push(m + "m");
-  parts.push(s + "s");
+  if (m > 0 || h > 0) parts.push(m.toString().padStart(2, '0') + "m");
+  parts.push(s.toString().padStart(2, '0') + "s");
 
   return `${prefix} ${parts.join(" ")}`;
 }
@@ -90,6 +91,9 @@ function updateDOMFromGlbVar() {
 
   const intervalEl = document.getElementById("intervalRemainingData");
   if (intervalEl) intervalEl.textContent = glbVar.intervalRemaining;
+
+  const versionEl = document.querySelector(".version");
+  if (versionEl) versionEl.textContent = glbVar.version;
 }
 
 // Main update loop
