@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,11 +71,11 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      text-align: center;
+      text-align: left;
     }
     .card.active {
       opacity: 1;
@@ -116,33 +115,20 @@
     <div class="card active">
       <h2>📅 Next Holiday</h2>
       <p>Memorial Day – Monday, May 26, 2025</p>
-      <ul style="text-align:left">
+      <ul>
         <li>🚫 Office Closed</li>
         <li>📞 Service team on call</li>
         <li>📢 Return Tuesday, May 27, 8:00 AM</li>
       </ul>
     </div>
-    <div class="card">
-      <h2>💡 Quote of the Day</h2>
-      <p>“To begin with the end in mind means to start with a clear understanding of your destination.<br>
-         It means to know where you’re going so that you better understand where you are now and so that the steps you take are always in the right direction.”</p>
-      <p><em>— Stephen R. Covey</em></p>
-    </div>
-    <div class="card">
-      <h2>🏗️ Featured Project</h2>
-      <p><strong>🛠️ El Shaddai – Sign Programming & Finalization</strong><br>
-      📍 8724 N Black Canyon Hwy, Phoenix, AZ 85051</p>
-      <img src="/skyesoft/assets/images/featuredProject.jpg" alt="El Shaddai Project" style="width:90%;max-width:800px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
-    </div>
   </div>
   <footer>
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.05.01.1745</div>
+    <div class="version">v2025.05.01.1958</div>
   </footer>
   <script>
     const cards = document.querySelectorAll('.card');
     let currentIndex = 0;
-
     setInterval(() => {
       cards[currentIndex].classList.remove('active');
       currentIndex = (currentIndex + 1) % cards.length;
