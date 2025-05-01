@@ -102,11 +102,13 @@
       opacity: 1;
       z-index: 10;
     }
-    .scroll-container {
-      height: 100%;
-      overflow: hidden;
-      position: relative;
-    }
+    
+.scroll-container {
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 24px;
+}
+
     .scroll-content {
       display: block;
       animation: scroll-up 60s linear infinite;
@@ -153,12 +155,16 @@
   margin-top: 24px;
   margin-bottom: 12px;
 }
+
 .scroll-container {
+  overflow: hidden;
+  position: relative;
   margin-bottom: 24px;
 }
+
+
 .card-content {
   padding: 24px;
-  height: 100%;
   box-sizing: border-box;
   overflow-y: auto;
 }</style>
@@ -204,7 +210,7 @@
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-<div class="version" id="versionDisplay">v2025.05.01.1555</div>
+<div class="version" id="versionDisplay">v2025.05.01.1600</div>
 </footer>
 <script>
     const cards = document.querySelectorAll('.card');
