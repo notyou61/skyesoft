@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Office Electronic Bulletin Board</title>
+  <script src="../assets/js/glbVar.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -165,77 +166,6 @@
     <p>&copy; 2025 MayChrist Corporation. All rights reserved.</p>
     <div class="version">v2025.05.01.0725</div>
   </footer>
-  <script>
-    const cards = document.querySelectorAll('.card');
-    let currentIndex = 0;
-    setInterval(() => {
-      cards[currentIndex].classList.remove('active');
-      currentIndex = (currentIndex + 1) % cards.length;
-      cards[currentIndex].classList.add('active');
-    }, 15000);
-
-    function updateTime() {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const seconds = now.getSeconds().toString().padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const standardHours = (hours % 12 || 12).toString().padStart(2, '0');
-      document.getElementById('currentTime').textContent = `${standardHours}:${minutes}:${seconds} ${ampm}`;
-
-      const start = new Date(); start.setHours(7, 30, 0, 0);
-      const end = new Date(); end.setHours(15, 30, 0, 0);
-
-      const day = now.getDay();
-      const isWeekend = (day === 0 || day === 6);
-      const isHoliday = false;
-
-      let h, m, s;
-      if (isHoliday) {
-        document.getElementById("intervalIcon").textContent = "🎉";
-        document.getElementById("intervalRemainingData").textContent = "Enjoy the holiday!";
-      } else if (isWeekend) {
-        document.getElementById("intervalIcon").textContent = "💤";
-        document.getElementById("intervalRemainingData").textContent = "Enjoy your weekend!";
-      } else if (now < start) {
-        document.getElementById("intervalIcon").textContent = "🌅";
-        let remaining = Math.floor((start - now) / 1000);
-        h = Math.floor(remaining / 3600);
-        m = Math.floor((remaining % 3600) / 60);
-        s = remaining % 60;
-        let msg = "";
-        if (h > 0) msg += `${h}h `;
-        if (m > 0) msg += `${m}m `;
-        msg += `${s}s`;
-        document.getElementById("intervalRemainingData").textContent = `Workday begins in ${msg}`;
-      } else if (now >= start && now <= end) {
-        document.getElementById("intervalIcon").textContent = "🛠";
-        let remaining = Math.floor((end - now) / 1000);
-        h = Math.floor(remaining / 3600);
-        m = Math.floor((remaining % 3600) / 60);
-        s = remaining % 60;
-        let msg = "";
-        if (h > 0) msg += `${h}h `;
-        if (m > 0) msg += `${m}m `;
-        msg += `${s}s`;
-        document.getElementById("intervalRemainingData").textContent = `Workday ends in ${msg}`;
-      } else {
-        document.getElementById("intervalIcon").textContent = "🌅";
-        const tomorrowStart = new Date(start); tomorrowStart.setDate(now.getDate() + 1);
-        let remaining = Math.floor((tomorrowStart - now) / 1000);
-        h = Math.floor(remaining / 3600);
-        m = Math.floor((remaining % 3600) / 60);
-        s = remaining % 60;
-        let msg = "";
-        if (h > 0) msg += `${h}h `;
-        if (m > 0) msg += `${m}m `;
-        msg += `${s}s`;
-        document.getElementById("intervalRemainingData").textContent = `Next workday starts in ${msg}`;
-      }
-    }
-
-    setInterval(updateTime, 1000);
-    updateTime();
-  </script>
+  
 </body>
 </html>
