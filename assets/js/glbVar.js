@@ -37,15 +37,15 @@ function updateGlbVar(now) {
   } else if (glbVar.isWeekend) {
     msg = "Enjoy your weekend!";
   } else if (now < start) {
-    let remaining = Math.floor((start - now) / 1000);
+    let remaining = Math.ceil((start - now) / 1000);
     msg = formatInterval("Workday begins in", remaining);
   } else if (now >= start && now <= end) {
-    let remaining = Math.floor((end - now) / 1000);
+    let remaining = Math.ceil((end - now) / 1000);
     msg = formatInterval("Workday ends in", remaining);
   } else {
     const tomorrowStart = new Date(start);
     tomorrowStart.setDate(now.getDate() + 1);
-    let remaining = Math.floor((tomorrowStart - now) / 1000);
+    let remaining = Math.ceil((tomorrowStart - now) / 1000);
     msg = formatInterval("Next workday starts in", remaining);
   }
 
