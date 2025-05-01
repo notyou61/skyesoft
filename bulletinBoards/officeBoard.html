@@ -155,6 +155,12 @@
 }
 .scroll-container {
   margin-bottom: 24px;
+}
+.card-content {
+  padding: 24px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
 }</style>
 </head>
 <body>
@@ -168,7 +174,7 @@
 </div>
 </header>
 <div id="mainBoard">
-<div class="card active">
+<div class="card active"><div class="card-content">
 <h2>📄 Permit Status</h2>
 <div class="scroll-container">
 <div class="scroll-content">
@@ -183,22 +189,22 @@
 <div class="permit-entry"><strong>26606</strong> – Verizon BeMobile, Goodyear – 💵 $388.00 – ✅ Ready</div>
 </div>
 </div>
-</div>
-<div class="card">
+</div></div>
+<div class="card"><div class="card-content">
 <h2>💡 Quote of the Day</h2>
 <p>“To begin with the end in mind means to start with a clear understanding of your destination. It means to know where you’re going so that you better understand where you are now and so that the steps you take are always in the right direction.”</p>
 <p><em>— Stephen R. Covey</em></p>
-</div>
-<div class="card">
+</div></div>
+<div class="card"><div class="card-content">
 <h2>🏗️ Featured Project</h2>
 <p><strong>🛠️ El Shaddai – Sign Programming &amp; Finalization</strong><br/>
       📍 8724 N Black Canyon Hwy, Phoenix, AZ 85051</p>
 <img alt="El Shaddai Project" src="/skyesoft/assets/images/featuredProject.jpg" style="width:90%;max-width:800px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);"/>
-</div>
+</div></div>
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-<div class="version" id="versionDisplay">v2025.05.01.1545</div>
+<div class="version" id="versionDisplay">v2025.05.01.1555</div>
 </footer>
 <script>
     const cards = document.querySelectorAll('.card');
