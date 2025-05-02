@@ -28,31 +28,36 @@
       margin: 0 auto;
       background: #ffffff;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      border: 2px dashed red; /* Diagnostic: show boundary */
       border-radius: 12px;
-      padding: 12px 20px;
+      padding: 8px 16px;
     }
 
+    /* Visually reduce header */
     header {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr;
       align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
+      gap: 24px;
     }
 
     header img {
-      height: 140px;
-      margin-right: 20px;
+      height: auto;
+      max-width: 160px;
+      min-width: 120px;
     }
 
     header div {
       text-align: right;
-      flex-grow: 1;
     }
 
     header h1 {
+      margin: 4px 0;
+      font-size: 1.6em;
+    }
+
+    header p {
       margin: 0;
-      font-size: 2em;
+      font-size: 0.95em;
     }
 
     #mainBoard {
@@ -135,13 +140,14 @@
     }
 
     footer {
+      text-align: left;
       padding: 12px 20px;
     }
 
     .version {
       font-size: 0.8em;
       color: #888;
-      margin-top: 2px;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -151,7 +157,7 @@
     <div>
       <h1>Office Electronic Bulletin Board</h1>
       <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 88°F</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">12:39:31 PM</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">01:09:47 PM</span></p>
       <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 2h 50m 29s</span></p>
     </div>
   </header>
@@ -164,33 +170,8 @@
         <div class="scroll-container">
           <div class="scroll-content">
             <div class="permit-entry"><strong>26312</strong> – Sun Valley Wellness, Scottsdale – 💵 $545.00 – ✅ Ready</div>
-            <div class="permit-entry"><strong>26036</strong> – Switch Electric, Tempe – 💵 $356.00 – ✅ Ready</div>
-            <div class="permit-entry"><strong>25674</strong> – Ten Figures, Phoenix – 💵 $225.00 – ✅ Ready</div>
-            <div class="permit-entry"><strong>26335</strong> – U-Haul, Surprise – 💵 $154.00 – ✅ Ready</div>
-            <div class="permit-entry"><strong>26513</strong> – Penchetta Pen & Knife, Phoenix – 💵 $225.00 – ✅ Ready</div>
           </div>
         </div>
-        <div style="height: 24px;"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-content">
-        <div style="height: 24px;"></div>
-        <h2>💡 Quote of the Day</h2>
-        <p>“To begin with the end in mind means to start with a clear understanding of your destination...”</p>
-        <p><em>— Stephen R. Covey</em></p>
-        <div style="height: 24px;"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-content">
-        <div style="height: 24px;"></div>
-        <h2>🏗️ Featured Project</h2>
-        <p><strong>🛠️ El Shaddai – Sign Programming & Finalization</strong><br>
-        📍 8724 N Black Canyon Hwy, Phoenix, AZ 85051</p>
-        <img alt="El Shaddai Project" src="/skyesoft/assets/images/featuredProject.jpg" style="width:90%;max-width:800px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
         <div style="height: 24px;"></div>
       </div>
     </div>
@@ -198,7 +179,7 @@
 
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2017</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2018</div>
   </footer>
 
   <script>
