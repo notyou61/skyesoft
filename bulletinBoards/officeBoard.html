@@ -12,9 +12,7 @@ html, body {
   padding: 12px; /* Buffer on all sides */
   height: 100vh;
   width: 100vw;
-  display: flex; /* Fallback centering */
-  flex-direction: column;
-  align-items: center;
+  display: block; /* Remove flexbox, rely on #ebbWrapper for centering */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
@@ -25,7 +23,7 @@ html, body {
 #ebbWrapper {
   width: 92vw;
   max-width: 1200px;
-  margin: auto; /* Primary centering method */
+  margin: auto; /* Center horizontally */
   display: flex;
   flex-direction: column;
   gap: 12px; /* Space between sections */
@@ -214,10 +212,12 @@ footer {
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const cards = document.querySelectorAll('.card');
+  console.log('Number of cards found:', cards.length); // Debug: Check if cards are found
   let currentIndex = 0;
   const durations = [60000, 15000, 15000];
 
   function cycleCards() {
+    console.log('Cycling to card index:', currentIndex); // Debug: Confirm function is running
     cards.forEach(card => card.classList.remove('active'));
     cards[currentIndex].classList.add('active');
     setTimeout(() => {
@@ -228,6 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (cards.length > 0) {
     cycleCards();
+  } else {
+    console.log('No cards found to cycle.'); // Debug: If no cards are found
   }
 
   if (glbVar?.version && document.getElementById("versionDisplay")) {
