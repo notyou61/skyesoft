@@ -20,10 +20,11 @@
       background-size: cover;
       color: #222;
       box-sizing: border-box;
+      overflow-x: hidden; /* Prevent horizontal scroll if viewport overflows */
     }
 
     header, #mainBoard, footer {
-      width: 92vw;
+      width: 90vw; /* Reduced from 92vw for better fit */
       max-width: 1200px;
       margin: 0 auto;
       background: #ffffff;
@@ -32,7 +33,6 @@
       padding: 8px 16px;
     }
 
-    /* Visually reduce header */
     header {
       display: grid;
       grid-template-columns: auto 1fr;
@@ -157,8 +157,8 @@
     <div>
       <h1>Office Electronic Bulletin Board</h1>
       <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 88°F</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">01:09:47 PM</span></p>
-      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 2h 50m 29s</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">01:14:53 PM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 2h 45m 7s</span></p>
     </div>
   </header>
 
@@ -179,7 +179,7 @@
 
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2018</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2019</div>
   </footer>
 
   <script>
