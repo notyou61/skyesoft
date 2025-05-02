@@ -20,11 +20,11 @@
       background-size: cover;
       color: #222;
       box-sizing: border-box;
-      overflow-x: hidden; /* Prevent horizontal scroll if viewport overflows */
+      overflow-x: hidden;
     }
 
     header, #mainBoard, footer {
-      width: 90vw; /* Reduced from 92vw for better fit */
+      width: 90vw;
       max-width: 1200px;
       margin: 0 auto;
       background: #ffffff;
@@ -94,24 +94,26 @@
     }
 
     .card-content {
-      padding: 24px;
+      padding: 8px 24px 24px;
       box-sizing: border-box;
       overflow-y: auto;
       height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
+      gap: 12px;
     }
 
     .scroll-container {
+      flex-grow: 1;
       overflow: hidden;
       position: relative;
-      margin-bottom: 24px;
     }
 
     .scroll-content {
       display: block;
       animation: scroll-up 60s linear infinite;
+      padding-bottom: 24px;
     }
 
     @keyframes scroll-up {
@@ -121,7 +123,7 @@
 
     .card h2 {
       font-size: 2.4vw;
-      margin-top: 24px;
+      margin-top: 0;
       margin-bottom: 12px;
     }
 
@@ -157,29 +159,27 @@
     <div>
       <h1>Office Electronic Bulletin Board</h1>
       <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 88°F</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">01:14:53 PM</span></p>
-      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 2h 45m 7s</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">01:44:01 PM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 1h 45m 59s</span></p>
     </div>
   </header>
 
   <div id="mainBoard">
     <div class="card active">
       <div class="card-content">
-        <div style="height: 24px;"></div>
         <h2>📄 Permit Status</h2>
         <div class="scroll-container">
           <div class="scroll-content">
             <div class="permit-entry"><strong>26312</strong> – Sun Valley Wellness, Scottsdale – 💵 $545.00 – ✅ Ready</div>
           </div>
         </div>
-        <div style="height: 24px;"></div>
       </div>
     </div>
   </div>
 
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2019</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020</div>
   </footer>
 
   <script>
