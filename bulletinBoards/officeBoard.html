@@ -170,13 +170,12 @@ footer {
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-<div class="version" id="versionDisplay">v2025.05.02.1344</div>
+<div class="version" id="versionDisplay">v2025.05.02.1345</div>
 </footer>
 <script>
 const cards = document.querySelectorAll('.card');
 let currentIndex = 0;
 const durations = [60000, 15000, 15000];
-
 function cycleCards() {
   cards.forEach(card => card.classList.remove('active'));
   cards[currentIndex].classList.add('active');
@@ -186,7 +185,6 @@ function cycleCards() {
   }, durations[currentIndex]);
 }
 cycleCards();
-
 if (glbVar?.version && document.getElementById("versionDisplay")) {
   document.getElementById("versionDisplay").textContent = glbVar.version;
 }
