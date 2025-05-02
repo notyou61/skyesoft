@@ -9,10 +9,12 @@
 <style>
 html, body {
   margin: 0;
-  padding: 12px; /* Add padding on all sides for safety */
+  padding: 12px; /* Buffer on all sides */
   height: 100vh;
   width: 100vw;
-  display: block; /* Ensure body is a block container for margin: auto to work */
+  display: flex; /* Fallback centering */
+  flex-direction: column;
+  align-items: center;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
@@ -23,7 +25,7 @@ html, body {
 #ebbWrapper {
   width: 92vw;
   max-width: 1200px;
-  margin: auto; /* Center horizontally */
+  margin: auto; /* Primary centering method */
   display: flex;
   flex-direction: column;
   gap: 12px; /* Space between sections */
@@ -79,8 +81,8 @@ header h1 {
 
 .card {
   position: absolute;
-  opacity: 0; /* Restore for card cycling */
-  transition: opacity 1s ease-in-out; /* Restore for card cycling */
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
   background: #ffffff;
   color: #000;
   padding: 0;
@@ -148,6 +150,7 @@ header h1 {
 footer {
   padding: 12px 20px;
 }
+
 .version {
   font-size: 0.8em;
   color: #888;
@@ -209,21 +212,28 @@ footer {
 </footer>
 </div>
 <script>
-const cards = document.querySelectorAll('.card');
-let currentIndex = 0;
-const durations = [60000, 15000, 15000];
-function cycleCards() {
-  cards.forEach(card => card.classList.remove('active'));
-  cards[currentIndex].classList.add('active');
-  setTimeout(() => {
-    currentIndex = (currentIndex + 1) % cards.length;
+document.addEventListener('DOMContentLoaded', () => {
+  const cards = document.querySelectorAll('.card');
+  let currentIndex = 0;
+  const durations = [60000, 15000, 15000];
+
+  function cycleCards() {
+    cards.forEach(card => card.classList.remove('active'));
+    cards[currentIndex].classList.add('active');
+    setTimeout(() => {
+      currentIndex = (currentIndex + 1) % cards.length;
+      cycleCards();
+    }, durations[currentIndex]);
+  }
+
+  if (cards.length > 0) {
     cycleCards();
-  }, durations[currentIndex]);
-}
-cycleCards();
-if (glbVar?.version && document.getElementById("versionDisplay")) {
-  document.getElementById("versionDisplay").textContent = glbVar.version;
-}
+  }
+
+  if (glbVar?.version && document.getElementById("versionDisplay")) {
+    document.getElementById("versionDisplay").textContent = glbVar.version;
+  }
+});
 </script>
 </body>
 </html>
