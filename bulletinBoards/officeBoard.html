@@ -9,23 +9,26 @@
 <style>
 html, body {
   margin: 0;
-  padding: 12px 0;
+  padding: 12px; /* Add padding on all sides for safety */
   height: 100vh;
   width: 100vw;
+  display: block; /* Ensure body is a block container for margin: auto to work */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
   color: #222;
   box-sizing: border-box;
 }
+
 #ebbWrapper {
   width: 92vw;
   max-width: 1200px;
-  margin: auto;
+  margin: auto; /* Center horizontally */
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 12px; /* Space between sections */
 }
+
 header, #mainBoard, footer {
   width: 100%;
   background: #ffffff;
@@ -39,24 +42,29 @@ header, #mainBoard, footer {
   border-radius: 12px;
   padding: 12px 20px;
 }
+
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
 }
+
 header img {
   height: 140px;
   margin-right: 20px;
 }
+
 header div {
   text-align: right;
   flex-grow: 1;
 }
+
 header h1 {
   margin: 0;
   font-size: 2em;
 }
+
 #mainBoard {
   flex-grow: 1;
   display: flex;
@@ -68,8 +76,11 @@ header h1 {
   padding: 16px 20px;
   margin: 0;
 }
+
 .card {
   position: absolute;
+  opacity: 0; /* Restore for card cycling */
+  transition: opacity 1s ease-in-out; /* Restore for card cycling */
   background: #ffffff;
   color: #000;
   padding: 0;
@@ -82,10 +93,12 @@ header h1 {
   flex-direction: column;
   justify-content: flex-start;
 }
+
 .card.active {
   opacity: 1;
   z-index: 10;
 }
+
 .card-content {
   padding: 12px 20px;
   box-sizing: border-box;
@@ -95,35 +108,43 @@ header h1 {
   flex-direction: column;
   justify-content: flex-start;
 }
+
 .scroll-container {
   overflow: hidden;
   position: relative;
   margin-bottom: 24px;
 }
+
 .scroll-content {
   display: block;
   animation: scroll-up 60s linear infinite;
 }
+
 @keyframes scroll-up {
   from { transform: translateY(100%); }
   to { transform: translateY(-100%); }
 }
+
 .card h2 {
   font-size: 2.4vw;
   margin-top: 24px;
   margin-bottom: 12px;
 }
+
 .card p, .card ul {
   font-size: 1.6vw;
 }
+
 .permit-entry {
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
 }
+
 .permit-entry strong {
   font-weight: bold;
 }
+
 footer {
   padding: 12px 20px;
 }
@@ -162,6 +183,25 @@ footer {
 <div style="height: 36px;"></div>
 </div>
 </div>
+<div class="card">
+<div class="card-content">
+<div style="height: 36px;"></div>
+<h2>💡 Quote of the Day</h2>
+<p>“To begin with the end in mind means to start with a clear understanding of your destination...”</p>
+<p><em>— Stephen R. Covey</em></p>
+<div style="height: 36px;"></div>
+</div>
+</div>
+<div class="card">
+<div class="card-content">
+<div style="height: 36px;"></div>
+<h2>🏗️ Featured Project</h2>
+<p><strong>🛠️ El Shaddai – Sign Programming & Finalization</strong><br/>
+        📍 8724 N Black Canyon Hwy, Phoenix, AZ 85051</p>
+<img alt="El Shaddai Project" src="/skyesoft/assets/images/featuredProject.jpg" style="width:90%;max-width:800px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);"/>
+<div style="height: 36px;"></div>
+</div>
+</div>
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
@@ -169,6 +209,18 @@ footer {
 </footer>
 </div>
 <script>
+const cards = document.querySelectorAll('.card');
+let currentIndex = 0;
+const durations = [60000, 15000, 15000];
+function cycleCards() {
+  cards.forEach(card => card.classList.remove('active'));
+  cards[currentIndex].classList.add('active');
+  setTimeout(() => {
+    currentIndex = (currentIndex + 1) % cards.length;
+    cycleCards();
+  }, durations[currentIndex]);
+}
+cycleCards();
 if (glbVar?.version && document.getElementById("versionDisplay")) {
   document.getElementById("versionDisplay").textContent = glbVar.version;
 }
