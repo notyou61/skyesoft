@@ -9,23 +9,27 @@
 <style>
 html, body {
   margin: 0;
-  padding: 12px 0;
-  padding-left: calc((100vw - 92vw) / 2);
-  padding-right: calc((100vw - 92vw) / 2);
+  padding: 0;
   height: 100vh;
   width: 100vw;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
   color: #222;
   box-sizing: border-box;
 }
-header, #mainBoard, footer {
+#ebbWrapper {
   width: 92vw;
   max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+header, #mainBoard, footer {
+  width: 100%;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border: 1px solid #ccc;
@@ -43,18 +47,9 @@ header {
   justify-content: space-between;
   flex-wrap: wrap;
 }
-header img {
-  height: 140px;
-  margin-right: 20px;
-}
-header div {
-  text-align: right;
-  flex-grow: 1;
-}
-header h1 {
-  margin: 0;
-  font-size: 2em;
-}
+header img { height: 140px; margin-right: 20px; }
+header div { text-align: right; flex-grow: 1; }
+header h1 { margin: 0; font-size: 2em; }
 #mainBoard {
   flex-grow: 1;
   display: flex;
@@ -64,7 +59,6 @@ header h1 {
   position: relative;
   overflow: hidden;
   padding: 16px 20px;
-  margin: 8px 0 7px 0;
 }
 .card {
   position: absolute;
@@ -82,10 +76,7 @@ header h1 {
   flex-direction: column;
   justify-content: flex-start;
 }
-.card.active {
-  opacity: 1;
-  z-index: 10;
-}
+.card.active { opacity: 1; z-index: 10; }
 .card-content {
   padding: 12px 20px;
   box-sizing: border-box;
@@ -95,46 +86,19 @@ header h1 {
   flex-direction: column;
   justify-content: flex-start;
 }
-.scroll-container {
-  overflow: hidden;
-  position: relative;
-  margin-bottom: 24px;
-}
-.scroll-content {
-  display: block;
-  animation: scroll-up 60s linear infinite;
-}
-@keyframes scroll-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(-100%); }
-}
-.card h2 {
-  font-size: 2.4vw;
-  margin-top: 24px;
-  margin-bottom: 12px;
-}
-.card p, .card ul {
-  font-size: 1.6vw;
-}
-.permit-entry {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 12px;
-}
-.permit-entry strong {
-  font-weight: bold;
-}
-footer {
-  padding: 12px 20px;
-}
-.version {
-  font-size: 0.8em;
-  color: #888;
-  margin-top: 2px;
-}
+.scroll-container { overflow: hidden; position: relative; margin-bottom: 24px; }
+.scroll-content { display: block; animation: scroll-up 60s linear infinite; }
+@keyframes scroll-up { from { transform: translateY(100%); } to { transform: translateY(-100%); } }
+.card h2 { font-size: 2.4vw; margin-top: 24px; margin-bottom: 12px; }
+.card p, .card ul { font-size: 1.6vw; }
+.permit-entry { display: flex; flex-direction: column; margin-bottom: 12px; }
+.permit-entry strong { font-weight: bold; }
+footer { padding: 12px 20px; }
+.version { font-size: 0.8em; color: #888; margin-top: 2px; }
 </style>
 </head>
 <body>
+<div id="ebbWrapper">
 <header>
 <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png"/>
 <div>
@@ -169,8 +133,9 @@ footer {
 </div>
 <footer>
 <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-<div class="version" id="versionDisplay">v2025.05.02.1345</div>
+<div class="version" id="versionDisplay">v2025.05.02.2010</div>
 </footer>
+</div>
 <script>
 const cards = document.querySelectorAll('.card');
 let currentIndex = 0;
