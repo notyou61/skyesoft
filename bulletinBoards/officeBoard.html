@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,6 +45,19 @@
       from { transform: translateY(100%); }
       to { transform: translateY(-100%); }
     }
+    .permit-entry {
+      font-size: 1.4vw;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .status.ready {
+      color: green;
+      font-weight: bold;
+    }
+    .status.review {
+      color: orange;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -56,20 +68,47 @@
         <div class="scroll-container">
           <div class="scroll-content">
             <div class="permit-entry"><strong>26312</strong> &bull; Sun Valley Wellness – Scottsdale<br>$545.00 <span class="status ready">🟢 Ready To Issue</span></div>
-            <div class="permit-entry"><strong>27051</strong> &bull; Sign Resource – Queen Creek<br>$125.00 <span class="status review">🟡 Ready For Review</span></div>
-            <div class="permit-entry"><strong>26513</strong> &bull; Penchetta Pen & Knife – Phoenix<br>$225.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26036</strong> &bull; Switch Electric – Tempe<br>$356.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>25674</strong> &bull; Printing Solutions – Phoenix<br>$225.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26335</strong> &bull; U-Haul – Surprise<br>$154.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26513</strong> &bull; Penchetta Pen & Knife – Phoenix<br>$225.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26216</strong> &bull; Walton Signage – Avondale<br>$440.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26630</strong> &bull; Signtech – Scottsdale<br>$620.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26585</strong> &bull; NRS – Casa Grande<br>$254.77 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26606</strong> &bull; Allen Industries, Inc – Goodyear<br>$388.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>24741</strong> &bull; Arizona Partners – Glendale<br>$844.93 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26124</strong> &bull; Jas Diesel – Phoenix<br>$600.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26111</strong> &bull; Identity Sign Builders – Scottsdale<br>$570.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26927</strong> &bull; Omaha Neon Sign – Tempe<br>$368.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26694</strong> &bull; Gudeng Inc – Glendale<br>$200.11 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26836</strong> &bull; Yaho – Glendale<br>$200.11 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26877</strong> &bull; Identity Sign Builders – Glendale<br>$400.22 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26337</strong> &bull; U-Haul – Queen Creek<br>$664.60 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26916</strong> &bull; Adobe ENT & Allergy – Surprise<br>$154.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26545</strong> &bull; Walton Signage – Scottsdale<br>$900.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>25523</strong> &bull; Printing Solutions – Roosevelt Lake<br>$699.75 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>27051</strong> &bull; Sign Resource – Queen Creek<br>$125.00 <span class="status ready">🟡 Ready For Review</span></div>
+<div class="permit-entry"><strong>27033</strong> &bull; Federal Heath – Gilbert<br>$175.00 <span class="status ready">🟡 Ready For Review</span></div>
+<div class="permit-entry"><strong>27071</strong> &bull; Pattison Sign Group – Chandler<br>$76.68 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>27031</strong> &bull; Entera Branding – Phoenix<br>$225.00 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>27051</strong> &bull; Sign Resource – Queen Creek<br>$414.60 <span class="status ready">🟢 Ready To Issue</span></div>
+<div class="permit-entry"><strong>26754</strong> &bull; AWP Safety – Chandler<br>$132.25 <span class="status ready">🟢 Ready To Issue</span></div>
           </div>
         </div>
       </div>
     </div>
   </div>
+  <footer>
+    <p>© 2025 MayChrist Corporation. All rights reserved.</p>
+    <div class="version" id="versionDisplay">v2025.05.02.2020b</div>
+  </footer>
   <script>
     const scrollContainer = document.querySelector('.scroll-container');
     const scrollContent = document.querySelector('.scroll-content');
     if (scrollContainer && scrollContent) {
       const visibleHeight = scrollContainer.offsetHeight;
       const contentHeight = scrollContent.scrollHeight;
-      const baseTimePerScreen = 15; // seconds per full screen height
+      const baseTimePerScreen = 15;
       const duration = Math.ceil((contentHeight / visibleHeight) * baseTimePerScreen);
       scrollContent.style.animationDuration = duration + "s";
     }
