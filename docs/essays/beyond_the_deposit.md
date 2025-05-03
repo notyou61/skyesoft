@@ -102,7 +102,12 @@ Receiving a large check triggers satisfaction. It signals success. But without s
 Because the moment of receiving the check hijacks the moment of responsibility. Celebration replaces caution. Ego overrides math.
 :::
 
-![The Celebration Trap Infographic](../assets/images/the_celebration_trap.png)
+<div style="page-break-inside: avoid; text-align: center; margin: 1em 0;">
+  <img src="../assets/images/the_celebration_trap.png"
+       alt="The Celebration Trap Infographic"
+       style="max-width: 100%; height: auto; page-break-inside: avoid;" />
+</div>
+
 
 ---
 
