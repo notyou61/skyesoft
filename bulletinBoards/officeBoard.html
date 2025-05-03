@@ -173,11 +173,18 @@
           </div>
         </div>
       </div>
-    </div>
+    
+<div class="card">
+  <div class="card-content">
+    <h2>🎉 Next Holiday</h2>
+    <p id="nextHoliday">Loading next holiday...</p>
+  </div>
+</div>
+
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020j</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020q</div>
   </footer>
   
 <script>
@@ -203,7 +210,7 @@
 
   requestAnimationFrame(scrollStep);
 
-  if (glbVar?.version && document.getElementById("versionDisplay")) {
+  if ((document.getElementById("versionDisplay"))) {
     document.getElementById("versionDisplay").textContent = glbVar.version;
   }
 </script>
