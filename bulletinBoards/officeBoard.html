@@ -1,216 +1,80 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="UTF-8" />
   <title>Office Electronic Bulletin Board</title>
-  <script src="/skyesoft/assets/js/glbVar.js"></script>
-<!-- Replaced cycleCards -->
-  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<!-- Replaced cycleCards -->
-  <script src="/skyesoft/assets/js/weather.js"></script>
-<!-- Replaced cycleCards -->
+  <link rel="icon" href="/skyesoft/assets/images/favicon.ico" />
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 12px 0;
-      height: 100vh;
-      width: 100vw;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
-      color: #222;
-      box-sizing: border-box;
-      overflow-x: hidden;
+      color: #000;
     }
-    header, #mainBoard, footer {
-      width: 90vw;
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    header, footer {
+      padding: 12px 20px;
+      background: #fff;
       border-radius: 12px;
-      padding: 8px 16px;
-    }
-    header {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      align-items: center;
-      gap: 24px;
-    }
-    header img {
-      height: auto;
-      max-width: 160px;
-      min-width: 120px;
-    }
-    header div {
-      text-align: right;
-    }
-    header h1 {
-      margin: 4px 0;
-      font-size: 1.6em;
-    }
-    header p {
-      margin: 0;
-      font-size: 0.95em;
+      margin: 12px auto;
+      max-width: 1200px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     #mainBoard {
-      flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
       padding: 16px 20px;
-      margin: 8px 0 7px 0;
+      margin: 12px auto;
+      background: #fff;
+      border-radius: 12px;
+      max-width: 1200px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .card {
-      transition: opacity 1s ease-in-out;
-      pointer-events: none;
-      position: absolute;
-      opacity: 1;
-      background: #ffffff;
-      color: #000;
-      padding: 0;
-      border-radius: 12px;
-      width: 100%;
-      height: 100%;
-      max-height: 100%;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-    }
-    .card-content {
-      padding: 8px 24px 24px;
-      box-sizing: border-box;
-      overflow-y: hidden;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      gap: 12px;
-    }
-    .scroll-container {
-      flex-grow: 1;
-      overflow: hidden;
-      position: relative;
-    }
-    .scroll-content {
-      display: block;
-      padding-bottom: 24px;
-      will-change: transform;
-    }
-    .permit-entry {
-      font-size: 1.4vw;
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-    .status.ready {
-      color: green;
-      font-weight: bold;
-    }
-    .status.review {
-      color: #e6b800;
-      color: orange;
-      font-weight: bold;
-    }
-    footer {
-      text-align: left;
-      padding: 12px 20px;
+      margin-bottom: 24px;
     }
     .version {
       font-size: 0.8em;
-      color: #888;
-      margin-top: 4px;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <header>
-    <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
-    <div>
-      <h1>Office Electronic Bulletin Board</h1>
-      <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">01:36:17 PM</span></p>
-      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 1h 53m 43s</span></p>
-    </div>
-  </header>
-  <div id="mainBoard">
-    <div class="card active">
-      <div class="card-content">
-        <h2>📄 Permit Status</h2>
-        <div class="scroll-container">
-          <div class="scroll-content">
-            <div class="permit-entry"><strong>26312</strong> • Sun Valley Wellness • Scottsdale • $545.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26036</strong> • Switch Electric • Tempe • $356.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>25674</strong> • Printing Solutions • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26335</strong> • U-Haul • Surprise • $154.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26513</strong> • Penchetta Pen & Knife • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26216</strong> • Walton Signage • Avondale • $440.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26630</strong> • Signtech • Scottsdale • $620.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26585</strong> • NRS • Casa Grande • $254.77 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26606</strong> • Allen Industries, Inc • Goodyear • $388.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>24741</strong> • Arizona Partners • Glendale • $844.93 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26124</strong> • Jas Diesel • Phoenix • $600.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26111</strong> • Identity Sign Builders • Scottsdale • $570.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26927</strong> • Omaha Neon Sign • Tempe • $368.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26694</strong> • Gudeng Inc • Glendale • $200.11 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26836</strong> • Yaho • Glendale • $200.11 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26877</strong> • Identity Sign Builders • Glendale • $400.22 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26337</strong> • U-Haul • Queen Creek • $664.60 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26916</strong> • Adobe ENT & Allergy • Surprise • $154.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26545</strong> • Walton Signage • Scottsdale • $900.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>25523</strong> • Printing Solutions • Roosevelt Lake • $699.75 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27051</strong> • Sign Resource • Queen Creek • $125.00 <span class="status review">⧗ Ready For Review</span></div>
-<div class="permit-entry"><strong>27033</strong> • Federal Heath • Gilbert • $175.00 <span class="status review">⧗ Ready For Review</span></div>
-<div class="permit-entry"><strong>27071</strong> • Pattison Sign Group • Chandler • $76.68 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27031</strong> • Entera Branding • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27051</strong> • Sign Resource • Queen Creek • $414.60 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26754</strong> • AWP Safety • Chandler • $132.25 <span class="status ready">✔ Ready To Issue</span></div>
-          </div>
-        </div>
-      </div>
+
+<header>
+  <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs Logo" style="height: 100px;" />
+  <h1>Office Electronic Bulletin Board</h1>
+  <p><strong>Weather:</strong> ☁️ few clouds | 72°F</p>
+  <p><strong>Time:</strong> 07:17:25 AM</p>
+  <p><strong>Interval Remaining:</strong> Enjoy your day!</p>
+</header>
+
+<div id="mainBoard">
+  <div class="card">
+    <div class="card-content">
+      <h2>📄 Permit Status</h2>
+      <p><strong>26513</strong> • Penchetta Pen & Knife • Phoenix • $225.00 ✓ Ready To Issue</p>
+      <p><strong>26630</strong> • Signtech • Scottsdale • $620.00 ✓ Ready To Issue</p>
+      <p><strong>26606</strong> • Allen Industries, Inc • Goodyear • $388.00 ✓ Ready To Issue</p>
     </div>
   </div>
-  <footer>
-    <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020j</div>
-  </footer>
   
-<script>
-  const scrollContent = document.querySelector('.scroll-content');
-  const scrollContainer = document.querySelector('.scroll-container');
+<div class="card">
+  <div class="card-content" id="holidayCardContent">
+    <h2>🎉 Next Holiday</h2>
+    <p id="nextHolidayText">Loading next holiday...</p>
+  </div>
+</div>
 
-  let startTime = null;
-  const duration = 60000; // 60 seconds
+</div>
 
-  function scrollStep(timestamp) {
-    if (!startTime) startTime = timestamp;
-    const elapsed = timestamp - startTime;
-
-    const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-    const progress = Math.min(elapsed / duration, 1);
-
-    scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-
-    if (progress < 1) {
-      requestAnimationFrame(scrollStep);
-    }
-  }
-
-  requestAnimationFrame(scrollStep);
-
-  if (glbVar?.version && document.getElementById("versionDisplay")) {
-    document.getElementById("versionDisplay").textContent = glbVar.version;
-  }
-</script>
-<!-- Replaced cycleCards -->
+<footer>
+  <p>© 2025 MayChrist Corporation. All rights reserved.</p>
+  <div class="version">v2025.05.02.2020o</div>
+</footer>
 
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
   const holidays = [
     { name: "Memorial Day", date: "2025-05-26" },
     { name: "Juneteenth", date: "2025-06-19" },
@@ -233,33 +97,12 @@
   }
 
   const next = getNextHoliday();
-  if (next) {
-    document.getElementById("nextHoliday").innerHTML =
-      `🎉 <strong>${next.name}</strong> is on <strong>${new Date(next.date).toDateString()}</strong>`;
+  const textEl = document.getElementById("nextHolidayText");
+  if (next && textEl) {
+    const date = new Date(next.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    textEl.innerHTML = `<strong>${next.name}</strong> is on <strong>${date}</strong>`;
   }
-</script>
-<!-- Replaced cycleCards -->
-
-
-<script>
-  const cards = document.querySelectorAll('.card');
-  let currentIndex = 0;
-
-  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
-
-  function showCard(index) {
-    cards.forEach(card => card.classList.remove('active'));
-    cards[index].classList.add('active');
-  }
-
-  function nextCard() {
-    currentIndex = (currentIndex + 1) % cards.length;
-    showCard(currentIndex);
-    setTimeout(nextCard, durations[currentIndex]);
-  }
-
-  showCard(currentIndex);
-  setTimeout(nextCard, durations[currentIndex]);
+});
 </script>
 
 </body>
