@@ -65,8 +65,7 @@
     }
     .card {
       position: absolute;
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
+      opacity: 1;
       background: #ffffff;
       color: #000;
       padding: 0;
@@ -79,14 +78,10 @@
       flex-direction: column;
       justify-content: flex-start;
     }
-    .card.active {
-      opacity: 1;
-      z-index: 10;
-    }
     .card-content {
       padding: 8px 24px 24px;
       box-sizing: border-box;
-      overflow-y: auto;
+      overflow-y: hidden;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -100,12 +95,8 @@
     }
     .scroll-content {
       display: block;
-      animation: scroll-up 60s linear infinite;
       padding-bottom: 24px;
-    }
-    @keyframes scroll-up {
-      from { transform: translateY(100%); }
-      to { transform: translateY(-100%); }
+      will-change: transform;
     }
     .permit-entry {
       font-size: 1.4vw;
@@ -132,17 +123,15 @@
   </style>
 </head>
 <body>
-  
-<header>
-  <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
-  <div>
-    <h1>Office Electronic Bulletin Board</h1>
-    <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
-    <p><strong>⏰ Time:</strong> <span id="currentTime">01:36:17 PM</span></p>
-    <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 1h 53m 43s</span></p>
-  </div>
-</header>
-
+  <header>
+    <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
+    <div>
+      <h1>Office Electronic Bulletin Board</h1>
+      <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">01:36:17 PM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 1h 53m 43s</span></p>
+    </div>
+  </header>
   <div id="mainBoard">
     <div class="card active">
       <div class="card-content">
@@ -180,25 +169,38 @@
       </div>
     </div>
   </div>
+  <footer>
+    <p>© 2025 MayChrist Corporation. All rights reserved.</p>
+    <div class="version" id="versionDisplay">v2025.05.02.2020d</div>
+  </footer>
   
-<footer>
-  <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-  <div class="version" id="versionDisplay">v2025.05.02.2020c</div>
-</footer>
+<script>
+  const scrollContent = document.querySelector('.scroll-content');
+  const scrollContainer = document.querySelector('.scroll-container');
 
-  <script>
-    const scrollContainer = document.querySelector('.scroll-container');
-    const scrollContent = document.querySelector('.scroll-content');
-    if (scrollContainer && scrollContent) {
-      const visibleHeight = scrollContainer.offsetHeight;
-      const contentHeight = scrollContent.scrollHeight;
-      const baseTimePerScreen = 15;
-      const duration = Math.ceil((contentHeight / visibleHeight) * baseTimePerScreen);
-      scrollContent.style.animationDuration = duration + "s";
+  let startTime = null;
+  const duration = 60000; // 60 seconds
+
+  function scrollStep(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+    const progress = Math.min(elapsed / duration, 1);
+
+    scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+
+    if (progress < 1) {
+      requestAnimationFrame(scrollStep);
     }
-    if (glbVar?.version && document.getElementById("versionDisplay")) {
-      document.getElementById("versionDisplay").textContent = glbVar.version;
-    }
-  </script>
+  }
+
+  requestAnimationFrame(scrollStep);
+
+  if (glbVar?.version && document.getElementById("versionDisplay")) {
+    document.getElementById("versionDisplay").textContent = glbVar.version;
+  }
+</script>
+
 </body>
 </html>
