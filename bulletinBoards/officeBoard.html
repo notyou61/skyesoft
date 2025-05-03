@@ -4,8 +4,11 @@
   <meta charset="utf-8"/>
   <title>Office Electronic Bulletin Board</title>
   <script src="/skyesoft/assets/js/glbVar.js"></script>
+<!-- Replaced cycleCards -->
   <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<!-- Replaced cycleCards -->
   <script src="/skyesoft/assets/js/weather.js"></script>
+<!-- Replaced cycleCards -->
   <style>
     html, body {
       margin: 0;
@@ -172,7 +175,7 @@
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020h</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020i</div>
   </footer>
   
 <script>
@@ -202,6 +205,7 @@
     document.getElementById("versionDisplay").textContent = glbVar.version;
   }
 </script>
+<!-- Replaced cycleCards -->
 
 
 <script>
@@ -231,6 +235,29 @@
     document.getElementById("nextHoliday").innerHTML =
       `🎉 <strong>${next.name}</strong> is on <strong>${new Date(next.date).toDateString()}</strong>`;
   }
+</script>
+<!-- Replaced cycleCards -->
+
+
+<script>
+  const cards = document.querySelectorAll('.card');
+  let currentIndex = 0;
+
+  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
+
+  function showCard(index) {
+    cards.forEach(card => card.classList.remove('active'));
+    cards[index].classList.add('active');
+  }
+
+  function nextCard() {
+    currentIndex = (currentIndex + 1) % cards.length;
+    showCard(currentIndex);
+    setTimeout(nextCard, durations[currentIndex]);
+  }
+
+  showCard(currentIndex);
+  setTimeout(nextCard, durations[currentIndex]);
 </script>
 
 </body>
