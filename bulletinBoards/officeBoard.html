@@ -172,7 +172,7 @@
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020g</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020h</div>
   </footer>
   
 <script>
@@ -200,6 +200,36 @@
 
   if (glbVar?.version && document.getElementById("versionDisplay")) {
     document.getElementById("versionDisplay").textContent = glbVar.version;
+  }
+</script>
+
+
+<script>
+  const holidays = [
+    { name: "Memorial Day", date: "2025-05-26" },
+    { name: "Juneteenth", date: "2025-06-19" },
+    { name: "Independence Day", date: "2025-07-04" },
+    { name: "Labor Day", date: "2025-09-01" },
+    { name: "Columbus Day", date: "2025-10-13" },
+    { name: "Veterans Day", date: "2025-11-11" },
+    { name: "Thanksgiving Day", date: "2025-11-27" },
+    { name: "Day After Thanksgiving", date: "2025-11-28" },
+    { name: "Christmas Day", date: "2025-12-25" }
+  ];
+
+  function getNextHoliday() {
+    const today = new Date();
+    for (const holiday of holidays) {
+      const date = new Date(holiday.date);
+      if (date >= today) return holiday;
+    }
+    return null;
+  }
+
+  const next = getNextHoliday();
+  if (next) {
+    document.getElementById("nextHoliday").innerHTML =
+      `🎉 <strong>${next.name}</strong> is on <strong>${new Date(next.date).toDateString()}</strong>`;
   }
 </script>
 
