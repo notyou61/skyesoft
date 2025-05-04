@@ -155,12 +155,15 @@
 </html>
   
 </html>
+  
+</html>
   <script>
     const cards = document.querySelectorAll('.card');
     const scrollContent = document.getElementById('scroll-content');
     const scrollContainer = scrollContent?.parentElement;
     const entryRows = scrollContent?.querySelectorAll('.entry') || [];
     let currentIndex = 0;
+    let scrollAnimation = null;
 
     function showCard(index) {
       cards.forEach(card => card.classList.remove('active'));
@@ -169,12 +172,16 @@
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
         setTimeout(() => {
-          startScroll(15000); // Force 15-second scroll duration
+          startScroll(15000); // Always scroll over 15s
         }, 100);
       }
     }
 
     function resetScroll() {
+      if (scrollAnimation) {
+        cancelAnimationFrame(scrollAnimation);
+        scrollAnimation = null;
+      }
       scrollContent.style.transform = 'translateY(0)';
     }
 
@@ -191,10 +198,10 @@
           const progress = Math.min(elapsed / duration, 1);
           scrollContent.style.transform = `translateY(-${progress * distance}px)`;
           if (progress < 1) {
-            requestAnimationFrame(stepScroll);
+            scrollAnimation = requestAnimationFrame(stepScroll);
           }
         }
-        requestAnimationFrame(stepScroll);
+        scrollAnimation = requestAnimationFrame(stepScroll);
       });
     }
 
