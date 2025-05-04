@@ -23,7 +23,7 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            min-height: 400px; /* Ensure a minimum height for visibility */
+            min-height: 400px;
         }
         .card {
             position: absolute;
@@ -36,10 +36,12 @@
             padding: 20px;
             box-sizing: border-box;
             overflow: hidden;
+            display: none; /* Initially hide all cards */
         }
         .card.active {
             opacity: 1;
             pointer-events: auto;
+            display: block; /* Only show the active card */
         }
         .scroll-container {
             height: 100%;
@@ -100,6 +102,7 @@
 
             // Restart scrolling only when the first card is shown
             if (index === 0 && scrollContent && scrollContainer) {
+                console.log('Card 0 activated, resetting and starting scroll');
                 resetScroll();
                 startScroll(60000);
             }
@@ -107,19 +110,25 @@
 
         function resetScroll() {
             if (scrollContent) {
+                console.log('Resetting scroll position');
                 scrollContent.style.transform = 'translateY(0)';
             }
-            startTime = null; // Reset startTime for a fresh animation
+            startTime = null;
             if (scrollAnimation) {
-                cancelAnimationFrame(scrollAnimation); // Cancel any ongoing animation
+                console.log('Cancelling previous scroll animation');
+                cancelAnimationFrame(scrollAnimation);
                 scrollAnimation = null;
             }
         }
 
         let startTime = null;
         function startScroll(duration = 60000) {
-            if (!scrollContent || !scrollContainer) return;
-            resetScroll(); // Ensure we start from the top
+            if (!scrollContent || !scrollContainer) {
+                console.log('Scroll content or container not found, cannot start scroll');
+                return;
+            }
+            console.log('Starting scroll animation with duration:', duration);
+            resetScroll(); // **Crucially, reset scroll before starting**
 
             const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
             console.log('Scroll distance:', distance);
@@ -131,6 +140,8 @@
                 scrollContent.style.transform = `translateY(-${progress * distance}px)`;
                 if (progress < 1) {
                     scrollAnimation = requestAnimationFrame(stepScroll);
+                } else {
+                    console.log('Scroll animation completed');
                 }
             }
 
@@ -139,15 +150,17 @@
 
         function rotateCards() {
             currentIndex = (currentIndex + 1) % cards.length;
+            console.log('Rotating to card index:', currentIndex);
             showCard(currentIndex);
             clearTimeout(rotationTimeout);
             rotationTimeout = setTimeout(rotateCards, currentIndex === 0 ? 60000 : 15000);
         }
 
         if (scrollContent && scrollContainer) {
+            console.log('Initial setup: showing card 0 and starting initial scroll');
             showCard(0);
-            startScroll(60000); // Initial scroll start
-            rotationTimeout = setTimeout(rotateCards, 60000); // Initial rotation after the first scroll duration
+            startScroll(60000);
+            rotationTimeout = setTimeout(rotateCards, 60000);
         } else {
             console.log('No scroll content or container, falling back to rotateCards');
             rotateCards();
