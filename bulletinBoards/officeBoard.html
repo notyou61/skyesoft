@@ -169,8 +169,8 @@
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
         setTimeout(() => {
-          startScroll();
-        }, 100); // Let layout settle
+          startScroll(15000); // Force 15-second scroll duration
+        }, 100);
       }
     }
 
@@ -178,14 +178,11 @@
       scrollContent.style.transform = 'translateY(0)';
     }
 
-    function startScroll() {
+    function startScroll(duration) {
       requestAnimationFrame(() => {
         const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
         console.log("🔍 Scroll distance:", distance);
         if (distance <= 0) return;
-
-        const minSpeed = 2; // pixels per second
-        const duration = Math.max(60000, (distance / minSpeed) * 1000); // in ms
 
         let startTime = null;
         function stepScroll(timestamp) {
