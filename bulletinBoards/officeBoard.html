@@ -146,10 +146,13 @@
   <script src="/skyesoft/assets/js/weather.js"></script>
   <script src="/skyesoft/assets/js/glbVar.js"></script>
 
+  
+</html>
   <script>
     const cards = document.querySelectorAll('.card');
     const scrollContent = document.getElementById('scroll-content');
     const scrollContainer = scrollContent?.parentElement;
+    const entryRows = scrollContent?.querySelectorAll('.entry') || [];
     let currentIndex = 0;
     let scrollAnimation;
     let startTime = null;
@@ -159,7 +162,9 @@
       cards[index].classList.add('active');
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
-        startScroll(60000);
+        const rowCount = entryRows.length;
+        const duration = rowCount > 0 ? (60000) : 60000; // default 60s
+        startScroll(duration);
       }
     }
 
@@ -194,12 +199,8 @@
       setTimeout(rotateCards, currentIndex === 0 ? 60000 : 15000);
     }
 
-    // 🧠 Guaranteed start: always showCard(0) and rotate
     window.onload = function () {
       showCard(0);
-      if (scrollContent && scrollContainer) {
-        startScroll(60000);
-      }
       setTimeout(rotateCards, 60000);
     };
   </script>
