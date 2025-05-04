@@ -180,33 +180,7 @@
     <div class="version" id="versionDisplay">v2025.05.02.2020j</div>
   </footer>
   
-<script>
-  const scrollContent = document.querySelector('.scroll-content');
-  const scrollContainer = document.querySelector('.scroll-container');
 
-  let startTime = null;
-  const duration = 60000; // 60 seconds
-
-  function scrollStep(timestamp) {
-    if (!startTime) startTime = timestamp;
-    const elapsed = timestamp - startTime;
-
-    const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-    const progress = Math.min(elapsed / duration, 1);
-
-    scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-
-    if (progress < 1) {
-      requestAnimationFrame(scrollStep);
-    }
-  }
-
-  requestAnimationFrame(scrollStep);
-
-  if (glbVar?.version && document.getElementById("versionDisplay")) {
-    document.getElementById("versionDisplay").textContent = glbVar.version;
-  }
-</script>
 <!-- Replaced cycleCards -->
 
 
@@ -241,38 +215,11 @@
 <!-- Replaced cycleCards -->
 
 
-
 <script>
   const cards = document.querySelectorAll('.card');
   let currentIndex = 0;
 
-  const durations = [60000, 15000, 15000, 15000]; // durations per card
-  const scrollDuration = durations[0];
-
-  const scrollContent = document.querySelector('.scroll-content');
-  const scrollContainer = document.querySelector('.scroll-container');
-
-  function scrollPermitCard(callback) {
-    let startTime = null;
-
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-
-      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-      const progress = Math.min(elapsed / scrollDuration, 1);
-
-      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        callback(); // Only call nextCard after scroll ends
-      }
-    }
-
-    requestAnimationFrame(step);
-  }
+  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
 
   function showCard(index) {
     cards.forEach(card => card.classList.remove('active'));
@@ -285,13 +232,54 @@
     setTimeout(nextCard, durations[currentIndex]);
   }
 
-  // Begin with permit scroll, then continue rotation
-  showCard(0);
-  scrollPermitCard(() => {
-    setTimeout(nextCard, durations[1]); // Start nextCard after scroll and a brief pause
-  });
+  showCard(currentIndex);
+  setTimeout(nextCard, durations[currentIndex]);
 </script>
 
+
+<script>
+  const scrollContent = document.querySelector('.scroll-content');
+  const scrollContainer = document.querySelector('.scroll-container');
+  const cards = document.querySelectorAll('.card');
+  let currentIndex = 0;
+
+  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
+
+  function scrollPermitCard() {
+    if (!scrollContent || !scrollContainer) return;
+
+    let startTime = null;
+    const duration = durations[0];
+    const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  function showCard(index) {
+    cards.forEach(card => card.classList.remove('active'));
+    cards[index].classList.add('active');
+    if (index === 0) scrollPermitCard();
+  }
+
+  function nextCard() {
+    currentIndex = (currentIndex + 1) % cards.length;
+    showCard(currentIndex);
+    setTimeout(nextCard, durations[currentIndex]);
+  }
+
+  showCard(currentIndex);
+  setTimeout(nextCard, durations[currentIndex]);
+</script>
 
 </body>
 </html>
