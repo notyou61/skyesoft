@@ -1,3 +1,4 @@
+<!-- Stable version v2025.05.02.2020s (restores transitions and scroll) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,10 +10,12 @@
   <style>
     html, body {
       margin: 0;
-      padding: 12px;
+      padding: 12px 0;
       height: 100vh;
       width: 100vw;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
@@ -53,9 +56,6 @@
     }
     #mainBoard {
       flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       position: relative;
       overflow: hidden;
       padding: 16px 20px;
@@ -72,7 +72,6 @@
       border-radius: 12px;
       width: 100%;
       height: 100%;
-      max-height: 100%;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
@@ -80,12 +79,12 @@
     }
     .card.active {
       opacity: 1;
-      z-index: 10;
+      pointer-events: auto;
     }
     .card-content {
       padding: 8px 24px 24px;
       box-sizing: border-box;
-      overflow-y: hidden;
+      overflow-y: auto;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -132,17 +131,72 @@
     <div>
       <h1>Office Electronic Bulletin Board</h1>
       <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">01:36:17 PM</span></p>
-      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 1h 53m 43s</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">08:36:17 AM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 9h 23m 43s</span></p>
     </div>
   </header>
   <div id="mainBoard">
-    <!-- Cards omitted for brevity -->
+    <div class="card active">
+      <div class="card-content">
+        <h2>📄 Permit Status</h2>
+        <div class="scroll-container">
+          <div class="scroll-content">
+            <div class="permit-entry"><strong>26312</strong> • Sample • City • $500 <span class="status ready">✔ Ready</span></div>
+            <!-- Add more entries as needed -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-content"><h2>💡 Quote of the Day</h2><p>“Success is not final, failure is not fatal...”</p></div>
+    </div>
+    <div class="card">
+      <div class="card-content"><h2>🏗️ Featured Project</h2><p>El Shaddai build continues...</p></div>
+    </div>
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020j</div>
-    <p id="nextHoliday"></p>
+    <div class="version" id="versionDisplay">v2025.05.02.2020s</div>
   </footer>
+
+  <script>
+    const scrollContent = document.querySelector('.scroll-content');
+    const scrollContainer = document.querySelector('.scroll-container');
+
+    let startTime = null;
+    const duration = 60000;
+
+    function scrollStep(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      const progress = Math.min(elapsed / duration, 1);
+      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+      if (progress < 1) {
+        requestAnimationFrame(scrollStep);
+      }
+    }
+
+    requestAnimationFrame(scrollStep);
+  </script>
+  <script>
+    const cards = document.querySelectorAll('.card');
+    let currentIndex = 0;
+    const durations = [60000, 15000, 15000];
+
+    function showCard(index) {
+      cards.forEach(card => card.classList.remove('active'));
+      cards[index].classList.add('active');
+    }
+
+    function nextCard() {
+      currentIndex = (currentIndex + 1) % cards.length;
+      showCard(currentIndex);
+      setTimeout(nextCard, durations[currentIndex]);
+    }
+
+    showCard(currentIndex);
+    setTimeout(nextCard, durations[currentIndex]);
+  </script>
 </body>
 </html>
