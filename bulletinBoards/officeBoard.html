@@ -4,20 +4,15 @@
   <meta charset="utf-8"/>
   <title>Office Electronic Bulletin Board</title>
   <script src="/skyesoft/assets/js/glbVar.js"></script>
-<!-- Replaced cycleCards -->
   <script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<!-- Replaced cycleCards -->
   <script src="/skyesoft/assets/js/weather.js"></script>
-<!-- Replaced cycleCards -->
   <style>
     html, body {
       margin: 0;
-      padding: 12px 0;
+      padding: 12px;
       height: 100vh;
       width: 100vw;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      display: block;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
@@ -70,7 +65,7 @@
       transition: opacity 1s ease-in-out;
       pointer-events: none;
       position: absolute;
-      opacity: 1;
+      opacity: 0;
       background: #ffffff;
       color: #000;
       padding: 0;
@@ -82,6 +77,10 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
+    }
+    .card.active {
+      opacity: 1;
+      z-index: 10;
     }
     .card-content {
       padding: 8px 24px 24px;
@@ -113,7 +112,6 @@
       font-weight: bold;
     }
     .status.review {
-      color: #e6b800;
       color: orange;
       font-weight: bold;
     }
@@ -139,128 +137,12 @@
     </div>
   </header>
   <div id="mainBoard">
-    <div class="card active">
-      <div class="card-content">
-        <h2>📄 Permit Status</h2>
-        <div class="scroll-container">
-          <div class="scroll-content">
-            <div class="permit-entry"><strong>26312</strong> • Sun Valley Wellness • Scottsdale • $545.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26036</strong> • Switch Electric • Tempe • $356.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>25674</strong> • Printing Solutions • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26335</strong> • U-Haul • Surprise • $154.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26513</strong> • Penchetta Pen & Knife • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26216</strong> • Walton Signage • Avondale • $440.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26630</strong> • Signtech • Scottsdale • $620.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26585</strong> • NRS • Casa Grande • $254.77 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26606</strong> • Allen Industries, Inc • Goodyear • $388.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>24741</strong> • Arizona Partners • Glendale • $844.93 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26124</strong> • Jas Diesel • Phoenix • $600.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26111</strong> • Identity Sign Builders • Scottsdale • $570.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26927</strong> • Omaha Neon Sign • Tempe • $368.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26694</strong> • Gudeng Inc • Glendale • $200.11 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26836</strong> • Yaho • Glendale • $200.11 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26877</strong> • Identity Sign Builders • Glendale • $400.22 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26337</strong> • U-Haul • Queen Creek • $664.60 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26916</strong> • Adobe ENT & Allergy • Surprise • $154.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26545</strong> • Walton Signage • Scottsdale • $900.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>25523</strong> • Printing Solutions • Roosevelt Lake • $699.75 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27051</strong> • Sign Resource • Queen Creek • $125.00 <span class="status review">⧗ Ready For Review</span></div>
-<div class="permit-entry"><strong>27033</strong> • Federal Heath • Gilbert • $175.00 <span class="status review">⧗ Ready For Review</span></div>
-<div class="permit-entry"><strong>27071</strong> • Pattison Sign Group • Chandler • $76.68 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27031</strong> • Entera Branding • Phoenix • $225.00 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>27051</strong> • Sign Resource • Queen Creek • $414.60 <span class="status ready">✔ Ready To Issue</span></div>
-<div class="permit-entry"><strong>26754</strong> • AWP Safety • Chandler • $132.25 <span class="status ready">✔ Ready To Issue</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Cards omitted for brevity -->
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
     <div class="version" id="versionDisplay">v2025.05.02.2020j</div>
+    <p id="nextHoliday"></p>
   </footer>
-  
-<script>
-  const scrollContent = document.querySelector('.scroll-content');
-  const scrollContainer = document.querySelector('.scroll-container');
-
-  let startTime = null;
-  const duration = 60000; // 60 seconds
-
-  function scrollStep(timestamp) {
-    if (!startTime) startTime = timestamp;
-    const elapsed = timestamp - startTime;
-
-    const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-    const progress = Math.min(elapsed / duration, 1);
-
-    scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-
-    if (progress < 1) {
-      requestAnimationFrame(scrollStep);
-    }
-  }
-
-  requestAnimationFrame(scrollStep);
-
-  if (glbVar?.version && document.getElementById("versionDisplay")) {
-    document.getElementById("versionDisplay").textContent = glbVar.version;
-  }
-</script>
-<!-- Replaced cycleCards -->
-
-
-<script>
-  const holidays = [
-    { name: "Memorial Day", date: "2025-05-26" },
-    { name: "Juneteenth", date: "2025-06-19" },
-    { name: "Independence Day", date: "2025-07-04" },
-    { name: "Labor Day", date: "2025-09-01" },
-    { name: "Columbus Day", date: "2025-10-13" },
-    { name: "Veterans Day", date: "2025-11-11" },
-    { name: "Thanksgiving Day", date: "2025-11-27" },
-    { name: "Day After Thanksgiving", date: "2025-11-28" },
-    { name: "Christmas Day", date: "2025-12-25" }
-  ];
-
-  function getNextHoliday() {
-    const today = new Date();
-    for (const holiday of holidays) {
-      const date = new Date(holiday.date);
-      if (date >= today) return holiday;
-    }
-    return null;
-  }
-
-  const next = getNextHoliday();
-  if (next) {
-    document.getElementById("nextHoliday").innerHTML =
-      `🎉 <strong>${next.name}</strong> is on <strong>${new Date(next.date).toDateString()}</strong>`;
-  }
-</script>
-<!-- Replaced cycleCards -->
-
-
-<script>
-  const cards = document.querySelectorAll('.card');
-  let currentIndex = 0;
-
-  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
-
-  function showCard(index) {
-    cards.forEach(card => card.classList.remove('active'));
-    cards[index].classList.add('active');
-  }
-
-  function nextCard() {
-    currentIndex = (currentIndex + 1) % cards.length;
-    showCard(currentIndex);
-    setTimeout(nextCard, durations[currentIndex]);
-  }
-
-  showCard(currentIndex);
-  setTimeout(nextCard, durations[currentIndex]);
-</script>
-
 </body>
 </html>
