@@ -145,5 +145,64 @@
   <script src="/skyesoft/assets/js/weatherConfig.js"></script>
   <script src="/skyesoft/assets/js/weather.js"></script>
   <script src="/skyesoft/assets/js/glbVar.js"></script>
+
+  <script>
+    const cards = document.querySelectorAll('.card');
+    const scrollContent = document.getElementById('scroll-content');
+    const scrollContainer = scrollContent?.parentElement;
+    let currentIndex = 0;
+    let scrollAnimation;
+    let startTime = null;
+
+    function showCard(index) {
+      cards.forEach(card => card.classList.remove('active'));
+      cards[index].classList.add('active');
+      if (index === 0 && scrollContent && scrollContainer) {
+        resetScroll();
+        startScroll(60000);
+      }
+    }
+
+    function resetScroll() {
+      scrollContent.style.transform = 'translateY(0)';
+      startTime = null;
+      if (scrollAnimation) {
+        cancelAnimationFrame(scrollAnimation);
+        scrollAnimation = null;
+      }
+    }
+
+    function startScroll(duration = 60000) {
+      if (!scrollContent || !scrollContainer) return;
+      resetScroll();
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      function stepScroll(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+        if (progress < 1) {
+          scrollAnimation = requestAnimationFrame(stepScroll);
+        }
+      }
+      scrollAnimation = requestAnimationFrame(stepScroll);
+    }
+
+    function rotateCards() {
+      currentIndex = (currentIndex + 1) % cards.length;
+      showCard(currentIndex);
+      setTimeout(rotateCards, currentIndex === 0 ? 60000 : 15000);
+    }
+
+    // 🧠 Guaranteed start: always showCard(0) and rotate
+    window.onload = function () {
+      showCard(0);
+      if (scrollContent && scrollContainer) {
+        startScroll(60000);
+      }
+      setTimeout(rotateCards, 60000);
+    };
+  </script>
+
 </body>
 </html>
