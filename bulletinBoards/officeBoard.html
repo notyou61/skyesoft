@@ -165,8 +165,12 @@
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
         const rowCount = entryRows.length;
-        const duration = rowCount > 0 ? 60000 : 60000; // Always 60s scroll for now
-        startScroll(duration);
+        const duration = rowCount > 0 ? 60000 : 60000;
+
+        // Delay startScroll to allow layout to settle
+        setTimeout(() => {
+          startScroll(duration);
+        }, 100);
       }
     }
 
@@ -177,7 +181,8 @@
     function startScroll(duration = 60000) {
       requestAnimationFrame(() => {
         const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-        if (distance <= 0) return; // No scroll needed
+        console.log("🔍 Scroll distance:", distance); // Debug
+        if (distance <= 0) return;
 
         let startTime = null;
         function stepScroll(timestamp) {
