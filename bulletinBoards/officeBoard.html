@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,6 +23,7 @@
       background: white;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      min-height: 400px; /* Ensure a minimum height for visibility */
     }
     .card {
       position: absolute;
@@ -87,7 +87,12 @@
     const scrollContainer = scrollContent?.parentElement;
     let currentIndex = 0;
 
+    console.log('Number of cards:', cards.length); // Debug: Confirm cards are found
+    console.log('Scroll content:', scrollContent); // Debug: Confirm scroll content exists
+    console.log('Scroll container:', scrollContainer); // Debug: Confirm scroll container exists
+
     function showCard(index) {
+      console.log('Showing card index:', index); // Debug: Confirm card is shown
       cards.forEach(card => card.classList.remove('active'));
       cards[index].classList.add('active');
     }
@@ -95,6 +100,7 @@
     function startScroll(duration = 60000, callback) {
       let startTime = null;
       const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      console.log('Scroll distance:', distance); // Debug: Confirm scroll distance
 
       function stepScroll(timestamp) {
         if (!startTime) startTime = timestamp;
@@ -104,6 +110,7 @@
         if (progress < 1) {
           requestAnimationFrame(stepScroll);
         } else if (callback) {
+          console.log('Scrolling complete, calling callback'); // Debug: Confirm callback
           callback();
         }
       }
@@ -117,14 +124,14 @@
       setTimeout(rotateCards, 15000);
     }
 
-    // Start with scroll then rotate
     if (scrollContent && scrollContainer) {
       showCard(0);
       startScroll(60000, () => {
         setTimeout(rotateCards, 1000);
       });
     } else {
-      rotateCards(); // fallback
+      console.log('No scroll content or container, falling back to rotateCards'); // Debug: Fallback
+      rotateCards();
     }
   </script>
 </body>
