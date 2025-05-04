@@ -4,6 +4,9 @@
 <head>
   <meta charset="utf-8"/>
   <title>Office Electronic Bulletin Board</title>
+  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -14,94 +17,174 @@
       flex-direction: column;
       align-items: center;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f5f5;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
       color: #222;
       box-sizing: border-box;
       overflow-x: hidden;
     }
+    header, #mainBoard, footer {
+      width: 90vw;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-radius: 12px;
+      padding: 8px 16px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 24px;
+    }
+    header img {
+      height: auto;
+      max-width: 160px;
+      min-width: 120px;
+    }
+    header div {
+      text-align: right;
+    }
+    header h1 {
+      margin: 4px 0;
+      font-size: 1.6em;
+    }
+    header p {
+      margin: 0;
+      font-size: 0.95em;
+    }
     #mainBoard {
       flex-grow: 1;
-      width: 90%;
-      max-width: 1200px;
       position: relative;
       overflow: hidden;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      padding: 20px;
+      padding: 16px 20px;
+      margin: 8px 0 7px 0;
     }
     .card {
+      transition: opacity 1s ease-in-out;
+      pointer-events: none;
       position: absolute;
+      opacity: 0;
+      background: #ffffff;
+      color: #000;
+      padding: 0;
+      border-radius: 12px;
       width: 100%;
       height: 100%;
-      top: 0;
-      left: 0;
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
-      padding: 20px;
       box-sizing: border-box;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
     .card.active {
       opacity: 1;
       pointer-events: auto;
     }
-    .scroll-container {
+    .card-content {
+      padding: 8px 24px 24px;
+      box-sizing: border-box;
+      overflow-y: auto;
       height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 12px;
+    }
+    .scroll-container {
+      flex-grow: 1;
       overflow: hidden;
+      position: relative;
     }
     .scroll-content {
-      position: relative;
+      display: block;
+      padding-bottom: 24px;
       will-change: transform;
     }
-    .entry {
-      margin: 10px 0;
-      font-size: 1.2em;
+    .permit-entry {
+      font-size: 1.4vw;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .status.ready {
+      color: green;
+      font-weight: bold;
+    }
+    .status.review {
+      color: orange;
+      font-weight: bold;
+    }
+    footer {
+      text-align: left;
+      padding: 12px 20px;
+    }
+    .version {
+      font-size: 0.8em;
+      color: #888;
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
+  <header>
+    <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
+    <div>
+      <h1>Office Electronic Bulletin Board</h1>
+      <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">08:36:17 AM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 9h 23m 43s</span></p>
+    </div>
+  </header>
   <div id="mainBoard">
-    <div class="card active" id="card-0">
-      <div class="scroll-container">
-        <div class="scroll-content" id="scroll-content">
-<div class="entry"><strong>26312</strong> • Sun Valley Wellness • Scottsdale • $545.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26036</strong> • Switch Electric • Tempe • $356.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>25674</strong> • Printing Solutions • Phoenix • $225.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26335</strong> • U-Haul • Surprise • $154.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26513</strong> • Penchetta Pen & Knife • Phoenix • $225.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26216</strong> • Walton Signage • Avondale • $440.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26630</strong> • Signtech • Scottsdale • $620.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26585</strong> • NRS • Casa Grande • $254.77 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26606</strong> • Allen Industries, Inc • Goodyear • $388.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>24741</strong> • Arizona Partners • Glendale • $844.93 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26124</strong> • Jas Diesel • Phoenix • $600.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26111</strong> • Identity Sign Builders • Scottsdale • $570.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26927</strong> • Omaha Neon Sign • Tempe • $368.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26694</strong> • Gudeng Inc • Glendale • $200.11 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26836</strong> • Yaho • Glendale • $200.11 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26877</strong> • Identity Sign Builders • Glendale • $400.22 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26337</strong> • U-Haul • Queen Creek • $664.60 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26916</strong> • Adobe ENT & Allergy • Surprise • $154.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26545</strong> • Walton Signage • Scottsdale • $900.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>25523</strong> • Printing Solutions • Roosevelt Lake • $699.75 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>27051</strong> • Sign Resource • Queen Creek • $125.00 <span class="status review">⧗ Review</span></div>
-<div class="entry"><strong>27033</strong> • Federal Heath • Gilbert • $175.00 <span class="status review">⧗ Review</span></div>
-<div class="entry"><strong>27071</strong> • Pattison Sign Group • Chandler • $76.68 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>27031</strong> • Entera Branding • Phoenix • $225.00 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>27051</strong> • Sign Resource • Queen Creek • $414.60 <span class="status ready">✔ Ready</span></div>
-<div class="entry"><strong>26754</strong> • AWP Safety • Chandler • $132.25 <span class="status ready">✔ Ready</span></div>
+    <div class="card active">
+      <div class="card-content">
+        <h2>📄 Permit Status</h2>
+        <div class="scroll-container">
+          <div class="scroll-content">
+            <!-- 20+ permit rows -->
+            <div class="permit-entry"><strong>26300</strong> • Client A • City • $500 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26301</strong> • Client B • City • $525 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26302</strong> • Client C • City • $550 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26303</strong> • Client D • City • $575 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26304</strong> • Client E • City • $600 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26305</strong> • Client F • City • $625 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26306</strong> • Client G • City • $650 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26307</strong> • Client H • City • $675 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26308</strong> • Client I • City • $700 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26309</strong> • Client J • City • $725 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26310</strong> • Client K • City • $750 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26311</strong> • Client L • City • $775 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26312</strong> • Client M • City • $800 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26313</strong> • Client N • City • $825 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26314</strong> • Client O • City • $850 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26315</strong> • Client P • City • $875 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26316</strong> • Client Q • City • $900 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26317</strong> • Client R • City • $925 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26318</strong> • Client S • City • $950 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26319</strong> • Client T • City • $975 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26320</strong> • Client U • City • $1000 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26321</strong> • Client V • City • $1025 <span class="status ready">✔ Ready</span></div>
+          </div>
         </div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-content"><h2>💡 Quote of the Day</h2><p>“Success is not final, failure is not fatal...”</p></div>
+    </div>
+    <div class="card">
+      <div class="card-content"><h2>🏗️ Featured Project</h2><p>El Shaddai build continues...</p></div>
+    </div>
   </div>
+  <footer>
+    <p>© 2025 MayChrist Corporation. All rights reserved.</p>
+    <div class="version" id="versionDisplay">v2025.05.02.2020s</div>
+  </footer>
 
   <script>
-    const scrollContent = document.getElementById('scroll-content');
-    const scrollContainer = scrollContent?.parentElement;
+    const scrollContent = document.querySelector('.scroll-content');
+    const scrollContainer = document.querySelector('.scroll-container');
     let startTime = null;
     const duration = 60000;
-
     function scrollStep(timestamp) {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
@@ -112,8 +195,23 @@
         requestAnimationFrame(scrollStep);
       }
     }
-
     requestAnimationFrame(scrollStep);
+  </script>
+  <script>
+    const cards = document.querySelectorAll('.card');
+    let currentIndex = 0;
+    const durations = [60000, 15000, 15000];
+    function showCard(index) {
+      cards.forEach(card => card.classList.remove('active'));
+      cards[index].classList.add('active');
+    }
+    function nextCard() {
+      currentIndex = (currentIndex + 1) % cards.length;
+      showCard(currentIndex);
+      setTimeout(nextCard, durations[currentIndex]);
+    }
+    showCard(currentIndex);
+    setTimeout(nextCard, durations[currentIndex]);
   </script>
 </body>
 </html>
