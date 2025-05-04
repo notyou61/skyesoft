@@ -153,6 +153,8 @@
 </html>
   
 </html>
+  
+</html>
   <script>
     const cards = document.querySelectorAll('.card');
     const scrollContent = document.getElementById('scroll-content');
@@ -166,13 +168,9 @@
 
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
-        const rowCount = entryRows.length;
-        const duration = rowCount > 0 ? 60000 : 60000;
-
-        // Delay startScroll to allow layout to settle
         setTimeout(() => {
-          startScroll(duration);
-        }, 100);
+          startScroll();
+        }, 100); // Let layout settle
       }
     }
 
@@ -180,11 +178,14 @@
       scrollContent.style.transform = 'translateY(0)';
     }
 
-    function startScroll(duration = 60000) {
+    function startScroll() {
       requestAnimationFrame(() => {
         const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-        console.log("🔍 Scroll distance:", distance); // Debug
+        console.log("🔍 Scroll distance:", distance);
         if (distance <= 0) return;
+
+        const minSpeed = 2; // pixels per second
+        const duration = Math.max(60000, (distance / minSpeed) * 1000); // in ms
 
         let startTime = null;
         function stepScroll(timestamp) {
