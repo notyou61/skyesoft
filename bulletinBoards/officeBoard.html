@@ -172,10 +172,10 @@
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
         setTimeout(() => {
-          startScroll(60000); // Scroll once per appearance
+          startScroll(58000); // Scroll once in 58s to avoid transition conflict
         }, 100);
       } else {
-        resetScroll(); // clean up when switching away
+        resetScroll(); // clean up
       }
     }
 
@@ -190,17 +190,22 @@
     function startScroll(duration) {
       requestAnimationFrame(() => {
         const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-        console.log("🔄 Scroll distance (one-time):", distance);
+        console.log("🔄 Scroll distance (start):", distance);
         if (distance <= 0) return;
 
         let startTime = null;
         function stepScroll(timestamp) {
-          if (!startTime) startTime = timestamp;
+          if (!startTime) {
+            startTime = timestamp;
+            console.log("🚀 Scroll animation begins");
+          }
           const elapsed = timestamp - startTime;
           const progress = Math.min(elapsed / duration, 1);
           scrollContent.style.transform = `translateY(-${progress * distance}px)`;
           if (progress < 1) {
             scrollAnimation = requestAnimationFrame(stepScroll);
+          } else {
+            console.log("✅ Scroll complete");
           }
         }
         scrollAnimation = requestAnimationFrame(stepScroll);
