@@ -1,3 +1,4 @@
+// #region Weather Update
 async function updateWeather() {
   try {
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${weatherLocation}&appid=${weatherApiKey}&units=imperial`;
@@ -20,4 +21,10 @@ async function updateWeather() {
     document.getElementById("weatherDisplay").textContent = "⚠️ Weather unavailable";
   }
 }
+
+// Initial load
 updateWeather();
+
+// Refresh every 15 minutes (900,000 ms)
+setInterval(updateWeather, 15 * 60 * 1000);
+// #endregion
