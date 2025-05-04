@@ -149,49 +149,48 @@
 
   
 </html>
+  
+</html>
   <script>
     const cards = document.querySelectorAll('.card');
     const scrollContent = document.getElementById('scroll-content');
     const scrollContainer = scrollContent?.parentElement;
     const entryRows = scrollContent?.querySelectorAll('.entry') || [];
     let currentIndex = 0;
-    let scrollAnimation;
-    let startTime = null;
 
     function showCard(index) {
       cards.forEach(card => card.classList.remove('active'));
       cards[index].classList.add('active');
+
       if (index === 0 && scrollContent && scrollContainer) {
         resetScroll();
         const rowCount = entryRows.length;
-        const duration = rowCount > 0 ? (60000) : 60000; // default 60s
+        const duration = rowCount > 0 ? 60000 : 60000; // Always 60s scroll for now
         startScroll(duration);
       }
     }
 
     function resetScroll() {
       scrollContent.style.transform = 'translateY(0)';
-      startTime = null;
-      if (scrollAnimation) {
-        cancelAnimationFrame(scrollAnimation);
-        scrollAnimation = null;
-      }
     }
 
     function startScroll(duration = 60000) {
-      if (!scrollContent || !scrollContainer) return;
-      resetScroll();
-      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-      function stepScroll(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-        if (progress < 1) {
-          scrollAnimation = requestAnimationFrame(stepScroll);
+      requestAnimationFrame(() => {
+        const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+        if (distance <= 0) return; // No scroll needed
+
+        let startTime = null;
+        function stepScroll(timestamp) {
+          if (!startTime) startTime = timestamp;
+          const elapsed = timestamp - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+          if (progress < 1) {
+            requestAnimationFrame(stepScroll);
+          }
         }
-      }
-      scrollAnimation = requestAnimationFrame(stepScroll);
+        requestAnimationFrame(stepScroll);
+      });
     }
 
     function rotateCards() {
