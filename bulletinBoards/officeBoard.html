@@ -1,9 +1,12 @@
-<!-- Scroll Restarts on Loop — v2025.05.03.1140a -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <title>Office Electronic Bulletin Board</title>
+  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -14,7 +17,8 @@
       flex-direction: column;
       align-items: center;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f5f5;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
       color: #222;
       box-sizing: border-box;
       overflow-x: hidden;
@@ -34,133 +38,178 @@
       align-items: center;
       gap: 24px;
     }
-    header h1 { margin: 0; }
+    header img {
+      height: auto;
+      max-width: 160px;
+      min-width: 120px;
+    }
+    header div {
+      text-align: right;
+    }
+    header h1 {
+      margin: 4px 0;
+      font-size: 1.6em;
+    }
+    header p {
+      margin: 0;
+      font-size: 0.95em;
+    }
     #mainBoard {
       flex-grow: 1;
       position: relative;
       overflow: hidden;
       padding: 16px 20px;
-      margin: 8px 0;
+      margin: 8px 0 7px 0;
     }
     .card {
       transition: opacity 1s ease-in-out;
       pointer-events: none;
       position: absolute;
       opacity: 0;
+      background: #ffffff;
+      color: #000;
+      padding: 0;
+      border-radius: 12px;
       width: 100%;
       height: 100%;
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
     .card.active {
       opacity: 1;
       pointer-events: auto;
     }
-    .scroll-container {
+    .card-content {
+      padding: 8px 24px 24px;
+      box-sizing: border-box;
+      overflow-y: auto;
       height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 12px;
+    }
+    .scroll-container {
+      flex-grow: 1;
       overflow: hidden;
+      position: relative;
     }
     .scroll-content {
+      display: block;
+      padding-bottom: 24px;
       will-change: transform;
     }
-    .entry {
-      margin: 10px 0;
-      font-size: 1.2em;
+    .permit-entry {
+      font-size: 1.4vw;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .status.ready {
+      color: green;
+      font-weight: bold;
+    }
+    .status.review {
+      color: orange;
+      font-weight: bold;
     }
     footer {
       text-align: left;
       padding: 12px 20px;
     }
+    .version {
+      font-size: 0.8em;
+      color: #888;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Office Electronic Bulletin Board</h1>
+    <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
+    <div>
+      <h1>Office Electronic Bulletin Board</h1>
+      <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">☁️ few clouds | 90°F</span></p>
+      <p><strong>⏰ Time:</strong> <span id="currentTime">08:36:17 AM</span></p>
+      <p id="intervalRemaining"><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">Workday ends in 9h 23m 43s</span></p>
+    </div>
   </header>
   <div id="mainBoard">
     <div class="card active">
-      <h2>📄 Permit Status</h2>
-      <div class="scroll-container">
-        <div class="scroll-content">
-          <div class="entry">Permit A - Ready</div>
-<div class="entry">Permit B - Ready</div>
-<div class="entry">Permit C - Ready</div>
-<div class="entry">Permit D - Ready</div>
-<div class="entry">Permit E - Ready</div>
-<div class="entry">Permit F - Ready</div>
-<div class="entry">Permit G - Ready</div>
-<div class="entry">Permit H - Ready</div>
-<div class="entry">Permit I - Ready</div>
-<div class="entry">Permit J - Ready</div>
-<div class="entry">Permit K - Ready</div>
-<div class="entry">Permit L - Ready</div>
-<div class="entry">Permit M - Ready</div>
-<div class="entry">Permit N - Ready</div>
-<div class="entry">Permit O - Ready</div>
-<div class="entry">Permit P - Ready</div>
-<div class="entry">Permit Q - Ready</div>
-<div class="entry">Permit R - Ready</div>
-<div class="entry">Permit S - Ready</div>
-<div class="entry">Permit T - Ready</div>
+      <div class="card-content">
+        <h2>📄 Permit Status</h2>
+        <div class="scroll-container">
+          <div class="scroll-content">
+            <!-- 20+ permit rows -->
+            <div class="permit-entry"><strong>26300</strong> • Client A • City • $500 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26301</strong> • Client B • City • $525 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26302</strong> • Client C • City • $550 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26303</strong> • Client D • City • $575 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26304</strong> • Client E • City • $600 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26305</strong> • Client F • City • $625 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26306</strong> • Client G • City • $650 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26307</strong> • Client H • City • $675 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26308</strong> • Client I • City • $700 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26309</strong> • Client J • City • $725 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26310</strong> • Client K • City • $750 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26311</strong> • Client L • City • $775 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26312</strong> • Client M • City • $800 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26313</strong> • Client N • City • $825 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26314</strong> • Client O • City • $850 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26315</strong> • Client P • City • $875 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26316</strong> • Client Q • City • $900 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26317</strong> • Client R • City • $925 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26318</strong> • Client S • City • $950 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26319</strong> • Client T • City • $975 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26320</strong> • Client U • City • $1000 <span class="status ready">✔ Ready</span></div>
+<div class="permit-entry"><strong>26321</strong> • Client V • City • $1025 <span class="status ready">✔ Ready</span></div>
+          </div>
         </div>
       </div>
     </div>
     <div class="card">
-      <h2>💡 Quote of the Day</h2>
-      <p>“Success is not final, failure is not fatal...”</p>
+      <div class="card-content"><h2>💡 Quote of the Day</h2><p>“Success is not final, failure is not fatal...”</p></div>
     </div>
     <div class="card">
-      <h2>🏗️ Featured Project</h2>
-      <p>El Shaddai build continues...</p>
+      <div class="card-content"><h2>🏗️ Featured Project</h2><p>El Shaddai build continues...</p></div>
     </div>
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version">v2025.05.03.1140a</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020s</div>
   </footer>
 
   <script>
-    const cards = document.querySelectorAll('.card');
     const scrollContent = document.querySelector('.scroll-content');
     const scrollContainer = document.querySelector('.scroll-container');
-
+    let startTime = null;
+    const duration = 60000;
+    function scrollStep(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      const progress = Math.min(elapsed / duration, 1);
+      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+      if (progress < 1) {
+        requestAnimationFrame(scrollStep);
+      }
+    }
+    requestAnimationFrame(scrollStep);
+  </script>
+  <script>
+    const cards = document.querySelectorAll('.card');
     let currentIndex = 0;
     const durations = [60000, 15000, 15000];
-
-    function resetScroll() {
-      if (!scrollContent || !scrollContainer) return;
-      scrollContent.style.transform = 'translateY(0)';
-      let startTime = null;
-      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-
-      function scrollStep(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(elapsed / durations[0], 1);
-        const offset = progress * distance;
-        scrollContent.style.transform = 'translateY(-' + offset + 'px)';
-        if (progress < 1) {
-          requestAnimationFrame(scrollStep);
-        }
-      }
-
-      requestAnimationFrame(scrollStep);
-    }
-
     function showCard(index) {
       cards.forEach(card => card.classList.remove('active'));
       cards[index].classList.add('active');
-      if (index === 0) resetScroll();
     }
-
     function nextCard() {
       currentIndex = (currentIndex + 1) % cards.length;
       showCard(currentIndex);
       setTimeout(nextCard, durations[currentIndex]);
     }
-
     showCard(currentIndex);
     setTimeout(nextCard, durations[currentIndex]);
   </script>
