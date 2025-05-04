@@ -241,11 +241,38 @@
 <!-- Replaced cycleCards -->
 
 
+
 <script>
   const cards = document.querySelectorAll('.card');
   let currentIndex = 0;
 
-  const durations = [60000, 15000, 15000, 15000]; // scroll card, then 15s each
+  const durations = [60000, 15000, 15000, 15000]; // durations per card
+  const scrollDuration = durations[0];
+
+  const scrollContent = document.querySelector('.scroll-content');
+  const scrollContainer = document.querySelector('.scroll-container');
+
+  function scrollPermitCard(callback) {
+    let startTime = null;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      const progress = Math.min(elapsed / scrollDuration, 1);
+
+      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        callback(); // Only call nextCard after scroll ends
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
 
   function showCard(index) {
     cards.forEach(card => card.classList.remove('active'));
@@ -258,9 +285,13 @@
     setTimeout(nextCard, durations[currentIndex]);
   }
 
-  showCard(currentIndex);
-  setTimeout(nextCard, durations[currentIndex]);
+  // Begin with permit scroll, then continue rotation
+  showCard(0);
+  scrollPermitCard(() => {
+    setTimeout(nextCard, durations[1]); // Start nextCard after scroll and a brief pause
+  });
 </script>
+
 
 </body>
 </html>
