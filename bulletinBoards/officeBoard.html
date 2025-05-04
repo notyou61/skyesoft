@@ -1,4 +1,4 @@
-<!-- Stable version v2025.05.02.2020s (scroll and transition working) -->
+<!-- Fixed version with synced scroll and transitions -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -142,8 +142,8 @@
         <div class="scroll-container">
           <div class="scroll-content">
             <div class="permit-entry"><strong>26312</strong> • Sample • City • $500 <span class="status ready">✔ Ready</span></div>
-            <div class="permit-entry"><strong>26313</strong> • Sample • City • $600 <span class="status review">⧗ Review</span></div>
-            <div class="permit-entry"><strong>26314</strong> • Sample • City • $700 <span class="status ready">✔ Ready</span></div>
+            <div class="permit-entry"><strong>26036</strong> • Switch Electric • Mesa • $245 <span class="status ready">✔ Ready</span></div>
+            <div class="permit-entry"><strong>25899</strong> • Quick Signs • Tempe • $320 <span class="status review">⧗ Review</span></div>
           </div>
         </div>
       </div>
@@ -157,30 +157,12 @@
   </div>
   <footer>
     <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.02.2020s</div>
+    <div class="version" id="versionDisplay">v2025.05.02.2020x</div>
   </footer>
 
   <script>
     const scrollContent = document.querySelector('.scroll-content');
     const scrollContainer = document.querySelector('.scroll-container');
-
-    let startTime = null;
-    const duration = 60000;
-
-    function scrollStep(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-      const progress = Math.min(elapsed / duration, 1);
-      scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-      if (progress < 1) {
-        requestAnimationFrame(scrollStep);
-      }
-    }
-
-    requestAnimationFrame(scrollStep);
-  </script>
-  <script>
     const cards = document.querySelectorAll('.card');
     let currentIndex = 0;
     const durations = [60000, 15000, 15000];
@@ -196,8 +178,25 @@
       setTimeout(nextCard, durations[currentIndex]);
     }
 
+    function startScrollAndCycle() {
+      let startTime = null;
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      function scrollStep(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / durations[0], 1);
+        scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+        if (progress < 1) {
+          requestAnimationFrame(scrollStep);
+        } else {
+          nextCard();
+        }
+      }
+      requestAnimationFrame(scrollStep);
+    }
+
     showCard(currentIndex);
-    setTimeout(nextCard, durations[currentIndex]);
+    startScrollAndCycle();
   </script>
 </body>
 </html>
