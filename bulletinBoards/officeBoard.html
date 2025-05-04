@@ -160,7 +160,8 @@
             console.log('Initial setup: showing card 0 and starting initial scroll');
             showCard(0);
             startScroll(60000);
-            rotationTimeout = setTimeout(rotateCards, 60000);
+            // Delay the start of card rotation slightly (e.g., 100ms)
+            rotationTimeout = setTimeout(rotateCards, 60100);
         } else {
             console.log('No scroll content or container, falling back to rotateCards');
             rotateCards();
