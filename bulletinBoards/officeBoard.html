@@ -164,16 +164,18 @@
     const entryRows = scrollContent?.querySelectorAll('.entry') || [];
     let currentIndex = 0;
     let scrollAnimation = null;
+    let scrollLoopActive = false;
 
     function showCard(index) {
       cards.forEach(card => card.classList.remove('active'));
       cards[index].classList.add('active');
 
       if (index === 0 && scrollContent && scrollContainer) {
+        scrollLoopActive = true;
+        startScrollLoop();
+      } else {
+        scrollLoopActive = false;
         resetScroll();
-        setTimeout(() => {
-          startScroll(15000); // Always scroll over 15s
-        }, 100);
       }
     }
 
@@ -185,24 +187,31 @@
       scrollContent.style.transform = 'translateY(0)';
     }
 
-    function startScroll(duration) {
-      requestAnimationFrame(() => {
-        const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-        console.log("🔍 Scroll distance:", distance);
-        if (distance <= 0) return;
+    function startScrollLoop() {
+      const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
+      if (distance <= 0) return;
 
-        let startTime = null;
-        function stepScroll(timestamp) {
-          if (!startTime) startTime = timestamp;
-          const elapsed = timestamp - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-          if (progress < 1) {
-            scrollAnimation = requestAnimationFrame(stepScroll);
-          }
+      console.log("🔁 Continuous Scroll Distance:", distance);
+
+      let startTime = null;
+      const duration = 15000;
+
+      function stepScroll(timestamp) {
+        if (!scrollLoopActive) return; // stop if no longer on card-0
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        scrollContent.style.transform = `translateY(-${progress * distance}px)`;
+        if (progress < 1) {
+          scrollAnimation = requestAnimationFrame(stepScroll);
+        } else {
+          setTimeout(() => {
+            scrollContent.style.transform = 'translateY(0)';
+            startScrollLoop(); // Loop again
+          }, 500); // small delay before looping again
         }
-        scrollAnimation = requestAnimationFrame(stepScroll);
-      });
+      }
+      scrollAnimation = requestAnimationFrame(stepScroll);
     }
 
     function rotateCards() {
