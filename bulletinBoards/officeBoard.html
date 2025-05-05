@@ -1,214 +1,159 @@
+
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>Office Electronic Bulletin Board</title>
-  <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon">
-  <style>
+<meta charset="utf-8"/>
+<title>Office Electronic Bulletin Board</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      margin: 0;
-      padding: 12px 0;
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
-      background-size: cover;
+      background: #f2f2f2;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    header, #mainBoard, footer {
+    .board-section {
       width: 90vw;
       max-width: 1200px;
-      margin: 0 auto;
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      background: #fff;
       border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       padding: 8px 16px;
     }
-    header {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      align-items: center;
-      gap: 24px;
+    #pageHeader, #pageFooter {
+      flex-shrink: 0;
     }
-    header img {
-      max-width: 160px;
-    }
-    header div {
-      text-align: right;
-    }
-    header h1 {
-      margin: 4px 0;
-      font-size: 1.6em;
-    }
-    header p {
-      margin: 0;
-      font-size: 0.95em;
-    }
-    #mainBoard {
+    #pageBody {
       flex-grow: 1;
-      position: relative;
-      overflow: hidden;
-      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       margin: 12px 0;
-      min-height: 400px;
     }
-    .card {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
+    #pageHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+      margin-top: 12px;
+    }
+    #bodyHeader, #bodyFooter {
+      font-weight: bold;
+      font-size: 1em;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+    #bodyMain {
+      flex-grow: 1;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
-      align-items: flex-start;
-      text-align: left;
-      padding: 16px 20px;
-      overflow: hidden;
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
-    }
-    .card.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .scroll-container {
-      height: 100%;
-      overflow: hidden;
-    }
-    .scroll-content {
-      position: relative;
-      will-change: transform;
-      min-height: 100%;
-      padding-bottom: 60px;
     }
     .entry {
-      margin: 10px 0;
+      margin: 6px 0;
       font-size: 1.2em;
     }
-    footer {
-      text-align: center;
-      padding: 12px 20px;
-      font-size: 0.85em;
-      color: #888;
-    }
-    .version {
+    #pageFooter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 0.8em;
-      margin-top: 4px;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin-bottom: 12px;
     }
-  </style>
+  
+    #pageBody .cardBody {
+      overflow-y: auto;
+      max-height: calc(100% - 120px); /* account for header/footer */
+    }
+    </style>
 </head>
 <body>
-  <header>
-    <img alt="Christy Signs Logo" src="/skyesoft/assets/images/christyLogo.png">
-    <div>
-      <h1>Office Electronic Bulletin Board</h1>
-      <p><strong>🌦️ Weather:</strong> <span id="weatherDisplay">Loading...</span></p>
-      <p><strong>⏰ Time:</strong> <span id="currentTime">--:--:--</span></p>
-      <p><strong>🕒 Interval Remaining:</strong> <span id="intervalRemainingData">--</span></p>
-    </div>
-  </header>
-
-  <div id="mainBoard">
-    <div class="card active" id="card-0">
-<h2 style="margin: 0 0 12px 0;">📋 Active Permits</h2>
-      <div class="scroll-container">
-        <div class="scroll-content" id="scroll-content">
-<!-- Entry list intentionally truncated for readability -->
-<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
-<!-- Additional entries... -->
-<div class="entry">26329 • Client ^ • City • $790 ⧗ Review</div>
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em;">Office Electronic Bulletin Board</h1>
 </div>
-        </div>
-      </div>
-    </div>
-    <div class="card" id="card-1">
-<h2 style="margin: 0 0 12px 0;">💡 Quote of the Day</h2>
-      <p>"Success is not final, failure is not fatal..."</p>
-    </div>
-    <div class="card" id="card-2">
-<h2 style="margin: 0 0 12px 0;">🏗️ Featured Project</h2>
-      <p>El Shaddai build continues...</p>
-    </div>
-  </div>
+<div>
+<div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+<div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+<div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
+<div class="board-section" id="pageBody">
+<div id="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
+<div id="bodyMain">
+<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
+<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
+<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
+</div>
+<div id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 MayChrist Corporation</div>
+<div class="version">v2025.05.04.0800a</div>
+</div>
+<script>
+// 🔁 Dynamic Card Rotation Using Standard Layout
 
-  <footer>
-    <p>© 2025 MayChrist Corporation. All rights reserved.</p>
-    <div class="version" id="versionDisplay">v2025.05.03.0500a</div>
-  </footer>
+function populateCard({ header, body, footer }) {
+  const bodyHeader = document.getElementById("bodyHeader");
+  const bodyMain = document.getElementById("bodyMain");
+  const bodyFooter = document.getElementById("bodyFooter");
 
-  <!-- 🧠 Real-Time Update Scripts -->
-  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
-  <script src="/skyesoft/assets/js/weather.js"></script>
-  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  if (bodyHeader) bodyHeader.innerHTML = header || "";
+  if (bodyMain) bodyMain.innerHTML = body || "";
+  if (bodyFooter) bodyFooter.innerHTML = footer || "";
+}
 
-  <script>
-    const cards = document.querySelectorAll('.card');
-    const scrollContent = document.getElementById('scroll-content');
-    const scrollContainer = scrollContent?.parentElement;
-    const entryRows = scrollContent?.querySelectorAll('.entry') || [];
-    let currentIndex = 0;
-    let scrollAnimation = null;
+const cards = [
+  {
+    header: "<h2>📋 Active Permits</h2>",
+    body: `
+      <div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
+      <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
+      <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>
+      <div class='entry'>26303 • Client D • City • $530 ⧗ Review</div>
+      <div class='entry'>26304 • Client E • City • $540 ✔ Ready</div>
+      <div class='entry'>26305 • Client F • City • $550 ⧗ Review</div>
+    `,
+    footer: "<small>Showing 6 of 30 permits</small>"
+  },
+  {
+    header: "<h2>📈 KPI Dashboard</h2>",
+    body: `
+      <div class='entry'>🛠️ Open Tasks: 12</div>
+      <div class='entry'>✅ Completed Today: 47</div>
+      <div class='entry'>📦 Orders Shipped: 19</div>
+    `,
+    footer: "<small>Updated hourly</small>"
+  },
+  {
+    header: "<h2>📢 Announcements</h2>",
+    body: `
+      <ul>
+        <li>Team meeting today at 3PM</li>
+        <li>New hire orientation on Friday</li>
+        <li>Submit timesheets by 4PM</li>
+      </ul>
+    `,
+    footer: ""
+  }
+];
 
-    function showCard(index) {
-      cards.forEach(card => card.classList.remove('active'));
-      cards[index].classList.add('active');
-
-      if (index === 0 && scrollContent && scrollContainer) {
-        resetScroll();
-        setTimeout(() => {
-          startScroll(58000); // Scroll once in 58s to avoid transition conflict
-        }, 100);
-      } else {
-        resetScroll(); // clean up
-      }
-    }
-
-    function resetScroll() {
-      if (scrollAnimation) {
-        cancelAnimationFrame(scrollAnimation);
-        scrollAnimation = null;
-      }
-      scrollContent.style.transform = 'translateY(0)';
-    }
-
-    function startScroll(duration) {
-      requestAnimationFrame(() => {
-        const distance = scrollContent.scrollHeight - scrollContainer.clientHeight;
-        console.log("🔄 Scroll distance (start):", distance);
-        if (distance <= 0) return;
-
-        let startTime = null;
-        function stepScroll(timestamp) {
-          if (!startTime) {
-            startTime = timestamp;
-            console.log("🚀 Scroll animation begins");
-          }
-          const elapsed = timestamp - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          scrollContent.style.transform = `translateY(-${progress * distance}px)`;
-          if (progress < 1) {
-            scrollAnimation = requestAnimationFrame(stepScroll);
-          } else {
-            console.log("✅ Scroll complete");
-          }
-        }
-        scrollAnimation = requestAnimationFrame(stepScroll);
-      });
-    }
-
-    function rotateCards() {
-      currentIndex = (currentIndex + 1) % cards.length;
-      showCard(currentIndex);
-      setTimeout(rotateCards, currentIndex === 0 ? 60000 : 15000);
-    }
-
-    window.onload = function () {
-      showCard(0);
-      setTimeout(rotateCards, 60000);
-    };
-  </script>
+let currentCardIndex = 0;
+function rotateCards() {
+  populateCard(cards[currentCardIndex]);
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+}
+window.onload = function () {
+  rotateCards();
+  setInterval(rotateCards, 15000); // Rotate every 15 seconds
+};
+</script>
 </body>
 </html>
