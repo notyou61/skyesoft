@@ -7,31 +7,14 @@
 <title>Office Electronic Bulletin Board</title>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
-html, body {
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-#pageBody {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  margin: 12px 0;
-}
-
-#bodyMain {
-  flex-grow: 1;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
+    html, body {
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .board-section {
       width: 90vw;
       max-width: 1200px;
@@ -64,13 +47,6 @@ html, body {
       margin-bottom: 8px;
     }
     #bodyMain {
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 400px;
-  overflow: hidden;
-  position: relative;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
@@ -94,26 +70,18 @@ html, body {
       overflow-y: auto;
       max-height: calc(100% - 120px); /* account for header/footer */
     }
-    
-    .announcementItem {
-      font-size: 1.1em;
-      margin: 4px 0;
-      padding-left: 6px;
-      text-indent: -0.6em;
-    }
-
-</style>
+    </style>
 </head>
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
 <div style="display: flex; align-items: center; gap: 16px;">
 <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
-<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
+<h1 style="font-size: 1.4em;">Office Electronic Bulletin Board</h1>
 </div>
-<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+<div>
+<div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+<div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+<div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
 </div>
 </div>
 <div class="board-section" id="pageBody">
@@ -127,7 +95,7 @@ html, body {
 </div>
 <div class="board-section" id="pageFooter">
 <div>© 2025 MayChrist Corporation</div>
-<div class="version">Loading version...</div>
+<div class="version">v2025.05.04.0800a</div>
 </div>
 <script>
 // 🔁 Dynamic Card Rotation Using Standard Layout
@@ -144,6 +112,18 @@ function populateCard({ header, body, footer }) {
 
 const cards = [
   {
+    header: "<h2>📋 Active Permits</h2>",
+    body: `
+      <div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
+      <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
+      <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>
+      <div class='entry'>26303 • Client D • City • $530 ⧗ Review</div>
+      <div class='entry'>26304 • Client E • City • $540 ✔ Ready</div>
+      <div class='entry'>26305 • Client F • City • $550 ⧗ Review</div>
+    `,
+    footer: "<small>Showing 6 of 30 permits</small>"
+  },
+  {
     header: "<h2>📈 KPI Dashboard</h2>",
     body: `
       <div class='entry'>🛠️ Open Tasks: 12</div>
@@ -155,9 +135,11 @@ const cards = [
   {
     header: "<h2>📢 Announcements</h2>",
     body: `
-      <div class="announcementItem">• Team meeting today at 3PM</div>
-      <div class="announcementItem">• New hire orientation on Friday</div>
-      <div class="announcementItem">• Submit timesheets by 4PM</div>
+      <ul>
+        <li>Team meeting today at 3PM</li>
+        <li>New hire orientation on Friday</li>
+        <li>Submit timesheets by 4PM</li>
+      </ul>
     `,
     footer: ""
   }
@@ -173,82 +155,5 @@ window.onload = function () {
   setInterval(rotateCards, 15000); // Rotate every 15 seconds
 };
 </script>
-
-<script src="/skyesoft/assets/js/glbVar.js"></script>
-<script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<script src="/skyesoft/assets/js/weather.js"></script>
-
-<script>
-  window.addEventListener("DOMContentLoaded", function () {
-    if (typeof updateDOMFromGlbVar === "function") {
-      updateDOMFromGlbVar();
-    } else {
-      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
-    }
-  });
-</script>
-
-
-
-
-
-
-
-
-<script>
-async function loadPermitsAndStartScroll() {
-  try {
-    const response = await fetch('/skyesoft/assets/data/major_card_data.json');
-    const data = await response.json();
-    const permits = data.majorCard.permits;
-
-    const bodyHeader = document.getElementById("bodyHeader");
-    const bodyMain = document.getElementById("bodyMain");
-    const bodyFooter = document.getElementById("bodyFooter");
-
-    if (bodyHeader) bodyHeader.innerHTML = "<h2>" + data.majorCard.title + "</h2>";
-
-    if (bodyMain) {
-      bodyMain.innerHTML = `
-        <div id="scrollViewport" style="height: 100%; overflow: hidden; position: relative;">
-          <div id="scrollingPermits" style="position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 6px;"></div>
-        </div>
-      `;
-      const scrollingContainer = document.getElementById("scrollingPermits");
-
-      permits.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.textContent = `${p.WO} • ${p.Customer} • ${p.Jurisdiction} • ${p.FeeDue} • ${p.Status}`;
-        scrollingContainer.appendChild(div);
-      });
-
-      // Scroll logic
-      const totalDuration = 60000;
-      const frameRate = 1000 / 60;
-      let scrollAmount = 0;
-      const scrollViewport = document.getElementById("scrollViewport");
-      const maxScroll = scrollingContainer.scrollHeight - scrollViewport.clientHeight;
-
-      const interval = setInterval(() => {
-        scrollAmount += maxScroll / (totalDuration / frameRate);
-        scrollingContainer.style.top = `-${scrollAmount}px`;
-
-        if (scrollAmount >= maxScroll) {
-          clearInterval(interval);
-        }
-      }, frameRate);
-    }
-
-    if (bodyFooter) {
-      bodyFooter.innerHTML = `<small>Showing ${permits.length} permits</small>`;
-    }
-  } catch (err) {
-    console.error("Permit load error:", err);
-  }
-}
-window.addEventListener("DOMContentLoaded", loadPermitsAndStartScroll);
-</script>
-
 </body>
 </html>
