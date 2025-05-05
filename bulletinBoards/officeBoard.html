@@ -55,42 +55,24 @@
       min-height: 400px;
     }
     .card {
-
-
-
       position: absolute;
-      width: 100%;
-      height: 100%;
       top: 0;
       left: 0;
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
-      padding: 20px;
-      box-sizing: border-box;
-      overflow: hidden;
-    
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      text-align: center;
-
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      text-align: left;
-
-      min-height: 100%;
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
       align-items: flex-start;
       text-align: left;
-      padding-top: 16px;
+      padding: 16px 20px;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
 }
     .card.active {
       opacity: 1;
       pointer-events: auto;
-    }
+}
     .scroll-container {
       height: 100%;
       overflow: hidden;
