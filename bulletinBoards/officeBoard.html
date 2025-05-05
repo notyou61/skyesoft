@@ -166,38 +166,14 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 
 
-<script>
-const cards = [
-  {
-    header: "<h2>📋 Active Permits</h2>",
-    body: "<div class='entry'>Loading permits...</div>",
-    footer: "<small>Loading...</small>",
-    onShow: showPermitCard
-  },
-  {
-    header: "<h2>📈 KPI Dashboard</h2>",
-    body: `
-      <div class='entry'>🛠️ Open Tasks: 12</div>
-      <div class='entry'>✅ Completed Today: 47</div>
-      <div class='entry'>📦 Orders Shipped: 19</div>
-    `,
-    footer: "<small>Updated hourly</small>"
-  },
-  {
-    header: "<h2>📢 Announcements</h2>",
-    body: `
-      <ul>
-        <li>Team meeting today at 3PM</li>
-        <li>New hire orientation on Friday</li>
-        <li>Submit timesheets by 4PM</li>
-      </ul>
-    `,
-    footer: ""
-  }
-];
 
+
+<script>
 let currentCardIndex = 0;
+let cardTimeout;
+
 function rotateCards() {
+  clearTimeout(cardTimeout); // Clear any previous timeouts
   const card = cards[currentCardIndex];
 
   const bodyHeader = document.getElementById("bodyHeader");
@@ -212,14 +188,14 @@ function rotateCards() {
     card.onShow();
   }
 
+  const duration = currentCardIndex === 0 ? 60000 : 15000;
   currentCardIndex = (currentCardIndex + 1) % cards.length;
+  cardTimeout = setTimeout(rotateCards, duration);
 }
 
 window.onload = function () {
   rotateCards();
-  setInterval(rotateCards, 15000); // Show each card for 15 seconds (permits scroll for 60s regardless)
 };
 </script>
-
 </body>
 </html>
