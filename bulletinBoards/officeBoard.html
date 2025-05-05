@@ -120,18 +120,6 @@ function populateCard({ header, body, footer }) {
 
 const cards = [
   {
-    header: "<h2>📋 Active Permits</h2>",
-    body: `
-      <div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
-      <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
-      <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>
-      <div class='entry'>26303 • Client D • City • $530 ⧗ Review</div>
-      <div class='entry'>26304 • Client E • City • $540 ✔ Ready</div>
-      <div class='entry'>26305 • Client F • City • $550 ⧗ Review</div>
-    `,
-    footer: "<small>Showing 6 of 30 permits</small>"
-  },
-  {
     header: "<h2>📈 KPI Dashboard</h2>",
     body: `
       <div class='entry'>🛠️ Open Tasks: 12</div>
@@ -174,6 +162,59 @@ window.onload = function () {
       console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
     }
   });
+</script>
+
+
+<script>
+async function loadPermitsAndStartScroll() {
+  try {
+    const response = await fetch('/skyesoft/assets/data/major_card_data.json');
+    const data = await response.json();
+    const permits = data.majorCard.permits;
+
+    const bodyHeader = document.getElementById("bodyHeader");
+    const bodyMain = document.getElementById("bodyMain");
+    const bodyFooter = document.getElementById("bodyFooter");
+
+    if (bodyHeader) bodyHeader.innerHTML = "<h2>" + data.majorCard.title + "</h2>";
+
+    if (bodyMain) {
+      bodyMain.innerHTML = "<div id='scrollingPermits' style='display: flex; flex-direction: column; gap: 6px;'></div>";
+      const scrollingContainer = document.getElementById("scrollingPermits");
+
+      permits.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.textContent = `${p.WO} • ${p.Customer} • ${p.Jurisdiction} • ${p.FeeDue} • ${p.Status}`;
+        scrollingContainer.appendChild(div);
+      });
+
+      let scrollAmount = 0;
+      const scrollStep = 1;
+      const interval = 50;
+      const scrollDuration = 60000;
+
+      scrollingContainer.style.position = 'relative';
+      scrollingContainer.style.top = '0px';
+
+      const scrollInterval = setInterval(() => {
+        scrollAmount += scrollStep;
+        scrollingContainer.style.top = `-${scrollAmount}px`;
+
+        if (scrollAmount >= scrollingContainer.scrollHeight - bodyMain.clientHeight) {
+          clearInterval(scrollInterval);
+        }
+      }, interval);
+    }
+
+    if (bodyFooter) bodyFooter.innerHTML = `<small>Showing ${permits.length} permits</small>`;
+
+  } catch (err) {
+    console.error("Failed to load permit data:", err);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", loadPermitsAndStartScroll);
 </script>
 
 </body>
