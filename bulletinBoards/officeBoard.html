@@ -94,42 +94,85 @@
 </div>
 <div class="board-section" id="pageBody">
 <div id="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
-<div id="bodyMain">
-<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
-<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
-<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
-</div>
+<div id="bodyMain"></div>
 <div id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
 </div>
 <div class="board-section" id="pageFooter">
 <div>© 2025 MayChrist Corporation</div>
 <div class="version">Loading version...</div>
 </div>
-<script>
-// 🔁 Dynamic Card Rotation Using Standard Layout
 
-function populateCard({ header, body, footer }) {
-  const bodyHeader = document.getElementById("bodyHeader");
+
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+
+
+
+
+
+
+
+<script>
+function showPermitCard() {
   const bodyMain = document.getElementById("bodyMain");
+  const bodyHeader = document.getElementById("bodyHeader");
   const bodyFooter = document.getElementById("bodyFooter");
 
-  if (bodyHeader) bodyHeader.innerHTML = header || "";
-  if (bodyMain) bodyMain.innerHTML = body || "";
-  if (bodyFooter) bodyFooter.innerHTML = footer || "";
+  fetch("/skyesoft/assets/data/major_card_data.json")
+    .then(response => response.json())
+    .then(data => {
+      const permits = data.majorCard.permits;
+      if (bodyHeader) bodyHeader.innerHTML = "<h2>" + data.majorCard.title + "</h2>";
+      if (bodyFooter) bodyFooter.innerHTML = "<small>Showing " + permits.length + " permits</small>";
+
+      bodyMain.innerHTML = `
+        <div id="scrollViewport" style="position: relative; height: 100%; overflow: hidden;">
+          <div id="scrollContent" style="position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+      `;
+      const scrollContent = document.getElementById("scrollContent");
+
+      permits.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.textContent = \`\${p.WO} • \${p.Customer} • \${p.Jurisdiction} • \${p.FeeDue} • \${p.Status}\`;
+        scrollContent.appendChild(div);
+      });
+
+      const scrollViewport = document.getElementById("scrollViewport");
+      const maxScroll = scrollContent.scrollHeight - scrollViewport.clientHeight;
+      const duration = 60000;
+      const startTime = performance.now();
+
+      function scrollStep(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const offset = progress * maxScroll;
+        scrollContent.style.top = \`-\${offset}px\`;
+        if (progress < 1) requestAnimationFrame(scrollStep);
+      }
+      requestAnimationFrame(scrollStep);
+    })
+    .catch(error => {
+      console.error("Failed to load permit data:", error);
+    });
 }
 
+// Optional: Immediately run on first load if this card is shown first
+window.addEventListener("DOMContentLoaded", () => {
+  showPermitCard();
+});
+</script>
+
+
+<script>
 const cards = [
   {
     header: "<h2>📋 Active Permits</h2>",
-    body: `
-      <div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
-      <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
-      <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>
-      <div class='entry'>26303 • Client D • City • $530 ⧗ Review</div>
-      <div class='entry'>26304 • Client E • City • $540 ✔ Ready</div>
-      <div class='entry'>26305 • Client F • City • $550 ⧗ Review</div>
-    `,
-    footer: "<small>Showing 6 of 30 permits</small>"
+    body: "<div class='entry'>Loading permits...</div>",
+    footer: "<small>Loading...</small>",
+    onShow: showPermitCard
   },
   {
     header: "<h2>📈 KPI Dashboard</h2>",
@@ -143,9 +186,11 @@ const cards = [
   {
     header: "<h2>📢 Announcements</h2>",
     body: `
-      <div class="announcementItem">• Team meeting today at 3PM</div>
-      <div class="announcementItem">• New hire orientation on Friday</div>
-      <div class="announcementItem">• Submit timesheets by 4PM</div>
+      <ul>
+        <li>Team meeting today at 3PM</li>
+        <li>New hire orientation on Friday</li>
+        <li>Submit timesheets by 4PM</li>
+      </ul>
     `,
     footer: ""
   }
@@ -153,27 +198,27 @@ const cards = [
 
 let currentCardIndex = 0;
 function rotateCards() {
-  populateCard(cards[currentCardIndex]);
+  const card = cards[currentCardIndex];
+
+  const bodyHeader = document.getElementById("bodyHeader");
+  const bodyMain = document.getElementById("bodyMain");
+  const bodyFooter = document.getElementById("bodyFooter");
+
+  if (bodyHeader) bodyHeader.innerHTML = card.header || "";
+  if (bodyMain) bodyMain.innerHTML = card.body || "";
+  if (bodyFooter) bodyFooter.innerHTML = card.footer || "";
+
+  if (typeof card.onShow === "function") {
+    card.onShow();
+  }
+
   currentCardIndex = (currentCardIndex + 1) % cards.length;
 }
+
 window.onload = function () {
   rotateCards();
-  setInterval(rotateCards, 15000); // Rotate every 15 seconds
+  setInterval(rotateCards, 15000); // Show each card for 15 seconds (permits scroll for 60s regardless)
 };
-</script>
-
-<script src="/skyesoft/assets/js/glbVar.js"></script>
-<script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<script src="/skyesoft/assets/js/weather.js"></script>
-
-<script>
-  window.addEventListener("DOMContentLoaded", function () {
-    if (typeof updateDOMFromGlbVar === "function") {
-      updateDOMFromGlbVar();
-    } else {
-      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
-    }
-  });
 </script>
 
 </body>
