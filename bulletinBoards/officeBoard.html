@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Office Electronic Bulletin Board</title>
+  <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -88,7 +89,7 @@
 
   <div class="board-section" id="pageFooter">
     <div>© 2025 MayChrist Corporation</div>
-    <div class="version">v2025.05.05.1100a</div>
+    <div class="version">v2025.05.05.1130a</div>
   </div>
 
   <script>
@@ -128,13 +129,9 @@
       clearTimeout(cardTimeout);
       const card = cards[currentCardIndex];
 
-      const bodyHeader = document.getElementById("bodyHeader");
-      const bodyMain = document.getElementById("bodyMain");
-      const bodyFooter = document.getElementById("bodyFooter");
-
-      if (bodyHeader) bodyHeader.innerHTML = card.header || "";
-      if (bodyMain) bodyMain.innerHTML = card.body || "";
-      if (bodyFooter) bodyFooter.innerHTML = card.footer || "";
+      document.getElementById("bodyHeader").innerHTML = card.header || "";
+      document.getElementById("bodyMain").innerHTML = card.body || "";
+      document.getElementById("bodyFooter").innerHTML = card.footer || "";
 
       if (typeof card.onShow === "function") card.onShow();
 
@@ -144,16 +141,13 @@
     }
 
     function showPermitCard() {
-      const bodyMain = document.getElementById("bodyMain");
-      const bodyHeader = document.getElementById("bodyHeader");
-      const bodyFooter = document.getElementById("bodyFooter");
-
       fetch("/skyesoft/assets/data/major_card_data.json")
         .then(res => res.json())
         .then(data => {
           const permits = data.majorCard.permits;
-          if (bodyHeader) bodyHeader.innerHTML = "<h2>" + data.majorCard.title + "</h2>";
-          if (bodyFooter) bodyFooter.innerHTML = "<small>Showing " + permits.length + " permits</small>";
+          const bodyMain = document.getElementById("bodyMain");
+          document.getElementById("bodyHeader").innerHTML = "<h2>" + data.majorCard.title + "</h2>";
+          document.getElementById("bodyFooter").innerHTML = "<small>Showing " + permits.length + " permits</small>";
 
           bodyMain.innerHTML = \`
             <div id="scrollViewport" style="position: relative; height: 100%; overflow: hidden;">
@@ -184,14 +178,12 @@
           requestAnimationFrame(scrollStep);
         })
         .catch(err => {
-          bodyMain.innerHTML = "<div class='entry'>❌ Failed to load permits</div>";
+          document.getElementById("bodyMain").innerHTML = "<div class='entry'>❌ Failed to load permits</div>";
           console.error("Permit JSON load error:", err);
         });
     }
 
-    window.onload = function () {
-      rotateCards();
-    };
+    window.onload = rotateCards;
   </script>
 </body>
 </html>
