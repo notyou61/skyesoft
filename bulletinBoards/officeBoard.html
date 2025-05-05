@@ -70,7 +70,15 @@
       overflow-y: auto;
       max-height: calc(100% - 120px); /* account for header/footer */
     }
-    </style>
+    
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 6px;
+      text-indent: -0.6em;
+    }
+
+</style>
 </head>
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
@@ -135,11 +143,9 @@ const cards = [
   {
     header: "<h2>📢 Announcements</h2>",
     body: `
-      <ul>
-        <li>Team meeting today at 3PM</li>
-        <li>New hire orientation on Friday</li>
-        <li>Submit timesheets by 4PM</li>
-      </ul>
+      <div class="announcementItem">• Team meeting today at 3PM</div>
+      <div class="announcementItem">• New hire orientation on Friday</div>
+      <div class="announcementItem">• Submit timesheets by 4PM</div>
     `,
     footer: ""
   }
