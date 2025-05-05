@@ -70,18 +70,26 @@
       overflow-y: auto;
       max-height: calc(100% - 120px); /* account for header/footer */
     }
-    </style>
+    
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 6px;
+      text-indent: -0.6em;
+    }
+
+</style>
 </head>
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
 <div style="display: flex; align-items: center; gap: 16px;">
 <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
-<h1 style="font-size: 1.4em;">Office Electronic Bulletin Board</h1>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
 </div>
-<div>
-<div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-<div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-<div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
 </div>
 </div>
 <div class="board-section" id="pageBody">
@@ -95,7 +103,7 @@
 </div>
 <div class="board-section" id="pageFooter">
 <div>© 2025 MayChrist Corporation</div>
-<div class="version">v2025.05.04.0800a</div>
+<div class="version">Loading version...</div>
 </div>
 <script>
 // 🔁 Dynamic Card Rotation Using Standard Layout
@@ -135,11 +143,9 @@ const cards = [
   {
     header: "<h2>📢 Announcements</h2>",
     body: `
-      <ul>
-        <li>Team meeting today at 3PM</li>
-        <li>New hire orientation on Friday</li>
-        <li>Submit timesheets by 4PM</li>
-      </ul>
+      <div class="announcementItem">• Team meeting today at 3PM</div>
+      <div class="announcementItem">• New hire orientation on Friday</div>
+      <div class="announcementItem">• Submit timesheets by 4PM</div>
     `,
     footer: ""
   }
@@ -155,5 +161,20 @@ window.onload = function () {
   setInterval(rotateCards, 15000); // Rotate every 15 seconds
 };
 </script>
+
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    if (typeof updateDOMFromGlbVar === "function") {
+      updateDOMFromGlbVar();
+    } else {
+      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+    }
+  });
+</script>
+
 </body>
 </html>
