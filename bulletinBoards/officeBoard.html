@@ -47,6 +47,9 @@
       margin-bottom: 8px;
     }
     #bodyMain {
+  height: 400px;
+  overflow: hidden;
+  position: relative;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
@@ -165,6 +168,9 @@ window.onload = function () {
 </script>
 
 
+
+
+
 <script>
 async function loadPermitsAndStartScroll() {
   try {
@@ -179,38 +185,37 @@ async function loadPermitsAndStartScroll() {
     if (bodyHeader) bodyHeader.innerHTML = "<h2>" + data.majorCard.title + "</h2>";
 
     if (bodyMain) {
-      bodyMain.innerHTML = "<div id='scrollingPermits' style='display: flex; flex-direction: column; gap: 6px;'></div>";
-      const scrollingContainer = document.getElementById("scrollingPermits");
+      bodyMain.innerHTML = "<div id='scrollingPermits' style='position: relative; display: flex; flex-direction: column; gap: 6px;'></div>";
+      const container = document.getElementById("scrollingPermits");
 
       permits.forEach(p => {
         const div = document.createElement("div");
         div.className = "entry";
         div.textContent = `${p.WO} • ${p.Customer} • ${p.Jurisdiction} • ${p.FeeDue} • ${p.Status}`;
-        scrollingContainer.appendChild(div);
+        container.appendChild(div);
       });
 
+      // Animate scroll upward for 60 seconds
+      const totalDuration = 60000; // ms
+      const frameRate = 1000 / 60; // ~60fps
       let scrollAmount = 0;
-      const scrollStep = 1;
-      const interval = 50;
-      const scrollDuration = 60000;
+      const maxScroll = container.scrollHeight - bodyMain.clientHeight;
 
-      scrollingContainer.style.position = 'relative';
-      scrollingContainer.style.top = '0px';
+      const interval = setInterval(() => {
+        scrollAmount += maxScroll / (totalDuration / frameRate);
+        container.style.top = `-${scrollAmount}px`;
 
-      const scrollInterval = setInterval(() => {
-        scrollAmount += scrollStep;
-        scrollingContainer.style.top = `-${scrollAmount}px`;
-
-        if (scrollAmount >= scrollingContainer.scrollHeight - bodyMain.clientHeight) {
-          clearInterval(scrollInterval);
+        if (scrollAmount >= maxScroll) {
+          clearInterval(interval);
         }
-      }, interval);
+      }, frameRate);
     }
 
-    if (bodyFooter) bodyFooter.innerHTML = `<small>Showing ${permits.length} permits</small>`;
-
+    if (bodyFooter) {
+      bodyFooter.innerHTML = `<small>Showing ${permits.length} permits</small>`;
+    }
   } catch (err) {
-    console.error("Failed to load permit data:", err);
+    console.error("Permit load error:", err);
   }
 }
 
