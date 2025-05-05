@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Office Electronic Bulletin Board</title>
-  <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon" />
-  <style>
+<meta charset="utf-8"/>
+<title>Office Electronic Bulletin Board</title>
+<style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100vh;
@@ -64,126 +65,116 @@
       background: #ffffff;
       margin-bottom: 12px;
     }
-  </style>
+  
+    #pageBody .cardBody {
+      overflow-y: auto;
+      max-height: calc(100% - 120px); /* account for header/footer */
+    }
+    
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 6px;
+      text-indent: -0.6em;
+    }
+
+</style>
 </head>
 <body>
-  <div class="board-section" id="pageHeader">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;" />
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-        Office Electronic Bulletin Board
-      </h1>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-    </div>
-  </div>
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
+<div class="board-section" id="pageBody">
+<div id="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
+<div id="bodyMain">
+<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
+<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
+<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
+</div>
+<div id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 MayChrist Corporation</div>
+<div class="version">Loading version...</div>
+</div>
+<script>
+// 🔁 Dynamic Card Rotation Using Standard Layout
 
-  <div class="board-section" id="pageBody">
-    <div id="bodyHeader"></div>
-    <div id="bodyMain"></div>
-    <div id="bodyFooter"></div>
-  </div>
+function populateCard({ header, body, footer }) {
+  const bodyHeader = document.getElementById("bodyHeader");
+  const bodyMain = document.getElementById("bodyMain");
+  const bodyFooter = document.getElementById("bodyFooter");
 
-  <div class="board-section" id="pageFooter">
-    <div>© 2025 MayChrist Corporation</div>
-    <div class="version">v2025.05.05.1130a</div>
-  </div>
+  if (bodyHeader) bodyHeader.innerHTML = header || "";
+  if (bodyMain) bodyMain.innerHTML = body || "";
+  if (bodyFooter) bodyFooter.innerHTML = footer || "";
+}
 
-  <script>
-    const cards = [
-      {
-        header: "<h2>📋 Active Permits</h2>",
-        body: "",
-        footer: "",
-        onShow: showPermitCard
-      },
-      {
-        header: "<h2>📈 KPI Dashboard</h2>",
-        body: `
-          <div class='entry'>🛠️ Open Tasks: 12</div>
-          <div class='entry'>✅ Completed Today: 47</div>
-          <div class='entry'>📦 Orders Shipped: 19</div>
-        `,
-        footer: "<small>Updated hourly</small>"
-      },
-      {
-        header: "<h2>📢 Announcements</h2>",
-        body: `
-          <ul>
-            <li>Team meeting today at 3PM</li>
-            <li>New hire orientation on Friday</li>
-            <li>Submit timesheets by 4PM</li>
-          </ul>
-        `,
-        footer: ""
-      }
-    ];
+const cards = [
+  {
+    header: "<h2>📋 Active Permits</h2>",
+    body: `
+      <div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
+      <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
+      <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>
+      <div class='entry'>26303 • Client D • City • $530 ⧗ Review</div>
+      <div class='entry'>26304 • Client E • City • $540 ✔ Ready</div>
+      <div class='entry'>26305 • Client F • City • $550 ⧗ Review</div>
+    `,
+    footer: "<small>Showing 6 of 30 permits</small>"
+  },
+  {
+    header: "<h2>📈 KPI Dashboard</h2>",
+    body: `
+      <div class='entry'>🛠️ Open Tasks: 12</div>
+      <div class='entry'>✅ Completed Today: 47</div>
+      <div class='entry'>📦 Orders Shipped: 19</div>
+    `,
+    footer: "<small>Updated hourly</small>"
+  },
+  {
+    header: "<h2>📢 Announcements</h2>",
+    body: `
+      <div class="announcementItem">• Team meeting today at 3PM</div>
+      <div class="announcementItem">• New hire orientation on Friday</div>
+      <div class="announcementItem">• Submit timesheets by 4PM</div>
+    `,
+    footer: ""
+  }
+];
 
-    let currentCardIndex = 0;
-    let cardTimeout;
+let currentCardIndex = 0;
+function rotateCards() {
+  populateCard(cards[currentCardIndex]);
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+}
+window.onload = function () {
+  rotateCards();
+  setInterval(rotateCards, 15000); // Rotate every 15 seconds
+};
+</script>
 
-    function rotateCards() {
-      clearTimeout(cardTimeout);
-      const card = cards[currentCardIndex];
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
 
-      document.getElementById("bodyHeader").innerHTML = card.header || "";
-      document.getElementById("bodyMain").innerHTML = card.body || "";
-      document.getElementById("bodyFooter").innerHTML = card.footer || "";
-
-      if (typeof card.onShow === "function") card.onShow();
-
-      const duration = currentCardIndex === 0 ? 60000 : 15000;
-      currentCardIndex = (currentCardIndex + 1) % cards.length;
-      cardTimeout = setTimeout(rotateCards, duration);
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    if (typeof updateDOMFromGlbVar === "function") {
+      updateDOMFromGlbVar();
+    } else {
+      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
     }
+  });
+</script>
 
-    function showPermitCard() {
-      fetch("/skyesoft/assets/data/major_card_data.json")
-        .then(res => res.json())
-        .then(data => {
-          const permits = data.majorCard.permits;
-          const bodyMain = document.getElementById("bodyMain");
-          document.getElementById("bodyHeader").innerHTML = "<h2>" + data.majorCard.title + "</h2>";
-          document.getElementById("bodyFooter").innerHTML = "<small>Showing " + permits.length + " permits</small>";
-
-          bodyMain.innerHTML = \`
-            <div id="scrollViewport" style="position: relative; height: 100%; overflow: hidden;">
-              <div id="scrollContent" style="position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; gap: 6px;"></div>
-            </div>
-          \`;
-
-          const scrollContent = document.getElementById("scrollContent");
-          permits.forEach(p => {
-            const div = document.createElement("div");
-            div.className = "entry";
-            div.textContent = \`\${p.WO} • \${p.Customer} • \${p.Jurisdiction} • \${p.FeeDue} • \${p.Status}\`;
-            scrollContent.appendChild(div);
-          });
-
-          const scrollViewport = document.getElementById("scrollViewport");
-          const maxScroll = scrollContent.scrollHeight - scrollViewport.clientHeight;
-          const duration = 60000;
-          const startTime = performance.now();
-
-          function scrollStep(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const offset = progress * maxScroll;
-            scrollContent.style.top = \`-\${offset}px\`;
-            if (progress < 1) requestAnimationFrame(scrollStep);
-          }
-          requestAnimationFrame(scrollStep);
-        })
-        .catch(err => {
-          document.getElementById("bodyMain").innerHTML = "<div class='entry'>❌ Failed to load permits</div>";
-          console.error("Permit JSON load error:", err);
-        });
-    }
-
-    window.onload = rotateCards;
-  </script>
 </body>
 </html>
