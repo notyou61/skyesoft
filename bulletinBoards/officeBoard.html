@@ -161,5 +161,20 @@ window.onload = function () {
   setInterval(rotateCards, 15000); // Rotate every 15 seconds
 };
 </script>
+
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+
+<script>
+  window.addEventListener("DOMContentLoaded", function () {
+    if (typeof updateDOMFromGlbVar === "function") {
+      updateDOMFromGlbVar();
+    } else {
+      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+    }
+  });
+</script>
+
 </body>
 </html>
