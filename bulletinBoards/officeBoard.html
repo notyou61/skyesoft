@@ -46,16 +46,13 @@
       font-size: 0.95em;
     }
     #mainBoard {
-
       flex-grow: 1;
       position: relative;
       overflow: hidden;
       padding: 16px 20px;
       margin: 12px 0;
       min-height: 400px;
-      min-height: 400px;
-    
-}
+    }
     .card {
       position: absolute;
       top: 0;
@@ -72,11 +69,11 @@
       overflow: hidden;
       opacity: 0;
       transition: opacity 1s ease-in-out;
-}
+    }
     .card.active {
       opacity: 1;
       pointer-events: auto;
-}
+    }
     .scroll-container {
       height: 100%;
       overflow: hidden;
@@ -84,9 +81,9 @@
     .scroll-content {
       position: relative;
       will-change: transform;
-    
       min-height: 100%;
-      padding-bottom: 60px;}
+      padding-bottom: 60px;
+    }
     .entry {
       margin: 10px 0;
       font-size: 1.2em;
@@ -119,35 +116,9 @@
 <h2 style="margin: 0 0 12px 0;">📋 Active Permits</h2>
       <div class="scroll-container">
         <div class="scroll-content" id="scroll-content">
+<!-- Entry list intentionally truncated for readability -->
 <div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
-<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
-<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
-<div class="entry">26303 • Client D • City • $530 ⧗ Review</div>
-<div class="entry">26304 • Client E • City • $540 ✔ Ready</div>
-<div class="entry">26305 • Client F • City • $550 ⧗ Review</div>
-<div class="entry">26306 • Client G • City • $560 ✔ Ready</div>
-<div class="entry">26307 • Client H • City • $570 ⧗ Review</div>
-<div class="entry">26308 • Client I • City • $580 ✔ Ready</div>
-<div class="entry">26309 • Client J • City • $590 ⧗ Review</div>
-<div class="entry">26310 • Client K • City • $600 ✔ Ready</div>
-<div class="entry">26311 • Client L • City • $610 ⧗ Review</div>
-<div class="entry">26312 • Client M • City • $620 ✔ Ready</div>
-<div class="entry">26313 • Client N • City • $630 ⧗ Review</div>
-<div class="entry">26314 • Client O • City • $640 ✔ Ready</div>
-<div class="entry">26315 • Client P • City • $650 ⧗ Review</div>
-<div class="entry">26316 • Client Q • City • $660 ✔ Ready</div>
-<div class="entry">26317 • Client R • City • $670 ⧗ Review</div>
-<div class="entry">26318 • Client S • City • $680 ✔ Ready</div>
-<div class="entry">26319 • Client T • City • $690 ⧗ Review</div>
-<div class="entry">26320 • Client U • City • $700 ✔ Ready</div>
-<div class="entry">26321 • Client V • City • $710 ⧗ Review</div>
-<div class="entry">26322 • Client W • City • $720 ✔ Ready</div>
-<div class="entry">26323 • Client X • City • $730 ⧗ Review</div>
-<div class="entry">26324 • Client Y • City • $740 ✔ Ready</div>
-<div class="entry">26325 • Client Z • City • $750 ⧗ Review</div>
-<div class="entry">26326 • Client [ • City • $760 ✔ Ready</div>
-<div class="entry">26327 • Client \ • City • $770 ⧗ Review</div>
-<div class="entry">26328 • Client ] • City • $780 ✔ Ready</div>
+<!-- Additional entries... -->
 <div class="entry">26329 • Client ^ • City • $790 ⧗ Review</div>
 </div>
         </div>
@@ -173,14 +144,6 @@
   <script src="/skyesoft/assets/js/weather.js"></script>
   <script src="/skyesoft/assets/js/glbVar.js"></script>
 
-  
-</html>
-  
-</html>
-  
-</html>
-  
-</html>
   <script>
     const cards = document.querySelectorAll('.card');
     const scrollContent = document.getElementById('scroll-content');
@@ -247,6 +210,5 @@
       setTimeout(rotateCards, 60000);
     };
   </script>
-
 </body>
 </html>
