@@ -86,6 +86,15 @@
   background: #ccc;
   margin-top: 6px;
 }
+.bodyFooter::before {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-bottom: 6px;
+}
+
 
 
 </style>
@@ -109,7 +118,7 @@
 <div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
 <div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
 </div>
-<div id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+<div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
 </div>
 <div class="board-section" id="pageFooter">
 <div>© 2025 MayChrist Corporation</div>
