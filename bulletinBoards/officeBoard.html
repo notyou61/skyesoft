@@ -97,6 +97,27 @@
 
 
 
+
+#pageBody {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 160px); /* Adjust if needed */
+  overflow: hidden;
+}
+
+#bodyMain {
+  flex-grow: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardBody {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
 </style>
 </head>
 <body>
@@ -141,7 +162,7 @@ const cards = [
   {
     header: "<h2>📋 Active Permits</h2>",
     body: `
-  <div class="cardBody" style="overflow-y: auto; max-height: 420px;">
+  <div class="cardBody" style="overflow-y: auto; max-height: 60vh;">
     <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
     <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
     <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
@@ -290,4 +311,8 @@ window.onload = () => {
 </body>
 </html>
 
-<!-- confirmed 0030 fix -->
+<!-- forced update -->
+
+<!-- version 2355 confirmed -->
+
+<!-- confirmed 0040 final clean fix -->
