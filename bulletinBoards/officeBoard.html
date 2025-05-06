@@ -97,27 +97,6 @@
 
 
 
-
-#pageBody {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 160px); /* Adjust if needed */
-  overflow: hidden;
-}
-
-#bodyMain {
-  flex-grow: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.cardBody {
-  flex-grow: 1;
-  overflow-y: auto;
-}
-
 </style>
 </head>
 <body>
@@ -162,7 +141,7 @@ const cards = [
   {
     header: "<h2>📋 Active Permits</h2>",
     body: `
-  <div class="cardBody" style="overflow-y: auto; max-height: 60vh;">
+  <div class="cardBody" style="overflow-y: auto; max-height: 420px;">
     <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
     <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
     <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
@@ -238,11 +217,77 @@ window.onload = function () {
   });
 </script>
 
+
+<script>
+let currentCardIndex = 0;
+let cardTimer = null;
+
+function log(...args) {
+  console.log(`[${new Date().toLocaleTimeString()}]`, ...args);
+}
+
+function smoothScrollCardBody() {
+  const cardBody = document.querySelector('.cardBody');
+  if (!cardBody) {
+    log("❌ .cardBody not found");
+    return;
+  }
+
+  cardBody.scrollTop = 0;
+  const scrollHeight = cardBody.scrollHeight - cardBody.clientHeight;
+  if (scrollHeight <= 0) {
+    log("ℹ️ No scroll required. Content fits.");
+    return;
+  }
+
+  const duration = 60000;
+  const start = performance.now();
+  log("✅ Starting smooth scroll. Total distance:", scrollHeight);
+
+  function step(timestamp) {
+    const elapsed = timestamp - start;
+    const progress = Math.min(elapsed / duration, 1);
+    cardBody.scrollTop = scrollHeight * progress;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+}
+
+function rotateCards() {
+  log("🔁 rotateCards() called. Current index:", currentCardIndex);
+  clearTimeout(cardTimer);
+  log("⏱️ Cleared previous cardTimer");
+
+  populateCard(cards[currentCardIndex]);
+  log("📦 Populated card index:", currentCardIndex);
+
+  if (currentCardIndex === 0) {
+    log("🕒 Major card - setting timer for 60 seconds");
+    setTimeout(smoothScrollCardBody, 500);
+    cardTimer = setTimeout(() => {
+      log("🔄 Timeout hit: moving to next card (after 60s)");
+      rotateCards();
+    }, 60000);
+  } else {
+    log("🕒 Minor card - setting timer for 15 seconds");
+    cardTimer = setTimeout(() => {
+      log("🔄 Timeout hit: moving to next card (after 15s)");
+      rotateCards();
+    }, 15000);
+  }
+
+  log("📌 Timer set. Next card will trigger in", currentCardIndex === 0 ? "60s" : "15s");
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+}
+
+window.onload = () => {
+  log("🚀 Page loaded. Starting card rotation...");
+  rotateCards();
+};
+</script>
+
 </body>
 </html>
 
-<!-- forced update -->
-
-<!-- version 2355 confirmed -->
-
-<!-- confirmed 0005 fix -->
+<!-- confirmed 0030 fix -->
