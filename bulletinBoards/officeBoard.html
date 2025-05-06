@@ -1,117 +1,147 @@
 
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <title>Office Electronic Bulletin Board</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    margin: 0;
-    height: 100vh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
-    background-size: cover;
-    display: flex;
-    flex-direction: column;
-  }
-  body > .board-section {
-    flex-shrink: 0;
-  }
-  .board-section {
-    width: 90vw;
-    max-width: 1200px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    padding: 8px 16px;
-  }
-  #pageHeader, #pageFooter {
-    flex-shrink: 0;
-  }
-  #pageBody {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    margin: 12px 0;
-  }
-  #pageHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 1.1em;
-    margin-top: 12px;
-  }
-  #bodyHeader, #bodyFooter {
-    font-weight: bold;
-    font-size: 1em;
-    text-align: left;
-    margin-bottom: 8px;
-  }
-  #bodyMain {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-right: 8px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-  }
-  .entry {
-    margin: 6px 0;
-    font-size: 1.2em;
-  }
-  #pageFooter {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8em;
-    padding: 6px 12px;
-    background: #ffffff;
-    margin-bottom: 12px;
-  }
-  .announcementItem {
-    font-size: 1.1em;
-    margin: 4px 0;
-    padding-left: 6px;
-    text-indent: -0.6em;
-  }
-  .bodyHeader::after {
-    content: "";
-    display: block;
-    height: 2px;
-    width: 100%;
-    background: #ccc;
-    margin-top: 6px;
-  }
-  .bodyFooter::before {
-    content: "";
-    display: block;
-    height: 2px;
-    width: 100%;
-    background: #ccc;
-    margin-bottom: 6px;
-  }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .board-section {
+      width: 90vw;
+      max-width: 1200px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 8px 16px;
+    }
+    #pageHeader, #pageFooter {
+      flex-shrink: 0;
+    }
+    #pageBody {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      margin: 12px 0;
+    }
+    #pageHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+      margin-top: 12px;
+    }
+    #bodyHeader, #bodyFooter {
+      font-weight: bold;
+      font-size: 1em;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+    #bodyMain {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .entry {
+      margin: 6px 0;
+      font-size: 1.2em;
+    }
+    #pageFooter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8em;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+  
+    #pageBody .cardBody {
+      overflow-y: auto;
+      max-height: calc(100% - 120px); /* account for header/footer */
+    }
+    
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 6px;
+      text-indent: -0.6em;
+    }
+    .bodyHeader::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-top: 6px;
+}
+.bodyFooter::before {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-bottom: 6px;
+}
+
+
+
 </style>
 </head>
 <body>
-<div class="board-section" id="pageHeader">
-  <div style="display: flex; align-items: center; gap: 16px;">
-    <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
-    <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-      Office Electronic Bulletin Board
-    </h1>
-  </div>
-  <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-    <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-    <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-    <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-  </div>
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
 </div>
-
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
 <div class="board-section" id="pageBody">
-  <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
-  <div id="bodyMain">
+<div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
+<div id="bodyMain">
+<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
+<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
+<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
+</div>
+<div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 MayChrist Corporation</div>
+<div class="version">Loading version...</div>
+</div>
+<script>
+// 🔁 Dynamic Card Rotation Using Standard Layout
+
+function populateCard({ header, body, footer }) {
+  const bodyHeader = document.getElementById("bodyHeader");
+  const bodyMain = document.getElementById("bodyMain");
+  const bodyFooter = document.getElementById("bodyFooter");
+
+  if (bodyHeader) bodyHeader.innerHTML = header || "";
+  if (bodyMain) bodyMain.innerHTML = body || "";
+  if (bodyFooter) bodyFooter.innerHTML = footer || "";
+}
+
+const cards = [
+  {
+    header: "<h2>📋 Active Permits</h2>",
+    body: `
+  <div class="cardBody" style="overflow-y: auto; max-height: 420px;">
     <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
     <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
     <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
@@ -139,15 +169,39 @@
     <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
     <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
   </div>
-  <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
-    Showing 26 of 30 permits
-  </div>
-</div>
+`,
+    footer: "<small>Updated: 05/02/2025</small>"
+  },
+  {
+    header: "<h2>📈 KPI Dashboard</h2>",
+    body: `
+      <div class='entry'>🛠️ Open Tasks: 12</div>
+      <div class='entry'>✅ Completed Today: 47</div>
+      <div class='entry'>📦 Orders Shipped: 19</div>
+    `,
+    footer: "<small>Last Update 07:30 AM</small>"
+  },
+  {
+    header: "<h2>📢 Announcements</h2>",
+    body: `
+      <div class="announcementItem">• Team meeting today at 3PM</div>
+      <div class="announcementItem">• New hire orientation on Friday</div>
+      <div class="announcementItem">• Submit timesheets by 4PM</div>
+    `,
+    footer: "Updated: 05/05/2025"
+  }
+];
 
-<div class="board-section" id="pageFooter">
-  <div>© 2025 MayChrist Corporation</div>
-  <div class="version">Loading version...</div>
-</div>
+let currentCardIndex = 0;
+function rotateCards() {
+  populateCard(cards[currentCardIndex]);
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+}
+window.onload = function () {
+  rotateCards();
+  setInterval(rotateCards, 15000); // Rotate every 15 seconds
+};
+</script>
 
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
@@ -162,5 +216,6 @@
     }
   });
 </script>
+
 </body>
 </html>
