@@ -6,8 +6,6 @@
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-  height: 100vh;
-  overflow: hidden;
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
@@ -28,10 +26,6 @@
       flex-shrink: 0;
     }
     #pageBody {
-  max-height: calc(100vh - 160px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
       flex-grow: 1;
       display: flex;
       flex-direction: column;
@@ -71,9 +65,6 @@
       margin-bottom: 12px;
     }
     .cardBody {
-  flex-grow: 1;
-  overflow-y: auto;
-  max-height: 100%;
       overflow-y: auto;
       max-height: calc(100% - 120px);
     }
@@ -124,135 +115,94 @@
 </div>
 
 <script>
-  function populateCard({ header, body, footer }) {
-    document.getElementById("bodyHeader").innerHTML = header;
-    document.querySelector(".cardBody").innerHTML = body;
-    document.getElementById("bodyFooter").innerHTML = footer;
+function populateCard({ header, body, footer }) {
+  document.getElementById("bodyHeader").innerHTML = header;
+  document.querySelector(".cardBody").innerHTML = body;
+  document.getElementById("bodyFooter").innerHTML = footer;
+}
+
+function smoothScrollCardBody(duration = 60000) {
+  const el = document.querySelector(".cardBody");
+  if (!el) return;
+
+  el.scrollTop = 0;
+  const scrollMax = el.scrollHeight - el.clientHeight;
+  if (scrollMax <= 0) return;
+
+  const start = performance.now();
+
+  function scrollStep(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    el.scrollTop = scrollMax * progress;
+    if (progress < 1) requestAnimationFrame(scrollStep);
   }
 
-  function smoothScrollCardBody() {
-    const el = document.querySelector(".cardBody");
-    if (!el) return;
-    el.scrollTop = 0;
-    const scrollMax = el.scrollHeight - el.clientHeight;
-    if (scrollMax <= 0) return;
-    const duration = 60000;
-    const start = performance.now();
-    function scrollStep(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      el.scrollTop = scrollMax * progress;
-      if (progress < 1) requestAnimationFrame(scrollStep);
-    }
-    requestAnimationFrame(scrollStep);
+  requestAnimationFrame(scrollStep);
+}
+
+const cards = [
+  {
+    header: "<h2>📋 Active Permits</h2>",
+    body: `<div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Issue</div>
+           <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Issue</div>
+           <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Issue</div>
+           <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Issue</div>
+           <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Issue</div>
+           <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Issue</div>
+           <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Issue</div>
+           <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Issue</div>
+           <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Issue</div>
+           <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Issue</div>
+           <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Issue</div>
+           <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Issue</div>
+           <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Issue</div>
+           <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Issue</div>
+           <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Issue</div>
+           <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Issue</div>
+           <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Issue</div>
+           <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Issue</div>
+           <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Issue</div>
+           <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Issue</div>
+           <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
+           <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
+           <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Issue</div>
+           <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Issue</div>
+           <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Issue</div>`,
+    footer: "<small>Showing 25 permits — Updated: 05/07/2025</small>"
+  },
+  {
+    header: "<h2>📈 KPI Dashboard</h2>",
+    body: `<div class='entry'>🛠️ Open Tasks: 12</div><div class='entry'>✅ Completed Today: 47</div><div class='entry'>📦 Orders Shipped: 19</div>`,
+    footer: "<small>Last Update 07:30 AM</small>"
+  },
+  {
+    header: "<h2>📢 Announcements</h2>",
+    body: `<div class="announcementItem">• Team meeting today at 3PM</div><div class="announcementItem">• New hire orientation on Friday</div><div class="announcementItem">• Submit timesheets by 4PM</div>`,
+    footer: "Updated: 05/05/2025"
+  }
+];
+
+let currentCardIndex = 0;
+let cardTimer;
+
+function rotateCards() {
+  clearTimeout(cardTimer);
+  populateCard(cards[currentCardIndex]);
+
+  if (currentCardIndex === 0) {
+    smoothScrollCardBody(60000);
+    cardTimer = setTimeout(rotateCards, 60000);
+  } else {
+    cardTimer = setTimeout(rotateCards, 15000);
   }
 
-  const cards = [
-    {
-      header: "<h2>📋 Active Permits</h2>",
-      body: `<div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Issue</div>
-<div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Issue</div>
-<div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Issue</div>
-<div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Issue</div>
-<div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Issue</div>
-<div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Issue</div>
-<div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Issue</div>
-<div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Issue</div>
-<div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Issue</div>
-<div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Issue</div>
-<div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Issue</div>
-<div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Issue</div>
-<div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Issue</div>
-<div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
-<div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
-<div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Issue</div>
-<div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Issue</div>`,
-      footer: "<small>Showing 3 of 30 permits — Updated: 05/02/2025</small>"
-    },
-    {
-      header: "<h2>📈 KPI Dashboard</h2>",
-      body: `<div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Issue</div>
-<div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Issue</div>
-<div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Issue</div>
-<div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Issue</div>
-<div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Issue</div>
-<div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Issue</div>
-<div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Issue</div>
-<div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Issue</div>
-<div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Issue</div>
-<div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Issue</div>
-<div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Issue</div>
-<div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Issue</div>
-<div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Issue</div>
-<div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
-<div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
-<div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Issue</div>
-<div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Issue</div>`,
-      footer: "<small>Last Update 07:30 AM</small>"
-    },
-    {
-      header: "<h2>📢 Announcements</h2>",
-      body: `<div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Issue</div>
-<div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Issue</div>
-<div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Issue</div>
-<div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Issue</div>
-<div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Issue</div>
-<div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Issue</div>
-<div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Issue</div>
-<div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Issue</div>
-<div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Issue</div>
-<div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Issue</div>
-<div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Issue</div>
-<div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Issue</div>
-<div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Issue</div>
-<div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Issue</div>
-<div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Issue</div>
-<div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
-<div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
-<div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Issue</div>
-<div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Issue</div>
-<div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Issue</div>`,
-      footer: "Updated: 05/05/2025"
-    }
-  ];
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+}
 
-  let currentCardIndex = 0;
-  let cardTimer;
-
-  function rotateCards() {
-    clearTimeout(cardTimer);
-    populateCard(cards[currentCardIndex]);
-    if (currentCardIndex === 0) {
-      smoothScrollCardBody();
-      cardTimer = setTimeout(rotateCards, 60000);
-    } else {
-      cardTimer = setTimeout(rotateCards, 15000);
-    }
-    currentCardIndex = (currentCardIndex + 1) % cards.length;
-  }
-
-  window.onload = rotateCards;
+window.onload = () => {
+  rotateCards();
+};
 </script>
 
 <script src="/skyesoft/assets/js/glbVar.js"></script>
@@ -267,7 +217,7 @@
     }
   });
 </script>
-<!-- version v2025.05.07.0156 -->
+<!-- version v2025.05.07.0155 -->
 </body>
 </html>
-<!-- version 0156 layout constrained to viewport -->
+<!-- version 0157 smooth 60s scroll logic -->
