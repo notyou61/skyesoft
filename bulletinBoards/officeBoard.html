@@ -1,6 +1,4 @@
-
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -66,12 +64,10 @@
       background: #ffffff;
       margin-bottom: 12px;
     }
-  
-    #pageBody .cardBody {
+    .cardBody {
       overflow-y: auto;
-      max-height: calc(100% - 120px); /* account for header/footer */
+      max-height: calc(100% - 120px);
     }
-    
     .announcementItem {
       font-size: 1.1em;
       margin: 4px 0;
@@ -79,155 +75,114 @@
       text-indent: -0.6em;
     }
     .bodyHeader::after {
-  content: "";
-  display: block;
-  height: 2px;
-  width: 100%;
-  background: #ccc;
-  margin-top: 6px;
-}
-.bodyFooter::before {
-  content: "";
-  display: block;
-  height: 2px;
-  width: 100%;
-  background: #ccc;
-  margin-bottom: 6px;
-}
-
-
-
-
-#pageBody {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 160px); /* Adjust if needed */
-  overflow: hidden;
-}
-
-#bodyMain {
-  flex-grow: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.cardBody {
-  flex-grow: 1;
-  overflow-y: auto;
-}
-
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-top: 6px;
+    }
+    .bodyFooter::before {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-bottom: 6px;
+    }
 </style>
 </head>
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
-<div style="display: flex; align-items: center; gap: 16px;">
-<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
-<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
-</div>
-<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-</div>
+  <div style="display: flex; align-items: center; gap: 16px;">
+    <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+    <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Electronic Bulletin Board</h1>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+    <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+    <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+    <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+  </div>
 </div>
 <div class="board-section" id="pageBody">
-<div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
-<div id="bodyMain">
-<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
-<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
-<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
-</div>
-<div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+  <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;"></div>
+  <div id="bodyMain"><div class="cardBody"></div></div>
+  <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
 </div>
 <div class="board-section" id="pageFooter">
-<div>© 2025 MayChrist Corporation</div>
-<div class="version">Loading version...</div>
+  <div>© 2025 MayChrist Corporation</div>
+  <div class="version">Loading version...</div>
 </div>
+
 <script>
-// 🔁 Dynamic Card Rotation Using Standard Layout
-
-function populateCard({ header, body, footer }) {
-  const bodyHeader = document.getElementById("bodyHeader");
-  const bodyMain = document.getElementById("bodyMain");
-  const bodyFooter = document.getElementById("bodyFooter");
-
-  if (bodyHeader) bodyHeader.innerHTML = header || "";
-  if (bodyMain) bodyMain.innerHTML = body || "";
-  if (bodyFooter) bodyFooter.innerHTML = footer || "";
-}
-
-const cards = [
-  {
-    header: "<h2>📋 Active Permits</h2>",
-    body: `
-  <div class="cardBody" style="overflow-y: auto; max-height: 60vh;">
-    <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
-    <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
-    <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Ready</div>
-    <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Ready</div>
-    <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Ready</div>
-    <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Ready</div>
-    <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Ready</div>
-    <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Ready</div>
-    <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Ready</div>
-    <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Ready</div>
-    <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Ready</div>
-    <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Ready</div>
-    <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Ready</div>
-    <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Ready</div>
-    <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Ready</div>
-    <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Ready</div>
-    <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Ready</div>
-    <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Ready</div>
-    <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
-    <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
-    <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Ready</div>
-    <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
-    <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
-  </div>
-`,
-    footer: "<small>Updated: 05/02/2025</small>"
-  },
-  {
-    header: "<h2>📈 KPI Dashboard</h2>",
-    body: `
-      <div class='entry'>🛠️ Open Tasks: 12</div>
-      <div class='entry'>✅ Completed Today: 47</div>
-      <div class='entry'>📦 Orders Shipped: 19</div>
-    `,
-    footer: "<small>Last Update 07:30 AM</small>"
-  },
-  {
-    header: "<h2>📢 Announcements</h2>",
-    body: `
-      <div class="announcementItem">• Team meeting today at 3PM</div>
-      <div class="announcementItem">• New hire orientation on Friday</div>
-      <div class="announcementItem">• Submit timesheets by 4PM</div>
-    `,
-    footer: "Updated: 05/05/2025"
+  function populateCard({ header, body, footer }) {
+    document.getElementById("bodyHeader").innerHTML = header;
+    document.querySelector(".cardBody").innerHTML = body;
+    document.getElementById("bodyFooter").innerHTML = footer;
   }
-];
 
-let currentCardIndex = 0;
-function rotateCards() {
-  populateCard(cards[currentCardIndex]);
-  currentCardIndex = (currentCardIndex + 1) % cards.length;
-}
-window.onload = function () {
-  rotateCards();
-  setInterval(rotateCards, 15000); // Rotate every 15 seconds
-};
+  function smoothScrollCardBody() {
+    const el = document.querySelector(".cardBody");
+    if (!el) return;
+    el.scrollTop = 0;
+    const scrollMax = el.scrollHeight - el.clientHeight;
+    if (scrollMax <= 0) return;
+    const duration = 60000;
+    const start = performance.now();
+    function scrollStep(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      el.scrollTop = scrollMax * progress;
+      if (progress < 1) requestAnimationFrame(scrollStep);
+    }
+    requestAnimationFrame(scrollStep);
+  }
+
+  const cards = [
+    {
+      header: "<h2>📋 Active Permits</h2>",
+      body: `<div class='entry'>26300 • Client A • City • $500 ✔ Ready</div>
+             <div class='entry'>26301 • Client B • City • $510 ⧗ Review</div>
+             <div class='entry'>26302 • Client C • City • $520 ✔ Ready</div>`,
+      footer: "<small>Showing 3 of 30 permits — Updated: 05/02/2025</small>"
+    },
+    {
+      header: "<h2>📈 KPI Dashboard</h2>",
+      body: `<div class='entry'>🛠️ Open Tasks: 12</div>
+             <div class='entry'>✅ Completed Today: 47</div>
+             <div class='entry'>📦 Orders Shipped: 19</div>`,
+      footer: "<small>Last Update 07:30 AM</small>"
+    },
+    {
+      header: "<h2>📢 Announcements</h2>",
+      body: `<div class="announcementItem">• Team meeting today at 3PM</div>
+             <div class="announcementItem">• New hire orientation on Friday</div>
+             <div class="announcementItem">• Submit timesheets by 4PM</div>`,
+      footer: "Updated: 05/05/2025"
+    }
+  ];
+
+  let currentCardIndex = 0;
+  let cardTimer;
+
+  function rotateCards() {
+    clearTimeout(cardTimer);
+    populateCard(cards[currentCardIndex]);
+    if (currentCardIndex === 0) {
+      smoothScrollCardBody();
+      cardTimer = setTimeout(rotateCards, 60000);
+    } else {
+      cardTimer = setTimeout(rotateCards, 15000);
+    }
+    currentCardIndex = (currentCardIndex + 1) % cards.length;
+  }
+
+  window.onload = rotateCards;
 </script>
 
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
-
 <script>
   window.addEventListener("DOMContentLoaded", function () {
     if (typeof updateDOMFromGlbVar === "function") {
@@ -237,8 +192,6 @@ window.onload = function () {
     }
   });
 </script>
-
+<!-- version v2025.05.07.0130 -->
 </body>
 </html>
-
-<!-- forced update -->
