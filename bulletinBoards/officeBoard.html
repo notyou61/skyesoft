@@ -234,26 +234,24 @@
   if (!container) return;
 
   container.scrollTop = 0;
-
-  const start = performance.now();
   const scrollDistance = container.scrollHeight - container.clientHeight;
   if (scrollDistance <= 0) return;
 
-  function step(timestamp) {
-    const elapsed = timestamp - start;
-    const progress = Math.min(elapsed / duration, 1); // Clamp to [0,1]
-    container.scrollTop = progress * scrollDistance;
+  const startTime = performance.now();
+
+  function scrollStep(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1); // Clamp to 1
+    container.scrollTop = scrollDistance * progress;
 
     if (progress < 1) {
-      requestAnimationFrame(step);
+      requestAnimationFrame(scrollStep);
     }
   }
 
-  requestAnimationFrame(step);
-  console.log("🚀 Scroll initialized. Distance:", scrollDistance);
+  requestAnimationFrame(scrollStep);
+  console.log("✅ requestAnimationFrame scrolling initialized", scrollDistance, "px over", duration, "ms");
 }
-
-
 
     let currentCardIndex = 0;
     function rotateCards() {
