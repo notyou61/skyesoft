@@ -230,28 +230,35 @@
     ];
 
     function autoScrollCardBody(duration = 60000) {
-      const container = document.querySelector(".cardBody");
-      if (!container) return;
+  const container = document.querySelector(".cardBody");
+  if (!container) return;
 
-      container.scrollTop = 0;
-      const scrollDistance = container.scrollHeight - container.clientHeight;
-      if (scrollDistance <= 0) return;
+  container.scrollTop = 0;
 
-      const startTime = performance.now(); // Capture startTime here
+  const scrollDistance = container.scrollHeight - container.clientHeight;
+  if (scrollDistance <= 0) return;
 
-      function scrollStep(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1); // Clamp to 1
-        container.scrollTop = scrollDistance * progress;
+  const startTime = Date.now();
 
-        if (progress < 1) {
-          requestAnimationFrame(scrollStep);
-        }
-      }
+  function scrollStep() {
+    const now = Date.now();
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
 
+    container.scrollTop = scrollDistance * progress;
+
+    if (progress < 1) {
       requestAnimationFrame(scrollStep);
-      console.log("✅ requestAnimationFrame scrolling initialized", scrollDistance, "px over", duration, "ms");
+    } else {
+      container.scrollTop = scrollDistance; // snap to end
+      console.log("✅ Finished scrolling:", scrollDistance, "px in", elapsed, "ms");
     }
+  }
+
+  requestAnimationFrame(scrollStep);
+  console.log("🔁 Starting scroll:", scrollDistance, "px over", duration, "ms");
+}
+
 
     let currentCardIndex = 0;
     function rotateCards() {
