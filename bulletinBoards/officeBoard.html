@@ -112,8 +112,14 @@
   width: 100%;
   background: #ccc;
   margin-top: 6px;
-  margin-bottom: 10px; /* Aligns visually with footer spacing */
+  margin-bottom: 10px;
 }
+
+.bodyHeader h2 {
+  margin-bottom: 0; /* ✅ Prevent extra gap below heading */
+}
+
+
 
     .bodyFooter::before {
       content: "";
