@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,93 +5,67 @@
   <title>Office Electronic Bulletin Board</title>
   <style>
     html, body {
-      height: 100vh;
       margin: 0;
       padding: 0;
+      height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f0f2f5;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    .board-section {
+    #pageHeader, #pageBody, #pageFooter {
       width: 90vw;
       max-width: 1200px;
       background: #ffffff;
-      margin: 12px 0;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       padding: 16px;
-    }
-    #pageHeader, #pageFooter {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      margin: 6px 0;
     }
     #pageBody {
       flex-grow: 1;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      max-height: calc(100vh - 160px);
-      overflow: hidden;
+      justify-content: flex-start;
     }
-    #bodyHeader, #bodyFooter {
-      font-weight: bold;
-      font-size: 1em;
-      text-align: left;
-      margin-bottom: 8px;
-    }
-    #bodyMain {
-      flex-grow: 1;
+    #bodyMain .cardBody {
       overflow-y: auto;
+      max-height: 60vh;
+      padding-right: 10px;
     }
     .entry, .announcementItem {
-      margin: 6px 0;
-      font-size: 1.1em;
-      padding-left: 1.4em;
-      text-indent: -1.4em;
+      margin: 4px 0;
     }
   </style>
 </head>
 <body>
-  <div class="board-section" id="pageHeader">
+  <div id="pageHeader">
+    <h1>Christy Signs</h1>
     <div>
-      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
-      <h1>Office Electronic Bulletin Board</h1>
-    </div>
-    <div style="text-align: right;">
-      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+      🌦️ Weather: <span id="weather">Loading...</span><br/>
+      ⏰ Time: <span id="clock">--:--:--</span><br/>
+      🕒 Interval Remaining: <span id="countdown">--</span>
     </div>
   </div>
 
-  <div class="board-section" id="pageBody">
-    <div id="bodyHeader">📋 Active Permits</div>
-    <div id="bodyMain"></div>
+  <div id="pageBody">
+    <div id="bodyHeader"></div>
+    <div id="bodyMain"><div class="cardBody">Loading...</div></div>
     <div id="bodyFooter"></div>
   </div>
 
-  <div class="board-section" id="pageFooter">
-    <div>© 2025 MayChrist Corporation</div>
-    <div class="version">v2025.05.07.0920</div>
+  <div id="pageFooter">
+    <small>&copy; 2025 Christy Signs. Version: v2025.05.07.1000b</small>
   </div>
 
   <script>
-    function populateCard({ header, body, footer }) {
-      const bodyHeader = document.getElementById("bodyHeader");
-      const bodyMain = document.getElementById("bodyMain");
-      const bodyFooter = document.getElementById("bodyFooter");
-
-      if (bodyHeader) bodyHeader.innerHTML = header || "";
-      if (bodyMain) bodyMain.innerHTML = body || "";
-      if (bodyFooter) bodyFooter.innerHTML = footer || "";
-    }
-
     const cards = [
       {
         header: "<h2>📋 Active Permits</h2>",
         body: `
+        <div class="cardBody">
           <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
           <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
           <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
@@ -119,33 +92,38 @@
           <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
           <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
           <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
-        `,
-        footer: "<small>Updated: 05/02/2025</small>",
+        </div>`,
+        footer: "<small>Updated: 05/07/2025</small>",
         duration: 60000
       },
       {
         header: "<h2>📈 KPI Dashboard</h2>",
         body: `
-          <div class='entry'>🛠️ Open Tasks: 12</div>
-          <div class='entry'>✅ Completed Today: 47</div>
-          <div class='entry'>📦 Orders Shipped: 19</div>
-        `,
+        <div class='entry'>🛠️ Open Tasks: 12</div>
+        <div class='entry'>✅ Completed Today: 47</div>
+        <div class='entry'>📦 Orders Shipped: 19</div>`,
         footer: "<small>Last Update 07:30 AM</small>",
         duration: 15000
       },
       {
         header: "<h2>📢 Announcements</h2>",
         body: `
-          <div class="announcementItem">• Team meeting today at 3PM</div>
-          <div class="announcementItem">• New hire orientation on Friday</div>
-          <div class="announcementItem">• Submit timesheets by 4PM</div>
-        `,
-        footer: "Updated: 05/05/2025",
+        <div class="announcementItem">• Team meeting today at 3PM</div>
+        <div class="announcementItem">• New hire orientation on Friday</div>
+        <div class="announcementItem">• Submit timesheets by 4PM</div>`,
+        footer: "<small>Updated: 05/07/2025</small>",
         duration: 15000
       }
     ];
 
+    function populateCard({ header, body, footer }) {
+      document.getElementById("bodyHeader").innerHTML = header || "";
+      document.getElementById("bodyMain").innerHTML = body || "";
+      document.getElementById("bodyFooter").innerHTML = footer || "";
+    }
+
     let currentCardIndex = 0;
+
     function rotateCards() {
       populateCard(cards[currentCardIndex]);
       const duration = cards[currentCardIndex].duration || 15000;
@@ -153,9 +131,9 @@
       setTimeout(rotateCards, duration);
     }
 
-    window.onload = rotateCards;
+    window.onload = function () {
+      rotateCards();
+    };
   </script>
 </body>
 </html>
-
-<!-- version 0945: duration + layout stable -->
