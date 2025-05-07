@@ -106,13 +106,14 @@
     }
 
     .bodyHeader::after {
-      content: "";
-      display: block;
-      height: 2px;
-      width: 100%;
-      background: #ccc;
-      margin-top: 6px;
-    }
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-top: 6px;
+  margin-bottom: 10px; /* Aligns visually with footer spacing */
+}
 
     .bodyFooter::before {
       content: "";
@@ -144,7 +145,7 @@
     </div>
   </div>
   <div class="board-section" id="pageBody">
-    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;"></div>
+    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
     <div id="bodyMain"></div>
     <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
   </div>
