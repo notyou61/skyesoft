@@ -228,18 +228,40 @@
         duration: 15000
       }
     ];
+    function autoScrollCardBody(duration = 60000) {
+  const container = document.querySelector(".cardBody");
+  if (!container) return;
+
+  container.scrollTop = 0;
+  const scrollDistance = container.scrollHeight - container.clientHeight;
+  if (scrollDistance <= 0) return;
+
+  const frameRate = 1000 / 60; // ~60fps
+  const totalFrames = duration / frameRate;
+  const scrollPerFrame = scrollDistance / totalFrames;
+
+  let currentFrame = 0;
+  const scrollInterval = setInterval(() => {
+    container.scrollTop += scrollPerFrame;
+    currentFrame++;
+    if (currentFrame >= totalFrames) clearInterval(scrollInterval);
+  }, frameRate);
+}
 
     let currentCardIndex = 0;
     function rotateCards() {
-      populateCard(cards[currentCardIndex]);
-      const duration = cards[currentCardIndex].duration || 15000;
-      currentCardIndex = (currentCardIndex + 1) % cards.length;
-      setTimeout(rotateCards, duration);
-    }
+  populateCard(cards[currentCardIndex]);
 
-    window.onload = function () {
-      rotateCards();
-    };
+  // Trigger scroll only on the prime (Active Permits) card
+  if (currentCardIndex === 0) {
+    autoScrollCardBody(cards[currentCardIndex].duration);
+  }
+
+  const duration = cards[currentCardIndex].duration || 15000;
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+  setTimeout(rotateCards, duration);
+}
+
   </script>
 
   <script src="/skyesoft/assets/js/glbVar.js"></script>
