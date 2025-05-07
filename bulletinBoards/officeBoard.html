@@ -234,26 +234,25 @@
   if (!container) return;
 
   container.scrollTop = 0;
+
+  const start = performance.now();
   const scrollDistance = container.scrollHeight - container.clientHeight;
   if (scrollDistance <= 0) return;
 
-  const frameRate = 1000 / 60; // ~60fps
-  const totalFrames = duration / frameRate;
-  const scrollPerFrame = scrollDistance / totalFrames;
+  function step(timestamp) {
+    const elapsed = timestamp - start;
+    const progress = Math.min(elapsed / duration, 1); // Clamp to [0,1]
+    container.scrollTop = progress * scrollDistance;
 
-  let accumulatedScroll = 0;
-  let currentFrame = 0;
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    }
+  }
 
-  const scrollInterval = setInterval(() => {
-    accumulatedScroll += scrollPerFrame;
-    container.scrollTop = Math.floor(accumulatedScroll);
-    currentFrame++;
-
-    if (currentFrame >= totalFrames) clearInterval(scrollInterval);
-  }, frameRate);
-
-  console.log("Scrolling started", container.scrollHeight, container.clientHeight);
+  requestAnimationFrame(step);
+  console.log("🚀 Scroll initialized. Distance:", scrollDistance);
 }
+
 
 
     let currentCardIndex = 0;
