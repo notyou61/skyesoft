@@ -264,19 +264,22 @@
 
     let currentCardIndex = 0;
     function rotateCards() {
-      populateCard(cards[currentCardIndex]);
+  const thisCardIndex = currentCardIndex;
+  const current = cards[thisCardIndex];
 
-      // Trigger scroll only on the prime (Active Permits) card with a delay
-      if (currentCardIndex === 0) {
-        setTimeout(() => {
-          autoScrollCardBody(cards[currentCardIndex].duration);
-        }, 100);
-      }
+  populateCard(current);
 
-      const duration = cards[currentCardIndex].duration || 15000;
-      currentCardIndex = (currentCardIndex + 1) % cards.length;
-      setTimeout(rotateCards, duration);
-    }
+  if (thisCardIndex === 0) {
+    // Use card's actual duration here
+    setTimeout(() => {
+      autoScrollCardBody(current.duration);
+    }, 100);
+  }
+
+  const duration = current.duration || 15000;
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+  setTimeout(rotateCards, duration);
+}
 
     window.addEventListener("DOMContentLoaded", function () {
       if (typeof updateDOMFromGlbVar === "function") {
