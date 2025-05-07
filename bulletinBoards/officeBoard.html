@@ -73,11 +73,18 @@
     }
     
     .announcementItem {
-      font-size: 1.1em;
-      margin: 4px 0;
-      padding-left: 6px;
-      text-indent: -0.6em;
-    }
+  font-size: 1.1em;
+  margin: 4px 0;
+  padding-left: 18px;
+  position: relative;
+}
+.announcementItem::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #222;
+}
+
     .bodyHeader::after {
   content: "";
   display: block;
