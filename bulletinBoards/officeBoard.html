@@ -8,12 +8,15 @@
       height: 100vh;
       margin: 0;
       padding: 0;
+      overflow: hidden;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
+    }
+    #mainBoard {
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
     .board-section {
       width: 90vw;
@@ -22,13 +25,7 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       padding: 8px 16px;
-    }
-    #mainBoard {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      justify-content: space-between;
+      margin: 0;  /* remove margin that breaks layout */
     }
     #pageHeader, #pageFooter {
       flex-shrink: 0;
@@ -38,13 +35,10 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      max-height: calc(100vh - 160px);
-      margin: 12px 0;
     }
     .cardBody {
       flex-grow: 1;
       overflow-y: auto;
-      max-height: 100%;
     }
     .entry {
       font-size: 1.2em;
@@ -73,9 +67,9 @@
 
   <div class="board-section" id="pageFooter">
     <div>© 2025 MayChrist Corporation</div>
-    <div class="version">v2025.05.07.0159</div>
+    <div class="version">v2025.05.07.0155</div>
   </div>
 </div>
-<!-- version 0159 enforced layout and scroll -->
+<!-- version 0155 manually restored rollback -->
 </body>
 </html>
