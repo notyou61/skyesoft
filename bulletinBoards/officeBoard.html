@@ -63,12 +63,13 @@
     }
 
     #bodyMain {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      overflow: hidden;
-    }
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  margin-top: -4px; /* Adjust to close gap under header rule */
+}
 
     .entry {
       margin: 6px 0;
@@ -114,7 +115,7 @@
   width: 100%;
   background: #ccc;
   margin-top: 6px;
-  margin-bottom: 4px; /* Tighter spacing under the bar */
+  margin-bottom: 0px; /* Tighter spacing under the bar */
 }
 
 .bodyHeader h2 {
