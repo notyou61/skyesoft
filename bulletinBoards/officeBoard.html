@@ -228,58 +228,60 @@
         duration: 15000
       }
     ];
+
     function autoScrollCardBody(duration = 60000) {
-  const container = document.querySelector(".cardBody");
-  if (!container) return;
+      const container = document.querySelector(".cardBody");
+      if (!container) return;
 
-  container.scrollTop = 0;
-  const scrollDistance = container.scrollHeight - container.clientHeight;
-  if (scrollDistance <= 0) return;
+      container.scrollTop = 0;
+      const scrollDistance = container.scrollHeight - container.clientHeight;
+      if (scrollDistance <= 0) return;
 
-  const frameRate = 1000 / 60; // ~60fps
-  const totalFrames = duration / frameRate;
-  const scrollPerFrame = scrollDistance / totalFrames;
+      const frameRate = 1000 / 60; // ~60fps
+      const totalFrames = duration / frameRate;
+      const scrollPerFrame = scrollDistance / totalFrames;
 
-  let currentFrame = 0;
-  const scrollInterval = setInterval(() => {
-    container.scrollTop += scrollPerFrame;
-    currentFrame++;
-    if (currentFrame >= totalFrames) clearInterval(scrollInterval);
-  }, frameRate);
-}
+      let currentFrame = 0;
+      const scrollInterval = setInterval(() => {
+        container.scrollTop += scrollPerFrame;
+        currentFrame++;
+        if (currentFrame >= totalFrames) clearInterval(scrollInterval);
+      }, frameRate);
+      console.log("Scrolling started", container.scrollHeight, container.clientHeight); // Debug log
+    }
 
     let currentCardIndex = 0;
     function rotateCards() {
-  populateCard(cards[currentCardIndex]);
+      populateCard(cards[currentCardIndex]);
 
-  // Trigger scroll only on the prime (Active Permits) card
-  if (currentCardIndex === 0) {
-    autoScrollCardBody(cards[currentCardIndex].duration);
-  }
-
-  const duration = cards[currentCardIndex].duration || 15000;
-  currentCardIndex = (currentCardIndex + 1) % cards.length;
-  setTimeout(rotateCards, duration);
-}
-window.addEventListener("DOMContentLoaded", function () {
-    // Update DOM from glbVar.js if available
-    if (typeof updateDOMFromGlbVar === "function") {
-      updateDOMFromGlbVar();
-    } else {
-      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
-    }
-
-    // Set version from glbVar
-    if (typeof glbVar !== 'undefined' && glbVar.version) {
-      const versionElement = document.querySelector('.version');
-      if (versionElement) {
-        versionElement.textContent = "v" + glbVar.version;
+      // Trigger scroll only on the prime (Active Permits) card with a delay
+      if (currentCardIndex === 0) {
+        setTimeout(() => {
+          autoScrollCardBody(cards[currentCardIndex].duration);
+        }, 100);
       }
+
+      const duration = cards[currentCardIndex].duration || 15000;
+      currentCardIndex = (currentCardIndex + 1) % cards.length;
+      setTimeout(rotateCards, duration);
     }
 
-    // ✅ THIS IS MISSING IN YOUR CURRENT FILE
-    rotateCards(); // Start card rotation after DOM loads
-  });
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof updateDOMFromGlbVar === "function") {
+        updateDOMFromGlbVar();
+      } else {
+        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      }
+
+      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        const versionElement = document.querySelector('.version');
+        if (versionElement) {
+          versionElement.textContent = "v" + glbVar.version;
+        }
+      }
+
+      rotateCards(); // Start card rotation after DOM loads
+    });
   </script>
 
   <script src="/skyesoft/assets/js/glbVar.js"></script>
