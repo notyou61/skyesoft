@@ -237,7 +237,7 @@
       const scrollDistance = container.scrollHeight - container.clientHeight;
       if (scrollDistance <= 0) return;
 
-      const startTime = performance.now();
+      const startTime = performance.now(); // Capture startTime here
 
       function scrollStep(currentTime) {
         const elapsed = currentTime - startTime;
