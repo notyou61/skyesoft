@@ -163,7 +163,60 @@
       if (bodyFooter) bodyFooter.innerHTML = footer || "";
     }
 
-    const cards = [/* trimmed for brevity */];
+    const cards = [{
+        header: "<h2>📋 Active Permits</h2>",
+        body: `
+    <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
+    <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
+    <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Ready</div>
+    <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Ready</div>
+    <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Ready</div>
+    <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Ready</div>
+    <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Ready</div>
+    <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Ready</div>
+    <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Ready</div>
+    <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Ready</div>
+    <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Ready</div>
+    <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Ready</div>
+    <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Ready</div>
+    <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Ready</div>
+    <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Ready</div>
+    <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Ready</div>
+    <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Ready</div>
+    <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Ready</div>
+    <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
+    <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
+    <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Ready</div>
+    <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
+    <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
+  `,
+        footer: "<small>Updated: 05/02/2025</small>",
+        duration: 60000
+      },
+      {
+        header: "<h2>📈 KPI Dashboard</h2>",
+        body: `
+      <div class='entry'>🛠️ Open Tasks: 12</div>
+      <div class='entry'>✅ Completed Today: 47</div>
+      <div class='entry'>📦 Orders Shipped: 19</div>
+    `,
+        footer: "<small>Last Update 07:30 AM</small>",
+        duration: 15000
+      },
+      {
+        header: "<h2>📢 Announcements</h2>",
+        body: `
+      <div class="announcementItem">Team meeting today at 3PM</div>
+      <div class="announcementItem">New hire orientation on Friday</div>
+      <div class="announcementItem">Submit timesheets by 4PM</div>
+    `,
+        footer: "Updated: 05/05/2025",
+        duration: 15000
+      }
+    ];
 
     let currentCardIndex = 0;
     function rotateCards() {
@@ -199,4 +252,5 @@
     });
   </script>
 </body>
+
 </html>
