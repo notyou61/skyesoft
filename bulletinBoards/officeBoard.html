@@ -230,25 +230,31 @@
     ];
 
     function autoScrollCardBody(duration = 60000) {
-      const container = document.querySelector(".cardBody");
-      if (!container) return;
+  const container = document.querySelector(".cardBody");
+  if (!container) return;
 
-      container.scrollTop = 0;
-      const scrollDistance = container.scrollHeight - container.clientHeight;
-      if (scrollDistance <= 0) return;
+  container.scrollTop = 0;
+  const scrollDistance = container.scrollHeight - container.clientHeight;
+  if (scrollDistance <= 0) return;
 
-      const frameRate = 1000 / 60; // ~60fps
-      const totalFrames = duration / frameRate;
-      const scrollPerFrame = scrollDistance / totalFrames;
+  const frameRate = 1000 / 60; // ~60fps
+  const totalFrames = duration / frameRate;
+  const scrollPerFrame = scrollDistance / totalFrames;
 
-      let currentFrame = 0;
-      const scrollInterval = setInterval(() => {
-        container.scrollTop += scrollPerFrame;
-        currentFrame++;
-        if (currentFrame >= totalFrames) clearInterval(scrollInterval);
-      }, frameRate);
-      console.log("Scrolling started", container.scrollHeight, container.clientHeight); // Debug log
-    }
+  let accumulatedScroll = 0;
+  let currentFrame = 0;
+
+  const scrollInterval = setInterval(() => {
+    accumulatedScroll += scrollPerFrame;
+    container.scrollTop = Math.floor(accumulatedScroll);
+    currentFrame++;
+
+    if (currentFrame >= totalFrames) clearInterval(scrollInterval);
+  }, frameRate);
+
+  console.log("Scrolling started", container.scrollHeight, container.clientHeight);
+}
+
 
     let currentCardIndex = 0;
     function rotateCards() {
