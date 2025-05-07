@@ -235,30 +235,35 @@
 
   container.scrollTop = 0;
 
-  const scrollDistance = container.scrollHeight - container.clientHeight;
-  if (scrollDistance <= 0) return;
-
-  const startTime = Date.now();
-
-  function scrollStep() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-
-    container.scrollTop = scrollDistance * progress;
-
-    if (progress < 1) {
-      requestAnimationFrame(scrollStep);
-    } else {
-      container.scrollTop = scrollDistance; // snap to end
-      console.log("✅ Finished scrolling:", scrollDistance, "px in", elapsed, "ms");
+  const waitUntilReady = () => {
+    const scrollDistance = container.scrollHeight - container.clientHeight;
+    if (scrollDistance <= 0) {
+      // Retry until the container is rendered and content height exceeds view
+      return requestAnimationFrame(waitUntilReady);
     }
-  }
 
-  requestAnimationFrame(scrollStep);
-  console.log("🔁 Starting scroll:", scrollDistance, "px over", duration, "ms");
+    const startTime = Date.now();
+
+    function scrollStep() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      container.scrollTop = scrollDistance * progress;
+
+      if (progress < 1) {
+        requestAnimationFrame(scrollStep);
+      } else {
+        container.scrollTop = scrollDistance;
+        console.log("✅ Finished scrolling:", scrollDistance, "px in", elapsed, "ms");
+      }
+    }
+
+    console.log("🔁 Starting scroll:", scrollDistance, "px over", duration, "ms");
+    requestAnimationFrame(scrollStep);
+  };
+
+  // Delay until next paint to ensure DOM is updated
+  requestAnimationFrame(waitUntilReady);
 }
-
 
     let currentCardIndex = 0;
     function rotateCards() {
