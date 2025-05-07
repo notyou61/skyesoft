@@ -8,15 +8,13 @@
       height: 100vh;
       margin: 0;
       padding: 0;
-      overflow: hidden;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
-    }
-    #mainBoard {
-      height: 100vh;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     .board-section {
       width: 90vw;
@@ -25,15 +23,12 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       padding: 8px 16px;
-      margin: 0;  /* remove margin that breaks layout */
-    }
-    #pageHeader, #pageFooter {
-      flex-shrink: 0;
+      margin: 12px 0;
     }
     #pageBody {
-      flex-grow: 1;
       display: flex;
       flex-direction: column;
+      max-height: 60vh;
       overflow: hidden;
     }
     .cardBody {
@@ -47,7 +42,6 @@
   </style>
 </head>
 <body>
-<div id="mainBoard">
   <div class="board-section" id="pageHeader">
     <div style="display: flex; align-items: center; justify-content: space-between;">
       <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
@@ -67,9 +61,8 @@
 
   <div class="board-section" id="pageFooter">
     <div>© 2025 MayChrist Corporation</div>
-    <div class="version">v2025.05.07.0155</div>
+    <div class="version">v2025.05.07.0161</div>
   </div>
-</div>
-<!-- version 0155 manually restored rollback -->
+<!-- version 0161 with vertical centering and symmetric margins -->
 </body>
 </html>
