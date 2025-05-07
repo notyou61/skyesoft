@@ -261,7 +261,25 @@
   currentCardIndex = (currentCardIndex + 1) % cards.length;
   setTimeout(rotateCards, duration);
 }
+window.addEventListener("DOMContentLoaded", function () {
+    // Update DOM from glbVar.js if available
+    if (typeof updateDOMFromGlbVar === "function") {
+      updateDOMFromGlbVar();
+    } else {
+      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+    }
 
+    // Set version from glbVar
+    if (typeof glbVar !== 'undefined' && glbVar.version) {
+      const versionElement = document.querySelector('.version');
+      if (versionElement) {
+        versionElement.textContent = "v" + glbVar.version;
+      }
+    }
+
+    // ✅ THIS IS MISSING IN YOUR CURRENT FILE
+    rotateCards(); // Start card rotation after DOM loads
+  });
   </script>
 
   <script src="/skyesoft/assets/js/glbVar.js"></script>
