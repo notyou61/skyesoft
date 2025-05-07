@@ -9,7 +9,7 @@ const glbVar = {
     end: "15:30"
   },
   intervalRemaining: "",
-  version: "v2025.05.07.0922",
+  version: "v2025.05.07.0932",
   weather: {
     temp: null,
     icon: "❓",
