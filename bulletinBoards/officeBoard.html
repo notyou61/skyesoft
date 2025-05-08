@@ -393,7 +393,26 @@ async function fetchTodayCard() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", fetchTodayCard);
+
+</script>
+
+
+<script>
+window.addEventListener("DOMContentLoaded", async function () {
+  if (typeof updateDOMFromGlbVar === "function") {
+    updateDOMFromGlbVar();
+  }
+
+  if (typeof glbVar !== 'undefined' && glbVar.version) {
+    const versionElement = document.querySelector('.version');
+    if (versionElement) {
+      versionElement.textContent = "v" + glbVar.version;
+    }
+  }
+
+  await fetchTodayCard();   // Ensure live card is added before rotation starts
+  rotateCards();
+});
 </script>
 
 </body>
