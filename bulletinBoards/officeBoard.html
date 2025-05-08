@@ -324,6 +324,78 @@
       }
     });
   </script>
+
+<script>
+async function fetchTodayCard() {
+  const weatherURL = "https://api.openweathermap.org/data/2.5/forecast?q=Phoenix,US&appid=0fd7b16fe667ade38033ebb5c871aab8&units=imperial";
+  const holidayURL = "/api/federalHolidays.php";
+
+  try {
+    const [weatherRes, holidayRes] = await Promise.all([
+      fetch(weatherURL),
+      fetch(holidayURL)
+    ]);
+
+    const weatherData = await weatherRes.json();
+    const holidays = await holidayRes.json();
+
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    const daysRemaining = 365 - dayOfYear;
+
+    const sunrise = new Date((weatherData.city.sunrise + weatherData.city.timezone) * 1000);
+    const sunset = new Date((weatherData.city.sunset + weatherData.city.timezone) * 1000);
+    const daylightMinutes = (weatherData.city.sunset - weatherData.city.sunrise) / 60;
+    const nightMinutes = 1440 - daylightMinutes;
+
+    const sunriseStr = sunrise.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const sunsetStr = sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const daylightStr = Math.floor(daylightMinutes / 60) + "h " + Math.round(daylightMinutes % 60) + "m";
+    const nightStr = Math.floor(nightMinutes / 60) + "h " + Math.round(nightMinutes % 60) + "m";
+
+    const todayBlock = weatherData.list[0];
+    const summary = todayBlock.weather[0].description.replace(/(^|\s)\w/g, l => l.toUpperCase());
+    const tempMin = todayBlock.main.temp_min.toFixed(0);
+    const tempMax = todayBlock.main.temp_max.toFixed(0);
+
+    const forecast = [weatherData.list[8], weatherData.list[16]]; // tomorrow and next day
+    const days = forecast.map((block, i) => {
+      const d = new Date(block.dt_txt);
+      const label = i === 0 ? "Tomorrow" : d.toLocaleDateString(undefined, { weekday: 'long' });
+      return `
+      <div class='entry'><strong>📅 ${label} – ${d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</strong><br>
+      ${block.weather[0].main === "Rain" ? "🌦️" : "☀️"} ${block.weather[0].description.replace(/(^|\s)\w/g, l => l.toUpperCase())}, High ${block.main.temp_max.toFixed(0)}°F / Low ${block.main.temp_min.toFixed(0)}°F<br>
+      💧 Humidity: ${block.main.humidity}%  &nbsp;|&nbsp; 💨 Wind: ${block.wind.speed.toFixed(0)} mph</div>`;
+    }).join("");
+
+    let nextHoliday = Object.entries(holidays).find(([date]) => date > todayStr);
+    let holidayLine = nextHoliday ? `🎉 Next Holiday: ${nextHoliday[1]} (${new Date(nextHoliday[0]).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}) — in ${(new Date(nextHoliday[0]) - now) / 86400000 | 0} days` : "🎉 No Upcoming Holidays";
+
+    cards.push({
+      header: "<h2>🌅 Today’s Highlights</h2>",
+      body: `
+        <div class='entry'>📅 ${dateStr}</div>
+        <div class='entry'>🗓️ Day ${dayOfYear} of 365 (${daysRemaining} remaining)</div>
+        <div class='entry'>🌄 Sunrise: ${sunriseStr} &nbsp;|&nbsp; 🌇 Sunset: ${sunsetStr}</div>
+        <div class='entry'>🕒 Daylight: ${daylightStr} &nbsp;|&nbsp; 🌌 Night: ${nightStr}</div>
+        <div class='entry'>🌤️ Forecast: ${summary}, High ${tempMax}°F / Low ${tempMin}°F</div>
+        <div class='entry'>${holidayLine}</div>
+        <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+        ${days}
+      `,
+      footer: "<small>Auto-updated from OpenWeatherMap</small>",
+      duration: 20000
+    });
+  } catch (err) {
+    console.error("Failed to load today's card:", err);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", fetchTodayCard);
+</script>
+
 </body>
 
 </html>
