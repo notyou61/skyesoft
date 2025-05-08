@@ -142,7 +142,6 @@
 </head>
 
 <body>
-<<<<<<< HEAD
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
 <div style="display: flex; align-items: center; gap: 16px;">
 <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
@@ -169,34 +168,11 @@
 </div>
 <script>
 // 🔁 Dynamic Card Rotation Using Standard Layout
-=======
-  <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;" />
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
-        Board</h1>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-    </div>
-  </div>
-  <div class="board-section" id="pageBody">
-    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
-    <div id="bodyMain"></div>
-    <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
-  </div>
-  <div class="board-section" id="pageFooter">
-    <div>© 2025 MayChrist Corporation</div>
-    <div class="version">Loading version...</div>
-  </div>
-  <script>
+
     function populateCard({ header, body, footer }) {
       const bodyHeader = document.getElementById("bodyHeader");
       const bodyMain = document.getElementById("bodyMain");
       const bodyFooter = document.getElementById("bodyFooter");
->>>>>>> aa5c2dbd8b5b00ec7d03362fb6f5e62f9d610390
 
       if (bodyHeader) bodyHeader.innerHTML = header || "";
       if (bodyMain) bodyMain.innerHTML = `<div class="cardBody">${body || ""}</div>`;
@@ -255,8 +231,7 @@
     `,
         footer: "Updated: 05/05/2025",
         duration: 15000
-      },
-      
+      }
     ];
 
     function autoScrollCardBody(duration = 60000) {
