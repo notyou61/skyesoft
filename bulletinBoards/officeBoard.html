@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
 
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Office Bulletin Board</title>
-  <style>
+<meta charset="utf-8"/>
+<title>Office Bulletin Board</title>
+<style>
     * {
       box-sizing: border-box;
       margin: 0;
@@ -138,32 +138,43 @@
       font-size: 0.8em;
       color: #777;
     }
-  </style>
+  
+    .forecastRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .forecastItem {
+      flex: 1;
+      font-size: 0.85rem;
+      min-width: 200px;
+    }
+    </style>
 </head>
-
 <body>
-  <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;" />
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
         Board</h1>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-    </div>
-  </div>
-  <div class="board-section" id="pageBody">
-    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
-    <div id="bodyMain"></div>
-    <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
-  </div>
-  <div class="board-section" id="pageFooter">
-    <div>© 2025 MayChrist Corporation</div>
-    <div class="version">Loading version...</div>
-  </div>
-  <script>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+<div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+<div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+<div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
+<div class="board-section" id="pageBody">
+<div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
+<div id="bodyMain"></div>
+<div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 Maychris Corporation</div>
+<div class="version">Loading version...</div>
+</div>
+<script>
     function populateCard({ header, body, footer }) {
       const bodyHeader = document.getElementById("bodyHeader");
       const bodyMain = document.getElementById("bodyMain");
@@ -328,12 +339,10 @@
       rotateCards(); // Start card rotation after DOM loads
     });
   </script>
-
-  <script src="/skyesoft/assets/js/glbVar.js"></script>
-  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
-  <script src="/skyesoft/assets/js/weather.js"></script>
-
-  <script>
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+<script>
     window.addEventListener("DOMContentLoaded", function () {
       if (typeof updateDOMFromGlbVar === "function") {
         updateDOMFromGlbVar();
@@ -350,5 +359,4 @@
     });
   </script>
 </body>
-
 </html>
