@@ -1,13 +1,18 @@
-
 <!DOCTYPE html>
-
 <html lang="en">
+
 <head>
-<meta charset="utf-8"/>
-<title>Office Bulletin Board</title>
-<style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
+  <meta charset="utf-8" />
+  <title>Office Bulletin Board</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
@@ -16,24 +21,31 @@
       flex-direction: column;
       align-items: center;
     }
+
     .board-section {
       width: 90vw;
       max-width: 1200px;
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 8px 16px;
     }
-    #pageHeader, #pageFooter {
+
+    #pageHeader,
+    #pageFooter {
       flex-shrink: 0;
     }
+
     #pageBody {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       margin: 12px 0;
+      max-height: calc(100vh - 160px);
+      overflow: hidden;
     }
+
     #pageHeader {
       display: flex;
       justify-content: space-between;
@@ -41,22 +53,29 @@
       font-size: 1.1em;
       margin-top: 12px;
     }
-    #bodyHeader, #bodyFooter {
+
+    #bodyHeader,
+    #bodyFooter {
       font-weight: bold;
       font-size: 1em;
       text-align: left;
       margin-bottom: 8px;
     }
+
     #bodyMain {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-    }
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  margin-top: -4px; /* Adjust to close gap under header rule */
+}
+
     .entry {
       margin: 6px 0;
       font-size: 1.2em;
     }
+
     #pageFooter {
       display: flex;
       justify-content: space-between;
@@ -66,24 +85,28 @@
       background: #ffffff;
       margin-bottom: 12px;
     }
-  
-    #pageBody .cardBody {
-      overflow-y: auto;
-      max-height: calc(100% - 120px); /* account for header/footer */
-    }
-    
+
+    .cardBody {
+  overflow-y: auto;
+  max-height: 60vh;
+  flex-grow: 1;
+  padding-top: 0;
+  margin-top: 0;
+}
+
     .announcementItem {
-  font-size: 1.1em;
-  margin: 4px 0;
-  padding-left: 18px;
-  position: relative;
-}
-.announcementItem::before {
-  content: "•";
-  position: absolute;
-  left: 0;
-  color: #222;
-}
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .announcementItem::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #222;
+    }
 
     .bodyHeader::after {
   content: "";
@@ -92,42 +115,34 @@
   width: 100%;
   background: #ccc;
   margin-top: 6px;
+  margin-bottom: 0px; /* Tighter spacing under the bar */
 }
-.bodyFooter::before {
-  content: "";
-  display: block;
-  height: 2px;
-  width: 100%;
-  background: #ccc;
-  margin-bottom: 6px;
+
+.bodyHeader h2 {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 
 
+    .bodyFooter::before {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-bottom: 6px;
+    }
 
-#pageBody {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 160px); /* Adjust if needed */
-  overflow: hidden;
-}
-
-#bodyMain {
-  flex-grow: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.cardBody {
-  flex-grow: 1;
-  overflow-y: auto;
-}
-
-</style>
+    .version {
+      font-size: 0.8em;
+      color: #777;
+    }
+  </style>
 </head>
+
 <body>
+<<<<<<< HEAD
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
 <div style="display: flex; align-items: center; gap: 16px;">
 <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
@@ -154,22 +169,43 @@
 </div>
 <script>
 // 🔁 Dynamic Card Rotation Using Standard Layout
+=======
+  <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;" />
+      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
+        Board</h1>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+    </div>
+  </div>
+  <div class="board-section" id="pageBody">
+    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
+    <div id="bodyMain"></div>
+    <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
+  </div>
+  <div class="board-section" id="pageFooter">
+    <div>© 2025 MayChrist Corporation</div>
+    <div class="version">Loading version...</div>
+  </div>
+  <script>
+    function populateCard({ header, body, footer }) {
+      const bodyHeader = document.getElementById("bodyHeader");
+      const bodyMain = document.getElementById("bodyMain");
+      const bodyFooter = document.getElementById("bodyFooter");
+>>>>>>> aa5c2dbd8b5b00ec7d03362fb6f5e62f9d610390
 
-function populateCard({ header, body, footer }) {
-  const bodyHeader = document.getElementById("bodyHeader");
-  const bodyMain = document.getElementById("bodyMain");
-  const bodyFooter = document.getElementById("bodyFooter");
+      if (bodyHeader) bodyHeader.innerHTML = header || "";
+      if (bodyMain) bodyMain.innerHTML = `<div class="cardBody">${body || ""}</div>`;
+      if (bodyFooter) bodyFooter.innerHTML = footer || "";
+    }
 
-  if (bodyHeader) bodyHeader.innerHTML = header || "";
-  if (bodyMain) bodyMain.innerHTML = body || "";
-  if (bodyFooter) bodyFooter.innerHTML = footer || "";
-}
-
-const cards = [
-  {
-    header: "<h2>📋 Active Permits</h2>",
-    body: `
-  <div class="cardBody" style="overflow-y: auto; max-height: 60vh;">
+    const cards = [{
+        header: "<h2>📋 Active Permits</h2>",
+        body: `
     <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
     <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
     <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
@@ -196,58 +232,135 @@ const cards = [
     <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
     <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
     <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
-  </div>
-`,
-    footer: "<small>Updated: 05/02/2025</small>"
-  },
-  {
-    header: "<h2>📈 KPI Dashboard</h2>",
-    body: `
+  `,
+        footer: "<small>Updated: 05/02/2025</small>",
+        duration: 60000
+      },
+      {
+        header: "<h2>📈 KPI Dashboard</h2>",
+        body: `
       <div class='entry'>🛠️ Open Tasks: 12</div>
       <div class='entry'>✅ Completed Today: 47</div>
       <div class='entry'>📦 Orders Shipped: 19</div>
     `,
-    footer: "<small>Last Update 07:30 AM</small>"
-  },
-  {
-    header: "<h2>📢 Announcements</h2>",
-    body: `
+        footer: "<small>Last Update 07:30 AM</small>",
+        duration: 15000
+      },
+      {
+        header: "<h2>📢 Announcements</h2>",
+        body: `
       <div class="announcementItem">Team meeting today at 3PM</div>
       <div class="announcementItem">New hire orientation on Friday</div>
       <div class="announcementItem">Submit timesheets by 4PM</div>
     `,
-    footer: "Updated: 05/05/2025"
-  }
-];
-
-let currentCardIndex = 0;
-function rotateCards() {
-  populateCard(cards[currentCardIndex]);
-  currentCardIndex = (currentCardIndex + 1) % cards.length;
+        footer: "Updated: 05/05/2025",
+        duration: 15000
+      },
+      {
+  header: "<h2>📅 Today’s Overview</h2>",
+  body: `
+    <div class='entry'>📆 Date: Tuesday, May 06, 2025</div>
+    <div class='entry'>📊 Day 126 of 365 — 239 days remaining</div>
+    <div class='entry'>🌅 Sunrise: 5:36 AM</div>
+    <div class='entry'>🌇 Sunset: 7:12 PM</div>
+    <div class='entry'>🎉 Next Holiday: Memorial Day (in 20 days)</div>
+  `,
+  footer: "<small>Updated: 05/06/2025</small>",
+  duration: 15000
 }
-window.onload = function () {
-  rotateCards();
-  setInterval(rotateCards, 15000); // Rotate every 15 seconds
-};
-</script>
 
-<script src="/skyesoft/assets/js/glbVar.js"></script>
-<script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<script src="/skyesoft/assets/js/weather.js"></script>
+    ];
 
-<script>
-  window.addEventListener("DOMContentLoaded", function () {
-    if (typeof updateDOMFromGlbVar === "function") {
-      updateDOMFromGlbVar();
+    function autoScrollCardBody(duration = 60000) {
+  const container = document.querySelector(".cardBody");
+  if (!container) return;
+
+  container.scrollTop = 0;
+
+  const scrollDistance = container.scrollHeight - container.clientHeight;
+  if (scrollDistance <= 0) {
+    console.warn("⚠️ Nothing to scroll — scrollDistance =", scrollDistance);
+    return;
+  }
+
+  const startTime = Date.now();
+
+  function scrollStep() {
+    const now = Date.now();
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const scrollTop = scrollDistance * progress;
+
+    container.scrollTop = scrollTop;
+
+    if (progress < 1) {
+      requestAnimationFrame(scrollStep);
     } else {
-      console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms`);
     }
-  });
-</script>
+  }
 
+  console.log(`🔁 Starting scroll of ${scrollDistance}px over ${duration}ms`);
+  requestAnimationFrame(scrollStep);
+}
+
+    let currentCardIndex = 0;
+    function rotateCards() {
+  const thisCardIndex = currentCardIndex;
+  const current = cards[thisCardIndex];
+
+  populateCard(current);
+
+  if (thisCardIndex === 0) {
+    // Use card's actual duration here
+    setTimeout(() => {
+      autoScrollCardBody(current.duration);
+    }, 100);
+  }
+
+  const duration = current.duration || 15000;
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+  setTimeout(rotateCards, duration);
+}
+
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof updateDOMFromGlbVar === "function") {
+        updateDOMFromGlbVar();
+      } else {
+        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      }
+
+      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        const versionElement = document.querySelector('.version');
+        if (versionElement) {
+          versionElement.textContent = "v" + glbVar.version;
+        }
+      }
+
+      rotateCards(); // Start card rotation after DOM loads
+    });
+  </script>
+
+  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof updateDOMFromGlbVar === "function") {
+        updateDOMFromGlbVar();
+      } else {
+        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      }
+
+      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        const versionElement = document.querySelector('.version');
+        if (versionElement) {
+          versionElement.textContent = "v" + glbVar.version;
+        }
+      }
+    });
+  </script>
 </body>
+
 </html>
-
-<!-- forced update -->
-
-<!-- restored from v2025.05.06-footerfix -->
