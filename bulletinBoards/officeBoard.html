@@ -142,28 +142,33 @@
 </head>
 
 <body>
-  <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;" />
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
-        Board</h1>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-      <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-    </div>
-  </div>
-  <div class="board-section" id="pageBody">
-    <div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
-    <div id="bodyMain"></div>
-    <div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
-  </div>
-  <div class="board-section" id="pageFooter">
-    <div>© 2025 MayChrist Corporation</div>
-    <div class="version">Loading version...</div>
-  </div>
-  <script>
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin Board</h1>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+  <div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+  <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+  <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
+<div class="board-section" id="pageBody">
+<div id="bodyHeader" class="bodyHeader" style="font-size: 1.3em; font-weight: bold; padding-bottom: 10px;">📋 Active Permits</div>
+<div id="bodyMain">
+<div class="entry">26300 • Client A • City • $500 ✔ Ready</div>
+<div class="entry">26301 • Client B • City • $510 ⧗ Review</div>
+<div class="entry">26302 • Client C • City • $520 ✔ Ready</div>
+</div>
+<div id="bodyFooter" class="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">Showing 3 of 30 permits</div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 MayChrist Corporation</div>
+<div class="version">Loading version...</div>
+</div>
+<script>
+// 🔁 Dynamic Card Rotation Using Standard Layout
+
     function populateCard({ header, body, footer }) {
       const bodyHeader = document.getElementById("bodyHeader");
       const bodyMain = document.getElementById("bodyMain");
@@ -207,6 +212,27 @@
         footer: "<small>Updated: 05/02/2025</small>",
         duration: 60000
       },
+  {
+    header: "<h2>🌅 Today’s Highlights</h2>",
+    body: `
+      <div class='entry'>📅 Thursday, May 8</div>
+      <div class='entry'>🗓️ Day 129 of 365 (236 remaining)</div>
+      <div class='entry'>🌄 Sunrise: 5:32 AM &nbsp;|&nbsp; 🌇 Sunset: 7:12 PM</div>
+      <div class='entry'>🕒 Daylight: 13h 40m &nbsp;|&nbsp; 🌌 Night: 10h 20m</div>
+      <div class='entry'>🌤️ Forecast: Partly Cloudy, High 82°F / Low 63°F</div>
+      <div class='entry'>🎉 Next Holiday: Memorial Day (Mon, May 27) — in 19 days</div>
+      <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+      <div class='entry'><strong>📅 Tomorrow – Friday, May 9</strong><br>
+      ☀️ Mostly Sunny, High 85°F / Low 65°F<br>
+      💧 Humidity: 28%  &nbsp;|&nbsp; 💨 Wind: 7 mph</div>
+      <div class='entry'><strong>📅 Saturday – May 10</strong><br>
+      🌦️ Chance of Showers, High 78°F / Low 60°F<br>
+      💧 Humidity: 35%  &nbsp;|&nbsp; 💨 Wind: 10 mph</div>
+    `,
+    footer: "<small>Auto-generated preview card</small>",
+    duration: 20000
+  },
+
       {
         header: "<h2>📈 KPI Dashboard</h2>",
         body: `
