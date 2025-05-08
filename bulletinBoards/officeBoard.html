@@ -5,6 +5,18 @@
   <meta charset="utf-8" />
   <title>Office Bulletin Board</title>
   <style>
+.forecastRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.forecastItem {
+  flex: 1;
+  font-size: 0.85rem;
+  min-width: 200px;
+}
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -215,8 +227,7 @@
   {
     header: "<h2>🌅 Today’s Highlights</h2>",
     body: `
-      <div class='entry'>📅 Thursday, May 8</div>
-      <div class='entry'>🗓️ Day 129 of 365 (236 remaining)</div>
+      <div class='entry'>📅 Thursday, May 8 &nbsp;|&nbsp; 🗓️ Day 129 of 365 (236 remaining)</div>
       <div class='entry'>🌄 Sunrise: 5:32 AM &nbsp;|&nbsp; 🌇 Sunset: 7:12 PM</div>
       <div class='entry'>🕒 Daylight: 13h 40m &nbsp;|&nbsp; 🌌 Night: 10h 20m</div>
       <div class='entry'>🌤️ Forecast: Partly Cloudy, High 82°F / Low 63°F</div>
