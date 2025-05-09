@@ -168,8 +168,7 @@
 .permitTable {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
-  box-sizing: border-box;
+  table-layout: auto; /* Allow dynamic column sizing */
 }
 
 .permitTable thead {
@@ -233,13 +232,18 @@
 .permitTable td {
   padding: 6px 8px;
   border-bottom: 1px solid #ddd;
-  box-sizing: border-box;
   text-align: left;
+  white-space: nowrap; /* Keep nowrap for others */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0; /* Prevent stretching */
-  max-width: 0; /* Enforce strict width */
+}
+
+/* Allow Status column to fully display its content */
+.permitTable td:last-child, .permitTable th:last-child {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  width: 15%; /* Increase if needed */
 }
 
 /* Ensure body columns match header widths */
