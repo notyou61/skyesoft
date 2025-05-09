@@ -175,170 +175,588 @@
 <div class="version">Loading version...</div>
 </div>
 <script>
-    function populateCard({ header, body, footer }) {
-      const bodyHeader = document.getElementById("bodyHeader");
-      const bodyMain = document.getElementById("bodyMain");
-      const bodyFooter = document.getElementById("bodyFooter");
+    // Import variables from weatherConfig.js
+    const weatherApiKey = "0fd7b16fe667ade38033ebb5c871aab8";
+    const weatherLocation = "Phoenix,US";
 
-      if (bodyHeader) bodyHeader.innerHTML = header || "";
-      if (bodyMain) bodyMain.innerHTML = `<div class="cardBody">${body || ""}</div>`;
-      if (bodyFooter) bodyFooter.innerHTML = footer || "";
+    /**
+     * Function to update the time and interval remaining
+     * @returns {object} - An object containing the formatted date, day of year, and days remaining.
+     */
+    function getLiveDateInfo() {
+        const now = new Date();
+        const optionsDate = {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+        };
+        const formattedDate = now.toLocaleDateString('en-US', optionsDate);
+
+        const startOfYear = new Date(now.getFullYear(), 0, 0);
+        const diff = now - startOfYear;
+        const oneDay = 1000 * 60 * 60 * 24;
+        const dayOfYear = Math.floor(diff / oneDay);
+
+        // Function to check for leap year
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        }
+
+        const daysInYear = isLeapYear(now.getFullYear()) ? 366 : 365;
+        const daysRemaining = daysInYear - dayOfYear;
+
+        return {
+            formattedDate,
+            dayOfYear,
+            daysRemaining
+        };
     }
 
+    /**
+     * Populates the content of a card element.
+     * @param {object} options - An object containing the header, body, and footer content for the card.
+     */
+    function populateCard({
+        header,
+        body,
+        footer
+    }) {
+        const bodyHeader = document.getElementById("bodyHeader");
+        const bodyMain = document.getElementById("bodyMain");
+        const bodyFooter = document.getElementById("bodyFooter");
+
+        if (bodyHeader) bodyHeader.innerHTML = header || "";
+        if (bodyMain) bodyMain.innerHTML = `<div class="cardBody">${body || ""}</div>`;
+        if (bodyFooter) bodyFooter.innerHTML = footer || "";
+    }
+
+    // Card rotation logic
     const cards = [{
         header: "<h2>📋 Active Permits</h2>",
         body: `
-    <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
-    <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
-    <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Ready</div>
-    <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Ready</div>
-    <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Ready</div>
-    <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Ready</div>
-    <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Ready</div>
-    <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Ready</div>
-    <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Ready</div>
-    <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Ready</div>
-    <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Ready</div>
-    <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Ready</div>
-    <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Ready</div>
-    <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Ready</div>
-    <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Ready</div>
-    <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Ready</div>
-    <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Ready</div>
-    <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Ready</div>
-    <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
-    <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
-    <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Ready</div>
-    <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
-    <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
-    <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
-  `,
+        <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
+        <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
+        <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
+        <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Ready</div>
+        <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Ready</div>
+        <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Ready</div>
+        <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Ready</div>
+        <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Ready</div>
+        <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Ready</div>
+        <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Ready</div>
+        <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Ready</div>
+        <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Ready</div>
+        <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Ready</div>
+        <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Ready</div>
+        <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Ready</div>
+        <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Ready</div>
+        <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Ready</div>
+        <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Ready</div>
+        <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Ready</div>
+        <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Ready</div>
+        <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
+        <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
+        <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Ready</div>
+        <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
+        <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
+        <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
+        `,
         footer: "<small>Updated: 05/02/2025</small>",
         duration: 10000
-      },
-      {
-  header: "<h2>🌅 Today’s Highlights</h2>",
-  body: `
-    <div class='entry'>📅 Thursday, May 08 &nbsp;|&nbsp; 🗓️ Day 128 of 365 (237 remaining)</div>
-    <div class='entry'>🌄 Sunrise: 5:32 AM &nbsp;|&nbsp; 🌇 Sunset: 7:12 PM</div>
-    <div class='entry'>🕒 Daylight: 13h 40m &nbsp;|&nbsp; 🌌 Night: 10h 20m</div>
-    <div class='entry'>🎉 Next Holiday: Memorial Day (Mon, May 27) — in 19 days</div>
-    <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
-    <div class='entry'>💡 Tip of the Day: “Measure twice, cut once.”</div>
-    <div class='entry'>🎂 Birthdays Today: (none)</div>
-    <div class='entry'>🎉 Anniversary: John – 3 Years!</div>
-    <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
-    <div class="entry forecastRow">
-      <div class="forecastItem">
-        <strong>📅 Today – Thursday, May 08</strong><br>
-        🌤️ Partly Cloudy, High 82°F / Low 63°F &nbsp;|&nbsp; 💧 30% &nbsp;|&nbsp; 💨 5 mph
-      </div>
-      <div class="forecastItem">
-        <strong>📅 Friday – May 9</strong><br>
-        ☀️ Mostly Sunny, High 85°F / Low 65°F &nbsp;|&nbsp; 💧 28% &nbsp;|&nbsp; 💨 7 mph
-      </div>
-      <div class="forecastItem">
-        <strong>📅 Saturday – May 10</strong><br>
-        🌦️ Chance of Showers, High 78°F / Low 60°F &nbsp;|&nbsp; 💧 35% &nbsp;|&nbsp; 💨 10 mph
-      </div>
-    </div>`,
-  footer: "<small>Auto-updated daily</small>",
-  duration: 15000
-},
-
-      {
+    }, {
+        header: "<h2>🌅 Today’s Highlights</h2>",
+        body: `
+        <div class='entry'>📅 <span id="todaysDate"></span> &nbsp;|&nbsp; 🗓️ Day <span id="dayOfYear"></span> of 365 (<span id="daysRemaining"></span> remaining)</div>
+        <div class='entry'>🌄 Sunrise: <span id="sunriseTime"></span> &nbsp;|&nbsp; 🌇 Sunset: <span id="sunsetTime"></span></div>
+        <div class='entry'>🕒 Daylight: <span id="daylightTime"></span> &nbsp;|&nbsp; 🌌 Night: <span id="nightTime"></span></div>
+        <div class='entry'>🎉 Next Holiday: <span id="nextHoliday"></span></div>
+        <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+        <div class='entry'>💡 Tip of the Day: “Measure twice, cut once.”</div>
+        <div class='entry'>🎂 Birthdays Today: (none)</div>
+        <div class='entry'>🎉 Anniversary: John – 3 Years!</div>
+        <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+        <div class="entry forecastRow">
+            <div class="forecastItem">
+                <span id="forecastDay1"></span>
+            </div>
+            <div class="forecastItem">
+                <span id="forecastDay2"></span>
+            </div>
+            <div class="forecastItem">
+                <span id="forecastDay3"></span>
+            </div>
+        </div>`,
+        footer: "<small>Auto-updated daily</small>",
+        duration: 15000
+    },
+    {
         header: "<h2>📈 KPI Dashboard</h2>",
         body: `
-      <div class='entry'>🛠️ Open Tasks: 12</div>
-      <div class='entry'>✅ Completed Today: 47</div>
-      <div class='entry'>📦 Orders Shipped: 19</div>
-    `,
+          <div class='entry'>🛠️ Open Tasks: 12</div>
+          <div class='entry'>✅ Completed Today: 47</div>
+          <div class='entry'>📦 Orders Shipped: 19</div>
+        `,
         footer: "<small>Last Update 07:30 AM</small>",
         duration: 15000
-      },
-      {
+    }, {
         header: "<h2>📢 Announcements</h2>",
         body: `
-      <div class="announcementItem">Team meeting today at 3PM</div>
-      <div class="announcementItem">New hire orientation on Friday</div>
-      <div class="announcementItem">Submit timesheets by 4PM</div>
-    `,
+          <div class="announcementItem">Team meeting today at 3PM</div>
+          <div class="announcementItem">New hire orientation on Friday</div>
+          <div class="announcementItem">Submit timesheets by 4PM</div>
+        `,
         footer: "Updated: 05/05/2025",
         duration: 15000
-      }
-    ];
-
-    function autoScrollCardBody(duration = 60000) {
-  const container = document.querySelector(".cardBody");
-  if (!container) return;
-
-  container.scrollTop = 0;
-
-  const scrollDistance = container.scrollHeight - container.clientHeight;
-  if (scrollDistance <= 0) {
-    console.warn("⚠️ Nothing to scroll — scrollDistance =", scrollDistance);
-    return;
-  }
-
-  const startTime = Date.now();
-
-  function scrollStep() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const scrollTop = scrollDistance * progress;
-
-    container.scrollTop = scrollTop;
-
-    if (progress < 1) {
-      requestAnimationFrame(scrollStep);
-    } else {
-      console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms`);
-    }
-  }
-
-  console.log(`🔁 Starting scroll of ${scrollDistance}px over ${duration}ms`);
-  requestAnimationFrame(scrollStep);
-}
+    }];
 
     let currentCardIndex = 0;
+    let sunriseTime = "";
+    let sunsetTime = "";
+
+    /**
+     * Rotates the cards displayed on the bulletin board.
+     */
     function rotateCards() {
-  const thisCardIndex = currentCardIndex;
-  const current = cards[thisCardIndex];
+        const thisCardIndex = currentCardIndex;
+        const current = cards[thisCardIndex];
 
-  populateCard(current);
+        populateCard(current);
 
-  if (thisCardIndex === 0) {
-    // Use card's actual duration here
-    setTimeout(() => {
-      autoScrollCardBody(current.duration);
-    }, 100);
-  }
+        if (thisCardIndex === 0) {
+            setTimeout(() => {
+                autoScrollCardBody(current.duration);
+            }, 100);
+        }
+        if (thisCardIndex === 1) {
+            updateHighlightsCard();
+        }
 
-  const duration = current.duration || 15000;
-  currentCardIndex = (currentCardIndex + 1) % cards.length;
-  setTimeout(rotateCards, duration);
+        const duration = current.duration || 15000;
+        currentCardIndex = (currentCardIndex + 1) % cards.length;
+        setTimeout(rotateCards, duration);
+    }
+
+    /**
+     * Converts a timestamp to 12-hour format.
+     * @param {number} timestamp - The timestamp to convert.
+     * @returns {string} - The formatted time in 12-hour format (e.g., "8:05 AM").
+     */
+    function convertTimestamp(timestamp) {
+        const date = new Date(timestamp * 1000);
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        return hours + ':' + minutes + ' ' + ampm;
+    }
+
+    /**
+     * Updates the "Today's Highlights" card with dynamic data.
+     */
+    async function updateHighlightsCard() {
+        try {
+            const dateInfo = getLiveDateInfo();
+            document.getElementById("todaysDate").textContent = dateInfo.formattedDate;
+            document.getElementById("dayOfYear").textContent = dateInfo.dayOfYear;
+            document.getElementById("daysRemaining").textContent = dateInfo.daysRemaining;
+
+            // Fetch weather data to get sunrise and sunset
+            const weatherData = await fetchWeatherData();
+            if (weatherData) {
+                sunriseTime = weatherData.sunrise;
+                sunsetTime = weatherData.sunset;
+                document.getElementById("sunriseTime").textContent = sunriseTime;
+                document.getElementById("sunsetTime").textContent = sunsetTime;
+
+                // Calculate and display daylight and night time
+                const sunriseDate = new Date(weatherData.sunriseTimestamp * 1000);
+                const sunsetDate = new Date(weatherData.sunsetTimestamp * 1000);
+                const daylightMilliseconds = sunsetDate.getTime() - sunriseDate.getTime();
+                const nightMilliseconds = (24 * 60 * 60 * 1000) - daylightMilliseconds; // 24 hours in milliseconds
+
+                const daylightHours = Math.floor(daylightMilliseconds / (1000 * 60 * 60));
+                const daylightMinutes = Math.floor((daylightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+                const nightHours = Math.floor(nightMilliseconds / (1000 * 60 * 60));
+                const nightMinutes = Math.floor((nightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+
+                document.getElementById("daylightTime").textContent = `${daylightHours}h ${daylightMinutes}m`;
+                document.getElementById("nightTime").textContent = `${nightHours}h ${nightMinutes}m`;
+            }
+
+            // Fetch and display the next holiday
+            const nextHoliday = await getNextHoliday();
+            document.getElementById("nextHoliday").textContent = nextHoliday;
+
+        } catch (error) {
+            console.error("Error updating highlights:", error);
+        }
+    }
+
+    /**
+ * Fetches current weather and forecast data from OpenWeatherMap API.
+ * @returns {Promise<object|null>} - A promise that resolves to an object containing current weather and forecast details, or null on error.
+ */
+async function fetchWeatherData() {
+    try {
+        const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${weatherLocation}&appid=${weatherApiKey}&units=imperial`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${weatherLocation}&appid=${weatherApiKey}&units=imperial`;
+
+        const [currentRes, forecastRes] = await Promise.all([
+            fetch(currentWeatherUrl),
+            fetch(forecastUrl)
+        ]);
+
+        if (!currentRes.ok) {
+            throw new Error(`Current Weather API error! Status: ${currentRes.status}`);
+        }
+        if (!forecastRes.ok) {
+            throw new Error(`Forecast API error! Status: ${forecastRes.status}`);
+        }
+
+        const currentData = await currentRes.json();
+        const forecastData = await forecastRes.json();
+
+        // Convert sunrise and sunset timestamps to local time
+        const sunrise = convertTimestamp(currentData.sys.sunrise);
+        const sunset = convertTimestamp(currentData.sys.sunset);
+
+        return {
+            sunrise: sunrise,
+            sunset: sunset,
+            sunriseTimestamp: currentData.sys.sunrise,
+            sunsetTimestamp: currentData.sys.sunset,
+            currentWeatherDescription: currentData.weather[0].description,
+            currentWeatherIcon: currentData.weather[0].icon,
+            currentTemperature: Math.round(currentData.main.temp),
+            currentHumidity: currentData.main.humidity,
+            currentWindSpeed: Math.round(currentData.wind.speed),
+            forecastList: forecastData.list // Array of forecast data
+        };
+    } catch (error) {
+        console.error("Error fetching weather data:", error);
+        return null;
+    }
+}
+/**
+ * Populates forecast placeholders with live weather data.
+ * @returns {Promise<void>}
+ */
+async function populateForecast() {
+    //
+    console.log("🔁 Forecast Populated");
+    try {
+        const weatherData = await fetchWeatherData();
+        if (!weatherData || !weatherData.forecastList || !weatherData.currentWeatherDescription) {
+            document.getElementById('forecastDay1').innerHTML = 'Weather data unavailable';
+            document.getElementById('forecastDay2').innerHTML = '';
+            document.getElementById('forecastDay3').innerHTML = '';
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize to midnight
+        const days = [];
+
+        // Current day data
+        const currentDay = {
+            date: today,
+            description: weatherData.currentWeatherDescription,
+            icon: weatherData.currentWeatherIcon,
+            high: Math.round(weatherData.currentTemperature + 2), // Approximate high
+            low: Math.round(weatherData.currentTemperature - 2), // Approximate low
+            pop: weatherData.currentHumidity ? Math.round(weatherData.currentHumidity / 2) : 0, // Estimate from humidity
+            wind: Math.round(weatherData.currentWindSpeed)
+        };
+        days.push(currentDay);
+
+        // Group forecast data by day
+        const forecastByDay = {};
+        weatherData.forecastList.forEach(forecast => {
+            const forecastDate = new Date(forecast.dt * 1000);
+            forecastDate.setHours(0, 0, 0, 0);
+            const dateStr = forecastDate.toISOString().split('T')[0];
+
+            if (!forecastByDay[dateStr]) {
+                forecastByDay[dateStr] = {
+                    date: forecastDate,
+                    temps: [],
+                    pops: [],
+                    noonForecast: null,
+                    hour: 24 // Track closest to 12:00
+                };
+            }
+
+            forecastByDay[dateStr].temps.push(forecast.main.temp);
+            forecastByDay[dateStr].pops.push(forecast.pop);
+            const hour = new Date(forecast.dt * 1000).getHours();
+            if (Math.abs(hour - 12) < Math.abs(forecastByDay[dateStr].hour - 12)) {
+                forecastByDay[dateStr].noonForecast = forecast;
+                forecastByDay[dateStr].hour = hour;
+            }
+        });
+
+        // Get next 2 days
+        const forecastDays = Object.values(forecastByDay)
+            .filter(day => day.date > today)
+            .sort((a, b) => a.date - b.date)
+            .slice(0, 2);
+
+        forecastDays.forEach(day => {
+            if (day.noonForecast) {
+                days.push({
+                    date: day.date,
+                    description: day.noonForecast.weather[0].description,
+                    icon: day.noonForecast.weather[0].icon,
+                    high: Math.round(Math.max(...day.temps)),
+                    low: Math.round(Math.min(...day.temps)),
+                    pop: Math.round((day.pops.reduce((sum, p) => sum + p, 0) / day.pops.length) * 100),
+                    wind: day.noonForecast.wind ? Math.round(day.noonForecast.wind.speed) : 0
+                });
+            }
+        });
+
+        // Map icon codes to emojis
+        const iconMap = {
+            '01': '☀️', // clear sky
+            '02': '🌤️', // few clouds
+            '03': '⛅', // scattered clouds
+            '04': '☁️', // broken clouds
+            '09': '🌦️', // shower rain
+            '10': '🌧️', // rain
+            '11': '⛈️', // thunderstorm
+            '13': '❄️', // snow
+            '50': '🌫️' // mist
+        };
+
+        // Populate placeholders
+        days.forEach((day, index) => {
+            const spanId = `forecastDay${index + 1}`;
+            const dateStr = index === 0
+                ? `Today – ${day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}`
+                : day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            const iconCode = day.icon ? day.icon.slice(0, 2) : '01';
+            const emoji = iconMap[iconCode] || '🌤️';
+            const description = day.description
+                ? day.description.charAt(0).toUpperCase() + day.description.slice(1)
+                : 'Unknown';
+            const html = `
+                <strong> 📅 ${dateStr}</strong><br>
+                ${emoji} ${description}, High ${day.high}°F / Low ${day.low}°F  |  💧 ${day.pop}%  |  💨 ${day.wind} mph
+            `;
+            const element = document.getElementById(spanId);
+            if (element) {
+                element.innerHTML = html;
+            }
+        });
+
+        // Clear unused placeholders if fewer than 3 days
+        for (let i = days.length + 1; i <= 3; i++) {
+            const element = document.getElementById(`forecastDay${i}`);
+            if (element) {
+                element.innerHTML = '';
+            }
+        }
+    } catch (error) {
+        console.error('Error populating forecast:', error);
+        document.getElementById('forecastDay1').innerHTML = 'Weather data unavailable';
+        document.getElementById('forecastDay2').innerHTML = '';
+        document.getElementById('forecastDay3').innerHTML = '';
+    }
 }
 
-    window.addEventListener("DOMContentLoaded", function () {
-      if (typeof updateDOMFromGlbVar === "function") {
-        updateDOMFromGlbVar();
-      } else {
-        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
-      }
+async function getNextHoliday() {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize to midnight local time
+        const year = today.getFullYear();
 
-      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        // Define the holiday dates for the year
+        const holidays = {
+            [new Date(year, 0, 1).toISOString().split('T')[0]]: "New Year's Day",
+            [new Date(year, 0, getThirdMonday(year, 0)).toISOString().split('T')[0]]: "Martin Luther King Jr. Day",
+            [new Date(year, 1, getThirdMonday(year, 1)).toISOString().split('T')[0]]: "Presidents' Day",
+            [new Date(year, 4, getLastMonday(year, 4)).toISOString().split('T')[0]]: "Memorial Day",
+            [new Date(year, 6, 4).toISOString().split('T')[0]]: "Independence Day",
+            [new Date(year, 8, getFirstMonday(year, 8)).toISOString().split('T')[0]]: "Labor Day",
+            [new Date(year, 9, getSecondMonday(year, 9)).toISOString().split('T')[0]]: "Columbus Day",
+            [new Date(year, 10, 11).toISOString().split('T')[0]]: "Veterans Day",
+            [new Date(year, 10, getFourthThursday(year, 10)).toISOString().split('T')[0]]: "Thanksgiving Day",
+            [new Date(year, 10, getFourthThursday(year, 10) + 1).toISOString().split('T')[0]]: "Day After Thanksgiving",
+            [new Date(year, 11, 25).toISOString().split('T')[0]]: "Christmas Day"
+        };
+
+        // Helper functions (unchanged)
+        function getFirstMonday(year, month) {
+            let day = 1;
+            let date = new Date(year, month, day);
+            while (date.getDay() !== 1) {
+                day++;
+                date = new Date(year, month, day);
+            }
+            return day;
+        }
+
+        function getSecondMonday(year, month) {
+            return getFirstMonday(year, month) + 7;
+        }
+
+        function getThirdMonday(year, month) {
+            return getFirstMonday(year, month) + 14;
+        }
+
+        function getLastMonday(year, month) {
+            let day = new Date(year, month + 1, 0).getDate();
+            let date = new Date(year, month, day);
+            while (date.getDay() !== 1) {
+                day--;
+                date = new Date(year, month, day);
+            }
+            return day;
+        }
+
+        function getFourthThursday(year, month) {
+            let day = 1;
+            let date = new Date(year, month, day);
+            let count = 0;
+            while (count < 4) {
+                if (date.getDay() === 4) {
+                    count++;
+                    if (count === 4) return day;
+                }
+                day++;
+                date = new Date(year, month, day);
+            }
+            return day;
+        }
+
+        let nextHolidayName = "No upcoming holidays";
+        let closestDate = null;
+        let daysUntil = 0;
+
+        for (const dateString in holidays) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            const holidayDate = new Date(year, month - 1, day);
+            holidayDate.setHours(0, 0, 0, 0); // Normalize to midnight local time
+            if (holidayDate >= today) {
+                if (!closestDate || holidayDate < closestDate) {
+                    closestDate = holidayDate;
+                    nextHolidayName = `${holidays[dateString]} (${holidayDate.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    })})`;
+                    const timeDiff = closestDate.getTime() - today.getTime();
+                    daysUntil = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                }
+            }
+        }
+        //console.log("Next Holiday:", nextHolidayName, "in", daysUntil, "days");
+        return `${nextHolidayName} — in ${daysUntil} days`;
+    } catch (error) {
+        console.error("Error fetching holidays:", error);
+        return "Holidays unavailable";
+    }
+}
+
+    /**
+     * Automatically scrolls the content of a card's body.
+     * @param {number} duration - The duration of the scroll animation in milliseconds.
+     */
+    function autoScrollCardBody(duration = 60000) {
+        const container = document.querySelector(".cardBody");
+        if (!container) return;
+
+        container.scrollTop = 0;
+
+        const scrollDistance = container.scrollHeight - container.clientHeight;
+        if (scrollDistance <= 0) {
+            console.warn("⚠️ Nothing to scroll — scrollDistance =", scrollDistance);
+            return;
+        }
+
+        const startTime = Date.now();
+
+        function scrollStep() {
+            const now = Date.now();
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const scrollTop = scrollDistance * progress;
+
+            container.scrollTop = scrollTop;
+
+            if (progress < 1) {
+                requestAnimationFrame(scrollStep);
+            } else {
+                console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms`);
+            }
+        }
+
+        console.log(`🔁 Starting scroll of ${scrollDistance}px over ${duration}ms`);
+        requestAnimationFrame(scrollStep);
+    }
+    /**
+ * Updates the "Today's Highlights" card with dynamic data.
+ */
+async function updateHighlightsCard() {
+    try {
+        const dateInfo = getLiveDateInfo();
+        document.getElementById("todaysDate").textContent = dateInfo.formattedDate;
+        document.getElementById("dayOfYear").textContent = dateInfo.dayOfYear;
+        document.getElementById("daysRemaining").textContent = dateInfo.daysRemaining;
+
+        // Fetch weather data to get sunrise and sunset
+        const weatherData = await fetchWeatherData();
+        if (weatherData) {
+            sunriseTime = weatherData.sunrise;
+            sunsetTime = weatherData.sunset;
+            document.getElementById("sunriseTime").textContent = sunriseTime;
+            document.getElementById("sunsetTime").textContent = sunsetTime;
+
+            // Calculate and display daylight and night time
+            const sunriseDate = new Date(weatherData.sunriseTimestamp * 1000);
+            const sunsetDate = new Date(weatherData.sunsetTimestamp * 1000);
+            const daylightMilliseconds = sunsetDate.getTime() - sunriseDate.getTime();
+            const nightMilliseconds = (24 * 60 * 60 * 1000) - daylightMilliseconds;
+
+            const daylightHours = Math.floor(daylightMilliseconds / (1000 * 60 * 60));
+            const daylightMinutes = Math.floor((daylightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+            const nightHours = Math.floor(nightMilliseconds / (1000 * 60 * 60));
+            const nightMinutes = Math.floor((nightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+
+            document.getElementById("daylightTime").textContent = `${daylightHours}h ${daylightMinutes}m`;
+            document.getElementById("nightTime").textContent = `${nightHours}h ${nightMinutes}m`;
+        }
+
+        // Fetch and display the next holiday
+        const nextHoliday = await getNextHoliday();
+        document.getElementById("nextHoliday").textContent = nextHoliday;
+
+        // Populate forecast data
+        await populateForecast(); // Add this
+
+    } catch (error) {
+        console.error("Error updating highlights:", error);
+    }
+}
+
+/**
+ * DOMContentLoaded handler
+ */
+window.addEventListener("DOMContentLoaded", () => {
+    console.log("🔁 DOM Content Loaded");
+
+    if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
         if (versionElement) {
-          versionElement.textContent = "v2025.05.08.1700a";
+            versionElement.textContent = "v2025.05.08.1700a";
         }
-      }
+    }
 
-      rotateCards(); // Start card rotation after DOM loads
-    });
-  </script>
+    rotateCards(); // Start card rotation
+});
+</script>
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
