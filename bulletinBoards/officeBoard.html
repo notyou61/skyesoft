@@ -322,21 +322,19 @@
   setTimeout(rotateCards, duration);
 }
 
-window.addEventListener("DOMContentLoaded", function () {
-  if (typeof updateDOMFromGlbVar === "function") {
-    updateDOMFromGlbVar();
-  } else {
-    console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
-  }
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof updateDOMFromGlbVar === "function") {
+        updateDOMFromGlbVar();
+      } else {
+        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      }
 
-  if (typeof glbVar !== 'undefined' && glbVar.version) {
-    const versionElement = document.querySelector('.version');
-    if (versionElement) {
-      versionElement.textContent = "v" + glbVar.version;
-    }
-  }
-});
-
+      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        const versionElement = document.querySelector('.version');
+        if (versionElement) {
+          versionElement.textContent = "v2025.05.08.1700a";
+        }
+      }
 
       rotateCards(); // Start card rotation after DOM loads
     });
