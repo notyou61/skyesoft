@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Office Bulletin Board</title>
+<style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .board-section {
+      width: 90vw;
+      max-width: 1200px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 8px 16px;
+    }
+
+    #pageHeader,
+    #pageFooter {
+      flex-shrink: 0;
+    }
+
+    #pageBody {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      margin: 12px 0;
+      max-height: calc(100vh - 160px);
+      overflow: hidden;
+    }
+
+    #pageHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+      margin-top: 12px;
+    }
+
+    #bodyHeader,
+    #bodyFooter {
+      font-weight: bold;
+      font-size: 1em;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+
+    #bodyMain {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  margin-top: -4px; /* Adjust to close gap under header rule */
+}
+
+    .entry {
+      margin: 6px 0;
+      font-size: 1.05em;
+    }
+
+    #pageFooter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8em;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .cardBody {
+  overflow-y: auto;
+  max-height: 60vh;
+  flex-grow: 1;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .announcementItem::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #222;
+    }
+
+    .bodyHeader::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-top: 6px;
+  margin-bottom: 0px; /* Tighter spacing under the bar */
+}
+
+.bodyHeader h2 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+
+
+    .bodyFooter::before {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-bottom: 6px;
+    }
+
+    .version {
+      font-size: 0.8em;
+      color: #777;
+    }
+  
+    .forecastRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .forecastItem {
+      flex: 1;
+      font-size: 0.8rem;
+      min-width: 200px;
+    }
+    </style>
+</head>
+<body>
+<div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+<div style="display: flex; align-items: center; gap: 16px;">
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
+        Board</h1>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+<div>🌦️ Weather: <span id="weatherDisplay">Loading...</span></div>
+<div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+<div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+</div>
+</div>
+<div class="board-section" id="pageBody">
+<div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;"></div>
+<div id="bodyMain"></div>
+<div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
+</div>
+<div class="board-section" id="pageFooter">
+<div>© 2025 Maychris Corporation</div>
+<div class="version">Loading version...</div>
+</div>
+<script>
+    function populateCard({ header, body, footer }) {
+      const bodyHeader = document.getElementById("bodyHeader");
+      const bodyMain = document.getElementById("bodyMain");
+      const bodyFooter = document.getElementById("bodyFooter");
+
+      if (bodyHeader) bodyHeader.innerHTML = header || "";
+      if (bodyMain) bodyMain.innerHTML = `<div class="cardBody">${body || ""}</div>`;
+      if (bodyFooter) bodyFooter.innerHTML = footer || "";
+    }
+
+    const cards = [{
+        header: "<h2>📋 Active Permits</h2>",
+        body: `
+    <div class='entry'>26312 • Sun Valley Wellness • Scottsdale • $545.00 ✔ Ready</div>
+    <div class='entry'>26036 • Switch Electric • Tempe • $356.00 ✔ Ready</div>
+    <div class='entry'>25674 • Printing Solutions • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>26335 • U-Haul • Surprise • $154.00 ✔ Ready</div>
+    <div class='entry'>26513 • Penchetta Pen & Knife • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>26216 • Walton Signage • Avondale • $440.00 ✔ Ready</div>
+    <div class='entry'>26630 • Signtech • Scottsdale • $620.00 ✔ Ready</div>
+    <div class='entry'>26585 • NRS • Casa Grande • $254.77 ✔ Ready</div>
+    <div class='entry'>26606 • Allen Industries, Inc • Goodyear • $388.00 ✔ Ready</div>
+    <div class='entry'>24741 • Arizona Partners • Glendale • $844.93 ✔ Ready</div>
+    <div class='entry'>26124 • Jas Diesel • Phoenix • $600.00 ✔ Ready</div>
+    <div class='entry'>26111 • Identity Sign Builders • Scottsdale • $570.00 ✔ Ready</div>
+    <div class='entry'>26927 • Omaha Neon Sign • Tempe • $368.00 ✔ Ready</div>
+    <div class='entry'>26694 • Gudeng Inc • Glendale • $200.11 ✔ Ready</div>
+    <div class='entry'>26836 • Yaho • Glendale • $200.11 ✔ Ready</div>
+    <div class='entry'>26877 • Identity Sign Builders • Glendale • $400.22 ✔ Ready</div>
+    <div class='entry'>26337 • U-Haul • Queen Creek • $664.60 ✔ Ready</div>
+    <div class='entry'>26916 • Adobe ENT & Allergy • Surprise • $154.00 ✔ Ready</div>
+    <div class='entry'>26545 • Walton Signage • Scottsdale • $900.00 ✔ Ready</div>
+    <div class='entry'>25523 • Printing Solutions • Roosevelt Lake • $699.75 ✔ Ready</div>
+    <div class='entry'>27051 • Sign Resource • Queen Creek • $125.00 ⧗ Review</div>
+    <div class='entry'>27033 • Federal Heath • Gilbert • $175.00 ⧗ Review</div>
+    <div class='entry'>27071 • Pattison Sign Group • Chandler • $76.68 ✔ Ready</div>
+    <div class='entry'>27031 • Entera Branding • Phoenix • $225.00 ✔ Ready</div>
+    <div class='entry'>27051 • Sign Resource • Queen Creek • $414.60 ✔ Ready</div>
+    <div class='entry'>26754 • AWP Safety • Chandler • $132.25 ✔ Ready</div>
+  `,
+        footer: "<small>Updated: 05/02/2025</small>",
+        duration: 10000
+      },
+      {
+  header: "<h2>🌅 Today’s Highlights</h2>",
+  body: `
+    <div class='entry'>📅 Thursday, May 08 &nbsp;|&nbsp; 🗓️ Day 128 of 365 (237 remaining)</div>
+    <div class='entry'>🌄 Sunrise: 5:32 AM &nbsp;|&nbsp; 🌇 Sunset: 7:12 PM</div>
+    <div class='entry'>🕒 Daylight: 13h 40m &nbsp;|&nbsp; 🌌 Night: 10h 20m</div>
+    <div class='entry'>🎉 Next Holiday: Memorial Day (Mon, May 27) — in 19 days</div>
+    <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+    <div class='entry'>💡 Tip of the Day: “Measure twice, cut once.”</div>
+    <div class='entry'>🎂 Birthdays Today: (none)</div>
+    <div class='entry'>🎉 Anniversary: John – 3 Years!</div>
+    <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
+    <div class="entry forecastRow">
+      <div class="forecastItem">
+        <strong>📅 Today – Thursday, May 08</strong><br>
+        🌤️ Partly Cloudy, High 82°F / Low 63°F &nbsp;|&nbsp; 💧 30% &nbsp;|&nbsp; 💨 5 mph
+      </div>
+      <div class="forecastItem">
+        <strong>📅 Friday – May 9</strong><br>
+        ☀️ Mostly Sunny, High 85°F / Low 65°F &nbsp;|&nbsp; 💧 28% &nbsp;|&nbsp; 💨 7 mph
+      </div>
+      <div class="forecastItem">
+        <strong>📅 Saturday – May 10</strong><br>
+        🌦️ Chance of Showers, High 78°F / Low 60°F &nbsp;|&nbsp; 💧 35% &nbsp;|&nbsp; 💨 10 mph
+      </div>
+    </div>`,
+  footer: "<small>Auto-updated daily</small>",
+  duration: 15000
+},
+
+      {
+        header: "<h2>📈 KPI Dashboard</h2>",
+        body: `
+      <div class='entry'>🛠️ Open Tasks: 12</div>
+      <div class='entry'>✅ Completed Today: 47</div>
+      <div class='entry'>📦 Orders Shipped: 19</div>
+    `,
+        footer: "<small>Last Update 07:30 AM</small>",
+        duration: 15000
+      },
+      {
+        header: "<h2>📢 Announcements</h2>",
+        body: `
+      <div class="announcementItem">Team meeting today at 3PM</div>
+      <div class="announcementItem">New hire orientation on Friday</div>
+      <div class="announcementItem">Submit timesheets by 4PM</div>
+    `,
+        footer: "Updated: 05/05/2025",
+        duration: 15000
+      }
+    ];
+    async function updateWeatherDisplay() {
+    try {
+        const weatherData = await fetchWeatherData(); //  Ensure fetchWeatherData() is in weather.js
+        const weatherDisplay = document.getElementById("weatherDisplay");
+        if (weatherDisplay && weatherData) {
+            weatherDisplay.textContent = `${weatherData.description} ${Math.round(weatherData.temp)}°F`;
+        } else {
+            console.warn("Weather data or display element is unavailable.");
+        }
+    } catch (error) {
+        console.error("Error fetching or displaying weather:", error);
+        const weatherDisplay = document.getElementById("weatherDisplay");
+        if (weatherDisplay) {
+            weatherDisplay.textContent = "Error loading weather";
+        }
+    }
+}
+    function autoScrollCardBody(duration = 60000) {
+  const container = document.querySelector(".cardBody");
+  if (!container) return;
+
+  container.scrollTop = 0;
+
+  const scrollDistance = container.scrollHeight - container.clientHeight;
+  if (scrollDistance <= 0) {
+    console.warn("⚠️ Nothing to scroll — scrollDistance =", scrollDistance);
+    return;
+  }
+
+  const startTime = Date.now();
+
+  function scrollStep() {
+    const now = Date.now();
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const scrollTop = scrollDistance * progress;
+
+    container.scrollTop = scrollTop;
+
+    if (progress < 1) {
+      requestAnimationFrame(scrollStep);
+    } else {
+      console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms`);
+    }
+  }
+
+  console.log(`🔁 Starting scroll of ${scrollDistance}px over ${duration}ms`);
+  requestAnimationFrame(scrollStep);
+}
+
+    let currentCardIndex = 0;
+    function rotateCards() {
+  const thisCardIndex = currentCardIndex;
+  const current = cards[thisCardIndex];
+
+  populateCard(current);
+
+  if (thisCardIndex === 0) {
+    // Use card's actual duration here
+    setTimeout(() => {
+      autoScrollCardBody(current.duration);
+    }, 100);
+  }
+
+  const duration = current.duration || 15000;
+  currentCardIndex = (currentCardIndex + 1) % cards.length;
+  setTimeout(rotateCards, duration);
+}
+
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof updateDOMFromGlbVar === "function") {
+        updateDOMFromGlbVar();
+      } else {
+        console.warn("⚠️ updateDOMFromGlbVar() is not defined.");
+      }
+
+      if (typeof glbVar !== 'undefined' && glbVar.version) {
+        const versionElement = document.querySelector('.version');
+        if (versionElement) {
+          versionElement.textContent = "v2025.05.08.1700a";
+        }
+      }
+
+      rotateCards(); // Start card rotation after DOM loads
+    });
+  </script>
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+</body>
+</html>

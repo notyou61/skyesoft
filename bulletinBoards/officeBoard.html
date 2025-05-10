@@ -279,7 +279,53 @@
   color: orange;
   font-weight: bold;
 }
-    </style>
+.kpiGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kpiColumn {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 300px;
+}
+
+.kpiColumn h3 {
+  color: #004080;
+  margin: 8px 0;
+}
+
+.entry {
+  margin: 4px 0;
+}
+
+@media (max-width: 800px) {
+  .kpiColumn {
+    flex: 1 1 100%;
+  }
+}
+.announcementGrid {
+  display: flex;
+  gap: 24px;
+}
+
+.leftColumn, .rightColumn {
+  flex: 1;
+  min-width: 300px;
+}
+
+.announcement ul {
+  padding-left: 24px; /* Add space to prevent cutoff */
+  margin: 0;
+}
+
+.announcement li {
+  margin-bottom: 6px;
+  list-style-position: inside; /* Keep the bullets visible within the content box */
+}
+
+</style>
 </head>
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
@@ -406,7 +452,7 @@
   </div>
 </div>`,
         footer: "<small>Updated: 05/09/2025</small>",
-        duration: 50000
+        duration: 30000
     }, {
         header: "<h2>🌅 Today’s Highlights</h2>",
         body: `
@@ -431,27 +477,93 @@
             </div>
         </div>`,
         footer: "<small>Auto-updated daily</small>",
-        duration: 15000
-    },
-    {
-        header: "<h2>📈 KPI Dashboard</h2>",
-        body: `
-          <div class='entry'>🛠️ Open Tasks: 12</div>
-          <div class='entry'>✅ Completed Today: 47</div>
-          <div class='entry'>📦 Orders Shipped: 19</div>
-        `,
-        footer: "<small>Last Update 07:30 AM</small>",
-        duration: 15000
-    }, {
-        header: "<h2>📢 Announcements</h2>",
-        body: `
-          <div class="announcementItem">Team meeting today at 3PM</div>
-          <div class="announcementItem">New hire orientation on Friday</div>
-          <div class="announcementItem">Submit timesheets by 4PM</div>
-        `,
-        footer: "Updated: 05/05/2025",
-        duration: 15000
-    }];
+        duration: 30000
+    },{
+  header: "<h2>📈 KPI Dashboard</h2>",
+  body: `
+    <div class='kpiGrid'>
+      <div class='kpiColumn'>
+        <h3>📍 Field Activity</h3>
+        <div class='entry'>👷 Crews On-Site: <strong>5</strong></div>
+        <div class='entry'>📸 Photos Uploaded: <strong>112 Today</strong></div>
+        <div class='entry'>🚫 Blocked Exits: <strong>2</strong></div>
+        <div class='entry'>🔧 Completed Calls: <strong>19</strong></div>
+      </div>
+      <div class='kpiColumn'>
+        <h3>📊 Service Performance</h3>
+        <div class='entry'>⏱️ Avg. Completion: <strong>3.2 Days</strong></div>
+        <div class='entry'>📂 Open Tickets: <strong>27</strong></div>
+        <div class='entry'>✅ Closed Today: <strong>14</strong></div>
+        <div class='entry'>🔄 Reopened: <strong>1</strong></div>
+      </div>
+      <div class='kpiColumn'>
+        <h3>😊 Customer Satisfaction</h3>
+        <div class='entry'>⭐ Avg. Rating: <strong>4.6 / 5.0</strong></div>
+        <div class='entry'>🗨️ Feedback: <em>“Great fast turnaround!”</em></div>
+        <div class='entry'>📅 Surveys: <strong>18 This Week</strong></div>
+        <div class='entry'>🎉 NPS Score: <strong>+42</strong></div>
+      </div>
+      <div class='kpiColumn'>
+        <h3>🚨 Task Escalations</h3>
+        <div class='entry'>📋 Open Tasks: <strong>37</strong></div>
+        <div class='entry'>⏳ Overdue: <strong>5</strong></div>
+        <div class='entry'>📈 Escalated: <strong>3</strong></div>
+        <div class='entry'>📅 Oldest Task: <strong>14 Days</strong></div>
+      </div>
+    </div>
+  `,
+  footer: "<small>Snapshot Updated: 10:15 AM</small>",
+  duration: 30000
+}, {
+  header: "<h2>📢 Announcements</h2>",
+  body: `
+    <div class="announcementGrid">
+      <div class="leftColumn">
+        <div class="announcement urgent">📢 Team Meeting Today at <strong>8:00 AM</strong></div>
+        <div class="announcement normal">📅 New Hire Orientation on Friday</div>
+        <div class="announcement reminder">🕓 Reminder: Submit Timesheets Every Morning</div>
+
+        <hr style="margin: 12px 0; border: none; border-top: 1px solid #ccc;">
+
+        <div class="announcement agenda">
+          <strong>📋 Team Meeting Agenda:</strong>
+          <ul>
+            <li>✅ Project Updates</li>
+            <li>📈 KPI Review</li>
+            <li>🔧 Workflow Improvements</li>
+            <li>🙃 What Mark Did</li>
+            <li>📄 Coversheets on TPS Reports</li>
+            <li>🗓️ Upcoming Events & Deadlines</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="rightColumn">
+        <div class="announcement safety">
+          <strong>🦺 Workplace Safety:</strong>
+          <ul>
+            <li>🚑 What to Do if Jim 'Turtles'</li>
+            <li>🔄 How to Turn Him Over Properly (Lift with the Legs!)</li>
+          </ul>
+        </div>
+
+        <hr style="margin: 12px 0; border: none; border-top: 1px solid #ccc;">
+
+        <div class="announcement project">
+          <strong>📌 Highlighted Project: Jas Diesel Monument Sign</strong>
+          <ul>
+            <li>🏗️ Project Type: <em>Freestanding Cabinet with Electronic Displays</em></li>
+            <li>🛠️ Build Status: <em>Fabrication Complete</em></li>
+            <li>🔌 Electrical: <em>In Progress – Base Wiring Underway</em></li>
+            <li>📅 Current Status: <em>Waiting for Customer Action</em></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `,
+  footer: "<small>Updated: 05/10/2025</small>",
+  duration: 30000
+}];
 
     let currentCardIndex = 0;
     let sunriseTime = "";
@@ -583,6 +695,32 @@ async function fetchWeatherData() {
         return null;
     }
 }
+// Update the weather display
+async function updateWeatherDisplay() {
+    const weatherData = await fetchWeatherData();
+    const weatherDisplay = document.getElementById("weatherDisplay");
+
+    if (!weatherDisplay) return;
+
+    if (weatherData) {
+        // Example: 🌡️ 75°F, ☀️ Clear Sky
+        const emojiMap = {
+            '01': '☀️', '02': '🌤️', '03': '☁️', '04': '☁️', 
+            '09': '🌦️', '10': '🌧️', '11': '⛈️', '13': '❄️', '50': '🌫️'
+        };
+
+        const iconCode = weatherData.currentWeatherIcon.slice(0, 2);
+        const emoji = emojiMap[iconCode] || '🌡️';
+        weatherDisplay.textContent = `${emoji} ${weatherData.currentTemperature}°F, ${capitalize(weatherData.currentWeatherDescription)}`;
+    } else {
+        weatherDisplay.textContent = "Weather unavailable";
+    }
+}
+
+function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /**
  * Populates forecast placeholders with live weather data.
  * @returns {Promise<void>}
@@ -808,14 +946,14 @@ async function getNextHoliday() {
  * Automatically scrolls the content of a card's scroll container.
  * @param {number} duration - The duration of the scroll animation in milliseconds.
  */
-function autoScrollCardBody(duration = 60000) {
+ function autoScrollCardBody(duration = 60000, endPause = 5000) {
   const container = document.querySelector(".scrollContainer");
   if (!container) {
     console.warn("⚠️ Scroll container not found");
     return;
   }
 
-  container.scrollTop = 0; // Reset to top
+  container.scrollTop = 0; // Start from top
 
   const scrollDistance = container.scrollHeight - container.clientHeight;
   if (scrollDistance <= 0) {
@@ -823,27 +961,29 @@ function autoScrollCardBody(duration = 60000) {
     return;
   }
 
+  const scrollDuration = duration - endPause; // Time spent scrolling, reserve endPause at the end
+  const speed = scrollDistance / scrollDuration; // Pixels per ms
+
   const startTime = Date.now();
 
   function scrollStep() {
-    const now = Date.now();
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const easing = 1 - Math.pow(1 - progress, 3); // Cubic easing for smoother scroll
-    const scrollTop = scrollDistance * easing;
+    const elapsed = Date.now() - startTime;
+    const nextScrollTop = speed * elapsed;
 
-    container.scrollTop = scrollTop;
-
-    if (progress < 1) {
+    if (elapsed < scrollDuration) {
+      container.scrollTop = nextScrollTop;
       requestAnimationFrame(scrollStep);
     } else {
-      console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms`);
+      container.scrollTop = scrollDistance; // Snap to bottom and pause
+      console.log(`✅ Finished scrolling ${Math.round(scrollDistance)}px in ${elapsed}ms. Pausing for ${endPause}ms.`);
     }
   }
 
-  console.log(`🔁 Starting scroll of ${scrollDistance}px over ${duration}ms`);
+  console.log(`🔁 Starting scroll of ${Math.round(scrollDistance)}px over ${scrollDuration}ms, with ${endPause}ms end pause.`);
   requestAnimationFrame(scrollStep);
 }
+
+
     /**
  * Updates the "Today's Highlights" card with dynamic data.
  */
@@ -901,7 +1041,11 @@ window.addEventListener("DOMContentLoaded", () => {
             versionElement.textContent = "v2025.05.08.1700a";
         }
     }
-
+    // Update Weather Display
+    updateWeatherDisplay(); // Fetch and display weather on load
+    // Update Weather Display
+    setInterval(updateWeatherDisplay, 900000); // Update every 15 minutes
+    // Rotate Cards
     rotateCards(); // Start card rotation
 });
 </script>
