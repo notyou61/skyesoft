@@ -108,56 +108,30 @@ All activities are managed through the **Skyesoft Service Sales Suite**, providi
 - ✔️ Develop Financial Dashboards to Track ROI in Real Time.
 
 
-## 📉 Just Keeping It Real – Monthly Overhead with Minimal or No Sales
+## 📚 Updated Combined Financial Impact (Example Based on $96,000 Sales)
 
-| **Fixed Cost Category**             | **Amount (Monthly)** |
-|--------------------------------------|----------------------|
-| Patroller Wages (4 hrs × $18/hr × 20 nights) | $1,440          |
-| Fuel (Patrol Nights – Pickup Truck)  | $400                |
-| Vehicle Lease – Pickup Truck         | $500                |
-| Vehicle Insurance – Pickup Truck     | $225                |
-| Fuel & Oil – Pickup Truck (Non-Patrol Use) | $300            |
-| Maintenance – Pickup Truck           | $150                |
-| Vehicle Lease – Service Ladder Truck | $800                |
-| Vehicle Insurance – Ladder Truck     | $600                |
-| Fuel & Oil – Service Ladder Truck    | $800                |
-| Maintenance – Service Ladder Truck   | $300                |
-| **Management Salary**                | **$5,000**          |
-
----
-
-| **Total Fixed Monthly Overhead (The Monthly Nut)** | **$10,515** |
-
----
-
-### 📈 Reality Check:
-- Even without sales, the company must cover **$10,515 per month** to keep the Night Patrol program operational.
-- This highlights the importance of securing early wins through targeted prospecting and strategic customer outreach.
-
-
-
-## 🏢 Strategic Asset Control & Ownership Model
-
-In the 2016 film *The Founder*, Harry Sonneborn famously said, *"You're not in the burger business; you're in the real estate business."* This insight led to one of the most successful financial strategies in business history.
-
-### 📈 How Christy Signs Can Apply This Model:
-- **Separate Holding Entity:** Establish a company (e.g., *Christy Holdings, LLC*) that owns and controls key assets: vehicles, equipment, branch real estate, and factoring services.
-- **Equipment Leasing:** Lease vehicles, service equipment, and technology licenses (including Skyesoft) to branch operations, ensuring consistent revenue for the ownership group.
-- **Invoice Factoring:** Provide factoring services to branches, purchasing receivables at a discount to generate immediate cash flow and earn fees from collections.
-- **Real Estate Ownership:** Acquire or lease branch real estate and sublease it to operating branches, building long-term asset value and generating consistent rental income.
-
-### 📊 Benefits to Christy Signs Ownership:
-- **Consistent Income Streams:** Earn revenue from leases, factoring, and real estate regardless of branch performance.
-- **Risk Isolation:** Separate legal ownership of assets protects valuable holdings from operational risks.
-- **Tax Advantages:** Depreciation of owned assets reduces taxable income, while real estate appreciates in value.
-- **Long-Term Wealth Accumulation:** Real estate and financial services build lasting wealth beyond day-to-day operations.
-
-### 🏆 Examples of This Model in Action:
-- **McDonald's Corporation:** Used Franchise Realty Corporation to control real estate and secure long-term profitability.
-- **Enterprise Holdings:** Operates vehicle fleets and leasing divisions as separate profit centers.
-- **Large Auto Dealership Groups:** Frequently own their showrooms and provide financing to customers, ensuring profitability from multiple revenue streams.
-
-> *By implementing this strategy, Christy Signs can secure lasting financial success and consistent income, even in fluctuating market conditions.*
+| **Category**                        | **Amount**  | **Running Total** | **% of Gross Sales** |
+|--------------------------------------|-------------|-------------------|----------------------|
+| Gross Sales                         | $96,000     | $96,000           | 100%                 |
+| Less: Labor Cost (30%)               | ($28,800)   | $67,200            | 30%                  |
+| Less: Materials Cost (40%)           | ($38,400)   | $28,800            | 40%                  |
+| **Gross Profit**                     | **$28,800** | **$28,800**        | **30%**               |
+| **Operating Costs:**                 |             |                   |                      |
+| Patroller Wages                      | ($1,440)    | $27,360            | 1.5%                 |
+| Fuel (Patrol Nights – Pickup)        | ($400)      | $26,960            | 0.42%                |
+| Vehicle Lease – Pickup               | ($500)      | $26,460            | 0.52%                |
+| Vehicle Insurance – Pickup           | ($225)      | $26,235            | 0.23%                |
+| Fuel & Oil – Pickup (Non-Patrol)     | ($300)      | $25,935            | 0.31%                |
+| Maintenance – Pickup                 | ($150)      | $25,785            | 0.16%                |
+| Vehicle Lease – Ladder Truck         | ($800)      | $24,985            | 0.83%                |
+| Vehicle Insurance – Ladder Truck     | ($600)      | $24,385            | 0.63%                |
+| Fuel & Oil – Ladder Truck            | ($800)      | $23,585            | 0.83%                |
+| Maintenance – Ladder Truck           | ($300)      | $23,285            | 0.31%                |
+| Sales Commission (10%)               | ($9,600)    | $13,685            | 10%                  |
+| Management Bonus (3% of Profit)      | ($864)      | $12,821            | 0.90%                |
+| **Subtotal – Operating Costs**       | **($15,979)**| **$12,821**        | **16.6%**             |
+| **Management Salary**                | **($5,000)** | **$7,821**         | **5.21%**             |
+| **Net Monthly Profit**               | **$7,821**  | $7,821             | **8.15%**             |
 
 
 ## ✅ Conclusion
