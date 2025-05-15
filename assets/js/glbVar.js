@@ -1,3 +1,4 @@
+
 const glbVar = {
   timeDate: {
     now: new Date()
@@ -9,7 +10,7 @@ const glbVar = {
     end: "15:30"
   },
   intervalRemaining: "",
-  version: "v2025.05.13.1500a",
+  version: "v2025.05.15.1200a",
   weather: {
     temp: null,
     icon: "❓",
@@ -19,7 +20,22 @@ const glbVar = {
     contacts: 36,
     orders: 22,
     approvals: 3
-  }
+  },
+  tips: [
+    "Measure twice, cut once.",
+    "Stay positive, work hard, make it happen.",
+    "Quality is never an accident.",
+    "Efficiency is doing better what is already being done.",
+    "Every day is a fresh start.",
+    "Take small steps every day toward big goals.",
+    "Be Proactive – Take responsibility for your actions.",
+    "Begin with the End in Mind – Define clear goals.",
+    "Put First Things First – Prioritize what matters most.",
+    "Think Win-Win – Seek mutually beneficial solutions.",
+    "Seek First to Understand, Then to Be Understood – Practice empathetic listening.",
+    "Synergize – Value teamwork and collaboration.",
+    "Sharpen the Saw – Invest in continuous personal growth."
+  ]
 };
 
 function calculateIntervalRemaining(now) {
@@ -78,7 +94,6 @@ function formatInterval(prefix, seconds) {
 function updateDOMFromGlbVar() {
   const now = glbVar.timeDate.now;
 
-  // Time formatting
   const hours = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, '0');
   const seconds = now.getSeconds().toString().padStart(2, '0');
@@ -103,5 +118,3 @@ setInterval(() => {
   glbVar.intervalRemaining = calculateIntervalRemaining(now);
   updateDOMFromGlbVar();
 }, 1000);
-
-// forced update
