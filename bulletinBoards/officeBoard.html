@@ -459,7 +459,7 @@
         <div class='entry'>🕒 Daylight: <span id="daylightTime"></span> &nbsp;|&nbsp; 🌌 Night: <span id="nightTime"></span></div>
         <div class='entry'>🎉 Next Holiday: <span id="nextHoliday"></span></div>
         <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
-        <div class='entry' id="tipOfTheDay">💡 Tip of the Day: Loading...”</div>
+        <div class='entry'>💡 Tip of the Day: “Measure twice, cut once.”</div>
         <div class='entry'>🎂 Birthdays Today: (none)</div>
         <div class='entry'>🎉 Anniversary: John – 3 Years!</div>
         <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
@@ -1046,23 +1046,6 @@ window.addEventListener("DOMContentLoaded", () => {
     // Rotate Cards
     rotateCards(); // Start card rotation
 });
-    function getDailyTip() {
-      const today = new Date();
-      const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-      const index = dayOfYear % glbVar.tips.length;
-      return glbVar.tips[index];
-    }
-
-    function updateTipOfTheDay() {
-      const tipElement = document.getElementById("tipOfTheDay");
-      if (tipElement && glbVar.tips) {
-        tipElement.textContent = `💡 Tip of the Day: “${getDailyTip()}”`;
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      updateTipOfTheDay();
-    });
 </script>
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
