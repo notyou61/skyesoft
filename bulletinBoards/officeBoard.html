@@ -349,6 +349,7 @@
 <div>© 2025 Maychris Corporation</div>
 <div class="version">Loading version...</div>
 </div>
+<script src="/skyesoft/assets/js/glbVar.js"></script>
 <script>
     // Import variables from weatherConfig.js
     const weatherApiKey = "0fd7b16fe667ade38033ebb5c871aab8";
@@ -459,7 +460,7 @@
         <div class='entry'>🕒 Daylight: <span id="daylightTime"></span> &nbsp;|&nbsp; 🌌 Night: <span id="nightTime"></span></div>
         <div class='entry'>🎉 Next Holiday: <span id="nextHoliday"></span></div>
         <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
-        <div class='entry'>💡 Tip of the Day: “Measure twice, cut once.”</div>
+        <div class='entry' id="tipOfTheDay">💡 Tip of the Day: Loading...</div>
         <div class='entry'>🎂 Birthdays Today: (none)</div>
         <div class='entry'>🎉 Anniversary: John – 3 Years!</div>
         <hr style='margin: 12px 0; border: none; border-top: 1px solid #ccc;'>
@@ -980,7 +981,20 @@ async function getNextHoliday() {
   console.log(`🔁 Starting scroll of ${Math.round(scrollDistance)}px over ${scrollDuration}ms, with ${endPause}ms end pause.`);
   requestAnimationFrame(scrollStep);
 }
+function getDailyTip() {
+    const today = new Date();
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    const tips = glbVar?.tips || [];
+    const index = dayOfYear % tips.length;
+    return tips[index] || "Stay positive and keep learning!";
+}
 
+function updateTipOfTheDay() {
+    const tipElement = document.getElementById("tipOfTheDay");
+    if (tipElement) {
+        tipElement.textContent = `💡 Tip of the Day: “${getDailyTip()}”`;
+    }
+}
 
     /**
  * Updates the "Today's Highlights" card with dynamic data.
@@ -1032,7 +1046,8 @@ async function updateHighlightsCard() {
  */
 window.addEventListener("DOMContentLoaded", () => {
     console.log("🔁 DOM Content Loaded");
-
+    // Tip of the Day
+    updateTipOfTheDay();
     if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
         if (versionElement) {
@@ -1047,7 +1062,6 @@ window.addEventListener("DOMContentLoaded", () => {
     rotateCards(); // Start card rotation
 });
 </script>
-<script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
 </body>
