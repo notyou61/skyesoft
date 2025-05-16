@@ -990,9 +990,19 @@ function getDailyTip() {
 }
 
 function updateTipOfTheDay() {
+    console.log("🔁 Updating Tip of the Day...");
+
+    const today = new Date();
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    const tips = glbVar?.tips || [];
+    const index = dayOfYear % tips.length;
+    const tip = tips[index] || "Stay positive and keep learning!";
+
     const tipElement = document.getElementById("tipOfTheDay");
     if (tipElement) {
-        tipElement.textContent = `💡 Tip of the Day: “${getDailyTip()}”`;
+        tipElement.textContent = `💡 Tip of the Day: “${tip}”`;  // ← Use the tip you just calculated
+    } else {
+        console.warn("⚠️ Tip of the Day element not found in DOM.");
     }
 }
 
