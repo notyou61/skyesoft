@@ -1056,14 +1056,15 @@ async function updateHighlightsCard() {
  */
 window.addEventListener("DOMContentLoaded", () => {
     console.log("🔁 DOM Content Loaded");
-    // Tip of the Day
-    updateTipOfTheDay();
-    if (typeof glbVar !== 'undefined' && glbVar.version) {
+  // Version Check
+  if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
         if (versionElement) {
             versionElement.textContent = "v2025.05.08.1700a";
         }
     }
+    // Tip of the Day
+    updateTipOfTheDay();
     // Update Weather Display
     updateWeatherDisplay(); // Fetch and display weather on load
     // Update Weather Display
