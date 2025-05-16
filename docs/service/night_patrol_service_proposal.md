@@ -1,7 +1,7 @@
 # 📋 Service Sales Growth Model Through Night Patrol Prospecting
 
 ## ⚠️ Disclaimer
-This proposal is based on **estimates and assumptions** regarding financial projections, operational metrics, and market conditions. Key assumptions include vehicle mileage (3,000 miles/month for pickup, 600 miles/month per ladder truck), fuel efficiency (12 MPG pickup, 6 MPG ladder trucks), fuel prices ($3.50/gallon gasoline, $4.00/gallon diesel), labor costs, sales close rates (~30%), order volumes (125 orders/month), and vehicle storage costs (~750 sq ft, $1.50/sq ft/month). Actual results may vary due to factors such as specific vehicle models, regional fuel or rental costs, market demand, operational efficiencies, or unforeseen expenses. Christy Signs recommends validating these estimates with actual data (e.g., vehicle specifications, regional costs, site distances) before implementation. This proposal is for planning purposes and does not guarantee financial outcomes.
+This proposal is based on **estimates and assumptions** regarding financial projections, operational metrics, and market conditions. Key assumptions include vehicle mileage (3,000 miles/month for pickup, 600 miles/month per ladder truck), fuel efficiency (12 MPG pickup, 6 MPG ladder trucks), fuel prices ($3.50/gallon gasoline, $4.00/gallon diesel), labor costs, sales close rates (30%), order volumes (125 orders/month), and vehicle storage costs (~750 sq ft, $1.50/sq ft/month). Actual results may vary due to factors such as specific vehicle models, regional fuel or rental costs, market demand, operational efficiencies, or unforeseen expenses. Christy Signs recommends validating these estimates with actual data (e.g., vehicle specifications, regional costs, site distances) before implementation. This proposal is for planning purposes and does not guarantee financial outcomes.
 
 ---
 
@@ -78,7 +78,7 @@ This philosophy drives Christy Signs’ evolution from a good company to a great
 ---
 
 ## 🏢 Strategic Asset Control & Ownership Model
-Inspired by *The Founder* (2016), where Harry Sonneborn transformed McDonald’s by emphasizing real estate, **Christy Holdings, LLC** will own and control key assets (vehicles, equipment, real estate, factoring services) and lease them to operational branches. This “Sonneborn model” ensures:
+Inspired by *The Founder* (2016), where Harry Sonneborn, first president of McDonald’s transformed the compnay by emphasizing real estate, **Christy Holdings, LLC** will own and control key assets (vehicles, equipment, real estate, factoring services) and lease them to operational branches. This “Sonneborn model” ensures:
 
 - **Consistent Income**: Leasing vehicles ($6,266.16/month), equipment, and real estate (e.g., vehicle storage at $1,125/month) generates stable revenue.
 - **Risk Isolation**: Separate legal entity protects assets from operational risks.
@@ -103,11 +103,11 @@ This model positions Christy Signs for lasting financial success, even in fluctu
 ## 📈 Breakeven Milestones
 | **Investment**         | **Total Cost** | **Breakeven Sales Needed**       | **Estimated Timeline** |
 |------------------------|----------------|----------------------------------|-----------------------|
-| Skyesoft System        | $30,000        | $100,000 in gross sales         | ~3 Months             |
+| Skyesoft System        | $89,052        | $100,000 in gross sales         | ~3 Months             |
 | Vehicles (3 Units)     | $375,000       | $375,000 in net profit or financed through lease structures | ~18 Months            |
 
 **Notes**:
-- **Skyesoft**: $30,000 covers setup and training, breakeven at ~125 orders ($96,000 revenue, ~3 months at full operations).
+- **Skyesoft**: $89,052 covers setup and training, breakeven at ~125 orders ($96,000 revenue, ~3 months at full operations).
 - **Vehicles**: $375,000 ($125,000 × 3) financed via leases ($6,266.16/month), breakeven through net profit accumulation (~18 months at $21,642.33/month) or sustained lease payments.
 - **Alignment**: Lease costs are included in the **Income Statement**, ensuring financial projections account for vehicle financing.
 
