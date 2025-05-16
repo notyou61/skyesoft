@@ -584,6 +584,7 @@
         }
         if (thisCardIndex === 1) {
             updateHighlightsCard();
+            updateTipOfTheDay(); // 🟢 Call here, when the element is actually rendered
         }
 
         const duration = current.duration || 15000;
@@ -1063,8 +1064,6 @@ window.addEventListener("DOMContentLoaded", () => {
             versionElement.textContent = "v2025.05.08.1700a";
         }
     }
-    // Tip of the Day
-    updateTipOfTheDay();
     // Update Weather Display
     updateWeatherDisplay(); // Fetch and display weather on load
     // Update Weather Display
