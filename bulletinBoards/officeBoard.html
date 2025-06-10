@@ -518,7 +518,7 @@
   body: `
     <div class="announcementGrid">
       <div class="leftColumn">
-        <div class="announcement urgent">📢 Team Meeting Today at <strong>8:00 AM</strong></div>
+        <div class="announcement urgent" id="meetingReminder">📢 Team Meeting: <span id="meetingTimeHumanized">Loading...</span></div>
         <div class="announcement normal">📅 New Hire Orientation on Friday</div>
         <div class="announcement reminder">🕓 Reminder: Submit Timesheets Every Morning</div>
 
@@ -946,7 +946,7 @@ async function getNextHoliday() {
  * Automatically scrolls the content of a card's scroll container.
  * @param {number} duration - The duration of the scroll animation in milliseconds.
  */
- function autoScrollCardBody(duration = 60000, endPause = 5000) {
+function autoScrollCardBody(duration = 60000, endPause = 5000) {
   const container = document.querySelector(".scrollContainer");
   if (!container) {
     console.warn("⚠️ Scroll container not found");
@@ -982,6 +982,7 @@ async function getNextHoliday() {
   console.log(`🔁 Starting scroll of ${Math.round(scrollDistance)}px over ${scrollDuration}ms, with ${endPause}ms end pause.`);
   requestAnimationFrame(scrollStep);
 }
+//
 function getDailyTip() {
     const today = new Date();
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
@@ -989,7 +990,7 @@ function getDailyTip() {
     const index = dayOfYear % tips.length;
     return tips[index] || "Stay positive and keep learning!";
 }
-
+//
 function updateTipOfTheDay() {
     console.log("🔁 Updating Tip of the Day...");
 
@@ -1005,6 +1006,55 @@ function updateTipOfTheDay() {
     } else {
         console.warn("⚠️ Tip of the Day element not found in DOM.");
     }
+}
+//
+function updateMeetingReminder() {
+  const meetingElement = document.getElementById("meetingTimeHumanized");
+  if (!meetingElement) return;
+
+  const now = new Date();
+
+  // Find the next or current Wednesday at 9:00 AM
+  let nextMeeting = new Date(now);
+  nextMeeting.setHours(9, 0, 0, 0); // Set to 9:00 AM today
+  const day = now.getDay();
+  const daysUntilWednesday = (3 + 7 - day) % 7; // 3 = Wednesday
+
+  // If today is Wednesday but it's past 10:30 AM, skip to next week
+  if (day === 3 && now.getHours() >= 10 && now.getMinutes() >= 30) {
+    nextMeeting.setDate(now.getDate() + 7);
+  } else if (day !== 3 || now < new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0)) {
+    // If it's not Wednesday or before 9 AM, find the coming Wednesday
+    nextMeeting.setDate(now.getDate() + daysUntilWednesday);
+  }
+
+  const meetingStart = new Date(nextMeeting);
+  const meetingEnd = new Date(meetingStart.getTime() + 90 * 60000); // +90 minutes
+
+  let label = "";
+
+  if (now >= meetingStart && now <= meetingEnd) {
+    label = "Meeting in progress";
+  } else if (now < meetingStart) {
+    const diffDays = Math.ceil((meetingStart - now) / (1000 * 60 * 60 * 24));
+    const friendlyDate = meetingStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+    if (diffDays === 0) {
+      label = "Today at 9:00 AM";
+    } else if (diffDays === 1) {
+      label = "Tomorrow at 9:00 AM";
+    } else {
+      label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
+    }
+  } else {
+    // Meeting has ended, move to next week's Wednesday
+    const nextWeek = new Date(meetingStart);
+    nextWeek.setDate(meetingStart.getDate() + 7);
+    const nextLabel = nextWeek.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    label = `Next Meeting: In 7 days — ${nextLabel} at 9:00 AM`;
+  }
+
+  meetingElement.textContent = label;
 }
 
     /**
@@ -1056,7 +1106,10 @@ async function updateHighlightsCard() {
  * DOMContentLoaded handler
  */
 window.addEventListener("DOMContentLoaded", () => {
-    console.log("🔁 DOM Content Loaded");
+  // Console log to indicate the DOM is fully loaded
+  console.log("🔁 DOM Content Loaded");
+  // Update Meeting Reminder
+  updateMeetingReminder();
   // Version Check
   if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
