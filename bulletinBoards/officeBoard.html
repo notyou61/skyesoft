@@ -945,7 +945,7 @@ async function getNextHoliday() {
     }
 }
 
-    /**
+ /**
  * Automatically scrolls the content of a card's scroll container.
  * @param {number} duration - The duration of the scroll animation in milliseconds.
  */
@@ -1102,7 +1102,7 @@ function updateMeetingReminder() {
     const nextLabel = nextWeek.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
     label = `Next Meeting: In 7 days — ${nextLabel} at 9:00 AM`;
   }
-
+  //
   meetingElement.textContent = label;
 }
 /**
@@ -1111,8 +1111,13 @@ function updateMeetingReminder() {
 window.addEventListener("DOMContentLoaded", () => {
   // Console log to indicate the DOM is fully loaded
   console.log("🔁 DOM Content Loaded");
-  // Update Meeting Reminder
-  updateMeetingReminder();
+  // Update the "Today's Highlights" card
+  setTimeout(() => {
+    // console.log("✅ Now updating highlights card...");
+    console.log("✅ Now updating meeting reminder...");
+    // Update Highlights Card
+    updateMeetingReminder();
+  }, 300); // short delay to let layout finish
   // Version Check
   if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
@@ -1121,7 +1126,7 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
     // Update Weather Display
-   // updateWeatherDisplay(); // Fetch and display weather on load
+    updateWeatherDisplay(); // Fetch and display weather on load
     // Update Weather Display
     setInterval(updateWeatherDisplay, 900000); // Update every 15 minutes
     // Rotate Cards
