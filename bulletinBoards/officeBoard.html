@@ -1018,8 +1018,10 @@ function updateMeetingReminder() {
   let nextMeeting = new Date(now);
   nextMeeting.setHours(9, 0, 0, 0); // Set to 9:00 AM today
   const day = now.getDay();
-  const daysUntilWednesday = (3 + 7 - day) % 7; // 3 = Wednesday
-
+  //
+  const WEDNESDAY = 3;
+  //
+  const daysUntilWednesday = (WEDNESDAY + 7 - day) % 7; // 3 = Wednesday
   // If today is Wednesday but it's past 10:30 AM, skip to next week
   if (day === 3 && now.getHours() >= 10 && now.getMinutes() >= 30) {
     nextMeeting.setDate(now.getDate() + 7);
@@ -1056,8 +1058,7 @@ function updateMeetingReminder() {
 
   meetingElement.textContent = label;
 }
-
-    /**
+/**
  * Updates the "Today's Highlights" card with dynamic data.
  */
 async function updateHighlightsCard() {
@@ -1070,8 +1071,8 @@ async function updateHighlightsCard() {
         // Fetch weather data to get sunrise and sunset
         const weatherData = await fetchWeatherData();
         if (weatherData) {
-            sunriseTime = weatherData.sunrise;
-            sunsetTime = weatherData.sunset;
+            const sunriseTime = weatherData.sunrise;
+            const sunsetTime = weatherData.sunset;
             document.getElementById("sunriseTime").textContent = sunriseTime;
             document.getElementById("sunsetTime").textContent = sunsetTime;
 
@@ -1127,5 +1128,57 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
-</body>
+<script>
+function updateMeetingReminder() {
+  const meetingElement = document.getElementById("meetingTimeHumanized");
+  if (!meetingElement) return;
+
+  const now = new Date();
+
+  // Find the next or current Wednesday at 9:00 AM
+  let nextMeeting = new Date(now);
+  nextMeeting.setHours(9, 0, 0, 0); // Set to 9:00 AM today
+  const day = now.getDay();
+  const daysUntilWednesday = (3 + 7 - day) % 7; // 3 = Wednesday
+
+  // If today is Wednesday but it's past 10:30 AM, skip to next week
+  if (day === 3 && now.getHours() >= 10 && now.getMinutes() >= 30) {
+    nextMeeting.setDate(now.getDate() + 7);
+  } else if (day !== 3 || now < new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0)) {
+    // If it's not Wednesday or before 9 AM, find the coming Wednesday
+    nextMeeting.setDate(now.getDate() + daysUntilWednesday);
+  }
+
+  const meetingStart = new Date(nextMeeting);
+  const meetingEnd = new Date(meetingStart.getTime() + 90 * 60000); // +90 minutes
+
+  let label = "";
+
+  if (now >= meetingStart && now <= meetingEnd) {
+    label = "Meeting in progress";
+  } else if (now < meetingStart) {
+    const diffDays = Math.ceil((meetingStart - now) / (1000 * 60 * 60 * 24));
+    const friendlyDate = meetingStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+
+    if (diffDays === 0) {
+      label = "Today at 9:00 AM";
+    } else if (diffDays === 1) {
+      label = "Tomorrow at 9:00 AM";
+    } else {
+      label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
+    }
+  } else {
+    // Meeting has ended, move to next week's Wednesday
+    const nextWeek = new Date(meetingStart);
+    nextWeek.setDate(meetingStart.getDate() + 7);
+    const nextLabel = nextWeek.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    label = `Next Meeting: In 7 days — ${nextLabel} at 9:00 AM`;
+  }
+
+  meetingElement.textContent = label;
+}
+window.addEventListener("DOMContentLoaded", () => {
+  updateMeetingReminder();
+});
+    </script></body>
 </html>
