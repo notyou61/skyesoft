@@ -589,6 +589,11 @@
             updateHighlightsCard();
             updateTipOfTheDay(); // 🟢 Call here, when the element is actually rendered
         }
+        //
+        if (thisCardIndex === 3) {
+          //
+          setTimeout(updateMeetingReminder, 100); // ✅ Ensure target element is in DOM
+        }
 
         const duration = current.duration || 15000;
         currentCardIndex = (currentCardIndex + 1) % cards.length;
@@ -719,7 +724,7 @@ async function updateWeatherDisplay() {
         weatherDisplay.textContent = "Weather unavailable";
     }
 }
-
+// 
 function capitalize(text) {
     return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -1111,13 +1116,6 @@ function updateMeetingReminder() {
 window.addEventListener("DOMContentLoaded", () => {
   // Console log to indicate the DOM is fully loaded
   console.log("🔁 DOM Content Loaded");
-  // Update the "Today's Highlights" card
-  setTimeout(() => {
-    // console.log("✅ Now updating highlights card...");
-    console.log("✅ Now updating meeting reminder...");
-    // Update Highlights Card
-    updateMeetingReminder();
-  }, 300); // short delay to let layout finish
   // Version Check
   if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
