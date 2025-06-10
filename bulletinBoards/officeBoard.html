@@ -352,6 +352,8 @@
 <div class="version">Loading version...</div>
 </div>
 <script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
 <script>
     // Import variables from weatherConfig.js
     // Removed duplicate weatherApiKey and weatherLocation declarations
@@ -1008,7 +1010,51 @@ function updateTipOfTheDay() {
         console.warn("⚠️ Tip of the Day element not found in DOM.");
     }
 }
-//
+/**
+ * Updates the "Today's Highlights" card with dynamic data.
+ */
+async function updateHighlightsCard() {
+    try {
+        const dateInfo = getLiveDateInfo();
+        document.getElementById("todaysDate").textContent = dateInfo.formattedDate;
+        document.getElementById("dayOfYear").textContent = dateInfo.dayOfYear;
+        document.getElementById("daysRemaining").textContent = dateInfo.daysRemaining;
+
+        // Fetch weather data to get sunrise and sunset
+        const weatherData = await fetchWeatherData();
+        if (weatherData) {
+            const sunriseTime = weatherData.sunrise;
+            const sunsetTime = weatherData.sunset;
+            document.getElementById("sunriseTime").textContent = sunriseTime;
+            document.getElementById("sunsetTime").textContent = sunsetTime;
+
+            // Calculate and display daylight and night time
+            const sunriseDate = new Date(weatherData.sunriseTimestamp * 1000);
+            const sunsetDate = new Date(weatherData.sunsetTimestamp * 1000);
+            const daylightMilliseconds = sunsetDate.getTime() - sunriseDate.getTime();
+            const nightMilliseconds = (24 * 60 * 60 * 1000) - daylightMilliseconds;
+
+            const daylightHours = Math.floor(daylightMilliseconds / (1000 * 60 * 60));
+            const daylightMinutes = Math.floor((daylightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+            const nightHours = Math.floor(nightMilliseconds / (1000 * 60 * 60));
+            const nightMinutes = Math.floor((nightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+
+            document.getElementById("daylightTime").textContent = `${daylightHours}h ${daylightMinutes}m`;
+            document.getElementById("nightTime").textContent = `${nightHours}h ${nightMinutes}m`;
+        }
+
+        // Fetch and display the next holiday
+        const nextHoliday = await getNextHoliday();
+        document.getElementById("nextHoliday").textContent = nextHoliday;
+
+        // Populate forecast data
+        await populateForecast(); // Add this
+
+    } catch (error) {
+        console.error("Error updating highlights:", error);
+    }
+}
+// Update the meeting reminder on page load
 function updateMeetingReminder() {
   const meetingElement = document.getElementById("meetingTimeHumanized");
   if (!meetingElement) return;
@@ -1060,51 +1106,6 @@ function updateMeetingReminder() {
   meetingElement.textContent = label;
 }
 /**
- * Updates the "Today's Highlights" card with dynamic data.
- */
-async function updateHighlightsCard() {
-    try {
-        const dateInfo = getLiveDateInfo();
-        document.getElementById("todaysDate").textContent = dateInfo.formattedDate;
-        document.getElementById("dayOfYear").textContent = dateInfo.dayOfYear;
-        document.getElementById("daysRemaining").textContent = dateInfo.daysRemaining;
-
-        // Fetch weather data to get sunrise and sunset
-        const weatherData = await fetchWeatherData();
-        if (weatherData) {
-            const sunriseTime = weatherData.sunrise;
-            const sunsetTime = weatherData.sunset;
-            document.getElementById("sunriseTime").textContent = sunriseTime;
-            document.getElementById("sunsetTime").textContent = sunsetTime;
-
-            // Calculate and display daylight and night time
-            const sunriseDate = new Date(weatherData.sunriseTimestamp * 1000);
-            const sunsetDate = new Date(weatherData.sunsetTimestamp * 1000);
-            const daylightMilliseconds = sunsetDate.getTime() - sunriseDate.getTime();
-            const nightMilliseconds = (24 * 60 * 60 * 1000) - daylightMilliseconds;
-
-            const daylightHours = Math.floor(daylightMilliseconds / (1000 * 60 * 60));
-            const daylightMinutes = Math.floor((daylightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
-            const nightHours = Math.floor(nightMilliseconds / (1000 * 60 * 60));
-            const nightMinutes = Math.floor((nightMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
-
-            document.getElementById("daylightTime").textContent = `${daylightHours}h ${daylightMinutes}m`;
-            document.getElementById("nightTime").textContent = `${nightHours}h ${nightMinutes}m`;
-        }
-
-        // Fetch and display the next holiday
-        const nextHoliday = await getNextHoliday();
-        document.getElementById("nextHoliday").textContent = nextHoliday;
-
-        // Populate forecast data
-        await populateForecast(); // Add this
-
-    } catch (error) {
-        console.error("Error updating highlights:", error);
-    }
-}
-
-/**
  * DOMContentLoaded handler
  */
 window.addEventListener("DOMContentLoaded", () => {
@@ -1120,66 +1121,12 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
     // Update Weather Display
-    updateWeatherDisplay(); // Fetch and display weather on load
+   // updateWeatherDisplay(); // Fetch and display weather on load
     // Update Weather Display
     setInterval(updateWeatherDisplay, 900000); // Update every 15 minutes
     // Rotate Cards
     rotateCards(); // Start card rotation
 });
 </script>
-<script src="/skyesoft/assets/js/weatherConfig.js"></script>
-<script src="/skyesoft/assets/js/weather.js"></script>
-<script>
-function updateMeetingReminder() {
-  const meetingElement = document.getElementById("meetingTimeHumanized");
-  if (!meetingElement) return;
-
-  const now = new Date();
-
-  // Find the next or current Wednesday at 9:00 AM
-  let nextMeeting = new Date(now);
-  nextMeeting.setHours(9, 0, 0, 0); // Set to 9:00 AM today
-  const day = now.getDay();
-  const daysUntilWednesday = (3 + 7 - day) % 7; // 3 = Wednesday
-
-  // If today is Wednesday but it's past 10:30 AM, skip to next week
-  if (day === 3 && now.getHours() >= 10 && now.getMinutes() >= 30) {
-    nextMeeting.setDate(now.getDate() + 7);
-  } else if (day !== 3 || now < new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0)) {
-    // If it's not Wednesday or before 9 AM, find the coming Wednesday
-    nextMeeting.setDate(now.getDate() + daysUntilWednesday);
-  }
-
-  const meetingStart = new Date(nextMeeting);
-  const meetingEnd = new Date(meetingStart.getTime() + 90 * 60000); // +90 minutes
-
-  let label = "";
-
-  if (now >= meetingStart && now <= meetingEnd) {
-    label = "Meeting in progress";
-  } else if (now < meetingStart) {
-    const diffDays = Math.ceil((meetingStart - now) / (1000 * 60 * 60 * 24));
-    const friendlyDate = meetingStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-
-    if (diffDays === 0) {
-      label = "Today at 9:00 AM";
-    } else if (diffDays === 1) {
-      label = "Tomorrow at 9:00 AM";
-    } else {
-      label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
-    }
-  } else {
-    // Meeting has ended, move to next week's Wednesday
-    const nextWeek = new Date(meetingStart);
-    nextWeek.setDate(meetingStart.getDate() + 7);
-    const nextLabel = nextWeek.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    label = `Next Meeting: In 7 days — ${nextLabel} at 9:00 AM`;
-  }
-
-  meetingElement.textContent = label;
-}
-window.addEventListener("DOMContentLoaded", () => {
-  updateMeetingReminder();
-});
-    </script></body>
+</body>
 </html>
