@@ -591,15 +591,19 @@
         }
         //
         if (thisCardIndex === 3) {
-          //
-          setTimeout(updateMeetingReminder, 100); // ✅ Ensure target element is in DOM
+          console.log("🟡 Announcements card active — deferring updateMeetingReminder()");
+          setTimeout(() => {
+            console.log("🟢 Running updateMeetingReminder()");
+            updateMeetingReminder();
+          }, 100); // Delay ensures DOM is injected before lookup
         }
-
+        //
         const duration = current.duration || 15000;
+        //
         currentCardIndex = (currentCardIndex + 1) % cards.length;
+        //
         setTimeout(rotateCards, duration);
     }
-
     /**
      * Converts a timestamp to 12-hour format.
      * @param {number} timestamp - The timestamp to convert.
