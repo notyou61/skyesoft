@@ -43,8 +43,9 @@
      return hours + ':' + minutes + ' ' + ampm;
    }
 
-   let sunriseTime = "";
-   let sunsetTime = "";
+  if (typeof sunriseTime === "undefined") var sunriseTime = "";
+  if (typeof sunsetTime === "undefined") var sunsetTime = "";
+
 
    // Initial load
    updateWeather();
