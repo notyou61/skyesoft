@@ -1069,33 +1069,41 @@ function updateMeetingReminder() {
   if (!meetingElement) return;
 
   const now = new Date();
-
-  // Find the next or current Wednesday at 9:00 AM
-  let nextMeeting = new Date(now);
-  nextMeeting.setHours(9, 0, 0, 0); // Set to 9:00 AM today
   const day = now.getDay();
-  //
-  const WEDNESDAY = 3;
-  //
-  const daysUntilWednesday = (WEDNESDAY + 7 - day) % 7; // 3 = Wednesday
-  // If today is Wednesday but it's past 10:30 AM, skip to next week
-  if (day === 3 && now.getHours() >= 10 && now.getMinutes() >= 30) {
-    nextMeeting.setDate(now.getDate() + 7);
-  } else if (day !== 3 || now < new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0)) {
-    // If it's not Wednesday or before 9 AM, find the coming Wednesday
-    nextMeeting.setDate(now.getDate() + daysUntilWednesday);
-  }
-
-  const meetingStart = new Date(nextMeeting);
-  const meetingEnd = new Date(meetingStart.getTime() + 90 * 60000); // +90 minutes
-
   let label = "";
 
-  if (now >= meetingStart && now <= meetingEnd) {
-    label = "Meeting in progress";
-  } else if (now < meetingStart) {
-    const diffDays = Math.ceil((meetingStart - now) / (1000 * 60 * 60 * 24));
-    const friendlyDate = meetingStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  // Determine the next meeting time (Wednesdays at 9:00 AM)
+  let nextMeeting = new Date(now);
+  nextMeeting.setHours(9, 0, 0, 0); // Set time to 9:00 AM
+
+  if (day > 3) {
+    // If today is after Wednesday, go to next week's Wednesday
+    nextMeeting.setDate(now.getDate() + (10 - day)); // e.g., Friday (5) → +5 days
+  } else if (day < 3) {
+    // If before Wednesday, go to this week's Wednesday
+    nextMeeting.setDate(now.getDate() + (3 - day));
+  } else {
+    // Today is Wednesday
+    const meetingTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+    const meetingEnd = new Date(meetingTime.getTime() + 90 * 60000); // 9:00 AM + 90 min
+
+    if (now < meetingTime) {
+      // Before 9:00 AM today
+      nextMeeting = meetingTime;
+    } else if (now <= meetingEnd) {
+      // Between 9:00 AM and 10:30 AM
+      label = "Meeting in progress";
+    } else {
+      // After 10:30 AM today, move to next week's meeting
+      nextMeeting.setDate(now.getDate() + 7);
+    }
+  }
+
+  if (!label) {
+    const diffDays = Math.ceil((nextMeeting - now) / (1000 * 60 * 60 * 24));
+    const friendlyDate = nextMeeting.toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric"
+    });
 
     if (diffDays === 0) {
       label = "Today at 9:00 AM";
@@ -1104,16 +1112,11 @@ function updateMeetingReminder() {
     } else {
       label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
     }
-  } else {
-    // Meeting has ended, move to next week's Wednesday
-    const nextWeek = new Date(meetingStart);
-    nextWeek.setDate(meetingStart.getDate() + 7);
-    const nextLabel = nextWeek.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-    label = `Next Meeting: In 7 days — ${nextLabel} at 9:00 AM`;
   }
-  //
+
   meetingElement.textContent = label;
 }
+
 /**
  * DOMContentLoaded handler
  */
