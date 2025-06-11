@@ -1099,21 +1099,25 @@ function updateMeetingReminder() {
     }
   }
 
-  if (!label) {
-    const diffDays = Math.ceil((nextMeeting - now) / (1000 * 60 * 60 * 24));
-    const friendlyDate = nextMeeting.toLocaleDateString("en-US", {
-      weekday: "long", month: "long", day: "numeric"
-    });
+if (!label) {
+  const friendlyDate = nextMeeting.toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric"
+  });
 
-    if (diffDays === 0) {
-      label = "Today at 9:00 AM";
-    } else if (diffDays === 1) {
-      label = "Tomorrow at 9:00 AM";
-    } else {
-      label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
-    }
+  const today = now.toDateString();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toDateString();
+  const meetingDate = nextMeeting.toDateString();
+
+  if (meetingDate === today) {
+    label = "Today at 9:00 AM";
+  } else if (meetingDate === tomorrow) {
+    label = "Tomorrow at 9:00 AM";
+  } else {
+    const diffDays = Math.round((nextMeeting - now) / (1000 * 60 * 60 * 24));
+    label = `In ${diffDays} days — ${friendlyDate} at 9:00 AM`;
   }
-
+}
+  // Update the meeting reminder element
   meetingElement.textContent = label;
 }
 
