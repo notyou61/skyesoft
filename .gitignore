@@ -6,3 +6,8 @@ docs/proposal/debug.png
 node_modules/
 twemoji/
 
+# Secrets and credentials
+.env
+*.env
+apikeys.json
+config.php
