@@ -14,6 +14,14 @@
   **Author:** SteveS  
   **Type:** update
 
+- **docs/codex/real-time-sse.md** — _Test: verify full versioning flow after update [patch]_  
+  **Author:** Steve Skye  
+  **Type:** update
+
+- **scripts/update-changelog.js** — _Test: verify full versioning flow after update [patch]_  
+  **Author:** Steve Skye  
+  **Type:** update
+
 ---
 
 ## 2025-06-14
