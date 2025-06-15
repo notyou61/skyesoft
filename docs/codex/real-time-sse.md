@@ -31,3 +31,4 @@ To provide an efficient, always-on communication channel between the server and 
 🔁 Closely integrated with:
 - `time-interval-standards.md` – to respect working hours and delay dispatching updates outside active time windows
 - `management_escalation_trees.md` – to auto-trigger urgent alerts as changes propagate
+echo "<!-- version bump test -->" >> docs/codex/time-interval-standards.md
