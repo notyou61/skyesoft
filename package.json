@@ -1,9 +1,32 @@
 {
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "markdown-it": "^14.1.0",
     "markdown-it-container": "^4.0.0",
     "marked": "^15.0.11",
     "puppeteer": "^24.7.1",
     "remarkable": "^2.0.1"
-  }
+  },
+  "name": "skyesoft",
+  "version": "1.0.0",
+  "description": "**Skyesoft** is a modular, real-time operations system designed for field-based industries—starting with the signage sector. It streamlines workflows, empowers teams, and scales across departments like Sales, Design, Service, and Permitting.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notyou61/skyesoft.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/notyou61/skyesoft/issues"
+  },
+  "homepage": "https://github.com/notyou61/skyesoft#readme"
 }
