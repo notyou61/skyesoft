@@ -1,0 +1,12 @@
+{
+    "generated_on": "2025-06-14T23:59:46.414506",
+    "log": [
+        {
+            "date": "2025-06-14T23:59:46.414515",
+            "file": "codex-version.json",
+            "description": "Initial version file created for Skyesoft Codex version tracking",
+            "user": "Steve Skye",
+            "type": "version"
+        }
+    ]
+}
