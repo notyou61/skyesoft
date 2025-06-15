@@ -1,5 +1,5 @@
 {
-    "generated_on": "2025-06-15T14:07:36.334Z",
+    "generated_on": "2025-06-15T14:22:17.059Z",
     "log": [
         {
             "date": "2025-06-14T23:59:46.414515",
@@ -19,6 +19,13 @@
             "date": "2025-06-15T14:07:36.334Z",
             "file": "test.md",
             "description": "Updated test.md via changelog script",
+            "user": "SteveS",
+            "type": "update"
+        },
+        {
+            "date": "2025-06-15T14:22:17.059Z",
+            "file": "real-time-sse.md",
+            "description": "Updated real-time-sse.md via changelog script",
             "user": "SteveS",
             "type": "update"
         }
