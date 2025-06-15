@@ -4,32 +4,43 @@ const { execSync } = require("child_process");
 
 const CHANGELOG_PATH = "./docs/codex/codex-changelog.json";
 const now = new Date().toISOString();
+const commitHash = process.argv[2]; // Get from command line
 
-// Get last commit info (cross-platform safe quotes)
-const commitData = execSync('git log -1 --pretty=format:"%H|%an|%ad|%s" --name-only').toString();
-const [metaLine, ...files] = commitData.split("\n");
-const [hash, author, date, message] = metaLine.split("|");
-
-
-// Load existing changelog or create default
-let changelog = { generated_on: now, log: [] };
-if (fs.existsSync(CHANGELOG_PATH)) {
-  changelog = JSON.parse(fs.readFileSync(CHANGELOG_PATH, "utf-8"));
+if (!commitHash) {
+  console.error("❌ Please provide a commit hash. Usage:\n  node update-changelog.js <hash>");
+  process.exit(1);
 }
 
-// Add new entries
-files
-  .filter(f => f.trim() !== "")
-  .forEach(file => {
-    changelog.log.push({
-      date: new Date().toISOString(),
-      file: file.trim(),
-      description: message.trim(),
-      user: author.trim(),
-      type: "update"
-    });
-  });
+try {
+  const commitData = execSync(`git show ${commitHash} --pretty=format:"%H|%an|%ad|%s" --name-status`).toString();
+  const [metaLine, ...fileLines] = commitData.split("\n");
+  const [hash, author, date, message] = metaLine.split("|");
 
-// Save updated changelog
-fs.writeFileSync(CHANGELOG_PATH, JSON.stringify(changelog, null, 2));
-console.log("✅ codex-changelog.json updated with latest commit.");
+  let changelog = { generated_on: now, log: [] };
+  if (fs.existsSync(CHANGELOG_PATH)) {
+    changelog = JSON.parse(fs.readFileSync(CHANGELOG_PATH, "utf-8"));
+  }
+
+  fileLines
+    .filter(line => line.trim() !== "")
+    .forEach(entry => {
+      const [status, file] = entry.trim().split(/\t+/);
+      const type =
+        status === "A" ? "create" :
+        status === "M" ? "update" :
+        status === "D" ? "delete" : "other";
+
+      changelog.log.push({
+        date: now,
+        file: file.trim(),
+        description: message.trim(),
+        user: author.trim(),
+        type
+      });
+    });
+
+  fs.writeFileSync(CHANGELOG_PATH, JSON.stringify(changelog, null, 2));
+  console.log(`✅ codex-changelog.json updated with commit ${commitHash}`);
+} catch (err) {
+  console.error("❌ Error updating changelog:", err.message);
+}
