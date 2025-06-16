@@ -1,0 +1,70 @@
+{
+  "holidays": [
+    {
+      "name": "New Year's Day",
+      "month": 1,
+      "day": 1,
+      "date": "2025-01-01"
+    },
+    {
+      "name": "Martin Luther King Jr. Day",
+      "month": 1,
+      "day": 20,
+      "date": "2025-01-20"
+    },
+    {
+      "name": "Presidents' Day",
+      "month": 2,
+      "day": 17,
+      "date": "2025-02-17"
+    },
+    {
+      "name": "Memorial Day",
+      "month": 5,
+      "day": 26,
+      "date": "2025-05-26"
+    },
+    {
+      "name": "Juneteenth National Independence Day",
+      "month": 6,
+      "day": 19,
+      "date": "2025-06-19"
+    },
+    {
+      "name": "Independence Day",
+      "month": 7,
+      "day": 4,
+      "date": "2025-07-04"
+    },
+    {
+      "name": "Labor Day",
+      "month": 9,
+      "day": 1,
+      "date": "2025-09-01"
+    },
+    {
+      "name": "Columbus Day",
+      "month": 10,
+      "day": 13,
+      "date": "2025-10-13"
+    },
+    {
+      "name": "Veterans Day",
+      "month": 11,
+      "day": 11,
+      "date": "2025-11-11"
+    },
+    {
+      "name": "Thanksgiving Day",
+      "month": 11,
+      "day": 27,
+      "date": "2025-11-27"
+    },
+    {
+      "name": "Christmas Day",
+      "month": 12,
+      "day": 25,
+      "date": "2025-12-25"
+    }
+  ]
+}
