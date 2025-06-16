@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  const query = window.location.search;
+  if (!query.includes('v=')) {
+    const version = Date.now();
+    const newUrl = window.location.pathname + '?v=' + version;
+    window.location.replace(newUrl);
+  }
+</script>
   <meta charset="utf-8">
   <title>Skyesoft Login</title>
   <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
