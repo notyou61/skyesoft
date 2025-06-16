@@ -81,6 +81,7 @@ skyesoft/
 - All rendering uses `master_content.json`
 - Run `node render.js lead_or_sell` to generate HTML
 - Customize presentation via `template.html` + `style.css`
+- Public demo login page available at `index.html`
 
 ---
 
