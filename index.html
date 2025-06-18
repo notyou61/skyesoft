@@ -62,6 +62,23 @@
       color: #ccc;
     }
   </style>
+  <script>
+  const sse = new EventSource('/api/stream');
+
+  sse.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('🔥 SSE Update:', data);
+      // Future: update the DOM from data here
+    } catch (e) {
+      console.error('SSE data parse error:', e);
+    }
+  };
+
+  sse.onerror = (err) => {
+    console.error('SSE connection error:', err);
+  };
+  </script>
 </head>
 <body>
   <div class="login-container">
