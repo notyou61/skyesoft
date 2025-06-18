@@ -1,86 +1,22 @@
 ﻿<!DOCTYPE html>
+<!-- HTML -->
 <html lang="en">
+<!-- Head -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SkyeSoft Login</title>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      color: #fff;
-    }
-
-    .login-container {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 32px;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
-    }
-
-    .login-container h1 {
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
-    .login-container input {
-      width: 100%;
-      padding: 12px;
-      margin: 12px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-
-    .login-container button {
-      width: 100%;
-      padding: 12px;
-      background: #4caf50;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-
-    .login-container button:hover {
-      background: #45a049;
-    }
-
-    .version {
-      margin-top: 12px;
-      font-size: 0.85rem;
-      text-align: center;
-      color: #ccc;
-    }
+    /* [Keep all your CSS as-is] */
   </style>
   <script>
-  const sse = new EventSource('/api/stream');
-
-  sse.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('🔥 SSE Update:', data);
-      // Future: update the DOM from data here
-    } catch (e) {
-      console.error('SSE data parse error:', e);
-    }
-  };
-
-  sse.onerror = (err) => {
-    console.error('SSE connection error:', err);
-  };
+    // 🔐 Future enhancement placeholder
+    // console.log('SkyeSoft is ready.');
   </script>
 </head>
+<!-- Body -->
 <body>
+  <!-- Skyesoft Login Div -->
   <div class="login-container">
     <h1>🔐 SkyeSoft Login</h1>
     <input type="text" placeholder="Username" id="username" />
@@ -88,7 +24,7 @@
     <button onclick="handleLogin()">Login</button>
     <div class="version">v2025.06.16</div>
   </div>
-
+  <!-- Script -->
   <script>
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
