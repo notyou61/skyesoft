@@ -10,7 +10,7 @@ const glbVar = {
     end: "15:30"
   },
   intervalRemaining: "",
-  version: "v2025.06.11.0800a",
+  version: "", // ✅ Will be populated dynamically
   weather: {
     temp: null,
     icon: "❓",
@@ -37,7 +37,20 @@ const glbVar = {
     "Sharpen the Saw – Invest in continuous personal growth."
   ]
 };
-
+// ✅ Dynamically fetch and assign version to glbVar and .version display
+fetch("assets/data/version.json")
+.then(res => res.json())
+.then(data => {
+  if (data.version) {
+    glbVar.version = data.version;
+    const versionElement = document.querySelector('.version');
+    if (versionElement) versionElement.textContent = data.version;
+  }
+})
+.catch(err => {
+  console.error("Failed to load version:", err);
+});
+//
 function calculateIntervalRemaining(now) {
   const day = now.getDay();
   const isWeekend = (day === 0 || day === 6);
