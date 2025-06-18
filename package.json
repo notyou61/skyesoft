@@ -1,0 +1,30 @@
+{
+  "name": "skyesoft",
+  "version": "1.0.0",
+  "description": "Skyesoft is a modular, real-time operations system for field-based industries.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node sseServer.js",
+    "update-changelog": "node scripts/update-changelog.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-container": "^4.0.0",
+    "marked": "^15.0.11",
+    "puppeteer": "^24.7.1",
+    "remarkable": "^2.0.1"
+  },
+  "keywords": [],
+  "author": "Steve Skye",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notyou61/skyesoft.git"
+  },
+  "bugs": {
+    "url": "https://github.com/notyou61/skyesoft/issues"
+  },
+  "homepage": "https://github.com/notyou61/skyesoft#readme"
+}
