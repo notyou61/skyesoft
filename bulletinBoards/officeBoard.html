@@ -1120,27 +1120,30 @@ if (!label) {
   // Update the meeting reminder element
   meetingElement.textContent = label;
 }
-
-/**
- * DOMContentLoaded handler
- */
+// 🔁 When the DOM is fully loaded...
 window.addEventListener("DOMContentLoaded", () => {
-  // Console log to indicate the DOM is fully loaded
   console.log("🔁 DOM Content Loaded");
-  // Version Check
-  if (typeof glbVar !== 'undefined' && glbVar.version) {
-        const versionElement = document.querySelector('.version');
-        if (versionElement) {
-            //versionElement.textContent = "v2025.06.11.0800a";
-            versionElement.textContent = glbVar.version; // ✅ Now dynamic
-        }
-    }
-    // Update Weather Display
-    updateWeatherDisplay(); // Fetch and display weather on load
-    // Update Weather Display
-    setInterval(updateWeatherDisplay, 900000); // Update every 15 minutes
-    // Rotate Cards
-    rotateCards(); // Start card rotation
+
+  // 🔽 Load the dynamic version from version.json
+  fetch("assets/data/version.json")
+    .then(res => res.json())
+    .then(data => {
+      const versionElement = document.querySelector('.version');
+      if (versionElement && data.version) {
+        versionElement.textContent = data.version; // ✅ Set dynamically
+        console.log("🆗 Version loaded:", data.version);
+      }
+    })
+    .catch(err => console.warn("⚠️ Version fetch failed:", err));
+
+  // 🌤️ Fetch and display weather on page load
+  updateWeatherDisplay();
+
+  // 🕒 Refresh weather every 15 minutes
+  setInterval(updateWeatherDisplay, 900000);
+
+  // 🔄 Rotate bulletin board cards
+  rotateCards();
 });
 </script>
 </body>
