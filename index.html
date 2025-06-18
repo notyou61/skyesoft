@@ -1,41 +1,127 @@
 ﻿<!DOCTYPE html>
-<!-- HTML -->
+<!--
+  Skyesoft Login Page
+  Description: Simple HTML login mockup for SkyeSoft portal
+  Version: Loaded dynamically from assets/data/version.json
+-->
+
 <html lang="en">
-<!-- Head -->
+<!-- ===================== HEAD SECTION ===================== -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SkyeSoft Login</title>
+  <title>Skyesoft Login</title>
+
+  <!-- ===== Styling ===== -->
   <style>
-    /* [Keep all your CSS as-is] */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+
+    .login-container {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 32px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .login-container h1 {
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .login-container input {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      background: #4caf50;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .login-container button:hover {
+      background: #45a049;
+    }
+
+    .version {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      text-align: center;
+      color: #ccc;
+    }
   </style>
+
+  <!-- ===== Optional future JS setup ===== -->
   <script>
-    // 🔐 Future enhancement placeholder
-    // console.log('SkyeSoft is ready.');
+    // Reserved for future init code
+    // console.log('SkyeSoft Login page initialized');
   </script>
 </head>
-<!-- Body -->
+
+<!-- ===================== BODY SECTION ===================== -->
 <body>
-  <!-- Skyesoft Login Div -->
+  <!-- ===== Login Panel ===== -->
   <div class="login-container">
     <h1>🔐 SkyeSoft Login</h1>
     <input type="text" placeholder="Username" id="username" />
     <input type="password" placeholder="Password" id="password" />
     <button onclick="handleLogin()">Login</button>
-    <div class="version">v2025.06.16</div>
+
+    <!-- Version placeholder (updated dynamically) -->
+    <div class="version" id="app-version">Loading version...</div>
   </div>
-  <!-- Script -->
+
+  <!-- ===== Script: Login handler ===== -->
   <script>
+    /**
+     * handleLogin()
+     * Simulates login attempt for prototype
+     */
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value.trim();
       if (u && p) {
-        alert(`Login attempt by ${u}... (mockup only)`);
-        // TODO: Add real auth later
+        alert(`Login attempt by ${u}... (mockup only)`); // placeholder alert
+        // TODO: Integrate real authentication mechanism
       } else {
         alert("Please enter both username and password.");
       }
     }
+
+    /**
+     * Fetch and inject version number
+     * Loads from assets/data/version.json
+     */
+    fetch('assets/data/version.json')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('app-version').textContent = data.version;
+      })
+      .catch(err => {
+        console.error("Failed to load version info:", err);
+        document.getElementById('app-version').textContent = "vUnknown";
+      });
   </script>
 </body>
 </html>
