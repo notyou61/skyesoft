@@ -1,4 +1,4 @@
-
+// glbVar
 const glbVar = {
   timeDate: {
     now: new Date()
@@ -38,7 +38,7 @@ const glbVar = {
   ]
 };
 // ✅ Dynamically fetch and assign version to glbVar and .version display
-fetch("assets/data/version.json")
+fetch("../data/version.json")
 .then(res => res.json())
 .then(data => {
   if (data.version) {
