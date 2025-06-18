@@ -1131,7 +1131,8 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof glbVar !== 'undefined' && glbVar.version) {
         const versionElement = document.querySelector('.version');
         if (versionElement) {
-            versionElement.textContent = "v2025.06.11.0800a";
+            //versionElement.textContent = "v2025.06.11.0800a";
+            versionElement.textContent = glbVar.version; // ✅ Now dynamic
         }
     }
     // Update Weather Display
