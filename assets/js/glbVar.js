@@ -38,7 +38,7 @@ const glbVar = {
   ]
 };
 // ✅ Dynamically fetch and assign version to glbVar and .version display
-fetch("../data/version.json")
+fetch("/skyesoft/assets/data/version.json")
 .then(res => res.json())
 .then(data => {
   if (data.version) {
