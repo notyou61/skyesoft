@@ -1,11 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Skyesoft Dashboard Login</title>
-  <link rel="icon" href="../assets/images/favicon.ico" type="image/x-icon">
+  <title>Skyesoft Dashboard</title>
+  <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon">
   <style>
-    /* === Global Reset & Layout === */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -14,153 +13,112 @@
     html, body {
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('../assets/images/background.jpg') no-repeat center center fixed;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-
-    /* === Shared Container Styling === */
     .board-section {
       width: 90vw;
-      max-width: 1280px;
+      max-width: 1200px;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 16px;
-      margin-top: 16px;
-    }
-
-    /* === Header/Footer Panels === */
-    #pageHeader, #pageFooter {
-      width: 90vw;
-      max-width: 1280px;
-      background-color: #fff;
-      padding: 12px;
-      border-radius: 12px;
+      padding: 8px 16px;
     }
     #pageHeader {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-top: 12px;
     }
-
-    /* === Body Panel === */
     #pageBody {
-      width: 90vw;
-      max-width: 1280px;
-      margin-top: 16px;
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 0;
     }
-    .bodyHeader {
-      font-size: 1.3em;
-      font-weight: bold;
-      margin-bottom: 8px;
+    #pageFooter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8em;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin: 12px 0;
     }
-    .bodyHeader::after {
-      content: "";
-      display: block;
-      height: 2px;
-      width: 100%;
-      background: #ccc;
-      margin-top: 6px;
-    }
-
-    /* === Login Card === */
-    .cardBody {
+    .login-container {
+      background: #fff;
+      padding: 24px 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
-      padding: 20px 0;
+      min-width: 320px;
     }
-    input {
-      width: 100%;
-      max-width: 300px;
+    .login-container input {
+      margin-bottom: 12px;
       padding: 10px;
-      font-size: 1em;
+      width: 100%;
       border: 1px solid #ccc;
       border-radius: 6px;
     }
-    button {
-      width: 100%;
-      max-width: 300px;
+    .login-container button {
       padding: 10px;
+      width: 100%;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 1em;
     }
-    button:hover {
+    .login-container button:hover {
       background-color: #0056b3;
     }
-    #loginMessage {
-      font-size: 0.95em;
-      text-align: center;
+    .login-container h2 {
+      margin-bottom: 16px;
     }
-
     .version {
-      font-size: 0.85em;
       color: #777;
-      text-align: right;
     }
   </style>
 </head>
 <body>
-  <!-- 🔵 Header Area -->
-  <div id="pageHeader" class="board-section">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <img src="../assets/images/favicon.ico" alt="Logo" style="height: 48px;">
+  <div class="board-section" id="pageHeader">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="height: 48px;" />
       <h1>Skyesoft Dashboard</h1>
     </div>
     <div></div>
   </div>
 
-  <!-- 🟢 Login Form Section -->
-  <div id="pageBody" class="board-section">
-    <div class="bodyHeader">🔐 Login</div>
-    <div class="cardBody">
-      <input type="email" id="username" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="handleLogin()">Login</button>
-      <p id="loginMessage"></p>
+  <div class="board-section" id="pageBody">
+    <div class="login-container">
+      <h2>🔒 Login</h2>
+      <input type="email" placeholder="Email" />
+      <input type="password" placeholder="Password" />
+      <button onclick="alert('Login logic not implemented')">Login</button>
     </div>
   </div>
 
-  <!-- 🟣 Footer Area -->
-  <div id="pageFooter" class="board-section">
+  <div class="board-section" id="pageFooter">
     <div>© 2025 Maychris Corporation</div>
     <div class="version" id="app-version">vUnknown</div>
   </div>
 
-  <!-- 🔽 Scripts -->
   <script>
-    // ✅ Load version number dynamically from version.json
-    document.addEventListener('DOMContentLoaded', () => {
-      fetch('../assets/data/version.json')
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById('app-version').textContent = data.version;
-        })
-        .catch(err => console.warn("Version load error:", err));
-    });
-
-    // ✅ Basic Login Handler
-    function handleLogin() {
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value.trim();
-      const msg = document.getElementById('loginMessage');
-      if (u === 'steve@christysigns.com' && p === '1234') {
-        msg.style.color = 'green';
-        msg.textContent = '✅ Login successful!';
-        setTimeout(() => window.location.href = 'dashboard.html', 1000);
-      } else {
-        msg.style.color = 'red';
-        msg.textContent = '❌ Invalid credentials';
-      }
-    }
+    // Load version dynamically
+    fetch('/skyesoft/assets/data/version.json')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('app-version').textContent = data.version;
+      })
+      .catch(err => {
+        console.warn('Version load failed:', err);
+      });
   </script>
 </body>
 </html>
