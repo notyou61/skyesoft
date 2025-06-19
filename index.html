@@ -13,10 +13,9 @@
       background: #f4f4f4;
     }
     .board-section {
-      padding: 20px;
-      background: #fff;
-      max-width: 1200px;
-      margin: auto;
+      padding: 8px 16px;       /* Reduce top/bottom padding */
+      margin: 0 auto;          /* Keep centered */
+      max-width: 960px;
     }
     #pageHeader {
       display: flex;
@@ -25,8 +24,26 @@
       border-bottom: 1px solid #ccc;
       margin-bottom: 24px;
     }
+    
     #pageHeader img {
       height: 48px;
+    }
+    
+    #pageBody {
+      margin-top: 8px;         /* Reduce spacing from header */
+      margin-bottom: 8px;      /* Reduce spacing from footer */
+    }
+
+    #bodyMain {
+      padding: 12px;           /* Less padding inside login */
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;                /* Tighter spacing between fields */
+      max-width: 320px;
+      margin: 0 auto;
     }
     #pageFooter {
       display: flex;
@@ -35,19 +52,21 @@
       margin-top: 24px;
       font-size: 0.9em;
       color: #666;
+      margin-top: 16px; /* was 24px */
     }
     .bodyHeader {
       font-size: 1.3em;
       font-weight: bold;
       margin-bottom: 16px;
       text-align: center;
+      margin-top: 0;
     }
     .login-container {
       background: #eef;
       padding: 24px;
       border-radius: 12px;
       max-width: 400px;
-      margin: auto;
+      margin: 8px auto; /* replaces just 'auto' for top/bottom spacing control */
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
     .login-container input {
