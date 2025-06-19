@@ -2,24 +2,16 @@
 <!--
   Skyesoft Unified Login + Dashboard Page
   ---------------------------------------
-  Purpose:
-    This single-page web app handles login and transitions to a dashboard.
-    This version aligns visually with officeBoard.html for unified branding.
+  Unified with officeBoard.html styling for visual consistency.
 -->
 <html lang="en">
 <head>
-  <!-- ===== Meta & Title ===== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skyesoft Dashboard</title>
-
-  <!-- ===== Favicon ===== -->
   <link rel="icon" href="assets/images/favicon.ico" />
-
-  <!-- ===== Fonts & Styles ===== -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
   <style>
-    /* === Base Page Style === */
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
@@ -29,67 +21,76 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      align-items: center;
     }
 
-    /* === Shared Section Container === */
-    .board-section {
-      background: rgba(255, 255, 255, 0.9);
-      margin: 20px auto;
-      padding: 24px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 960px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    }
-
-    /* === Header & Footer === */
     header, footer {
+      width: 100%;
       text-align: center;
       padding: 12px;
       background-color: rgba(255, 255, 255, 0.85);
     }
+
     header h1 {
       margin: 0;
       font-size: 1.8rem;
     }
+
     .version {
       font-size: 0.8rem;
       color: #555;
     }
 
-    /* === Inputs & Buttons === */
+    .board-section {
+      background: rgba(255, 255, 255, 0.95);
+      margin: 40px auto;
+      padding: 32px;
+      border-radius: 16px;
+      width: 95%;
+      max-width: 1280px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+
     input, button, textarea {
       width: 100%;
-      padding: 10px;
-      margin: 10px 0;
+      padding: 12px;
+      margin: 12px 0;
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 6px;
     }
+
     button {
       background-color: #007bff;
       color: white;
       border: none;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #0056b3;
     }
 
-    /* === Utility === */
     .hidden { display: none; }
+
+    .scrollContainer {
+      max-height: 480px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
-  <!-- === Header (Shared) === -->
   <header>
     <h1>Skyesoft Dashboard</h1>
   </header>
 
-  <!-- === Login Section (Formatted like bulletin board) === -->
+  <!-- Login Panel -->
   <section class="board-section" id="loginPanel">
     <h2>🔐 Login</h2>
-    <div style="margin: 0 auto; max-width: 400px;">
+    <div style="max-width: 400px; margin: auto;">
       <input type="email" id="username" placeholder="Email" />
       <input type="password" id="password" placeholder="Password" />
       <button onclick="handleLogin()">Login</button>
@@ -97,45 +98,42 @@
     </div>
   </section>
 
-  <!-- === Dashboard Section === -->
+  <!-- Dashboard Panel -->
   <section class="board-section hidden" id="dashboardPanel">
     <h2>📊 Welcome, Steve</h2>
 
-    <!-- Sign AI Prompt -->
     <label for="aiPrompt">🧠 Sign AI Prompt</label>
     <textarea id="aiPrompt" placeholder="Ask about permits, cities, or sign types..."></textarea>
     <button onclick="submitAIPrompt()">Submit Prompt</button>
 
-    <!-- Permit Table -->
     <h3>📋 Permit Records</h3>
-    <table id="permitTable" class="display">
-      <thead>
-        <tr>
-          <th>Permit #</th>
-          <th>Client</th>
-          <th>City</th>
-          <th>Status</th>
-          <th>Submitted</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>T30057</td><td>Habit Burger</td><td>Phoenix</td><td>Approved</td><td>2025-06-10</td></tr>
-        <tr><td>250721</td><td>Habit Burger</td><td>Phoenix</td><td>Pending</td><td>2025-06-15</td></tr>
-        <tr><td>260342</td><td>Starbucks</td><td>Glendale</td><td>Denied</td><td>2025-06-05</td></tr>
-      </tbody>
-    </table>
+    <div class="scrollContainer">
+      <table id="permitTable" class="display">
+        <thead>
+          <tr>
+            <th>Permit #</th>
+            <th>Client</th>
+            <th>City</th>
+            <th>Status</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>T30057</td><td>Habit Burger</td><td>Phoenix</td><td>Approved</td><td>2025-06-10</td></tr>
+          <tr><td>250721</td><td>Habit Burger</td><td>Phoenix</td><td>Pending</td><td>2025-06-15</td></tr>
+          <tr><td>260342</td><td>Starbucks</td><td>Glendale</td><td>Denied</td><td>2025-06-05</td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- === Footer (Shared) === -->
   <footer>
     <div class="version" id="app-version">vUnknown</div>
   </footer>
 
-  <!-- === JavaScript === -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script>
-    // 💡 Load version dynamically from JSON
     fetch('./assets/data/version.json')
       .then(res => res.json())
       .then(data => {
@@ -147,11 +145,9 @@
         document.getElementById('app-version').textContent = 'vUnknown';
       });
 
-    // 🔐 Login validation (mock/hardcoded)
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value;
-
       if (u === 'steve@christysigns.com' && p === '1234') {
         document.getElementById('loginPanel').classList.add('hidden');
         document.getElementById('dashboardPanel').classList.remove('hidden');
@@ -161,12 +157,10 @@
       }
     }
 
-    // 🧠 Placeholder for AI prompt
     function submitAIPrompt() {
       const prompt = document.getElementById('aiPrompt').value.trim();
       if (prompt) {
         alert(`🚀 Processing: "${prompt}"`);
-        // TODO: Replace with actual AI processing logic
       } else {
         alert("Please enter a prompt.");
       }
