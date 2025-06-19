@@ -118,12 +118,20 @@
 
   <!-- ===== Core Logic ===== -->
   <script>
-    // Load version dynamically
-    fetch('skyesoft/assets/data/version.json')
-      .then(res => res.json())
-      .then(data => document.getElementById('app-version').textContent = data.version)
-      .catch(() => document.getElementById('app-version').textContent = 'vUnknown');
-
+  // Load version dynamically with MTCO console feedback
+  fetch('assets/data/version.json')
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      document.getElementById('app-version').textContent = data.version;
+      console.log(`✅ Version loaded: ${data.version}`);
+    })
+    .catch(err => {
+      console.warn('❌ Version load failed:', err);
+      document.getElementById('app-version').textContent = 'vUnknown';
+    });
     // Login Handler (Hardcoded)
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
@@ -137,7 +145,6 @@
         document.getElementById('loginMessage').innerText = '❌ Invalid login';
       }
     }
-
     // AI Prompt Handler (Placeholder)
     function submitAIPrompt() {
       const prompt = document.getElementById('aiPrompt').value.trim();
