@@ -1,141 +1,152 @@
 ﻿<!DOCTYPE html>
 <!--
-  Skyesoft Login + Dashboard Page
-  Purpose: Hardcoded login with dynamic dashboard using DataTables + Sign AI Prompt
+  Skyesoft Unified Login + Dashboard Page
+  ---------------------------------------
+  Purpose:
+    This single-page web app handles login and transitions to a dashboard.
+    It uses DataTables for data display and includes a Sign AI prompt field.
+    This version aligns visually with officeBoard.html for unified branding.
 -->
 <html lang="en">
-<!-- Head -->
 <head>
+  <!-- ===== Meta & Title ===== -->
   <meta charset="UTF-8" />
-  <!-- Meta Tags -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Favicon -->
+  <title>Skyesoft Dashboard</title>
+
+  <!-- ===== Favicon ===== -->
   <link rel="icon" href="assets/images/favicon.ico" />
-  <!-- Title -->
-  <title>Skyesoft Login</title>
-  <!-- DataTables CSS -->
+
+  <!-- ===== Fonts & Styles ===== -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-  <!-- ===== Styling ===== -->
   <style>
+    /* === Base Page Style === */
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: #fff;
-      height: 100vh;
-    }
-
-    .centered {
+      background: url('assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #000;
+      min-height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
+      flex-direction: column;
     }
 
-    .login-container, .dashboard-container {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 32px;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 600px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    /* === Shared Section Container === */
+    .board-section {
+      background: rgba(255, 255, 255, 0.9);
+      margin: 20px auto;
+      padding: 24px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 960px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
     }
 
+    /* === Header & Footer === */
+    header, footer {
+      text-align: center;
+      padding: 12px;
+      background-color: rgba(255, 255, 255, 0.85);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+    .version {
+      font-size: 0.8rem;
+      color: #555;
+    }
+
+    /* === Inputs & Buttons === */
     input, button, textarea {
       width: 100%;
-      padding: 12px;
-      margin: 12px 0;
-      border-radius: 6px;
-      border: none;
+      padding: 10px;
+      margin: 10px 0;
       font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
-
     button {
-      background-color: #4caf50;
+      background-color: #007bff;
       color: white;
+      border: none;
       cursor: pointer;
     }
-
     button:hover {
-      background-color: #45a049;
+      background-color: #0056b3;
     }
 
+    /* === Utility === */
     .hidden { display: none; }
-
-    .version {
-      margin-top: 12px;
-      font-size: 0.85rem;
-      text-align: center;
-      color: #ccc;
-    }
-
-    table.dataTable { background-color: white; color: black; }
   </style>
 </head>
-<!-- Body -->
 <body>
-  <div class="centered">
+  <!-- === Header (Shared) === -->
+  <header>
+    <h1>Skyesoft Dashboard</h1>
+  </header>
 
-    <!-- 🔐 LOGIN SECTION -->
-    <div class="login-container" id="loginPanel">
-      <h2>🔐 Skyesoft Login</h2>
-      <input type="email" id="username" placeholder="Email" />
-      <input type="password" id="password" placeholder="Password" />
-      <button onclick="handleLogin()">Login</button>
-      <div class="version" id="app-version">Loading version...</div>
-      <p id="loginMessage" style="color:#ffcccc;"></p>
-    </div>
+  <!-- === Login Section === -->
+  <section class="board-section" id="loginPanel">
+    <h2>🔐 Login</h2>
+    <input type="email" id="username" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="handleLogin()">Login</button>
+    <p id="loginMessage" style="color:red;"></p>
+  </section>
 
-    <!-- 📊 DASHBOARD SECTION -->
-    <div class="dashboard-container hidden" id="dashboardPanel">
-      <h2>📊 Welcome, Steve</h2>
+  <!-- === Dashboard Section === -->
+  <section class="board-section hidden" id="dashboardPanel">
+    <h2>📊 Welcome, Steve</h2>
 
-      <!-- 🧠 Sign AI Prompt -->
-      <label for="aiPrompt">Sign AI Prompt</label>
-      <textarea id="aiPrompt" placeholder="Ask something about a permit, jurisdiction, sign type..."></textarea>
-      <button onclick="submitAIPrompt()">Submit Prompt</button>
+    <!-- Sign AI Prompt -->
+    <label for="aiPrompt">🧠 Sign AI Prompt</label>
+    <textarea id="aiPrompt" placeholder="Ask about permits, cities, or sign types..."></textarea>
+    <button onclick="submitAIPrompt()">Submit Prompt</button>
 
-      <!-- 📋 DataTable -->
-      <h3>📋 Permit Records</h3>
-      <table id="permitTable" class="display">
-        <thead>
-          <tr>
-            <th>Permit #</th>
-            <th>Client</th>
-            <th>City</th>
-            <th>Status</th>
-            <th>Submitted</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>T30057</td><td>Habit Burger</td><td>Phoenix</td><td>Approved</td><td>2025-06-10</td></tr>
-          <tr><td>250721</td><td>Habit Burger</td><td>Phoenix</td><td>Pending</td><td>2025-06-15</td></tr>
-          <tr><td>260342</td><td>Starbucks</td><td>Glendale</td><td>Denied</td><td>2025-06-05</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- Permit Table -->
+    <h3>📋 Permit Records</h3>
+    <table id="permitTable" class="display">
+      <thead>
+        <tr>
+          <th>Permit #</th>
+          <th>Client</th>
+          <th>City</th>
+          <th>Status</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>T30057</td><td>Habit Burger</td><td>Phoenix</td><td>Approved</td><td>2025-06-10</td></tr>
+        <tr><td>250721</td><td>Habit Burger</td><td>Phoenix</td><td>Pending</td><td>2025-06-15</td></tr>
+        <tr><td>260342</td><td>Starbucks</td><td>Glendale</td><td>Denied</td><td>2025-06-05</td></tr>
+      </tbody>
+    </table>
+  </section>
 
-  </div>
-  <!-- JS Libraries -->
+  <!-- === Footer (Shared) === -->
+  <footer>
+    <div class="version" id="app-version">vUnknown</div>
+  </footer>
+
+  <!-- === JavaScript === -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <!-- ===== Core Logic ===== -->
   <script>
-  // Load version dynamically with MTCO console feedback
-  fetch('./assets/data/version.json')
-    .then(res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      document.getElementById('app-version').textContent = data.version;
-      console.log(`✅ Version loaded: ${data.version}`);
-    })
-    .catch(err => {
-      console.warn('❌ Version load failed:', err);
-      document.getElementById('app-version').textContent = 'vUnknown';
-    });
-    // Login Handler (Hardcoded)
+    // 💡 Load version dynamically from JSON
+    fetch('./assets/data/version.json')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('app-version').textContent = data.version;
+        console.log(`✅ Version loaded: ${data.version}`);
+      })
+      .catch(err => {
+        console.warn('❌ Version load failed:', err);
+        document.getElementById('app-version').textContent = 'vUnknown';
+      });
+
+    // 🔐 Login validation (mock/hardcoded)
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
       const p = document.getElementById('password').value;
@@ -148,14 +159,15 @@
         document.getElementById('loginMessage').innerText = '❌ Invalid login';
       }
     }
-    // AI Prompt Handler (Placeholder)
+
+    // 🧠 Placeholder for AI prompt
     function submitAIPrompt() {
       const prompt = document.getElementById('aiPrompt').value.trim();
       if (prompt) {
-        alert(`🚀 Pretending to process: "${prompt}"`);
-        // TODO: Send prompt to backend AI service
+        alert(`🚀 Processing: "${prompt}"`);
+        // TODO: Replace with actual AI processing logic
       } else {
-        alert("Please enter a prompt first.");
+        alert("Please enter a prompt.");
       }
     }
   </script>
