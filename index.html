@@ -4,7 +4,6 @@
   ---------------------------------------
   Purpose:
     This single-page web app handles login and transitions to a dashboard.
-    It uses DataTables for data display and includes a Sign AI prompt field.
     This version aligns visually with officeBoard.html for unified branding.
 -->
 <html lang="en">
@@ -87,13 +86,15 @@
     <h1>Skyesoft Dashboard</h1>
   </header>
 
-  <!-- === Login Section === -->
+  <!-- === Login Section (Formatted like bulletin board) === -->
   <section class="board-section" id="loginPanel">
     <h2>🔐 Login</h2>
-    <input type="email" id="username" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="handleLogin()">Login</button>
-    <p id="loginMessage" style="color:red;"></p>
+    <div style="margin: 0 auto; max-width: 400px;">
+      <input type="email" id="username" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="handleLogin()">Login</button>
+      <p id="loginMessage" style="color:red;"></p>
+    </div>
   </section>
 
   <!-- === Dashboard Section === -->
