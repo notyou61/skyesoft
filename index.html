@@ -1,93 +1,391 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Skyesoft Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- FULL STYLE BLOCK (truncated for this example) -->
+ <head>
+  <meta charset="utf-8"/>
+  <title>
+   Skyesoft Dashboard
+  </title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
-      background-size: cover;
+   * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
+
+    html,
+    body {
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
     .board-section {
       width: 90vw;
       max-width: 1200px;
-      margin: 16px auto;
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 8px 16px;
     }
+
+    #pageHeader,
+    #pageFooter {
+      flex-shrink: 0;
+    }
+
+    #pageBody {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      margin: 12px 0;
+      max-height: calc(100vh - 160px);
+      overflow: hidden;
+    }
+
     #pageHeader {
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-size: 1.1em;
-      margin-bottom: 12px;
+      margin-top: 12px;
     }
-    #pageHeader img {
-      height: 48px;
-    }
-    #pageBody {
-      margin-top: 8px;
-    }
-    #bodyMain {
-      margin-top: 16px;
-      text-align: center;
-    }
-    input {
-      margin: 8px;
-      padding: 10px;
+
+    #bodyHeader,
+    #bodyFooter {
+      font-weight: bold;
       font-size: 1em;
-      width: 240px;
+      text-align: left;
+      margin-bottom: 8px;
     }
-    button {
-      padding: 10px 20px;
-      background: #003366;
-      color: white;
-      border: none;
-      cursor: pointer;
+
+    #bodyMain {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  margin-top: -4px; /* Adjust to close gap under header rule */
+}
+
+    .entry {
+      margin: 6px 0;
+      font-size: 1.05em;
     }
+
     #pageFooter {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       font-size: 0.8em;
-      margin-top: 24px;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin-bottom: 12px;
     }
+
+    .cardBody {
+  overflow-y: auto;
+  max-height: 60vh;
+  flex-grow: 1;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+    .announcementItem {
+      font-size: 1.1em;
+      margin: 4px 0;
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .announcementItem::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #222;
+    }
+
+    .bodyHeader::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-top: 6px;
+  margin-bottom: 0px; /* Tighter spacing under the bar */
+}
+
+.bodyHeader h2 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+
+
+    .bodyFooter::before {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-bottom: 6px;
+    }
+
+    .version {
+      font-size: 0.8em;
+      color: #777;
+    }
+  
+    .forecastRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .forecastItem {
+      flex: 1;
+      font-size: 0.8rem;
+      min-width: 200px;
+    }
+.permitCard {
+  max-height: 500px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.scrollContainer {
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.permitTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto; /* Allow dynamic column sizing */
+}
+
+.permitTable thead {
+  position: sticky;
+  top: 0;
+  background-color: #004080;
+  color: #fff;
+  z-index: 2;
+}
+
+.permitTable thead tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.permitTable thead th {
+  padding: 6px 8px;
+  border-bottom: 1px solid #ddd;
+  box-sizing: border-box;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* Prevent stretching */
+  max-width: 0; /* Enforce strict width */
+}
+
+/* Explicit column widths */
+.permitTable thead th:nth-child(1) {
+  width: 10%; /* WO # */
+}
+.permitTable thead th:nth-child(2) {
+  width: 25%; /* Customer Name */
+}
+.permitTable thead th:nth-child(3) {
+  width: 25%; /* Jobsite */
+}
+.permitTable thead th:nth-child(4) {
+  width: 15%; /* Jurisdiction */
+}
+.permitTable thead th:nth-child(5) {
+  width: 10%; /* Fee Due */
+}
+.permitTable thead th:nth-child(6) {
+  width: 15%; /* Status */
+}
+
+.permitTable tbody {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.permitTable tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.permitTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  white-space: nowrap; /* Keep nowrap for others */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Allow Status column to fully display its content */
+.permitTable td:last-child, .permitTable th:last-child {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  width: 15%; /* Increase if needed */
+}
+
+/* Ensure body columns match header widths */
+.permitTable td:nth-child(1) {
+  width: 10%; /* WO # */
+}
+.permitTable td:nth-child(2) {
+  width: 25%; /* Customer Name */
+}
+.permitTable td:nth-child(3) {
+  width: 25%; /* Jobsite */
+}
+.permitTable td:nth-child(4) {
+  width: 15%; /* Jurisdiction */
+}
+.permitTable td:nth-child(5) {
+  width: 10%; /* Fee Due */
+}
+.permitTable td:nth-child(6) {
+  width: 15%; /* Status */
+}
+
+.permitTable tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.status-ready {
+  color: green;
+  font-weight: bold;
+}
+
+.status-review {
+  color: orange;
+  font-weight: bold;
+}
+.kpiGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kpiColumn {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 300px;
+}
+
+.kpiColumn h3 {
+  color: #004080;
+  margin: 8px 0;
+}
+
+.entry {
+  margin: 4px 0;
+}
+
+@media (max-width: 800px) {
+  .kpiColumn {
+    flex: 1 1 100%;
+  }
+}
+.announcementGrid {
+  display: flex;
+  gap: 24px;
+}
+
+.leftColumn, .rightColumn {
+  flex: 1;
+  min-width: 300px;
+}
+
+.announcement ul {
+  padding-left: 24px; /* Add space to prevent cutoff */
+  margin: 0;
+}
+
+.announcement li {
+  margin-bottom: 6px;
+  list-style-position: inside; /* Keep the bullets visible within the content box */
+}
   </style>
-</head>
-<body>
-  <div class="board-section" id="pageHeader">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs">
-      <h1>Skyesoft Dashboard</h1>
+ </head>
+ <body>
+  <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+   <div style="display: flex; align-items: center; gap: 16px;">
+    <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
+    <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+     Office Bulletin
+        Board
+    </h1>
+   </div>
+   <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+    <div>
+     🌦️ Weather:
+     <span id="weatherDisplay">
+      Loading...
+     </span>
     </div>
-    <div style="text-align: right; font-size: 0.9em;">
-      <div>🌦️ Weather: <span id="weatherDisplay">☀️ 105°F, Clear sky</span></div>
-      <div>⏰ Time: <span id="currentTime">11:11:07 AM</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">00:15:32</span></div>
+    <div>
+     ⏰ Time:
+     <span id="currentTime">
+      --:--:--
+     </span>
     </div>
+    <div>
+     🕒 Interval Remaining:
+     <span id="intervalRemainingData">
+      --
+     </span>
+    </div>
+   </div>
   </div>
-
   <div class="board-section" id="pageBody">
-    <div class="bodyHeader"><h2>🔒 Login</h2></div>
-    <div id="bodyMain">
-      <form>
-        <input type="email" placeholder="Email" required><br>
-        <input type="password" placeholder="Password" required><br>
-        <button type="submit">Login</button>
-      </form>
-    </div>
-    <div class="bodyFooter" style="text-align: center; margin-top: 16px;">Welcome to the secure portal — Skyesoft Internal</div>
+   <div class="bodyHeader">
+    <h2>
+     🔒 Login
+    </h2>
+   </div>
+   <div id="bodyMain">
+    <form>
+     <input placeholder="Email" required="" type="email"/>
+     <br/>
+     <input placeholder="Password" required="" type="password"/>
+     <br/>
+     <button type="submit">
+      Login
+     </button>
+    </form>
+   </div>
+   <div class="bodyFooter">
+    Welcome to the secure portal — Skyesoft Internal
+   </div>
   </div>
-
   <div class="board-section" id="pageFooter">
-    <div>© Skyesoft</div>
-    <div class="version">v2025.06.19</div>
+   <div>
+    © Skyesoft
+   </div>
+   <div class="version">
+    v2025.06.19
+   </div>
   </div>
-</body>
+ </body>
 </html>
