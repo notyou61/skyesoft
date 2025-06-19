@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Skyesoft Dashboard Login</title>
-  <link rel="icon" href="./assets/images/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="../assets/images/favicon.ico" type="image/x-icon">
   <style>
     * {
       box-sizing: border-box;
@@ -13,7 +13,7 @@
     html, body {
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('./assets/images/background.jpg') no-repeat center center fixed;
+      background: url('../assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
       display: flex;
       flex-direction: column;
@@ -28,12 +28,14 @@
       padding: 16px;
       margin-top: 16px;
     }
-    #pageHeader {
+    #pageHeader, #pageFooter {
       width: 90vw;
       max-width: 1280px;
       background-color: #fff;
       padding: 12px;
       border-radius: 12px;
+    }
+    #pageHeader {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -49,17 +51,6 @@
       display: flex;
       align-items: center;
       gap: 12px;
-    }
-    #pageFooter {
-      width: 90vw;
-      max-width: 1280px;
-      background-color: #fff;
-      padding: 12px;
-      border-radius: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: auto;
     }
     .loginCard {
       background-color: #fff;
@@ -106,16 +97,24 @@
 <body>
   <!-- Header -->
   <div id="pageHeader">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img src="./assets/images/christyLogo.png" alt="Christy Signs Logo" style="height: 48px; width: auto; max-width: 100%;">
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Skyesoft Dashboard</h1>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <img src="../assets/images/favicon.ico" alt="Logo" style="height: 48px;">
+      <h1>Skyesoft Dashboard</h1>
     </div>
     <div></div>
   </div>
 
-  <!-- Body (to be rebuilt step-by-step) -->
-  <div id="pageBody">
-    <!-- 🛠️ Body placeholder to be rebuilt in next step -->
+  <!-- Main Body -->
+  <div class="board-section" id="pageBody">
+    <div class="bodyHeader">
+      🔐 Login
+    </div>
+    <div class="loginCard">
+      <input type="email" id="username" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="handleLogin()">Login</button>
+      <p id="loginMessage"></p>
+    </div>
   </div>
 
   <!-- Footer -->
@@ -133,6 +132,20 @@
         })
         .catch(err => console.warn("Version load error:", err));
     });
+
+    function handleLogin() {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const msg = document.getElementById('loginMessage');
+      if (u === 'steve@christysigns.com' && p === '1234') {
+        msg.style.color = 'green';
+        msg.textContent = '✅ Login successful!';
+        setTimeout(() => window.location.href = 'dashboard.html', 1000);
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = '❌ Invalid credentials';
+      }
+    }
   </script>
 </body>
 </html>
