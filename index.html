@@ -1,103 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Skyesoft Dashboard</title>
-  <link rel="stylesheet" href="assets/css/main.css" />
-  <link rel="stylesheet" href="assets/css/weather-icons.css" />
-  <link href="https://notyou61.github.io/skyesoft/favicon.ico" rel="icon" type="image/x-icon"/>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-    }
-    .board-section {
-      padding: 8px 16px;
-      margin: 0 auto;
-      max-width: 960px;
-    }
-    #pageHeader {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #ccc;
-      margin-bottom: 24px;
-    }
-    #pageHeader img {
-      height: 48px;
-    }
-    #pageBody {
-      margin-top: 8px;
-      margin-bottom: 8px;
-    }
-    #bodyMain {
-      padding: 12px;
-    }
-    .bodyHeader {
-      font-size: 1.3em;
-      font-weight: bold;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-width: 320px;
-      margin: 0 auto;
-      background: #eef;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    .login-form input {
-      padding: 10px;
-      font-size: 1em;
-    }
-    .login-form button {
-      padding: 10px;
-      background-color: #333;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-    }
-    #pageFooter {
-      display: flex;
-      justify-content: space-between;
-      border-top: 1px solid #ccc;
-      margin-top: 24px;
-      font-size: 0.9em;
-      color: #666;
-    }
-  </style>
+    <meta charset="utf-8"/>
+    <title>Skyesoft Dashboard</title>
+    <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .board-section {
+            width: 90vw;
+            max-width: 1200px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 8px 16px;
+        }
+
+        #pageHeader,
+        #pageFooter {
+            flex-shrink: 0;
+        }
+
+        #pageBody {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin: 12px 0;
+            max-height: calc(100vh - 160px);
+            overflow: hidden;
+        }
+
+        #pageHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1em;
+            margin-top: 12px;
+        }
+
+        #pageFooter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            padding: 6px 12px;
+            background: #ffffff;
+            margin-bottom: 12px;
+        }
+
+        .version {
+            font-size: 0.8em;
+            color: #777;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .login-form h2 {
+            font-size: 1.8em;
+            color: #333;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .login-form input {
+            padding: 12px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .login-form input:focus {
+            border-color: #004080;
+            box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
+        }
+
+        .login-form button {
+            padding: 12px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #fff;
+            background: #004080;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-form button:hover {
+            background: #0059b3;
+        }
+
+        @media (max-width: 600px) {
+            .board-section {
+                width: 95vw;
+                padding: 12px;
+            }
+
+            .login-form {
+                padding: 16px;
+            }
+
+            .login-form h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="board-section" id="pageHeader">
-    <div>
-      <img src="assets/images/skyesoft-logo.png" alt="SkyeSoft Logo" /></div>
-      <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Skyesoft Dashboard</h1>
-    <div>
-      🌦️ Weather: ☀️ 105°F, Clear sky<br/>
-      ⏰ Time: 11:11:07 AM<br/>
-      🕒 Interval Remaining:
+    <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <img src="/skyesoft/assets/images/skyesoft-logo.png" alt="SkyeSoft Logo" style="max-height: 48px;" />
+            <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
+            <h1 style="font-size: 1.4em;">Skyesoft Dashboard</h1>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+            <div>🌦️ Weather: <span id="weatherDisplay">N/A</span></div>
+            <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+            <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+        </div>
     </div>
-  </div>
-
-  <div class="board-section" id="pageBody">
-    <div id="bodyMain">
-      <div class="bodyHeader">🔒 Login</div>
-      <form class="login-form">
-        <input type="email" placeholder="Email" required>
-        <input type="password" placeholder="Password" required>
-        <button type="submit">Login</button>
-      </form>
+    <div class="board-section" id="pageBody">
+        <form class="login-form">
+            <h2>Sign In</h2>
+            <input type="text" placeholder="Username" name="username" required/>
+            <input type="password" placeholder="Password" name="password" required/>
+            <button type="submit">Log In</button>
+        </form>
     </div>
-  </div>
-
-  <div class="board-section" id="pageFooter">
-    <div>📅 Updated: 06/19/2025</div>
-    <div>🔄 Auto Refresh: Enabled</div>
-  </div>
+    <div class="board-section" id="pageFooter">
+        <div>© 2025 Maychris Corporation</div>
+        <div class="version">Loading version...</div>
+    </div>
 </body>
 </html>
