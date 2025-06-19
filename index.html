@@ -4,9 +4,14 @@
   Purpose: Hardcoded login with dynamic dashboard using DataTables + Sign AI Prompt
 -->
 <html lang="en">
+<!-- Head -->
 <head>
   <meta charset="UTF-8" />
+  <!-- Meta Tags -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Favicon -->
+  <link rel="icon" href="assets/images/favicon.ico" />
+  <!-- Title -->
   <title>Skyesoft Login</title>
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
@@ -67,7 +72,7 @@
     table.dataTable { background-color: white; color: black; }
   </style>
 </head>
-
+<!-- Body -->
 <body>
   <div class="centered">
 
@@ -111,15 +116,13 @@
     </div>
 
   </div>
-
   <!-- JS Libraries -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
   <!-- ===== Core Logic ===== -->
   <script>
   // Load version dynamically with MTCO console feedback
-  fetch('assets/data/version.json')
+  fetch('./assets/data/version.json')
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
