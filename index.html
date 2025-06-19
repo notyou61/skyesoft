@@ -4,16 +4,9 @@
     <meta charset="utf-8"/>
     <title>Skyesoft Dashboard</title>
     <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
-
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html,
-        body {
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
             height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
@@ -22,7 +15,6 @@
             flex-direction: column;
             align-items: center;
         }
-
         .board-section {
             width: 90vw;
             max-width: 1200px;
@@ -31,22 +23,16 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             padding: 8px 16px;
         }
-
-        #pageHeader,
-        #pageFooter {
-            flex-shrink: 0;
-        }
-
+        #pageHeader, #pageFooter { flex-shrink: 0; }
         #pageBody {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
             margin: 12px 0;
             max-height: calc(100vh - 160px);
             overflow: hidden;
         }
-
         #pageHeader {
             display: flex;
             justify-content: space-between;
@@ -54,7 +40,6 @@
             font-size: 1.1em;
             margin-top: 12px;
         }
-
         #pageFooter {
             display: flex;
             justify-content: space-between;
@@ -64,12 +49,42 @@
             background: #ffffff;
             margin-bottom: 12px;
         }
-
-        .version {
-            font-size: 0.8em;
-            color: #777;
+        .version { font-size: 0.8em; color: #777; }
+        #bodyHeader, #bodyFooter {
+            font-weight: bold;
+            font-size: 1em;
+            text-align: left;
+            margin-bottom: 8px;
         }
-
+        #bodyMain {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: -4px;
+        }
+        .bodyHeader::after {
+            content: "";
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: #ccc;
+            margin-top: 6px;
+            margin-bottom: 0px;
+        }
+        .bodyHeader h2 {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+        .bodyFooter::before {
+            content: "";
+            display: block;
+            height: 2px;
+            width: 100%;
+            background: #ccc;
+            margin-bottom: 6px;
+        }
         .login-form {
             display: flex;
             flex-direction: column;
@@ -78,14 +93,6 @@
             margin: 0 auto;
             padding: 24px;
         }
-
-        .login-form h2 {
-            font-size: 1.8em;
-            color: #333;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
         .login-form input {
             padding: 12px;
             font-size: 1em;
@@ -93,12 +100,10 @@
             border-radius: 8px;
             outline: none;
         }
-
         .login-form input:focus {
             border-color: #004080;
             box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
         }
-
         .login-form button {
             padding: 12px;
             font-size: 1em;
@@ -110,23 +115,16 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-
         .login-form button:hover {
             background: #0059b3;
         }
-
         @media (max-width: 600px) {
             .board-section {
                 width: 95vw;
                 padding: 12px;
             }
-
             .login-form {
                 padding: 16px;
-            }
-
-            .login-form h2 {
-                font-size: 1.5em;
             }
         }
     </style>
@@ -144,12 +142,17 @@
         </div>
     </div>
     <div class="board-section" id="pageBody">
-        <form class="login-form">
-            <h2>Sign In</h2>
-            <input type="text" placeholder="Username" name="username" required/>
-            <input type="password" placeholder="Password" name="password" required/>
-            <button type="submit">Log In</button>
-        </form>
+        <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
+            <h2>User Log In</h2>
+        </div>
+        <div id="bodyMain">
+            <form class="login-form">
+                <input type="text" placeholder="Username" name="username" required/>
+                <input type="password" placeholder="Password" name="password" required/>
+                <button type="submit">Log In</button>
+            </form>
+        </div>
+        <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;"></div>
     </div>
     <div class="board-section" id="pageFooter">
         <div>© 2025 Maychris Corporation</div>
