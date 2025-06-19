@@ -1,16 +1,16 @@
 ﻿<!DOCTYPE html>
 <!--
-  Skyesoft Login Page
-  Description: Simple HTML login mockup for Skyesoft portal
-  Version: Loaded dynamically from assets/data/version.json
+  Skyesoft Login + Dashboard Page
+  Purpose: Hardcoded login with dynamic dashboard using DataTables + Sign AI Prompt
 -->
-
 <html lang="en">
-<!-- ===================== HEAD SECTION ===================== -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skyesoft Login</title>
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
 
   <!-- ===== Styling ===== -->
   <style>
@@ -18,51 +18,46 @@
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #fff;
+      height: 100vh;
+    }
+
+    .centered {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      color: #fff;
+      height: 100%;
     }
 
-    .login-container {
+    .login-container, .dashboard-container {
       background: rgba(0, 0, 0, 0.4);
       padding: 32px;
       border-radius: 12px;
       width: 100%;
-      max-width: 400px;
+      max-width: 600px;
       box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
-    .login-container h1 {
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
-    .login-container input {
+    input, button, textarea {
       width: 100%;
       padding: 12px;
       margin: 12px 0;
-      border: none;
       border-radius: 6px;
+      border: none;
       font-size: 1rem;
     }
 
-    .login-container button {
-      width: 100%;
-      padding: 12px;
-      background: #4caf50;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
+    button {
+      background-color: #4caf50;
+      color: white;
       cursor: pointer;
-      transition: background 0.3s ease;
     }
 
-    .login-container button:hover {
-      background: #45a049;
+    button:hover {
+      background-color: #45a049;
     }
+
+    .hidden { display: none; }
 
     .version {
       margin-top: 12px;
@@ -70,57 +65,91 @@
       text-align: center;
       color: #ccc;
     }
-  </style>
 
-  <!-- ===== Optional future JS setup ===== -->
-  <script>
-    // Reserved for future init code
-    // console.log('SkyeSoft Login page initialized');
-  </script>
+    table.dataTable { background-color: white; color: black; }
+  </style>
 </head>
 
-<!-- ===================== BODY SECTION ===================== -->
 <body>
-  <!-- ===== Login Panel ===== -->
-  <div class="login-container">
-    <h1>🔐 Skyesoft Login</h1>
-    <input type="text" placeholder="Username" id="username" />
-    <input type="password" placeholder="Password" id="password" />
-    <button onclick="handleLogin()">Login</button>
+  <div class="centered">
 
-    <!-- Version placeholder (updated dynamically) -->
-    <div class="version" id="app-version">Loading version...</div>
+    <!-- 🔐 LOGIN SECTION -->
+    <div class="login-container" id="loginPanel">
+      <h2>🔐 Skyesoft Login</h2>
+      <input type="email" id="username" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="handleLogin()">Login</button>
+      <div class="version" id="app-version">Loading version...</div>
+      <p id="loginMessage" style="color:#ffcccc;"></p>
+    </div>
+
+    <!-- 📊 DASHBOARD SECTION -->
+    <div class="dashboard-container hidden" id="dashboardPanel">
+      <h2>📊 Welcome, Steve</h2>
+
+      <!-- 🧠 Sign AI Prompt -->
+      <label for="aiPrompt">Sign AI Prompt</label>
+      <textarea id="aiPrompt" placeholder="Ask something about a permit, jurisdiction, sign type..."></textarea>
+      <button onclick="submitAIPrompt()">Submit Prompt</button>
+
+      <!-- 📋 DataTable -->
+      <h3>📋 Permit Records</h3>
+      <table id="permitTable" class="display">
+        <thead>
+          <tr>
+            <th>Permit #</th>
+            <th>Client</th>
+            <th>City</th>
+            <th>Status</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>T30057</td><td>Habit Burger</td><td>Phoenix</td><td>Approved</td><td>2025-06-10</td></tr>
+          <tr><td>250721</td><td>Habit Burger</td><td>Phoenix</td><td>Pending</td><td>2025-06-15</td></tr>
+          <tr><td>260342</td><td>Starbucks</td><td>Glendale</td><td>Denied</td><td>2025-06-05</td></tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
-  <!-- ===== Script: Login handler ===== -->
+  <!-- JS Libraries -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <!-- ===== Core Logic ===== -->
   <script>
-    /**
-     * handleLogin()
-     * Simulates login attempt for prototype
-     */
+    // Load version dynamically
+    fetch('/assets/data/version.json')
+      .then(res => res.json())
+      .then(data => document.getElementById('app-version').textContent = data.version)
+      .catch(() => document.getElementById('app-version').textContent = 'vUnknown');
+
+    // Login Handler (Hardcoded)
     function handleLogin() {
       const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value.trim();
-      if (u && p) {
-        alert(`Login attempt by ${u}... (mockup only)`); // placeholder alert
-        // TODO: Integrate real authentication mechanism
+      const p = document.getElementById('password').value;
+
+      if (u === 'steve@christysigns.com' && p === '1234') {
+        document.getElementById('loginPanel').classList.add('hidden');
+        document.getElementById('dashboardPanel').classList.remove('hidden');
+        $('#permitTable').DataTable();
       } else {
-        alert("Please enter both username and password.");
+        document.getElementById('loginMessage').innerText = '❌ Invalid login';
       }
     }
-    /**
-     * Fetch and inject version number
-     * Loads from assets/data/version.json
-     */
-    fetch('assets/data/version.json')
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('app-version').textContent = data.version;
-      })
-      .catch(err => {
-        console.error("Failed to load version info:", err);
-        document.getElementById('app-version').textContent = "vUnknown";
-      });
+
+    // AI Prompt Handler (Placeholder)
+    function submitAIPrompt() {
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      if (prompt) {
+        alert(`🚀 Pretending to process: "${prompt}"`);
+        // TODO: Send prompt to backend AI service
+      } else {
+        alert("Please enter a prompt first.");
+      }
+    }
   </script>
 </body>
 </html>
