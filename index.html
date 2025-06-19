@@ -8,10 +8,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skyesoft Login</title>
-
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
-
   <!-- ===== Styling ===== -->
   <style>
     body {
@@ -121,7 +119,7 @@
   <!-- ===== Core Logic ===== -->
   <script>
     // Load version dynamically
-    fetch('/assets/data/version.json')
+    fetch('skyesoft/assets/data/version.json')
       .then(res => res.json())
       .then(data => document.getElementById('app-version').textContent = data.version)
       .catch(() => document.getElementById('app-version').textContent = 'vUnknown');
