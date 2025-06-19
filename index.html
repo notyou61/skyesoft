@@ -28,14 +28,12 @@
       padding: 16px;
       margin-top: 16px;
     }
-    #pageHeader, #pageFooter {
+    #pageHeader {
       width: 90vw;
       max-width: 1280px;
       background-color: #fff;
       padding: 12px;
       border-radius: 12px;
-    }
-    #pageHeader {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -51,6 +49,17 @@
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+    #pageFooter {
+      width: 90vw;
+      max-width: 1280px;
+      background-color: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
     }
     .loginCard {
       background-color: #fff;
@@ -96,24 +105,17 @@
 </head>
 <body>
   <!-- Header -->
-  <div id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
+  <div id="pageHeader">
     <div style="display: flex; align-items: center; gap: 16px;">
       <img src="../assets/images/christyLogo.png" alt="Christy Signs Logo" style="height: 48px; width: auto; max-width: 100%;">
       <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Skyesoft Dashboard</h1>
     </div>
     <div></div>
   </div>
-  <!-- Main Body -->
-  <div class="board-section" id="pageBody">
-    <div class="bodyHeader">
-      🔐 Login
-    </div>
-    <div class="loginCard">
-      <input type="email" id="username" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="handleLogin()">Login</button>
-      <p id="loginMessage"></p>
-    </div>
+
+  <!-- Body (to be rebuilt step-by-step) -->
+  <div id="pageBody">
+    <!-- 🛠️ Body placeholder to be rebuilt in next step -->
   </div>
 
   <!-- Footer -->
@@ -131,20 +133,6 @@
         })
         .catch(err => console.warn("Version load error:", err));
     });
-
-    function handleLogin() {
-      const u = document.getElementById('username').value.trim();
-      const p = document.getElementById('password').value.trim();
-      const msg = document.getElementById('loginMessage');
-      if (u === 'steve@christysigns.com' && p === '1234') {
-        msg.style.color = 'green';
-        msg.textContent = '✅ Login successful!';
-        setTimeout(() => window.location.href = 'dashboard.html', 1000);
-      } else {
-        msg.style.color = 'red';
-        msg.textContent = '❌ Invalid credentials';
-      }
-    }
   </script>
 </body>
 </html>
