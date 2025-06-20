@@ -118,10 +118,11 @@
       background: #0059b3;
     }
     .error-message {
-      color: red;
-      font-size: 0.9em;
-      text-align: center;
-      margin-top: -8px;
+        color: red;
+        font-size: 0.9em;
+        text-align: center;
+        margin-top: 8px;
+        min-height: 1.2em; /* reserve space to prevent form jumping */
     }
     @media (max-width: 600px) {
       .board-section {
@@ -148,7 +149,7 @@
   </div>
 
   <div class="board-section" id="pageBody">
-    <div class="bodyHeader" id="bodyHeader">
+    <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
       <h2>🔒 User Log In</h2>
     </div>
     <div id="bodyMain">
@@ -159,7 +160,7 @@
         <div class="error-message" id="loginError"></div>
       </form>
     </div>
-    <div class="bodyFooter" id="bodyFooter" style="font-weight: normal; color: #666; font-size: 0.9em; padding-top: 8px;">
+    <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
       <small>Need access? Contact your supervisor or email support@christysigns.com</small>
     </div>
   </div>
@@ -207,19 +208,19 @@
     setInterval(updateTimeAndInterval, 1000);
 
     // Login validation
-    document.getElementById("loginForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const user = document.getElementById("username").value.trim();
-      const pass = document.getElementById("password").value.trim();
-      const errorBox = document.getElementById("loginError");
+    document.getElementById('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const loginError = document.getElementById('loginError');
 
-      if (user === "admin" && pass === "skyelogin") {
-        errorBox.textContent = "";
-        localStorage.setItem("userLoggedIn", "true");
-        window.location.href = "dashboard.html";
-      } else {
-        errorBox.textContent = "Invalid username or password.";
-      }
+        if (username === 'admin' && password === 'skyelogin') {
+        loginError.textContent = '';
+        localStorage.setItem('userLoggedIn', 'true');
+        window.location.href = 'dashboard.html';
+        } else {
+        loginError.textContent = '❌ Invalid username or password.';
+        }
     });
   </script>
 </body>
