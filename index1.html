@@ -172,9 +172,9 @@
   </div>
 
   <script src="/skyesoft/assets/js/glbVar.js"></script>
-  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
-  <script src="/skyesoft/assets/js/weather.js"></script>
-  <script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+
+<script>
   // ✅ Version loader
   fetch("/skyesoft/assets/data/version.json")
     .then(res => res.json())
@@ -204,13 +204,24 @@
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
 
-  // ❌ Skip updateWeatherDisplay if undefined
-  if (typeof updateWeatherDisplay === 'function') {
-    updateWeatherDisplay();
-    setInterval(updateWeatherDisplay, 900000);
-  } else {
-    console.warn("⚠️ updateWeatherDisplay() is not defined.");
+  // ✅ Weather loader using weatherConfig.js
+  function updateWeatherDisplay() {
+    if (!window.weatherData) {
+      console.warn("⚠️ weatherData not found");
+      document.getElementById("weatherDisplay").textContent = "❓";
+      return;
+    }
+
+    const { city, condition, tempF } = weatherData;
+    const weatherDisplay = document.getElementById("weatherDisplay");
+
+    if (weatherDisplay) {
+      weatherDisplay.textContent = `🌆 ${city} | ${condition} | ${tempF}°F`;
+    }
   }
+
+  updateWeatherDisplay();
+  setInterval(updateWeatherDisplay, 15 * 60 * 1000); // every 15 minutes
 
   // ✅ Login validation with visual error feedback
   document.addEventListener('DOMContentLoaded', () => {
