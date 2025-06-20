@@ -175,61 +175,74 @@
   <script src="/skyesoft/assets/js/glbVar.js"></script>
   <script src="/skyesoft/assets/js/weatherConfig.js"></script>
   <script src="/skyesoft/assets/js/weather.js"></script>
-  <script>
-    // Version loader
-    fetch("/skyesoft/assets/data/version.json")
-      .then(res => res.json())
-      .then(data => {
-        const versionElement = document.querySelector('.version');
-        if (versionElement && data.version) {
-          versionElement.textContent = data.version;
-          console.log("🆗 Version loaded:", data.version);
-        }
-      })
-      .catch(err => console.warn("⚠️ Version fetch failed:", err));
+  
+<script>
+  // Version loader
+  fetch("/skyesoft/assets/data/version.json")
+    .then(res => res.json())
+    .then(data => {
+      const versionElement = document.querySelector('.version');
+      if (versionElement && data.version) {
+        versionElement.textContent = data.version;
+        console.log("🆗 Version loaded:", data.version);
+      }
+    })
+    .catch(err => console.warn("⚠️ Version fetch failed:", err));
 
-    // Weather updates
-    updateWeatherDisplay();
-    setInterval(updateWeatherDisplay, 900000);
+  // Weather updates
+  updateWeatherDisplay();
+  setInterval(updateWeatherDisplay, 900000);
 
-    // Clock and interval updater
-    function updateTimeAndInterval() {
-      const now = new Date();
-      document.getElementById("currentTime").textContent = now.toLocaleTimeString();
+  // Clock and interval updater
+  function updateTimeAndInterval() {
+    const now = new Date();
+    document.getElementById("currentTime").textContent = now.toLocaleTimeString();
 
-      const endOfWorkday = new Date();
-      endOfWorkday.setHours(17, 0, 0, 0);
-      const msLeft = endOfWorkday - now;
-      const hrs = Math.floor(msLeft / 3600000);
-      const mins = Math.floor((msLeft % 3600000) / 60000);
-      const secs = Math.floor((msLeft % 60000) / 1000);
-      const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
-      document.getElementById("intervalRemainingData").textContent = intervalStr;
+    const endOfWorkday = new Date();
+    endOfWorkday.setHours(17, 0, 0, 0);
+    const msLeft = endOfWorkday - now;
+    const hrs = Math.floor(msLeft / 3600000);
+    const mins = Math.floor((msLeft % 3600000) / 60000);
+    const secs = Math.floor((msLeft % 60000) / 1000);
+    const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
+    document.getElementById("intervalRemainingData").textContent = intervalStr;
+  }
+  updateTimeAndInterval();
+  setInterval(updateTimeAndInterval, 1000);
+
+  // ✅ Login validation with error handling
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    if (!loginForm || !loginError || !usernameInput || !passwordInput) {
+      console.warn('⚠️ Login elements not found');
+      return;
     }
-    updateTimeAndInterval();
-    setInterval(updateTimeAndInterval, 1000);
 
-    // Login validation
-    document.addEventListener('DOMContentLoaded', function () {
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
+    // Clear error when user starts typing
+    usernameInput.addEventListener('input', () => loginError.textContent = '');
+    passwordInput.addEventListener('input', () => loginError.textContent = '');
 
-        if (loginForm) {
-            loginForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
 
-            if (username === 'admin' && password === 'skyelogin') {
-                loginError.textContent = '';
-                localStorage.setItem('userLoggedIn', 'true');
-                window.location.href = 'dashboard.html';
-            } else {
-                loginError.textContent = '❌ Invalid username or password.';
-            }
-            });
-        }
-        });
-  </script>
+      if (username === 'admin' && password === 'skyelogin') {
+        loginError.textContent = '';
+        localStorage.setItem('userLoggedIn', 'true');
+        window.location.href = 'dashboard.html';
+      } else {
+        loginError.textContent = '❌ Invalid username or password.';
+        loginError.style.display = 'block';
+        loginForm.reset();
+      }
+    });
+  });
+</script>
+
 </body>
 </html>
