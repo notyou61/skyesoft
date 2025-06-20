@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>Skyesoft Dashboard</title>
-<link href="https://notyou61.github.io/skyesoft/favicon.ico" rel="icon" type="image/x-icon"/>
-<style>
+  <meta charset="utf-8" />
+  <title>Skyesoft Dashboard</title>
+  <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+  <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100vh;
@@ -137,35 +136,124 @@
     }
   </style>
 </head>
-
 <body>
-<div class="dashboard" id="dashboardContent" style="display:none;">
-<h1>Welcome to the SkyeSoft Dashboard</h1>
-<p>This section is visible only after a successful login.</p>
-<button onclick="logout()">Log Out</button>
-</div>
-<form class="login-form" id="loginForm">
-<input id="username" name="username" placeholder="Username" required="" type="text"/>
-<input id="password" name="password" placeholder="Password" required="" type="password"/>
-<button type="submit">Log In</button>
-<div class="error-message" id="loginError"></div>
-</form>
-<script>
-    function logout() {
-      localStorage.removeItem('userLoggedIn');
-      location.reload();
+  <div class="board-section" id="pageHeader">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
+      <h1 style="font-size: 1.4em;">Skyesoft Dashboard</h1>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+      <div>🌦️ Weather: <span id="weatherDisplay">N/A</span></div>
+      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+    </div>
+  </div>
+
+  <div class="board-section" id="pageBody">
+    <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
+      <h2>🔒 User Log In</h2>
+    </div>
+    <div id="bodyMain">
+      <form class="login-form" id="loginForm">
+        <input type="text" placeholder="Username" name="username" id="username" required />
+        <input type="password" placeholder="Password" name="password" id="password" required />
+        <button type="submit">Log In</button>
+        <div class="error-message" id="loginError"></div>
+      </form>
+    </div>
+    <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
+      <small>Need access? Contact your supervisor or email support@christysigns.com</small>
+    </div>
+  </div>
+
+  <div class="board-section" id="pageFooter">
+    <div>© 2025 Maychris Corporation</div>
+    <div class="version">Loading version...</div>
+  </div>
+
+  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
+  <script>
+  // ✅ Version loader
+  fetch("/skyesoft/assets/data/version.json")
+    .then(res => res.json())
+    .then(data => {
+      const versionElement = document.querySelector('.version');
+      if (versionElement && data.version) {
+        versionElement.textContent = data.version;
+        console.log("🆗 Version loaded:", data.version);
+      }
+    })
+    .catch(err => console.warn("⚠️ Version fetch failed:", err));
+
+  // ✅ Clock and interval updater
+  function updateTimeAndInterval() {
+    const now = new Date();
+    document.getElementById("currentTime").textContent = now.toLocaleTimeString();
+
+    const endOfWorkday = new Date();
+    endOfWorkday.setHours(17, 0, 0, 0);
+    const msLeft = endOfWorkday - now;
+    const hrs = Math.floor(msLeft / 3600000);
+    const mins = Math.floor((msLeft % 3600000) / 60000);
+    const secs = Math.floor((msLeft % 60000) / 1000);
+    const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
+    document.getElementById("intervalRemainingData").textContent = intervalStr;
+  }
+  updateTimeAndInterval();
+  setInterval(updateTimeAndInterval, 1000);
+
+  // ❌ Skip updateWeatherDisplay if undefined
+  if (typeof updateWeatherDisplay === 'function') {
+    updateWeatherDisplay();
+    setInterval(updateWeatherDisplay, 900000);
+  } else {
+    console.warn("⚠️ updateWeatherDisplay() is not defined.");
+  }
+
+  // ✅ Login validation with visual error feedback
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    if (!loginForm || !loginError || !usernameInput || !passwordInput) {
+      console.error('⚠️ Login elements not found:', {
+        loginForm: !!loginForm,
+        loginError: !!loginError,
+        usernameInput: !!usernameInput,
+        passwordInput: !!passwordInput
+      });
+      return;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const dashboard = document.getElementById('dashboardContent');
-      const loginForm = document.getElementById('loginForm');
+    // Clear error on input
+    usernameInput.addEventListener('input', () => loginError.textContent = '');
+    passwordInput.addEventListener('input', () => loginError.textContent = '');
 
-      if (localStorage.getItem('userLoggedIn') === 'true') {
-        dashboard.style.display = 'block';
-        loginForm.style.display = 'none';
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!username || !password) {
+        loginError.textContent = '❌ Please enter both username and password.';
+        return;
+      }
+
+      if (username === 'admin' && password === 'skyelogin') {
+        loginError.textContent = '';
+        localStorage.setItem('userLoggedIn', 'true');
+        window.location.href = 'dashboard.html';
+      } else {
+        loginError.textContent = '❌ Invalid username or password.';
+        loginForm.reset();
       }
     });
-  </script>
+  });
+</script>
 </body>
-
 </html>
