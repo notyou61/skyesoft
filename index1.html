@@ -155,12 +155,11 @@
     </div>
     <div id="bodyMain">
       <form class="login-form" id="loginForm">
-  <input type="text" placeholder="Username" name="username" id="username" required />
-  <input type="password" placeholder="Password" name="password" id="password" required />
-  <button type="submit">Log In</button>
-  <div class="error-message" id="loginError"></div>
-</form>
-
+        <input type="text" placeholder="Username" name="username" id="username" required />
+        <input type="password" placeholder="Password" name="password" id="password" required />
+        <button type="submit">Log In</button>
+        <div class="error-message" id="loginError"></div>
+      </form>
     </div>
     <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
       <small>Need access? Contact your supervisor or email support@christysigns.com</small>
@@ -209,6 +208,25 @@
   }
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
+  // Simple login button press detection
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+
+    if (!loginForm || !loginError) {
+      console.error('⚠️ Login elements not found:', {
+        loginForm: !!loginForm,
+        loginError: !!loginError
+      });
+      return;
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault(); // Prevent form submission from reloading the page
+      console.log('Login button pressed');
+      loginError.textContent = '✅ Login button pressed.';
+    });
+  });
 
   // ✅ Login validation with error handling
   document.addEventListener('DOMContentLoaded', () => {
@@ -218,27 +236,49 @@
     const passwordInput = document.getElementById('password');
 
     if (!loginForm || !loginError || !usernameInput || !passwordInput) {
-      console.warn('⚠️ Login elements not found');
+      console.error('⚠️ Login elements not found:', {
+        loginForm: !!loginForm,
+        loginError: !!loginError,
+        usernameInput: !!usernameInput,
+        passwordInput: !!passwordInput
+      });
       return;
     }
 
-    // Clear error when user starts typing
-    usernameInput.addEventListener('input', () => loginError.textContent = '');
-    passwordInput.addEventListener('input', () => loginError.textContent = '');
+    // Clear error message on input
+    usernameInput.addEventListener('input', () => {
+      loginError.textContent = '';
+      console.log('Username input changed');
+    });
+    passwordInput.addEventListener('input', () => {
+      loginError.textContent = '';
+      console.log('Password input changed');
+    });
 
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      console.log('Login form submitted');
+
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
 
+      console.log('Credentials entered:', { username, password });
+
+      if (!username || !password) {
+        loginError.textContent = '❌ Please enter both username and password.';
+        console.log('Empty fields detected');
+        return;
+      }
+
       if (username === 'admin' && password === 'skyelogin') {
         loginError.textContent = '';
+        console.log('Login successful, redirecting...');
         localStorage.setItem('userLoggedIn', 'true');
         window.location.href = 'dashboard.html';
       } else {
         loginError.textContent = '❌ Invalid username or password.';
-        loginError.style.display = 'block';
         loginForm.reset();
+        console.log('Invalid credentials');
       }
     });
   });
