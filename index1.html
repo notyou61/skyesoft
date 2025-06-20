@@ -5,12 +5,7 @@
   <title>Skyesoft Dashboard</title>
   <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -20,7 +15,6 @@
       flex-direction: column;
       align-items: center;
     }
-
     .board-section {
       width: 90vw;
       max-width: 1200px;
@@ -29,12 +23,7 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 8px 16px;
     }
-
-    #pageHeader,
-    #pageFooter {
-      flex-shrink: 0;
-    }
-
+    #pageHeader, #pageFooter { flex-shrink: 0; }
     #pageBody {
       flex-grow: 1;
       display: flex;
@@ -44,7 +33,6 @@
       max-height: calc(100vh - 160px);
       overflow: hidden;
     }
-
     #pageHeader {
       display: flex;
       justify-content: space-between;
@@ -52,7 +40,6 @@
       font-size: 1.1em;
       margin-top: 12px;
     }
-
     #pageFooter {
       display: flex;
       justify-content: space-between;
@@ -62,19 +49,21 @@
       background: #ffffff;
       margin-bottom: 12px;
     }
-
-    .version {
-      font-size: 0.8em;
-      color: #777;
-    }
-
-    #bodyHeader {
+    .version { font-size: 0.8em; color: #777; }
+    #bodyHeader, #bodyFooter {
       font-weight: bold;
       font-size: 1em;
       text-align: left;
       margin-bottom: 8px;
     }
-
+    #bodyMain {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+      margin-top: -4px;
+    }
     .bodyHeader::after {
       content: "";
       display: block;
@@ -84,19 +73,9 @@
       margin-top: 6px;
       margin-bottom: 0px;
     }
-
     .bodyHeader h2 {
       margin: 0;
-      font-size: 1.3em;
-      font-weight: bold;
     }
-
-    #bodyFooter {
-      font-size: 0.9em;
-      color: #666;
-      padding-top: 8px;
-    }
-
     .bodyFooter::before {
       content: "";
       display: block;
@@ -105,7 +84,6 @@
       background: #ccc;
       margin-bottom: 6px;
     }
-
     .login-form {
       display: flex;
       flex-direction: column;
@@ -114,7 +92,6 @@
       margin: 0 auto;
       padding: 24px;
     }
-
     .login-form input {
       padding: 12px;
       font-size: 1em;
@@ -122,12 +99,10 @@
       border-radius: 8px;
       outline: none;
     }
-
     .login-form input:focus {
       border-color: #004080;
       box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
     }
-
     .login-form button {
       padding: 12px;
       font-size: 1em;
@@ -139,24 +114,20 @@
       cursor: pointer;
       transition: background 0.3s;
     }
-
     .login-form button:hover {
       background: #0059b3;
     }
-
     .error-message {
       color: red;
       font-size: 0.9em;
       text-align: center;
-      margin-top: 6px;
+      margin-top: -8px;
     }
-
     @media (max-width: 600px) {
       .board-section {
         width: 95vw;
         padding: 12px;
       }
-
       .login-form {
         padding: 16px;
       }
@@ -178,7 +149,7 @@
 
   <div class="board-section" id="pageBody">
     <div class="bodyHeader" id="bodyHeader">
-      <h2>🔐 User Log In</h2>
+      <h2>🔒 User Log In</h2>
     </div>
     <div id="bodyMain">
       <form class="login-form" id="loginForm">
@@ -188,7 +159,7 @@
         <div class="error-message" id="loginError"></div>
       </form>
     </div>
-    <div class="bodyFooter" id="bodyFooter">
+    <div class="bodyFooter" id="bodyFooter" style="font-weight: normal; color: #666; font-size: 0.9em; padding-top: 8px;">
       <small>Need access? Contact your supervisor or email support@christysigns.com</small>
     </div>
   </div>
@@ -198,44 +169,58 @@
     <div class="version">Loading version...</div>
   </div>
 
+  <script src="/skyesoft/assets/js/glbVar.js"></script>
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+  <script src="/skyesoft/assets/js/weather.js"></script>
   <script>
-    // Login logic
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
-
-    loginForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-
-      if (username === 'admin' && password === 'skyelogin') {
-        loginError.textContent = '';
-        localStorage.setItem('userLoggedIn', 'true');
-        window.location.href = 'dashboard.html';
-      } else {
-        loginError.textContent = 'Invalid username or password.';
-      }
-    });
-
-    // Time Display
-    setInterval(() => {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString();
-      document.getElementById('currentTime').textContent = timeString;
-    }, 1000);
-
-    // Version fetch
-    fetch('/skyesoft/assets/data/version.json')
+    // Version loader
+    fetch("/skyesoft/assets/data/version.json")
       .then(res => res.json())
       .then(data => {
-        document.querySelector('.version').textContent = data.version || 'v?.?.?';
+        const versionElement = document.querySelector('.version');
+        if (versionElement && data.version) {
+          versionElement.textContent = data.version;
+          console.log("🆗 Version loaded:", data.version);
+        }
       })
-      .catch(() => {
-        document.querySelector('.version').textContent = 'vUnknown';
-      });
+      .catch(err => console.warn("⚠️ Version fetch failed:", err));
 
-    // Placeholder for interval logic
-    document.getElementById('intervalRemainingData').textContent = '--';
+    // Weather updates
+    updateWeatherDisplay();
+    setInterval(updateWeatherDisplay, 900000);
+
+    // Clock and interval updater
+    function updateTimeAndInterval() {
+      const now = new Date();
+      document.getElementById("currentTime").textContent = now.toLocaleTimeString();
+
+      const endOfWorkday = new Date();
+      endOfWorkday.setHours(17, 0, 0, 0);
+      const msLeft = endOfWorkday - now;
+      const hrs = Math.floor(msLeft / 3600000);
+      const mins = Math.floor((msLeft % 3600000) / 60000);
+      const secs = Math.floor((msLeft % 60000) / 1000);
+      const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
+      document.getElementById("intervalRemainingData").textContent = intervalStr;
+    }
+    updateTimeAndInterval();
+    setInterval(updateTimeAndInterval, 1000);
+
+    // Login validation
+    document.getElementById("loginForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value.trim();
+      const errorBox = document.getElementById("loginError");
+
+      if (user === "admin" && pass === "skyelogin") {
+        errorBox.textContent = "";
+        localStorage.setItem("userLoggedIn", "true");
+        window.location.href = "dashboard.html";
+      } else {
+        errorBox.textContent = "Invalid username or password.";
+      }
+    });
   </script>
 </body>
 </html>
