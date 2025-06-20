@@ -225,46 +225,41 @@
 
   // ✅ Login validation with visual error feedback
   document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const pageHeader = document.querySelector('.board-header h1');
 
-    if (!loginForm || !loginError || !usernameInput || !passwordInput) {
-      console.error('⚠️ Login elements not found:', {
-        loginForm: !!loginForm,
-        loginError: !!loginError,
-        usernameInput: !!usernameInput,
-        passwordInput: !!passwordInput
-      });
-      return;
+  if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
+    console.warn('⚠️ Missing required DOM elements.');
+    return;
+  }
+
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (username === 'admin' && password === 'skyelogin') {
+      loginError.textContent = '';
+      localStorage.setItem('userLoggedIn', 'true');
+
+      // Change the header text
+      pageHeader.textContent = 'Skyesoft Dashboard (select an icon).';
+
+      // Optionally hide the login form
+      loginForm.style.display = 'none';
+
+      // Optionally show the dashboard section if already hidden
+      const dashboard = document.getElementById('dashboardSection');
+      if (dashboard) dashboard.style.display = 'block';
+    } else {
+      loginError.textContent = '❌ Invalid username or password.';
     }
-
-    // Clear error on input
-    usernameInput.addEventListener('input', () => loginError.textContent = '');
-    passwordInput.addEventListener('input', () => loginError.textContent = '');
-
-    loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const username = usernameInput.value.trim();
-      const password = passwordInput.value.trim();
-
-      if (!username || !password) {
-        loginError.textContent = '❌ Please enter both username and password.';
-        return;
-      }
-
-      if (username === 'admin' && password === 'skyelogin') {
-        loginError.textContent = '';
-        localStorage.setItem('userLoggedIn', 'true');
-        window.location.href = 'dashboard.html';
-      } else {
-        loginError.textContent = '❌ Invalid username or password.';
-        loginForm.reset();
-      }
-    });
   });
+});
 </script>
 </body>
 </html>
