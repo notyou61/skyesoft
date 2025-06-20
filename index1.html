@@ -30,7 +30,8 @@
       padding: 8px 16px;
     }
 
-    #pageHeader, #pageFooter {
+    #pageHeader,
+    #pageFooter {
       flex-shrink: 0;
     }
 
@@ -67,7 +68,7 @@
       color: #777;
     }
 
-    #bodyHeader, #bodyFooter {
+    #bodyHeader {
       font-weight: bold;
       font-size: 1em;
       text-align: left;
@@ -81,6 +82,19 @@
       width: 100%;
       background: #ccc;
       margin-top: 6px;
+      margin-bottom: 0px;
+    }
+
+    .bodyHeader h2 {
+      margin: 0;
+      font-size: 1.3em;
+      font-weight: bold;
+    }
+
+    #bodyFooter {
+      font-size: 0.9em;
+      color: #666;
+      padding-top: 8px;
     }
 
     .bodyFooter::before {
@@ -150,7 +164,6 @@
   </style>
 </head>
 <body>
-  <!-- Page Header -->
   <div class="board-section" id="pageHeader">
     <div style="display: flex; align-items: center; gap: 16px;">
       <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
@@ -163,7 +176,6 @@
     </div>
   </div>
 
-  <!-- Page Body -->
   <div class="board-section" id="pageBody">
     <div class="bodyHeader" id="bodyHeader">
       <h2>🔐 User Log In</h2>
@@ -177,18 +189,17 @@
       </form>
     </div>
     <div class="bodyFooter" id="bodyFooter">
-      <small>Need access? Contact your supervisor.</small>
+      <small>Need access? Contact your supervisor or email support@christysigns.com</small>
     </div>
   </div>
 
-  <!-- Page Footer -->
   <div class="board-section" id="pageFooter">
     <div>© 2025 Maychris Corporation</div>
     <div class="version">Loading version...</div>
   </div>
 
-  <!-- Scripts -->
   <script>
+    // Login logic
     const loginForm = document.getElementById('loginForm');
     const loginError = document.getElementById('loginError');
 
@@ -205,12 +216,26 @@
         loginError.textContent = 'Invalid username or password.';
       }
     });
-  </script>
-  <script src="/skyesoft/assets/js/glbVar.js"></script>
-  <script>
-    loadWeather();
-    startTimeInterval();
-    loadVersion();
+
+    // Time Display
+    setInterval(() => {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString();
+      document.getElementById('currentTime').textContent = timeString;
+    }, 1000);
+
+    // Version fetch
+    fetch('/skyesoft/assets/data/version.json')
+      .then(res => res.json())
+      .then(data => {
+        document.querySelector('.version').textContent = data.version || 'v?.?.?';
+      })
+      .catch(() => {
+        document.querySelector('.version').textContent = 'vUnknown';
+      });
+
+    // Placeholder for interval logic
+    document.getElementById('intervalRemainingData').textContent = '--';
   </script>
 </body>
 </html>
