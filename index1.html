@@ -1,9 +1,15 @@
 <!DOCTYPE html>
+<!-- HTML -->
 <html lang="en">
+<!-- Head -->
 <head>
+  <!-- Meta -->
   <meta charset="utf-8" />
+  <!-- Title -->
   <title>Skyesoft Dashboard</title>
+  <!-- Favicon Link -->
   <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+  <!-- Style -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -136,7 +142,9 @@
     }
   </style>
 </head>
+<!-- Body -->
 <body>
+  <!-- Page Header -->
   <div class="board-section" id="pageHeader">
     <div style="display: flex; align-items: center; gap: 16px;">
       <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
@@ -148,12 +156,15 @@
       <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
     </div>
   </div>
-
+  <!-- Page Body -->
   <div class="board-section" id="pageBody">
+    <!-- Page Body Header -->
     <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
       <h2>🔒 User Log In</h2>
     </div>
+    <!-- Page Body Body -->
     <div id="bodyMain">
+      <!-- Page Body -->
       <form class="login-form" id="loginForm">
         <input type="text" placeholder="Username" name="username" id="username" required />
         <input type="password" placeholder="Password" name="password" id="password" required />
@@ -161,21 +172,25 @@
         <div class="error-message" id="loginError"></div>
       </form>
     </div>
+    <!-- Page Body Footer -->
     <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
       <small>Need access? Contact your supervisor or email support@christysigns.com</small>
     </div>
   </div>
-
+  <!-- Footer -->
   <div class="board-section" id="pageFooter">
+    <!-- Copyright -->
     <div>© 2025 Maychris Corporation</div>
+    <!-- Version -->
     <div class="version">Loading version...</div>
   </div>
-
+  <!-- Global Variable -->
   <script src="/skyesoft/assets/js/glbVar.js"></script>
-<script src="/skyesoft/assets/js/weatherConfig.js"></script>
-
+  <!-- Weather Config -->
+  <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<!-- Script -->
 <script>
-  // ✅ Version loader
+  // 🔁 Load app version from external JSON and display in footer
   fetch("/skyesoft/assets/data/version.json")
     .then(res => res.json())
     .then(data => {
@@ -187,24 +202,31 @@
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
 
-  // ✅ Clock and interval updater
+  // ⏰ Clock + end-of-workday interval updater
   function updateTimeAndInterval() {
     const now = new Date();
     document.getElementById("currentTime").textContent = now.toLocaleTimeString();
 
+    // Define end of workday as 5:00 PM
     const endOfWorkday = new Date();
     endOfWorkday.setHours(17, 0, 0, 0);
+
+    // Calculate time left
     const msLeft = endOfWorkday - now;
     const hrs = Math.floor(msLeft / 3600000);
     const mins = Math.floor((msLeft % 3600000) / 60000);
     const secs = Math.floor((msLeft % 60000) / 1000);
     const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
+
+    // Display countdown
     document.getElementById("intervalRemainingData").textContent = intervalStr;
   }
+
+  // 🕓 Initial + recurring interval updates (every second)
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
 
-  // ✅ Weather loader using weatherConfig.js
+  // 🌤️ Display weather data from global config (weatherData object)
   function updateWeatherDisplay() {
     if (!window.weatherData) {
       console.warn("⚠️ weatherData not found");
@@ -212,54 +234,63 @@
       return;
     }
 
+    // Extract weather details from global object
     const { city, condition, tempF } = weatherData;
     const weatherDisplay = document.getElementById("weatherDisplay");
 
+    // Display formatted weather string
     if (weatherDisplay) {
       weatherDisplay.textContent = `🌆 ${city} | ${condition} | ${tempF}°F`;
     }
   }
 
+  // ☁️ Initial + recurring weather updates (every 15 minutes)
   updateWeatherDisplay();
-  setInterval(updateWeatherDisplay, 15 * 60 * 1000); // every 15 minutes
+  setInterval(updateWeatherDisplay, 15 * 60 * 1000);
 
-  // ✅ Login validation with visual error feedback
+  // 🔐 Login validation and dashboard toggle logic
   document.addEventListener('DOMContentLoaded', () => {
-  const loginForm = document.getElementById('loginForm');
-  const loginError = document.getElementById('loginError');
-  const usernameInput = document.getElementById('username');
-  const passwordInput = document.getElementById('password');
-  const pageHeader = document.querySelector('.board-header h1');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const pageHeader = document.querySelector('.board-header h1');
 
-  if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
-    console.warn('⚠️ Missing required DOM elements.');
-    return;
-  }
-
-  loginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (username === 'admin' && password === 'skyelogin') {
-      loginError.textContent = '';
-      localStorage.setItem('userLoggedIn', 'true');
-
-      // Change the header text
-      pageHeader.textContent = 'Skyesoft Dashboard (select an icon).';
-
-      // Optionally hide the login form
-      loginForm.style.display = 'none';
-
-      // Optionally show the dashboard section if already hidden
-      const dashboard = document.getElementById('dashboardSection');
-      if (dashboard) dashboard.style.display = 'block';
-    } else {
-      loginError.textContent = '❌ Invalid username or password.';
+    // ✅ Safety check: confirm all required elements exist
+    if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
+      console.warn('⚠️ Missing required DOM elements.');
+      return;
     }
+
+    // 🧪 Handle login submit attempt
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault(); // Prevent default form reload
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      // ✅ Check credentials (replace with server-side validation in production)
+      if (username === 'admin' && password === 'skyelogin') {
+        loginError.textContent = '';
+        localStorage.setItem('userLoggedIn', 'true');
+
+        // 🔁 Update page UI for logged-in user
+        pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
+        loginForm.style.display = 'none'; // Hide login form
+
+        // 🎯 Show dashboard if present
+        const dashboard = document.getElementById('dashboardSection');
+        if (dashboard) dashboard.style.display = 'block';
+
+      } else {
+        // ❌ Invalid login, show feedback
+        loginError.textContent = '❌ Invalid username or password.';
+      }
+    });
   });
-});
 </script>
+<!-- End of Script -->
 </body>
+<!-- End of Body -->
 </html>
+<!-- End of Script -->
