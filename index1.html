@@ -203,7 +203,6 @@
       }
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
-
   // ⏰ Clock + end-of-workday interval updater
   function updateTimeAndInterval() {
     const now = new Date();
@@ -214,21 +213,26 @@
       hour12: true
     });
 
+    const day = now.getDay(); // Sunday = 0, Saturday = 6
+    const intervalSpan = document.getElementById("intervalRemainingData");
+
+    if (day === 0 || day === 6) {
+      intervalSpan.textContent = "Enjoy your weekend!";
+      return;
+    }
+
     // Define end of workday as 5:00 PM
     const endOfWorkday = new Date();
     endOfWorkday.setHours(17, 0, 0, 0);
 
-    // Calculate time left
     const msLeft = endOfWorkday - now;
     const hrs = Math.floor(msLeft / 3600000);
     const mins = Math.floor((msLeft % 3600000) / 60000);
     const secs = Math.floor((msLeft % 60000) / 1000);
+
     const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
-
-    // Display countdown
-    document.getElementById("intervalRemainingData").textContent = intervalStr;
+    intervalSpan.textContent = intervalStr;
   }
-
   // 🕓 Initial + recurring interval updates (every second)
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
