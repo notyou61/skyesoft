@@ -258,57 +258,49 @@
   // ☁️ Initial + recurring weather updates (every 15 minutes)
   updateWeatherDisplay();
   setInterval(updateWeatherDisplay, 15 * 60 * 1000);
+  // 🔐 Login validation and dashboard toggle logic
+  document.addEventListener('DOMContentLoaded', () => {
+    // 🔧 DOM element references
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const pageHeader = document.querySelector('.board-header h1');
+    const dashboard = document.getElementById('dashboardSection');
 
-// 🔐 Login validation and dashboard toggle logic
-document.addEventListener('DOMContentLoaded', () => {
-  // 🔧 DOM element references
-  const loginForm = document.getElementById('loginForm');
-  const loginError = document.getElementById('loginError');
-  const usernameInput = document.getElementById('username');
-  const passwordInput = document.getElementById('password');
-  const pageHeader = document.querySelector('.board-header h1');
-  const dashboard = document.getElementById('dashboardSection');
-  const loginButton = loginForm?.querySelector('button[type="submit"]');
-
-  // ✅ Confirm all required elements exist
-  if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader || !loginButton) {
-    console.warn('⚠️ Missing required DOM elements.');
-    return;
-  }
-
-  // 🧼 Clear error message when user types again
-  usernameInput.addEventListener('input', () => loginError.textContent = '');
-  passwordInput.addEventListener('input', () => loginError.textContent = '');
-
-  // 👆 Optional: Log click activity
-  loginButton.addEventListener('click', () => {
-    console.log('🔍 Login button clicked');
-  });
-
-  // 🧪 Handle login form submission
-  loginForm.addEventListener('submit', (e) => {
-    e.preventDefault(); // Prevent default page reload
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    // 🔍 Validate credentials (hardcoded for now)
-    if (username === 'admin' && password === 'skyelogin') {
-      // ✅ Login success: update UI
-      loginError.textContent = '';
-      localStorage.setItem('userLoggedIn', 'true');
-
-      pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
-      loginForm.style.display = 'none';
-      if (dashboard) dashboard.style.display = 'block';
-    } else {
-      // ❌ Login failed: show feedback
-      loginError.textContent = '❌ Invalid username or password.';
-      loginError.style.display = 'block';
-      loginForm.reset(); // 🔁 Clear form fields on failure
+    // ✅ Confirm required elements exist
+    if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
+      console.warn('⚠️ Missing required DOM elements.');
+      return;
     }
+
+    // 🧼 Clear error message on input change
+    usernameInput.addEventListener('input', () => loginError.textContent = '');
+    passwordInput.addEventListener('input', () => loginError.textContent = '');
+
+    // 🧪 Handle login submission
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault(); // Prevent page reload
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      // 🔍 Check credentials (hardcoded for demo purposes)
+      if (username === 'admin' && password === 'skyelogin') {
+        // ✅ Login success: show dashboard
+        localStorage.setItem('userLoggedIn', 'true');
+        loginError.textContent = '';
+        loginForm.style.display = 'none';
+        pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
+        if (dashboard) dashboard.style.display = 'block';
+      } else {
+        // ❌ Login failed
+        loginError.textContent = '❌ Invalid username or password.';
+        loginError.style.display = 'block';
+        loginForm.reset();
+      }
+    });
   });
-});
 </script>
 <!-- End of Script -->
 </body>
