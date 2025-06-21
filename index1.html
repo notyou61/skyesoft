@@ -160,7 +160,7 @@
   <div class="board-section" id="pageBody">
     <!-- Page Body Header -->
     <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
-      <h2>🔒 User Log In</h2>
+      <h2 id="bodyHeaderCopy">🔒 User Log In</h2>
     </div>
     <!-- Page Body Body -->
     <div id="bodyMain">
@@ -192,99 +192,127 @@
   <script src="assets/js/weather.js"></script>
 <!-- Script -->
 <script>
-  // 🔁 Load app version from external JSON and display in footer
+  // 🔁 Load app version from external JSON and inject into footer
+  // Purpose: Always reflect current build version from version.json file
   fetch("/skyesoft/assets/data/version.json")
     .then(res => res.json())
     .then(data => {
       const versionElement = document.querySelector('.version');
       if (versionElement && data.version) {
         versionElement.textContent = data.version;
-        console.log("🆗 Version loaded:", data.version);
+        console.log("🆗 Version loaded:", data.version); // Log for dev verification
       }
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
 
-  // ⏰ Clock + end-of-workday interval updater
+  // ⏰ Clock + Work Interval Display
+  // Purpose: Show live clock and remaining time until end of workday or a weekend message
   function updateTimeAndInterval() {
     const now = new Date();
-    document.getElementById("currentTime").textContent = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-
-    const day = now.getDay(); // Sunday = 0, Saturday = 6
+    const timeSpan = document.getElementById("currentTime");
     const intervalSpan = document.getElementById("intervalRemainingData");
 
-    if (day === 0 || day === 6) {
-      intervalSpan.textContent = "Enjoy your weekend!";
-      return;
+    // 🕒 Display formatted time (08:30:15 AM)
+    if (timeSpan) {
+      timeSpan.textContent = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
     }
 
-    const endOfWorkday = new Date();
-    endOfWorkday.setHours(17, 0, 0, 0);
+    // 📆 Check for weekend
+    const day = now.getDay(); // Sunday = 0, Saturday = 6
+    if (intervalSpan) {
+      if (day === 0 || day === 6) {
+        intervalSpan.textContent = "Enjoy your weekend!";
+      } else {
+        // 🕔 Workday ends at 5:00 PM local time
+        const endOfWorkday = new Date();
+        endOfWorkday.setHours(17, 0, 0, 0);
 
-    const msLeft = endOfWorkday - now;
-    const hrs = Math.floor(msLeft / 3600000);
-    const mins = Math.floor((msLeft % 3600000) / 60000);
-    const secs = Math.floor((msLeft % 60000) / 1000);
+        const msLeft = endOfWorkday - now;
+        const hrs = Math.floor(msLeft / 3600000);
+        const mins = Math.floor((msLeft % 3600000) / 60000);
+        const secs = Math.floor((msLeft % 60000) / 1000);
 
-    const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
-    intervalSpan.textContent = intervalStr;
+        // Show countdown or fallback message
+        intervalSpan.textContent = msLeft > 0
+          ? `${hrs}h ${mins}m ${secs}s`
+          : "Workday over";
+      }
+    }
   }
 
+  // 🔁 Update time immediately, then every second
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
 
-  // 🌤️ Weather display from global config (weatherData)
+  // 🌤️ Real-time Weather Display
+  // Purpose: Show current weather from shared global object `weatherData`
   function updateWeatherDisplay() {
-    if (!window.weatherData) {
+    const weatherDisplay = document.getElementById("weatherDisplay");
+
+    // ❓ Fallback if object not yet defined
+    if (!window.weatherData || !weatherDisplay) {
       console.warn("⚠️ weatherData not found");
-      document.getElementById("weatherDisplay").textContent = "❓";
+      if (weatherDisplay) weatherDisplay.textContent = "❓";
       return;
     }
 
     const { city, condition, tempF } = weatherData;
-    const weatherDisplay = document.getElementById("weatherDisplay");
-    if (weatherDisplay) {
-      weatherDisplay.textContent = `🌆 ${city} | ${condition} | ${tempF}°F`;
-    }
+    weatherDisplay.textContent = `🌆 ${city} | ${condition} | ${tempF}°F`;
   }
 
+  // 🔁 Update immediately and then every 15 minutes
   updateWeatherDisplay();
   setInterval(updateWeatherDisplay, 15 * 60 * 1000);
 
-  // 🔐 Login validation (no URL-based login allowed)
+  // 🔐 Login Validation Logic
+  // Purpose: Handle local login check without URL param exploits
   document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.querySelector('.login-form');
     const loginError = document.getElementById('loginError');
-    const usernameInput = loginForm.querySelector('[name="username"]');
-    const passwordInput = loginForm.querySelector('[name="password"]');
-    const pageHeader = document.querySelector('.board-section h1');
+    const usernameInput = loginForm?.querySelector('[name="username"]');
+    const passwordInput = loginForm?.querySelector('[name="password"]');
+    const pageHeader = document.getElementById('bodyHeaderCopy'); // Main title
     const dashboard = document.getElementById('dashboardSection');
 
+    // 🚨 Exit early if any expected element is missing
     if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
       console.warn('⚠️ Missing login DOM elements.');
       return;
     }
 
+    // 🧼 Clear login error message on typing
     usernameInput.addEventListener('input', () => loginError.textContent = '');
     passwordInput.addEventListener('input', () => loginError.textContent = '');
 
+    // 🧪 Handle login form submit
     loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
+      e.preventDefault(); // Prevent page reload
 
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
 
+      // ✅ Hardcoded credential check (replace with backend later)
       if (username === 'admin' && password === 'skyelogin') {
         localStorage.setItem('userLoggedIn', 'true');
+
+        // Hide form and error
         loginForm.style.display = 'none';
         loginError.textContent = '';
-        pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
+        loginError.style.display = 'none';
+
+        // 🔁 Update header to show dashboard
+        pageHeader.textContent = '📊 Skyesoft Dashboard';
+
+        // Show dashboard content
         if (dashboard) dashboard.style.display = 'block';
+
       } else {
+        // ❌ Invalid credentials
         loginError.textContent = '❌ Invalid username or password.';
         loginError.style.display = 'block';
         loginForm.reset();
