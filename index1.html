@@ -203,6 +203,7 @@
       }
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
+
   // ⏰ Clock + end-of-workday interval updater
   function updateTimeAndInterval() {
     const now = new Date();
@@ -221,7 +222,6 @@
       return;
     }
 
-    // Define end of workday as 5:00 PM
     const endOfWorkday = new Date();
     endOfWorkday.setHours(17, 0, 0, 0);
 
@@ -233,11 +233,11 @@
     const intervalStr = msLeft > 0 ? `${hrs}h ${mins}m ${secs}s` : "Workday over";
     intervalSpan.textContent = intervalStr;
   }
-  // 🕓 Initial + recurring interval updates (every second)
+
   updateTimeAndInterval();
   setInterval(updateTimeAndInterval, 1000);
 
-  // 🌤️ Display weather data from global config (weatherData object)
+  // 🌤️ Weather display from global config (weatherData)
   function updateWeatherDisplay() {
     if (!window.weatherData) {
       console.warn("⚠️ weatherData not found");
@@ -245,56 +245,46 @@
       return;
     }
 
-    // Extract weather details from global object
     const { city, condition, tempF } = weatherData;
     const weatherDisplay = document.getElementById("weatherDisplay");
-
-    // Display formatted weather string
     if (weatherDisplay) {
       weatherDisplay.textContent = `🌆 ${city} | ${condition} | ${tempF}°F`;
     }
   }
 
-  // ☁️ Initial + recurring weather updates (every 15 minutes)
   updateWeatherDisplay();
   setInterval(updateWeatherDisplay, 15 * 60 * 1000);
-  // 🔐 Login validation and dashboard toggle logic
+
+  // 🔐 Login validation (no URL-based login allowed)
   document.addEventListener('DOMContentLoaded', () => {
-    // 🔧 DOM element references
-    const loginForm = document.getElementById('loginForm');
+    const loginForm = document.querySelector('.login-form');
     const loginError = document.getElementById('loginError');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const pageHeader = document.querySelector('.board-header h1');
+    const usernameInput = loginForm.querySelector('[name="username"]');
+    const passwordInput = loginForm.querySelector('[name="password"]');
+    const pageHeader = document.querySelector('.board-section h1');
     const dashboard = document.getElementById('dashboardSection');
 
-    // ✅ Confirm required elements exist
     if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
-      console.warn('⚠️ Missing required DOM elements.');
+      console.warn('⚠️ Missing login DOM elements.');
       return;
     }
 
-    // 🧼 Clear error message on input change
     usernameInput.addEventListener('input', () => loginError.textContent = '');
     passwordInput.addEventListener('input', () => loginError.textContent = '');
 
-    // 🧪 Handle login submission
     loginForm.addEventListener('submit', (e) => {
-      e.preventDefault(); // Prevent page reload
+      e.preventDefault();
 
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
 
-      // 🔍 Check credentials (hardcoded for demo purposes)
       if (username === 'admin' && password === 'skyelogin') {
-        // ✅ Login success: show dashboard
         localStorage.setItem('userLoggedIn', 'true');
-        loginError.textContent = '';
         loginForm.style.display = 'none';
+        loginError.textContent = '';
         pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
         if (dashboard) dashboard.style.display = 'block';
       } else {
-        // ❌ Login failed
         loginError.textContent = '❌ Invalid username or password.';
         loginError.style.display = 'block';
         loginForm.reset();
