@@ -268,9 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = document.getElementById('password');
   const pageHeader = document.querySelector('.board-header h1');
   const dashboard = document.getElementById('dashboardSection');
+  const loginButton = loginForm?.querySelector('button[type="submit"]');
 
   // ✅ Confirm all required elements exist
-  if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader) {
+  if (!loginForm || !loginError || !usernameInput || !passwordInput || !pageHeader || !loginButton) {
     console.warn('⚠️ Missing required DOM elements.');
     return;
   }
@@ -279,6 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
   usernameInput.addEventListener('input', () => loginError.textContent = '');
   passwordInput.addEventListener('input', () => loginError.textContent = '');
 
+  // 👆 Optional: Log click activity
+  loginButton.addEventListener('click', () => {
+    console.log('🔍 Login button clicked');
+  });
+
   // 🧪 Handle login form submission
   loginForm.addEventListener('submit', (e) => {
     e.preventDefault(); // Prevent default page reload
@@ -286,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
 
-    // 🔍 Validate credentials (hardcoded for demo purposes)
+    // 🔍 Validate credentials (hardcoded for now)
     if (username === 'admin' && password === 'skyelogin') {
       // ✅ Login success: update UI
       loginError.textContent = '';
@@ -294,13 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       pageHeader.textContent = '📊 Skyesoft Dashboard (select an icon).';
       loginForm.style.display = 'none';
-
       if (dashboard) dashboard.style.display = 'block';
     } else {
       // ❌ Login failed: show feedback
       loginError.textContent = '❌ Invalid username or password.';
       loginError.style.display = 'block';
-      loginForm.reset(); // Add inside the `else` block, right after setting the error
+      loginForm.reset(); // 🔁 Clear form fields on failure
     }
   });
 });
