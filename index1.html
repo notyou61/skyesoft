@@ -207,7 +207,12 @@
   // ⏰ Clock + end-of-workday interval updater
   function updateTimeAndInterval() {
     const now = new Date();
-    document.getElementById("currentTime").textContent = now.toLocaleTimeString();
+    document.getElementById("currentTime").textContent = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
 
     // Define end of workday as 5:00 PM
     const endOfWorkday = new Date();
