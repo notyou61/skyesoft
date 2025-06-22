@@ -9,6 +9,12 @@
   <title>Skyesoft Portal</title>
   <!-- Favicon Link -->
   <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- jQuery (required by DataTables) -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <!-- Style -->
   <style>
     /* 🔧 Global Reset */
@@ -308,6 +314,10 @@
     body.modal-open {
       overflow: hidden;
     }
+    /* DataTable Customizations */
+    #projectTable_wrapper {
+      margin-top: 12px;
+    }
   </style>
 </head>
 <!-- Body -->
@@ -341,7 +351,35 @@
           <li>📦 Project Tracker module upcoming</li>
         </ul>
       </div>
-
+      <!-- DataTable Section -->
+      <div class="board-panel" style="margin-top: 16px;">
+        <h3>📋 Project Summary</h3>
+        <table id="projectTable" class="display" style="width:100%">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Status</th>
+              <th>Jurisdiction</th>
+              <th>Last Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Habit Burger #53452</td>
+              <td>Approved</td>
+              <td>City of Mesa</td>
+              <td>06/18/25</td>
+            </tr>
+            <tr>
+              <td>ALC Group Phoenix</td>
+              <td>Scheduled</td>
+              <td>City of Phoenix</td>
+              <td>06/22/25</td>
+            </tr>
+            <!-- Add more rows as needed -->
+          </tbody>
+        </table>
+      </div>
       <!-- Login Wrapper for vertical centering -->
       <div class="login-wrapper">
         <form class="login-form">
@@ -398,11 +436,21 @@
     }
     // Optional: Close modal when clicking outside it
     window.addEventListener("click", function (event) {
-    const modal = document.getElementById("skyebotModal");
-    if (event.target === modal) {
-      modal.style.display = "none";
-    }
-  });
+      const modal = document.getElementById("skyebotModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    });
+    // DataTables initialization
+    $(document).ready(function () {
+      $('#projectTable').DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        scrollY: '160px',
+        scrollCollapse: true
+      });
+    });
   </script>
 </body>
 <!-- End of Body -->
