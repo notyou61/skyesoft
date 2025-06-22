@@ -163,6 +163,45 @@
       color: #333;
       list-style-type: disc;
     }
+  #aiPromptSection {
+      width: 100%;
+      max-width: 720px;
+      background: #f5faff;
+      border: 1px solid #cce0f5;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 12px auto;
+    }
+    #aiPromptSection h3 {
+      margin-bottom: 10px;
+      font-size: 1.2em;
+      color: #004080;
+    }
+    #promptInput {
+      width: 100%;
+      font-size: 1em;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: vertical;
+    }
+    #aiPromptForm button {
+      padding: 10px 16px;
+      background: #004080;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #aiPromptForm button:hover {
+      background: #0059b3;
+    }
+    .file-label {
+      cursor: pointer;
+      color: #004080;
+      font-weight: bold;
+    }
   </style>
 </head>
 <!-- Body -->
@@ -196,6 +235,21 @@
           <li>💼 Project Tracker module upcoming</li>
         </ul>
       </div>
+      <!-- AI Prompt Section -->
+      <div id="aiPromptSection" class="board-section">
+        <h3>🤖 Skyebot Prompt</h3>
+        <form id="aiPromptForm" enctype="multipart/form-data">
+          <textarea id="promptInput" name="prompt" rows="2" placeholder="Ask Skyebot a question or task..." required></textarea>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 10px;">
+            <label class="file-label">
+              📎 <input type="file" name="attachment" style="display:none;" onchange="document.getElementById('fileName').textContent = this.files[0]?.name || ''">
+              <span id="fileName" style="font-size: 0.85em; color: #555;">Attach file...</span>
+            </label>
+            <button type="submit">Send</button>
+          </div>
+        </form>
+      </div>
       <!-- Login Form -->
       <form class="login-form">
         <input type="text" placeholder="Username" name="username" required/>
@@ -222,9 +276,16 @@
   <script src="assets/js/weatherConfig.js"></script>
   <!-- Weather Functions -->
   <script src="assets/js/weather.js"></script>
-
   <!-- Login Script -->
   <script src="assets/js/login.js"></script>
+  <script>
+  document.getElementById("aiPromptForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const prompt = document.getElementById("promptInput").value;
+    alert("Prompt submitted: " + prompt);
+    // Optional: Add file handling logic here
+  });
+</script>
 </body>
 <!-- End of Body -->
 </html>
