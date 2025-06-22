@@ -1,11 +1,15 @@
-
 <!DOCTYPE html>
+<!-- HTML -->
 <html lang="en">
+<!-- Head -->
 <head>
-  <meta charset="UTF-8" />
-  <title>SkyeSoft Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <!-- Meta -->
+  <meta charset="utf-8" />
+  <!-- Title -->
+  <title>Skyesoft Portal</title>
+  <!-- Favicon Link -->
+  <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+  <!-- Style -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -25,6 +29,7 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 8px 16px;
     }
+    #pageHeader, #pageFooter { flex-shrink: 0; }
     #pageBody {
       flex-grow: 1;
       display: flex;
@@ -34,35 +39,56 @@
       max-height: calc(100vh - 160px);
       overflow: hidden;
     }
+    #pageHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+      margin-top: 12px;
+    }
+    #pageFooter {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8em;
+      padding: 6px 12px;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+    .version { font-size: 0.8em; color: #777; }
+    #bodyHeader, #bodyFooter {
+      font-weight: bold;
+      font-size: 1em;
+      text-align: left;
+      margin-bottom: 8px;
+    }
     #bodyMain {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
+      justify-content: center;
       overflow: hidden;
       margin-top: -4px;
     }
-    #newsUpdates.info-box {
-      align-self: flex-start;
+    .bodyHeader::after {
+      content: "";
+      display: block;
+      height: 2px;
       width: 100%;
-      max-width: 100%;
-      background: #f9f9f9;
-      border: 1px solid #ccc;
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      background: #ccc;
+      margin-top: 6px;
+      margin-bottom: 0px;
     }
-    #newsUpdates h3 {
-      margin-bottom: 8px;
-      font-size: 1.05em;
-      font-weight: bold;
-      color: #333;
+    .bodyHeader h2 {
+      margin: 0;
     }
-    #newsUpdates ul {
-      padding-left: 20px;
-      font-size: 0.95em;
-      color: #333;
-      list-style-type: disc;
+    .bodyFooter::before {
+      content: "";
+      display: block;
+      height: 2px;
+      width: 100%;
+      background: #ccc;
+      margin-bottom: 6px;
     }
     .login-form {
       display: flex;
@@ -72,55 +98,154 @@
       margin: 0 auto;
       padding: 24px;
     }
-    .login-form input, .login-form button {
+    .login-form input {
       padding: 12px;
       font-size: 1em;
-      border-radius: 8px;
-    }
-    .login-form input {
       border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+    .login-form input:focus {
+      border-color: #004080;
+      box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
     }
     .login-form button {
+      padding: 12px;
+      font-size: 1em;
       font-weight: bold;
       color: #fff;
       background: #004080;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
+      transition: background 0.3s;
+    }
+    .login-form button:hover {
+      background: #0059b3;
     }
     .error-message {
-      color: red;
-      font-size: 0.9em;
-      text-align: center;
-      margin-top: 8px;
-      min-height: 1.2em;
+        color: red;
+        font-size: 0.9em;
+        text-align: center;
+        margin-top: 8px;
+        min-height: 1.2em; /* reserve space to prevent form jumping */
+      display: block;
+}
+    @media (max-width: 600px) {
+      .board-section {
+        width: 95vw;
+        padding: 12px;
+      }
+      .login-form {
+        padding: 16px;
+      }
+    }
+    .modal {
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    .close-btn {
+      position: absolute;
+      top: 12px; right: 16px;
+      font-size: 1.4em;
+      cursor: pointer;
+    }
+    .floating-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #004080;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 52px; height: 52px;
+      font-size: 1.4em;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .floating-btn:hover {
+      background: #0059b3;
     }
   </style>
 </head>
+<!-- Body -->
 <body>
-  <div class="board-section">
-    <div id="pageBody">
-      <div id="bodyHeader" class="bodyHeader">
-        <h2>Welcome to SkyeSoft</h2>
-      </div>
-      <div id="bodyMain">
-        <!-- News & Updates -->
-        <div id="newsUpdates" class="info-box">
-          <h3>📰 News &amp; Updates</h3>
-          <ul>
-            <li>✅ Phase 2 dashboard integration underway</li>
-            <li>🧠 AI Prompt logic in development</li>
-            <li>💼 Project Tracker module upcoming</li>
-          </ul>
-        </div>
-        <!-- Login Form -->
-        <form class="login-form">
-          <input type="text" placeholder="Username" name="username" required>
-          <input type="password" placeholder="Password" name="password" required>
-          <button type="submit">Log In</button>
-          <div id="loginError" class="error-message"></div>
-        </form>
-      </div>
+  <!-- Page Header -->
+  <div class="board-section" id="pageHeader">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
+      <h1 style="font-size: 1.4em;">Skyesoft Portal</h1>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+      <div>🌦️ Weather: <span id="weatherDisplay">N/A</span></div>
+      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
     </div>
   </div>
+  <!-- Page Body -->
+  <div class="board-section" id="pageBody">
+    <!-- Page Body Header -->
+    <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
+      <h2 id="bodyHeaderCopy">🔒 User Log In</h2>
+    </div>
+    <!-- Page Body Body -->
+    <div id="bodyMain">
+        <!-- Login Form -->
+        <form class="login-form">
+            <input type="text" placeholder="Username" name="username" required/>
+            <input type="password" placeholder="Password" name="password" required/>
+            <button type="submit">Log In</button>
+            <div id="loginError" class="error-message"></div>
+        </form>
+    </div>
+    <!-- Page Body Footer -->
+    <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
+      <small>Need access? Contact your supervisor or email support@christysigns.com</small>
+    </div>
+  </div>
+  <!-- Footer -->
+  <div class="board-section" id="pageFooter">
+    <!-- Copyright -->
+    <div>© 2025 Maychris Corporation</div>
+    <!-- Version -->
+    <div class="version">Loading version...</div>
+  </div>
+  <!-- Global Variable -->
+  <script src="assets/js/glbVar.js"></script>
+  <!-- Weather Config -->
+  <script src="assets/js/weatherConfig.js"></script>
+  <!-- Weather Functions -->
+  <script src="assets/js/weather.js"></script>
+  <!-- Login Script -->
+  <script src="assets/js/login.js"></script>
+  <!-- Skyebot Prompt Modal -->
+  <div id="skyebotModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="toggleModal()">×</span>
+      <h2>🤖 Skyebot Prompt</h2>
+      <textarea rows="4" placeholder="Ask Skyebot something..."></textarea>
+      <input type="file" />
+      <button style="margin-top: 12px;">Submit</button>
+    </div>
+  </div>
+  <!-- Floating Prompt Button -->
+  <button onclick="toggleModal()" class="floating-btn">🤖</button>
 </body>
+<!-- End of Body -->
 </html>
+<!-- End of Script --> 
