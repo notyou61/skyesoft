@@ -1,0 +1,19 @@
+{
+  // Disable suggestion popups inside comments (e.g., <!-- -->)
+  "editor.quickSuggestions": {
+    "comments": false,
+    "strings": true,
+    "other": true
+  },
+
+  // Disable Emmet suggestions in HTML if you find them intrusive
+  "emmet.includeLanguages": {
+    "html": ""
+  },
+
+  // Optional: reduce distractions from parameter hints
+  "editor.parameterHints.enabled": false,
+
+  // Optional: don't show suggestions on typing trigger characters (like `<`, `"`, etc.)
+  "editor.suggestOnTriggerCharacters": false
+}
