@@ -1,0 +1,73 @@
+<!-- 📊 Dashboard Section -->
+
+<div id="dashboardSection" style="display: none; margin-top: 16px;">
+  <!-- AI Prompt Panel -->
+  <section id="aiPromptPanel" style="margin-bottom: 24px;">
+    <h3>🤖 Skyebot Prompt</h3>
+    <input type="text" id="aiCommandInput" placeholder="Type a command..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc;" />
+    <button onclick="handleAICommand()" style="margin-top: 8px; padding: 8px 16px;">Submit</button>
+    <div id="aiCommandOutput" style="margin-top: 12px; font-style: italic; color: #555;"></div>
+  </section>
+
+  <!-- News Feed Panel -->
+  <section id="newsFeedPanel" style="margin-bottom: 24px;">
+    <h3>📰 News & Updates</h3>
+    <ul id="newsList">
+      <li>🔔 System update scheduled for Friday</li>
+      <li>📌 Remember to submit weekly mileage by Monday</li>
+      <li>🛠️ Permit for Habit Burger #53531 is under review</li>
+    </ul>
+  </section>
+
+  <!-- DataTables Grid -->
+  <section id="dataTableContainer">
+    <h3>📋 Data Viewer</h3>
+    <table id="dashboardDataTable" class="display" style="width:100%">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Entity</th>
+          <th>Status</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>001</td>
+          <td>Permit</td>
+          <td>Habit Burger</td>
+          <td>In Review</td>
+          <td>2025-06-20</td>
+        </tr>
+        <tr>
+          <td>002</td>
+          <td>Visit</td>
+          <td>ALC Group</td>
+          <td>Scheduled</td>
+          <td>2025-06-11</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<!-- AI Command Handler -->
+<script>
+function handleAICommand() {
+  const input = document.getElementById('aiCommandInput').value.trim().toLowerCase();
+  const output = document.getElementById('aiCommandOutput');
+
+  if (!input) {
+    output.textContent = "❗ Please enter a command.";
+    return;
+  }
+
+  if (input === 'logout') {
+    output.textContent = "🔓 Logging out...";
+    setTimeout(() => logoutUser(), 1000);
+  } else {
+    output.textContent = `🤖 Sorry, I don't understand "${input}" yet.`;
+  }
+}
+</script>
