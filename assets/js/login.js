@@ -5,14 +5,18 @@ function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
   return match ? match[2] : null;
 }
-
 // 🚪 Logout Function
 function logoutUser() {
   localStorage.clear();
   document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   location.reload();
 }
-
+// 🖼️ Modal Toggle Logic
+function toggleModal() {
+  const modal = document.getElementById('skyebotModal');
+  modal.style.display = (modal.style.display === "none" || !modal.style.display) ? "flex" : "none";
+}
+// 🏠 Redirect to Login
 document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.querySelector('.login-form');
   const loginError = document.getElementById('loginError');
@@ -20,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = loginForm?.querySelector('[name="password"]');
   const pageHeader = document.getElementById('bodyHeaderCopy');
   const dashboard = document.getElementById('dashboardSection');
-
   // 🧠 Auto-Login Check
   if (localStorage.getItem('userLoggedIn') === 'true') {
     if (loginForm) loginForm.style.display = 'none';
