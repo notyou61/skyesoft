@@ -1,273 +1,80 @@
+
 <!DOCTYPE html>
-<!-- HTML -->
 <html lang="en">
-<!-- Head -->
 <head>
-  <!-- Meta -->
-  <meta charset="utf-8" />
-  <!-- Title -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Skyesoft Portal</title>
-  <!-- Favicon Link -->
-  <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
-  <!-- Style -->
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100vh;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .board-section {
-      width: 90vw;
-      max-width: 1200px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 8px 16px;
-    }
-    #pageHeader, #pageFooter { flex-shrink: 0; }
-    #pageBody {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      margin: 12px 0;
-      max-height: calc(100vh - 160px);
-      overflow: hidden;
-    }
-    #pageHeader {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 1.1em;
-      margin-top: 12px;
-    }
-    #pageFooter {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8em;
-      padding: 6px 12px;
-      background: #ffffff;
-      margin-bottom: 12px;
-    }
-    .version { font-size: 0.8em; color: #777; }
-    #bodyHeader, #bodyFooter {
-      font-weight: bold;
-      font-size: 1em;
-      text-align: left;
-      margin-bottom: 8px;
-    }
-    #bodyMain {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      overflow: hidden;
-      margin-top: -4px;
-    }
-    .bodyHeader::after {
-      content: "";
-      display: block;
-      height: 2px;
-      width: 100%;
-      background: #ccc;
-      margin-top: 6px;
-      margin-bottom: 0px;
-    }
-    .bodyHeader h2 {
-      margin: 0;
-    }
-    .bodyFooter::before {
-      content: "";
-      display: block;
-      height: 2px;
-      width: 100%;
-      background: #ccc;
-      margin-bottom: 6px;
-    }
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      max-width: 400px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-    .login-form input {
-      padding: 12px;
-      font-size: 1em;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      outline: none;
-    }
-    .login-form input:focus {
-      border-color: #004080;
-      box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
-    }
-    .login-form button {
-      padding: 12px;
-      font-size: 1em;
-      font-weight: bold;
-      color: #fff;
-      background: #004080;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .login-form button:hover {
-      background: #0059b3;
-    }
-    .error-message {
-        color: red;
-        font-size: 0.9em;
-        text-align: center;
-        margin-top: 8px;
-        min-height: 1.2em; /* reserve space to prevent form jumping */
-      display: block;
-}
-    @media (max-width: 600px) {
-      .board-section {
-        width: 95vw;
-        padding: 12px;
-      }
-      .login-form {
-        padding: 16px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="assets/css/style.css"/>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css"/>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 </head>
-<!-- Body -->
 <body>
-  <!-- Page Header -->
-  <div class="board-section" id="pageHeader">
-    <div style="display: flex; align-items: center; gap: 16px;">
-      <img src="/skyesoft/assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
-      <h1 style="font-size: 1.4em;">Skyesoft Portal</h1>
+  <header class="pageHeader">
+    <img src="assets/images/logo-christy.png" alt="Christy Signs Logo" height="50"/>
+    <span class="titleText">Skyesoft Portal</span>
+    <div class="weatherBox">
+      🌤️ Weather: <span id="weatherDesc">clear sky</span> | <span id="weatherTemp">83°F</span><br/>
+      🕒 Time: <span id="currentTime">07:51:18 AM</span><br/>
+      ⏱️ Interval Remaining: Enjoy your weekend!
     </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
-      <div>🌦️ Weather: <span id="weatherDisplay">N/A</span></div>
-      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
-      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
-    </div>
-  </div>
-  <!-- Page Body -->
-  <div class="board-section" id="pageBody">
-    <!-- Page Body Header -->
-    <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
-      <h2 id="bodyHeaderCopy">🔒 User Log In</h2>
-    </div>
-    <!-- Page Body Body -->
-    <div id="bodyMain">
-        <!-- Login Form -->
-        <form class="login-form">
-            <input type="text" placeholder="Username" name="username" required/>
-            <input type="password" placeholder="Password" name="password" required/>
-            <button type="submit">Log In</button>
-            <div id="loginError" class="error-message"></div>
-        </form>
-    </div>
-    <!-- Page Body Footer -->
-    <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
-      <small>Need access? Contact your supervisor or email support@christysigns.com</small>
-    </div>
-  </div>
-  <!-- Footer -->
-  <div class="board-section" id="pageFooter">
-    <!-- Copyright -->
-    <div>© 2025 Maychris Corporation</div>
-    <!-- Version -->
-    <div class="version">Loading version...</div>
-  </div>
-  <!-- Global Variable -->
-  <script src="assets/js/glbVar.js"></script>
-  <!-- Weather Config -->
-  <script src="assets/js/weatherConfig.js"></script>
-  <!-- Weather Functions -->
-  <script src="assets/js/weather.js"></script>
+  </header>
 
-  <!-- 📊 Dashboard Section -->
+  <section id="pageBody">
+    <h2><img src="assets/images/chart-icon.png" height="24"/> Skyesoft Dashboard</h2>
+    <div id="dashboardTiles" style="padding: 1rem;">
 
-<div id="dashboardSection" style="display: none; margin-top: 16px;">
-  <!-- AI Prompt Panel -->
-  <section id="aiPromptPanel" style="margin-bottom: 24px;">
-    <h3>🤖 Skyebot Prompt</h3>
-    <input type="text" id="aiCommandInput" placeholder="Type a command..." style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc;" />
-    <button onclick="handleAICommand()" style="margin-top: 8px; padding: 8px 16px;">Submit</button>
-    <div id="aiCommandOutput" style="margin-top: 12px; font-style: italic; color: #555;"></div>
+      <!-- AI Prompt -->
+      <div style="margin-bottom: 2rem;">
+        <fieldset>
+          <legend>🤖 Skyebot Prompt</legend>
+          <input type="text" placeholder="Type a command..." style="width: 60%; padding: 6px;"/>
+          <button>Submit</button>
+        </fieldset>
+      </div>
+
+      <!-- News Feed -->
+      <div style="margin-bottom: 2rem;">
+        <fieldset>
+          <legend>📰 News & Updates</legend>
+          <ul>
+            <li>🔧 System update scheduled for Friday</li>
+            <li>📌 Remember to submit weekly mileage by Monday</li>
+            <li>📝 Permit for Habit Burger #53531 is under review</li>
+          </ul>
+        </fieldset>
+      </div>
+
+      <!-- Data Grid -->
+      <div>
+        <fieldset>
+          <legend>📊 Data Viewer</legend>
+          <table id="dashboardTable" class="display" style="width:100%">
+            <thead>
+              <tr><th>ID</th><th>Type</th><th>Entity</th><th>Status</th><th>Updated</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>001</td><td>Permit</td><td>Habit Burger</td><td>In Review</td><td>2025-06-20</td></tr>
+              <tr><td>002</td><td>Visit</td><td>ALC Group</td><td>Scheduled</td><td>2025-06-11</td></tr>
+            </tbody>
+          </table>
+        </fieldset>
+      </div>
+
+    </div>
   </section>
 
-  <!-- News Feed Panel -->
-  <section id="newsFeedPanel" style="margin-bottom: 24px;">
-    <h3>📰 News & Updates</h3>
-    <ul id="newsList">
-      <li>🔔 System update scheduled for Friday</li>
-      <li>📌 Remember to submit weekly mileage by Monday</li>
-      <li>🛠️ Permit for Habit Burger #53531 is under review</li>
-    </ul>
-  </section>
+  <footer class="pageFooter">
+    <div>Need access? Contact your supervisor or email support@christysigns.com</div>
+    <div>&copy; 2025 Maychris Corporation</div>
+    <div class="version">v2025.06.16</div>
+  </footer>
 
-  <!-- DataTables Grid -->
-  <section id="dataTableContainer">
-    <h3>📋 Data Viewer</h3>
-    <table id="dashboardDataTable" class="display" style="width:100%">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Type</th>
-          <th>Entity</th>
-          <th>Status</th>
-          <th>Updated</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>001</td>
-          <td>Permit</td>
-          <td>Habit Burger</td>
-          <td>In Review</td>
-          <td>2025-06-20</td>
-        </tr>
-        <tr>
-          <td>002</td>
-          <td>Visit</td>
-          <td>ALC Group</td>
-          <td>Scheduled</td>
-          <td>2025-06-11</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-</div>
-
-<!-- AI Command Handler -->
-<script>
-function handleAICommand() {
-  const input = document.getElementById('aiCommandInput').value.trim().toLowerCase();
-  const output = document.getElementById('aiCommandOutput');
-
-  if (!input) {
-    output.textContent = "❗ Please enter a command.";
-    return;
-  }
-
-  if (input === 'logout') {
-    output.textContent = "🔓 Logging out...";
-    setTimeout(() => logoutUser(), 1000);
-  } else {
-    output.textContent = `🤖 Sorry, I don't understand "${input}" yet.`;
-  }
-}
-</script>
-
-  <!-- Login Script -->
-  <script src="assets/js/login.js"></script>
+  <script>
+    $(document).ready(() => {
+      $('#dashboardTable').DataTable();
+    });
+  </script>
 </body>
-<!-- End of Body -->
 </html>
-<!-- End of Script --> 
