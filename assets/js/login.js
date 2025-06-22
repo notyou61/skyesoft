@@ -25,7 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('userLoggedIn') === 'true') {
     if (loginForm) loginForm.style.display = 'none';
     if (pageHeader) pageHeader.textContent = '📊 Skyesoft Dashboard';
-    if (dashboard) dashboard.style.display = 'block';
+    if (dashboard) {
+  fetch("components/dashboard.html")
+    .then(res => res.text())
+    .then(html => {
+      dashboard.innerHTML = html;
+      dashboard.style.display = 'block';
+    })
+    .catch(err => {
+      dashboard.innerHTML = "<p>⚠️ Failed to load dashboard content.</p>";
+      dashboard.style.display = 'block';
+      console.error("Dashboard load error:", err);
+    });
+}
+
     return;
   }
 
@@ -52,7 +65,20 @@ document.addEventListener('DOMContentLoaded', () => {
       loginError.style.display = 'none';
 
       pageHeader.textContent = '📊 Skyesoft Dashboard';
-      if (dashboard) dashboard.style.display = 'block';
+      if (dashboard) {
+  fetch("components/dashboard.html")
+    .then(res => res.text())
+    .then(html => {
+      dashboard.innerHTML = html;
+      dashboard.style.display = 'block';
+    })
+    .catch(err => {
+      dashboard.innerHTML = "<p>⚠️ Failed to load dashboard content.</p>";
+      dashboard.style.display = 'block';
+      console.error("Dashboard load error:", err);
+    });
+}
+
     } else {
       loginError.textContent = '❌ Invalid username or password.';
       loginError.style.display = 'block';
