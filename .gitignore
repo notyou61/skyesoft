@@ -8,3 +8,4 @@ logs/
 # System files
 .DS_Store
 Thumbs.db
+echo ".env" >> .gitignore
