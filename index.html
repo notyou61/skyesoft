@@ -412,16 +412,19 @@
   <script src="assets/js/login.js"></script>
   <!-- Modals-->
   <div id="modals">
-    <!-- Skyebot Prompt Modal -->
-    <div id="skyebotModal" class="modal" style="display:none;">
-      <div class="modal-content">
-        <span class="close-btn" onclick="toggleModal()">×</span>
-        <h2>🤖 Skyebot Prompt</h2>
-        <textarea rows="4" placeholder="Ask Skyebot something..."></textarea>
+  <!-- Skyebot Prompt Modal -->
+  <div id="skyebotModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="toggleModal()">×</span>
+      <h2>🤖 Skyebot Prompt</h2>
+      <form id="promptForm">
+        <textarea id="promptInput" rows="4" placeholder="Ask Skyebot something..."></textarea>
         <input type="file" />
-        <button style="margin-top: 12px;">Submit</button>
-      </div>
+        <button type="submit" style="margin-top: 12px;">Submit</button>
+      </form>
+      <pre id="responseOutput" style="margin-top: 16px;"></pre>
     </div>
+  </div>
     <!-- Floating Prompt Button (tied to modal) -->
     <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt">🤖</button>
   </div>
@@ -452,6 +455,8 @@
       });
     });
   </script>
+  <!-- Skyebot Script -->
+  <script src="assets/js/skyebot.js"></script>
 </body>
 <!-- End of Body -->
 </html>
