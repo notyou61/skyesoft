@@ -342,7 +342,7 @@
     </div>
     <!-- Page Body Body -->
     <div id="bodyMain">
-      <!-- News & Updates (stays at top) -->
+      <!-- News & Updates Section -->
       <div class="board-panel news-updates">
         <h3>🗞️ News & Updates</h3>
         <ul>
@@ -380,7 +380,7 @@
           </tbody>
         </table>
       </div>
-      <!-- Login Wrapper for vertical centering -->
+      <!-- Login Section -->
       <div class="login-wrapper">
         <form class="login-form">
           <input type="text" placeholder="Username" name="username" required />
@@ -454,6 +454,19 @@
         scrollCollapse: true
       });
     });
+    // Session Manager
+      document.addEventListener("DOMContentLoaded", () => {
+        const loggedIn = sessionStorage.getItem("loggedIn") === "true";
+        document.getElementById("dashboardContent").style.display = loggedIn ? "block" : "none";
+        document.querySelector(".login-wrapper").style.display = loggedIn ? "none" : "block";
+      });
+      // Handle login form submission
+      document.querySelector(".login-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        // For demo purposes, this accepts any login
+        sessionStorage.setItem("loggedIn", "true");
+        location.reload();
+      });
   </script>
   <!-- Skyebot Script -->
   <script src="assets/js/skyebot.js"></script>
