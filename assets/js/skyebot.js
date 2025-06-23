@@ -6,7 +6,7 @@ document.getElementById("promptForm").addEventListener("submit", async (e) => {
   output.textContent = "🤖 Thinking...";
 
   try {
-    const res = await fetch("api/askOpenAI.php", {
+    const res = await fetch("/.netlify/functions/askOpenAI", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
