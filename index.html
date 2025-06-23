@@ -455,15 +455,22 @@
       });
     });
     // Session Manager
-      document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", () => {
         const loggedIn = sessionStorage.getItem("loggedIn") === "true";
-        document.getElementById("dashboardContent").style.display = loggedIn ? "block" : "none";
-        document.querySelector(".login-wrapper").style.display = loggedIn ? "none" : "block";
+        // Show/Hide login form
+        document.querySelector(".login-wrapper").style.display = loggedIn ? "none" : "flex";
+        // Show/Hide News & Updates
+        const newsUpdates = document.querySelector(".news-updates");
+        if (newsUpdates) newsUpdates.style.display = loggedIn ? "block" : "none";
+        // Show/Hide Project Summary
+        const projectSummary = document.querySelector("#projectTable").closest(".board-panel");
+        if (projectSummary) projectSummary.style.display = loggedIn ? "block" : "none";
+        // Optional: Update header text
+        document.getElementById("bodyHeaderCopy").textContent = loggedIn ? "📋 Project Dashboard" : "🔒 User Log In";
       });
-      // Handle login form submission
+      // Login form submission
       document.querySelector(".login-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        // For demo purposes, this accepts any login
         sessionStorage.setItem("loggedIn", "true");
         location.reload();
       });
