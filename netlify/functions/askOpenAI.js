@@ -1,5 +1,5 @@
 // netlify/functions/askOpenAI.js
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 exports.handler = async (event) => {
   try {
