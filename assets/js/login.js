@@ -7,23 +7,30 @@ function getCookie(name) {
 }
 // 🚪 Logout Function
 function logoutUser() {
+  // Clear user session
   localStorage.clear();
   document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  
-  // Update UI immediately without reload
-  const loginForm = document.querySelector('.login-form');
-  const dashboard = document.getElementById('dashboardSection');
-  const pageHeader = document.getElementById('bodyHeaderCopy');
+  // Reset DOM state
+  const loginWrapper = document.querySelector(".login-wrapper");
+  const loginForm = document.querySelector(".login-form");
+  const dashboard = document.getElementById("dashboardSection");
+  const pageHeader = document.getElementById("bodyHeaderCopy");
   const newsUpdates = document.querySelector(".news-updates");
   const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-
-  if (loginForm) loginForm.style.display = 'flex';
-  if (dashboard) dashboard.style.display = 'none';
-  if (newsUpdates) newsUpdates.style.display = 'none';
-  if (projectSummary) projectSummary.style.display = 'none';
-  if (pageHeader) pageHeader.textContent = '🔒 User Log In';
-  // console.log("User logged out successfully.");
-  console.log('👋 User logged out successfully.');
+  // Show login UI
+  if (loginWrapper) loginWrapper.style.display = "flex";
+  if (loginForm) {
+    loginForm.reset();
+    loginForm.style.display = "block";
+  }
+  // Hide dashboard UI
+  if (dashboard) dashboard.style.display = "none";
+  if (newsUpdates) newsUpdates.style.display = "none";
+  if (projectSummary) projectSummary.style.display = "none";
+  // Update header
+  if (pageHeader) pageHeader.textContent = "🔒 User Log In";
+  // Console Log
+  console.log("👋 User logged out successfully.");
 }
 // 🖼️ Modal Toggle Logic
 function toggleModal() {
