@@ -52,15 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboard) dashboard.style.display = 'block';
     return;
   }
-
   // 🍪 Pre-fill Username from Cookie
   const savedUser = getCookie('skyelogin_user');
   if (savedUser && usernameInput) usernameInput.value = savedUser;
-
   // 🧼 Clear login error
   usernameInput?.addEventListener('input', () => loginError.textContent = '');
   passwordInput?.addEventListener('input', () => loginError.textContent = '');
-
   // 🔑 Form Submit Logic
   loginForm?.addEventListener('submit', (e) => {
     e.preventDefault();
