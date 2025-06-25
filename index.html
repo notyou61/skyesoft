@@ -108,6 +108,8 @@
   <script src="assets/js/weather.js"></script>
   <!-- Login Script -->
   <script src="assets/js/login.js"></script>
+  <!-- Markdown Renderer -->
+  <script src="assets/js/marked.min.js"></script>
   <!-- Modals-->
   <div id="modals">
   <!-- Skyebot Prompt Modal -->
@@ -115,12 +117,13 @@
     <div class="modal-content">
       <span class="close-btn" onclick="toggleModal()">×</span>
       <h2>🤖 Skyebot Prompt</h2>
+      <div id="chatThread" style="max-height: 200px; overflow-y: auto; font-size: 0.9em; border: 1px solid #ccc; padding: 8px; background: #f8f8f8; border-radius: 6px; margin-bottom: 12px;"></div>
       <form id="promptForm">
         <textarea id="promptInput" rows="4" placeholder="Ask Skyebot something..."></textarea>
         <input type="file" />
         <button type="submit" style="margin-top: 12px;">Submit</button>
+        <button type="button" id="clearBtn" style="margin-top: 12px; margin-left: 8px;">Clear</button>
       </form>
-      <pre id="responseOutput" style="margin-top: 16px;"></pre>
     </div>
   </div>
     <!-- Floating Prompt Button (tied to modal) -->
