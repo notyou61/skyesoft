@@ -1,25 +1,15 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Skyebot Thread Prompt</title>
-  <link rel="stylesheet" href="assets/css/skyesoft-ui.css">
-</head>
-<body class="modal-open">
-  <div class="modal" id="skyebotModal" style="display: block;">
-    <div class="modal-content">
-      <span class="close-btn" onclick="closeSkyebot()">&times;</span>
-      <h2>🤖 Skyebot Assistant</h2>
-      <div id="skyebot-thread" class="skyebot-thread"></div>
-      <textarea id="skyebot-input" placeholder="Ask Skyebot anything... (Markdown supported)"></textarea>
-      <div class="button-group">
-        <button onclick="sendToSkyebot()">Send</button>
-        <button onclick="clearSkyebotThread()" class="clear-btn">Clear</button>
-      </div>
-    </div>
+<!-- Skyebot Prompt Modal -->
+<div id="skyebotModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('skyebotModal').style.display='none'">&times;</span>
+    <h2>🤖 Skyebot Prompt</h2>
+    <form id="promptForm">
+      <textarea id="promptInput" placeholder="Ask Skyebot..." required></textarea>
+      <button type="submit">Send</button>
+      <button type="button" id="clearThread">Clear</button>
+    </form>
+    <div id="responseOutput" class="chat-thread"></div>
   </div>
-  <script src="assets/js/marked.min.js"></script>
-  <script src="assets/js/skyebot.js"></script>
-</body>
-</html>
+</div>
+<script src="assets/js/marked.min.js"></script>
+<script src="assets/js/skyebot.js"></script>
