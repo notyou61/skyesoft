@@ -113,24 +113,21 @@
   <!-- Modals-->
   <div id="modals">
   <!-- Skyebot Prompt Modal -->
-  <div id="skyebotModal" class="modal" style="display: none;">
-    <div class="modal-content" style="padding: 16px;">
+  <div id="skyebotModal" class="modal">
+    <div class="modal-content">
       <span class="close-btn" onclick="toggleModal()">×</span>
       <h3>🤖 Skyebot</h3>
-      <!-- 💬 Embedded Thread INSIDE form -->
+      <!-- Prompt input -->
       <form id="promptForm" class="chat-form">
-        <div id="chatThread" class="chat-thread" style="max-height: 200px; overflow-y: auto;"></div>
-        <!-- Text Input + Buttons -->
         <textarea id="promptInput" rows="2" placeholder="Ask Skyebot something..."></textarea>
         <div class="form-footer">
-          <input type="file" id="fileUpload" style="margin-right: auto;" />
+          <input type="file" id="fileUpload" />
           <button type="submit">Submit</button>
           <button type="button" id="clearBtn" class="clear-btn">Clear</button>
         </div>
       </form>
     </div>
   </div>
-
   <!-- Floating Prompt Button (tied to modal) -->
   <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt">🤖</button>
   </div>

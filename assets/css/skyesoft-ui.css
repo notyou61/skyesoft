@@ -319,3 +319,24 @@ body.modal-open {
   margin-bottom: 12px;
   font-size: 0.95em;
 }
+/* 🗨️ Inline Chat Thread */
+.inline-chat-thread {
+  margin-bottom: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #f9f9f9;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+/* 🗨️ Inline Chat Thread Scrollbar */
+.inline-chat-thread::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+/* 🗨️ Inline Chat Thread Scrollbar Thumb */
+.inline-chat-thread::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 3px;
+}
