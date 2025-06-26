@@ -1,23 +1,21 @@
-// Skyebot Chatbot Script
+// Skyebot Embedded Prompt Chat
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("promptForm");
   const input = document.getElementById("promptInput");
-  const inlineThread = document.getElementById("inlineChatThread");
   const clearBtn = document.getElementById("clearBtn");
 
-  // ✅ Ensure all required elements are present
-  if (!form || !input || !inlineThread || !clearBtn) {
+  // ✅ Confirm required elements exist
+  if (!form || !input || !clearBtn) {
     console.error("❌ Skyebot setup error: One or more DOM elements are missing.");
     return;
   }
 
-  // 🧹 Clear chat
+  // 🧹 Clear chat and input
   clearBtn.addEventListener("click", () => {
-    inlineThread.innerHTML = "";
     input.value = "";
   });
 
-  // 💬 Handle form submission
+  // 💬 On form submit
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
@@ -25,21 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 👤 User message
-    inlineThread.innerHTML += `
-      <div class="chat-entry user">
-        <span>👤 <strong>You [${time}]:</strong> ${marked.parse(prompt)}</span>
-      </div>
-    `;
-    input.value = "";
-
-    // Show thinking placeholder
-    inlineThread.innerHTML += `
-      <div class="chat-entry thinking" id="thinkingRow">
-        <span>🤖 <strong>Skyebot:</strong> Thinking...</span>
-      </div>
-    `;
-    inlineThread.scrollTop = inlineThread.scrollHeight;
+    // 👤 User entry
+    let threadText = input.value + `\n👤 You [${time}]: ${prompt}\n🤖 Skyebot: Thinking...`;
+    input.value = threadText;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -49,20 +35,16 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await res.json();
-      const reply = marked.parseInline(data.response || data.error || "(no response)");
+      const reply = data.response || data.error || "(no response)";
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Replace thinking row with actual response
-      const thinking = document.getElementById("thinkingRow");
-      if (thinking) {
-        thinking.outerHTML = `
-          <div class="chat-entry bot">
-            <span>🤖 <strong>Skyebot [${replyTime}]:</strong> ${reply}</span>
-          </div>
-        `;
-      }
+      // 🔄 Replace Thinking... with response
+      input.value = input.value.replace(
+        /🤖 Skyebot: Thinking\.\.\./,
+        `🤖 Skyebot [${replyTime}]: ${reply}`
+      );
 
-      // Optional action handling
+      // 🎯 Optional action response
       switch (data.action) {
         case "logout":
           if (typeof logoutUser === "function") logoutUser();
@@ -73,16 +55,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
     } catch (err) {
-      const thinking = document.getElementById("thinkingRow");
-      if (thinking) {
-        thinking.outerHTML = `
-          <div class="chat-entry bot">
-            <span>🤖 <strong>Skyebot:</strong> ❌ Network or API error.</span>
-          </div>
-        `;
-      }
+      input.value = input.value.replace(
+        /🤖 Skyebot: Thinking\.\.\./,
+        `🤖 Skyebot: ❌ Network or API error.`
+      );
     }
 
-    inlineThread.scrollTop = inlineThread.scrollHeight;
+    input.scrollTop = input.scrollHeight;
   });
 });
