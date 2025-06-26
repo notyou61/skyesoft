@@ -11,10 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 🧑‍💻 Icons
-  const userIcon = '<img class="chat-icon" src="assets/images/user-icon.png" alt="User">';
-  const botIcon  = '<img class="chat-icon" src="assets/images/skyebot-icon.png" alt="Skyebot">';
-
   // 🧹 Clear chat
   clearBtn.addEventListener("click", () => {
     thread.innerHTML = "";
@@ -29,13 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Add user message
+    // 👤 User message
     thread.innerHTML += `
       <div class="chat-entry user">
-        ${userIcon}
-        <div class="chat-bubble">
-          <strong>You [${time}]:</strong><br>${marked.parse(prompt)}
-        </div>
+        <span>👤 <strong>You [${time}]:</strong> ${marked.parseInline(prompt)}</span>
       </div>
     `;
     input.value = "";
@@ -43,8 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Show thinking placeholder
     thread.innerHTML += `
       <div class="chat-entry thinking" id="thinkingRow">
-        ${botIcon}
-        <div class="chat-bubble">🤖 Thinking...</div>
+        <span>🤖 <strong>Skyebot:</strong> Thinking...</span>
       </div>
     `;
     thread.scrollTop = thread.scrollHeight;
@@ -57,18 +49,15 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await res.json();
-      const reply = marked.parse(data.response || data.error || "(no response)");
+      const reply = marked.parseInline(data.response || data.error || "(no response)");
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       // Replace thinking row with actual response
       const thinking = document.getElementById("thinkingRow");
       if (thinking) {
         thinking.outerHTML = `
-          <div class="chat-entry">
-            ${botIcon}
-            <div class="chat-bubble">
-              <strong>Skyebot [${replyTime}]:</strong><br>${reply}
-            </div>
+          <div class="chat-entry bot">
+            <span>🤖 <strong>Skyebot [${replyTime}]:</strong> ${reply}</span>
           </div>
         `;
       }
@@ -87,9 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const thinking = document.getElementById("thinkingRow");
       if (thinking) {
         thinking.outerHTML = `
-          <div class="chat-entry">
-            ${botIcon}
-            <div class="chat-bubble">❌ Network or API error.</div>
+          <div class="chat-entry bot">
+            <span>🤖 <strong>Skyebot:</strong> ❌ Network or API error.</span>
           </div>
         `;
       }

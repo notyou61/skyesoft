@@ -117,10 +117,10 @@
     <div class="modal-content" style="padding: 16px;">
       <span class="close-btn" onclick="toggleModal()">×</span>
       <h3>🤖 Skyebot</h3>
-      <!-- Embedded Conversation Thread -->
-      <div id="chatThread" class="chat-thread"></div>
-      <!-- Input Row -->
+      <!-- 💬 Embedded Thread INSIDE form -->
       <form id="promptForm" class="chat-form">
+        <div id="chatThread" class="chat-thread" style="max-height: 200px; overflow-y: auto;"></div>
+        <!-- Text Input + Buttons -->
         <textarea id="promptInput" rows="2" placeholder="Ask Skyebot something..."></textarea>
         <div class="form-footer">
           <input type="file" id="fileUpload" style="margin-right: auto;" />
@@ -130,6 +130,7 @@
       </form>
     </div>
   </div>
+
   <!-- Floating Prompt Button (tied to modal) -->
   <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt">🤖</button>
   </div>
