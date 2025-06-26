@@ -281,3 +281,41 @@ body.modal-open {
 #projectTable_wrapper {
   margin-top: 12px;
 }
+/* 🤖 Skyebot Chat Entries (Compact & Aligned) */
+.chat-entry {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+
+.chat-entry span {
+  display: inline-block;
+  background: #f0f0f0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 100%;
+  word-wrap: break-word;
+  box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.chat-entry.user span {
+  background: #e1f5fe;
+}
+
+.chat-entry strong {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+#chatThread {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  font-size: 0.95em;
+}
