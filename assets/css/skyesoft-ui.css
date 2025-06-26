@@ -299,44 +299,33 @@ body.modal-open {
   box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.05);
   display: inline-block;
 }
-/* 👤 User message */
-.chat-entry.user span {
-  background: #e1f5fe;
-}
-/* 🧾 Label (e.g., "Skyebot [08:04 AM]:") */
-.chat-entry strong {
-  font-weight: 600;
-  margin-right: 4px;
-}
-/* 💬 Scrollable Thread Area */
-#chatThread {
-  background: #fff;
+/* ✏️ Skyebot Prompt Textarea */
+#promptInput {
+  width: 100%;
+  height: 200px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 0.9em;
+  padding: 8px;
+  line-height: 1.5;
+  border-radius: 6px;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 10px;
-  max-height: 300px;
+  background-color: #fdfdfd;
   overflow-y: auto;
-  margin-bottom: 12px;
-  font-size: 0.95em;
+  white-space: pre-wrap;
 }
-/* 🗨️ Inline Chat Thread */
-.inline-chat-thread {
-  margin-bottom: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-  background: #f9f9f9;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.95em;
+/* 📦 Form Footer Buttons */
+.chat-form .form-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
 }
-/* 🗨️ Inline Chat Thread Scrollbar */
-.inline-chat-thread::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
-}
-/* 🗨️ Inline Chat Thread Scrollbar Thumb */
-.inline-chat-thread::-webkit-scrollbar-thumb {
-  background: #bbb;
-  border-radius: 3px;
+/* 🗑️ Clear Button */
+.clear-btn {
+  background-color: #eee;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
 }
