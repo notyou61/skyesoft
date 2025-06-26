@@ -1,26 +1,27 @@
+// Skyebot Chatbot Script
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("promptForm");
   const input = document.getElementById("promptInput");
   const thread = document.getElementById("chatThread");
   const clearBtn = document.getElementById("clearBtn");
-  const responseEl = document.getElementById("skyebotResponse");
 
-  if (!form || !input || !thread || !clearBtn || !responseEl) {
+  // ✅ Ensure all required elements are present
+  if (!form || !input || !thread || !clearBtn) {
     console.error("❌ Skyebot setup error: One or more DOM elements are missing.");
     return;
   }
 
+  // 🧑‍💻 Icons
   const userIcon = '<img class="chat-icon" src="assets/images/user-icon.png" alt="User">';
-  const botIcon = '<img class="chat-icon" src="assets/images/skyebot-icon.png" alt="Skyebot">';
+  const botIcon  = '<img class="chat-icon" src="assets/images/skyebot-icon.png" alt="Skyebot">';
 
   // 🧹 Clear chat
   clearBtn.addEventListener("click", () => {
     thread.innerHTML = "";
-    responseEl.textContent = "";
     input.value = "";
   });
 
-  // 💬 Handle form submit
+  // 💬 Handle form submission
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
@@ -38,7 +39,15 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
     input.value = "";
-    responseEl.textContent = "🤖 Thinking...";
+
+    // Show thinking placeholder
+    thread.innerHTML += `
+      <div class="chat-entry thinking" id="thinkingRow">
+        ${botIcon}
+        <div class="chat-bubble">🤖 Thinking...</div>
+      </div>
+    `;
+    thread.scrollTop = thread.scrollHeight;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -51,17 +60,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = marked.parse(data.response || data.error || "(no response)");
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Add Skyebot response
-      thread.innerHTML += `
-        <div class="chat-entry">
-          ${botIcon}
-          <div class="chat-bubble">
-            <strong>Skyebot [${replyTime}]:</strong><br>${reply}
+      // Replace thinking row with actual response
+      const thinking = document.getElementById("thinkingRow");
+      if (thinking) {
+        thinking.outerHTML = `
+          <div class="chat-entry">
+            ${botIcon}
+            <div class="chat-bubble">
+              <strong>Skyebot [${replyTime}]:</strong><br>${reply}
+            </div>
           </div>
-        </div>
-      `;
-      responseEl.textContent = "";
+        `;
+      }
 
+      // Optional action handling
       switch (data.action) {
         case "logout":
           if (typeof logoutUser === "function") logoutUser();
@@ -72,12 +84,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
     } catch (err) {
-      thread.innerHTML += `
-        <div class="chat-entry">
-          ${botIcon}
-          <div class="chat-bubble">❌ Network or API error.</div>
-        </div>
-      `;
+      const thinking = document.getElementById("thinkingRow");
+      if (thinking) {
+        thinking.outerHTML = `
+          <div class="chat-entry">
+            ${botIcon}
+            <div class="chat-bubble">❌ Network or API error.</div>
+          </div>
+        `;
+      }
     }
 
     thread.scrollTop = thread.scrollHeight;
