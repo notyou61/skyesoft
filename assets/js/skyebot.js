@@ -2,18 +2,18 @@
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("promptForm");
   const input = document.getElementById("promptInput");
-  const thread = document.getElementById("chatThread");
+  const inlineThread = document.getElementById("inlineChatThread");
   const clearBtn = document.getElementById("clearBtn");
 
   // ✅ Ensure all required elements are present
-  if (!form || !input || !thread || !clearBtn) {
+  if (!form || !input || !inlineThread || !clearBtn) {
     console.error("❌ Skyebot setup error: One or more DOM elements are missing.");
     return;
   }
 
   // 🧹 Clear chat
   clearBtn.addEventListener("click", () => {
-    thread.innerHTML = "";
+    inlineThread.innerHTML = "";
     input.value = "";
   });
 
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // 👤 User message
-    thread.innerHTML += `
+    inlineThread.innerHTML += `
       <div class="chat-entry user">
         <span>👤 <strong>You [${time}]:</strong> ${marked.parse(prompt)}</span>
       </div>
@@ -34,12 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
     input.value = "";
 
     // Show thinking placeholder
-    thread.innerHTML += `
+    inlineThread.innerHTML += `
       <div class="chat-entry thinking" id="thinkingRow">
         <span>🤖 <strong>Skyebot:</strong> Thinking...</span>
       </div>
     `;
-    thread.scrollTop = thread.scrollHeight;
+    inlineThread.scrollTop = inlineThread.scrollHeight;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -83,6 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    thread.scrollTop = thread.scrollHeight;
+    inlineThread.scrollTop = inlineThread.scrollHeight;
   });
 });
