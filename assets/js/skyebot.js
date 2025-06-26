@@ -10,25 +10,32 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 🧹 Clear chat thread
+  const userIcon = '<img class="chat-icon" src="assets/images/user-icon.png" alt="User">';
+  const botIcon = '<img class="chat-icon" src="assets/images/skyebot-icon.png" alt="Skyebot">';
+
+  // 🧹 Clear chat
   clearBtn.addEventListener("click", () => {
     thread.innerHTML = "";
     responseEl.textContent = "";
     input.value = "";
   });
 
-  // 💬 Handle threaded prompt submission
+  // 💬 Handle form submit
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-
     const prompt = input.value.trim();
     if (!prompt) return;
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Append user message
+    // Add user message
     thread.innerHTML += `
-      <div><strong>You [${time}]:</strong><br>${marked.parse(prompt)}</div><hr>
+      <div class="chat-entry user">
+        ${userIcon}
+        <div class="chat-bubble">
+          <strong>You [${time}]:</strong><br>${marked.parse(prompt)}
+        </div>
+      </div>
     `;
     input.value = "";
     responseEl.textContent = "🤖 Thinking...";
@@ -41,16 +48,20 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await res.json();
-      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const reply = marked.parse(data.response || data.error || "(no response)");
+      const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Append AI response
+      // Add Skyebot response
       thread.innerHTML += `
-        <div><strong>Skyebot [${replyTime}]:</strong><br>${reply}</div><hr>
+        <div class="chat-entry">
+          ${botIcon}
+          <div class="chat-bubble">
+            <strong>Skyebot [${replyTime}]:</strong><br>${reply}
+          </div>
+        </div>
       `;
       responseEl.textContent = "";
 
-      // 🔄 Handle structured actions
       switch (data.action) {
         case "logout":
           if (typeof logoutUser === "function") logoutUser();
@@ -58,12 +69,15 @@ document.addEventListener("DOMContentLoaded", () => {
         case "versionCheck":
           alert(data.response || "📦 Version info unavailable.");
           break;
-        default:
-          break;
       }
 
     } catch (err) {
-      thread.innerHTML += `<div><strong>Skyebot:</strong> ❌ Network or API error.</div><hr>`;
+      thread.innerHTML += `
+        <div class="chat-entry">
+          ${botIcon}
+          <div class="chat-bubble">❌ Network or API error.</div>
+        </div>
+      `;
     }
 
     thread.scrollTop = thread.scrollHeight;
