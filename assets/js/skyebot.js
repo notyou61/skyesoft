@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 👤 User message
     thread.innerHTML += `
       <div class="chat-entry user">
-        <span>👤 <strong>You [${time}]:</strong> ${marked.parseInline(prompt)}</span>
+        <span>👤 <strong>You [${time}]:</strong> ${marked.parse(prompt)}</span>
       </div>
     `;
     input.value = "";
