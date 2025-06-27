@@ -1125,7 +1125,7 @@ window.addEventListener("DOMContentLoaded", () => {
   console.log("🔁 DOM Content Loaded");
 
   // 🔽 Load the dynamic version from version.json
-  fetch("../assets/data/version.json")
+  fetch("/assets/data/version.json")
     .then(res => res.json())
     .then(data => {
       const versionElement = document.querySelector('.version');
