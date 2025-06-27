@@ -23,9 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 👤 User entry
-    let threadText = input.value + `\n👤 You [${time}]: ${prompt}\n🤖 Skyebot: Thinking...`;
-    input.value = threadText;
+    // 👤 Append user entry
+    input.value += `\n👤 You [${time}]: ${prompt}\n🤖 Skyebot: Thinking...`;
+    input.scrollTop = input.scrollHeight;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -38,11 +38,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || data.error || "(no response)";
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // 🔄 Replace Thinking... with response
-      input.value = input.value.replace(
-        /🤖 Skyebot: Thinking\.\.\./,
-        `🤖 Skyebot [${replyTime}]: ${reply}`
-      );
+      // 🔄 Replace the last Skyebot placeholder with real reply
+      input.value = input.value.replace(/🤖 Skyebot: Thinking\.\.\.$/, `🤖 Skyebot [${replyTime}]: ${reply}`);
 
       // 🎯 Optional action response
       switch (data.action) {
@@ -55,10 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
     } catch (err) {
-      input.value = input.value.replace(
-        /🤖 Skyebot: Thinking\.\.\./,
-        `🤖 Skyebot: ❌ Network or API error.`
-      );
+      input.value = input.value.replace(/🤖 Skyebot: Thinking\.\.\.$/, `🤖 Skyebot: ❌ Network or API error.`);
     }
 
     input.scrollTop = input.scrollHeight;
