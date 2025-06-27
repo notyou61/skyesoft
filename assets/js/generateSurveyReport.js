@@ -2,7 +2,9 @@ const fs = require("fs");
 const path = require("path");
 
 // Updated logo path
-const logoPath = path.relative(__dirname, "../images/christyLogo.png");
+//const logoPath = path.relative(__dirname, "../images/christyLogo.png");
+const logoPath = "file:///C:/Users/steve/Documents/skyesoft/assets/images/christyLogo.png";
+
 // Normalize the path for HTML output
 const logoHTMLPath = logoPath.replace(/\\/g, "/");
 
