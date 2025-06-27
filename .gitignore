@@ -1,5 +1,6 @@
 # Ignore sensitive config
 config.php
+.env
 
 # Logs
 logs/
@@ -8,5 +9,6 @@ logs/
 # System files
 .DS_Store
 Thumbs.db
-echo ".env" >> .gitignore
-.env
+
+# Vendor directory
+/vendor/
