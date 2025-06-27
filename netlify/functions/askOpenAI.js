@@ -1,8 +1,21 @@
 // netlify/functions/askOpenAI.js
-
 // 🧠 Use native fetch (Node.js 18+ compatible)
 const fetch = global.fetch;
-
+// 📦 Import required modules
+const fs = require("fs");
+// 🚀 Use Node.js built-in fs module for file operations
+const path = require("path");
+// ✅ Load version from JSON file
+let dynamicVersion = "unknown";
+// Attempt to read version from assets/data/version.json
+try {
+  const versionPath = path.join(__dirname, "../../assets/data/version.json");
+  const versionData = fs.readFileSync(versionPath, "utf8");
+  const parsed = JSON.parse(versionData);
+  if (parsed.version) dynamicVersion = parsed.version;
+} catch (err) {
+  console.error("Version load error:", err.message);
+}
 // 🚀 Helper to format Phoenix time
 const getPhoenixTime = () => {
   try {
@@ -40,21 +53,44 @@ const getPhoenixTime = () => {
     return { time: "unknown", dayOfWeek: "unknown", month: "unknown", day: "unknown", year: "unknown" };
   }
 };
-
 // 🚀 Helper to create system message
 const createSystemMessage = (dateInfo) => ({
+  // 🗓️ System message with current Phoenix time
   role: "system",
+  // 📜 Content of the system message
   content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}. Respond using this info when users ask about time or date.`
 });
-
 // 🚀 Intent mapping for predefined commands
 const intentMap = {
-  "log out": { response: "🖖 Logging you out, Hooman...", action: "logout" },
-  "logout": { response: "🔒 Session terminated. May your signs be well-lit.", action: "logout" },
-  "help": { response: "🧠 You can say things like 'log out', 'check version', or 'open the prompt modal'.", action: "info" },
-  "check version": { response: "📦 Current version: v2025.06.27 (see footer)", action: "versionCheck" }
+  // 🧠 Predefined commands
+  "log out": {
+    // 🖖 Log out command
+    response: "🖖 Logging you out, Hooman...",
+    // 🖖 Action to perform
+    action: "logout"
+  },
+  // 🔒 Logout command
+  "logout": {
+    // 🔒 Logout command
+    response: "🔒 Session terminated. May your signs be well-lit.",
+    // 🔒 Action to perform
+    action: "logout"
+  },
+  // 🧠 Open prompt modal
+  "help": {
+    // 🧠 Help command
+    response: "🧠 You can say things like 'log out', 'check version', or 'open the prompt modal'.",
+    // 🧠 Action to perform
+    action: "info"
+  },
+  // 🧠 Open prompt modal
+  "check version": {
+    // 📦 Version check command
+    response: `📦 Current version: ${dynamicVersion} (see footer)`,
+    // 📦 Action to perform
+    action: "versionCheck"
+  }
 };
-
 // 🚀 Main Netlify handler
 exports.handler = async (event) => {
   try {
