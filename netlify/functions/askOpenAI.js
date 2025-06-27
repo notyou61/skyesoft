@@ -74,19 +74,23 @@ exports.handler = async (event) => {
           temperature: 0.7,
         }),
       });
-
       // 📥 Handle OpenAI response
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content?.trim() ||
-        "🤖 Sorry, I didn’t understand that or the response was empty.";
-
+      // 🧼 Extract and sanitize the assistant response content
+      const content = (data.choices &&
+                      data.choices[0] &&
+                      data.choices[0].message &&
+                      typeof data.choices[0].message.content === "string")
+        ? data.choices[0].message.content.trim()
+        : "🤖 Sorry, I didn’t understand that or the response was empty.";
       // 📤 Return result
       return {
+        // 📬 Successful response with content
         statusCode: 200,
+        // 📝 Return the response in JSON format
         body: JSON.stringify({ response: content }),
       };
     }
-
     // 🧼 Sanitize legacy text-only prompt
     const cleanedPrompt = typeof prompt === "string" ? prompt.trim().toLowerCase() : "";
 
@@ -97,7 +101,6 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: "Missing prompt" }),
       };
     }
-
     // 🗺️ Predefined text-command handler (logout, help, etc.)
     const intentMap = {
       "log out": {
