@@ -3,13 +3,9 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 
 exports.handler = async (event) => {
   try {
-    const { prompt } = JSON.parse(event.body || '{}');
-    if (!prompt) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing prompt" }),
-      };
-    }
+    const body = JSON.parse(event.body || '{}');
+    const prompt = body.prompt;
+    const conversation = body.conversation;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -19,9 +15,39 @@ exports.handler = async (event) => {
       };
     }
 
-    const cleanedPrompt = prompt.trim().toLowerCase();
+    // 🧠 Handle structured conversation (for modern chat UI)
+    if (Array.isArray(conversation)) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: conversation,
+          temperature: 0.7,
+        }),
+      });
 
-    // 🔁 LGBAS-style intent routing
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "🤖 Sorry, I didn’t understand that.";
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ response: content }),
+      };
+    }
+
+    // 🔁 Intent handling fallback for plain prompts
+    if (!prompt) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Missing prompt" }),
+      };
+    }
+
+    const cleanedPrompt = prompt.trim().toLowerCase();
     const intentMap = {
       "log out": {
         response: "🖖 Logging you out, Hooman...",
@@ -50,7 +76,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // 🤖 Fallback to OpenAI chat completion
+    // 🤖 Standard OpenAI call for simple prompt
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
