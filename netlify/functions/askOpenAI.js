@@ -1,13 +1,20 @@
 // netlify/functions/askOpenAI.js
+
+// 🧠 Dynamically import fetch (Node.js compatible)
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
+// 🚀 Main Netlify handler for serverless function
 exports.handler = async (event) => {
   try {
+    // 📦 Parse the incoming request body
     const body = JSON.parse(event.body || '{}');
+
+    // 💬 Extract user prompt and conversation history
     const prompt = body.prompt;
     const conversation = body.conversation;
-    const apiKey = process.env.OPENAI_API_KEY;
 
+    // 🔐 Validate presence of OpenAI API key
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return {
         statusCode: 500,
@@ -15,36 +22,46 @@ exports.handler = async (event) => {
       };
     }
 
-    // 🧠 Handle modern chat UI conversation structure
-    if (Array.isArray(conversation)) {
-      const phoenixNow = new Date().toLocaleString("en-US", {
-        timeZone: "America/Phoenix",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
-      const [dayOfWeek, monthDayYear, time] = phoenixNow.split(", ");
-      const [month, day, year] = monthDayYear.split(" ");
+    // 🕒 Generate Phoenix-local time context for AI system message
+    const phoenixNow = new Date().toLocaleString("en-US", {
+      timeZone: "America/Phoenix",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
 
-      const dateInfo = {
-        time: time.trim(),
-        dayOfWeek: dayOfWeek.trim(),
-        month: month.trim(),
-        day: day.trim(),
-        year: year.trim()
-      };
+    // 🗂️ Break Phoenix date/time into components
+    const [dayOfWeek, monthDayYear, time] = phoenixNow.split(", ");
+    const [month, day, year] = monthDayYear.split(" ");
 
+    // 🧱 Construct structured date object
+    const dateInfo = {
+      time: time.trim(),
+      dayOfWeek: dayOfWeek.trim(),
+      month: month.trim(),
+      day: day.trim(),
+      year: year.trim()
+    };
+
+    // 💡 Add system context message if conversation history exists
+    const isValidConversation = Array.isArray(conversation) &&
+      conversation.every(msg => msg?.role && msg?.content);
+
+    if (isValidConversation) {
+      // 📣 Inject system message with Phoenix-local time context
       const systemMessage = {
         role: "system",
         content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}. Respond using this info when users ask about time or date.`
       };
 
+      // 🧠 Add system message to beginning of message stack
       const fullMessages = [systemMessage, ...conversation];
 
+      // 🔄 Send OpenAI request with full context
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -58,26 +75,30 @@ exports.handler = async (event) => {
         }),
       });
 
+      // 📥 Handle OpenAI response
       const data = await response.json();
-      const content = (data.choices && data.choices[0]?.message?.content?.trim())
-        ? data.choices[0].message.content.trim()
-        : "🤖 Sorry, I didn’t understand that or the response was empty.";
+      const content = data.choices?.[0]?.message?.content?.trim() ||
+        "🤖 Sorry, I didn’t understand that or the response was empty.";
 
+      // 📤 Return result
       return {
         statusCode: 200,
         body: JSON.stringify({ response: content }),
       };
     }
 
-    // 🔁 Fallback for plain prompts (legacy or manual testing)
-    if (!prompt) {
+    // 🧼 Sanitize legacy text-only prompt
+    const cleanedPrompt = typeof prompt === "string" ? prompt.trim().toLowerCase() : "";
+
+    // ❌ Reject empty or undefined prompts
+    if (!cleanedPrompt) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Missing prompt" }),
       };
     }
 
-    const cleanedPrompt = prompt.trim().toLowerCase();
+    // 🗺️ Predefined text-command handler (logout, help, etc.)
     const intentMap = {
       "log out": {
         response: "🖖 Logging you out, Hooman...",
@@ -97,6 +118,7 @@ exports.handler = async (event) => {
       }
     };
 
+    // 🔁 Match cleaned prompt against command keywords
     for (let key in intentMap) {
       if (cleanedPrompt.includes(key)) {
         return {
@@ -106,10 +128,11 @@ exports.handler = async (event) => {
       }
     }
 
+    // 🔄 Send basic OpenAI request with fallback logic
     const fallbackMessages = [
       {
         role: "system",
-        content: `You are Skyebot, a helpful assistant. The current time is ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.`
+        content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}. Respond using this info when users ask about time or date.`
       },
       {
         role: "user",
@@ -117,6 +140,7 @@ exports.handler = async (event) => {
       }
     ];
 
+    // 📡 Request to OpenAI without conversation context
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -130,17 +154,19 @@ exports.handler = async (event) => {
       }),
     });
 
+    // 📬 Handle fallback response
     const data = await response.json();
-    const content = (data.choices && data.choices[0]?.message?.content?.trim())
-      ? data.choices[0].message.content.trim()
-      : "🤖 Sorry, I didn’t understand that or the response was empty.";
+    const content = data.choices?.[0]?.message?.content?.trim() ||
+      "🤖 Sorry, I didn’t understand that or the response was empty.";
 
+    // 📤 Return fallback result
     return {
       statusCode: 200,
       body: JSON.stringify({ response: content }),
     };
 
   } catch (err) {
+    // 💥 Return error message if function crashes
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
