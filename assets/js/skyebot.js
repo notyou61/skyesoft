@@ -1,29 +1,33 @@
-// Skyebot Embedded Prompt Chat
+// Skyebot Embedded Prompt Chat (fixed version)
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("promptForm");
   const input = document.getElementById("promptInput");
   const clearBtn = document.getElementById("clearBtn");
 
   if (!form || !input || !clearBtn) {
-    console.error("❌ Skyebot setup error: One or more DOM elements are missing.");
+    console.error("❌ Skyebot setup error: Missing elements.");
     return;
   }
 
-  // 🧹 Clear chat and input
+  // Clear everything
   clearBtn.addEventListener("click", () => {
     input.value = "";
+    input.focus();
   });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
     const prompt = input.value.trim();
     if (!prompt) return;
 
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Format user prompt
-    const userEntry = `👤 You [${time}]: ${prompt}`;
-    input.value += `\n${userEntry}\n🤖 Skyebot: Thinking...`;
+    // 🧹 Remove any prior bot Thinking line
+    input.value = input.value.replace(/🤖 Skyebot.*Thinking.*\n?/g, '');
+
+    // Add user entry
+    input.value += `\n👤 You [${now}]: ${prompt}\n🤖 Skyebot: Thinking...\n`;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -36,17 +40,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || data.error || "(no response)";
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Replace thinking with Skyebot response
+      // Replace "Thinking..." with reply
       input.value = input.value.replace(
         /🤖 Skyebot: Thinking\.\.\./,
         `🤖 Skyebot [${replyTime}]: ${reply}`
       );
 
-      // Append clean line for next prompt
+      // Auto-focus and line break for next prompt
       input.value += `\n\n`;
-      input.scrollTop = input.scrollHeight;
+      input.focus();
 
-      // Optional actions
+      // Handle optional actions
       switch (data.action) {
         case "logout":
           if (typeof logoutUser === "function") logoutUser();
@@ -63,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
 
-    // Focus back to textarea
-    input.focus();
+    input.scrollTop = input.scrollHeight;
   });
 });
