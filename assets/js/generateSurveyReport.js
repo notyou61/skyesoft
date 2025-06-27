@@ -3,6 +3,8 @@ const path = require("path");
 
 // Updated logo path
 const logoPath = path.relative(__dirname, "../images/christyLogo.png");
+// Normalize the path for HTML output
+const logoHTMLPath = logoPath.replace(/\\/g, "/");
 
 function generateSurveyHTML(imageDir) {
   const imageFiles = fs
@@ -77,7 +79,7 @@ function generateSurveyHTML(imageDir) {
 </head>
 <body>
   <div class="header">
-    <img src="${logoPath}" alt="Christy Signs Logo" />
+    <img src="${logoHTMLPath}" alt="Christy Signs Logo" />
     <div class="title">Photo Survey – ${projectName}</div>
   </div>
   <hr />
