@@ -26,14 +26,37 @@ exports.handler = async (event) => {
         time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
         iso: now.toISOString()
       };
-
+      // 🏜️ Phoenix timezone handling
+      const phoenixNow = new Date().toLocaleString("en-US", {
+        timeZone: "America/Phoenix",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+      // Parse the Phoenix date string
+      const [dayOfWeek, monthDayYear, time] = phoenixNow.split(", ");
+      // Split the month, day, and year
+      const [month, day, year] = monthDayYear.split(" ");
+      // Create a date info object
+      const dateInfo = {
+        time: time.trim(),
+        dayOfWeek: dayOfWeek.trim(),
+        month: month.trim(),
+        day: day.trim(),
+        year: year.trim()
+      };
+      // Create a system message with the current date and time
       const systemMessage = {
         role: "system",
         content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}. Respond using this info when users ask about time or date.`
       };
-
+      // Add the system message to the conversation
       const fullMessages = [systemMessage, ...conversation];
-
+      // Add the user prompt as the last message
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -46,16 +69,16 @@ exports.handler = async (event) => {
           temperature: 0.7,
         }),
       });
-
+      // Parse the response
       const data = await response.json();
+      // Extract the content from the response
       const content = data.choices?.[0]?.message?.content || "🤖 Sorry, I didn’t understand that.";
-
+      // Return the response
       return {
         statusCode: 200,
         body: JSON.stringify({ response: content }),
       };
     }
-
     // 🔁 Fallback for plain prompts (legacy or manual testing)
     if (!prompt) {
       return {
