@@ -4,7 +4,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const input = document.getElementById("promptInput");
   const clearBtn = document.getElementById("clearBtn");
 
-  // ✅ Confirm required elements exist
   if (!form || !input || !clearBtn) {
     console.error("❌ Skyebot setup error: One or more DOM elements are missing.");
     return;
@@ -15,7 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
     input.value = "";
   });
 
-  // 💬 On form submit
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
@@ -23,9 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // 👤 Append user entry
-    input.value += `\n👤 You [${time}]: ${prompt}\n🤖 Skyebot: Thinking...`;
-    input.scrollTop = input.scrollHeight;
+    // Format user prompt
+    const userEntry = `👤 You [${time}]: ${prompt}`;
+    input.value += `\n${userEntry}\n🤖 Skyebot: Thinking...`;
 
     try {
       const res = await fetch("/.netlify/functions/askOpenAI", {
@@ -38,10 +36,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || data.error || "(no response)";
       const replyTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // 🔄 Replace the last Skyebot placeholder with real reply
-      input.value = input.value.replace(/🤖 Skyebot: Thinking\.\.\.$/, `🤖 Skyebot [${replyTime}]: ${reply}`);
+      // Replace thinking with Skyebot response
+      input.value = input.value.replace(
+        /🤖 Skyebot: Thinking\.\.\./,
+        `🤖 Skyebot [${replyTime}]: ${reply}`
+      );
 
-      // 🎯 Optional action response
+      // Append clean line for next prompt
+      input.value += `\n\n`;
+      input.scrollTop = input.scrollHeight;
+
+      // Optional actions
       switch (data.action) {
         case "logout":
           if (typeof logoutUser === "function") logoutUser();
@@ -52,9 +57,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
     } catch (err) {
-      input.value = input.value.replace(/🤖 Skyebot: Thinking\.\.\.$/, `🤖 Skyebot: ❌ Network or API error.`);
+      input.value = input.value.replace(
+        /🤖 Skyebot: Thinking\.\.\./,
+        `🤖 Skyebot: ❌ Network or API error.`
+      );
     }
 
-    input.scrollTop = input.scrollHeight;
+    // Focus back to textarea
+    input.focus();
   });
 });
