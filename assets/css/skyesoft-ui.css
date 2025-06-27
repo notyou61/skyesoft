@@ -329,3 +329,34 @@ body.modal-open {
   padding: 6px 10px;
   cursor: pointer;
 }
+#chatLog {
+  background-color: #fdfdfd;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 10px;
+  height: 280px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-message span {
+  background-color: #007bff;
+  color: white;
+  align-self: flex-end;
+}
+
+.bot-message span {
+  background-color: #e9ecef;
+  color: #222;
+  align-self: flex-start;
+}
+
+.typing-indicator span {
+  font-style: italic;
+  color: #777;
+}

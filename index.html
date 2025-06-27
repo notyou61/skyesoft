@@ -117,12 +117,14 @@
     <div class="modal-content">
       <span class="close-btn" onclick="toggleModal()">×</span>
       <h3>🤖 Skyebot</h3>
+      <!-- Chat history area -->
+      <div id="chatLog" class="chat-log" style="height: 280px; overflow-y: auto; padding: 6px;"></div>
       <!-- Prompt input -->
       <form id="promptForm" class="chat-form">
-        <textarea id="promptInput" rows="8" placeholder="Ask Skyebot something..."></textarea>
+        <textarea id="promptInput" rows="2" placeholder="Type your message..." required></textarea>
         <div class="form-footer">
           <input type="file" id="fileUpload">
-          <button type="submit">Submit</button>
+          <button type="submit">Send</button>
           <button type="button" id="clearBtn" class="clear-btn">Clear</button>
         </div>
       </form>
