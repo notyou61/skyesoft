@@ -96,29 +96,67 @@ exports.handler = async (event) => {
   try {
     // 📦 Parse request body safely
     let body;
+    // 🧠 Attempt to parse JSON body
     try {
+      // 🧠 Parse the request body if it exists
       body = event.body ? JSON.parse(event.body) : {};
     } catch (err) {
-      console.error("Invalid просьба body:", err.message);
+      // 🧠 Log error for invalid JSON body
+      console.error("Invalid resquest body:", err.message);
+      // 🧠 Return error response for invalid body
       return {
+        // 🧠 Status code 400 for bad request
         statusCode: 400,
+        // 🧠 Response body with error message
         body: JSON.stringify({ error: "Invalid request body" })
       };
     }
-
+    // 🧠 Extract prompt and conversation from body
     const { prompt, conversation } = body;
+    // 🗝️ Check for OpenAI API key in environment variables
     const apiKey = process.env.OPENAI_API_KEY;
+    // 🔑 If API key is missing, log error and return 500
     if (!apiKey) {
+      // 🔑 Log error for missing API key
       console.error("Missing OpenAI API key");
+      // 🔑 Return error response
       return {
+        // 🔑 Status code 500 for server error
         statusCode: 500,
+       // 🔑 Response body with error message
         body: JSON.stringify({ error: "Server configuration error" })
       };
     }
-
+    // 🕒 Get current Phoenix time
     const dateInfo = getPhoenixTime();
+    // 🧠 Create system message with date info
     const systemMessage = createSystemMessage(dateInfo);
-
+    // 🧼 Validate prompt
+    const cleanedPrompt = typeof prompt === "string" ? prompt.trim().toLowerCase() : "";
+    // 🧼 Check if prompt is empty or invalid
+    if (!cleanedPrompt) {
+      // ❌ Missing or invalid prompt  
+      console.error("Missing or invalid prompt:", prompt);
+      // ❌ Return error response
+      return {
+        // ❌ Status code 400 for bad request
+        statusCode: 400,
+        // ❌ Response body with error messag
+        body: JSON.stringify({ error: "Missing prompt" })
+      };
+    }
+    // 🔁 Check for predefined commands
+    const intentKey = Object.keys(intentMap).find(key => cleanedPrompt === key);
+    // 🔁 If a predefined command is found
+    if (intentKey) {
+      // 🔁 Return predefined response
+      return {
+        // 🔁 Status code 200 for success
+        statusCode: 200,
+        // 🔁 Response body with predefined action
+        body: JSON.stringify(intentMap[intentKey])
+      };
+    }
     // 💡 Handle conversation if provided
     if (Array.isArray(conversation) && conversation.every(msg => msg?.role && msg?.content && ["system", "user", "assistant"].includes(msg.role))) {
       const sanitizedConversation = conversation.filter(
@@ -167,26 +205,6 @@ exports.handler = async (event) => {
         };
       }
     }
-
-    // 🧼 Validate prompt
-    const cleanedPrompt = typeof prompt === "string" ? prompt.trim().toLowerCase() : "";
-    if (!cleanedPrompt) {
-      console.error("Missing or invalid prompt:", prompt);
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Missing prompt" })
-      };
-    }
-
-    // 🔁 Check for predefined commands
-    const intentKey = Object.keys(intentMap).find(key => cleanedPrompt === key);
-    if (intentKey) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify(intentMap[intentKey])
-      };
-    }
-
     // 🔄 Fallback: single prompt to OpenAI
     const messages = [systemMessage, { role: "user", content: prompt }];
     const controller = new AbortController();
