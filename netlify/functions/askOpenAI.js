@@ -134,7 +134,7 @@ exports.handler = async (event) => {
     // 🧼 Validate prompt
     const cleanedPrompt = typeof prompt === "string" ? prompt.trim().toLowerCase() : "";
     // 🧼 Check if prompt is empty or invalid
-    if (!cleanedPrompt) {
+   if (!cleanedPrompt || cleanedPrompt === "") {
       // ❌ Missing or invalid prompt  
       console.error("Missing or invalid prompt:", prompt);
       // ❌ Return error response
