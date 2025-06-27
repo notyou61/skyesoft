@@ -6,8 +6,8 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const prompt = body.prompt;
     const conversation = body.conversation;
-
     const apiKey = process.env.OPENAI_API_KEY;
+
     if (!apiKey) {
       return {
         statusCode: 500,
@@ -15,8 +15,25 @@ exports.handler = async (event) => {
       };
     }
 
-    // 🧠 Handle structured conversation (for modern chat UI)
+    // 🧠 Handle modern chat UI conversation structure
     if (Array.isArray(conversation)) {
+      const now = new Date();
+      const dateInfo = {
+        dayOfWeek: now.toLocaleDateString("en-US", { weekday: "long" }),
+        month: now.toLocaleDateString("en-US", { month: "long" }),
+        day: now.getDate(),
+        year: now.getFullYear(),
+        time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        iso: now.toISOString()
+      };
+
+      const systemMessage = {
+        role: "system",
+        content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}. Respond using this info when users ask about time or date.`
+      };
+
+      const fullMessages = [systemMessage, ...conversation];
+
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -25,7 +42,7 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify({
           model: "gpt-3.5-turbo",
-          messages: conversation,
+          messages: fullMessages,
           temperature: 0.7,
         }),
       });
@@ -39,7 +56,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // 🔁 Intent handling fallback for plain prompts
+    // 🔁 Fallback for plain prompts (legacy or manual testing)
     if (!prompt) {
       return {
         statusCode: 400,
@@ -62,7 +79,7 @@ exports.handler = async (event) => {
         action: "info"
       },
       "check version": {
-        response: "📦 Current version: v2025.06.16 (see footer)",
+        response: "📦 Current version: v2025.06.27 (see footer)",
         action: "versionCheck"
       }
     };
@@ -76,7 +93,18 @@ exports.handler = async (event) => {
       }
     }
 
-    // 🤖 Standard OpenAI call for simple prompt
+    // Standard OpenAI call with standalone prompt
+    const fallbackMessages = [
+      {
+        role: "system",
+        content: `You are Skyebot, a helpful assistant. The current time is ${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}.`
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -85,7 +113,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }],
+        messages: fallbackMessages,
         temperature: 0.7,
       }),
     });
