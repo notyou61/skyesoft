@@ -193,6 +193,16 @@ html, body {
   align-items: center;
   gap: 8px;
 }
+/* 📝 Skyebot Modal Content */
+.modal-content h3 {
+  margin-bottom: 12px; /* 👈 Add this */
+  font-size: 1.1em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 📄 Skyebot Modal Textarea */
 .modal-content textarea {
   width: 100%;
   height: 80px;
