@@ -7,6 +7,10 @@ function getCookie(name) {
 }
 // 🚪 Logout Function
 function logoutUser() {
+  // 🍪 Pre-fill Username from Cookie BEFORE wiping it
+  const savedUser = getCookie('skyelogin_user');
+  const usernameInput = document.querySelector('[name="username"]');
+  if (savedUser && usernameInput) usernameInput.value = savedUser;
   // Clear user session
   localStorage.clear();
   document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -17,13 +21,13 @@ function logoutUser() {
   const pageHeader = document.getElementById("bodyHeaderCopy");
   const newsUpdates = document.querySelector(".news-updates");
   const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-  // Show login UI
+  //  🖼️ Reset UI 
   if (loginWrapper) loginWrapper.style.display = "flex";
+  // Reset login form
   if (loginForm) {
-    // Reset login form
-    loginForm.reset();
-    // Hide login error
-    loginForm.style.display = ""; // ✅ This removes "display: none" safely
+    loginForm.style.display = "";
+    const passwordInput = loginForm.querySelector('[name="password"]');
+    if (passwordInput) passwordInput.value = "";
   }
   // Hide dashboard UI
   if (dashboard) dashboard.style.display = "none";
@@ -31,17 +35,13 @@ function logoutUser() {
   if (projectSummary) projectSummary.style.display = "none";
   // Update header
   if (pageHeader) pageHeader.textContent = "🔒 User Log In";
-  // ⏳ Auto-close Skyebot modal after logout
+  // ⏳ Auto-close Skyebot modal
   setTimeout(() => {
     const modal = document.getElementById("skyebotModal");
     if (modal) modal.style.display = "none";
     document.body.classList.remove("modal-open");
   }, 2000);
-  // 🍪 Pre-fill Username from Cookie
-  const usernameInput = document.querySelector('[name="username"]');
-  const savedUser = getCookie('skyelogin_user');
-  if (savedUser && usernameInput) usernameInput.value = savedUser;
-  // Console Log
+  // 🖼️ Console Log
   console.log("👋 User logged out successfully.");
 }
 // 🖼️ Modal Toggle Logic
