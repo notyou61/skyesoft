@@ -37,6 +37,10 @@ function logoutUser() {
     if (modal) modal.style.display = "none";
     document.body.classList.remove("modal-open");
   }, 2000);
+  // 🍪 Pre-fill Username from Cookie
+  const usernameInput = document.querySelector('[name="username"]');
+  const savedUser = getCookie('skyelogin_user');
+  if (savedUser && usernameInput) usernameInput.value = savedUser;
   // Console Log
   console.log("👋 User logged out successfully.");
 }
