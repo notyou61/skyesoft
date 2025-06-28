@@ -317,8 +317,30 @@ body.modal-open {
 /* 📦 Form Footer Buttons */
 .chat-form .form-footer {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+/* 📦 Form Footer Input */
+.form-footer input[type="file"],
+.form-footer button {
+  flex: 1 1 auto;
+  min-width: 100px;
+  max-width: 140px;
+}
+/* 📦 Media */
+@media (max-width: 450px) {
+  .form-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-footer button,
+  .form-footer input[type="file"] {
+    width: 100%;
+  }
 }
 /* 🗑️ Clear Button */
 .clear-btn {
