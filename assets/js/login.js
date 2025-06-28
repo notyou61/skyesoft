@@ -22,6 +22,8 @@ function logoutUser() {
   if (loginForm) {
     // Reset login form
     loginForm.reset();
+    // Hide login error
+    loginForm.style.display = ""; // ✅ This removes "display: none" safely
   }
   // Hide dashboard UI
   if (dashboard) dashboard.style.display = "none";
