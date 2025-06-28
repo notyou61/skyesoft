@@ -31,6 +31,12 @@ function logoutUser() {
   if (projectSummary) projectSummary.style.display = "none";
   // Update header
   if (pageHeader) pageHeader.textContent = "🔒 User Log In";
+  // ⏳ Auto-close Skyebot modal after logout
+  setTimeout(() => {
+    const modal = document.getElementById("skyebotModal");
+    if (modal) modal.style.display = "none";
+    document.body.classList.remove("modal-open");
+  }, 2000);
   // Console Log
   console.log("👋 User logged out successfully.");
 }
