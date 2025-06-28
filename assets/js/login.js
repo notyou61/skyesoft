@@ -40,6 +40,19 @@ function logoutUser() {
     const modal = document.getElementById("skyebotModal");
     if (modal) modal.style.display = "none";
     document.body.classList.remove("modal-open");
+
+    // 🧹 Clear chat and reset message
+    const chatLog = document.getElementById("chatLog");
+    const promptInput = document.getElementById("promptInput");
+    if (chatLog) chatLog.innerHTML = "";
+    if (promptInput) promptInput.value = "";
+    if (chatLog) {
+      const welcome = document.createElement("div");
+      welcome.className = "chat-entry bot-message";
+      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      welcome.innerHTML = `<span>🤖 Skyebot [${time}]: Hello! How can I assist you today?</span>`;
+      chatLog.appendChild(welcome);
+    }
   }, 2000);
   // 🖼️ Console Log
   console.log("👋 User logged out successfully.");
