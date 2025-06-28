@@ -20,8 +20,8 @@ function logoutUser() {
   // Show login UI
   if (loginWrapper) loginWrapper.style.display = "flex";
   if (loginForm) {
+    // Reset login form
     loginForm.reset();
-    loginForm.style.display = "block";
   }
   // Hide dashboard UI
   if (dashboard) dashboard.style.display = "none";
