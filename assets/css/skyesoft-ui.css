@@ -328,11 +328,9 @@ body.modal-open {
 /* 📦 Form Footer Buttons */
 .chat-form .form-footer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 6px;
-  justify-content: flex-end;
-  align-items: center;
 }
 /* 📦 Form Footer Input */
 .form-footer input[type="file"],
@@ -343,13 +341,13 @@ body.modal-open {
 }
 /* 📦 Media */
 @media (max-width: 450px) {
-  .form-footer {
+  .button-row {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .form-footer button,
-  .form-footer input[type="file"] {
+  .button-row button,
+  .file-row input[type="file"] {
     width: 100%;
   }
 }
@@ -362,6 +360,7 @@ body.modal-open {
   padding: 6px 10px;
   cursor: pointer;
 }
+/* 🗑️ Clear Button Hover */
 #chatLog {
   background-color: #fdfdfd;
   border: 1px solid #ccc;
@@ -376,20 +375,35 @@ body.modal-open {
   display: flex;
   flex-direction: column;
 }
-
+/* 🗑️ Clear Button Hover */
 .user-message span {
   background-color: #007bff;
   color: white;
   align-self: flex-end;
 }
-
+/* 🤖 Bot Message */
 .bot-message span {
   background-color: #e9ecef;
   color: #222;
   align-self: flex-start;
 }
-
+/* ⏳ Typing Indicator */
 .typing-indicator span {
   font-style: italic;
   color: #777;
+/* File Rows */
+}.file-row {
+  width: 100%;
+}
+/* Button Row */
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* Button Row Buttons */
+.button-row button {
+  min-width: 100px;
+  flex: 1 1 auto;
 }
