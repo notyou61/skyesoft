@@ -122,10 +122,17 @@
       <!-- Prompt input -->
       <form id="promptForm" class="chat-form">
         <textarea id="promptInput" rows="2" placeholder="Type your message..." required></textarea>
+        <!-- File upload and buttons -->
         <div class="form-footer">
-          <input type="file" id="fileUpload">
-          <button type="submit">Send</button>
-          <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+          <!-- File upload input -->
+          <div class="file-row">
+            <input type="file" id="fileUpload">
+          </div>
+          <!-- Button row -->
+          <div class="button-row">
+            <button type="submit">Send</button>
+            <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+          </div>
         </div>
       </form>
     </div>
