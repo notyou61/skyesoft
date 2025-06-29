@@ -288,7 +288,8 @@
         body: JSON.stringify({ prompt: userMessage })
       });
       const data = await response.json();
-      const botReply = data.message || "Skyebot could not reply.";
+      // ✅ After (working)
+      const botReply = data.response || "Skyebot could not reply.";
       // Remove typing indicator
       log.removeChild(typing);
       // Append bot reply
