@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("❌ Skyebot setup error: Missing elements.");
     return;
   }
-
   // Conversation memory for context
   let conversationHistory = [{
     role: "assistant",

@@ -261,9 +261,57 @@
     if (fileInput) fileInput.value = ""; // Clear file input
     if (fileInfo) fileInfo.textContent = "No files selected"; // Reset file info display
   });
+  // Handle chat form submission
+  document.getElementById("promptForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const input = document.getElementById("promptInput");
+    const log = document.getElementById("chatLog");
+    const userMessage = input.value.trim();
+    // Validate user input
+    if (!userMessage) return;
+        // Show user message
+    const userEntry = document.createElement("div");
+    userEntry.className = "chat-entry user-message";
+    userEntry.innerHTML = `<span>🧑‍💬 ${userMessage}</span>`;
+    log.appendChild(userEntry);
+    // Show typing indicator
+    const typing = document.createElement("div");
+    typing.className = "chat-entry bot-message typing-indicator";
+    typing.innerHTML = `<span>Skyebot is typing...</span>`;
+    log.appendChild(typing);
+    input.value = ""; // clear input
+    input.disabled = true;
+    try {
+      const response = await fetch("/.netlify/functions/askOpenAI", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: userMessage })
+      });
+      const data = await response.json();
+      const botReply = data.message || "Skyebot could not reply.";
+      // Remove typing indicator
+      log.removeChild(typing);
+      // Append bot reply
+      const botEntry = document.createElement("div");
+      botEntry.className = "chat-entry bot-message";
+      botEntry.innerHTML = `<span>🤖 ${botReply}</span>`;
+      log.appendChild(botEntry);
+    } catch (err) {
+      log.removeChild(typing);
+      const errEntry = document.createElement("div");
+      errEntry.className = "chat-entry bot-message";
+      errEntry.innerHTML = `<span>⚠️ Skyebot encountered an error.</span>`;
+      log.appendChild(errEntry);
+      console.error("Skyebot Error:", err);
+    } finally {
+      input.disabled = false;
+      input.focus();
+      log.scrollTop = log.scrollHeight;
+    }
+  });
 </script>
-  <!-- Skyebot Script -->
-  <script src="assets/js/skyebot.js"></script>
+<!-- Skyebot Script -->
+<script src="assets/js/skyebot.js"></script>
 </body>
 <!-- End of Body -->
 </html>
