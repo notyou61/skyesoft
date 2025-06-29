@@ -1,0 +1,32 @@
+{
+  "entities": [
+    {
+      "id": 1,
+      "type": "company",
+      "name": "Christy Signs"
+    }
+  ],
+  "locations": [
+    {
+      "id": 1,
+      "entityId": 1,
+      "address": "3145 N 33rd Ave, Phoenix, AZ 85017",
+      "googlePlaceId": "ChIJf44w9yAKK4cRj-x2VuT63GQ",
+      "latitude": 33.4854056,
+      "longitude": -112.1296014
+    }
+  ],
+  "contacts": [
+    {
+      "id": 1,
+      "entityId": 1,
+      "locationId": 1,
+      "name": "Steve Skye",
+      "title": "Permit Specialist / Account Executive",
+      "email": "steve@christysigns.com",
+      "officePhone": "6022424488",
+      "officePhoneExt": "",
+      "cellPhone": "6023974722"
+    }
+  ]
+}
