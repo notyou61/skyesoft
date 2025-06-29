@@ -355,11 +355,15 @@ body.modal-open {
   /* 📦 Form Footer Input */
   .file-row input[type="file"] {
     width: 100%;
-    font-size: 0.9em;
-    padding: 4px;
-    white-space: normal;          /* ⬅ Allow wrapping */
-    overflow: visible;            /* ⬅ Don’t hide content */
-    text-overflow: initial;       /* ⬅ Prevent ellipsis */
+    font-size: 0.95em;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
   }
 }
 /* 📦 Form Footer Button */
