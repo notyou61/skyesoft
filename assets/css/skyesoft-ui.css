@@ -340,16 +340,21 @@ body.modal-open {
   max-width: 140px;
 }
 /* 📦 Media */
-@media (max-width: 450px) {
+@media (max-width: 360px) {
+  /* 📦 Form Footer */
   .button-row {
     flex-direction: column;
     align-items: stretch;
   }
-
-  .button-row button,
-  .file-row input[type="file"] {
+  /* 📦 Form Footer Input */
+  .button-row button, .file-row input[type="file"] {
     width: 100%;
   }
+}
+/* 📦 Form Footer Button */
+.button-row button {
+  flex: 1 1 auto;
+  max-width: 120px;
 }
 /* 🗑️ Clear Button */
 .clear-btn {
