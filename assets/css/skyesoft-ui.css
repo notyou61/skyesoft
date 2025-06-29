@@ -343,12 +343,23 @@ body.modal-open {
 @media (max-width: 360px) {
   /* 📦 Form Footer */
   .button-row {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    justify-content: flex-start; /* Align left */
+    gap: 8px;
+  }
+  /* 📦 Form Footer Buttons */
+  .button-row button {
+    width: auto;      /* Let buttons size naturally */
+    min-width: 100px; /* Or use your preferred value */
   }
   /* 📦 Form Footer Input */
-  .button-row button, .file-row input[type="file"] {
+  .file-row input[type="file"] {
     width: 100%;
+    font-size: 0.9em;
+    padding: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 /* 📦 Form Footer Button */
