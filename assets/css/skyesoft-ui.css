@@ -453,6 +453,7 @@ body.modal-open {
   width: 100%;
   display: block;
   margin-top: 6px;
+}
 /* 📱 Mobile Adjustments */
 @media (max-width: 600px) {
   .board-section {
