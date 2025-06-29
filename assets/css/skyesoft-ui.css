@@ -352,18 +352,15 @@ body.modal-open {
     width: auto;      /* Let buttons size naturally */
     min-width: 100px; /* Or use your preferred value */
   }
-  /* 📦 Form Footer Input */
+  /* 🎯 Force file input to occupy full width & prevent truncation */
   .file-row input[type="file"] {
     width: 100%;
     font-size: 0.95em;
     padding: 6px 8px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background-color: #fff;
-    display: block;
     white-space: normal;
+    text-overflow: initial;
     overflow: visible;
-    text-overflow: unset;
+    display: block;
   }
 }
 /* 📦 Form Footer Button */
@@ -411,9 +408,12 @@ body.modal-open {
 .typing-indicator span {
   font-style: italic;
   color: #777;
+}
 /* File Rows */
-}.file-row {
+.file-row {
   width: 100%;
+  display: block;
+  margin-top: 6px;
 }
 /* Button Row */
 .button-row {
