@@ -223,27 +223,57 @@ exports.handler = async (event) => {
     }
     // Debug: show cleaned prompt
     console.log("🔎 Cleaned prompt:", cleanedPrompt.toLowerCase());
-    // Check for predefined commands
-    const intent = intentMap[cleanedPrompt.toLowerCase()];
-    // If intent matches, return predefined response
-    if (intent) {
-      // Log the intent trigger
-      console.log("🧠 Intent triggered:", cleanedPrompt.toLowerCase(), intent);
-      // Return
-      return {
-        // Assign Status Code
-        statusCode: 200,
-        // Headers to ensure JSON parsing
-        headers: { "Content-Type": "application/json" }, // <-- ensures correct parsing
-        // Body with intent response
+    // Start with direct match
+    let intentName = cleanedPrompt.toLowerCase();
+    // Check if the intent exists in the static map
+    let intent = intentMap[intentName];
+    // If not found, try AI-based fallback
+    if (!intent) {
+      console.log("🤖 No direct match found. Falling back to AI intent detection...");
+
+      const aiIntentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`
+        },
         body: JSON.stringify({
-          // Response from intent
+          model: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `
+    You are an intent classifier for Skyebot. Based on the user input, reply with only one word representing the intent. Valid options are:
+
+    "log out", "logout", "help", "check version", "getTime", "getDate", "getDateTime"
+
+    Reply ONLY with the matching intent string. If none match, reply "unknown".`
+            },
+            { role: "user", content: cleanedPrompt }
+          ],
+          temperature: 0
+        })
+      });
+
+      const aiIntentData = await aiIntentResponse.json();
+      const aiIntent = aiIntentData?.choices?.[0]?.message?.content?.trim();
+      console.log("🧠 AI-Detected Intent:", aiIntent);
+
+      if (aiIntent && intentMap[aiIntent]) {
+        intentName = aiIntent;
+        intent = intentMap[aiIntent];
+      }
+    }
+    // Respond if a valid intent was found
+    if (intent) {
+      console.log("🧠 Intent triggered:", intentName);
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           response: intent.response,
-          // Action to take
           action: intent.action || null,
-          // Intent name for tracking
-          intentName: cleanedPrompt.toLowerCase(),
-          // Timstamp for logging
+          intentName,
           timestamp: new Date().toISOString()
         })
       };
