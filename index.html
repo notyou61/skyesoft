@@ -263,41 +263,63 @@
   });
   // Handle chat form submission
   document.getElementById("promptForm").addEventListener("submit", async function (e) {
+    // Prevent default form submission behavior
     e.preventDefault();
+    // Optional debug log
+    console.log("📝 Skyebot: User submitted a message"); // Optional debug log
+    // Get input and chat log elements
     const input = document.getElementById("promptInput");
+    // Ensure input is not empty
     const log = document.getElementById("chatLog");
+    // Check if chat log exists
     const userMessage = input.value.trim();
     // Validate user input
     if (!userMessage) return;
-        // Show user message
-    const userEntry = document.createElement("div");
-    userEntry.className = "chat-entry user-message";
-    userEntry.innerHTML = `<span>🧑‍💬 ${userMessage}</span>`;
-    log.appendChild(userEntry);
-    // Show typing indicator
-    const typing = document.createElement("div");
-    typing.className = "chat-entry bot-message typing-indicator";
-    typing.innerHTML = `<span>Skyebot is typing...</span>`;
-    log.appendChild(typing);
-    input.value = ""; // clear input
-    input.disabled = true;
+      // Show user message
+      const userEntry = document.createElement("div");
+      // Set user message class and content
+      userEntry.className = "chat-entry user-message";
+      // Set user message content
+      userEntry.innerHTML = `<span>🧑‍💬 ${userMessage}</span>`;
+      // Append user message to chat log
+      log.appendChild(userEntry);
+      // Show typing indicator
+      const typing = document.createElement("div");
+      // Set typing indicator class and content
+      typing.className = "chat-entry bot-message typing-indicator";
+      // Set typing indicator content
+      // Use a span to indicate typing
+      typing.innerHTML = `<span>Skyebot is typing...</span>`;
+      // Append typing indicator to chat log
+      log.appendChild(typing);
+      // Disable input while waiting for response
+      input.value = ""; // clear input
+      // Disable input field to prevent further messages
+      input.disabled = true;
     // Scroll to bottom of chat log
     try {
       // Send user message to Netlify Function
       const response = await fetch("/.netlify/functions/askOpenAI", {
+        // Set request method to POST
         method: "POST",
+        // Set request headers
         headers: { "Content-Type": "application/json" },
+        // Set request body with user message
         body: JSON.stringify({ prompt: userMessage })
       });
       // Check if response is ok
       const data = await response.json();
-      // 
+      // Check if response contains an error
       const botReply = data.response || "Skyebot could not reply.";
+      // Optional debug log
       log.removeChild(typing);
       // Show bot reply in chat log
       const botEntry = document.createElement("div");
+      // Set bot message class and content
       botEntry.className = "chat-entry bot-message";
+      // Set bot message content
       botEntry.innerHTML = `<span>🤖 ${botReply}</span>`;
+      // Append bot message to chat log
       log.appendChild(botEntry);
       // 🔐 Handle logout intent from backend
       if (data.action === "logout") {
@@ -305,17 +327,26 @@
       }
       // 💾 Save chat log
       saveStructuredChatLog();
-    //
+    // 
     } catch (err) {
+      // Handle any errors that occur during the fetch
       log.removeChild(typing);
+      // Show error message in chat log
       const errEntry = document.createElement("div");
+      // Set error message class and content
       errEntry.className = "chat-entry bot-message";
+      // Set error message content
       errEntry.innerHTML = `<span>⚠️ Skyebot encountered an error.</span>`;
+      // Append error message to chat log
       log.appendChild(errEntry);
+      // 
       console.error("Skyebot Error:", err);
     } finally {
+      // Re-enable input field after response
       input.disabled = false;
+      // Clear input field
       input.focus();
+      // Scroll to bottom of chat log
       log.scrollTop = log.scrollHeight;
     }
     // 🔐 Logout utility function
