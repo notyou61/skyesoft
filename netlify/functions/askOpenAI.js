@@ -266,14 +266,25 @@ exports.handler = async (event) => {
     }
     // Respond if a valid intent was found
     if (intent) {
+      // Log the intent name
       console.log("🧠 Intent triggered:", intentName);
+      // Evaluate the intent (function or object)
+      const intentResult = typeof intent === "function" ? intent() : intent;
+      // Debug: log the intent result
       return {
+        // Return the response with intent action and name
         statusCode: 200,
+        // Set the response headers
         headers: { "Content-Type": "application/json" },
+        // Set the response body with intent result
         body: JSON.stringify({
-          response: intent.response,
-          action: intent.action || null,
+          // Log the response from the intent
+          response: intentResult.response,
+          // Log the action to take
+          action: intentResult.action || null,
+          // Log the intent name
           intentName,
+          // Log the current Phoenix time
           timestamp: new Date().toISOString()
         })
       };
