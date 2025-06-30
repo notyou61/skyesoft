@@ -320,7 +320,11 @@
     }
     // 🔐 Logout utility function
     function logoutUser() {
+      // Optional debug log
+      console.log("🚪 Logging out user..."); // Optional debug log
+      // Clear user login state
       localStorage.removeItem("userLoggedIn");
+      // Hide login form
       location.reload();
     }
   });
