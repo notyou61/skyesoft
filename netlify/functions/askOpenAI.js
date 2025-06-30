@@ -1,11 +1,17 @@
 // netlify/functions/askOpenAI.js
+// Netlify Function to handle OpenAI requests
 const fetch = global.fetch;
+// Ensure fetch is available globally
 const fs = require("fs");
+// Ensure fetch is available globally
 const path = require("path");
-const { checkProposedContact } = require("./checkProposedContact");
+// Import the contact check utility
+//const { checkProposedContact } = require("./checkProposedContact");
+const checkProposedContact = require("./checkProposedContact");
 
 // Load version from JSON file
 let dynamicVersion = "unknown";
+// Attempt to read version from file
 try {
   const versionPath = path.join(__dirname, "../../assets/data/version.json");
   const versionData = fs.readFileSync(versionPath, "utf8");
