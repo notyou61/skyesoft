@@ -281,24 +281,31 @@
     log.appendChild(typing);
     input.value = ""; // clear input
     input.disabled = true;
+    // Scroll to bottom of chat log
     try {
+      // Send user message to Netlify Function
       const response = await fetch("/.netlify/functions/askOpenAI", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: userMessage })
       });
+      // Check if response is ok
       const data = await response.json();
-      // ✅ After (working)
+      // 
       const botReply = data.response || "Skyebot could not reply.";
-      // Remove typing indicator
       log.removeChild(typing);
-      // Append bot reply
+      // Show bot reply in chat log
       const botEntry = document.createElement("div");
       botEntry.className = "chat-entry bot-message";
       botEntry.innerHTML = `<span>🤖 ${botReply}</span>`;
       log.appendChild(botEntry);
-      // Save structured chat log to Netlify Function
+      // 🔐 Handle logout intent from backend
+      if (data.action === "logout") {
+        setTimeout(() => logoutUser(), 2000);
+      }
+      // 💾 Save chat log
       saveStructuredChatLog();
+    //
     } catch (err) {
       log.removeChild(typing);
       const errEntry = document.createElement("div");
@@ -310,6 +317,11 @@
       input.disabled = false;
       input.focus();
       log.scrollTop = log.scrollHeight;
+    }
+    // 🔐 Logout utility function
+    function logoutUser() {
+      localStorage.removeItem("userLoggedIn");
+      location.reload();
     }
   });
   // Save structured chat log to Netlify Function
