@@ -8,7 +8,6 @@ const path = require("path");
 // Import the contact check utility
 //const { checkProposedContact } = require("./checkProposedContact");
 const checkProposedContact = require("./checkProposedContact");
-
 // Load version from JSON file
 let dynamicVersion = "unknown";
 // Attempt to read version from file
@@ -18,9 +17,9 @@ try {
   const parsed = JSON.parse(versionData);
   if (parsed.version) dynamicVersion = parsed.version;
 } catch (err) {
+  // If reading version fails, log the error and use default
   console.error("Version load error:", err.message);
 }
-
 // Helper to format Phoenix time
 const getPhoenixTime = () => {
   try {
@@ -55,16 +54,111 @@ const createSystemMessage = (dateInfo) => ({
   // Content of the message
   content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}.`
 });
-// Intent mapping for predefined commands
+// Intent mapping for predefined commands (static + dynamic responses)
 const intentMap = {
-  // "log out": { response: "🖥️ Opening the prompt modal...", action: "openModal" },
-  "log out": { response: "🖖 Logging you out, Hooman...", action: "logout" },
-  // "logout": { response: "🖥️ Opening the prompt modal...", action: "openModal" },
-  logout: { response: "🔒 Session terminated. May your signs be well-lit.", action: "logout" },
-  // "help": { response: "🖥️ Opening the prompt modal...", action: "openModal" },
-  help: { response: "🧠 You can say things like 'log out', 'check version', or 'open the prompt modal'.", action: "info" },
-  // "check version": { response: "🖥️ Opening the prompt modal...", action: "openModal" },
-  "check version": { response: `📦 Current version: ${dynamicVersion} (see footer)`, action: "versionCheck" }
+  // Static responses for common commands
+  "log out": () => ({
+    // Response for logging out
+    response: "🖖 Logging you out, Hooman...",
+    // Action to take (logout
+    action: "logout"
+  }),
+  // Dynamic responses based on current time
+  logout: () => ({
+    // Response for logging out
+    response: "🔒 Session terminated. May your signs be well-lit.",
+    // Action to take (logout)
+    action: "logout"
+  }),
+  // Dynamic response for opening the prompt modal
+  help: () => ({
+    // Response for help comman
+    response: "🧠 You can say things like 'log out', 'check version', 'what time is it?', or 'open the prompt modal'.",
+    // Action to take (open help modal)
+    action: "info"
+  }),
+  // Dynamic response for opening the prompt modal
+  "check version": () => ({
+    // Response for checking version
+    response: `📦 Current version: ${dynamicVersion} (see footer)`,
+    // Action to take (open version modal)
+    action: "versionCheck"
+  }),
+  // Dynamic response for opening the prompt modal
+  getTime: () => {
+    // Get the current time in Phoenix timezone
+    const now = new Date();
+    // Format the time to a readable string
+    const time = now.toLocaleTimeString("en-US", {
+      // Options for formatting hour
+      hour: "numeric",
+      // Options for formatting minute
+      minute: "numeric",
+      // Options for formatting hour in 12-hour format
+      hour12: true,
+      // Timezone for Phoenix
+      timeZone: "America/Phoenix"
+    });
+    // 
+    return {
+      // Response with current time
+      response: `🕒 The current time is ${time}.`,
+      // Action to take (none in this case)
+      action: "none"
+    };
+  },
+  // Dynamic response for getting the current date
+  getDate: () => {
+    // Get the current date in Phoenix timezone
+    const today = new Date().toLocaleDateString("en-US", {
+      // Options for formatting weekday
+      weekday: "long",
+      // Options for formatting month
+      month: "long",
+      // Options for formatting day
+      day: "numeric",
+      // Options for formatting year
+      year: "numeric",
+      // Options for timezone
+      timeZone: "America/Phoenix"
+    });
+    // Return the formatted date
+    return {
+      // Response with current date
+      response: `📅 Today is ${today}.`,
+      // Action to take (none in this case)
+      action: "none"
+    };
+  },
+  // Dynamic response for getting the current date and time 
+  getDateTime: () => {
+    // Get the current date and time in Phoenix timezone
+    const now = new Date().toLocaleString("en-US", {
+      // Options for formatting weekday
+      weekday: "long",
+      // Options for formatting month
+      month: "long",
+      // Options for formatting day
+      day: "numeric",
+      // Options for formatting year
+      year: "numeric",
+      // Options for formatting hour
+      hour: "numeric",
+      // Options for formatting minut
+      minute: "numeric",
+      // Options for formatting hour in 12-hour format
+      hour12: true,
+      // Timezone for Phoenix
+      timeZone: "America/Phoenix"
+    });
+    // Return the formatted date and time 
+    return {
+      // Response with current date and time
+      response: `📆 It's currently ${now}.`,
+      // Action to take (none in this case)
+      action: "none"
+    };
+  }
 };
 // Main Netlify handler
 exports.handler = async (event) => {
@@ -156,7 +250,9 @@ exports.handler = async (event) => {
     }
     // Get Phoenix time and create system message
     const dateInfo = getPhoenixTime();
+    // Debug: log the Phoenix time
     const systemMessage = createSystemMessage(dateInfo);
+    // Debug: log the system message
     const baseMessages = [systemMessage];
     // Handle conversation or single prompt
     const chatMessages = Array.isArray(conversation)
@@ -164,6 +260,7 @@ exports.handler = async (event) => {
       : [...baseMessages, { role: "user", content: cleanedPrompt }];
     // Call OpenAI API
     const controller = new AbortController();
+    // Set a timeout to abort the request after 10 seconds
     const timeout = setTimeout(() => controller.abort(), 10000);
     // Ensure we have a valid API key
     try {
@@ -192,11 +289,15 @@ exports.handler = async (event) => {
       const content = data.choices?.[0]?.message?.content?.trim() || "🤖 No response from model.";
       return { statusCode: 200, body: JSON.stringify({ response: content }) };
     } catch (err) {
+      // Clear timeout if fetch fails
       console.error("OpenAI fetch error:", err.message);
+      // Clear the timeout to prevent memory leaks
       return { statusCode: 500, body: JSON.stringify({ error: "Failed to fetch response from OpenAI" }) };
     }
   } catch (err) {
+    // Catch any unexpected errors
     console.error("Handler error:", err.message);
+    // Return a 500 Internal Server Error response
     return { statusCode: 500, body: JSON.stringify({ error: "Internal server error" }) };
   }
 };
