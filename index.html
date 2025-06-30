@@ -309,6 +309,8 @@
       });
       // Check if response is ok
       const data = await response.json();
+      // Optional debug log
+      console.log("🤖 Bot response payload:", data);
       // Check if response contains an error
       const botReply = data.response || "Skyebot could not reply.";
       // Optional debug log
@@ -323,6 +325,7 @@
       log.appendChild(botEntry);
       // 🔐 Handle logout intent from backend
       if (data.action === "logout") {
+        // Optional debug log
         setTimeout(() => logoutUser(), 2000);
       }
       // 💾 Save chat log
