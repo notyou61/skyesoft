@@ -140,7 +140,7 @@ exports.handler = async (event) => {
           // Response from intent
           response: intent.response,
           // Action to take
-          action: intent.action || null
+          action: intent.action || null,
           // Intent name for tracking
           intentName: cleanedPrompt.toLowerCase(),
           // Timstamp for logging
