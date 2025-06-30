@@ -44,7 +44,9 @@ const getPhoenixTime = () => {
 };
 // Helper to create system message
 const createSystemMessage = (dateInfo) => ({
+  // Role of the message
   role: "system",
+  // Content of the message
   content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}.`
 });
 // Intent mapping for predefined commands
@@ -63,42 +65,64 @@ exports.handler = async (event) => {
   try {
     // Parse request body safely
     let body;
+    // Check if body is present and parse it
     try {
+      // If body is a string, parse it as JSON
       body = event.body ? JSON.parse(event.body) : {};
     } catch (err) {
+      // If parsing fails, log the error and return a 400 response
       console.error("Invalid request body:", err.message);
+      // Return a 400 Bad Request response
       return { statusCode: 400, body: JSON.stringify({ error: "Invalid request body" }) };
     }
-
+    // Ensure body has prompt and conversation
     const { prompt, conversation } = body;
+    // Debug: log the received prompt and conversation
     const apiKey = process.env.OPENAI_API_KEY;
-
+    // Debug: log the API key presence
     if (!apiKey) {
+      // Log error if API key is missing
       console.error("Missing OpenAI API key");
+      // Return a 500 Internal Server Error response
       return { statusCode: 500, body: JSON.stringify({ error: "Server configuration error" }) };
     }
-
+    // Debug: log the prompt and conversation
     const cleanedPrompt = typeof prompt === "string" ? prompt.trim() : "";
+    // Debug: log the cleaned prompt
     if (!cleanedPrompt) {
+      // Log error if prompt is missing or invalid
       console.error("Missing or invalid prompt:", prompt);
+      // Return a 400 Bad Request response
       return { statusCode: 400, body: JSON.stringify({ error: "Missing prompt" }) };
     }
-
     // Detect contact info (email + phone)
     const email = cleanedPrompt.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/)?.[0];
+    // Debug: log the detected email
     const phone = cleanedPrompt.match(/\(\d{3}\)\s?\d{3}-\d{4}/)?.[0];
+    // Debug: log the detected phone
     if (email && phone) {
+      // Log detected contact info
       const contactCheckResult = checkProposedContact({
+        // Log the detected name
         name: "Placeholder Name",
+        // Log the detected title
         title: "Placeholder Title",
+        // Log the detected email
         email,
+        // Log the detected phone
         officePhone: phone,
+        // 
         cellPhone: "",
+        // Log the detected company
         company: "Placeholder Company",
+        // Log the detected address
         address: "Placeholder Address"
       });
+      // Debug: log the contact check result
       return { statusCode: 200, body: JSON.stringify({ response: contactCheckResult }) };
     }
+    // Debug: show cleaned prompt
+    console.log("🔎 Cleaned prompt:", cleanedPrompt.toLowerCase());
     // Check for predefined commands
     const intent = intentMap[cleanedPrompt.toLowerCase()];
     // If intent matches, return predefined response
