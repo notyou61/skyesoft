@@ -12,6 +12,7 @@ const fs = require("fs");
 const path = require("path");
 // Import the contact check utility
 const checkProposedContact = require("./checkProposedContact");
+// #endregion
 // #region 📦 Load Dynamic Version
 let dynamicVersion = "vUnknown";
 
