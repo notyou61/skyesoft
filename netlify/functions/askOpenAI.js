@@ -1,4 +1,9 @@
 // netlify/functions/askOpenAI.js
+// vscode-fold=2  <-- Auto Fold trigger
+//
+// 📁 askOpenAI.js – Netlify Function to handle OpenAI chat interactions
+// 🧠 Responds to prompt, routes intents, handles contact logic
+// #region ⛓️ Module Imports
 // Netlify Function to handle OpenAI requests
 const fetch = global.fetch;
 // Ensure fetch is available globally
@@ -6,21 +11,27 @@ const fs = require("fs");
 // Ensure fetch is available globally
 const path = require("path");
 // Import the contact check utility
-//const { checkProposedContact } = require("./checkProposedContact");
 const checkProposedContact = require("./checkProposedContact");
 // Load version from JSON file
 let dynamicVersion = "unknown";
-// Attempt to read version from file
+// #endregion
+// #region 📦 Load Dynamic Version
 try {
+  // Define the path to the version file
   const versionPath = path.join(__dirname, "../../assets/data/version.json");
+  // Read the version file synchronously
   const versionData = fs.readFileSync(versionPath, "utf8");
+  // Parse the JSON data from the file
   const parsed = JSON.parse(versionData);
+  // Check if the version property exists in the parsed data
   if (parsed.version) dynamicVersion = parsed.version;
+// catch any errors reading or parsing the version file
 } catch (err) {
   // If reading version fails, log the error and use default
   console.error("Version load error:", err.message);
 }
-// Helper to format Phoenix time
+// #endregion
+// #region 🕒 Get Phoenix Time
 const getPhoenixTime = () => {
   try {
     const date = new Date().toLocaleString("en-US", {
@@ -47,120 +58,95 @@ const getPhoenixTime = () => {
     return { time: "unknown", dayOfWeek: "unknown", month: "unknown", day: "unknown", year: "unknown" };
   }
 };
-// Helper to create system message
+// #endregion
+// #region 🤖 Create System Message
 const createSystemMessage = (dateInfo) => ({
   // Role of the message
   role: "system",
   // Content of the message
   content: `You are Skyebot, a helpful assistant. Current local time is ${dateInfo.time} on ${dateInfo.dayOfWeek}, ${dateInfo.month} ${dateInfo.day}, ${dateInfo.year}.`
 });
-// Intent mapping for predefined commands (static + dynamic responses)
+// #endregion
+// #region 🤖 Skyebot Intent Map
 const intentMap = {
-  // Static responses for common commands
+  // #region 🔐 Logout Commands
   "log out": () => ({
     // Response for logging out
     response: "🖖 Logging you out, Hooman...",
-    // Action to take (logout
     action: "logout"
   }),
-  // Dynamic responses based on current time
   logout: () => ({
-    // Response for logging out
     response: "🔒 Session terminated. May your signs be well-lit.",
-    // Action to take (logout)
     action: "logout"
   }),
-  // Dynamic response for opening the prompt modal
+  // #endregion
+  // #region 🧠 Help Command
   help: () => ({
-    // Response for help comman
     response: "🧠 You can say things like 'log out', 'check version', 'what time is it?', or 'open the prompt modal'.",
-    // Action to take (open help modal)
     action: "info"
   }),
-  // Dynamic response for opening the prompt modal
+  // #endregion
+  // #region 📦 Version Check Commands
   "check version": () => ({
-    // Response for checking version
     response: `📦 Current version: ${dynamicVersion} (see footer)`,
-    // Action to take (open version modal)
     action: "versionCheck"
   }),
-  // Dynamic response for opening the prompt modal
+  version: () => ({
+    response: `📦 Current version: ${dynamicVersion} (see footer)`,
+    action: "versionCheck"
+  }),
+  // #endregion
+  // #region 🕒 Time Response
   getTime: () => {
-    // Get the current time in Phoenix timezone
     const now = new Date();
-    // Format the time to a readable string
     const time = now.toLocaleTimeString("en-US", {
-      // Options for formatting hour
       hour: "numeric",
-      // Options for formatting minute
       minute: "numeric",
-      // Options for formatting hour in 12-hour format
       hour12: true,
-      // Timezone for Phoenix
       timeZone: "America/Phoenix"
     });
-    // 
     return {
-      // Response with current time
       response: `🕒 The current time is ${time}.`,
-      // Action to take (none in this case)
       action: "none"
     };
   },
-  // Dynamic response for getting the current date
+  // #endregion
+  // #region 📅 Date Response
   getDate: () => {
-    // Get the current date in Phoenix timezone
     const today = new Date().toLocaleDateString("en-US", {
-      // Options for formatting weekday
       weekday: "long",
-      // Options for formatting month
       month: "long",
-      // Options for formatting day
       day: "numeric",
-      // Options for formatting year
       year: "numeric",
-      // Options for timezone
       timeZone: "America/Phoenix"
     });
-    // Return the formatted date
     return {
-      // Response with current date
       response: `📅 Today is ${today}.`,
-      // Action to take (none in this case)
       action: "none"
     };
   },
-  // Dynamic response for getting the current date and time 
+  // #endregion
+  // #region 📆 DateTime Response
   getDateTime: () => {
-    // Get the current date and time in Phoenix timezone
     const now = new Date().toLocaleString("en-US", {
-      // Options for formatting weekday
       weekday: "long",
-      // Options for formatting month
       month: "long",
-      // Options for formatting day
       day: "numeric",
-      // Options for formatting year
       year: "numeric",
-      // Options for formatting hour
       hour: "numeric",
-      // Options for formatting minut
       minute: "numeric",
-      // Options for formatting hour in 12-hour format
       hour12: true,
-      // Timezone for Phoenix
       timeZone: "America/Phoenix"
     });
-    // Return the formatted date and time 
     return {
-      // Response with current date and time
       response: `📆 It's currently ${now}.`,
-      // Action to take (none in this case)
       action: "none"
     };
   }
+  // #endregion
 };
-// Main Netlify handler
+// #endregion
+// #region 🛠️ Exported Handler Function
 exports.handler = async (event) => {
   try {
     // Parse request body safely
@@ -342,3 +328,4 @@ exports.handler = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: "Internal server error" }) };
   }
 };
+// #endregion
