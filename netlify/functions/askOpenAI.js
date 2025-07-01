@@ -12,23 +12,26 @@ const fs = require("fs");
 const path = require("path");
 // Import the contact check utility
 const checkProposedContact = require("./checkProposedContact");
-// Load version from JSON file
-let dynamicVersion = "vUnknown";  // Default fallback
-// #endregion
 // #region 📦 Load Dynamic Version
-try {
-  // Define the path to the version file
-  const versionPath = path.join(__dirname, "../../version.json");  // Adjusted to root-level version.json
-  // Read the version file synchronously
-  const versionData = fs.readFileSync(versionPath, "utf8");
-  // Parse the JSON data from the file
-  const parsed = JSON.parse(versionData);
-  // Check if the version property exists in the parsed data
-  if (parsed.version) dynamicVersion = parsed.version;
-// catch any errors reading or parsing the version file
-} catch (err) {
-  // If reading version fails, log the error and use default
-  console.error("Version load error:", err.message);
+let dynamicVersion = "vUnknown";
+
+const possiblePaths = [
+  path.join(__dirname, "../../assets/data/version.json"),
+  path.join(__dirname, "../../version.json")
+];
+
+for (const versionPath of possiblePaths) {
+  try {
+    const versionData = fs.readFileSync(versionPath, "utf8");
+    const parsed = JSON.parse(versionData);
+    if (parsed.version) {
+      dynamicVersion = parsed.version;
+      console.log("📦 Loaded version from:", versionPath);
+      break;
+    }
+  } catch (err) {
+    console.warn("⚠️ Failed to load version from:", versionPath, "| Reason:", err.message);
+  }
 }
 // #endregion
 // #region 🕒 Get Phoenix Time
