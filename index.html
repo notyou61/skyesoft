@@ -384,34 +384,16 @@
   }
   // 📡 Connect to SSE stream
   const eventSource = new EventSource("/.netlify/functions/serverSideEvents");
-  //
+  // 🟢 Handle incoming messages
   eventSource.onmessage = function (event) {
     try {
       const data = JSON.parse(event.data);
-
-      // 🌐 Update Time
-      if (data.timeDateArray && data.timeDateArray.currentUnixTime) {
-        const dt = new Date(data.timeDateArray.currentUnixTime * 1000);
-        const timeString = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        document.getElementById("currentTime").textContent = timeString;
-      }
-
-      // 🕒 Interval Remaining
-      if (data.intervalsArray?.currentDayDurationsArray?.currentDaySecondsRemaining) {
-        document.getElementById("intervalRemainingData").textContent =
-          data.intervalsArray.currentDayDurationsArray.currentDaySecondsRemaining + " sec";
-      }
-
-      // 🏷️ Version
-      if (data.siteDetailsArray?.siteName) {
-        const versionDiv = document.querySelector(".version");
-        versionDiv.textContent = `Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
-      }
+      console.log("🕒 SSE Received:", data);
     } catch (err) {
       console.error("❌ SSE Parse Error:", err);
     }
   };
-  //
+  // 🔌 Handle errors
   eventSource.onerror = function (err) {
     console.error("🔌 SSE Connection Error:", err);
   };

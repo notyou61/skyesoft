@@ -1,34 +1,28 @@
-// 📁 netlify/functions/serverSideEvents.js
+// netlify/functions/serverSideEvents.js
 
-export const handler = async (event, context) => {
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-    body: createStreamBody(),
-  };
-};
+export default async function handler(req, res) {
+  // 🧠 Set headers for Server-Sent Events (SSE)
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
 
-// Helper: Simple SSE generator using ReadableStream
-function createStreamBody() {
-  const encoder = new TextEncoder();
-  let interval;
+  // ⏱️ Emit data every second
+  const intervalId = setInterval(() => {
+    const unixTime = Math.floor(Date.now() / 1000);
 
-  const stream = new ReadableStream({
-    start(controller) {
-      interval = setInterval(() => {
-        const unixTime = Math.floor(Date.now() / 1000);
-        const payload = `data: ${JSON.stringify({ unixTime })}\n\n`;
-        controller.enqueue(encoder.encode(payload));
-      }, 1000);
-    },
-    cancel() {
-      clearInterval(interval);
-    },
+    const streamPayload = {
+      timeDateArray: {
+        currentUnixTime: unixTime
+      }
+    };
+
+    res.write(`data: ${JSON.stringify(streamPayload)}\n\n`);
+  }, 1000);
+
+  // ❌ Clean up on client disconnect
+  req.on("close", () => {
+    clearInterval(intervalId);
+    res.end();
   });
-
-  return stream;
 }
