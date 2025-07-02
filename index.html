@@ -382,6 +382,39 @@
     .then(data => console.log("📝 Chat log saved:", data))
     .catch(err => console.error("❌ Failed to save chat log:", err));
   }
+  // 📡 Connect to SSE stream
+  const eventSource = new EventSource("/.netlify/functions/serverSideEvents");
+  //
+  eventSource.onmessage = function (event) {
+    try {
+      const data = JSON.parse(event.data);
+
+      // 🌐 Update Time
+      if (data.timeDateArray && data.timeDateArray.currentUnixTime) {
+        const dt = new Date(data.timeDateArray.currentUnixTime * 1000);
+        const timeString = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        document.getElementById("currentTime").textContent = timeString;
+      }
+
+      // 🕒 Interval Remaining
+      if (data.intervalsArray?.currentDayDurationsArray?.currentDaySecondsRemaining) {
+        document.getElementById("intervalRemainingData").textContent =
+          data.intervalsArray.currentDayDurationsArray.currentDaySecondsRemaining + " sec";
+      }
+
+      // 🏷️ Version
+      if (data.siteDetailsArray?.siteName) {
+        const versionDiv = document.querySelector(".version");
+        versionDiv.textContent = `Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
+      }
+    } catch (err) {
+      console.error("❌ SSE Parse Error:", err);
+    }
+  };
+  //
+  eventSource.onerror = function (err) {
+    console.error("🔌 SSE Connection Error:", err);
+  };
 </script>
 <!-- Skyebot Script -->
 <script src="assets/js/skyebot.js"></script>
