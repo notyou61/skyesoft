@@ -1,23 +1,25 @@
-// netlify/functions/serverSideEvents.js
+// 📁 netlify/functions/serverSideEvents.js
 
-export default async function handler(req, res) {
-  // Set headers for SSE
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+export default async (req, res) => {
+  // 🛠 Set SSE headers
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
 
-  // Keep the connection open
+  // 📡 Start the SSE stream
   res.flushHeaders();
 
-  // Send an SSE ping every second
+  // 🔁 Send a ping every second with the current Unix timestamp
   const intervalId = setInterval(() => {
     const unixTime = Math.floor(Date.now() / 1000);
     res.write(`data: ${JSON.stringify({ unixTime })}\n\n`);
   }, 1000);
 
-  // Clean up on disconnect
+  // ❌ Clean up if client disconnects
   req.on("close", () => {
     clearInterval(intervalId);
     res.end();
   });
-}
+};
