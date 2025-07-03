@@ -354,6 +354,7 @@
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
+<script src="/assets/js/workdayTicker.js"></script>
 <script>
     // Import variables from weatherConfig.js
     // Removed duplicate weatherApiKey and weatherLocation declarations
@@ -1122,8 +1123,8 @@ if (!label) {
 }
 // 🔁 When the DOM is fully loaded...
 window.addEventListener("DOMContentLoaded", () => {
+  // Console log to indicate script execution
   console.log("🔁 DOM Content Loaded");
-
   // 🔽 Load the dynamic version from version.json
   fetch("https://notyou61.github.io/skyesoft/assets/data/version.json")
     .then(res => res.json())
@@ -1135,13 +1136,10 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
-
   // 🌤️ Fetch and display weather on page load
   updateWeatherDisplay();
-
   // 🕒 Refresh weather every 15 minutes
   setInterval(updateWeatherDisplay, 900000);
-
   // 🔄 Rotate bulletin board cards
   rotateCards();
 });
