@@ -5,14 +5,13 @@ function formatDurationPadded(seconds) {
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  const parts = [];
 
-  if (d > 0) parts.push(`${String(d).padStart(2, '0')}d`);
-  if (h > 0 || d > 0) parts.push(`${String(h).padStart(2, '0')}h`);
-  if (m > 0 || h > 0 || d > 0) parts.push(`${String(m).padStart(2, '0')}m`);
-  parts.push(`${String(s).padStart(2, '0')}s`);
+  const daysPart = d > 0 ? `${String(d).padStart(2, '0')}d ` : '';
+  const hoursPart = `${String(h).padStart(2, '0')}h`;
+  const minutesPart = `${String(m).padStart(2, '0')}m`;
+  const secondsPart = `${String(s).padStart(2, '0')}s`;
 
-  return parts.join(" ");
+  return `${daysPart}${hoursPart} ${minutesPart} ${secondsPart}`.trim();
 }
 // #endregion
 // #region 🔁 Poll Every Second for Dynamic Data
