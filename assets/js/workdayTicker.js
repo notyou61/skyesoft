@@ -1,15 +1,17 @@
 // 📁 File: assets/js/workdayTicker.js
-// #region 🧮 Format Duration (D H M S Padded)
+// #region 🧮 Format Duration (DD HH MM SS Padded)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   const parts = [];
-  if (d > 0) parts.push(`${d}d`);
+
+  if (d > 0) parts.push(`${String(d).padStart(2, '0')}d`);
   if (h > 0 || d > 0) parts.push(`${String(h).padStart(2, '0')}h`);
   if (m > 0 || h > 0 || d > 0) parts.push(`${String(m).padStart(2, '0')}m`);
   parts.push(`${String(s).padStart(2, '0')}s`);
+
   return parts.join(" ");
 }
 // #endregion
