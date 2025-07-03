@@ -83,10 +83,10 @@ function updateDOMFromGlbVar() {
   const versionEl = document.querySelector(".version");
   if (versionEl) versionEl.textContent = glbVar.version;
 }
-// Main update loop
+// Main update loop (time display only, interval handled by workdayTicker.js)
 setInterval(() => {
   const now = new Date();
   glbVar.timeDate.now = now;
-  glbVar.intervalRemaining = calculateIntervalRemaining(now);
   updateDOMFromGlbVar();
 }, 1000);
+
