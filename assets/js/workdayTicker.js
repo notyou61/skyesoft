@@ -17,7 +17,8 @@ function formatDurationPadded(seconds) {
 // #endregion
 // #region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
-  fetch("/.netlify/functions/getDynamicData")
+  //fetch("/.netlify/functions/getDynamicData")
+  fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDynamicData")
     .then((res) => res.json())
     .then((data) => {
       console.log("🕒 Polled:", data); // 🧪 Debug log
