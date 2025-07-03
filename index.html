@@ -382,34 +382,75 @@
     .then(data => console.log("📝 Chat log saved:", data))
     .catch(err => console.error("❌ Failed to save chat log:", err));
   }
-// 🔁 Poll every second
-setInterval(() => {
-  fetch("/.netlify/functions/getDynamicData")
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("🕒 Polled:", data);
-
-      // 🌐 Update Time
-      if (data.timeDateArray?.currentUnixTime) {
-        const dt = new Date(data.timeDateArray.currentUnixTime * 1000);
-        const timeString = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        document.getElementById("currentTime").textContent = timeString;
-      }
-
-      // 🕒 Interval Remaining
-      //if (data.intervalsArray?.currentDayDurationsArray?.currentDaySecondsRemaining) {
-      //  document.getElementById("intervalRemainingData").textContent =
-      //    data.intervalsArray.currentDayDurationsArray.currentDaySecondsRemaining + " sec";
-      //}
-
-      // 🏷️ Version
-      if (data.siteDetailsArray?.siteName) {
-        const versionDiv = document.querySelector(".version");
-        versionDiv.textContent = `Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
-      }
-    })
-    .catch((err) => console.error("❌ Polling Error:", err));
-}, 1000);
+  // 🧮 Convert seconds into padded D H M S string
+  function formatDurationPadded(seconds) {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    // Create an array to hold the parts of the duration
+    const parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0 || d > 0) parts.push(`${String(h).padStart(2, '0')}h`);
+    if (m > 0 || h > 0 || d > 0) parts.push(`${String(m).padStart(2, '0')}m`);
+    parts.push(`${String(s).padStart(2, '0')}s`);
+    // Join the parts with a space and return the formatted string
+    return parts.join(" ");
+  }
+  // 🔁 Poll every second for fresh dynamic data
+  setInterval(() => {
+    fetch("/.netlify/functions/getDynamicData")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("🕒 Polled:", data); // 🧪 Log data for debugging
+        // 🌐 Update Current Time (HH:MM:SS)
+        if (data.timeDateArray?.currentUnixTime) {
+          const dt = new Date(data.timeDateArray.currentUnixTime * 1000);
+          const timeString = dt.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          });
+          document.getElementById("currentTime").textContent = timeString;
+        }
+        // ⏳ Display Remaining Time Until Start or End of Workday
+        if (
+          data.intervalsArray?.currentDayDurationsArray?.currentDaySecondsRemaining !== undefined &&
+          data.intervalsArray?.currentIntervalTypeArray?.intervalLabel &&
+          data.intervalsArray?.currentIntervalTypeArray?.dayType
+        ) {
+          const seconds = data.intervalsArray.currentDayDurationsArray.currentDaySecondsRemaining;
+          const label = data.intervalsArray.currentIntervalTypeArray.intervalLabel; // e.g., "Worktime"
+          const dayType = data.intervalsArray.currentIntervalTypeArray.dayType;     // e.g., "Workday"
+          // ⌛ Format seconds to D H M S
+          const formatted = formatDurationPadded(seconds); // ⌛ Format seconds to D H M S
+          // 📝 Update the interval remaining display
+          let message = "";
+          if (dayType === "Workday") {
+            if (label === "Before Worktime") {
+              message = `🕔 Work begins in ${formatted}`;
+            } else if (label === "Worktime") {
+              message = `🔚 Workday ends in ${formatted}`;
+            } else {
+              message = `📆 Next workday begins in ${formatted}`;
+            }
+          } else {
+            message = `📅 Next workday begins in ${formatted}`;
+          }
+          // Update the interval remaining display
+          document.getElementById("intervalRemainingData").textContent = message;
+        }
+        // 🏷️ Update Site Version Display
+        if (data.siteDetailsArray?.siteName) {
+          const versionDiv = document.querySelector(".version");
+          versionDiv.textContent = `🔖 Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
+        }
+      })
+      .catch((err) => {
+        // Handle any errors that occur during the fetch
+        console.error("❌ Polling Error:", err); // ⚠️ Handle failed fetch
+      });
+  }, 1000);
 </script>
 <!-- Skyebot Script -->
 <script src="assets/js/skyebot.js"></script>
