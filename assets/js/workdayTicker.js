@@ -57,12 +57,11 @@ setInterval(() => {
         message = `📅 Next workday begins in ${formatted}`;
     }
 
-    glbVar.intervalRemaining = message; // ✅ Set global once
-
-    const intervalEl = document.getElementById("intervalRemainingData");
-    if (intervalEl) intervalEl.textContent = message;
+    glbVar.intervalRemaining = message; // ✅ Update global value
+    updateDOMFromGlbVar();              // ✅ Re-render updated value
     }
     // #endregion
+
 
   // #region 🏷️ Update Site Version
       if (data.siteDetailsArray?.siteName) {
