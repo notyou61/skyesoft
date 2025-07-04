@@ -20,27 +20,20 @@ setInterval(() => {
   fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDynamicData")
     .then((res) => res.json())
     .then((data) => {
-      console.log("🕒 Polled:", data); // 🧪 Debug log
-
-      // #region 🌐 Update Current Time
-      if (data.timeDateArray?.currentUnixTime) {
-        const dt = new Date(data.timeDateArray.currentUnixTime * 1000);
-        const timeString = dt.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        });
-        const timeEl = document.getElementById("currentTime");
-        if (timeEl) timeEl.textContent = timeString;
-      }
-      // #endregion
-
-      // #region ⏳ Update Interval Remaining
-      if (
+        // 🧪 Debug log to see the raw data received
+        console.log("🕒 Polled:", data); // 🧪 Debug log
+        // #region 🌐 Update Current Time
+        if (data.timeDateArray?.currentUnixTime) {
+            glbVar.timeDate.now = new Date(data.timeDateArray.currentUnixTime * 1000);
+            updateDOMFromGlbVar(); // ✅ This updates the clock and anything else using glbVar
+        }
+        // #endregion
+        // #region ⏳ Update Interval Remaining
+        if (
         data.intervalsArray?.currentDayDurationsArray?.currentDaySecondsRemaining !== undefined &&
         data.intervalsArray?.currentIntervalTypeArray?.intervalLabel &&
         data.intervalsArray?.currentIntervalTypeArray?.dayType
-      ) {
+        ) {
         const seconds = data.intervalsArray.currentDayDurationsArray.currentDaySecondsRemaining;
         const label = data.intervalsArray.currentIntervalTypeArray.intervalLabel;
         const dayType = data.intervalsArray.currentIntervalTypeArray.dayType;
@@ -49,23 +42,22 @@ setInterval(() => {
         let message = "";
 
         if (dayType === "Workday") {
-          if (label === "Before Worktime") {
+            if (label === "Before Worktime") {
             message = `🕔 Work begins in ${formatted}`;
-          } else if (label === "Worktime") {
+            } else if (label === "Worktime") {
             message = `🔚 Workday ends in ${formatted}`;
-          } else {
+            } else {
             message = `📆 Next workday begins in ${formatted}`;
-          }
+            }
         } else {
-          message = `📅 Next workday begins in ${formatted}`;
+            message = `📅 Next workday begins in ${formatted}`;
         }
 
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
-      }
-      // #endregion
-
-      // #region 🏷️ Update Site Version
+        }
+        // #endregion
+    // #region 🏷️ Update Site Version
       if (data.siteDetailsArray?.siteName) {
         const versionEl = document.querySelector(".version");
         if (versionEl) versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
