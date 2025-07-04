@@ -1,39 +1,36 @@
-// 📁 File: netlify/functions/workdayTicker.js
-
-// #region 📁 File: netlify/functions/getDynamicData.js
-import holidays from "./federal_holidays_dynamic.json" assert { type: "json" };
-// #endregion
+// 📁 File: netlify/functions/getDynamicData.js
 
 // #region 🔧 Configuration
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
+const HOLIDAY_URL = "https://skyesoft-ai.netlify.app/assets/data/federal_holidays_dynamic.json";
 // #endregion
 
 // #region 🧮 Convert HH:MM string to seconds since midnight
 function timeStringToSeconds(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
+  const [h, m] = timeStr.split(":".padStart(2, "0")).map(Number);
   return h * 3600 + m * 60;
 }
 // #endregion
 
 // #region 📅 Check if a given date is a holiday or weekend
-function isHoliday(dateObj) {
+function isHoliday(dateObj, holidays) {
   const dateStr = dateObj.toISOString().slice(0, 10);
-  return holidays.some(holiday => holiday.date === dateStr);
+  return holidays.some((holiday) => holiday.date === dateStr);
 }
 function isWeekend(dateObj) {
   const day = dateObj.getDay();
   return day === 0 || day === 6;
 }
-function isWorkday(dateObj) {
-  return !isWeekend(dateObj) && !isHoliday(dateObj);
+function isWorkday(dateObj, holidays) {
+  return !isWeekend(dateObj) && !isHoliday(dateObj, holidays);
 }
 // #endregion
 
 // #region ⏳ Find next workday start datetime
-function findNextWorkdayStart(now) {
+function findNextWorkdayStart(now, holidays) {
   const next = new Date(now);
-  while (!isWorkday(next)) {
+  while (!isWorkday(next, holidays)) {
     next.setDate(next.getDate() + 1);
   }
   const [h, m] = WORKDAY_START.split(":");
@@ -44,6 +41,16 @@ function findNextWorkdayStart(now) {
 
 // #region 🚀 Main API Handler
 export const handler = async () => {
+  // #region 📅 Fetch Holidays from Public URL
+  let holidays = [];
+  try {
+    const res = await fetch(HOLIDAY_URL);
+    holidays = await res.json();
+  } catch (err) {
+    console.error("❌ Failed to fetch holidays:", err.message);
+  }
+  // #endregion
+
   const now = new Date();
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -54,7 +61,7 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  if (isHoliday(now)) {
+  if (isHoliday(now, holidays)) {
     dayType = "Holiday";
     intervalLabel = "Holiday";
   } else if (isWeekend(now)) {
@@ -72,8 +79,7 @@ export const handler = async () => {
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    // After hours, weekend, or holiday: find next valid workday start
-    const nextWorkStart = findNextWorkdayStart(now);
+    const nextWorkStart = findNextWorkdayStart(now, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
 
