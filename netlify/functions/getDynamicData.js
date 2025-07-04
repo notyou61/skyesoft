@@ -1,36 +1,48 @@
 // 📁 File: netlify/functions/getDynamicData.js
 
-// #region 🔧 Configuration
-const WORKDAY_START = "07:30";
-const WORKDAY_END = "15:30";
-const HOLIDAY_URL = "https://skyesoft-ai.netlify.app/assets/data/federal_holidays_dynamic.json";
+// #region 📁 File: netlify/functions/getDynamicData.js
+import fs from "fs";
+import path from "path";
+
+// Load holidays JSON safely
+const holidays = JSON.parse(
+  fs.readFileSync(path.resolve("netlify/functions/federal_holidays_dynamic.json"), "utf8")
+);
 // #endregion
 
-// #region 🧮 Convert HH:MM string to seconds since midnight
+
+// #region 🔧 Workday Configuration
+const WORKDAY_START = "07:30";
+const WORKDAY_END = "15:30";
+// #endregion
+
+// #region 🧮 Utility: Convert "HH:MM" to seconds since midnight
 function timeStringToSeconds(timeStr) {
-  const [h, m] = timeStr.split(":".padStart(2, "0")).map(Number);
+  const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
 }
 // #endregion
 
-// #region 📅 Check if a given date is a holiday or weekend
-function isHoliday(dateObj, holidays) {
+// #region 📅 Holiday & Workday Logic
+function isHoliday(dateObj) {
   const dateStr = dateObj.toISOString().slice(0, 10);
-  return holidays.some((holiday) => holiday.date === dateStr);
+  return holidays.some(holiday => holiday.date === dateStr);
 }
+
 function isWeekend(dateObj) {
   const day = dateObj.getDay();
-  return day === 0 || day === 6;
+  return day === 0 || day === 6; // Sunday = 0, Saturday = 6
 }
-function isWorkday(dateObj, holidays) {
-  return !isWeekend(dateObj) && !isHoliday(dateObj, holidays);
+
+function isWorkday(dateObj) {
+  return !isHoliday(dateObj) && !isWeekend(dateObj);
 }
 // #endregion
 
-// #region ⏳ Find next workday start datetime
-function findNextWorkdayStart(now, holidays) {
+// #region ⏩ Find Next Workday Start
+function findNextWorkdayStart(now) {
   const next = new Date(now);
-  while (!isWorkday(next, holidays)) {
+  while (!isWorkday(next)) {
     next.setDate(next.getDate() + 1);
   }
   const [h, m] = WORKDAY_START.split(":");
@@ -39,21 +51,12 @@ function findNextWorkdayStart(now, holidays) {
 }
 // #endregion
 
-// #region 🚀 Main API Handler
+// #region 🚀 Main Handler
 export const handler = async () => {
-  // #region 📅 Fetch Holidays from Public URL
-  let holidays = [];
-  try {
-    const res = await fetch(HOLIDAY_URL);
-    holidays = await res.json();
-  } catch (err) {
-    console.error("❌ Failed to fetch holidays:", err.message);
-  }
-  // #endregion
-
   const now = new Date();
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
 
@@ -61,7 +64,8 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  if (isHoliday(now, holidays)) {
+  // #region 📆 Determine Day Type and Interval
+  if (isHoliday(now)) {
     dayType = "Holiday";
     intervalLabel = "Holiday";
   } else if (isWeekend(now)) {
@@ -69,9 +73,13 @@ export const handler = async () => {
     intervalLabel = "Weekend";
   } else {
     dayType = "Workday";
-    if (currentSeconds < workStart) intervalLabel = "Before Worktime";
-    else if (currentSeconds < workEnd) intervalLabel = "Worktime";
-    else intervalLabel = "After Worktime";
+    if (currentSeconds < workStart) {
+      intervalLabel = "Before Worktime";
+    } else if (currentSeconds < workEnd) {
+      intervalLabel = "Worktime";
+    } else {
+      intervalLabel = "After Worktime";
+    }
   }
 
   if (intervalLabel === "Before Worktime") {
@@ -79,14 +87,19 @@ export const handler = async () => {
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    const nextWorkStart = findNextWorkdayStart(now, holidays);
+    // Weekend, Holiday, or After Worktime
+    const nextWorkStart = findNextWorkdayStart(now);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
+  // #endregion
 
+  // #region 📦 API Response
   return {
     statusCode: 200,
     body: JSON.stringify({
-      timeDateArray: { currentUnixTime },
+      timeDateArray: {
+        currentUnixTime
+      },
       intervalsArray: {
         currentDayDurationsArray: {
           currentDaySecondsRemaining: secondsRemaining
@@ -101,5 +114,6 @@ export const handler = async () => {
       }
     })
   };
+  // #endregion
 };
 // #endregion
