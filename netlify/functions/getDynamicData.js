@@ -1,7 +1,8 @@
 export const handler = async () => {
   const now = new Date();
   const currentUnixTime = Math.floor(now.getTime() / 1000);
-  const timeString = now.toLocaleTimeString();
+  const secondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const currentDaySecondsRemaining = 86400 - secondsSinceMidnight;
 
   return {
     statusCode: 200,
@@ -11,7 +12,11 @@ export const handler = async () => {
       },
       intervalsArray: {
         currentDayDurationsArray: {
-          currentDaySecondsRemaining: 86400 - (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds())
+          currentDaySecondsRemaining
+        },
+        currentIntervalTypeArray: {
+          intervalLabel: "After Worktime", // or anything valid: "Before Worktime", "Worktime"
+          dayType: "Holiday"               // ← 🔒 Hardcoded for test
         }
       },
       siteDetailsArray: {
