@@ -56,8 +56,11 @@ setInterval(() => {
     } else {
         message = `📅 Next workday begins in ${formatted}`;
     }
-
+    // Console Log
+    console.log("⏳ Interval Remaining:", message); // 🧪 Debug log
+    // Update global variable
     glbVar.intervalRemaining = message; // ✅ Update global value
+    // Update the DOM
     updateDOMFromGlbVar();              // ✅ Re-render updated value
     }
     // #endregion
