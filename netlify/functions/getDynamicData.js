@@ -1,44 +1,44 @@
 // 📁 File: netlify/functions/getDynamicData.js
 
-// #region 📁 File: netlify/functions/getDynamicData.js
-import fs from "fs";
+// 📁 File: netlify/functions/getDynamicData.js
+import { readFile } from "fs/promises";
+import { fileURLToPath } from "url";
 import path from "path";
 
-const currentDir = path.dirname(new URL(import.meta.url).pathname);
-const holidaysPath = path.join(currentDir, "federal_holidays_dynamic.json");
-const holidays = JSON.parse(fs.readFileSync(holidaysPath, "utf8"));
-// #endregion
+// ✅ ESM-compatible path setup
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// ✅ Properly resolve path to JSON file
+const holidaysPath = path.join(__dirname, "federal_holidays_dynamic.json");
 
-// #region 🔧 Workday Configuration
+// 🔁 Read and parse holiday data
+const holidaysJSON = await readFile(holidaysPath, "utf-8");
+const holidays = JSON.parse(holidaysJSON).holidays;
+
+// Workday start/end time config
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
-// #endregion
 
-// #region 🧮 Utility: Convert "HH:MM" to seconds since midnight
 function timeStringToSeconds(timeStr) {
   const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
 }
-// #endregion
 
-// #region 📅 Holiday & Workday Logic
 function isHoliday(dateObj) {
   const dateStr = dateObj.toISOString().slice(0, 10);
-  return holidays.some(holiday => holiday.date === dateStr);
+  return holidays.some(h => h.date === dateStr);
 }
 
 function isWeekend(dateObj) {
   const day = dateObj.getDay();
-  return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+  return day === 0 || day === 6;
 }
 
 function isWorkday(dateObj) {
   return !isHoliday(dateObj) && !isWeekend(dateObj);
 }
-// #endregion
 
-// #region ⏩ Find Next Workday Start
 function findNextWorkdayStart(now) {
   const next = new Date(now);
   while (!isWorkday(next)) {
@@ -48,9 +48,7 @@ function findNextWorkdayStart(now) {
   next.setHours(+h, +m, 0, 0);
   return next;
 }
-// #endregion
 
-// #region 🚀 Main Handler
 export const handler = async () => {
   const now = new Date();
   const currentUnixTime = Math.floor(now.getTime() / 1000);
@@ -63,7 +61,6 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  // #region 📆 Determine Day Type and Interval
   if (isHoliday(now)) {
     dayType = "Holiday";
     intervalLabel = "Holiday";
@@ -86,13 +83,10 @@ export const handler = async () => {
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    // Weekend, Holiday, or After Worktime
     const nextWorkStart = findNextWorkdayStart(now);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
-  // #endregion
 
-  // #region 📦 API Response
   return {
     statusCode: 200,
     body: JSON.stringify({
@@ -109,10 +103,9 @@ export const handler = async () => {
         }
       },
       siteDetailsArray: {
-        siteName: "v2025.07.02"
+        siteName: "v2025.07.04"
       }
     })
   };
-  // #endregion
 };
-// #endregion
+
