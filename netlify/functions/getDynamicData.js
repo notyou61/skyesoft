@@ -1,19 +1,15 @@
 // 📁 File: netlify/functions/getDynamicData.js
 
 // 📁 File: netlify/functions/getDynamicData.js
-import { readFile } from "fs/promises";
-import { fileURLToPath } from "url";
-import path from "path";
+iimport { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-// ✅ ESM-compatible path setup
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Properly resolve path to JSON file
-const holidaysPath = path.join(__dirname, "federal_holidays_dynamic.json");
-
-// 🔁 Read and parse holiday data
-const holidaysJSON = await readFile(holidaysPath, "utf-8");
+const holidaysPath = path.join(__dirname, 'federal_holidays_dynamic.json');
+const holidaysJSON = await readFile(holidaysPath, 'utf-8');
 const holidays = JSON.parse(holidaysJSON).holidays;
 
 // Workday start/end time config
