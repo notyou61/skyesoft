@@ -1,4 +1,5 @@
 // 📁 File: assets/js/workdayTicker.js
+
 // #region 🧮 Format Duration (DD HH MM SS Padded)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -14,6 +15,7 @@ function formatDurationPadded(seconds) {
   return `${daysPart}${hoursPart} ${minutesPart} ${secondsPart}`.trim();
 }
 // #endregion
+
 // #region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
   //fetch("/.netlify/functions/getDynamicData")
