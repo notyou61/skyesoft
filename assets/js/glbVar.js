@@ -83,10 +83,6 @@ function updateDOMFromGlbVar() {
   const versionEl = document.querySelector(".version");
   if (versionEl) versionEl.textContent = glbVar.version;
 }
-// Main update loop (time display only, interval handled by workdayTicker.js)
-setInterval(() => {
-  const now = new Date();
-  glbVar.timeDate.now = now;
-  updateDOMFromGlbVar();
-}, 1000);
+// 🚫 Removed the manual clock update interval — now synced via polling/SSE
+
 
