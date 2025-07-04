@@ -4,8 +4,8 @@
 import fs from "fs";
 import path from "path";
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
-const holidaysPath = path.join(__dirname, "federal_holidays_dynamic.json");
+const currentDir = path.dirname(new URL(import.meta.url).pathname);
+const holidaysPath = path.join(currentDir, "federal_holidays_dynamic.json");
 const holidays = JSON.parse(fs.readFileSync(holidaysPath, "utf8"));
 // #endregion
 
