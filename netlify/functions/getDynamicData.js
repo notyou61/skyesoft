@@ -4,10 +4,9 @@
 import fs from "fs";
 import path from "path";
 
-// Load holidays JSON safely
-const holidays = JSON.parse(
-  fs.readFileSync(path.resolve("netlify/functions/federal_holidays_dynamic.json"), "utf8")
-);
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+const holidaysPath = path.join(__dirname, "federal_holidays_dynamic.json");
+const holidays = JSON.parse(fs.readFileSync(holidaysPath, "utf8"));
 // #endregion
 
 
