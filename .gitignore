@@ -12,3 +12,6 @@ Thumbs.db
 
 # Vendor directory
 /vendor/
+
+# Local Netlify folder
+.netlify
