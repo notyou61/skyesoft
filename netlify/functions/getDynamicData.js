@@ -1,38 +1,37 @@
 // 📁 File: netlify/functions/getDynamicData.js
 import { readFile } from "fs/promises";
-import { fileURLToPath } from "url";
-import path from "path";
 
-// ✅ ESM-compatible path setup
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ✅ Safe ESM-compatible path resolution (no __filename, no fileURLToPath)
+const holidaysPath = new URL('./federal_holidays_dynamic.json', import.meta.url);
 
-// 📁 Path to the holidays JSON file
-const holidaysPath = path.join(__dirname, 'federal_holidays_dynamic.json');
-
-// Workday start/end time config
+// ⏰ Workday start/end time config (24-hour format)
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
 
+// 🔧 Utility to convert "HH:MM" to seconds since midnight
 function timeStringToSeconds(timeStr) {
   const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
 }
 
+// 📅 Check if today is a holiday
 function isHoliday(dateObj, holidays) {
   const dateStr = dateObj.toISOString().slice(0, 10);
   return holidays.some(h => h.date === dateStr);
 }
 
+// 📆 Weekend detection
 function isWeekend(dateObj) {
   const day = dateObj.getDay();
-  return day === 0 || day === 6;
+  return day === 0 || day === 6; // Sunday = 0, Saturday = 6
 }
 
+// 📅 Workday logic
 function isWorkday(dateObj, holidays) {
   return !isHoliday(dateObj, holidays) && !isWeekend(dateObj);
 }
 
+// 🔜 Find next valid workday start
 function findNextWorkdayStart(now, holidays) {
   const next = new Date(now);
   while (!isWorkday(next, holidays)) {
@@ -43,8 +42,8 @@ function findNextWorkdayStart(now, holidays) {
   return next;
 }
 
+// 🚀 Serverless handler
 export const handler = async () => {
-  // ✅ Moved `await` inside the handler
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
 
@@ -59,6 +58,7 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
+  // 🧠 Determine interval label
   if (isHoliday(now, holidays)) {
     dayType = "Holiday";
     intervalLabel = "Holiday";
@@ -76,6 +76,7 @@ export const handler = async () => {
     }
   }
 
+  // ⏱️ Calculate seconds until transition
   if (intervalLabel === "Before Worktime") {
     secondsRemaining = workStart - currentSeconds;
   } else if (intervalLabel === "Worktime") {
@@ -85,6 +86,7 @@ export const handler = async () => {
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
 
+  // 📦 Return response
   return {
     statusCode: 200,
     body: JSON.stringify({
