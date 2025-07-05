@@ -1,5 +1,7 @@
 // #region 📌 Imports
-const fetch = require("node-fetch"); // Built-in on Netlify
+// ✅ Use native global fetch in Netlify
+const fetch = (...args) => global.fetch(...args);
+
 const fs = require("fs");
 const path = require("path");
 
@@ -7,6 +9,7 @@ const path = require("path");
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
+// #endregion
 
 // #endregion
 
