@@ -1,7 +1,12 @@
 [functions]
 directory = "netlify/functions"
 included_files = [
-  "assets/data/version.json",
   "netlify/functions/federal_holidays_dynamic.json"
 ]
-node_bundler = "esbuild"  # Ensure ESM support via esbuild
+node_bundler = "esbuild"
+
+[functions.getDynamicData]
+external_node_modules = []
+included_files = [
+  "netlify/functions/federal_holidays_dynamic.json"
+]
