@@ -7,6 +7,9 @@ import path from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 📁 Path to the holidays JSON file
+const holidaysPath = path.join(__dirname, 'federal_holidays_dynamic.json');
+
 // Workday start/end time config
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
@@ -42,7 +45,6 @@ function findNextWorkdayStart(now, holidays) {
 
 export const handler = async () => {
   // ✅ Moved `await` inside the handler
-  const holidaysPath = path.join(__dirname, 'federal_holidays_dynamic.json');
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
 
