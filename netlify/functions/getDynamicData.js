@@ -79,12 +79,11 @@ export const handler = async () => {
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    // 🔁 Always begin from tomorrow at 00:00
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
+    // 🔁 Start from today at 00:00
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
 
-    const nextWorkStart = findNextWorkdayStart(tomorrow, holidays);
+    const nextWorkStart = findNextWorkdayStart(today, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
 

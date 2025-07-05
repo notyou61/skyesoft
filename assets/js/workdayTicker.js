@@ -18,19 +18,19 @@ function formatDurationPadded(seconds) {
 
 // #region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
-  // #region 🌐 Fetch Dynamic Data from Serverless Function
-  fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDynamicData")
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("🕒 Polled:", data); // 🧪 Debug log
-  // #endregion
+    // #region 🌐 Fetch Dynamic Data from Serverless Function
+    fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDynamicData")
+        .then((res) => res.json())
+        .then((data) => {
+        console.log("🕒 Polled:", data); // 🧪 Debug log
+    // #endregion
 
-  // #region 🌐 Update Current Time via glbVar
-      if (data.timeDateArray?.currentUnixTime) {
-        glbVar.timeDate.now = new Date(data.timeDateArray.currentUnixTime * 1000);
-        updateDOMFromGlbVar(); // ✅ Clock and related elements updated here
-      }
-  // #endregion
+    // #region 🌐 Update Current Time via glbVar
+        if (data.timeDateArray?.currentUnixTime) {
+            glbVar.timeDate.now = new Date(data.timeDateArray.currentUnixTime * 1000);
+            updateDOMFromGlbVar(); // ✅ Clock and related elements updated here
+        }
+    // #endregion
 
     // #region ⏳ Update Interval Remaining Display
     if (
@@ -45,34 +45,36 @@ setInterval(() => {
     const formatted = formatDurationPadded(seconds);
     let message = "";
 
-    if (dayType === "Workday") {
-        if (label === "Before Worktime") {
+    // 🎯 Unified messaging logic
+    switch (`${dayType}-${label}`) {
+        case "Workday-Before Worktime":
         message = `🕔 Work begins in ${formatted}`;
-        } else if (label === "Worktime") {
+        break;
+        case "Workday-Worktime":
         message = `🔚 Workday ends in ${formatted}`;
-        } else {
+        break;
+        case "Workday-After Worktime":
+        case "Holiday-Holiday":
+        case "Weekend-Weekend":
+        default:
         message = `📆 Next workday begins in ${formatted}`;
-        }
-    } else {
-        message = `📅 Next workday begins in ${formatted}`;
+        break;
     }
-    // Console Log
-    console.log("⏳ Interval Remaining:", message); // 🧪 Debug log
-    // Update global variable
-    glbVar.intervalRemaining = message; // ✅ Update global value
-    // Update the DOM
-    updateDOMFromGlbVar();              // ✅ Re-render updated value
+
+    // 🪵 Log + Update
+    console.log("⏳ Interval Remaining:", message);
+    glbVar.intervalRemaining = message;
+    updateDOMFromGlbVar();
     }
     // #endregion
 
-
-  // #region 🏷️ Update Site Version
-      if (data.siteDetailsArray?.siteName) {
-        const versionEl = document.querySelector(".version");
-        if (versionEl) versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
-        glbVar.version = data.siteDetailsArray.siteName;
-      }
-  // #endregion
+    // #region 🏷️ Update Site Version
+        if (data.siteDetailsArray?.siteName) {
+            const versionEl = document.querySelector(".version");
+            if (versionEl) versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteDetailsArray.siteName}`;
+            glbVar.version = data.siteDetailsArray.siteName;
+        }
+    // #endregion
     })
   // #region ❌ Handle Fetch Errors Gracefully
     .catch((err) => {
