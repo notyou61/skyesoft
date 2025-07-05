@@ -2,7 +2,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 
-// ✅ Bulletproof path resolution for Netlify bundler
+// ✅ Bulletproof path resolution
 const holidaysPath = path.join(process.cwd(), "netlify/functions/federal_holidays_dynamic.json");
 
 // ⏰ Workday hours
@@ -29,10 +29,10 @@ function isWorkday(dateObj, holidays) {
   return !isHoliday(dateObj, holidays) && !isWeekend(dateObj);
 }
 
-// 🧠 Fix: always search from clean 00:00 start of day
+// 🧠 Always start search from 00:00
 function findNextWorkdayStart(fromDate, holidays) {
   const next = new Date(fromDate);
-  next.setHours(0, 0, 0, 0); // ⏳ clear time to midnight
+  next.setHours(0, 0, 0, 0);
 
   while (!isWorkday(next, holidays)) {
     next.setDate(next.getDate() + 1);
@@ -58,12 +58,10 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  if (isHoliday(now, holidays)) {
-    dayType = "Holiday";
-    intervalLabel = "Holiday";
-  } else if (isWeekend(now)) {
-    dayType = "Weekend";
-    intervalLabel = "Weekend";
+  // ✅ Force stream to jump to next valid workday if today is not one
+  if (!isWorkday(now, holidays)) {
+    dayType = isHoliday(now, holidays) ? "Holiday" : "Weekend";
+    intervalLabel = "After Worktime"; // Force forward search
   } else {
     dayType = "Workday";
     if (currentSeconds < workStart) {
@@ -81,9 +79,10 @@ export const handler = async () => {
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    // ⏳ Fix: after hours → start looking from tomorrow
+    // 🔁 Always begin from tomorrow at 00:00
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
 
     const nextWorkStart = findNextWorkdayStart(tomorrow, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
@@ -105,7 +104,7 @@ export const handler = async () => {
         }
       },
       siteDetailsArray: {
-        siteName: "v2025.07.05"
+        siteName: "v2025.07.06"
       }
     })
   };
