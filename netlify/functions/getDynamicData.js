@@ -2,13 +2,14 @@
 import { readFile } from "fs/promises";
 import path from "path";
 
-// ✅ Use process.cwd() to reliably get function directory
+// ✅ Bulletproof path resolution for Netlify bundler
 const holidaysPath = path.join(process.cwd(), "netlify/functions/federal_holidays_dynamic.json");
 
-// ⏰ Workday start/end time config
+// ⏰ Workday hours
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
 
+// 🔧 Convert "HH:MM" to seconds since midnight
 function timeStringToSeconds(timeStr) {
   const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
@@ -28,11 +29,15 @@ function isWorkday(dateObj, holidays) {
   return !isHoliday(dateObj, holidays) && !isWeekend(dateObj);
 }
 
-function findNextWorkdayStart(now, holidays) {
-  const next = new Date(now);
+// 🧠 Fix: always search from clean 00:00 start of day
+function findNextWorkdayStart(fromDate, holidays) {
+  const next = new Date(fromDate);
+  next.setHours(0, 0, 0, 0); // ⏳ clear time to midnight
+
   while (!isWorkday(next, holidays)) {
     next.setDate(next.getDate() + 1);
   }
+
   const [h, m] = WORKDAY_START.split(":");
   next.setHours(+h, +m, 0, 0);
   return next;
@@ -70,12 +75,17 @@ export const handler = async () => {
     }
   }
 
+  // ⏱️ Calculate time until transition
   if (intervalLabel === "Before Worktime") {
     secondsRemaining = workStart - currentSeconds;
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    const nextWorkStart = findNextWorkdayStart(now, holidays);
+    // ⏳ Fix: after hours → start looking from tomorrow
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const nextWorkStart = findNextWorkdayStart(tomorrow, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
 
@@ -95,7 +105,7 @@ export const handler = async () => {
         }
       },
       siteDetailsArray: {
-        siteName: "v2025.07.04"
+        siteName: "v2025.07.05"
       }
     })
   };
