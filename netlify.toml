@@ -11,14 +11,6 @@
   external_node_modules = []
 
 [functions.askOpenAI]
-  node_bundler = "esbuild"
-  included_files = [
-    "assets/data/version.json"
-  ]
-  external_node_modules = []
-
-[functions.askOpenAI_v2]
-  node_bundler = "esbuild"
-  included_files = ["assets/data/version.json"]
-  external_node_modules = []
-
+node_bundler = "esbuild"
+included_files = ["assets/data/version.json"]
+external_node_modules = []
