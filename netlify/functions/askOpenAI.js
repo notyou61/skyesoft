@@ -221,7 +221,7 @@ exports.handler = async (event) => {
 exports.handler = async (event) => {
   return {
     statusCode: 200,
-    body: JSON.stringify({ response: "🟢 Minimal handler is working!" }),
+    body: JSON.stringify({ response: "🟢 askOpenAI.js updated - test working" }),
   };
 };
 // #endregion
