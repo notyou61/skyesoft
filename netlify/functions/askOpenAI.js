@@ -218,10 +218,13 @@ exports.handler = async (event) => {
 // #endregion
 
 // #region 🧪 Minimal Test Handler
+// netlify/functions/askOpenAI.js
 exports.handler = async (event) => {
   return {
     statusCode: 200,
-    body: JSON.stringify({ response: "✅ Minimal test function is working!", action: "none" })
+    body: JSON.stringify({
+      response: "🟢 Minimal handler is working!",
+      action: "test"
+    })
   };
 };
-// #endregion
