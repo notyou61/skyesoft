@@ -151,6 +151,7 @@ const intentMap = {
 };
 // #endregion
 // #region 🛠️ Exported Handler Function
+/*
 exports.handler = async (event) => {
   try {
     const { prompt, conversationHistory } = JSON.parse(event.body || "{}");
@@ -188,7 +189,7 @@ exports.handler = async (event) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4", // or "gpt-3.5-turbo"
+        model: "gpt-4",
         messages,
         temperature: 0.7
       })
@@ -212,5 +213,15 @@ exports.handler = async (event) => {
       })
     };
   }
+};
+*/
+// #endregion
+
+// #region 🧪 Minimal Test Handler
+exports.handler = async (event) => {
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ response: "✅ Minimal test function is working!", action: "none" })
+  };
 };
 // #endregion
