@@ -1,15 +1,16 @@
 // 📁 File: netlify/functions/getDynamicData.js
+
+// #region 📦 Imports and Config
 import { readFile } from "fs/promises";
 import path from "path";
 
-// ✅ Bulletproof path resolution
 const holidaysPath = path.join(process.cwd(), "netlify/functions/federal_holidays_dynamic.json");
 
-// ⏰ Workday hours
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
+// #endregion
 
-// 🔧 Convert "HH:MM" to seconds since midnight
+// #region 🔧 Helper Functions
 function timeStringToSeconds(timeStr) {
   const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
@@ -29,25 +30,24 @@ function isWorkday(dateObj, holidays) {
   return !isHoliday(dateObj, holidays) && !isWeekend(dateObj);
 }
 
-// 🧠 Always start search from 00:00
 function findNextWorkdayStart(fromDate, holidays) {
   const next = new Date(fromDate);
   next.setHours(0, 0, 0, 0);
-
   while (!isWorkday(next, holidays)) {
     next.setDate(next.getDate() + 1);
   }
-
   const [h, m] = WORKDAY_START.split(":");
   next.setHours(+h, +m, 0, 0);
   return next;
 }
+// #endregion
 
+// #region 🚀 Serverless Function Handler
 export const handler = async () => {
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
 
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" })); // ✅ GOOD: Uses MST
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
@@ -58,10 +58,9 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  // ✅ Force stream to jump to next valid workday if today is not one
   if (!isWorkday(now, holidays)) {
     dayType = isHoliday(now, holidays) ? "Holiday" : "Weekend";
-    intervalLabel = "After Worktime"; // Force forward search
+    intervalLabel = "After Worktime";
   } else {
     dayType = "Workday";
     if (currentSeconds < workStart) {
@@ -73,16 +72,13 @@ export const handler = async () => {
     }
   }
 
-  // ⏱️ Calculate time until transition
   if (intervalLabel === "Before Worktime") {
     secondsRemaining = workStart - currentSeconds;
   } else if (intervalLabel === "Worktime") {
     secondsRemaining = workEnd - currentSeconds;
   } else {
-    // 🔁 Start from today at 00:00
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
-
     const nextWorkStart = findNextWorkdayStart(today, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
   }
@@ -108,3 +104,4 @@ export const handler = async () => {
     })
   };
 };
+// #endregion
