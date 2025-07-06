@@ -3,22 +3,19 @@ const fetch = (...args) => global.fetch(...args);
 const fs = require("fs");
 const path = require("path");
 
+// Load Version Info
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
 
-// Load Codex Files (Glossary + README)
-const glossaryPath = path.join(__dirname, "../../docs/codex/glossary.md");
-const codexReadmePath = path.join(__dirname, "../../docs/codex/codex-readme.md");
-
-let codexGlossary = "";
-let codexReadme = "";
+// Load Consolidated Codex JSON
+const codexPath = path.join(__dirname, "../../docs/codex/codex.json");
+let codexData = {};
 
 try {
-  codexGlossary = fs.readFileSync(glossaryPath, "utf-8");
-  codexReadme = fs.readFileSync(codexReadmePath, "utf-8");
+  codexData = JSON.parse(fs.readFileSync(codexPath, "utf-8"));
 } catch (err) {
-  console.warn("⚠️ Could not load Codex files:", err.message);
+  console.warn("⚠️ Could not load codex.json:", err.message);
 }
 // #endregion
 
