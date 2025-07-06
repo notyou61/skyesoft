@@ -5,9 +5,13 @@
   node_bundler = "esbuild"
 
 [functions.askOpenAI]
-node_bundler = "esbuild"
-included_files = ["assets/data/version.json"]
-external_node_modules = []
+  node_bundler = "esbuild"
+  included_files = [
+    "assets/data/version.json",
+    "docs/codex/glossary.md",
+    "docs/codex/codex-readme.md"
+  ]
+  external_node_modules = []
 
 [functions.getDynamicData]
   included_files = [
