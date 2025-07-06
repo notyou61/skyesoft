@@ -1,0 +1,297 @@
+{
+  "version": {
+    "number": "1.0.6",
+    "lastUpdated": "2025-06-29T22:05:10.689Z"
+  },
+  "changelog": [
+    {
+      "date": "2025-06-15T15:11:46.335Z",
+      "file": "scripts/update-changelog.js",
+      "description": "Test: verify full versioning flow after update [patch]",
+      "user": "Steve Skye",
+      "type": "update"
+    },
+    {
+      "date": "2025-06-15T15:11:46.335Z",
+      "file": "docs/codex/real-time-sse.md",
+      "description": "Test: verify full versioning flow after update [patch]",
+      "user": "Steve Skye",
+      "type": "update"
+    },
+    {
+      "date": "2025-06-15T14:22:17.059Z",
+      "file": "real-time-sse.md",
+      "description": "Updated real-time-sse.md via changelog script",
+      "user": "SteveS",
+      "type": "update"
+    },
+    {
+      "date": "2025-06-15T14:07:36.334Z",
+      "file": "test.md",
+      "description": "Updated test.md via changelog script",
+      "user": "SteveS",
+      "type": "update"
+    },
+    {
+      "date": "2025-06-15T00:48:56.301Z",
+      "file": "time-interval-standards.md",
+      "description": "Updated time-interval-standards.md via changelog script",
+      "user": "SteveS",
+      "type": "update"
+    },
+    {
+      "date": "2025-06-14T23:59:46.414515",
+      "file": "codex-version.json",
+      "description": "Initial version file created for Skyesoft Codex version tracking",
+      "user": "Steve Skye",
+      "type": "version"
+    }
+  ],
+  "readme": {
+    "title": "\ud83d\udcd8 Skyesoft Codex",
+    "vision": "The Codex is not just documentation \u2014 it is the operational DNA of Skyesoft.",
+    "modules": [
+      {
+        "name": "Time Interval Standards",
+        "file": "time-interval-standards.md",
+        "purpose": "Defines day types and time blocks for accurate turnaround tracking."
+      },
+      {
+        "name": "Real-Time SSE",
+        "file": "real-time-sse.md",
+        "purpose": "Establishes server-sent event pipelines for live system updates."
+      },
+      {
+        "name": "Core Database Structure",
+        "file": "core-database-structure.md",
+        "purpose": "Centralized schema that powers all dynamic modules."
+      },
+      {
+        "name": "One-Line Task",
+        "file": "one-line-task.md",
+        "purpose": "AI-enhanced input that recognizes task types from free-form text."
+      },
+      {
+        "name": "File Management",
+        "file": "file-management.md",
+        "purpose": "Architecture for upload, classification, and lifecycle of files."
+      },
+      {
+        "name": "Mobile-First Modals",
+        "file": "mobile-first-modals.md",
+        "purpose": "Responsive UI templates for field, office, and dashboard actions."
+      },
+      {
+        "name": "Attendance Suite",
+        "file": "attendance-suite.md",
+        "purpose": "Tracks presence, absences, exceptions, and generates insights."
+      },
+      {
+        "name": "Office Bulletins",
+        "file": "office-bulletins.md",
+        "purpose": "Central notice system for daily updates and interdepartmental news."
+      },
+      {
+        "name": "Financial Control Suite",
+        "file": "financial-control-suite.md",
+        "purpose": "Tracks job costing, budget flags, and financial alerts."
+      },
+      {
+        "name": "Permit Management Suite",
+        "file": "permit-management-suite.md",
+        "purpose": "Full workflow and SLA tracking for sign permits."
+      },
+      {
+        "name": "Service Management Suite",
+        "file": "service-management-suite.md",
+        "purpose": "Handles service orders, maintenance, and support dispatch."
+      },
+      {
+        "name": "Management Escalation Trees",
+        "file": "management-escalation-trees.md",
+        "purpose": "Rules and paths for auto-escalating unresolved or overdue issues."
+      }
+    ]
+  },
+  "modules": {
+    "mobileFirstModals": {
+      "title": "\ud83d\udcf1 Mobile-First Modals",
+      "purpose": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop \u2014 consistent across shop, office, and field.",
+      "features": [
+        "Adaptive modal forms that adjust per device and role",
+        "AI-linked context insertion for prefilled fields",
+        "Real-time triggers via SSE or One-Line Task",
+        "Inline validation and AJAX/SSE submissions"
+      ],
+      "integrations": [
+        "One-Line Task Engine",
+        "Real-Time SSE",
+        "Core Database"
+      ]
+    },
+    "officeBulletins": {
+      "title": "\ud83d\udce2 Office Bulletins",
+      "purpose": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic.",
+      "bulletinTypes": [
+        "Global",
+        "Departmental",
+        "Urgent",
+        "Event-Based"
+      ],
+      "features": [
+        "Markdown formatting support",
+        "Role/department filtering",
+        "Read receipts and pinning",
+        "Bulletin archive/history per user"
+      ],
+      "integrations": [
+        "Mobile-First Modals",
+        "Time Interval Standards"
+      ]
+    },
+    "oneLineTask": {
+      "title": "\ud83e\udde0 One-Line Task (OLT) Input",
+      "purpose": "Freeform natural language entry system to initiate tasks, contacts, permits, or communication triggers.",
+      "mechanism": [
+        "Keyword and entity parsing",
+        "Intent detection and smart suggestions",
+        "Prefilled action templates based on NLP"
+      ],
+      "examples": [
+        "Add new contact",
+        "Create permit request",
+        "Schedule task for jobsite"
+      ],
+      "integrations": [
+        "Database Modules",
+        "Time Standards",
+        "Permit Suite",
+        "Attendance + Escalation Trees"
+      ]
+    },
+    "permitManagementSuite": {
+      "title": "\ud83d\uddc2\ufe0f Permit Management Suite",
+      "purpose": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates.",
+      "features": [
+        "Submission logs and timestamps",
+        "SLA timers with Time Standards",
+        "Live SSE status changes",
+        "Escalation logic if delayed",
+        "AI-parsed jurisdiction assignment"
+      ],
+      "workflow": [
+        "Created",
+        "Received",
+        "Submitted",
+        "Response Pending",
+        "Approved/Denied"
+      ],
+      "integrations": [
+        "Core Database",
+        "File Management",
+        "Mobile-First Modals",
+        "Attendance Suite",
+        "Management Escalation Trees"
+      ]
+    },
+    "realTimeSSE": {
+      "title": "\ud83d\udd04 Real-Time SSE",
+      "purpose": "Server-Sent Events push real-time updates for orders, permits, attendance, and alerts across interfaces.",
+      "functions": [
+        "Permit and task updates live-streamed",
+        "Auto-refresh dashboards without polling",
+        "Used for bulletins, alerts, contact updates"
+      ],
+      "integrations": [
+        "Time Interval Standards",
+        "Management Escalation Trees",
+        "Orders, Permits, Contacts"
+      ]
+    },
+    "skyebotContactParser": {
+      "title": "\ud83e\udd16 Skyebot Contact Parser",
+      "purpose": "Parses email signatures to detect structured contact data and prevent duplicates in entity/location/contact logic.",
+      "logic": [
+        "Detect name, title, phones, company, address",
+        "Check for existing records",
+        "Add only new entity/location/contact as needed",
+        "Fetch Google Maps data"
+      ],
+      "outputs": "Structured contact block added to `skyesoft-data.json`"
+    },
+    "timeIntervalStandards": {
+      "title": "\u23f0 Time Interval Standards (TIS)",
+      "purpose": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations.",
+      "dayTypes": [
+        "Workday",
+        "Weekend",
+        "Holiday"
+      ],
+      "segments": {
+        "Office": {
+          "before": "12:00 AM \u2013 7:29 AM",
+          "worktime": "7:30 AM \u2013 3:30 PM",
+          "after": "3:31 PM \u2013 11:59 PM"
+        },
+        "Shop": {
+          "before": "12:00 AM \u2013 5:59 AM",
+          "worktime": "6:00 AM \u2013 2:00 PM",
+          "after": "2:01 PM \u2013 11:59 PM"
+        }
+      },
+      "exclusions": "Weekends and Holidays are excluded from time-sensitive calculations",
+      "integrations": [
+        "Permit Suite",
+        "Orders",
+        "Attendance",
+        "SSE Monitoring",
+        "Escalation Rules"
+      ]
+    },
+    "financialControlSuite": {
+      "title": "\ud83d\udcbc Financial Control Suite",
+      "purpose": "Track, validate, and approve all financial activities related to sign projects \u2014 enforce budget integrity, reduce waste, and ensure traceability.",
+      "components": [
+        "Job Costing Tracker (labor, materials, subs)",
+        "PO System with thresholds and approvals",
+        "Client Billing Module (deposits, payments, credit memos)",
+        "Reimbursement Log synced with attendance"
+      ],
+      "workflow": [
+        "Project initiated",
+        "Budget auto-generated based on order type",
+        "Expenses logged via PO or reimbursement",
+        "Client billed according to progress",
+        "Flag overages and escalate via MET"
+      ],
+      "dashboards": [
+        "Budget vs Actual per project",
+        "Cash flow forecast vs actual",
+        "Reimbursable vs absorbed expenses",
+        "Monthly financial summaries"
+      ],
+      "controls": [
+        "Role-based approvals",
+        "Spending hard stops unless overridden",
+        "Alerts for late billing or PO"
+      ],
+      "integrations": [
+        "Core Database",
+        "Attendance Suite",
+        "Service Suite",
+        "Time Interval Standards"
+      ]
+    },
+    "serviceManagementSuite": {
+      "title": "\ud83d\udee0\ufe0f Service Management Suite",
+      "purpose": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces.",
+      "features": [
+        "Track service requests by type (repair, install, warranty)",
+        "Assign and schedule field teams",
+        "Log outcomes, photos, and signatures",
+        "Integrate with order history and permit status"
+      ],
+      "status": "Placeholder \u2014 detailed specs to be added in next revision"
+    }
+  }
+}
