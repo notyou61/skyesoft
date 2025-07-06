@@ -55,18 +55,25 @@ function createSystemMessage(datetime) {
 exports.handler = async (event) => {
   try {
     const { prompt, conversationHistory } = JSON.parse(event.body || "{}");
-
-    // 🧠 Intent Check
+    //  
     const lowerPrompt = prompt?.toLowerCase().trim();
-    if (lowerPrompt && intentMap[lowerPrompt]) {
-      const intentResponse = intentMap[lowerPrompt]();
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          response: intentResponse.response,
-          action: intentResponse.action
-        })
-      };
+
+    // 🧠 Intent Check (fuzzy match)
+    if (lowerPrompt) {
+      const matchedIntent = Object.keys(intentMap).find(
+        key => lowerPrompt.includes(key)
+      );
+
+      if (matchedIntent) {
+        const intentResponse = intentMap[matchedIntent]();
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            response: intentResponse.response,
+            action: intentResponse.action
+          })
+        };
+      }
     }
 
     // 🌐 OpenAI Chat Fallback
