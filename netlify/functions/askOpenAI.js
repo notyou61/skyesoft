@@ -1,5 +1,3 @@
-// netlify/functions/askOpenAI.js
-
 // #region 📌 Imports
 const fetch = (...args) => global.fetch(...args);
 const fs = require("fs");
@@ -45,7 +43,7 @@ function createSystemMessage(datetime) {
     role: "system",
     content: `You are Skyebot, a helpful assistant for Christy Signs.
 
-📌 Codex Context is enabled. You have access to internal documentation:
+📌 Codex Context is enabled. Use the following internal documentation to guide your responses:
 ––––––––––––––––––––
 📘 Glossary:
 ${codexGlossary}
@@ -54,11 +52,10 @@ ${codexGlossary}
 ${codexReadme}
 ––––––––––––––––––––
 
-When the user prompt includes a clear intent (such as logout, version check, etc), you must return:
+If the user prompt includes an intent like 'logout' or 'version check', respond with:
 {"response": "<your reply>", "action": "<logout|versionCheck|none>"}
 
-Otherwise, answer helpfully using all information available.
-
+Otherwise, respond using natural language.
 Current Phoenix time: ${datetime}`
   };
 }
