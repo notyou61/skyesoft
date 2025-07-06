@@ -17,6 +17,11 @@
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <!-- Style Include-->
   <link rel="stylesheet" href="assets/css/skyesoft-ui.css">
+  <!-- Script -->
+  <script type="module">
+    import { logoutUser } from './assets/js/skyebot.js';
+    window.logoutUser = logoutUser;
+</script>
 </head>
 <!-- Body -->
 <body>
@@ -400,8 +405,6 @@
     return parts.join(" ");
   }
 </script>
-<!-- Skyebot Script -->
-<script src="assets/js/skyebot.js"></script>
 </body>
 <!-- End of Body -->
 </html>

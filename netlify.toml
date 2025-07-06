@@ -4,12 +4,6 @@
 [functions]
   node_bundler = "esbuild"
 
-[functions.getDynamicData]
-  included_files = [
-    "netlify/functions/federal_holidays_dynamic.json"
-  ]
-  external_node_modules = []
-
 [functions.askOpenAI]
 node_bundler = "esbuild"
 included_files = ["assets/data/version.json"]
