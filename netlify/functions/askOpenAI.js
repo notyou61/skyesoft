@@ -15,14 +15,11 @@ const versionData = JSON.parse(
 
 // #region 🧠 Intent Map (Optional Commands)
 const intentMap = {
-  "log out": () => ({
-    response: "👋 Logging you out now...",
-    action: "logout"
-  }),
-  "version": () => ({
-    response: `📦 Skyebot version: ${versionData.version}`,
-    action: "none"
-  })
+  "log out": () => ({ response: "👋 Logging you out now...", action: "logout" }),
+  "logout": () => ({ response: "👋 Logging you out now...", action: "logout" }),
+  "sign out": () => ({ response: "👋 Logging you out now...", action: "logout" }),
+  "end session": () => ({ response: "👋 Logging you out now...", action: "logout" }),
+  "version": () => ({ response: `📦 Skyebot version: ${versionData.version}`, action: "none" })
 };
 // #endregion
 
