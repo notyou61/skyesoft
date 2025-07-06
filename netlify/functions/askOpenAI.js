@@ -1,3 +1,5 @@
+// netlify/functions/askOpenAI.js
+
 // #region 📌 Imports
 // ✅ Use native global fetch in Netlify
 const fetch = (...args) => global.fetch(...args);
@@ -9,8 +11,6 @@ const path = require("path");
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
-// #endregion
-
 // #endregion
 
 // #region 🧠 Intent Map (Optional Commands)

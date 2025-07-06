@@ -1,4 +1,6 @@
-// Enhanced Skyebot Chat Interface – v2025.06.27
+// File: assets/js/skyebot.js
+
+// #region 🧠 Skyebot Chat Setup
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("promptForm");
   const input = document.getElementById("promptInput");
@@ -9,12 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("❌ Skyebot setup error: Missing elements.");
     return;
   }
+
   // Conversation memory for context
   let conversationHistory = [{
     role: "assistant",
     content: "Hello! How can I assist you today?"
   }];
 
+  // #region 💬 Chat Display Functions
   const addMessage = (role, text) => {
     const entry = document.createElement("div");
     entry.className = `chat-entry ${role === "user" ? "user-message" : "bot-message"}`;
@@ -37,7 +41,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const thinking = document.getElementById("thinking");
     if (thinking) thinking.remove();
   };
+  // #endregion
 
+  // #region 🧹 Clear Chat
   clearBtn.addEventListener("click", () => {
     chatLog.innerHTML = "";
     input.value = "";
@@ -48,7 +54,9 @@ document.addEventListener("DOMContentLoaded", () => {
       content: "Hello! How can I assist you today?"
     }];
   });
+  // #endregion
 
+  // #region 🚀 Prompt Submission
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
@@ -83,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       conversationHistory.push({ role: "assistant", content: reply });
 
-      if (data.action === "logout" && typeof logoutUser === "function") logoutUser();
+      if (data.action === "logout" && typeof window.logoutUser === "function") window.logoutUser();
       if (data.action === "versionCheck") alert(data.response || "📦 Version info unavailable.");
 
     } catch (err) {
@@ -92,7 +100,10 @@ document.addEventListener("DOMContentLoaded", () => {
       addMessage("bot", "❌ Network error. Please check your connection and try again.");
     }
   });
+  // #endregion
 
-  // Start with a welcome message
+  // #region 👋 Initial Message
   addMessage("bot", "Hello! How can I assist you today?");
+  // #endregion
 });
+// #endregion
