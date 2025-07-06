@@ -105,5 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // #region 👋 Initial Message
   addMessage("bot", "Hello! How can I assist you today?");
   // #endregion
+  // 🔐 Logout utility function
+  window.logoutUser = function () {
+    console.log("🚪 Logging out user...");
+    localStorage.removeItem("userLoggedIn");
+    location.reload();
+  };
 });
 // #endregion
