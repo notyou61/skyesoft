@@ -63,7 +63,7 @@ exports.handler = async (event) => {
       const matchedIntent = Object.keys(intentMap).find(
         key => lowerPrompt.includes(key)
       );
-
+      // MatchIntent Conditional
       if (matchedIntent) {
         const intentResponse = intentMap[matchedIntent]();
         return {
