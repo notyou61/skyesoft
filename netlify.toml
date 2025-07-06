@@ -5,6 +5,9 @@
   node_bundler = "esbuild"
 
 [functions.askOpenAI]
-node_bundler = "esbuild"
-included_files = ["assets/data/version.json"]
-external_node_modules = []
+  node_bundler = "esbuild"
+  included_files = [
+    "assets/data/version.json",
+    "assets/data/federal_holidays_dynamic.json"
+  ]
+  external_node_modules = []
