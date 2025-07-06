@@ -2,8 +2,9 @@
 
 // #region 📦 Imports and Config
 import { readFile } from "fs/promises";
-// Importing the holidays JSON file
-const holidaysPath = new URL("../../assets/data/federal_holidays_dynamic.json", import.meta.url);
+// #region ✅ Safe for Netlify functions
+import path from "path";
+const holidaysPath = path.resolve("assets/data/federal_holidays_dynamic.json");
 
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
