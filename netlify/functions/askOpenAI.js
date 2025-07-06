@@ -3,123 +3,121 @@ const fetch = (...args) => global.fetch(...args);
 const fs = require("fs");
 const path = require("path");
 
+// Load Version Info
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
 
-// Load Codex Files (Glossary + README)
-const glossaryPath = path.join(__dirname, "../../docs/codex/glossary.md");
-const codexReadmePath = path.join(__dirname, "../../docs/codex/codex-readme.md");
-
+// Load Codex JSON
+const codexPath = path.join(__dirname, "../../docs/codex/codex.json");
+let codex = {};
 let codexGlossary = "";
 let codexReadme = "";
 
 try {
-  codexGlossary = fs.readFileSync(glossaryPath, "utf-8");
-  codexReadme = fs.readFileSync(codexReadmePath, "utf-8");
+  codex = JSON.parse(fs.readFileSync(codexPath, "utf-8"));
+
+  codexGlossary = Object.entries(codex.modules?.glossary?.entries || {})
+    .map(([term, { meaning, usage }]) => `• **${term}**: ${meaning} — _${usage}_`)
+    .join("\n");
+
+  codexReadme = (codex.readme?.modules || [])
+    .map((mod) => `• ${mod.name} — ${mod.purpose}`)
+    .join("\n");
 } catch (err) {
-  console.warn("⚠️ Could not load Codex files:", err.message);
+  console.warn("⚠️ Could not load codex.json:", err.message);
 }
 // #endregion
 
-// #region 🌐 Timezone Helper
-function getPhoenixTime() {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Phoenix",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  }).format(new Date());
-}
-// #endregion
-
-// #region 🧠 System Message Constructor
-function createSystemMessage(datetime) {
-  return {
-    role: "system",
-    content: `You are Skyebot, a helpful assistant for Christy Signs.
-
-📌 Codex Context is enabled. Use the following internal documentation to guide your responses:
-––––––––––––––––––––
-📘 Glossary:
-${codexGlossary}
-
-📘 Codex README:
-${codexReadme}
-––––––––––––––––––––
-
-If the user prompt includes an intent like 'logout' or 'version check', respond with:
-{"response": "<your reply>", "action": "<logout|versionCheck|none>"}
-
-Otherwise, respond using natural language.
-Current Phoenix time: ${datetime}`
-  };
-}
-// #endregion
-
-// #region 🛠️ Exported Handler Function
+// #region 🚀 Main Handler
 exports.handler = async (event) => {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
+  }
+
+  const { prompt = "" } = JSON.parse(event.body || "{}");
+
+  // #region 🧠 Codex Pre-Filter Match
+  const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/gi, "").trim();
+  const normalizedPrompt = normalize(prompt);
+
+  const glossaryEntries = codex.modules?.glossary?.entries || {};
+  for (const term in glossaryEntries) {
+    if (normalizedPrompt.includes(normalize(term))) {
+      const entry = glossaryEntries[term];
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          response: `🧠 **${term}** — ${entry.meaning}\n\n📎 *Context:* ${entry.usage}`,
+          action: "none"
+        })
+      };
+    }
+  }
+
+  const moduleEntries = codex.readme?.modules || [];
+  for (const mod of moduleEntries) {
+    if (normalizedPrompt.includes(normalize(mod.name))) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          response: `📦 **${mod.name}** — ${mod.purpose}`,
+          action: "none"
+        })
+      };
+    }
+  }
+  // #endregion
+
+  // #region 💬 OpenAI Fallback
   try {
-    const { prompt, conversationHistory } = JSON.parse(event.body || "{}");
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!openaiKey) throw new Error("Missing OpenAI API key");
-
-    const dateInfo = getPhoenixTime();
-    const systemMessage = createSystemMessage(dateInfo);
-
-    const messages = [
-      systemMessage,
-      ...(conversationHistory || []),
-      { role: "user", content: prompt }
-    ];
-
-    const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json"
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        messages,
-        temperature: 0.7
-      })
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `You are Skyebot, a helpful assistant for Skyesoft users.
+You understand internal terminology and project logic from the Skyesoft Codex.
+Respond clearly and concisely.
+
+Codex Glossary:
+${codexGlossary}
+
+Codex Modules:
+${codexReadme}`
+          },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.5,
+      }),
     });
 
-    const result = await openAIResponse.json();
-    const rawReply = result.choices?.[0]?.message?.content || "🤖 Sorry, I couldn’t generate a reply.";
-
-    let response = rawReply;
-    let action = "none";
-
-    try {
-      const parsed = JSON.parse(rawReply);
-      if (typeof parsed === "object" && parsed.response && parsed.action) {
-        response = parsed.response;
-        action = parsed.action;
-      }
-    } catch (_) {
-      // Not JSON? Proceed with raw reply
-    }
+    const result = await openaiResponse.json();
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ response, action })
+      body: JSON.stringify({
+        response: result.choices?.[0]?.message?.content || "No response.",
+        action: "none",
+      }),
     };
   } catch (err) {
-    console.error("❌ Skyebot Error:", err.message);
+    console.error("❌ OpenAI fallback failed:", err.message);
     return {
       statusCode: 500,
       body: JSON.stringify({
-        errorType: err.name || "UnknownError",
-        errorMessage: err.message || "An unknown error occurred",
-        trace: err.stack ? err.stack.split("\n") : []
-      })
+        response: "Skyebot encountered an error while processing your request.",
+        error: err.message,
+        action: "error",
+      }),
     };
   }
+  // #endregion
 };
 // #endregion
