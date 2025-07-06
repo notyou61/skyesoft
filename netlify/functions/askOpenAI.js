@@ -1,26 +1,13 @@
 // netlify/functions/askOpenAI.js
 
 // #region 📌 Imports
-// ✅ Use native global fetch in Netlify
 const fetch = (...args) => global.fetch(...args);
-
 const fs = require("fs");
 const path = require("path");
 
-// If needed later, for version tracking
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
-// #endregion
-
-// #region 🧠 Intent Map (Optional Commands)
-const intentMap = {
-  "log out": () => ({ response: "👋 Logging you out now...", action: "logout" }),
-  "logout": () => ({ response: "👋 Logging you out now...", action: "logout" }),
-  "sign out": () => ({ response: "👋 Logging you out now...", action: "logout" }),
-  "end session": () => ({ response: "👋 Logging you out now...", action: "logout" }),
-  "version": () => ({ response: `📦 Skyebot version: ${versionData.version}`, action: "none" })
-};
 // #endregion
 
 // #region 🌐 Timezone Helper
@@ -43,7 +30,14 @@ function getPhoenixTime() {
 function createSystemMessage(datetime) {
   return {
     role: "system",
-    content: `You are Skyebot, a helpful assistant for Christy Signs. The current Phoenix time is ${datetime}.`
+    content: `You are Skyebot, a helpful assistant for Christy Signs.
+When the user prompt includes a clear intent (such as logout, version check, etc), you must return a JSON response with:
+
+{"response": "<your reply text>", "action": "<logout|versionCheck|none>"}
+
+If the prompt has no clear intent, just reply normally with a helpful response, and set \"action\": \"none\".
+
+Current Phoenix time: ${datetime}`
   };
 }
 // #endregion
@@ -52,28 +46,6 @@ function createSystemMessage(datetime) {
 exports.handler = async (event) => {
   try {
     const { prompt, conversationHistory } = JSON.parse(event.body || "{}");
-    //  
-    const lowerPrompt = prompt?.toLowerCase().trim();
-
-    // 🧠 Intent Check (fuzzy match)
-    if (lowerPrompt) {
-      const matchedIntent = Object.keys(intentMap).find(
-        key => lowerPrompt.includes(key)
-      );
-      // MatchIntent Conditional
-      if (matchedIntent) {
-        const intentResponse = intentMap[matchedIntent]();
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            response: intentResponse.response,
-            action: intentResponse.action
-          })
-        };
-      }
-    }
-
-    // 🌐 OpenAI Chat Fallback
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) throw new Error("Missing OpenAI API key");
 
@@ -93,18 +65,31 @@ exports.handler = async (event) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages,
         temperature: 0.7
       })
     });
 
     const result = await openAIResponse.json();
-    const reply = result.choices?.[0]?.message?.content || "🤖 Sorry, I couldn’t generate a reply.";
+    const rawReply = result.choices?.[0]?.message?.content || "🤖 Sorry, I couldn’t generate a reply.";
+
+    let response = rawReply;
+    let action = "none";
+
+    try {
+      const parsed = JSON.parse(rawReply);
+      if (typeof parsed === "object" && parsed.response && parsed.action) {
+        response = parsed.response;
+        action = parsed.action;
+      }
+    } catch (_) {
+      // Ignore JSON.parse errors – fallback to raw text
+    }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ response: reply, action: "none" })
+      body: JSON.stringify({ response, action })
     };
   } catch (err) {
     console.error("❌ Skyebot Error:", err.message);
