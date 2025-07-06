@@ -8,11 +8,25 @@ const path = require("path");
 const versionData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
 );
+
+// Load Codex Files (Glossary + README)
+const glossaryPath = path.join(__dirname, "../../docs/codex/glossary.md");
+const codexReadmePath = path.join(__dirname, "../../docs/codex/codex-readme.md");
+
+let codexGlossary = "";
+let codexReadme = "";
+
+try {
+  codexGlossary = fs.readFileSync(glossaryPath, "utf-8");
+  codexReadme = fs.readFileSync(codexReadmePath, "utf-8");
+} catch (err) {
+  console.warn("⚠️ Could not load Codex files:", err.message);
+}
 // #endregion
 
 // #region 🌐 Timezone Helper
 function getPhoenixTime() {
-  const options = {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Phoenix",
     hour: "2-digit",
     minute: "2-digit",
@@ -21,8 +35,7 @@ function getPhoenixTime() {
     year: "numeric",
     month: "long",
     day: "numeric"
-  };
-  return new Intl.DateTimeFormat("en-US", options).format(new Date());
+  }).format(new Date());
 }
 // #endregion
 
@@ -31,11 +44,20 @@ function createSystemMessage(datetime) {
   return {
     role: "system",
     content: `You are Skyebot, a helpful assistant for Christy Signs.
-When the user prompt includes a clear intent (such as logout, version check, etc), you must return a JSON response with:
 
-{"response": "<your reply text>", "action": "<logout|versionCheck|none>"}
+📌 Codex Context is enabled. You have access to internal documentation:
+––––––––––––––––––––
+📘 Glossary:
+${codexGlossary}
 
-If the prompt has no clear intent, just reply normally with a helpful response, and set \"action\": \"none\".
+📘 Codex README:
+${codexReadme}
+––––––––––––––––––––
+
+When the user prompt includes a clear intent (such as logout, version check, etc), you must return:
+{"response": "<your reply>", "action": "<logout|versionCheck|none>"}
+
+Otherwise, answer helpfully using all information available.
 
 Current Phoenix time: ${datetime}`
   };
@@ -84,7 +106,7 @@ exports.handler = async (event) => {
         action = parsed.action;
       }
     } catch (_) {
-      // Ignore JSON.parse errors – fallback to raw text
+      // Not JSON? Proceed with raw reply
     }
 
     return {
