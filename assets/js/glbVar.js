@@ -4,18 +4,20 @@
 const glbVar = {
   // #region 🕒 Time & Workday Data
   timeDate: {
-    now: new Date()
+    currentLocalTime: "", // Store preformatted time string from SSE
+    currentDate: "", // Optionally store date from SSE
+    now: new Date() // Fallback, kept for compatibility
   },
   isHoliday: false,
   isWeekend: false,
   workdayIntervals: {
-    start: "07:30", // 🕔 Start of workday
-    end: "15:30"    // 🔚 End of workday
+    start: "07:30", // 🔔 Start of workday
+    end: "15:30" // 🖚 End of workday
   },
   intervalRemaining: "", // ⏳ Text shown for remaining work interval
   // #endregion
 
-  // #region 🏷️ Site Info
+  // #region 🏽 Site Info
   version: "", // ✅ Populated dynamically from JSON
   // #endregion
 
@@ -55,7 +57,7 @@ const glbVar = {
 };
 // #endregion
 
-// #region 🔄 Dynamic Version Assignment
+// #region ♻️ Dynamic Version Assignment
 fetch("https://notyou61.github.io/skyesoft/assets/data/version.json")
   .then(res => res.json())
   .then(data => {
@@ -83,26 +85,59 @@ function formatInterval(prefix, seconds) {
 }
 // #endregion
 
+// #region 📱 SSE Connection for Real-Time Data
+function setupSSE() {
+  const source = new EventSource("/.netlify/functions/getDynamicData");
+
+  source.onmessage = function (event) {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.timeDateArray) {
+        // Update glbVar with SSE data
+        glbVar.timeDate.currentLocalTime = data.timeDateArray.currentLocalTime;
+        glbVar.timeDate.currentDate = data.timeDateArray.currentDate;
+        glbVar.timeDate.now = new Date(data.timeDateArray.currentUnixTime * 1000); // Fallback
+        updateDOMFromGlbVar(); // Update DOM immediately
+      }
+    } catch (err) {
+      console.error("Error parsing SSE data:", err);
+    }
+  };
+
+  source.onerror = function () {
+    console.error("SSE connection error. Attempting to reconnect...");
+    // EventSource automatically attempts reconnection
+  };
+}
+// #endregion
+
 // #region 🔁 DOM Update from glbVar
 function updateDOMFromGlbVar() {
-  // ⏰ Time
-  const now = glbVar.timeDate.now;
-  const hours = now.getHours();
-  const minutes = now.getMinutes().toString().padStart(2, '0');
-  const seconds = now.getSeconds().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const standardHours = (hours % 12 || 12).toString().padStart(2, '0');
-  const timeString = `${standardHours}:${minutes}:${seconds} ${ampm}`;
-
+  // ⏰ Time (use preformatted currentLocalTime from SSE)
   const timeEl = document.getElementById("currentTime");
-  if (timeEl) timeEl.textContent = timeString;
+  if (timeEl && glbVar.timeDate.currentLocalTime) {
+    timeEl.textContent = glbVar.timeDate.currentLocalTime;
+  } else if (timeEl) {
+    // Fallback: reconstruct time if SSE data is unavailable
+    const now = glbVar.timeDate.now;
+    const hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const standardHours = (hours % 12 || 12).toString().padStart(2, '0');
+    timeEl.textContent = `${standardHours}:${minutes}:${seconds} ${ampm}`;
+  }
 
   // ⏳ Interval Remaining
   const intervalEl = document.getElementById("intervalRemainingData");
   if (intervalEl) intervalEl.textContent = glbVar.intervalRemaining;
 
-  // 🏷️ Version
+  // 🏽 Version
   const versionEl = document.querySelector(".version");
   if (versionEl) versionEl.textContent = glbVar.version;
 }
+// #endregion
+
+// #region 🚀 Initialize SSE
+setupSSE();
 // #endregion
