@@ -50,6 +50,7 @@ export const handler = async () => {
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
 
+  // Time setup (Phoenix-local, DRY-compliant)
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -57,10 +58,9 @@ export const handler = async () => {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    hour12: true,
-    timeZone: "America/Phoenix"
+    hour12: true
   });
-  const currentDate = now.toLocaleDateString("en-US", { timeZone: "America/Phoenix" }).replace(/\//g, "-");
+  const currentDate = now.toISOString().split("T")[0]; // YYYY-MM-DD
 
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
