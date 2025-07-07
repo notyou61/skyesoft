@@ -1,4 +1,4 @@
-// #region 🚀 Serverless Function Handler
+// #region 🚀 Imports & Paths
 const fs = require("fs");
 const path = require("path");
 const { readFile } = require("fs/promises");
@@ -6,7 +6,9 @@ const { readFile } = require("fs/promises");
 const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
 const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
 const versionPath = path.resolve(__dirname, "../../assets/data/version.json");
+// #endregion
 
+// #region 🕒 Workday Settings
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
 
@@ -31,14 +33,19 @@ function findNextWorkdayStart(startDate, holidays) {
   while (!isWorkday(nextDate, holidays)) {
     nextDate.setDate(nextDate.getDate() + 1);
   }
-  nextDate.setHours(7, 30, 0, 0); // Start of next workday
+  nextDate.setHours(7, 30, 0, 0);
   return nextDate;
 }
+// #endregion
 
+// #region 📦 Serverless Handler
 export const handler = async () => {
+  // #region 📅 Load Holiday List
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
+  // #endregion
 
+  // #region ⏱️ Calculate Time Info
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -49,8 +56,10 @@ export const handler = async () => {
     hour12: true,
     timeZone: "America/Phoenix"
   });
-  const currentDate = now.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" }); // yyyy-mm-dd
+  const currentDate = now.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
+  // #endregion
 
+  // #region 🧠 Interval & Workday Logic
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
 
@@ -59,10 +68,10 @@ export const handler = async () => {
   let secondsRemaining = 0;
 
   if (!isWorkday(now, holidays)) {
-    dayType = isHoliday(now, holidays) ? "2" : "1"; // 2 = Holiday, 1 = Weekend
-    intervalLabel = "1"; // Non Worktime
+    dayType = isHoliday(now, holidays) ? "2" : "1";
+    intervalLabel = "1";
   } else {
-    dayType = "0"; // Workday
+    dayType = "0";
     intervalLabel = (currentSeconds < workStart || currentSeconds >= workEnd) ? "1" : "0";
   }
 
@@ -74,7 +83,9 @@ export const handler = async () => {
   } else {
     secondsRemaining = workEnd - currentSeconds;
   }
+  // #endregion
 
+  // #region 🧾 Record Counts
   let recordCounts = {
     actions: 0,
     entities: 0,
@@ -86,9 +97,6 @@ export const handler = async () => {
     tasks: 0
   };
 
-  let cronCount = 0;
-  let aiQueryCount = 0;
-
   try {
     const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
     for (const type in recordCounts) {
@@ -97,6 +105,11 @@ export const handler = async () => {
   } catch (err) {
     console.warn("⚠️ Could not read data file:", err.message);
   }
+  // #endregion
+
+  // #region 🧮 Version & Counters
+  let cronCount = 0;
+  let aiQueryCount = 0;
 
   try {
     const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
@@ -105,7 +118,9 @@ export const handler = async () => {
   } catch (err) {
     console.warn("⚠️ Could not read version file:", err.message);
   }
+  // #endregion
 
+  // #region 📤 JSON Response
   return {
     statusCode: 200,
     body: JSON.stringify({
@@ -160,5 +175,6 @@ export const handler = async () => {
       }
     })
   };
+  // #endregion
 };
 // #endregion
