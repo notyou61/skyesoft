@@ -2,19 +2,20 @@
 
 // #region 📦 Imports and Config
 import { readFile } from "fs/promises";
-// ✅ Safe for Netlify functions
+import fs from "fs";
 import path from "path";
-// Holidays Path
+
 const holidaysPath = path.resolve("assets/data/federal_holidays_dynamic.json");
-// Workday Start
+const dataPath = path.resolve("assets/data/skyesoft-data.json");
+const versionPath = path.resolve("assets/data/version.json");
+
 const WORKDAY_START = "07:30";
-// Workday End
 const WORKDAY_END = "15:30";
 // #endregion
 
 // #region 🔧 Helper Functions
 function timeStringToSeconds(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
+  const [h, m] = timeStr.split(":" ).map(Number);
   return h * 3600 + m * 60;
 }
 
@@ -38,7 +39,7 @@ function findNextWorkdayStart(fromDate, holidays) {
   while (!isWorkday(next, holidays)) {
     next.setDate(next.getDate() + 1);
   }
-  const [h, m] = WORKDAY_START.split(":");
+  const [h, m] = WORKDAY_START.split(":" );
   next.setHours(+h, +m, 0, 0);
   return next;
 }
@@ -52,6 +53,8 @@ export const handler = async () => {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const currentLocalTime = now.toTimeString().split(" ")[0];
+  const currentDate = now.toLocaleDateString("en-US", { timeZone: "America/Phoenix" }).replace(/\//g, "-");
 
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
@@ -61,47 +64,79 @@ export const handler = async () => {
   let secondsRemaining = 0;
 
   if (!isWorkday(now, holidays)) {
-    dayType = isHoliday(now, holidays) ? "Holiday" : "Weekend";
-    intervalLabel = "After Worktime";
+    dayType = isHoliday(now, holidays) ? "2" : "1"; // 2 = Holiday, 1 = Weekend
+    intervalLabel = "1"; // Non Worktime
   } else {
-    dayType = "Workday";
+    dayType = "0"; // Workday
     if (currentSeconds < workStart) {
-      intervalLabel = "Before Worktime";
+      intervalLabel = "1"; // Non Worktime
     } else if (currentSeconds < workEnd) {
-      intervalLabel = "Worktime";
+      intervalLabel = "0"; // Worktime
     } else {
-      intervalLabel = "After Worktime";
+      intervalLabel = "1"; // Non Worktime
     }
   }
 
-  if (intervalLabel === "Before Worktime") {
-    secondsRemaining = workStart - currentSeconds;
-  } else if (intervalLabel === "Worktime") {
-    secondsRemaining = workEnd - currentSeconds;
-  } else {
+  if (intervalLabel === "1") {
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     const nextWorkStart = findNextWorkdayStart(today, holidays);
     secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
+  } else {
+    secondsRemaining = workEnd - currentSeconds;
+  }
+
+  let recordCounts = {
+    actions: 0,
+    entities: 0,
+    locations: 0,
+    contacts: 0,
+    orders: 0,
+    permits: 0,
+    notes: 0,
+    tasks: 0
+  };
+
+  let cronCount = 0;
+  let aiQueryCount = 0;
+
+  try {
+    const data = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+    for (const type in recordCounts) {
+      if (data[type]) recordCounts[type] = data[type].length;
+    }
+  } catch (err) {
+    console.warn("⚠️ Could not read data file:", err.message);
+  }
+
+  try {
+    const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+    cronCount = version.cronCount || 0;
+    aiQueryCount = version.aiQueryCount || 0;
+  } catch (err) {
+    console.warn("⚠️ Could not read version file:", err.message);
   }
 
   return {
     statusCode: 200,
     body: JSON.stringify({
       timeDateArray: {
-        currentUnixTime
+        currentUnixTime,
+        currentLocalTime,
+        currentDate
       },
       intervalsArray: {
-        currentDayDurationsArray: {
-          currentDaySecondsRemaining: secondsRemaining
-        },
-        currentIntervalTypeArray: {
-          intervalLabel,
-          dayType
-        }
+        currentDaySecondsRemaining: secondsRemaining,
+        intervalLabel,
+        dayType
       },
-      siteDetailsArray: {
-        siteName: "v2025.07.06"
+      recordCounts,
+      siteMeta: {
+        siteVersion: "v2025.07.06",
+        cronCount,
+        streamCount: 23,
+        aiQueryCount,
+        uptimeSeconds: null
       }
     })
   };
