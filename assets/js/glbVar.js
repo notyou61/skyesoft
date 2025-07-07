@@ -92,11 +92,19 @@ function setupSSE() {
   source.onmessage = function (event) {
     try {
       const data = JSON.parse(event.data);
+      //
+      console.log("⏳ SSE Data Received:", data); // ✅ Check this!
+      //
       if (data.timeDateArray) {
         // Update glbVar with SSE data
         glbVar.timeDate.currentLocalTime = data.timeDateArray.currentLocalTime;
+        //
+        console.log("🕒 Stored in glbVar:", glbVar.timeDate.currentLocalTime);
+        //
         glbVar.timeDate.currentDate = data.timeDateArray.currentDate;
+        //
         glbVar.timeDate.now = new Date(data.timeDateArray.currentUnixTime * 1000); // Fallback
+        //
         updateDOMFromGlbVar(); // Update DOM immediately
       }
     } catch (err) {
