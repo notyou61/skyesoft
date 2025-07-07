@@ -1,56 +1,44 @@
-// 📁 File: netlify/functions/getDynamicData.js
+// #region 🚀 Serverless Function Handler
+const fs = require("fs");
+const path = require("path");
+const { readFile } = require("fs/promises");
 
-// #region 📦 Imports and Config
-import { readFile } from "fs/promises";
-import fs from "fs";
-import path from "path";
-
-const holidaysPath = path.resolve("assets/data/federal_holidays_dynamic.json");
-const dataPath = path.resolve("assets/data/skyesoft-data.json");
-const versionPath = path.resolve("assets/data/version.json");
+const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
+const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
+const versionPath = path.resolve(__dirname, "../../assets/data/version.json");
 
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
-// #endregion
 
-// #region 🔧 Helper Functions
 function timeStringToSeconds(timeStr) {
-  const [h, m] = timeStr.split(":" ).map(Number);
+  const [h, m] = timeStr.split(":").map(Number);
   return h * 3600 + m * 60;
 }
 
-function isHoliday(dateObj, holidays) {
-  const dateStr = dateObj.toISOString().slice(0, 10);
-  return holidays.some(h => h.date === dateStr);
+function isHoliday(date, holidays) {
+  const formatted = date.toISOString().split("T")[0];
+  return holidays.some(holiday => holiday.date === formatted);
 }
 
-function isWeekend(dateObj) {
-  const day = dateObj.getDay();
-  return day === 0 || day === 6;
+function isWorkday(date, holidays) {
+  const day = date.getDay();
+  return day !== 0 && day !== 6 && !isHoliday(date, holidays);
 }
 
-function isWorkday(dateObj, holidays) {
-  return !isHoliday(dateObj, holidays) && !isWeekend(dateObj);
-}
-
-function findNextWorkdayStart(fromDate, holidays) {
-  const next = new Date(fromDate);
-  next.setHours(0, 0, 0, 0);
-  while (!isWorkday(next, holidays)) {
-    next.setDate(next.getDate() + 1);
+function findNextWorkdayStart(startDate, holidays) {
+  const nextDate = new Date(startDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  while (!isWorkday(nextDate, holidays)) {
+    nextDate.setDate(nextDate.getDate() + 1);
   }
-  const [h, m] = WORKDAY_START.split(":" );
-  next.setHours(+h, +m, 0, 0);
-  return next;
+  nextDate.setHours(7, 30, 0, 0); // Start of next workday
+  return nextDate;
 }
-// #endregion
 
-// #region 🚀 Serverless Function Handler
 export const handler = async () => {
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
 
-  // Time setup (Phoenix-local, DRY-compliant)
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
@@ -58,9 +46,10 @@ export const handler = async () => {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    hour12: true
+    hour12: true,
+    timeZone: "America/Phoenix"
   });
-  const currentDate = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  const currentDate = now.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" }); // yyyy-mm-dd
 
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
@@ -74,13 +63,7 @@ export const handler = async () => {
     intervalLabel = "1"; // Non Worktime
   } else {
     dayType = "0"; // Workday
-    if (currentSeconds < workStart) {
-      intervalLabel = "1"; // Non Worktime
-    } else if (currentSeconds < workEnd) {
-      intervalLabel = "0"; // Worktime
-    } else {
-      intervalLabel = "1"; // Non Worktime
-    }
+    intervalLabel = (currentSeconds < workStart || currentSeconds >= workEnd) ? "1" : "0";
   }
 
   if (intervalLabel === "1") {
@@ -134,9 +117,40 @@ export const handler = async () => {
       intervalsArray: {
         currentDaySecondsRemaining: secondsRemaining,
         intervalLabel,
-        dayType
+        dayType,
+        workdayIntervals: {
+          start: WORKDAY_START,
+          end: WORKDAY_END
+        }
       },
       recordCounts,
+      weatherData: {
+        temp: null,
+        icon: "❓",
+        description: "Loading..."
+      },
+      kpiData: {
+        contacts: 36,
+        orders: 22,
+        approvals: 3
+      },
+      uiHints: {
+        tips: [
+          "Measure twice, cut once.",
+          "Stay positive, work hard, make it happen.",
+          "Quality is never an accident.",
+          "Efficiency is doing better what is already being done.",
+          "Every day is a fresh start.",
+          "Take small steps every day toward big goals.",
+          "Be Proactive – Take responsibility for your actions.",
+          "Begin with the End in Mind – Define clear goals.",
+          "Put First Things First – Prioritize what matters most.",
+          "Think Win-Win – Seek mutually beneficial solutions.",
+          "Seek First to Understand, Then to Be Understood – Practice empathetic listening.",
+          "Synergize – Value teamwork and collaboration.",
+          "Sharpen the Saw – Invest in continuous personal growth."
+        ]
+      },
       siteMeta: {
         siteVersion: "v2025.07.06",
         cronCount,
