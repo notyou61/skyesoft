@@ -139,5 +139,5 @@ function updateDOMFromGlbVar() {
 // #endregion
 
 // #region 🚀 Initialize SSE
-setupSSE();
+//setupSSE();
 // #endregion
