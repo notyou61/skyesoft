@@ -41,36 +41,38 @@ function findNextWorkdayStart(startDate, holidays) {
 // #region 📦 Serverless Handler
 export const handler = async () => {
   // #region 🌦️ Weather Data (OpenWeatherMap)
-let weatherData = {
-  temp: null,
-  icon: "❓",
-  description: "Loading..."
-};
-
-try {
-  const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
-  const weatherJson = await weatherRes.json();
-
-  const temp = Math.round(weatherJson.main.temp);
-  const desc = weatherJson.weather[0].main.toLowerCase();
-
-  let icon = "❓";
-  if (desc.includes("clear")) icon = "☀️";
-  else if (desc.includes("cloud")) icon = "☁️";
-  else if (desc.includes("rain")) icon = "🌧️";
-  else if (desc.includes("storm")) icon = "⛈️";
-  else if (desc.includes("snow")) icon = "❄️";
-  else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
-
-  weatherData = {
-    temp,
-    icon,
-    description: weatherJson.weather[0].description
+  let weatherData = {
+    temp: null,
+    icon: "❓",
+    description: "Loading..."
   };
-} catch (err) {
-  console.warn("⚠️ Weather fetch failed:", err.message);
-}
-// #endregion
+
+  try {
+    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
+    const weatherJson = await weatherRes.json();
+
+    const temp = Math.round(weatherJson.main.temp);
+    const desc = weatherJson.weather[0].main.toLowerCase();
+
+    let icon = "❓";
+    if (desc.includes("clear")) icon = "☀️";
+    else if (desc.includes("cloud")) icon = "☁️";
+    else if (desc.includes("rain")) icon = "🌧️";
+    else if (desc.includes("storm")) icon = "⛈️";
+    else if (desc.includes("snow")) icon = "❄️";
+    else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
+
+    weatherData = {
+      temp,
+      icon,
+      description: weatherJson.weather[0].description
+    };
+    //
+    console.log("🔑 Weather API Key:", process.env.WEATHER_API_KEY);
+  } catch (err) {
+    console.warn("⚠️ Weather fetch failed:", err.message);
+  }
+  // #endregion
 
   // #region 📅 Load Holiday List
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
