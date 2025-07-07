@@ -2,11 +2,13 @@
 
 // #region 📦 Imports and Config
 import { readFile } from "fs/promises";
-// #region ✅ Safe for Netlify functions
+// ✅ Safe for Netlify functions
 import path from "path";
+// Holidays Path
 const holidaysPath = path.resolve("assets/data/federal_holidays_dynamic.json");
-
+// Workday Start
 const WORKDAY_START = "07:30";
+// Workday End
 const WORKDAY_END = "15:30";
 // #endregion
 
