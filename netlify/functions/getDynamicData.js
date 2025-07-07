@@ -53,7 +53,13 @@ export const handler = async () => {
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
   const currentUnixTime = Math.floor(now.getTime() / 1000);
   const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  const currentLocalTime = now.toTimeString().split(" ")[0];
+  const currentLocalTime = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: "America/Phoenix"
+  });
   const currentDate = now.toLocaleDateString("en-US", { timeZone: "America/Phoenix" }).replace(/\//g, "-");
 
   const workStart = timeStringToSeconds(WORKDAY_START);
