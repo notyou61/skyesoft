@@ -84,7 +84,7 @@ function formatInterval(prefix, seconds) {
 // #endregion
 
 // #region 🔁 DOM Update from glbVar
-function updateDOMFromGlbVar() {
+function updateDOMFromGlbVar1() {
   // ⏰ Time
   const now = glbVar.timeDate.now;
   const hours = now.getHours();
@@ -106,3 +106,22 @@ function updateDOMFromGlbVar() {
   if (versionEl) versionEl.textContent = glbVar.version;
 }
 // #endregion
+
+// #region 🔁 DOM Update from glbVar
+function updateDOMFromGlbVar() {
+  // ⏰ Time (use preformatted time string from SSE)
+  const timeEl = document.getElementById("currentTime");
+  if (timeEl && glbVar.timeDate.currentLocalTime) {
+    timeEl.textContent = glbVar.timeDate.currentLocalTime;
+  }
+
+  // ⏳ Interval Remaining
+  const intervalEl = document.getElementById("intervalRemainingData");
+  if (intervalEl) intervalEl.textContent = glbVar.intervalRemaining;
+
+  // 🏷️ Version
+  const versionEl = document.querySelector(".version");
+  if (versionEl) versionEl.textContent = glbVar.version;
+}
+// #endregion
+
