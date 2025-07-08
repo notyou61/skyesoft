@@ -14,7 +14,7 @@ const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
 
 function timeStringToSeconds(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
+  const [h, m] = timeStr.split(":" ).map(Number);
   return h * 3600 + m * 60;
 }
 
@@ -50,19 +50,15 @@ let cachedWeather = {
 
 // #region 📦 Serverless Handler
 export const handler = async () => {
-  
-  // #region 🌦️ Add Weather Data (OpenWeatherMap – Cached with Background Refresh)
   const FIFTEEN_MINUTES = 15 * 60 * 1000;
-  const weatherNow = Date.now(); // 🕒 Current epoch timestamp
+  const weatherNow = Date.now();
 
-  // Provide current cached weather immediately
   const weatherData = {
     temp: cachedWeather.temp,
     icon: cachedWeather.icon,
     description: cachedWeather.description
   };
 
-  // Start a non-blocking refresh if data is stale
   if (weatherNow - cachedWeather.timestamp > FIFTEEN_MINUTES || cachedWeather.temp === null) {
     (async () => {
       try {
@@ -91,25 +87,22 @@ export const handler = async () => {
       } catch (err) {
         console.error("🔥 Weather background fetch failed:", err.message);
       }
-    })(); // Fire-and-forget async update
+    })();
   }
-  // #endregion
-  
-  // #region 📅 Load Holiday List
+
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
-  // #endregion
 
   // #region ⏱️ Calculate Time Info
   const now = DateTime.now().setZone("America/Phoenix");
+  const nativeNow = new Date(now.toISO());
 
   const currentUnixTime = Math.floor(now.toSeconds());
   const currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
-  const currentLocalTime = now.toFormat("hh:mm:ss a"); // e.g., 08:15:42 PM
-  const currentDate = now.toFormat("yyyy-MM-dd");      // e.g., 2025-07-08
+  const currentLocalTime = now.toFormat("hh:mm:ss a");
+  const currentDate = now.toFormat("yyyy-MM-dd");
   // #endregion
 
-  // #region 🧠 Interval & Workday Logic
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
 
@@ -117,8 +110,8 @@ export const handler = async () => {
   let dayType = "";
   let secondsRemaining = 0;
 
-  if (!isWorkday(now, holidays)) {
-    dayType = isHoliday(now, holidays) ? "2" : "1";
+  if (!isWorkday(nativeNow, holidays)) {
+    dayType = isHoliday(nativeNow, holidays) ? "2" : "1";
     intervalLabel = "1";
   } else {
     dayType = "0";
@@ -126,16 +119,14 @@ export const handler = async () => {
   }
 
   if (intervalLabel === "1") {
-    const today = new Date(now);
+    const today = new Date(nativeNow);
     today.setHours(0, 0, 0, 0);
     const nextWorkStart = findNextWorkdayStart(today, holidays);
-    secondsRemaining = Math.floor((nextWorkStart.getTime() - now.getTime()) / 1000);
+    secondsRemaining = Math.floor((nextWorkStart.getTime() - nativeNow.getTime()) / 1000);
   } else {
     secondsRemaining = workEnd - currentSeconds;
   }
-  // #endregion
 
-  // #region 🧾 Record Counts
   let recordCounts = {
     actions: 0,
     entities: 0,
@@ -155,16 +146,13 @@ export const handler = async () => {
   } catch (err) {
     console.warn("⚠️ Could not read data file:", err.message);
   }
-  // #endregion
 
-  // #region 🧮 Version & Deployment Info
   let cronCount = 0;
   let aiQueryCount = 0;
   let siteVersion = "unknown";
   let lastDeployNote = "Unavailable";
   let lastDeployTime = null;
 
-  // Load from version.json (local counters)
   try {
     const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
     cronCount = version.cronCount || 0;
@@ -173,7 +161,6 @@ export const handler = async () => {
     console.warn("⚠️ Could not read version file:", err.message);
   }
 
-  // Fetch real-time deploy info
   try {
     const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
     if (deployRes.ok) {
@@ -187,13 +174,11 @@ export const handler = async () => {
   } catch (err) {
     console.error("🔥 Error fetching deploy status:", err.message);
   }
-  // #endregion
 
-  // #region 📤 JSON Response
   return {
     statusCode: 200,
     headers: {
-      "Access-Control-Allow-Origin": "*", // Or restrict to your domain
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type",
     },
     body: JSON.stringify({
@@ -236,9 +221,9 @@ export const handler = async () => {
         ]
       },
       siteMeta: {
-        siteVersion,             // ✅ dynamic from getDeployStatus
-        lastDeployNote,          // ✅ optional, for display
-        lastDeployTime,          // ✅ optional, ISO timestamp
+        siteVersion,
+        lastDeployNote,
+        lastDeployTime,
         cronCount,
         streamCount: 23,
         aiQueryCount,
@@ -246,6 +231,5 @@ export const handler = async () => {
       }
     })
   };
-  // #endregion
 };
 // #endregion
