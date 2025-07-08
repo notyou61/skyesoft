@@ -40,7 +40,8 @@ function findNextWorkdayStart(startDate, holidays) {
 
 // #region 📦 Serverless Handler
 export const handler = async () => {
-  // #region 🌦️ Weather Data (OpenWeatherMap)
+  
+  // #region 🌦️ Add Weather Data (OpenWeatherMap - Server Fetch)
   let weatherData = {
     temp: null,
     icon: "❓",
@@ -48,37 +49,32 @@ export const handler = async () => {
   };
 
   try {
-    // Check if WEATHER_API_KEY is set
-    console.log("✅ WEATHER_API_KEY loaded:", process.env.WEATHER_API_KEY ? "Yes" : "No");
-    // Ensure WEATHER_API_KEY is set in environment variables
-    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
-    const weatherJson = await weatherRes.json();
+    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
+    if (res.ok) {
+      const data = await res.json();
+      const desc = data.weather[0].main.toLowerCase();
 
-    const temp = Math.round(weatherJson.main.temp);
-    const desc = weatherJson.weather[0].main.toLowerCase();
+      let icon = "❓";
+      if (desc.includes("clear")) icon = "☀️";
+      else if (desc.includes("cloud")) icon = "☁️";
+      else if (desc.includes("rain")) icon = "🌧️";
+      else if (desc.includes("storm")) icon = "⛈️";
+      else if (desc.includes("snow")) icon = "❄️";
+      else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
 
-    let icon = "❓";
-    if (desc.includes("clear")) icon = "☀️";
-    else if (desc.includes("cloud")) icon = "☁️";
-    else if (desc.includes("rain")) icon = "🌧️";
-    else if (desc.includes("storm")) icon = "⛈️";
-    else if (desc.includes("snow")) icon = "❄️";
-    else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
-
-    weatherData = {
-      temp,
-      icon,
-      description: weatherJson.weather[0].description
-    };
-    //
-    console.log("🔑 Weather API Key:", process.env.WEATHER_API_KEY);
-    console.log("🌦️ Local WEATHER_API_KEY:", process.env.WEATHER_API_KEY);
-
+      weatherData = {
+        temp: Math.round(data.main.temp),
+        icon,
+        description: data.weather[0].description
+      };
+    } else {
+      console.warn("❌ Weather fetch failed:", res.status);
+    }
   } catch (err) {
-    console.warn("⚠️ Weather fetch failed:", err.message);
+    console.error("🔥 Weather fetch error:", err.message);
   }
   // #endregion
-
+  
   // #region 📅 Load Holiday List
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
@@ -182,11 +178,7 @@ export const handler = async () => {
         }
       },
       recordCounts,
-      weatherData: {
-        temp: null,
-        icon: "❓",
-        description: "Loading..."
-      },
+      weatherData,
       kpiData: {
         contacts: 36,
         orders: 22,
