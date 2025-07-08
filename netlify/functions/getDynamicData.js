@@ -240,7 +240,9 @@ export const handler = async () => {
         ]
       },
       siteMeta: {
-        siteVersion: "v2025.07.06",
+        siteVersion,             // ✅ dynamic from getDeployStatus
+        lastDeployNote,          // ✅ optional, for display
+        lastDeployTime,          // ✅ optional, ISO timestamp
         cronCount,
         streamCount: 23,
         aiQueryCount,
