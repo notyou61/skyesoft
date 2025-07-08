@@ -161,18 +161,37 @@ export const handler = async () => {
   }
   // #endregion
 
-  // #region 🧮 Version & Counters
-  let cronCount = 0;
-  let aiQueryCount = 0;
+  // #region 🧮 Version & Deployment Info
+let cronCount = 0;
+let aiQueryCount = 0;
+let siteVersion = "unknown";
+let lastDeployNote = "Unavailable";
+let lastDeployTime = null;
 
-  try {
-    const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
-    cronCount = version.cronCount || 0;
-    aiQueryCount = version.aiQueryCount || 0;
-  } catch (err) {
-    console.warn("⚠️ Could not read version file:", err.message);
+// Load from version.json (local counters)
+try {
+  const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+  cronCount = version.cronCount || 0;
+  aiQueryCount = version.aiQueryCount || 0;
+} catch (err) {
+  console.warn("⚠️ Could not read version file:", err.message);
+}
+
+// Fetch real-time deploy info
+try {
+  const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
+  if (deployRes.ok) {
+    const deployData = await deployRes.json();
+    siteVersion = deployData.siteVersion;
+    lastDeployNote = deployData.lastDeployNote;
+    lastDeployTime = deployData.lastDeployTime;
+  } else {
+    console.warn("⚠️ Failed to fetch deploy status:", deployRes.status);
   }
-  // #endregion
+} catch (err) {
+  console.error("🔥 Error fetching deploy status:", err.message);
+}
+// #endregion
 
   // #region 📤 JSON Response
   return {
