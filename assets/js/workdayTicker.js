@@ -47,14 +47,14 @@ setInterval(() => {
       const seconds = data.intervalsArray?.currentDaySecondsRemaining;
       const label = data.intervalsArray?.intervalLabel;
       const dayType = data.intervalsArray?.dayType;
-
+      // Ensure all required data is available before formatting
       if (seconds !== undefined && label !== undefined && dayType !== undefined) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
-
+        // Determine message based on dayType and label
         switch (`${dayType}-${label}`) {
-          case "0-0": message = `🕔 Work begins in ${formatted}`; break;      // Workday-Before Worktime
-          case "0-1": message = `🔚 Workday ends in ${formatted}`; break;      // Workday-Worktime
+          case "0-0": message = `🔚 Workday ends in ${formatted}`; break;     // During worktime
+          case "0-1": message = `🔜 Workday begins in ${formatted}`; break;   // Before work
           case "0-2":
           case "2-1":
           case "1-1":
