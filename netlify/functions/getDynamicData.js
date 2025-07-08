@@ -2,6 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { readFile } from "fs/promises";
+import { DateTime } from "luxon";
 
 const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
 const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
@@ -100,8 +101,6 @@ export const handler = async () => {
   // #endregion
 
   // #region ⏱️ Calculate Time Info
-  import { DateTime } from "luxon";
-
   const now = DateTime.now().setZone("America/Phoenix");
 
   const currentUnixTime = Math.floor(now.toSeconds());
