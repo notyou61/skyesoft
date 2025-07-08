@@ -18,4 +18,8 @@
     "assets/data/federal_holidays_dynamic.json"
   ]
   external_node_modules = []
-  
+
+[functions.getDeployStatus]
+  node_bundler = "esbuild"        # ✅ Enable env var support
+  external_node_modules = []
+ 
