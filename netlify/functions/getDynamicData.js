@@ -154,6 +154,8 @@ export const handler = async () => {
   let siteVersion = "unknown";
   let lastDeployNote = "Unavailable";
   let lastDeployTime = null;
+  let deployState = "unknown";
+  let deployIsLive = false;
 
   // Load usage counters from version.json
   try {
@@ -166,14 +168,14 @@ export const handler = async () => {
 
   // Load live deploy info from getDeployStatus function
   try {
-    //const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
     const deployRes = await fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDeployStatus");
-    // Check if the response is ok
     if (deployRes.ok) {
       const deployData = await deployRes.json();
-      siteVersion = deployData.siteVersion || siteVersion;
-      lastDeployNote = deployData.lastDeployNote || lastDeployNote;
-      lastDeployTime = deployData.lastDeployTime || lastDeployTime;
+      siteVersion     = deployData.siteVersion     || siteVersion;
+      lastDeployNote  = deployData.lastDeployNote  || lastDeployNote;
+      lastDeployTime  = deployData.lastDeployTime  || lastDeployTime;
+      deployState     = deployData.deployState     || deployState;
+      deployIsLive    = deployState === "published";
     } else {
       console.warn("⚠️ Failed to fetch deploy status:", deployRes.status);
     }
@@ -231,6 +233,8 @@ export const handler = async () => {
         siteVersion,
         lastDeployNote,
         lastDeployTime,
+        deployState,         // 🆕 e.g., "building", "published", etc.
+        deployIsLive,        // 🆕 boolean
         cronCount,
         streamCount: 23,
         aiQueryCount,
