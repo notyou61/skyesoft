@@ -166,7 +166,9 @@ export const handler = async () => {
 
   // Load live deploy info from getDeployStatus function
   try {
-    const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
+    //const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
+    const deployRes = await fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDeployStatus");
+    // Check if the response is ok
     if (deployRes.ok) {
       const deployData = await deployRes.json();
       siteVersion = deployData.siteVersion || siteVersion;
@@ -179,7 +181,7 @@ export const handler = async () => {
     console.error("🔥 Error fetching deploy status:", err.message);
   }
   // #endregion
-  
+
   return {
     statusCode: 200,
     headers: {
