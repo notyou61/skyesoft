@@ -1,7 +1,7 @@
 // #region 🚀 Imports & Paths
-const fs = require("fs");
-const path = require("path");
-const { readFile } = require("fs/promises");
+import fs from "fs";
+import path from "path";
+import { readFile } from "fs/promises";
 
 const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
 const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
@@ -38,41 +38,56 @@ function findNextWorkdayStart(startDate, holidays) {
 }
 // #endregion
 
+// #region ☁️ Weather Cache (15-minute memory)
+let cachedWeather = {
+  temp: null,
+  icon: "❓",
+  description: "Loading...",
+  timestamp: 0
+};
+// #endregion
+
 // #region 📦 Serverless Handler
 export const handler = async () => {
   
-  // #region 🌦️ Add Weather Data (OpenWeatherMap - Server Fetch)
-  let weatherData = {
-    temp: null,
-    icon: "❓",
-    description: "Loading..."
-  };
+  // #region 🌦️ Add Weather Data (OpenWeatherMap - 15 min cache)
+  const FIFTEEN_MINUTES = 15 * 60 * 1000;
+  const nowEpoch = Date.now();  // For weather caching
+  // Check if cached weather is older than 15 minutes or has no temp
+  if (nowEpoch - cachedWeather.timestamp > FIFTEEN_MINUTES || cachedWeather.temp === null) {
+    try {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
+      if (res.ok) {
+        const data = await res.json();
+        const desc = data.weather[0].main.toLowerCase();
 
-  try {
-    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
-    if (res.ok) {
-      const data = await res.json();
-      const desc = data.weather[0].main.toLowerCase();
+        let icon = "❓";
+        if (desc.includes("clear")) icon = "☀️";
+        else if (desc.includes("cloud")) icon = "☁️";
+        else if (desc.includes("rain")) icon = "🌧️";
+        else if (desc.includes("storm")) icon = "⛈️";
+        else if (desc.includes("snow")) icon = "❄️";
+        else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
 
-      let icon = "❓";
-      if (desc.includes("clear")) icon = "☀️";
-      else if (desc.includes("cloud")) icon = "☁️";
-      else if (desc.includes("rain")) icon = "🌧️";
-      else if (desc.includes("storm")) icon = "⛈️";
-      else if (desc.includes("snow")) icon = "❄️";
-      else if (desc.includes("fog") || desc.includes("mist")) icon = "🌫️";
-
-      weatherData = {
-        temp: Math.round(data.main.temp),
-        icon,
-        description: data.weather[0].description
-      };
-    } else {
-      console.warn("❌ Weather fetch failed:", res.status);
+        cachedWeather = {
+          temp: Math.round(data.main.temp),
+          icon,
+          description: data.weather[0].description,
+          timestamp: now
+        };
+      } else {
+        console.warn("❌ Weather fetch failed:", res.status);
+      }
+    } catch (err) {
+      console.error("🔥 Weather fetch error:", err.message);
     }
-  } catch (err) {
-    console.error("🔥 Weather fetch error:", err.message);
   }
+  // Use cached weather data
+  const weatherData = {
+    temp: cachedWeather.temp,
+    icon: cachedWeather.icon,
+    description: cachedWeather.description
+  };
   // #endregion
   
   // #region 📅 Load Holiday List
