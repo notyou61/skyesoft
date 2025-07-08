@@ -100,17 +100,14 @@ export const handler = async () => {
   // #endregion
 
   // #region ⏱️ Calculate Time Info
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
-  const currentUnixTime = Math.floor(now.getTime() / 1000);
-  const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  const currentLocalTime = now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-    timeZone: "America/Phoenix"
-  });
-  const currentDate = now.toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
+  import { DateTime } from "luxon";
+
+  const now = DateTime.now().setZone("America/Phoenix");
+
+  const currentUnixTime = Math.floor(now.toSeconds());
+  const currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+  const currentLocalTime = now.toFormat("hh:mm:ss a"); // e.g., 08:15:42 PM
+  const currentDate = now.toFormat("yyyy-MM-dd");      // e.g., 2025-07-08
   // #endregion
 
   // #region 🧠 Interval & Workday Logic
