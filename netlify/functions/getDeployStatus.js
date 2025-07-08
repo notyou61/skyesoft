@@ -43,5 +43,3 @@ export const handler = async () => {
     };
   }
 };
-// Tip updated just to trigger deploy
-//"Double-check before pushing to production."
