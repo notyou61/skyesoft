@@ -162,36 +162,36 @@ export const handler = async () => {
   // #endregion
 
   // #region 🧮 Version & Deployment Info
-let cronCount = 0;
-let aiQueryCount = 0;
-let siteVersion = "unknown";
-let lastDeployNote = "Unavailable";
-let lastDeployTime = null;
+  let cronCount = 0;
+  let aiQueryCount = 0;
+  let siteVersion = "unknown";
+  let lastDeployNote = "Unavailable";
+  let lastDeployTime = null;
 
-// Load from version.json (local counters)
-try {
-  const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
-  cronCount = version.cronCount || 0;
-  aiQueryCount = version.aiQueryCount || 0;
-} catch (err) {
-  console.warn("⚠️ Could not read version file:", err.message);
-}
-
-// Fetch real-time deploy info
-try {
-  const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
-  if (deployRes.ok) {
-    const deployData = await deployRes.json();
-    siteVersion = deployData.siteVersion;
-    lastDeployNote = deployData.lastDeployNote;
-    lastDeployTime = deployData.lastDeployTime;
-  } else {
-    console.warn("⚠️ Failed to fetch deploy status:", deployRes.status);
+  // Load from version.json (local counters)
+  try {
+    const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
+    cronCount = version.cronCount || 0;
+    aiQueryCount = version.aiQueryCount || 0;
+  } catch (err) {
+    console.warn("⚠️ Could not read version file:", err.message);
   }
-} catch (err) {
-  console.error("🔥 Error fetching deploy status:", err.message);
-}
-// #endregion
+
+  // Fetch real-time deploy info
+  try {
+    const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
+    if (deployRes.ok) {
+      const deployData = await deployRes.json();
+      siteVersion = deployData.siteVersion;
+      lastDeployNote = deployData.lastDeployNote;
+      lastDeployTime = deployData.lastDeployTime;
+    } else {
+      console.warn("⚠️ Failed to fetch deploy status:", deployRes.status);
+    }
+  } catch (err) {
+    console.error("🔥 Error fetching deploy status:", err.message);
+  }
+  // #endregion
 
   // #region 📤 JSON Response
   return {
