@@ -50,14 +50,24 @@ let cachedWeather = {
 // #region 📦 Serverless Handler
 export const handler = async () => {
   
-  // #region 🌦️ Add Weather Data (OpenWeatherMap - 15 min cache)
+  // #region 🌦️ Add Weather Data (OpenWeatherMap – Cached with Background Refresh)
   const FIFTEEN_MINUTES = 15 * 60 * 1000;
-  const nowEpoch = Date.now();  // For weather caching
-  // Check if cached weather is older than 15 minutes or has no temp
-  if (nowEpoch - cachedWeather.timestamp > FIFTEEN_MINUTES || cachedWeather.temp === null) {
-    try {
-      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
-      if (res.ok) {
+  const weatherNow = Date.now(); // 🕒 Current epoch timestamp
+
+  // Provide current cached weather immediately
+  const weatherData = {
+    temp: cachedWeather.temp,
+    icon: cachedWeather.icon,
+    description: cachedWeather.description
+  };
+
+  // Start a non-blocking refresh if data is stale
+  if (weatherNow - cachedWeather.timestamp > FIFTEEN_MINUTES || cachedWeather.temp === null) {
+    (async () => {
+      try {
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
+        if (!res.ok) return console.warn("❌ Weather fetch failed:", res.status);
+
         const data = await res.json();
         const desc = data.weather[0].main.toLowerCase();
 
@@ -73,21 +83,15 @@ export const handler = async () => {
           temp: Math.round(data.main.temp),
           icon,
           description: data.weather[0].description,
-          timestamp: now
+          timestamp: weatherNow
         };
-      } else {
-        console.warn("❌ Weather fetch failed:", res.status);
+
+        console.log("✅ Weather data refreshed at", new Date(weatherNow).toLocaleTimeString());
+      } catch (err) {
+        console.error("🔥 Weather background fetch failed:", err.message);
       }
-    } catch (err) {
-      console.error("🔥 Weather fetch error:", err.message);
-    }
+    })(); // Fire-and-forget async update
   }
-  // Use cached weather data
-  const weatherData = {
-    temp: cachedWeather.temp,
-    icon: cachedWeather.icon,
-    description: cachedWeather.description
-  };
   // #endregion
   
   // #region 📅 Load Holiday List
