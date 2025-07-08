@@ -147,34 +147,39 @@ export const handler = async () => {
     console.warn("⚠️ Could not read data file:", err.message);
   }
 
+  // #region 📦 Counters & Deployment Info
   let cronCount = 0;
   let aiQueryCount = 0;
+
   let siteVersion = "unknown";
   let lastDeployNote = "Unavailable";
   let lastDeployTime = null;
 
+  // Load usage counters from version.json
   try {
     const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
     cronCount = version.cronCount || 0;
     aiQueryCount = version.aiQueryCount || 0;
   } catch (err) {
-    console.warn("⚠️ Could not read version file:", err.message);
+    console.warn("⚠️ Could not read version counters:", err.message);
   }
 
+  // Load live deploy info from getDeployStatus function
   try {
     const deployRes = await fetch(`${DEPLOY_FUNCTION_BASE_URL}/getDeployStatus`);
     if (deployRes.ok) {
       const deployData = await deployRes.json();
-      siteVersion = deployData.siteVersion;
-      lastDeployNote = deployData.lastDeployNote;
-      lastDeployTime = deployData.lastDeployTime;
+      siteVersion = deployData.siteVersion || siteVersion;
+      lastDeployNote = deployData.lastDeployNote || lastDeployNote;
+      lastDeployTime = deployData.lastDeployTime || lastDeployTime;
     } else {
       console.warn("⚠️ Failed to fetch deploy status:", deployRes.status);
     }
   } catch (err) {
     console.error("🔥 Error fetching deploy status:", err.message);
   }
-
+  // #endregion
+  
   return {
     statusCode: 200,
     headers: {
