@@ -13,7 +13,9 @@
   external_node_modules = []
 
 [functions.getDynamicData]
+  node_bundler = "esbuild"        # ✅ Required for env var injection
   included_files = [
     "assets/data/federal_holidays_dynamic.json"
   ]
   external_node_modules = []
+  
