@@ -1,3 +1,5 @@
+// 📁 File: getDynamicData.js
+
 // #region 🚀 Imports & Paths
 import fs from "fs";
 import path from "path";
@@ -7,27 +9,30 @@ import { DateTime } from "luxon";
 const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
 const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
 const versionPath = path.resolve(__dirname, "../../assets/data/version.json");
-// #endregion
 
-// #region 🕒 Workday Settings
+// #region 🕒 Workday Settings & Utilities
 const WORKDAY_START = "07:30";
 const WORKDAY_END = "15:30";
 
+// Converts HH:MM string to total seconds since midnight
 function timeStringToSeconds(timeStr) {
   const [h, m] = timeStr.split(":" ).map(Number);
   return h * 3600 + m * 60;
 }
 
+// Checks if a given date matches a federal holiday
 function isHoliday(date, holidays) {
   const formatted = date.toISOString().split("T")[0];
   return holidays.some(holiday => holiday.date === formatted);
 }
 
+// Returns true if a date is a valid weekday and not a holiday
 function isWorkday(date, holidays) {
   const day = date.getDay();
   return day !== 0 && day !== 6 && !isHoliday(date, holidays);
 }
 
+// Finds the next valid workday and returns its start time (7:30 AM)
 function findNextWorkdayStart(startDate, holidays) {
   const nextDate = new Date(startDate);
   nextDate.setDate(nextDate.getDate() + 1);
@@ -50,6 +55,7 @@ let cachedWeather = {
 
 // #region 📦 Serverless Handler
 export const handler = async () => {
+  // #region 🕒 Time Setup & Constants
   const FIFTEEN_MINUTES = 15 * 60 * 1000;
   const weatherNow = Date.now();
 
@@ -58,7 +64,9 @@ export const handler = async () => {
     icon: cachedWeather.icon,
     description: cachedWeather.description
   };
+  // #endregion
 
+  // #region 🌦️ Fetch Weather if Stale
   if (weatherNow - cachedWeather.timestamp > FIFTEEN_MINUTES || cachedWeather.temp === null) {
     (async () => {
       try {
@@ -89,9 +97,12 @@ export const handler = async () => {
       }
     })();
   }
+  // #endregion
 
+  // #region 📅 Load Federal Holidays
   const holidaysJSON = await readFile(holidaysPath, "utf-8");
   const holidays = JSON.parse(holidaysJSON).holidays;
+  // #endregion
 
   // #region ⏱️ Calculate Time Info
   const now = DateTime.now().setZone("America/Phoenix");
@@ -103,6 +114,7 @@ export const handler = async () => {
   const currentDate = now.toFormat("yyyy-MM-dd");
   // #endregion
 
+  // #region ⏳ Determine Interval & Day Type
   const workStart = timeStringToSeconds(WORKDAY_START);
   const workEnd = timeStringToSeconds(WORKDAY_END);
 
@@ -126,7 +138,9 @@ export const handler = async () => {
   } else {
     secondsRemaining = workEnd - currentSeconds;
   }
+  // #endregion
 
+  // #region 📊 Load Record Counts
   let recordCounts = {
     actions: 0,
     entities: 0,
@@ -146,8 +160,9 @@ export const handler = async () => {
   } catch (err) {
     console.warn("⚠️ Could not read data file:", err.message);
   }
+  // #endregion
 
-  // #region 📦 Counters & Deployment Info
+  // #region 🛰️ Deployment Metadata
   let cronCount = 0;
   let aiQueryCount = 0;
 
@@ -157,7 +172,6 @@ export const handler = async () => {
   let deployState = "unknown";
   let deployIsLive = false;
 
-  // Load usage counters from version.json
   try {
     const version = JSON.parse(fs.readFileSync(versionPath, "utf8"));
     cronCount = version.cronCount || 0;
@@ -166,7 +180,6 @@ export const handler = async () => {
     console.warn("⚠️ Could not read version counters:", err.message);
   }
 
-  // Load live deploy info from getDeployStatus function
   try {
     const deployRes = await fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDeployStatus");
     if (deployRes.ok) {
@@ -184,6 +197,7 @@ export const handler = async () => {
   }
   // #endregion
 
+  // #region 📤 Final JSON Response
   return {
     statusCode: 200,
     headers: {
@@ -242,5 +256,6 @@ export const handler = async () => {
       }
     })
   };
+  // #endregion
 };
 // #endregion
