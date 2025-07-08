@@ -48,6 +48,9 @@ export const handler = async () => {
   };
 
   try {
+    // Check if WEATHER_API_KEY is set
+    console.log("✅ WEATHER_API_KEY loaded:", process.env.WEATHER_API_KEY ? "Yes" : "No");
+    // Ensure WEATHER_API_KEY is set in environment variables
     const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=${process.env.WEATHER_API_KEY}&units=imperial`);
     const weatherJson = await weatherRes.json();
 
@@ -69,6 +72,8 @@ export const handler = async () => {
     };
     //
     console.log("🔑 Weather API Key:", process.env.WEATHER_API_KEY);
+    console.log("🌦️ Local WEATHER_API_KEY:", process.env.WEATHER_API_KEY);
+
   } catch (err) {
     console.warn("⚠️ Weather fetch failed:", err.message);
   }
@@ -157,6 +162,10 @@ export const handler = async () => {
   // #region 📤 JSON Response
   return {
     statusCode: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*", // Or restrict to your domain
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
     body: JSON.stringify({
       timeDateArray: {
         currentUnixTime,
