@@ -107,7 +107,8 @@ export const handler = async () => {
 
   // #region â±ï¸ Calculate Time Info
   const now = DateTime.now().setZone("America/Phoenix");
-  const nativeNow = new Date(now.toISO());
+  const nativeNow = now.toJSDate();  // âœ… Keeps correct Phoenix-local time
+
 
   const currentUnixTime = Math.floor(now.toSeconds());
   const currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
@@ -130,14 +131,21 @@ export const handler = async () => {
     dayType = "0";
     intervalLabel = (currentSeconds < workStart || currentSeconds >= workEnd) ? "1" : "0";
   }
-
+  // Interval Labels Conditional
   if (intervalLabel === "1") {
-    const today = new Date(nativeNow);
-    today.setHours(0, 0, 0, 0);
-    const nextWorkStart = findNextWorkdayStart(today, holidays);
+    let nextWorkStart;
+    const todayStart = new Date(nativeNow);
+    todayStart.setHours(7, 30, 0, 0);
+
+    if (isWorkday(nativeNow, holidays) && currentSeconds < workStart) {
+      // â° It's before today's workday begins
+      nextWorkStart = todayStart;
+    } else {
+      // ðŸŒ™ After workday or not a workday
+      nextWorkStart = findNextWorkdayStart(nativeNow, holidays);
+    }
+
     secondsRemaining = Math.floor((nextWorkStart.getTime() - nativeNow.getTime()) / 1000);
-  } else {
-    secondsRemaining = workEnd - currentSeconds;
   }
   // #endregion
 
@@ -260,4 +268,4 @@ export const handler = async () => {
   // #endregion
 };
 // #endregion
-// í´„ Rebuild trigger to force Netlify update
+// ï¿½ï¿½ï¿½ Rebuild trigger to force Netlify update
