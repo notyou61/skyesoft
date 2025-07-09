@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 const holidaysPath = path.resolve(__dirname, "../../assets/data/federal_holidays_dynamic.json");
 const dataPath = path.resolve(__dirname, "../../assets/data/skyesoft-data.json");
 const versionPath = path.resolve(__dirname, "../../assets/data/version.json");
+// #endregion
 
 // #region 🕒 Workday Settings & Utilities
 const WORKDAY_START = "07:30";
