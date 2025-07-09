@@ -111,7 +111,7 @@ export const handler = async () => {
 
 
   const currentUnixTime = Math.floor(now.toSeconds());
-  const currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+  const currentSeconds = nativeNow.getHours() * 3600 + nativeNow.getMinutes() * 60 + nativeNow.getSeconds();
   const currentLocalTime = now.toFormat("hh:mm:ss a");
   const currentDate = now.toFormat("yyyy-MM-dd");
   // #endregion
