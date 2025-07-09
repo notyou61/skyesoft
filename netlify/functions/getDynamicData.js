@@ -105,49 +105,61 @@ export const handler = async () => {
   const holidays = JSON.parse(holidaysJSON).holidays;
   // #endregion
 
-  // #region ⏱️ Calculate Time Info
-  const now = DateTime.now().setZone("America/Phoenix");
-  const nativeNow = now.toJSDate();  // ✅ Keeps correct Phoenix-local time
+// #region ⏱️ Calculate Time Info
+const now = DateTime.now().setZone("America/Phoenix");
 
+// Rebuild native Date object using Luxon's Phoenix-local values (prevents UTC drift)
+const nativeNow = new Date(
+  now.year,
+  now.month - 1, // JS months are 0-based
+  now.day,
+  now.hour,
+  now.minute,
+  now.second
+);
 
-  const currentUnixTime = Math.floor(now.toSeconds());
-  const currentSeconds = nativeNow.getHours() * 3600 + nativeNow.getMinutes() * 60 + nativeNow.getSeconds();
-  const currentLocalTime = now.toFormat("hh:mm:ss a");
-  const currentDate = now.toFormat("yyyy-MM-dd");
-  // #endregion
+const currentUnixTime = Math.floor(now.toSeconds());
+const currentSeconds = now.hour * 3600 + now.minute * 60 + now.second;
+const currentLocalTime = now.toFormat("hh:mm:ss a");
+const currentDate = now.toFormat("yyyy-MM-dd");
+// #endregion
 
-  // #region ⏳ Determine Interval & Day Type
-  const workStart = timeStringToSeconds(WORKDAY_START);
-  const workEnd = timeStringToSeconds(WORKDAY_END);
+// #region ⏳ Determine Interval & Day Type
+const workStart = timeStringToSeconds(WORKDAY_START);
+const workEnd = timeStringToSeconds(WORKDAY_END);
 
-  let intervalLabel = "";
-  let dayType = "";
-  let secondsRemaining = 0;
+let intervalLabel = "";
+let dayType = "";
+let secondsRemaining = 0;
 
-  if (!isWorkday(nativeNow, holidays)) {
-    dayType = isHoliday(nativeNow, holidays) ? "2" : "1";
-    intervalLabel = "1";
+if (!isWorkday(nativeNow, holidays)) {
+  dayType = isHoliday(nativeNow, holidays) ? "2" : "1";
+  intervalLabel = "1";
+} else {
+  dayType = "0";
+  intervalLabel = (currentSeconds < workStart || currentSeconds >= workEnd) ? "1" : "0";
+}
+
+// Interval Labels Conditional
+if (intervalLabel === "1") {
+  let nextWorkStart;
+  const todayStart = new Date(nativeNow);
+  todayStart.setHours(7, 30, 0, 0);
+
+  if (isWorkday(nativeNow, holidays) && currentSeconds < workStart) {
+    // ⏰ It's before today's workday begins
+    nextWorkStart = todayStart;
   } else {
-    dayType = "0";
-    intervalLabel = (currentSeconds < workStart || currentSeconds >= workEnd) ? "1" : "0";
+    // 🌙 After workday or not a workday
+    nextWorkStart = findNextWorkdayStart(nativeNow, holidays);
   }
-  // Interval Labels Conditional
-  if (intervalLabel === "1") {
-    let nextWorkStart;
-    const todayStart = new Date(nativeNow);
-    todayStart.setHours(7, 30, 0, 0);
 
-    if (isWorkday(nativeNow, holidays) && currentSeconds < workStart) {
-      // ⏰ It's before today's workday begins
-      nextWorkStart = todayStart;
-    } else {
-      // 🌙 After workday or not a workday
-      nextWorkStart = findNextWorkdayStart(nativeNow, holidays);
-    }
-
-    secondsRemaining = Math.floor((nextWorkStart.getTime() - nativeNow.getTime()) / 1000);
-  }
-  // #endregion
+  secondsRemaining = Math.floor((nextWorkStart.getTime() - nativeNow.getTime()) / 1000);
+} else {
+  // ⏳ During the workday
+  secondsRemaining = workEnd - currentSeconds;
+}
+// #endregion
 
   // #region 📊 Load Record Counts
   let recordCounts = {
