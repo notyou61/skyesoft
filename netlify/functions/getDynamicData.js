@@ -202,7 +202,7 @@ if (intervalLabel === "1") {
   }
 
   try {
-    const deployRes = await fetch("https://skyesoft-ai.netlify.app/.netlify/functions/getDeployStatus");
+    const deployRes = await fetch("/api/getDeployStatus.php");
     if (deployRes.ok) {
       const deployData = await deployRes.json();
       siteVersion     = deployData.siteVersion     || siteVersion;
