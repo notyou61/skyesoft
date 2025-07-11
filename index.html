@@ -301,7 +301,7 @@
     // Scroll to bottom of chat log
     try {
       // Send user message to Netlify Function
-      const response = await fetch("/.netlify/functions/askOpenAI", {
+      const response = await fetch("/api/askOpenAI", {
         // Set request method to POST
         method: "POST",
         // Set request headers
@@ -375,7 +375,7 @@
       entries.push({ role, text });
     });
     // Send chat log to Netlify Function
-    fetch("/.netlify/functions/saveChatLog", {
+    fetch("/api/saveChatLog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ log: entries })

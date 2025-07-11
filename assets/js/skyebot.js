@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     showThinking();
 
     try {
-      const res = await fetch("/.netlify/functions/askOpenAI", {
+      const res = await fetch("/api/askOpenAI", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversation: conversationHistory, prompt })
