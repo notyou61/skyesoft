@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <title>Office Bulletin Board</title>
-<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon">
 
 <style>
     * {
@@ -17,7 +17,7 @@
     body {
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: url('/assets/images/background.jpg') no-repeat center center fixed;
+      background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
       background-size: cover;
       display: flex;
       flex-direction: column;
@@ -332,7 +332,7 @@
 <body>
 <div class="board-section" id="pageHeader" style="display: flex; justify-content: space-between; align-items: center;">
 <div style="display: flex; align-items: center; gap: 16px;">
-<img alt="Christy Signs" src="/assets/images/christyLogo.png" style="max-height: 48px;"/>
+<img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height: 48px;"/>
 <h1 style="font-size: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Office Bulletin
         Board</h1>
 </div>
@@ -352,8 +352,8 @@
 <div class="version">Loading version...</div>
 </div>
 <!--<script src="/assets/js/glbVar.js"></script>-->
-<script src="/assets/js/weatherConfig.js"></script>
-<script src="/assets/js/weather.js"></script>
+<script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
 <!--<script src="/assets/js/workdayTicker.js"></script>-->
 <script>
     // Import variables from weatherConfig.js
@@ -1126,7 +1126,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Console log to indicate script execution
   console.log("🔁 DOM Content Loaded");
   // 🔽 Load the dynamic version from version.json
-  fetch("/assets/data/version.json")
+  fetch("/skyesoft/assets/data/version.json")
     .then(res => res.json())
     .then(data => {
       const versionElement = document.querySelector('.version');
@@ -1146,7 +1146,7 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 <!--<script src="/skyesoft/assets/js/workdayTicker.js"></script> -->
 <!-- 🌐 Global Vars + Clock Ticker -->
-<script src="/assets/js/glbVar.js"></script>
-<script src="/assets/js/workdayTicker.js"></script>
+<script src="/skyesoft/assets/js/glbVar.js"></script>
+<script src="/skyesoft/assets/js/workdayTicker.js"></script>
 </body>
 </html>
