@@ -18,6 +18,26 @@ document.addEventListener("DOMContentLoaded", () => {
     content: "Hello! How can I assist you today?"
   }];
 
+  // 🌐 Pull SSE Snapshot from stream JSON
+  let sseSnapshot  = {};
+  //
+  let streamReady = false; // ✅ Properly declared
+
+  async function fetchStreamData() {
+    try {
+      const res = await fetch("/skyesoft/api/getDynamicData.php");
+      sseSnapshot  = await res.json();
+      streamReady = true;
+    } catch (err) {
+      console.warn("⚠️ Unable to fetch stream data:", err.message);
+      sseSnapshot  = {};
+      streamReady = false;
+    }
+  }
+
+  fetchStreamData();
+  setInterval(fetchStreamData, 5000);
+
   // #region 💬 Chat Display Functions
   const addMessage = (role, text) => {
     const entry = document.createElement("div");
@@ -70,11 +90,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     showThinking();
 
+    // 🛑 Ensure stream data is ready before proceeding
+    if (!sseSnapshot  || !sseSnapshot .timeDateArray) {
+      removeThinking();
+      addMessage("bot", "⏳ Please wait a moment while I load live data…");
+      return;
+    }
+
     try {
-      const res = await fetch("/api/askOpenAI", {
+      const res = await fetch("/skyesoft/api/askOpenAI.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversation: conversationHistory, prompt })
+        body: JSON.stringify({
+          conversation: conversationHistory,
+          prompt,
+          sseSnapshot: sseSnapshot 
+        })
       });
 
       const data = await res.json();
@@ -105,11 +136,30 @@ document.addEventListener("DOMContentLoaded", () => {
   // #region 👋 Initial Message
   addMessage("bot", "Hello! How can I assist you today?");
   // #endregion
+
   // 🔐 Logout utility function
   window.logoutUser = function () {
     console.log("🚪 Logging out user...");
     localStorage.removeItem("userLoggedIn");
     location.reload();
   };
+
+  // #region 📋 Chat Log Summary
+  window.getChatSummary = function () {
+    if (!conversationHistory || conversationHistory.length < 2) {
+      return "📭 No meaningful chat history to summarize yet.";
+    }
+
+    const summary = conversationHistory
+      .map(entry => {
+        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return `${entry.role === "user" ? "👤 You" : "🤖 Skyebot"} [${time}]: ${entry.content}`;
+      })
+      .join("\n");
+
+    console.log("🧾 Chat Summary:\n" + summary);
+    return summary;
+  };
+  // #endregion
 });
 // #endregion
