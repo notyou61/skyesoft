@@ -16,22 +16,25 @@ function formatDurationPadded(seconds) {
 }
 // #endregion
 
-// #region ⏱️ Format Duration with Padding (MM:SS)
+// #region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
 
-  if (h > 0) {
-    return `${h}h ${m}m ${s}s`;
-  }
-  return `${m}m ${s}s`;
+  const dayPart = d > 0 ? `${d}d ` : "";  // No leading zero
+  const hourPart = `${String(h).padStart(2, '0')}h`;
+  const minutePart = `${String(m).padStart(2, '0')}m`;
+  const secondPart = `${String(s).padStart(2, '0')}s`;
+
+  return `${dayPart}${hourPart} ${minutePart} ${secondPart}`.trim();
 }
 // #endregion
 
 // #region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
-  fetch("https://skyesoft-ai.netlify.app/api/getDynamicData")
+  fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
       console.log("🕒 Polled:", data); // 🧪 Debug log
