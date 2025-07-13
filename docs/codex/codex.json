@@ -1,7 +1,7 @@
 {
   "version": {
     "number": "1.0.6",
-    "lastUpdated": "2025-06-29T22:05:10.689Z"
+    "lastUpdated": "2025-07-13T16:21:08"
   },
   "changelog": [
     {
@@ -292,6 +292,195 @@
         "Integrate with order history and permit status"
       ],
       "status": "Placeholder \u2014 detailed specs to be added in next revision"
+    },
+    "glossaryModule": {
+      "title": "\ud83d\udcd8 Skyesoft Codex Glossary",
+      "purpose": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows.",
+      "contents": [
+        "LGBAS \u2014 Let\u2019s Go Back A Step: A reflective tool to pause and reassess logic or flow.",
+        "MTCO \u2014 Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+        "Codex Context: Memory schema loaded by the AI to operate with Skyesoft-specific logic.",
+        "Codex App: Modular UI tool for managing and accessing structured documentation."
+      ],
+      "integration": [
+        "AI Prompt Normalization",
+        "Structured Chat Interpretation",
+        "Codex-based Response Justification"
+      ]
+    },
+    "attendanceSuite": {
+      "title": "\ud83d\udd52 Attendance Suite",
+      "purpose": "Manages employee time tracking, absences, and shift accountability across office, shop, and field roles.",
+      "features": [
+        "Clock-in/out with location tracking",
+        "Real-time absence alerts",
+        "SLA impact calculations based on attendance",
+        "Auto-logging to financial and service modules"
+      ],
+      "workflows": [
+        "Shift Scheduled \u2192 Present or Absent \u2192 Auto-reconciliation",
+        "Flag anomalies \u2192 Route to Escalation Tree",
+        "Sync with Financial and Permit modules for SLA impact"
+      ],
+      "integrations": [
+        "Time Interval Standards",
+        "Escalation Trees",
+        "Financial Control Suite",
+        "Permit Management Suite"
+      ]
+    },
+    "managementEscalationTrees": {
+      "title": "\ud83d\udcc8 Management Escalation Trees (MET)",
+      "purpose": "Defines escalation logic for overdue tasks, permit delays, and automation exceptions \u2014 ensuring issues are addressed quickly and with accountability.",
+      "triggers": [
+        "Time threshold breaches",
+        "Unacknowledged task statuses",
+        "Permit or attendance anomalies",
+        "Validation failures"
+      ],
+      "alertTypes": [
+        "Direct message",
+        "Tiered escalation messages",
+        "Broadcast alerts"
+      ],
+      "rules": {
+        "priorityLevels": [
+          "Low",
+          "Normal",
+          "High",
+          "Critical"
+        ],
+        "repeatInterval": "Customizable per rule",
+        "sensitivityControl": "Optional encryption and override logs"
+      },
+      "logging": [
+        "Full SLA compliance trail",
+        "Escalation timestamps and acknowledgments",
+        "Audit resolution path"
+      ],
+      "integrations": [
+        "Real-Time SSE",
+        "Core Database (roles/responsibilities)",
+        "Attendance Suite",
+        "Permit System",
+        "Order Tracker"
+      ]
+    },
+    "coreDatabaseStructure": {
+    "title": "🧬 Core Database Structure",
+    "purpose": "Serves as the centralized schema for all Skyesoft operations, enforcing consistency across CRUD operations, AI logic, and system automations.",
+    "architecture": {
+      "staticTables": [
+        "actionTypesArray",
+        "applicationCorrectionTypes",
+        "applicationFeeTypes",
+        "applicationStatus"
+      ],
+      "updatableTables": [
+        "entities",
+        "locations",
+        "contacts",
+        "orders",
+        "orderNotes",
+        "applications",
+        "applicationNotes",
+        "applicationFees"
+      ],
+      "relationships": {
+        "Entity ➝ Location": "One-to-many",
+        "Location ➝ Contact": "One-to-many",
+        "Contact ➝ Order": "One-to-many",
+        "Order ➝ Application": "One-to-many",
+        "Application ➝ ApplicationFee": "One-to-many",
+        "Application ➝ ApplicationNote": "One-to-many"
+      }
+    },
+    "keyFunctions": [
+      "Supports dynamic AI parsing and auto-matching to prevent duplicates",
+      "All changes routed through `actionTypesArray` for auditability",
+      "Enables cascading logic (e.g., if an Entity is deleted, all child records are flagged or archived)",
+      "Accessible via modal forms and One-Line Task engine"
+    ],
+    "integrations": [
+      "Permit Management Suite",
+      "Financial Control Suite",
+      "Attendance Suite",
+      "Skyebot Contact Parser",
+      "Mobile-First Modals"
+    ],
+    "status": "🟢 Live and actively used across all modules"
+  }
+  },
+  "meta": {
+    "title": "Skyesoft Codex",
+    "version": "2025.07",
+    "lastUpdated": "2025-07-13",
+    "description": "All-in-one source of truth for Skyebot and the Skyesoft platform."
+  },
+  "constitution": {
+    "name": "Skyesoft Constitution",
+    "description": "Defines the logical order of truth and behavioral rules Skyebot uses to interact with humans and data.",
+    "sourcesOfTruth": [
+      "SSE Stream (dynamic operational context)",
+      "skyesoft-data.json (structured history + contact/entity DB)",
+      "codex.json (static knowledge + specs)",
+      "saveChatLog.php (chat memory archive)"
+    ],
+    "aiBehavior": {
+      "rules": [
+        "Do not claim to lack real-time access \u2014 refer to SSE.",
+        "Always normalize names and phone formats before inserting contacts.",
+        "Use codex tags and glossary to answer specialized questions.",
+        "Infer user meaning from context (not hardcoded logic)."
+      ]
     }
+  },
+  "ragExplanation": {
+    "title": "Retrieval-Augmented Generation (RAG)",
+    "summary": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware.",
+    "sources": [
+      "SSE Stream (dynamic operational context)",
+      "skyesoft-data.json (structured history + contact/entity DB)",
+      "codex.json (static knowledge + specs)",
+      "saveChatLog.php (chat memory archive)"
+    ],
+    "guidelines": [
+      "Do not claim to lack real-time access \u2014 refer to SSE.",
+      "Always normalize names and phone formats before inserting contacts.",
+      "Use codex tags and glossary to answer specialized questions.",
+      "Infer user meaning from context (not hardcoded logic)."
+    ]
+  },
+  "includedDocuments": {
+    "summary": "The following 13 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
+    "documents": [
+      "glossary.md",
+      "attendance-suite.md",
+      "core-database-structure.md",
+      "file-management.md",
+      "financial-control-suite.md",
+      "management-escalation-trees.md",
+      "mobile-first-modals.md",
+      "office-bulletins.md",
+      "one-line-task.md",
+      "permit-management-suite.md",
+      "real-time-sse.md",
+      "skyebot-contact-parser.md",
+      "time-interval-standards.md"
+    ]
+  },
+  "shared": {
+    "sourcesOfTruth": [
+      "SSE Stream (dynamic operational context)",
+      "skyesoft-data.json (structured history + contact/entity DB)",
+      "codex.json (static knowledge + specs)",
+      "saveChatLog.php (chat memory archive)"
+    ],
+    "aiBehaviorRules": [
+      "Do not claim to lack real-time access \u2014 refer to SSE.",
+      "Always normalize names and phone formats before inserting contacts.",
+      "Use codex tags and glossary to answer specialized questions.",
+      "Infer user meaning from context (not hardcoded logic)."
+    ]
   }
 }
