@@ -2,4 +2,5 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/notyou64/public_html/skyesoft
     - /bin/rsync -av --delete --exclude='.git' --exclude='.cpanel.yml' ./ $DEPLOYPATH
-
+    - find $DEPLOYPATH -type d -exec chmod 755 {} \;
+    - find $DEPLOYPATH -type f -exec chmod 644 {} \;
