@@ -1,20 +1,25 @@
 <?php
 // 📁 File: api/getDynamicData.php
+
+#region ➤ Headers & Timezone
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
-
 date_default_timezone_set("America/Phoenix");
+#endregion
 
-// Paths
+#region ➤ File Paths
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
 $versionPath = "../../assets/data/version.json";
+#endregion
 
-// Workday constants
+#region ➤ Workday Constants
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
+#endregion
 
+#region ➤ Utility Functions
 function timeStringToSeconds($timeStr) {
     list($h, $m) = explode(":", $timeStr);
     return $h * 3600 + $m * 60;
@@ -39,8 +44,9 @@ function findNextWorkdayStart($startDate, $holidays) {
     }
     return strtotime(date("Y-m-d", $date) . " " . WORKDAY_START);
 }
+#endregion
 
-// 🌦️ Weather caching – fake cache for now (static fallback)
+#region ➤ Weather (static fallback for now)
 $weatherData = array(
     "temp" => null,
     "icon" => "❓",
@@ -67,15 +73,17 @@ if ($weatherJson) {
         "description" => $w['weather'][0]['description']
     );
 }
+#endregion
 
-// 📅 Load holidays
+#region ➤ Load Holidays
 $holidays = array();
 if (file_exists($holidaysPath)) {
     $holidaysData = json_decode(file_get_contents($holidaysPath), true);
     $holidays = $holidaysData['holidays'];
 }
+#endregion
 
-// ⏱️ Time info
+#region ➤ Time Info & Intervals
 $now = time();
 $currentDate = date("Y-m-d", $now);
 $currentTime = date("h:i:s A", $now);
@@ -88,9 +96,7 @@ $workEnd = timeStringToSeconds(WORKDAY_END);
 $isHoliday = isHoliday($currentDate, $holidays);
 $isWorkday = isWorkday($currentDate, $holidays);
 
-// Assign Interval Label
 $intervalLabel = ($isWorkday && $currentSeconds >= $workStart && $currentSeconds < $workEnd) ? "0" : "1";
-
 $dayType = (!$isWorkday ? ($isHoliday ? "2" : "1") : "0");
 
 if ($intervalLabel === "1") {
@@ -103,8 +109,9 @@ if ($intervalLabel === "1") {
 } else {
     $secondsRemaining = $workEnd - $currentSeconds;
 }
+#endregion
 
-// 📊 Record counts
+#region ➤ Record Counts
 $recordCounts = array(
     "actions" => 0,
     "entities" => 0,
@@ -124,8 +131,9 @@ if (file_exists($dataPath)) {
         }
     }
 }
+#endregion
 
-// 🛰️ Deployment metadata
+#region ➤ Deployment Metadata
 $version = array(
     "cronCount" => 0,
     "aiQueryCount" => 0,
@@ -140,8 +148,9 @@ if (file_exists($versionPath)) {
     $verData = json_decode(file_get_contents($versionPath), true);
     $version = array_merge($version, $verData);
 }
+#endregion
 
-// ✅ Response
+#region ➤ Final Output
 echo json_encode(array(
     "timeDateArray" => array(
         "currentUnixTime" => $currentUnixTime,
@@ -185,4 +194,4 @@ echo json_encode(array(
         "uptimeSeconds" => null
     )
 ));
-?>
+#endregion
