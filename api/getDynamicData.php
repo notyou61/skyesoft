@@ -1,25 +1,43 @@
 <?php
 // 📁 File: api/getDynamicData.php
 
-#region ➤ Headers & Timezone
+#region Headers and Timezone
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
+
 date_default_timezone_set("America/Phoenix");
 #endregion
 
-#region ➤ File Paths
+#region Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
 $versionPath = "../../assets/data/version.json";
+$codexPath = "../../assets/data/codex.json";
+$chatLogPath = "../../assets/data/chatLog.json";
+$weatherPath = "../../assets/data/weatherCache.json";
+
+const WORKDAY_START = '07:30';
+const WORKDAY_END = '15:30';
 #endregion
 
-#region ➤ Workday Constants
-define('WORKDAY_START', '07:30');
-define('WORKDAY_END', '15:30');
-#endregion
+// #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
+$yearTotalDays = (date("L", $now) ? 366 : 365);
+$yearDayNumber = intval(date("z", $now)) + 1;
+$yearDaysRemaining = $yearTotalDays - $yearDayNumber;
+$monthNumber = intval(date("n", $now));
+$weekdayNumber = intval(date("w", $now));
+$dayNumber = intval(date("j", $now));
+$currentHour = intval(date("G", $now));
+$timeOfDayDesc = ($currentHour < 12) ? "morning" : (($currentHour < 18) ? "afternoon" : "evening");
+$timeZone = date_default_timezone_get();
+$dt = new DateTime("now", new DateTimeZone($timeZone));
+$utcOffset = intval($dt->format('Z')) / 3600;
+$currentDayStartUnix = strtotime("today", $now);
+$currentDayEndUnix = strtotime("tomorrow", $now) - 1;
+// #endregion
 
-#region ➤ Utility Functions
+#region Utility Functions
 function timeStringToSeconds($timeStr) {
     list($h, $m) = explode(":", $timeStr);
     return $h * 3600 + $m * 60;
@@ -46,44 +64,15 @@ function findNextWorkdayStart($startDate, $holidays) {
 }
 #endregion
 
-#region ➤ Weather (static fallback for now)
-$weatherData = array(
-    "temp" => null,
-    "icon" => "❓",
-    "description" => "Loading..."
-);
-
-$weatherApiKey = getenv("WEATHER_API_KEY");
-$weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=Phoenix,US&appid=$weatherApiKey&units=imperial";
-$weatherJson = @file_get_contents($weatherUrl);
-if ($weatherJson) {
-    $w = json_decode($weatherJson, true);
-    $desc = strtolower($w['weather'][0]['main']);
-    $icon = "❓";
-    if (strpos($desc, "clear") !== false) $icon = "☀️";
-    elseif (strpos($desc, "cloud") !== false) $icon = "☁️";
-    elseif (strpos($desc, "rain") !== false) $icon = "🌧️";
-    elseif (strpos($desc, "storm") !== false) $icon = "⛈️";
-    elseif (strpos($desc, "snow") !== false) $icon = "❄️";
-    elseif (strpos($desc, "fog") !== false || strpos($desc, "mist") !== false) $icon = "🌫️";
-
-    $weatherData = array(
-        "temp" => round($w['main']['temp']),
-        "icon" => $icon,
-        "description" => $w['weather'][0]['description']
-    );
-}
-#endregion
-
-#region ➤ Load Holidays
-$holidays = array();
+#region Load Data and Holidays
+$holidays = [];
 if (file_exists($holidaysPath)) {
     $holidaysData = json_decode(file_get_contents($holidaysPath), true);
-    $holidays = $holidaysData['holidays'];
+    $holidays = $holidaysData['holidays'] ?? [];
 }
 #endregion
 
-#region ➤ Time Info & Intervals
+#region Time Calculations
 $now = time();
 $currentDate = date("Y-m-d", $now);
 $currentTime = date("h:i:s A", $now);
@@ -100,41 +89,37 @@ $intervalLabel = ($isWorkday && $currentSeconds >= $workStart && $currentSeconds
 $dayType = (!$isWorkday ? ($isHoliday ? "2" : "1") : "0");
 
 if ($intervalLabel === "1") {
-    if ($isWorkday && $currentSeconds < $workStart) {
-        $nextStart = strtotime($currentDate . " " . WORKDAY_START);
-    } else {
-        $nextStart = findNextWorkdayStart($currentDate, $holidays);
-    }
+    $nextStart = ($isWorkday && $currentSeconds < $workStart)
+        ? strtotime($currentDate . " " . WORKDAY_START)
+        : findNextWorkdayStart($currentDate, $holidays);
     $secondsRemaining = $nextStart - $now;
 } else {
     $secondsRemaining = $workEnd - $currentSeconds;
 }
 #endregion
 
-#region ➤ Record Counts
-$recordCounts = array(
-    "actions" => 0,
-    "entities" => 0,
-    "locations" => 0,
-    "contacts" => 0,
-    "orders" => 0,
-    "permits" => 0,
-    "notes" => 0,
-    "tasks" => 0
-);
-
-if (file_exists($dataPath)) {
-    $data = json_decode(file_get_contents($dataPath), true);
-    foreach ($recordCounts as $key => $val) {
-        if (isset($data[$key])) {
-            $recordCounts[$key] = count($data[$key]);
-        }
+#region Weather
+$weatherData = ["temp" => null, "icon" => "❓", "description" => "Loading...", "lastUpdatedUnix" => null];
+if (file_exists($weatherPath)) {
+    $weatherCache = json_decode(file_get_contents($weatherPath), true);
+    if ($weatherCache) {
+        $weatherData = $weatherCache;
     }
 }
 #endregion
 
-#region ➤ Deployment Metadata
-$version = array(
+#region Record Counts
+$recordCounts = ["actions"=>0,"entities"=>0,"locations"=>0,"contacts"=>0,"orders"=>0,"permits"=>0,"notes"=>0,"tasks"=>0];
+if (file_exists($dataPath)) {
+    $data = json_decode(file_get_contents($dataPath), true);
+    foreach ($recordCounts as $key => $val) {
+        if (isset($data[$key])) $recordCounts[$key] = count($data[$key]);
+    }
+}
+#endregion
+
+#region Version Metadata
+$version = [
     "cronCount" => 0,
     "aiQueryCount" => 0,
     "siteVersion" => "unknown",
@@ -142,47 +127,70 @@ $version = array(
     "lastDeployTime" => null,
     "deployState" => "unknown",
     "deployIsLive" => false
-);
-
+];
 if (file_exists($versionPath)) {
     $verData = json_decode(file_get_contents($versionPath), true);
     $version = array_merge($version, $verData);
 }
 #endregion
 
-#region ➤ Final Output
-echo json_encode(array(
+#region Response
+$response = [
     "timeDateArray" => array(
         "currentUnixTime" => $currentUnixTime,
         "currentLocalTime" => $currentTime,
-        "currentDate" => $currentDate
+        "currentDate" => $currentDate,
+        "currentYearTotalDays" => $yearTotalDays,
+        "currentYearDayNumber" => $yearDayNumber,
+        "currentYearDaysRemaining" => $yearDaysRemaining,
+        "currentMonthNumber" => strval($monthNumber),
+        "currentWeekdayNumber" => strval($weekdayNumber),
+        "currentDayNumber" => strval($dayNumber),
+        "currentHour" => strval($currentHour),
+        "timeOfDayDescription" => $timeOfDayDesc,
+        "timeZone" => $timeZone,
+        "UTCOffset" => $utcOffset,
+        "daylightStartEndArray" => array(
+            "daylightStart" => "05:27:00",  // 🔧 Replace with real sunrise later
+            "daylightEnd" => "19:42:00"
+        ),
+        "defaultLatitudeLongitudeArray" => array(
+            "defaultLatitude" => "33.448376",
+            "defaultLongitude" => "-112.074036",
+            "solarZenithAngle" => 90.83,
+            "defaultUTCOffset" => $utcOffset
+        ),
+        "currentDayBeginningEndingUnixTimeArray" => array(
+            "currentDayStartUnixTime" => $currentDayStartUnix,
+            "currentDayEndUnixTime" => $currentDayEndUnix
+        )
     ),
-    "intervalsArray" => array(
+    "intervalsArray" => [
         "currentDaySecondsRemaining" => $secondsRemaining,
         "intervalLabel" => $intervalLabel,
         "dayType" => $dayType,
-        "workdayIntervals" => array(
+        "workdayIntervals" => [
             "start" => WORKDAY_START,
             "end" => WORKDAY_END
-        )
-    ),
+        ]
+    ],
     "recordCounts" => $recordCounts,
     "weatherData" => $weatherData,
-    "kpiData" => array(
+    "kpiData" => [
         "contacts" => 36,
         "orders" => 22,
         "approvals" => 3
-    ),
-    "uiHints" => array(
-        "tips" => array(
+    ],
+    "uiHints" => [
+        "tips" => [
             "Measure twice, cut once.",
             "Stay positive, work hard, make it happen.",
             "Quality is never an accident.",
             "Efficiency is doing better what is already being done.",
             "Every day is a fresh start."
-        )
-    ),
-    "siteMeta" => array(
+        ]
+    ],
+    "siteMeta" => [
         "siteVersion" => $version['siteVersion'],
         "lastDeployNote" => $version['lastDeployNote'],
         "lastDeployTime" => $version['lastDeployTime'],
@@ -192,6 +200,10 @@ echo json_encode(array(
         "streamCount" => 23,
         "aiQueryCount" => $version['aiQueryCount'],
         "uptimeSeconds" => null
-    )
-));
+    ]
+];
+#endregion
+
+#region Output
+echo json_encode($response);
 #endregion
