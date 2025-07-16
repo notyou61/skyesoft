@@ -1,19 +1,51 @@
 <?php
 // 📁 File: api/getDynamicData.php
 
-#region 🌱 Load .env Variables (PHP 5.6 Compatible)
-$envPath = __DIR__ . '/../../.env';
+#region 🔧 Init and Headers
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+header('Access-Control-Allow-Origin: *');
+header('Content-Type: application/json');
+#endregion
+
+#region 🔐 Load Environment Variables
+$envPath = 'C:/Users/steve/Documents/skyesoft/.env';
 if (file_exists($envPath)) {
-    $envVars = parse_ini_file($envPath, false, INI_SCANNER_RAW);
-    if ($envVars !== false) {
-        foreach ($envVars as $key => $value) {
-            putenv("$key=$value");
-        }
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        putenv(trim($line));
     }
 }
 #endregion
 
-#region Headers and Timezone 🌐
+#region 🌦️ Fetch Weather Data
+$weatherApiKey = getenv("WEATHER_API_KEY");
+$weatherLocation = "Phoenix,US";
+
+if (!$weatherApiKey) {
+    $weatherData = [
+        "temp" => null,
+        "icon" => "❓",
+        "description" => "Missing API key",
+        "lastUpdatedUnix" => null
+    ];
+} else {
+    $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
+    $weatherJson = @file_get_contents($weatherUrl);
+    $weatherParsed = json_decode($weatherJson, true);
+
+    $weatherData = [
+        "temp" => isset($weatherParsed['main']['temp']) ? round($weatherParsed['main']['temp']) : null,
+        "icon" => isset($weatherParsed['weather'][0]['icon']) ? $weatherParsed['weather'][0]['icon'] : "❓",
+        "description" => isset($weatherParsed['weather'][0]['description']) ? ucfirst($weatherParsed['weather'][0]['description']) : "Unavailable",
+        "lastUpdatedUnix" => time()
+    ];
+}
+#endregion
+
+#region 🌐 Headers and Timezone 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
@@ -122,15 +154,6 @@ $weatherData = array(
     "description" => "Loading...",
     "lastUpdatedUnix" => null
 );
-// 🔍 DEBUG: Test if API key is being picked up
-$testWeatherKey = getenv("WEATHER_API_KEY");
-if (!$testWeatherKey) {
-    echo json_encode(["error" => "❌ WEATHER_API_KEY not found in environment."]);
-    exit;
-} else {
-    echo json_encode(["success" => "✅ WEATHER_API_KEY loaded", "value" => $testWeatherKey]);
-    exit;
-}
 // Attempt to fetch weather data
 if ($weatherApiKey) {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($weatherLocation) . "&appid={$weatherApiKey}&units=imperial";
