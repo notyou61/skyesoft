@@ -1,15 +1,29 @@
 <?php
 // 📁 File: api/getDynamicData.php
 
-#region Headers and Timezone
+#region 🌱 Load .env Variables (PHP 5.6 Compatible)
+$envPath = __DIR__ . '/../../.env';
+if (file_exists($envPath)) {
+    $envVars = parse_ini_file($envPath, false, INI_SCANNER_RAW);
+    if ($envVars !== false) {
+        foreach ($envVars as $key => $value) {
+            putenv("$key=$value");
+        }
+    }
+}
+#endregion
+
+#region Headers and Timezone 🌐
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
-
 date_default_timezone_set("America/Phoenix");
+
+// ✅ Declare current time reference
+$now = time();
 #endregion
 
-#region Paths and Constants
+#region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
 $versionPath = "../../assets/data/version.json";
@@ -21,7 +35,7 @@ const WORKDAY_START = '07:30';
 const WORKDAY_END = '15:30';
 #endregion
 
-// #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
+#region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
 $yearTotalDays = (date("L", $now) ? 366 : 365);
 $yearDayNumber = intval(date("z", $now)) + 1;
 $yearDaysRemaining = $yearTotalDays - $yearDayNumber;
@@ -35,9 +49,9 @@ $dt = new DateTime("now", new DateTimeZone($timeZone));
 $utcOffset = intval($dt->format('Z')) / 3600;
 $currentDayStartUnix = strtotime("today", $now);
 $currentDayEndUnix = strtotime("tomorrow", $now) - 1;
-// #endregion
+#endregion
 
-#region Utility Functions
+#region 🔧 Utility Functions
 function timeStringToSeconds($timeStr) {
     list($h, $m) = explode(":", $timeStr);
     return $h * 3600 + $m * 60;
@@ -64,7 +78,7 @@ function findNextWorkdayStart($startDate, $holidays) {
 }
 #endregion
 
-#region Load Data and Holidays
+#region 📅 Load Data and Holidays
 $holidays = [];
 if (file_exists($holidaysPath)) {
     $holidaysData = json_decode(file_get_contents($holidaysPath), true);
@@ -72,7 +86,7 @@ if (file_exists($holidaysPath)) {
 }
 #endregion
 
-#region Time Calculations
+#region ⏳ Time Calculations
 $now = time();
 $currentDate = date("Y-m-d", $now);
 $currentTime = date("h:i:s A", $now);
@@ -98,17 +112,50 @@ if ($intervalLabel === "1") {
 }
 #endregion
 
-#region Weather
-$weatherData = ["temp" => null, "icon" => "❓", "description" => "Loading...", "lastUpdatedUnix" => null];
-if (file_exists($weatherPath)) {
-    $weatherCache = json_decode(file_get_contents($weatherPath), true);
-    if ($weatherCache) {
-        $weatherData = $weatherCache;
+#region ☁️ Fetch Weather Data (PHP 5.6 Compatible)
+// 🔐 Uses OpenWeatherMap API with hardcoded location "Phoenix,US"
+$weatherApiKey = getenv("WEATHER_API_KEY");
+$weatherLocation = "Phoenix,US";  // 👈 Hardcoded location
+$weatherData = array(
+    "temp" => null,
+    "icon" => "❓",
+    "description" => "Loading...",
+    "lastUpdatedUnix" => null
+);
+// 🔍 DEBUG: Test if API key is being picked up
+$testWeatherKey = getenv("WEATHER_API_KEY");
+if (!$testWeatherKey) {
+    echo json_encode(["error" => "❌ WEATHER_API_KEY not found in environment."]);
+    exit;
+} else {
+    echo json_encode(["success" => "✅ WEATHER_API_KEY loaded", "value" => $testWeatherKey]);
+    exit;
+}
+// Attempt to fetch weather data
+if ($weatherApiKey) {
+    $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($weatherLocation) . "&appid={$weatherApiKey}&units=imperial";
+    $weatherJson = @file_get_contents($weatherUrl);
+    if ($weatherJson !== false) {
+        $weather = json_decode($weatherJson, true);
+        if (isset($weather['main']['temp']) && isset($weather['weather'][0]['description'])) {
+            $weatherData = array(
+                "temp" => $weather['main']['temp'],
+                "icon" => $weather['weather'][0]['icon'],
+                "description" => $weather['weather'][0]['description'],
+                "lastUpdatedUnix" => time()
+            );
+        } else {
+            $weatherData['description'] = "Incomplete data";
+        }
+    } else {
+        $weatherData['description'] = "API call failed";
     }
+} else {
+    $weatherData['description'] = "Missing API key";
 }
 #endregion
 
-#region Record Counts
+#region 📊 Record Counts
 $recordCounts = ["actions"=>0,"entities"=>0,"locations"=>0,"contacts"=>0,"orders"=>0,"permits"=>0,"notes"=>0,"tasks"=>0];
 if (file_exists($dataPath)) {
     $data = json_decode(file_get_contents($dataPath), true);
@@ -118,7 +165,7 @@ if (file_exists($dataPath)) {
 }
 #endregion
 
-#region Version Metadata
+#region 🛰️ Version Metadata
 $version = [
     "cronCount" => 0,
     "aiQueryCount" => 0,
@@ -134,7 +181,7 @@ if (file_exists($versionPath)) {
 }
 #endregion
 
-#region Response
+#region 📤 Response
 $response = [
     "timeDateArray" => array(
         "currentUnixTime" => $currentUnixTime,
@@ -204,6 +251,6 @@ $response = [
 ];
 #endregion
 
-#region Output
+#region 🟢 Output
 echo json_encode($response);
 #endregion
