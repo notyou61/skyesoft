@@ -147,26 +147,25 @@ if ($intervalLabel === "1") {
 #region ☁️ Fetch Weather Data (PHP 5.6 Compatible)
 // 🔐 Uses OpenWeatherMap API with hardcoded location "Phoenix,US"
 $weatherApiKey = getenv("WEATHER_API_KEY");
-$weatherLocation = "Phoenix,US";  // 👈 Hardcoded location
+$weatherLocation = "Phoenix,US";
 $weatherData = array(
     "temp" => null,
     "icon" => "❓",
     "description" => "Loading...",
     "lastUpdatedUnix" => null
 );
-// Attempt to fetch weather data
+
 if ($weatherApiKey) {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($weatherLocation) . "&appid={$weatherApiKey}&units=imperial";
     $weatherJson = @file_get_contents($weatherUrl);
+
     if ($weatherJson !== false) {
-        $weather = json_decode($weatherJson, true);
-        if (isset($weather['main']['temp']) && isset($weather['weather'][0]['description'])) {
-            $weatherData = array(
-                "temp" => $weather['main']['temp'],
-                "icon" => $weather['weather'][0]['icon'],
-                "description" => $weather['weather'][0]['description'],
-                "lastUpdatedUnix" => time()
-            );
+        $parsed = json_decode($weatherJson, true);
+        if (!empty($parsed['main']['temp']) && !empty($parsed['weather'][0]['icon'])) {
+            $weatherData['temp'] = round($parsed['main']['temp'], 2);
+            $weatherData['icon'] = $parsed['weather'][0]['icon'];
+            $weatherData['description'] = ucfirst($parsed['weather'][0]['description']);
+            $weatherData['lastUpdatedUnix'] = time();
         } else {
             $weatherData['description'] = "Incomplete data";
         }
