@@ -118,7 +118,7 @@ function findNextWorkdayStart($startDate, $holidays) {
 $holidays = [];
 if (file_exists($holidaysPath)) {
     $holidaysData = json_decode(file_get_contents($holidaysPath), true);
-    $holidays = $holidaysData['holidays'] ?? [];
+    $holidays = isset($holidaysData['holidays']) ? $holidaysData['holidays'] : [];
 }
 #endregion
 
