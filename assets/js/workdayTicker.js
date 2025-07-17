@@ -23,6 +23,11 @@ setInterval(() => {
     .then(data => {
       // #region 🧪 Debug Log
       console.log("🕒 Polled:", data);
+      console.log("🌡️ Weather Snapshot:", {
+        temp: data.weatherData?.temp,
+        description: data.weatherData?.description,
+        icon: data.weatherData?.icon
+      });
       // #endregion
 
       // #region ⏰ Update Time Display
