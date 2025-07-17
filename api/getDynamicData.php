@@ -10,9 +10,9 @@ header('Content-Type: application/json');
 #endregion
 
 #region 🔐 Load Environment Variables
-$envPath = $_SERVER['HOME'] . '/secure/.env';
-// File Exists Check
-if (file_exists($envPath)) {
+$envPath = realpath(__DIR__ . '/../../../secure/.env');
+// Check if the .env file exists
+if ($envPath && file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
