@@ -26,8 +26,25 @@ if ($envPath && file_exists($envPath)) {
 #endregion
 
 #region 🌦️ Fetch Weather Data
-$weatherApiKey = getenv("WEATHER_API_KEY");
+
+// Load values into $env array from previously parsed $lines
+$env = [];
+foreach ($lines as $line) {
+    if (strpos(trim($line), '#') === 0) continue;
+    list($name, $value) = explode('=', $line, 2);
+    $env[trim($name)] = trim($value);
+}
+
+// Use the parsed env variable directly
+$weatherApiKey = $env['WEATHER_API_KEY'] ?? null;
+
+// Optional debug log
+error_log("🔑 WEATHER_API_KEY is: " . $weatherApiKey);
+
+// Static or dynamic location
 $weatherLocation = "Phoenix,US";
+
+// Initialize fallback
 $weatherData = [
     "temp" => null,
     "icon" => "❓",
@@ -41,15 +58,14 @@ if (!$weatherApiKey) {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
     error_log("Weather API URL: " . $weatherUrl);
 
-    // Try file_get_contents first
     $weatherJson = @file_get_contents($weatherUrl);
 
-    // Fallback to cURL if file_get_contents fails
+    // Fallback to cURL if needed
     if ($weatherJson === false) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $weatherUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // short timeout for performance
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         $weatherJson = curl_exec($ch);
         $curlError = curl_error($ch);
         curl_close($ch);
@@ -60,14 +76,15 @@ if (!$weatherApiKey) {
         }
     }
 
+    // Parse response
     if ($weatherJson !== false) {
         $weatherParsed = json_decode($weatherJson, true);
 
         if (isset($weatherParsed['main']['temp'])) {
             $weatherData = [
                 "temp" => round($weatherParsed['main']['temp']),
-                "icon" => isset($weatherParsed['weather'][0]['icon']) ? $weatherParsed['weather'][0]['icon'] : "❓",
-                "description" => isset($weatherParsed['weather'][0]['description']) ? ucfirst($weatherParsed['weather'][0]['description']) : "Unavailable",
+                "icon" => $weatherParsed['weather'][0]['icon'] ?? "❓",
+                "description" => ucfirst($weatherParsed['weather'][0]['description'] ?? "Unavailable"),
                 "lastUpdatedUnix" => time()
             ];
         } else {
@@ -77,7 +94,6 @@ if (!$weatherApiKey) {
     }
 }
 #endregion
-
 
 #region 🌐 Headers and Timezone 
 header("Access-Control-Allow-Origin: *");
