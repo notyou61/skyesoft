@@ -36,14 +36,11 @@ foreach ($lines as $line) {
 }
 
 // Use the parsed env variable directly
-$weatherApiKey = $env['WEATHER_API_KEY'] ?? null;
-
+$weatherApiKey = isset($env['WEATHER_API_KEY']) ? $env['WEATHER_API_KEY'] : null;
 // Optional debug log
 error_log("🔑 WEATHER_API_KEY is: " . $weatherApiKey);
-
 // Static or dynamic location
 $weatherLocation = "Phoenix,US";
-
 // Initialize fallback
 $weatherData = [
     "temp" => null,
