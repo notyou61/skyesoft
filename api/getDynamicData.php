@@ -6,7 +6,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
+date_default_timezone_set("America/Phoenix");
+
+// ✅ Declare current time reference
+$now = time();
 #endregion
 
 #region 🔐 Load Environment Variables
@@ -21,7 +26,7 @@ if ($envPath && file_exists($envPath)) {
         $env[trim($name)] = trim($value);
     }
 } else {
-    echo json_encode(array("error" => "❌ .env file not found at $envPath"));
+    echo json_encode(array("error" => "Configuration error: .env file not found"));
     exit;
 }
 #endregion
@@ -38,6 +43,7 @@ $weatherData = array(
 
 if (!$weatherApiKey) {
     $weatherData["description"] = "Missing API key";
+    error_log("❌ Missing WEATHER_API_KEY in .env");
 } else {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
     error_log("🌐 Weather API URL: " . $weatherUrl);
@@ -71,21 +77,6 @@ if (!$weatherApiKey) {
 }
 #endregion
 
-#region 🔁 Output JSON
-header('Content-Type: application/json');
-echo json_encode(array("weatherData" => $weatherData));
-#endregion
-
-#region 🌐 Headers and Timezone 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json");
-date_default_timezone_set("America/Phoenix");
-
-// ✅ Declare current time reference
-$now = time();
-#endregion
-
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
@@ -94,8 +85,8 @@ $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
 
-const WORKDAY_START = '07:30';
-const WORKDAY_END = '15:30';
+define('WORKDAY_START', '07:30');
+define('WORKDAY_END', '15:30');
 #endregion
 
 #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
@@ -142,10 +133,10 @@ function findNextWorkdayStart($startDate, $holidays) {
 #endregion
 
 #region 📅 Load Data and Holidays
-$holidays = [];
+$holidays = array();
 if (file_exists($holidaysPath)) {
     $holidaysData = json_decode(file_get_contents($holidaysPath), true);
-    $holidays = isset($holidaysData['holidays']) ? $holidaysData['holidays'] : [];
+    $holidays = isset($holidaysData['holidays']) ? $holidaysData['holidays'] : array();
 }
 #endregion
 
@@ -175,41 +166,8 @@ if ($intervalLabel === "1") {
 }
 #endregion
 
-#region ☁️ Fetch Weather Data (PHP 5.6 Compatible)
-// 🔐 Uses OpenWeatherMap API with hardcoded location "Phoenix,US"
-$weatherApiKey = getenv("WEATHER_API_KEY");
-$weatherLocation = "Phoenix,US";
-$weatherData = array(
-    "temp" => null,
-    "icon" => "❓",
-    "description" => "Loading...",
-    "lastUpdatedUnix" => null
-);
-
-if ($weatherApiKey) {
-    $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($weatherLocation) . "&appid={$weatherApiKey}&units=imperial";
-    $weatherJson = @file_get_contents($weatherUrl);
-
-    if ($weatherJson !== false) {
-        $parsed = json_decode($weatherJson, true);
-        if (!empty($parsed['main']['temp']) && !empty($parsed['weather'][0]['icon'])) {
-            $weatherData['temp'] = round($parsed['main']['temp'], 2);
-            $weatherData['icon'] = $parsed['weather'][0]['icon'];
-            $weatherData['description'] = ucfirst($parsed['weather'][0]['description']);
-            $weatherData['lastUpdatedUnix'] = time();
-        } else {
-            $weatherData['description'] = "Incomplete data";
-        }
-    } else {
-        $weatherData['description'] = "API call failed";
-    }
-} else {
-    $weatherData['description'] = "Missing API key";
-}
-#endregion
-
 #region 📊 Record Counts
-$recordCounts = ["actions"=>0,"entities"=>0,"locations"=>0,"contacts"=>0,"orders"=>0,"permits"=>0,"notes"=>0,"tasks"=>0];
+$recordCounts = array("actions"=>0, "entities"=>0, "locations"=>0, "contacts"=>0, "orders"=>0, "permits"=>0, "notes"=>0, "tasks"=>0);
 if (file_exists($dataPath)) {
     $data = json_decode(file_get_contents($dataPath), true);
     foreach ($recordCounts as $key => $val) {
@@ -219,7 +177,7 @@ if (file_exists($dataPath)) {
 #endregion
 
 #region 🛰️ Version Metadata
-$version = [
+$version = array(
     "cronCount" => 0,
     "aiQueryCount" => 0,
     "siteVersion" => "unknown",
@@ -227,7 +185,7 @@ $version = [
     "lastDeployTime" => null,
     "deployState" => "unknown",
     "deployIsLive" => false
-];
+);
 if (file_exists($versionPath)) {
     $verData = json_decode(file_get_contents($versionPath), true);
     $version = array_merge($version, $verData);
@@ -235,7 +193,7 @@ if (file_exists($versionPath)) {
 #endregion
 
 #region 📤 Response
-$response = [
+$response = array(
     "timeDateArray" => array(
         "currentUnixTime" => $currentUnixTime,
         "currentLocalTime" => $currentTime,
@@ -265,32 +223,32 @@ $response = [
             "currentDayEndUnixTime" => $currentDayEndUnix
         )
     ),
-    "intervalsArray" => [
+    "intervalsArray" => array(
         "currentDaySecondsRemaining" => $secondsRemaining,
         "intervalLabel" => $intervalLabel,
         "dayType" => $dayType,
-        "workdayIntervals" => [
+        "workdayIntervals" => array(
             "start" => WORKDAY_START,
             "end" => WORKDAY_END
-        ]
-    ],
+        )
+    ),
     "recordCounts" => $recordCounts,
-    "weatherData" => $weatherData,
-    "kpiData" => [
+    "weatherData" => $weatherData, // Use cURL-based weather data
+    "kpiData" => array(
         "contacts" => 36,
         "orders" => 22,
         "approvals" => 3
-    ],
-    "uiHints" => [
-        "tips" => [
+    ),
+    "uiHints" => array(
+        "tips" => array(
             "Measure twice, cut once.",
             "Stay positive, work hard, make it happen.",
             "Quality is never an accident.",
             "Efficiency is doing better what is already being done.",
             "Every day is a fresh start."
-        ]
-    ],
-    "siteMeta" => [
+        )
+    ),
+    "siteMeta" => array(
         "siteVersion" => $version['siteVersion'],
         "lastDeployNote" => $version['lastDeployNote'],
         "lastDeployTime" => $version['lastDeployTime'],
@@ -300,8 +258,8 @@ $response = [
         "streamCount" => 23,
         "aiQueryCount" => $version['aiQueryCount'],
         "uptimeSeconds" => null
-    ]
-];
+    )
+);
 #endregion
 
 #region 🟢 Output
