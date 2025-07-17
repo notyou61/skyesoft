@@ -10,13 +10,17 @@ header('Content-Type: application/json');
 #endregion
 
 #region 🔐 Load Environment Variables
-$envPath = 'C:/Users/steve/Documents/skyesoft/.env';
-if (file_exists($envPath)) {
+$envPath = realpath(__DIR__ . '/../.env');
+if ($envPath && file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
-        putenv(trim($line));
+        if (strpos(trim($line), '#') === 0) continue;
+        list($name, $value) = explode('=', $line, 2);
+        putenv(trim($name) . '=' . trim($value));
     }
+} else {
+    echo json_encode(["error" => "❌ .env file not found at $envPath"]);
+    exit;
 }
 #endregion
 
