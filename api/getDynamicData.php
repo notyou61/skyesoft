@@ -28,27 +28,56 @@ if ($envPath && file_exists($envPath)) {
 #region 🌦️ Fetch Weather Data
 $weatherApiKey = getenv("WEATHER_API_KEY");
 $weatherLocation = "Phoenix,US";
+$weatherData = [
+    "temp" => null,
+    "icon" => "❓",
+    "description" => "Unavailable",
+    "lastUpdatedUnix" => null
+];
 
 if (!$weatherApiKey) {
-    $weatherData = [
-        "temp" => null,
-        "icon" => "❓",
-        "description" => "Missing API key",
-        "lastUpdatedUnix" => null
-    ];
+    $weatherData["description"] = "Missing API key";
 } else {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
-    $weatherJson = @file_get_contents($weatherUrl);
-    $weatherParsed = json_decode($weatherJson, true);
+    error_log("Weather API URL: " . $weatherUrl);
 
-    $weatherData = [
-        "temp" => isset($weatherParsed['main']['temp']) ? round($weatherParsed['main']['temp']) : null,
-        "icon" => isset($weatherParsed['weather'][0]['icon']) ? $weatherParsed['weather'][0]['icon'] : "❓",
-        "description" => isset($weatherParsed['weather'][0]['description']) ? ucfirst($weatherParsed['weather'][0]['description']) : "Unavailable",
-        "lastUpdatedUnix" => time()
-    ];
+    // Try file_get_contents first
+    $weatherJson = @file_get_contents($weatherUrl);
+
+    // Fallback to cURL if file_get_contents fails
+    if ($weatherJson === false) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $weatherUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // short timeout for performance
+        $weatherJson = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($weatherJson === false) {
+            error_log("❌ Weather API cURL failed: $curlError");
+            $weatherData["description"] = "API call failed (cURL)";
+        }
+    }
+
+    if ($weatherJson !== false) {
+        $weatherParsed = json_decode($weatherJson, true);
+
+        if (isset($weatherParsed['main']['temp'])) {
+            $weatherData = [
+                "temp" => round($weatherParsed['main']['temp']),
+                "icon" => $weatherParsed['weather'][0]['icon'] ?? "❓",
+                "description" => ucfirst($weatherParsed['weather'][0]['description'] ?? "Unavailable"),
+                "lastUpdatedUnix" => time()
+            ];
+        } else {
+            error_log("❌ Weather API returned malformed JSON: " . $weatherJson);
+            $weatherData["description"] = "API call failed (malformed data)";
+        }
+    }
 }
 #endregion
+
 
 #region 🌐 Headers and Timezone 
 header("Access-Control-Allow-Origin: *");
