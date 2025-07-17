@@ -11,7 +11,7 @@ header('Content-Type: application/json');
 
 #region 🔐 Load Environment Variables
 $envPath = realpath(__DIR__ . '/../../../secure/.env');
-$env = array(); // Use your own env array
+$env = array();
 
 if ($envPath && file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -42,11 +42,11 @@ if (!$weatherApiKey) {
     $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
     error_log("🌐 Weather API URL: " . $weatherUrl);
 
-    // Use only cURL (GoDaddy-friendly)
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $weatherUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // ✅ GoDaddy-safe
     $weatherJson = curl_exec($ch);
     $curlError = curl_error($ch);
     curl_close($ch);
@@ -69,6 +69,11 @@ if (!$weatherApiKey) {
         }
     }
 }
+#endregion
+
+#region 🔁 Output JSON
+header('Content-Type: application/json');
+echo json_encode(array("weatherData" => $weatherData));
 #endregion
 
 #region 🌐 Headers and Timezone 
