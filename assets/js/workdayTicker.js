@@ -85,17 +85,17 @@ setInterval(() => {
 }, 1000);
 // #endregion
 
-// #region 🌤️ Emoji Helper
+// #region 🌤️ Weather Emoji Helper
 function getWeatherEmoji(iconCode) {
   if (!iconCode) return "❓";
-  if (iconCode.startsWith("01")) return "☀️";
-  if (iconCode.startsWith("02")) return "🌤️";
-  if (iconCode.startsWith("03")) return "⛅";
-  if (iconCode.startsWith("04")) return "☁️";
-  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️";
-  if (iconCode.startsWith("11")) return "⛈️";
-  if (iconCode.startsWith("13")) return "❄️";
-  if (iconCode.startsWith("50")) return "🌫️";
+  if (iconCode.startsWith("01")) return "☀️";        // Clear sky
+  if (iconCode.startsWith("02")) return "🌤️";        // Few clouds
+  if (iconCode.startsWith("03")) return "⛅";         // Scattered clouds
+  if (iconCode.startsWith("04")) return "☁️";        // Broken clouds
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️"; // Rain
+  if (iconCode.startsWith("11")) return "⛈️";        // Thunderstorm
+  if (iconCode.startsWith("13")) return "❄️";        // Snow
+  if (iconCode.startsWith("50")) return "🌫️";        // Mist
   return "❓";
 }
 // #endregion
