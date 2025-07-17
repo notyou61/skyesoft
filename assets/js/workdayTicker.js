@@ -1,21 +1,5 @@
 // 📁 File: assets/js/workdayTicker.js
 
-// #region 🧮 Format Duration (DD HH MM SS Padded)
-function formatDurationPadded(seconds) {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-
-  const daysPart = d > 0 ? `${String(d).padStart(2, '0')}d ` : '';
-  const hoursPart = `${String(h).padStart(2, '0')}h`;
-  const minutesPart = `${String(m).padStart(2, '0')}m`;
-  const secondsPart = `${String(s).padStart(2, '0')}s`;
-
-  return `${daysPart}${hoursPart} ${minutesPart} ${secondsPart}`.trim();
-}
-// #endregion
-
 // #region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -37,7 +21,9 @@ setInterval(() => {
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
-      console.log("🕒 Polled:", data); // 🧪 Debug log
+      // #region 🧪 Debug Log
+      console.log("🕒 Polled:", data);
+      // #endregion
 
       // #region ⏰ Update Time Display
       if (data.timeDateArray?.currentLocalTime) {
@@ -50,18 +36,13 @@ setInterval(() => {
       const seconds = data.intervalsArray?.currentDaySecondsRemaining;
       const label = data.intervalsArray?.intervalLabel;
       const dayType = data.intervalsArray?.dayType;
-      // Ensure all required data is available before formatting
       if (seconds !== undefined && label !== undefined && dayType !== undefined) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
-        // Determine message based on dayType and label
         switch (`${dayType}-${label}`) {
-          case "0-0": message = `🔚 Workday ends in ${formatted}`; break;     // During worktime
-          case "0-1": message = `🔜 Workday begins in ${formatted}`; break;   // Before work
-          case "0-2":
-          case "2-1":
-          case "1-1":
-          default:   message = `📆 Next workday begins in ${formatted}`; break; // After Worktime / Holiday / Weekend
+          case "0-0": message = `🔚 Workday ends in ${formatted}`; break;
+          case "0-1": message = `🔜 Workday begins in ${formatted}`; break;
+          default:    message = `📆 Next workday begins in ${formatted}`; break;
         }
 
         const intervalEl = document.getElementById("intervalRemainingData");
@@ -78,11 +59,38 @@ setInterval(() => {
         }
       }
       // #endregion
+
+      // #region 🌦️ Update Weather Display
+      if (data.weatherData?.temp !== null && data.weatherData?.description) {
+        const tempEl = document.getElementById("weatherTemp");
+        const descEl = document.getElementById("weatherDesc");
+        const iconEl = document.getElementById("weatherIcon");
+
+        if (tempEl) tempEl.textContent = `${Math.round(data.weatherData.temp)}°F`;
+        if (descEl) descEl.textContent = data.weatherData.description;
+        if (iconEl) iconEl.textContent = getWeatherEmoji(data.weatherData.icon);
+      }
+      // #endregion
     })
     // #region ❌ Handle Fetch Errors
     .catch(err => {
       console.error("❌ Polling Error:", err);
     });
-  // #endregion
+    // #endregion
 }, 1000);
+// #endregion
+
+// #region 🌤️ Emoji Helper
+function getWeatherEmoji(iconCode) {
+  if (!iconCode) return "❓";
+  if (iconCode.startsWith("01")) return "☀️";
+  if (iconCode.startsWith("02")) return "🌤️";
+  if (iconCode.startsWith("03")) return "⛅";
+  if (iconCode.startsWith("04")) return "☁️";
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️";
+  if (iconCode.startsWith("11")) return "⛈️";
+  if (iconCode.startsWith("13")) return "❄️";
+  if (iconCode.startsWith("50")) return "🌫️";
+  return "❓";
+}
 // #endregion
