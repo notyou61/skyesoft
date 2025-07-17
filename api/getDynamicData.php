@@ -66,8 +66,8 @@ if (!$weatherApiKey) {
         if (isset($weatherParsed['main']['temp'])) {
             $weatherData = [
                 "temp" => round($weatherParsed['main']['temp']),
-                "icon" => $weatherParsed['weather'][0]['icon'] ?? "❓",
-                "description" => ucfirst($weatherParsed['weather'][0]['description'] ?? "Unavailable"),
+                "icon" => isset($weatherParsed['weather'][0]['icon']) ? $weatherParsed['weather'][0]['icon'] : "❓",
+                "description" => isset($weatherParsed['weather'][0]['description']) ? ucfirst($weatherParsed['weather'][0]['description']) : "Unavailable",
                 "lastUpdatedUnix" => time()
             ];
         } else {
