@@ -11,28 +11,22 @@ header('Content-Type: application/json');
 
 #region 🔐 Load Environment Variables
 $envPath = realpath(__DIR__ . '/../../../secure/.env');
-// Check if the .env file exists
+$env = array(); // Use your own env array
+
 if ($envPath && file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
         list($name, $value) = explode('=', $line, 2);
-        putenv(trim($name) . '=' . trim($value));
+        $env[trim($name)] = trim($value);
     }
 } else {
-    echo json_encode(["error" => "❌ .env file not found at $envPath"]);
+    echo json_encode(array("error" => "❌ .env file not found at $envPath"));
     exit;
 }
 #endregion
 
 #region 🌦️ Fetch Weather Data
-$env = array();
-foreach ($lines as $line) {
-    if (strpos(trim($line), '#') === 0) continue;
-    list($name, $value) = explode('=', $line, 2);
-    $env[trim($name)] = trim($value);
-}
-
 $weatherApiKey = isset($env['WEATHER_API_KEY']) ? $env['WEATHER_API_KEY'] : null;
 $weatherLocation = "Phoenix,US";
 $weatherData = array(
