@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.42",
+  "siteVersion": "v0.0.43",
   "lastDeployNote": "🔁 Auto-bump version metadata",
-  "lastDeployTime": "2025-07-18 21:14:54",
-  "commitHash": "77ca417",
+  "lastDeployTime": "2025-07-18 21:14:55",
+  "commitHash": "d44cab8",
   "deployState": "live",
   "deployIsLive": true
 }
