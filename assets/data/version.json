@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.82",
-  "lastDeployNote": "� Deploy: Finalize post-commit fix and sync version",
+  "siteVersion": "v0.0.83",
+  "lastDeployNote": "🔁 Auto-bump version metadata",
   "lastDeployTime": "2025-07-18 21:29:52",
-  "commitHash": "51a7d26",
+  "commitHash": "8ea3c15",
   "deployState": "live",
   "deployIsLive": true
 }
