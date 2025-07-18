@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.79",
-  "lastDeployNote": "🔁 Auto-bump version metadata",
-  "lastDeployTime": "2025-07-18 21:15:06",
-  "commitHash": "86e38ef",
+  "siteVersion": "v0.0.81",
+  "lastDeployNote": "🚀 Deploy: Updated post-commit hook to prevent infinite commit loop",
+  "lastDeployTime": "2025-07-18 21:23:14",
+  "commitHash": "f43d16b",
   "deployState": "live",
   "deployIsLive": true
 }
