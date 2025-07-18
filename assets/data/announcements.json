@@ -1,0 +1,42 @@
+{
+  "announcements": [
+    {
+      "title": "Weekly Team Meeting",
+      "description": "Company-wide sync held every Wednesday at 9:00 AM",
+      "day": "Wednesday",
+      "time": "09:00",
+      "type": "meeting",
+      "recurring": true,
+      "agenda": [
+        "Team Meeting Agenda",
+        "Workplace Safety",
+        "Feature Project"
+      ]
+    },
+    {
+      "title": "Mileage Reports Due",
+      "description": "Mileage logs must be submitted every Monday morning",
+      "day": "Monday",
+      "time": "09:00",
+      "type": "reminder",
+      "recurring": true
+    },
+    {
+      "title": "Highlighted Project",
+      "description": "Details about the featured project this week",
+      "type": "announcement",
+      "priority": "high",
+      "tags": [
+        "project",
+        "highlight"
+      ]
+    },
+    {
+      "title": "Workplace Safety",
+      "description": "Ongoing safety reminders and protocols. Be alert, be safe.",
+      "type": "safety",
+      "priority": "medium"
+    }
+  ],
+  "lastUpdated": "2025-07-18 18:53:27"
+}
