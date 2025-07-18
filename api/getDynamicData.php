@@ -8,10 +8,6 @@ ini_set('display_errors', 1);
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
-date_default_timezone_set("America/Phoenix");
-
-// ✅ Declare current time reference
-$now = time();
 #endregion
 
 #region 🔐 Load Environment Variables
@@ -137,12 +133,18 @@ $versionPath = "../../assets/data/version.json";
 $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
+$announcementsPath = "../../assets/data/announcements.json";  // 📢 Office announcements and tips
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 #endregion
 
 #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
+// 🔒 Set fixed timezone for the system (Skyesoft standard)
+date_default_timezone_set("America/Phoenix");
+$timeZone = "America/Phoenix";  // Used for display or logging
+// 🕒 Capture current time snapshot
+$now = time();
 $yearTotalDays = (date("L", $now) ? 366 : 365);
 $yearDayNumber = intval(date("z", $now)) + 1;
 $yearDaysRemaining = $yearTotalDays - $yearDayNumber;
@@ -151,9 +153,10 @@ $weekdayNumber = intval(date("w", $now));
 $dayNumber = intval(date("j", $now));
 $currentHour = intval(date("G", $now));
 $timeOfDayDesc = ($currentHour < 12) ? "morning" : (($currentHour < 18) ? "afternoon" : "evening");
-$timeZone = date_default_timezone_get();
+// 🕓 UTC offset based on timezone
 $dt = new DateTime("now", new DateTimeZone($timeZone));
 $utcOffset = intval($dt->format('Z')) / 3600;
+// 📆 Day start/end
 $currentDayStartUnix = strtotime("today", $now);
 $currentDayEndUnix = strtotime("tomorrow", $now) - 1;
 #endregion
@@ -194,7 +197,6 @@ if (file_exists($holidaysPath)) {
 #endregion
 
 #region ⏳ Time Calculations
-$now = time();
 $currentDate = date("Y-m-d", $now);
 $currentTime = date("h:i:s A", $now);
 $currentSeconds = date("G", $now) * 3600 + date("i", $now) * 60 + date("s", $now);
@@ -229,9 +231,8 @@ if (file_exists($dataPath)) {
 }
 #endregion
 
-#region 🛰️ Version Metadata
-$versionPath = realpath(__DIR__ . "/../version.json");  // ✅ Auto-detect version.json in /api/../
-
+#region 🛰️ Version Metadat
+// 🛰️ Version Metadata
 $version = array(
     "cronCount" => 0,
     "aiQueryCount" => 0,
@@ -242,7 +243,7 @@ $version = array(
     "deployState" => "unknown",
     "deployIsLive" => false
 );
-
+// Attempt to load version.json
 if ($versionPath && file_exists($versionPath)) {
     $verData = json_decode(file_get_contents($versionPath), true);
     if (is_array($verData)) {
