@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.4",
-  "lastDeployNote": "♻️ Update: Sync latest dynamic data and scripts (pre-deploy)",
+  "siteVersion": "v0.0.5",
+  "lastDeployNote": "🔁 Auto-bump version metadata",
   "lastDeployTime": "2025-07-18 21:14:44",
-  "commitHash": "ed7cefe",
+  "commitHash": "4645b75",
   "deployState": "live",
   "deployIsLive": true
 }
