@@ -31,51 +31,105 @@ if ($envPath && file_exists($envPath)) {
 }
 #endregion
 
-#region 🌦️ Fetch Weather Data
+#region 🌦️ Fetch Weather Data (Upgraded with Forecast + Curl)
 $weatherApiKey = isset($env['WEATHER_API_KEY']) ? $env['WEATHER_API_KEY'] : null;
 $weatherLocation = "Phoenix,US";
+$lat = "33.448376";
+$lon = "-112.074036";
+
 $weatherData = array(
     "temp" => null,
     "icon" => "❓",
     "description" => "Unavailable",
-    "lastUpdatedUnix" => null
+    "lastUpdatedUnix" => null,
+    "sunrise" => null,
+    "sunset" => null,
+    "daytimeHours" => null,
+    "nighttimeHours" => null,
+    "forecast" => []
 );
+
+function fetchJsonCurl($url) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // ✅ GoDaddy-safe
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+    return $res === false ? ["error" => $err] : json_decode($res, true);
+}
 
 if (!$weatherApiKey) {
     $weatherData["description"] = "Missing API key";
     error_log("❌ Missing WEATHER_API_KEY in .env");
 } else {
-    $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
-    error_log("🌐 Weather API URL: " . $weatherUrl);
+    // 🌡️ Current Weather
+    $currentUrl = "https://api.openweathermap.org/data/2.5/weather?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
+    $current = fetchJsonCurl($currentUrl);
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $weatherUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // ✅ GoDaddy-safe
-    $weatherJson = curl_exec($ch);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($weatherJson === false) {
-        error_log("❌ Weather API cURL failed: $curlError");
-        $weatherData["description"] = "API call failed (cURL)";
+    if (!isset($current["main"]["temp"])) {
+        $weatherData["description"] = "API call failed (current)";
+        error_log("❌ Current weather failed: " . json_encode($current));
     } else {
-        $weatherParsed = json_decode($weatherJson, true);
-        if (isset($weatherParsed['main']['temp'])) {
-            $weatherData = array(
-                "temp" => round($weatherParsed['main']['temp']),
-                "icon" => isset($weatherParsed['weather'][0]['icon']) ? $weatherParsed['weather'][0]['icon'] : "❓",
-                "description" => isset($weatherParsed['weather'][0]['description']) ? ucfirst($weatherParsed['weather'][0]['description']) : "Unavailable",
-                "lastUpdatedUnix" => time()
-            );
-        } else {
-            error_log("❌ Weather API malformed JSON: " . $weatherJson);
-            $weatherData["description"] = "API call failed (bad data)";
+        $sunriseUnix = $current['sys']['sunrise'];
+        $sunsetUnix = $current['sys']['sunset'];
+        $daySecs = $sunsetUnix - $sunriseUnix;
+        $nightSecs = 86400 - $daySecs;
+
+        $weatherData["temp"] = round($current['main']['temp']);
+        $weatherData["icon"] = $current['weather'][0]['icon'];
+        $weatherData["description"] = ucfirst($current['weather'][0]['description']);
+        $weatherData["lastUpdatedUnix"] = time();
+        $weatherData["sunrise"] = date("g:i A", $sunriseUnix);
+        $weatherData["sunset"] = date("g:i A", $sunsetUnix);
+        $weatherData["daytimeHours"] = gmdate("G\h i\m", $daySecs);
+        $weatherData["nighttimeHours"] = gmdate("G\h i\m", $nightSecs);
+    }
+
+    // 📅 Forecast (next 3 days)
+    $forecastUrl = "https://api.openweathermap.org/data/2.5/forecast?q={$weatherLocation}&appid={$weatherApiKey}&units=imperial";
+    $forecast = fetchJsonCurl($forecastUrl);
+
+    if (isset($forecast['list'])) {
+        $daily = [];
+        foreach ($forecast['list'] as $entry) {
+            $date = date("Y-m-d", $entry['dt']);
+            if (!isset($daily[$date])) {
+                $daily[$date] = [
+                    "high" => $entry['main']['temp_max'],
+                    "low" => $entry['main']['temp_min'],
+                    "desc" => $entry['weather'][0]['description'],
+                    "icon" => $entry['weather'][0]['icon'],
+                    "pop" => $entry['pop'] * 100,
+                    "wind" => $entry['wind']['speed']
+                ];
+            } else {
+                $daily[$date]['high'] = max($daily[$date]['high'], $entry['main']['temp_max']);
+                $daily[$date]['low'] = min($daily[$date]['low'], $entry['main']['temp_min']);
+            }
         }
+
+        $count = 0;
+        foreach ($daily as $date => $info) {
+            if ($count++ >= 3) break;
+            $weatherData["forecast"][] = [
+                "date" => date("l, M j", strtotime($date)),
+                "description" => ucfirst($info["desc"]),
+                "high" => round($info["high"]),
+                "low" => round($info["low"]),
+                "icon" => $info["icon"],
+                "precip" => round($info["pop"]),
+                "wind" => round($info["wind"])
+            ];
+        }
+    } else {
+        error_log("❌ Forecast fetch failed: " . json_encode($forecast));
     }
 }
 #endregion
+
 
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
