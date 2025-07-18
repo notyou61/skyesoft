@@ -1,19 +1,53 @@
-const fs = require('fs');
-const path = './docs/codex/codex-version.json';
+// 📁 File: scripts/bump-version.js
+const fs = require("fs");
+const path = require("path");
 
-const type = process.argv[2]; // 'patch', 'minor', or 'major'
+const bumpType = process.argv[2] || "patch";
+const versionFile = path.resolve(__dirname, "../docs/codex/codex-version.md");
 
-const bump = (version, type) => {
-  const [major, minor, patch] = version.split('.').map(Number);
-  if (type === 'major') return `${major + 1}.0.0`;
-  if (type === 'minor') return `${major}.${minor + 1}.0`;
-  return `${major}.${minor}.${patch + 1}`;
+let version = "0.0.1";
+if (fs.existsSync(versionFile)) {
+  const versionText = fs.readFileSync(versionFile, "utf8").trim();
+  const match = versionText.match(/v(\d+)\.(\d+)\.(\d+)/);
+  if (match) {
+    let [major, minor, patch] = match.slice(1).map(Number);
+    if (bumpType === "major") major++;
+    else if (bumpType === "minor") minor++;
+    else patch++;
+    version = `${major}.${minor}.${patch}`;
+  }
+}
+
+const newVersionText = `v${version}`;
+fs.writeFileSync(versionFile, newVersionText);
+
+// 🛰️ Create version.json for SSE
+const commitMsg = require("child_process")
+  .execSync("git log -1 --pretty=%s")
+  .toString()
+  .trim();
+
+const commitHash = require("child_process")
+  .execSync("git rev-parse --short HEAD")
+  .toString()
+  .trim();
+
+const timestamp = new Date().toISOString().replace("T", " ").split(".")[0];
+
+const versionJson = {
+  siteVersion: newVersionText,
+  lastDeployNote: commitMsg,
+  lastDeployTime: timestamp,
+  commitHash,
+  deployState: "live",
+  deployIsLive: true
 };
 
-const data = JSON.parse(fs.readFileSync(path, 'utf-8'));
-const newVersion = bump(data.version, type || 'patch');
-data.version = newVersion;
-data.last_updated = new Date().toISOString();
+fs.writeFileSync(
+  path.resolve(__dirname, "../version.json"),
+  JSON.stringify(versionJson, null, 2)
+);
 
-fs.writeFileSync(path, JSON.stringify(data, null, 2));
-console.log(`✅ Version updated to ${newVersion}`);
+console.log(`✅ Version bumped to ${newVersionText} (${bumpType})`);
+console.log("📄 version.json updated for getDynamicData.php");
+

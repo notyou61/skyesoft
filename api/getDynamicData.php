@@ -130,7 +130,6 @@ if (!$weatherApiKey) {
 }
 #endregion
 
-
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
@@ -231,18 +230,28 @@ if (file_exists($dataPath)) {
 #endregion
 
 #region 🛰️ Version Metadata
+$versionPath = realpath(__DIR__ . "/../version.json");  // ✅ Auto-detect version.json in /api/../
+
 $version = array(
     "cronCount" => 0,
     "aiQueryCount" => 0,
     "siteVersion" => "unknown",
     "lastDeployNote" => "Unavailable",
     "lastDeployTime" => null,
+    "commitHash" => "unknown",
     "deployState" => "unknown",
     "deployIsLive" => false
 );
-if (file_exists($versionPath)) {
+
+if ($versionPath && file_exists($versionPath)) {
     $verData = json_decode(file_get_contents($versionPath), true);
-    $version = array_merge($version, $verData);
+    if (is_array($verData)) {
+        $version = array_merge($version, $verData);
+    } else {
+        error_log("❌ Failed to parse version.json (not valid JSON).");
+    }
+} else {
+    error_log("⚠️ version.json not found at path: $versionPath");
 }
 #endregion
 
