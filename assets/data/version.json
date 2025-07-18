@@ -1,1 +1,8 @@
-{ "version": "v2025.07.02b" }
+{
+  "siteVersion": "v0.0.3",
+  "lastDeployNote": "� Auto-commit version bump to v0.0.2",
+  "lastDeployTime": "2025-07-18 13:23:55",
+  "commitHash": "349fd72",
+  "deployState": "live",
+  "deployIsLive": true
+}

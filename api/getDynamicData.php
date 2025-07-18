@@ -231,28 +231,32 @@ if (file_exists($dataPath)) {
 }
 #endregion
 
-#region 🛰️ Version Metadat
-// 🛰️ Version Metadata
-$version = array(
-    "cronCount" => 0,
-    "aiQueryCount" => 0,
-    "siteVersion" => "unknown",
-    "lastDeployNote" => "Unavailable",
-    "lastDeployTime" => null,
-    "commitHash" => "unknown",
-    "deployState" => "unknown",
-    "deployIsLive" => false
-);
-// Attempt to load version.json
-if ($versionPath && file_exists($versionPath)) {
-    $verData = json_decode(file_get_contents($versionPath), true);
+#region 🛰️ Version Metadata
+// 🔧 Default values
+$version = [
+    "siteVersion"     => "unknown",
+    "lastDeployNote"  => "Unavailable",
+    "lastDeployTime"  => null,
+    "commitHash"      => "unknown",
+    "deployState"     => "unknown",
+    "deployIsLive"    => false,
+    "cronCount"       => 0,
+    "streamCount"     => 0,
+    "aiQueryCount"    => 0,
+    "uptimeSeconds"   => null
+];
+
+// 📥 Attempt to load from file
+if (file_exists($versionPath)) {
+    $json = file_get_contents($versionPath);
+    $verData = json_decode($json, true);
     if (is_array($verData)) {
         $version = array_merge($version, $verData);
     } else {
-        error_log("❌ Failed to parse version.json (not valid JSON).");
+        error_log("❌ version.json found but contains invalid JSON.");
     }
 } else {
-    error_log("⚠️ version.json not found at path: $versionPath");
+    error_log("⚠️ version.json not found at: $versionPath");
 }
 #endregion
 
