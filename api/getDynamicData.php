@@ -153,13 +153,13 @@ define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 #endregion
 
-#region 📢 Load Announcements Data
+#region 📢 Load Announcements Data (PHP 5.6 Safe)
 $announcements = array();
 if (file_exists($announcementsPath)) {
     $json = file_get_contents($announcementsPath);
-    $announcementsData = json_decode($json, true);
-    if (is_array($announcementsData)) {
-        $announcements = $announcementsData;
+    $announcementsData = json_decode($json, true); // decode as assoc array
+    if (is_array($announcementsData) && isset($announcementsData['announcements']) && is_array($announcementsData['announcements'])) {
+        $announcements = $announcementsData['announcements'];
     }
 }
 #endregion
