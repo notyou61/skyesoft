@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.111",
-  "lastDeployNote": "♻️ Cleanup: Remove debug output, improve comments, production-safe for JSON endpoint",
-  "lastDeployTime": "2025-07-19 15:33:34",
-  "commitHash": "a6ddbe8",
+  "siteVersion": "v0.0.112",
+  "lastDeployNote": "⬆️ Version bump to v0.0.111 and SOT enhancements",
+  "lastDeployTime": "2025-07-19 16:17:42",
+  "commitHash": "e5241b7",
   "deployState": "live",
   "deployIsLive": true
 }
