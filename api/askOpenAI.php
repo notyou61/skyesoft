@@ -11,6 +11,20 @@ if (!$apiKey) {
 }
 #endregion
 
+#region 📚 Load Codex Glossary
+$codexPath = __DIR__ . '/../docs/codex/codex.json';
+$codexGlossary = array();
+
+if (file_exists($codexPath)) {
+    $codexRaw = file_get_contents($codexPath);
+    $codexData = json_decode($codexRaw, true);
+    // Update this line depending on your codex.json structure!
+    if (isset($codexData['modules']['glossaryModule']['contents'])) {
+        $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+    }
+}
+#endregion
+
 #region 🔎 Parse Incoming Request
 // 📥 Get raw POST input and decode as array
 $inputRaw = file_get_contents("php://input");
@@ -42,18 +56,18 @@ You are also provided with a 'Codex' glossary of internal terms, acronyms, polic
 
 Use both live data and Codex knowledge to provide helpful, context-aware responses. Do not say you lack real-time data access.";
 
-// 📦 Flatten important live snapshot values for LLM context
+// 📦 Add flattened live SOT (sseSnapshot) values for context
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
     $summary = "\n\n📊 Here's the current operational snapshot:\n";
 
-    // 🗓️ Date/Time details
+    // 🗓️ Date/Time
     if (isset($sseSnapshot['timeDateArray'])) {
         $td = $sseSnapshot['timeDateArray'];
         $summary .= "- 📆 Date: " . @$td['currentDate'] . "\n";
         $summary .= "- 🕒 Local Time: " . @$td['currentLocalTime'] . "\n";
     }
 
-    // 📆 Work intervals
+    // ⏱️ Work intervals
     if (isset($sseSnapshot['intervalsArray'])) {
         $intv = $sseSnapshot['intervalsArray'];
         $summary .= "- 📅 Day Type: " . @$intv['dayType'] . " (0=Workday, 1=Weekend, 2=Holiday)\n";
@@ -62,7 +76,7 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
         $summary .= "- 🕘 Work Hours: " . @$intv['workdayIntervals']['start'] . "–" . @$intv['workdayIntervals']['end'] . "\n";
     }
 
-    // 🌤️ Weather info
+    // 🌤️ Weather
     if (isset($sseSnapshot['weatherData'])) {
         $w = $sseSnapshot['weatherData'];
         $summary .= "- 🌡️ Weather: " . @$w['temp'] . "°F, " . @$w['description'] . " " . @$w['icon'] . "\n";
@@ -74,30 +88,29 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
         $summary .= "- 📈 KPIs — Contacts: " . @$k['contacts'] . ", Orders: " . @$k['orders'] . ", Approvals: " . @$k['approvals'] . "\n";
     }
 
-    // 🏷️ Site meta/version
+    // 🏷️ Site meta
     if (isset($sseSnapshot['siteMeta'])) {
         $s = $sseSnapshot['siteMeta'];
         $summary .= "- 🛠️ Site Version: " . @$s['siteVersion'] . ", Deploy Live: " . (@$s['deployIsLive'] ? "Yes" : "No") . "\n";
         $summary .= "- 🔁 Stream Count: " . @$s['streamCount'] . ", AI Query Count: " . @$s['aiQueryCount'] . "\n";
     }
 
-    // 💡 Motivational tips
+    // 💡 Motivational tip
     if (isset($sseSnapshot['uiHints']['tips']) && is_array($sseSnapshot['uiHints']['tips'])) {
         $tip = $sseSnapshot['uiHints']['tips'][0];
         $summary .= "- 💡 Tip of the Day: \"$tip\"\n";
     }
 
     $systemPrompt .= $summary;
-
-    // 🛠️ Full JSON (optional; may ignore)
+    // 🛠️ Full JSON snapshot for advanced LLM traceability (optional)
     $systemPrompt .= "\n\n🔧 Full sseSnapshot (for reference):\n" . json_encode($sseSnapshot, JSON_PRETTY_PRINT);
 }
 
-// 🆕 📚 Codex integration (flatten glossary for AI)
-if (is_array($codex) && isset($codex['glossary']) && is_array($codex['glossary'])) {
-    $systemPrompt .= "\n\n📘 Codex Glossary (Key Terms):\n";
-    foreach ($codex['glossary'] as $term => $definition) {
-        $systemPrompt .= "- $term: $definition\n";
+// 🆕 📚 Append Codex Glossary to prompt for AI context
+if (!empty($codexGlossary) && is_array($codexGlossary)) {
+    $systemPrompt .= "\n\n📘 Codex Glossary (Key Internal Terms):\n";
+    foreach ($codexGlossary as $entry) {
+        $systemPrompt .= "- $entry\n";
     }
 }
 #endregion
