@@ -153,6 +153,17 @@ define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 #endregion
 
+#region 📢 Load Announcements Data
+$announcements = array();
+if (file_exists($announcementsPath)) {
+    $json = file_get_contents($announcementsPath);
+    $announcementsData = json_decode($json, true);
+    if (is_array($announcementsData)) {
+        $announcements = $announcementsData;
+    }
+}
+#endregion
+
 #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)
 // 🔒 Set fixed timezone for the system (Skyesoft standard)
 date_default_timezone_set("America/Phoenix");
@@ -280,52 +291,91 @@ if (file_exists($versionPath)) {
 #endregion
 
 #region 📤 Response
+
+// 🕒 Master response array for SSE/SOT stream
 $response = array(
+    // 📅 Real-time date and time data (local, unix, calendar info)
     "timeDateArray" => array(
+        // ⏱️ Unix timestamp for now (seconds since epoch)
         "currentUnixTime" => $currentUnixTime,
+        // 🕗 Local human-readable time string
         "currentLocalTime" => $currentTime,
+        // 📆 Current date (YYYY-MM-DD)
         "currentDate" => $currentDate,
+        // 📅 Total days in the year (e.g., 365)
         "currentYearTotalDays" => $yearTotalDays,
+        // 🗓️ Day number of the year (1–365/366)
         "currentYearDayNumber" => $yearDayNumber,
+        // 🔢 Days left in the year
         "currentYearDaysRemaining" => $yearDaysRemaining,
+        // 7️⃣ Numeric month (as string, e.g. "7")
         "currentMonthNumber" => strval($monthNumber),
+        // 1️⃣ Numeric weekday (as string, 1=Monday, 7=Sunday)
         "currentWeekdayNumber" => strval($weekdayNumber),
+        // 📅 Day of the month (as string, e.g. "19")
         "currentDayNumber" => strval($dayNumber),
+        // 🕓 Hour of the day (as string, "0"–"23")
         "currentHour" => strval($currentHour),
+        // 🌅 Time of day (e.g., "morning", "afternoon")
         "timeOfDayDescription" => $timeOfDayDesc,
+        // 🌎 Time zone name (IANA, e.g. "America/Phoenix")
         "timeZone" => $timeZone,
+        // 🕑 UTC offset (hours from UTC, e.g. -7)
         "UTCOffset" => $utcOffset,
+        // 🌄 Daylight period for today
         "daylightStartEndArray" => array(
+            // 🌅 Sunrise (static for now, update with live value later)
             "daylightStart" => "05:27:00",  // 🔧 Replace with real sunrise later
+            // 🌇 Sunset (static for now)
             "daylightEnd" => "19:42:00"
         ),
+        // 📍 Default geographic coordinates (Phoenix, AZ)
         "defaultLatitudeLongitudeArray" => array(
+            // 📏 Latitude for calculations and mapping
             "defaultLatitude" => "33.448376",
+            // 📏 Longitude for calculations and mapping
             "defaultLongitude" => "-112.074036",
+            // 🌞 Solar zenith angle (default 90.83°)
             "solarZenithAngle" => 90.83,
+            // 🕒 Default UTC offset (should match above)
             "defaultUTCOffset" => $utcOffset
         ),
+        // 🕛 Unix timestamps for start/end of current day
         "currentDayBeginningEndingUnixTimeArray" => array(
+            // 🌅 Midnight start of current day
             "currentDayStartUnixTime" => $currentDayStartUnix,
+            // 🌃 End of day (23:59:59)
             "currentDayEndUnixTime" => $currentDayEndUnix
         )
     ),
+    // ⏲️ Workday/interval information (seconds, labels, type)
     "intervalsArray" => array(
+        // ⌛ Remaining seconds in the current day
         "currentDaySecondsRemaining" => $secondsRemaining,
+        // 🔖 Interval label (period within the day, e.g., "1")
         "intervalLabel" => $intervalLabel,
+        // 🔢 Workday type/classification (e.g., 1=regular, 2=weekend)
         "dayType" => $dayType,
+        // 🕘 Start/end time of workday (from constants)
         "workdayIntervals" => array(
             "start" => WORKDAY_START,
             "end" => WORKDAY_END
         )
     ),
+    // 📊 Live record counts (entities, orders, permits, etc.)
     "recordCounts" => $recordCounts,
+    // 🌦️ Weather info (current + forecast, pulled from API)
     "weatherData" => $weatherData, // Use cURL-based weather data
+    // 📈 Key performance indicators (dashboard stats)
     "kpiData" => array(
+        // 👥 Count of contacts in system
         "contacts" => 36,
+        // 📦 Active orders
         "orders" => 22,
+        // ✅ Approvals pending/completed
         "approvals" => 3
     ),
+    // 💡 Motivational and productivity tips for the office board
     "uiHints" => array(
         "tips" => array(
             "Measure twice, cut once.",
@@ -335,18 +385,31 @@ $response = array(
             "Every day is a fresh start."
         )
     ),
+    // 📢 Announcements and notices (from announcements.json)
+    "announcements" => $announcements,
+    // 🏷️ Meta/versioning information for deployment tracking
     "siteMeta" => array(
+        // 🏷️ Current site version (from version.json)
         "siteVersion" => $version['siteVersion'],
+        // 📝 Last deploy note/summary
         "lastDeployNote" => $version['lastDeployNote'],
+        // 🕐 Timestamp of last deploy
         "lastDeployTime" => $version['lastDeployTime'],
+        // 🚦 Deploy state (e.g., "published", "staging")
         "deployState" => $version['deployState'],
+        // ✅ True if site is live/published, else false
         "deployIsLive" => ($version['deployState'] === "published"),
+        // 🔄 Cron job counter for live monitoring
         "cronCount" => $version['cronCount'],
+        // 📡 Number of active SSE streams
         "streamCount" => 23,
+        // 🤖 AI queries processed (running total)
         "aiQueryCount" => $version['aiQueryCount'],
+        // ⏳ Uptime in seconds (null if unknown)
         "uptimeSeconds" => null
     )
 );
+
 #endregion
 
 #region 🟢 Output

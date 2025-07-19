@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.109",
-  "lastDeployNote": "♻️ Reverted to origin version of codex-version.md",
-  "lastDeployTime": "2025-07-19 13:46:57",
-  "commitHash": "c2b4f64",
+  "siteVersion": "v0.0.111",
+  "lastDeployNote": "♻️ Cleanup: Remove debug output, improve comments, production-safe for JSON endpoint",
+  "lastDeployTime": "2025-07-19 15:33:34",
+  "commitHash": "a6ddbe8",
   "deployState": "live",
   "deployIsLive": true
 }
