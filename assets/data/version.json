@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.120",
-  "lastDeployNote": "♻️ Skyebot context: enforce SOT/Codex distinction, robust glossary, version bump",
-  "lastDeployTime": "2025-07-19 20:45:10",
-  "commitHash": "7b78ee6",
+  "siteVersion": "v0.0.121",
+  "lastDeployNote": "♻️ Skyebot prompt/rules: glossary expansion, AIW version bump",
+  "lastDeployTime": "2025-07-19 22:19:33",
+  "commitHash": "b65e789",
   "deployState": "live",
   "deployIsLive": true
 }
