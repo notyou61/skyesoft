@@ -147,7 +147,7 @@ $versionPath = __DIR__ . "/../assets/data/version.json";
 $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
-$announcementsPath = "../../assets/data/announcements.json";  // 📢 Office announcements and tips
+$announcementsPath = "../assets/data/announcements.json";  // 📢 Office announcements and tips
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
