@@ -1,44 +1,63 @@
 // File: assets/js/skyebot.js
 
-// #region 🧠 Skyebot Chat Setup
+//#region 📚 Codex State
+let codexData = null; // 🗃️ Will hold Codex glossary/policies
+//#endregion
+
+//#region 🧠 Skyebot Main Chat Loader
 document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("promptForm");
-  const input = document.getElementById("promptInput");
-  const clearBtn = document.getElementById("clearBtn");
-  const chatLog = document.getElementById("chatLog");
+  
+  //#region 🟩 Element Selection & Early Checks
+  const form = document.getElementById("promptForm");        // 📝 Chat form element
+  const input = document.getElementById("promptInput");       // ⌨️ User input box
+  const clearBtn = document.getElementById("clearBtn");       // 🧹 Clear button
+  const chatLog = document.getElementById("chatLog");         // 🗂️ Chat log display
 
   if (!form || !input || !clearBtn || !chatLog) {
-    console.error("❌ Skyebot setup error: Missing elements.");
+    console.error("❌ Skyebot setup error: Missing elements."); // 🛑 Prevents runtime errors
     return;
   }
+  //#endregion
 
-  // Conversation memory for context
+  //#region 🟦 State & Context
+  // 🧵 Local memory of conversation for AI context
   let conversationHistory = [{
     role: "assistant",
     content: "Hello! How can I assist you today?"
   }];
 
-  // 🌐 Pull SSE Snapshot from stream JSON
-  let sseSnapshot  = {};
-  //
-  let streamReady = false; // ✅ Properly declared
+  // 🌐 Holds latest live SSE snapshot
+  let sseSnapshot = {};
+  // ✅ Tracks if stream is ready to use
+  let streamReady = false;
+  //#endregion
 
+  //#region 📚 Fetch Codex Glossary from Server
+fetch("/skyesoft/docs/codex/codex.json")
+  .then(res => res.json())
+  .then(json => { codexData = json; })
+  .catch(() => { codexData = {}; });
+//#endregion
+
+  //#region 🟧 Live Stream Polling
+  // 🔄 Fetch SSE stream (site SOT) on interval
   async function fetchStreamData() {
     try {
-      const res = await fetch("/skyesoft/api/getDynamicData.php");
-      sseSnapshot  = await res.json();
-      streamReady = true;
+      const res = await fetch("/skyesoft/api/getDynamicData.php"); // 📡 API call to PHP backend
+      sseSnapshot = await res.json();                              // 🗃️ Save snapshot
+      streamReady = true;                                          // 🟢 Ready!
     } catch (err) {
-      console.warn("⚠️ Unable to fetch stream data:", err.message);
-      sseSnapshot  = {};
+      console.warn("⚠️ Unable to fetch stream data:", err.message); // ⚠️ Warn on failure
+      sseSnapshot = {};
       streamReady = false;
     }
   }
+  fetchStreamData();                     // ⏩ Run immediately
+  setInterval(fetchStreamData, 5000);    // 🔁 Repeat every 5 seconds
+  //#endregion
 
-  fetchStreamData();
-  setInterval(fetchStreamData, 5000);
-
-  // #region 💬 Chat Display Functions
+  //#region 💬 Chat Message Rendering
+  // 🟦 Add a chat message to the log
   const addMessage = (role, text) => {
     const entry = document.createElement("div");
     entry.className = `chat-entry ${role === "user" ? "user-message" : "bot-message"}`;
@@ -48,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chatLog.scrollTop = chatLog.scrollHeight;
   };
 
+  // 🟨 Show "Thinking..." indicator
   const showThinking = () => {
     const div = document.createElement("div");
     div.id = "thinking";
@@ -57,54 +77,57 @@ document.addEventListener("DOMContentLoaded", () => {
     chatLog.scrollTop = chatLog.scrollHeight;
   };
 
+  // 🟪 Remove "Thinking..." indicator
   const removeThinking = () => {
     const thinking = document.getElementById("thinking");
     if (thinking) thinking.remove();
   };
-  // #endregion
+  //#endregion
 
-  // #region 🧹 Clear Chat
+  //#region 🧹 Clear Chat Logic
   clearBtn.addEventListener("click", () => {
-    chatLog.innerHTML = "";
-    input.value = "";
-    input.focus();
-    addMessage("bot", "Hello! How can I assist you today?");
+    chatLog.innerHTML = "";      // 🗑️ Clear all chat bubbles
+    input.value = "";            // 🔄 Clear input box
+    input.focus();               // 🎯 Focus input for fast typing
+    addMessage("bot", "Hello! How can I assist you today?"); // 🤖 Reset welcome
     conversationHistory = [{
       role: "assistant",
       content: "Hello! How can I assist you today?"
     }];
   });
-  // #endregion
+  //#endregion
 
-  // #region 🚀 Prompt Submission
+  //#region 🚀 Prompt Submission Logic
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
-    if (!prompt) return;
+    if (!prompt) return;              // 🛑 Skip if prompt is empty
 
-    addMessage("user", prompt);
-    input.value = "";
+    addMessage("user", prompt);       // 👤 Show user’s message
+    input.value = "";                 // 🔄 Clear input box
     input.focus();
 
-    conversationHistory.push({ role: "user", content: prompt });
+    conversationHistory.push({ role: "user", content: prompt }); // 🧵 Track for context
 
-    showThinking();
+    showThinking();                   // 🤖 Show typing/AI processing
 
-    // 🛑 Ensure stream data is ready before proceeding
-    if (!sseSnapshot  || !sseSnapshot .timeDateArray) {
+    // 🛑 Wait for stream data before querying AI
+    if (!sseSnapshot || !sseSnapshot.timeDateArray) {
       removeThinking();
       addMessage("bot", "⏳ Please wait a moment while I load live data…");
       return;
     }
 
     try {
+      // 📨 Send prompt, convo, and stream to backend AI API
       const res = await fetch("/skyesoft/api/askOpenAI.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           conversation: conversationHistory,
           prompt,
-          sseSnapshot: sseSnapshot 
+          sseSnapshot: sseSnapshot,
+          codex: codexData   // ✅ NOW INCLUDED!
         })
       });
 
@@ -118,10 +141,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
-      addMessage("bot", reply);
+      addMessage("bot", reply);                           // 🤖 Show AI reply
+      conversationHistory.push({ role: "assistant", content: reply }); // 🧵 Save in convo
 
-      conversationHistory.push({ role: "assistant", content: reply });
-
+      // 🛠️ Handle special actions from server
       if (data.action === "logout" && typeof window.logoutUser === "function") window.logoutUser();
       if (data.action === "versionCheck") alert(data.response || "📦 Version info unavailable.");
 
@@ -131,35 +154,37 @@ document.addEventListener("DOMContentLoaded", () => {
       addMessage("bot", "❌ Network error. Please check your connection and try again.");
     }
   });
-  // #endregion
+  //#endregion
 
-  // #region 👋 Initial Message
-  addMessage("bot", "Hello! How can I assist you today?");
-  // #endregion
+  //#region 👋 Startup Message
+  addMessage("bot", "Hello! How can I assist you today?"); // 🤖 Greet at load
+  //#endregion
 
-  // 🔐 Logout utility function
+  //#region 🔐 Logout Utility
+  // Make logout available globally for agentic actions
   window.logoutUser = function () {
     console.log("🚪 Logging out user...");
     localStorage.removeItem("userLoggedIn");
     location.reload();
   };
+  //#endregion
 
-  // #region 📋 Chat Log Summary
+  //#region 📋 Chat Summary Utility
   window.getChatSummary = function () {
     if (!conversationHistory || conversationHistory.length < 2) {
       return "📭 No meaningful chat history to summarize yet.";
     }
-
+    // 📝 Format history for quick copy/export
     const summary = conversationHistory
       .map(entry => {
         const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         return `${entry.role === "user" ? "👤 You" : "🤖 Skyebot"} [${time}]: ${entry.content}`;
       })
       .join("\n");
-
     console.log("🧾 Chat Summary:\n" + summary);
     return summary;
   };
-  // #endregion
+  //#endregion
+
 });
-// #endregion
+//#endregion
