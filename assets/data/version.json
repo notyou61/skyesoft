@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.118",
-  "lastDeployNote": "♻️ Skyebot: Add Codex glossary integration to system prompt, version bump",
-  "lastDeployTime": "2025-07-19 18:36:34",
-  "commitHash": "12dbea9",
+  "siteVersion": "v0.0.119",
+  "lastDeployNote": "♻️ Skyebot: Codex handoff fully backend, JS no longer sends codex, version bump",
+  "lastDeployTime": "2025-07-19 20:40:55",
+  "commitHash": "83fda77",
   "deployState": "live",
   "deployIsLive": true
 }

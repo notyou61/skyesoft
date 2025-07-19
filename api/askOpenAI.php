@@ -44,24 +44,24 @@ $codex = isset($input["codex"]) ? $input["codex"] : array();
 $systemPrompt = <<<PROMPT
 You are Skyebot, an assistant for a signage company.
 
-You are provided two data sources for each response:
-- 'sseSnapshot': Live operational data (date, weather, KPIs, work intervals, site metadata, tips).
-- 'codexGlossary': Internal glossary of company terms and acronyms.
+You are provided with two sources for every response:
+- codexGlossary: Internal glossary of company terms and acronyms.
+- sseSnapshot: Live operational data (date, weather, KPIs, intervals, tips).
 
-When asked about a term/acronym found in the codexGlossary, reply with its exact glossary definition.
+Rules:
+- If asked about a term or acronym in codexGlossary, answer with the exact glossary definition.
+- If asked about operational info (weather, date, KPIs, intervals), answer only using current sseSnapshot values. Never invent data.
+- If both types are in a question, answer each using its source.
+- If you have no info, politely say so.
+- Never say you lack real-time data; always respond using these sources.
 
-When asked about operational data (like weather, date, KPIs), only use live values from sseSnapshot—never make up numbers.
-
-If both are referenced, answer each using the correct data source. If a question doesn't match either, politely say you have no information.
-
-Never say you lack real-time access. Always answer based on these sources.
 PROMPT;
 
 $codexGlossaryBlock = "";
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
-    $codexGlossaryBlock = "\n\ncodexGlossary = [\n";
+    $codexGlossaryBlock = "\n\ncodexGlossary:\n";
     foreach ($codexGlossary as $termDef) {
-        // If each $termDef is "TERM — definition", split for clarity
+        // Format as: MTCO: Measure Twice, Cut Once...
         if (strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
@@ -69,25 +69,28 @@ if (!empty($codexGlossary) && is_array($codexGlossary)) {
             $codexGlossaryBlock .= $termDef . "\n";
         }
     }
-    $codexGlossaryBlock .= "]\n";
 }
 
 $snapshotSummary = "";
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    // Only key values, not the full JSON
-    $snapshotSummary .= "\n\nsseSnapshot = {\n";
+    $snapshotSummary .= "\nsseSnapshot (Live Context):\n";
+    if (isset($sseSnapshot['timeDateArray']['currentDate']))
+        $snapshotSummary .= "date: " . $sseSnapshot['timeDateArray']['currentDate'] . "\n";
     if (isset($sseSnapshot['timeDateArray']['currentLocalTime']))
         $snapshotSummary .= "time: " . $sseSnapshot['timeDateArray']['currentLocalTime'] . "\n";
     if (isset($sseSnapshot['weatherData']['temp']))
         $snapshotSummary .= "weather: " . $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'] . "\n";
     if (isset($sseSnapshot['kpiData']['contacts']))
         $snapshotSummary .= "contacts: " . $sseSnapshot['kpiData']['contacts'] . "\n";
-    // Add more as needed
-    $snapshotSummary .= "}\n";
+    if (isset($sseSnapshot['siteMeta']['siteVersion']))
+        $snapshotSummary .= "siteVersion: " . $sseSnapshot['siteMeta']['siteVersion'] . "\n";
+    if (isset($sseSnapshot['uiHints']['tips'][0]))
+        $snapshotSummary .= "tip: " . $sseSnapshot['uiHints']['tips'][0] . "\n";
 }
 
 $systemPrompt .= $codexGlossaryBlock . $snapshotSummary;
 #endregion
+
 
 #region 📚 Build OpenAI Message Array
 $messages = array(
