@@ -30,14 +30,15 @@ if (file_exists($codexPath)) {
 } else {
     error_log("codex.json not found at: " . $codexPath);
 }
+error_log('🟦 Loaded glossary: ' . json_encode($codexGlossary));
+#endregion
 
-// 📝 Build codexGlossaryBlock for prompt
+#region 🧩 Build codexGlossaryBlock
 $codexGlossaryBlock = "";
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
-        if (is_string($termDef) && strpos($termDef, '—') !== false) {
-            list($term, $def) = explode('—', $termDef, 2);
-            $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
+        if (is_string($termDef) && preg_match('/^([A-Z0-9]+)\s*[-—]\s*(.+)$/ui', $termDef, $m)) {
+            $codexGlossaryBlock .= trim($m[1]) . ": " . trim($m[2]) . "\n";
         } else {
             error_log("Invalid glossary entry format: " . json_encode($termDef));
             $codexGlossaryBlock .= $termDef . "\n";
@@ -48,7 +49,7 @@ if (!empty($codexGlossary) && is_array($codexGlossary)) {
 }
 #endregion
 
-#region 📨 Parse Incoming Request
+#region 📥 Parse Incoming Request
 $inputRaw = file_get_contents("php://input");
 if ($inputRaw === false) {
     echo json_encode(["response" => "❌ Failed to read input.", "action" => "none"]);
@@ -74,26 +75,25 @@ $requestedTerm = null;
 
 if ($prompt) {
     // Glossary: What does MTCO mean? / Define MTCO / Tell me about MTCO
-    if (preg_match('/\b(what\s+(is|does)|define|tell\s+me\s+about)\s+([A-Z]+)\s*(mean)?\b/i', $prompt, $matches)) {
+    if (preg_match('/\b(what\s+(is|does)|define|tell\s+me\s+about)\s+([A-Z0-9]+)\s*(mean)?\b/i', $prompt, $matches)) {
         $isGlossaryQuery = true;
-        $requestedTerm = strtoupper(trim($matches[4]));
+        $requestedTerm = strtoupper(trim($matches[3]));
+        error_log("🟪 Detected glossary query for term: $requestedTerm");
     }
     // Glossary List: What is in the glossary? / List glossary terms
     elseif (preg_match('/\b(what\s+is\s+in\s+the\s+glossary|list\s+(glossary\s+terms|glossary))\b/i', $prompt)) {
         $isGlossaryListQuery = true;
+        error_log("🟧 Detected glossary list query");
     }
     // Operational: What is the time? / What’s the weather? / Current time
-    elseif (preg_match('/\b(what\s*(is|’s)\s*(the)?\s*(weather|date|time|contacts|siteVersion|tip)|current\s+(weather|date|time|contacts|siteVersion|tip))\b/i', $prompt)) {
+    elseif (preg_match('/\b(what\s*(is|’s)?\s*(the)?\s*(weather|date|time|contacts|siteVersion|tip)|current\s+(weather|date|time|contacts|siteVersion|tip))\b/i', $prompt)) {
         $isOperationalQuery = true;
+        error_log("🟨 Detected operational query: $prompt");
     }
-}
-// Log sseSnapshot for debugging if needed
-if ($isOperationalQuery) {
-    error_log("sseSnapshot for prompt '$prompt': " . json_encode($sseSnapshot));
 }
 #endregion
 
-#region 📝 Build System Prompt
+#region 📝 Build System Prompt (Context)
 $systemPrompt = <<<PROMPT
 You are Skyebot, an AI assistant for a signage company. Your responses must be precise and follow these rules exactly:
 
@@ -116,7 +116,6 @@ $codexGlossaryBlock
 sseSnapshot:
 PROMPT;
 
-// 🟦 Build sseSnapshot Summary
 $snapshotSummary = "";
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
     if (isset($sseSnapshot['timeDateArray']['currentDate']))
@@ -137,7 +136,7 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
 $systemPrompt .= $snapshotSummary;
 #endregion
 
-#region 📤 OpenAI Message and Request
+#region 📨 Build OpenAI Message Array
 $messages = [["role" => "system", "content" => $systemPrompt]];
 if (!$isGlossaryQuery && !$isOperationalQuery && !$isGlossaryListQuery) {
     foreach ($conversation as $entry) {
@@ -147,8 +146,9 @@ if (!$isGlossaryQuery && !$isOperationalQuery && !$isGlossaryListQuery) {
     }
 }
 $messages[] = ["role" => "user", "content" => $prompt];
+#endregion
 
-// 🔗 OpenAI API Request
+#region 🤖 OpenAI API Request
 $payload = json_encode([
     "model" => "gpt-4",
     "messages" => $messages,
@@ -167,9 +167,8 @@ $opts = [
 
 $context = stream_context_create($opts);
 $response = @file_get_contents("https://api.openai.com/v1/chat/completions", false, $context);
-#endregion
 
-#region 🧯 Error Handling & Response
+// Error Handling
 if ($response === false) {
     $error = error_get_last();
     error_log("OpenAI API request failed: " . json_encode($error));
@@ -192,14 +191,13 @@ if (!isset($result["choices"][0]["message"]["content"])) {
 $responseText = $result["choices"][0]["message"]["content"];
 #endregion
 
-#region ✅ Strict Server-Side Response Filter
+#region 🛑 Strict Server-Side Response Filter
 $finalResponse = "No information available.";
 if ($isGlossaryQuery && $requestedTerm) {
     foreach ($codexGlossary as $termDef) {
-        if (is_string($termDef) && strpos($termDef, '—') !== false) {
-            list($term, $def) = explode('—', $termDef, 2);
-            if (strtoupper(trim($term)) === $requestedTerm) {
-                $finalResponse = trim($def);
+        if (is_string($termDef) && preg_match('/^([A-Z0-9]+)\s*[-—]\s*(.+)$/ui', $termDef, $m)) {
+            if (strtoupper(trim($m[1])) === $requestedTerm) {
+                $finalResponse = trim($m[2]);
                 break;
             }
         }
@@ -207,9 +205,8 @@ if ($isGlossaryQuery && $requestedTerm) {
 } elseif ($isGlossaryListQuery) {
     $terms = [];
     foreach ($codexGlossary as $termDef) {
-        if (is_string($termDef) && strpos($termDef, '—') !== false) {
-            list($term, $def) = explode('—', $termDef, 2);
-            $terms[] = trim($term);
+        if (is_string($termDef) && preg_match('/^([A-Z0-9]+)\s*[-—]\s*(.+)$/ui', $termDef, $m)) {
+            $terms[] = trim($m[1]);
         }
     }
     $finalResponse = !empty($terms) ? implode(", ", $terms) : "No glossary terms available.";
@@ -234,7 +231,7 @@ if ($isGlossaryQuery && $requestedTerm) {
 }
 #endregion
 
-#region 🚀 Output Response
+#region 🟩 Output Response
 echo json_encode([
     "response" => $finalResponse,
     "action" => "none"
