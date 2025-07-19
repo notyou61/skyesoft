@@ -11,18 +11,32 @@ header('Content-Type: application/json');
 #endregion
 
 #region 🔐 Load Environment Variables
-$envPath = realpath(__DIR__ . '/../../../secure/.env');
+// Set path to .env for local dev (../secure/.env relative to this script)
+$envPath = realpath(__DIR__ . '/../secure/.env');
+// If not found, try GoDaddy/legacy path (three directories up)
+if (!$envPath || !file_exists($envPath)) {
+    // If not found, try GoDaddy/legacy path
+    $envPath = realpath(__DIR__ . '/../../../secure/.env'); // GoDaddy/legacy
+}
+// Initialize empty environment variable array
 $env = array();
-
+// Attempt to load environment variables from .env file
 if ($envPath && file_exists($envPath)) {
+    // Read .env file line by line, ignoring empty lines
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    // Loop through each line
     foreach ($lines as $line) {
+        // Skip comments (lines starting with #)
         if (strpos(trim($line), '#') === 0) continue;
+        // Split line into name and value at the first '=' character
         list($name, $value) = explode('=', $line, 2);
+        // Add trimmed name and value to the environment array
         $env[trim($name)] = trim($value);
     }
 } else {
+    // If .env not found in any expected location, return JSON error and exit
     echo json_encode(array("error" => "Configuration error: .env file not found"));
+    // Exit with HTTP 500 Internal Server Error
     exit;
 }
 #endregion
@@ -129,7 +143,7 @@ if (!$weatherApiKey) {
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
-$versionPath = "../../assets/data/version.json";
+$versionPath = __DIR__ . "/../assets/data/version.json";
 $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
@@ -245,7 +259,8 @@ $version = [
     "aiQueryCount"    => 0,
     "uptimeSeconds"   => null
 ];
-
+// 📁 Load version.json
+echo "Looking for: $versionPath\n";
 // 📥 Attempt to load from file
 if (file_exists($versionPath)) {
     $json = file_get_contents($versionPath);
