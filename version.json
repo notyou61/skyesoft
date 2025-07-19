@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.3",
-  "lastDeployNote": "� Auto-commit version bump to v0.0.2",
-  "lastDeployTime": "2025-07-18 13:23:55",
-  "commitHash": "349fd72",
+  "siteVersion": "v0.0.4",
+  "lastDeployNote": "� Home update: fix version display [patch]",
+  "lastDeployTime": "2025-07-18 13:41:06",
+  "commitHash": "e45503b",
   "deployState": "live",
   "deployIsLive": true
 }
