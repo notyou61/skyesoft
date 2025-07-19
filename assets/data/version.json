@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.117",
-  "lastDeployNote": "� Add explicit glossary block: MTCO, LGBAS, SSE, KPI",
-  "lastDeployTime": "2025-07-19 18:30:32",
-  "commitHash": "2879f82",
+  "siteVersion": "v0.0.118",
+  "lastDeployNote": "♻️ Skyebot: Add Codex glossary integration to system prompt, version bump",
+  "lastDeployTime": "2025-07-19 18:36:34",
+  "commitHash": "12dbea9",
   "deployState": "live",
   "deployIsLive": true
 }
