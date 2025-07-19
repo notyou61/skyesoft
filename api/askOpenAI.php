@@ -1,46 +1,72 @@
 <?php
+#region 🛡️ Headers and API Key
 header("Content-Type: application/json");
 
-// Load OpenAI API key from environment
+// 🔐 Load OpenAI API key from environment
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
     echo json_encode(["response" => "❌ API key not found.", "action" => "none"]);
     exit;
 }
+#endregion
 
-// Load Codex Glossary
+#region 📚 Load Codex Glossary
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codexGlossary = [];
 if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
-    $codexData = json_decode($codexRaw, true);
-    if (isset($codexData['modules']['glossaryModule']['contents'])) {
-        $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+    if ($codexRaw === false) {
+        error_log("Failed to read codex.json at: " . $codexPath);
+    } else {
+        $codexData = json_decode($codexRaw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("JSON decode error for codex.json: " . json_last_error_msg());
+        } elseif (isset($codexData['modules']['glossaryModule']['contents'])) {
+            $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+        } else {
+            error_log("codex.json missing modules/glossaryModule contents");
+        }
     }
+} else {
+    error_log("codex.json not found at: " . $codexPath);
 }
 
-// Build codexGlossaryBlock
+// 📝 Build codexGlossaryBlock for prompt
 $codexGlossaryBlock = "";
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
-        if (strpos($termDef, '—') !== false) {
+        if (is_string($termDef) && strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
         } else {
+            error_log("Invalid glossary entry format: " . json_encode($termDef));
             $codexGlossaryBlock .= $termDef . "\n";
         }
     }
+} else {
+    error_log("codexGlossary is empty or not an array");
 }
+#endregion
 
-// Parse Incoming Request
+#region 📨 Parse Incoming Request
 $inputRaw = file_get_contents("php://input");
+if ($inputRaw === false) {
+    echo json_encode(["response" => "❌ Failed to read input.", "action" => "none"]);
+    exit;
+}
 $input = json_decode($inputRaw, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("JSON decode error for input: " . json_last_error_msg());
+    echo json_encode(["response" => "❌ Invalid input format.", "action" => "none"]);
+    exit;
+}
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 $codex = isset($input["codex"]) ? $input["codex"] : [];
+#endregion
 
-// Prompt Classification
+#region 🔎 Prompt Classification
 $isGlossaryQuery = false;
 $isOperationalQuery = false;
 $isGlossaryListQuery = false;
@@ -61,13 +87,13 @@ if ($prompt) {
         $isOperationalQuery = true;
     }
 }
-
-// Debug sseSnapshot (for development; remove in production)
-if ($isOperationalQuery && empty($sseSnapshot)) {
-    error_log("sseSnapshot is empty for prompt: " . $prompt);
+// Log sseSnapshot for debugging if needed
+if ($isOperationalQuery) {
+    error_log("sseSnapshot for prompt '$prompt': " . json_encode($sseSnapshot));
 }
+#endregion
 
-// Build System Prompt
+#region 📝 Build System Prompt
 $systemPrompt = <<<PROMPT
 You are Skyebot, an AI assistant for a signage company. Your responses must be precise and follow these rules exactly:
 
@@ -90,14 +116,14 @@ $codexGlossaryBlock
 sseSnapshot:
 PROMPT;
 
-// Build sseSnapshot Summary
+// 🟦 Build sseSnapshot Summary
 $snapshotSummary = "";
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
     if (isset($sseSnapshot['timeDateArray']['currentDate']))
         $snapshotSummary .= "date: " . $sseSnapshot['timeDateArray']['currentDate'] . "\n";
     if (isset($sseSnapshot['timeDateArray']['currentLocalTime']))
         $snapshotSummary .= "time: " . $sseSnapshot['timeDateArray']['currentLocalTime'] . "\n";
-    if (isset($sseSnapshot['weatherData']['temp']))
+    if (isset($sseSnapshot['weatherData']['temp']) && isset($sseSnapshot['weatherData']['description']))
         $snapshotSummary .= "weather: " . $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'] . "\n";
     if (isset($sseSnapshot['kpiData']['contacts']))
         $snapshotSummary .= "contacts: " . $sseSnapshot['kpiData']['contacts'] . "\n";
@@ -105,10 +131,13 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
         $snapshotSummary .= "siteVersion: " . $sseSnapshot['siteMeta']['siteVersion'] . "\n";
     if (isset($sseSnapshot['uiHints']['tips'][0]))
         $snapshotSummary .= "tip: " . $sseSnapshot['uiHints']['tips'][0] . "\n";
+} else {
+    error_log("sseSnapshot is empty or not an array for prompt: " . $prompt);
 }
 $systemPrompt .= $snapshotSummary;
+#endregion
 
-// Build OpenAI Message Array
+#region 📤 OpenAI Message and Request
 $messages = [["role" => "system", "content" => $systemPrompt]];
 if (!$isGlossaryQuery && !$isOperationalQuery && !$isGlossaryListQuery) {
     foreach ($conversation as $entry) {
@@ -119,13 +148,13 @@ if (!$isGlossaryQuery && !$isOperationalQuery && !$isGlossaryListQuery) {
 }
 $messages[] = ["role" => "user", "content" => $prompt];
 
-// OpenAI API Request
+// 🔗 OpenAI API Request
 $payload = json_encode([
     "model" => "gpt-4",
     "messages" => $messages,
     "temperature" => 0.1,
     "max_tokens" => 200
-]);
+], JSON_UNESCAPED_SLASHES);
 
 $opts = [
     "http" => [
@@ -138,25 +167,36 @@ $opts = [
 
 $context = stream_context_create($opts);
 $response = @file_get_contents("https://api.openai.com/v1/chat/completions", false, $context);
+#endregion
 
-// Error Handling
+#region 🧯 Error Handling & Response
 if ($response === false) {
+    $error = error_get_last();
+    error_log("OpenAI API request failed: " . json_encode($error));
     echo json_encode(["response" => "❌ Error reaching OpenAI API.", "action" => "none"]);
     exit;
 }
 
 $result = json_decode($response, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    error_log("JSON decode error for OpenAI response: " . json_last_error_msg());
+    echo json_encode(["response" => "❌ Invalid response from AI.", "action" => "none"]);
+    exit;
+}
+
 if (!isset($result["choices"][0]["message"]["content"])) {
+    error_log("Invalid OpenAI response structure: " . json_encode($result));
     echo json_encode(["response" => "❌ Invalid response from AI.", "action" => "none"]);
     exit;
 }
 $responseText = $result["choices"][0]["message"]["content"];
+#endregion
 
-// Strict Server-Side Response Filter
+#region ✅ Strict Server-Side Response Filter
 $finalResponse = "No information available.";
 if ($isGlossaryQuery && $requestedTerm) {
     foreach ($codexGlossary as $termDef) {
-        if (strpos($termDef, '—') !== false) {
+        if (is_string($termDef) && strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             if (strtoupper(trim($term)) === $requestedTerm) {
                 $finalResponse = trim($def);
@@ -167,14 +207,14 @@ if ($isGlossaryQuery && $requestedTerm) {
 } elseif ($isGlossaryListQuery) {
     $terms = [];
     foreach ($codexGlossary as $termDef) {
-        if (strpos($termDef, '—') !== false) {
+        if (is_string($termDef) && strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             $terms[] = trim($term);
         }
     }
     $finalResponse = !empty($terms) ? implode(", ", $terms) : "No glossary terms available.";
 } elseif ($isOperationalQuery) {
-    if (preg_match('/\bweather\b/i', $prompt) && isset($sseSnapshot['weatherData']['temp'])) {
+    if (preg_match('/\bweather\b/i', $prompt) && isset($sseSnapshot['weatherData']['temp']) && isset($sseSnapshot['weatherData']['description'])) {
         $finalResponse = $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'];
     } elseif (preg_match('/\bdate\b/i', $prompt) && isset($sseSnapshot['timeDateArray']['currentDate'])) {
         $finalResponse = $sseSnapshot['timeDateArray']['currentDate'];
@@ -190,12 +230,13 @@ if ($isGlossaryQuery && $requestedTerm) {
         error_log("No matching sseSnapshot field for prompt: " . $prompt . " | sseSnapshot: " . json_encode($sseSnapshot));
     }
 } else {
-    $finalResponse = "No information available."; // Strict fallback for vague queries
+    $finalResponse = "No information available.";
 }
+#endregion
 
-// Output Response
+#region 🚀 Output Response
 echo json_encode([
     "response" => $finalResponse,
     "action" => "none"
 ]);
-?>
+#endregion
