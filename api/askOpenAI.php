@@ -41,78 +41,52 @@ $codex = isset($input["codex"]) ? $input["codex"] : array();
 #endregion
 
 #region 📝 Build System Prompt (Context)
-// 🟦 Core assistant prompt
-$systemPrompt = "You are Skyebot, a helpful assistant for a signage company.
+$systemPrompt = <<<PROMPT
+You are Skyebot, an assistant for a signage company.
 
-You are provided with a JSON object called 'sseSnapshot' that includes live operational data such as:
-• time and date
-• work intervals
-• weather
-• performance KPIs
-• site metadata
-• motivational tips
+You are provided two data sources for each response:
+- 'sseSnapshot': Live operational data (date, weather, KPIs, work intervals, site metadata, tips).
+- 'codexGlossary': Internal glossary of company terms and acronyms.
 
-You are also provided with a 'Codex' glossary of internal terms, acronyms, policies, and best practices.
+When asked about a term/acronym found in the codexGlossary, reply with its exact glossary definition.
 
-Use both live data and Codex knowledge to provide helpful, context-aware responses. Do not say you lack real-time data access.";
+When asked about operational data (like weather, date, KPIs), only use live values from sseSnapshot—never make up numbers.
 
-// 📦 Add flattened live SOT (sseSnapshot) values for context
-if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    $summary = "\n\n📊 Here's the current operational snapshot:\n";
+If both are referenced, answer each using the correct data source. If a question doesn't match either, politely say you have no information.
 
-    // 🗓️ Date/Time
-    if (isset($sseSnapshot['timeDateArray'])) {
-        $td = $sseSnapshot['timeDateArray'];
-        $summary .= "- 📆 Date: " . @$td['currentDate'] . "\n";
-        $summary .= "- 🕒 Local Time: " . @$td['currentLocalTime'] . "\n";
-    }
+Never say you lack real-time access. Always answer based on these sources.
+PROMPT;
 
-    // ⏱️ Work intervals
-    if (isset($sseSnapshot['intervalsArray'])) {
-        $intv = $sseSnapshot['intervalsArray'];
-        $summary .= "- 📅 Day Type: " . @$intv['dayType'] . " (0=Workday, 1=Weekend, 2=Holiday)\n";
-        $summary .= "- ⏳ Seconds Left Today: " . @$intv['currentDaySecondsRemaining'] . "\n";
-        $summary .= "- 🧭 Interval: " . @$intv['intervalLabel'] . "\n";
-        $summary .= "- 🕘 Work Hours: " . @$intv['workdayIntervals']['start'] . "–" . @$intv['workdayIntervals']['end'] . "\n";
-    }
-
-    // 🌤️ Weather
-    if (isset($sseSnapshot['weatherData'])) {
-        $w = $sseSnapshot['weatherData'];
-        $summary .= "- 🌡️ Weather: " . @$w['temp'] . "°F, " . @$w['description'] . " " . @$w['icon'] . "\n";
-    }
-
-    // 📈 KPIs
-    if (isset($sseSnapshot['kpiData'])) {
-        $k = $sseSnapshot['kpiData'];
-        $summary .= "- 📈 KPIs — Contacts: " . @$k['contacts'] . ", Orders: " . @$k['orders'] . ", Approvals: " . @$k['approvals'] . "\n";
-    }
-
-    // 🏷️ Site meta
-    if (isset($sseSnapshot['siteMeta'])) {
-        $s = $sseSnapshot['siteMeta'];
-        $summary .= "- 🛠️ Site Version: " . @$s['siteVersion'] . ", Deploy Live: " . (@$s['deployIsLive'] ? "Yes" : "No") . "\n";
-        $summary .= "- 🔁 Stream Count: " . @$s['streamCount'] . ", AI Query Count: " . @$s['aiQueryCount'] . "\n";
-    }
-
-    // 💡 Motivational tip
-    if (isset($sseSnapshot['uiHints']['tips']) && is_array($sseSnapshot['uiHints']['tips'])) {
-        $tip = $sseSnapshot['uiHints']['tips'][0];
-        $summary .= "- 💡 Tip of the Day: \"$tip\"\n";
-    }
-
-    $systemPrompt .= $summary;
-    // 🛠️ Full JSON snapshot for advanced LLM traceability (optional)
-    $systemPrompt .= "\n\n🔧 Full sseSnapshot (for reference):\n" . json_encode($sseSnapshot, JSON_PRETTY_PRINT);
-}
-
-// 🆕 📚 Append Codex Glossary to prompt for AI context
+$codexGlossaryBlock = "";
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
-    $systemPrompt .= "\n\n📘 Codex Glossary (Key Internal Terms):\n";
-    foreach ($codexGlossary as $entry) {
-        $systemPrompt .= "- $entry\n";
+    $codexGlossaryBlock = "\n\ncodexGlossary = [\n";
+    foreach ($codexGlossary as $termDef) {
+        // If each $termDef is "TERM — definition", split for clarity
+        if (strpos($termDef, '—') !== false) {
+            list($term, $def) = explode('—', $termDef, 2);
+            $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
+        } else {
+            $codexGlossaryBlock .= $termDef . "\n";
+        }
     }
+    $codexGlossaryBlock .= "]\n";
 }
+
+$snapshotSummary = "";
+if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
+    // Only key values, not the full JSON
+    $snapshotSummary .= "\n\nsseSnapshot = {\n";
+    if (isset($sseSnapshot['timeDateArray']['currentLocalTime']))
+        $snapshotSummary .= "time: " . $sseSnapshot['timeDateArray']['currentLocalTime'] . "\n";
+    if (isset($sseSnapshot['weatherData']['temp']))
+        $snapshotSummary .= "weather: " . $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'] . "\n";
+    if (isset($sseSnapshot['kpiData']['contacts']))
+        $snapshotSummary .= "contacts: " . $sseSnapshot['kpiData']['contacts'] . "\n";
+    // Add more as needed
+    $snapshotSummary .= "}\n";
+}
+
+$systemPrompt .= $codexGlossaryBlock . $snapshotSummary;
 #endregion
 
 #region 📚 Build OpenAI Message Array
