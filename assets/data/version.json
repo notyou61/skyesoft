@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.113",
-  "lastDeployNote": "⬆️ Announcements SOT fix: PHP 5.6 array handling, version bump",
-  "lastDeployTime": "2025-07-19 16:18:47",
-  "commitHash": "719a12d",
+  "siteVersion": "v0.0.114",
+  "lastDeployNote": "⬆️ Announcements SOT fix: PHP 5.6 compatibility, version bump",
+  "lastDeployTime": "2025-07-19 16:30:10",
+  "commitHash": "91920d2",
   "deployState": "live",
   "deployIsLive": true
 }
