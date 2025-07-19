@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.125",
-  "lastDeployNote": "♻️ Skyebot API: regioned strict prompt logic, full server-side validation, glossary/ops/AI filter",
-  "lastDeployTime": "2025-07-19 22:59:31",
-  "commitHash": "fd2486f",
+  "siteVersion": "v0.0.126",
+  "lastDeployNote": "� Patch: glossary/operational strict matching, regioned, debug logs",
+  "lastDeployTime": "2025-07-19 23:07:52",
+  "commitHash": "42f7a95",
   "deployState": "live",
   "deployIsLive": true
 }

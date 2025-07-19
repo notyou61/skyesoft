@@ -67,30 +67,34 @@ $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 $codex = isset($input["codex"]) ? $input["codex"] : [];
 #endregion
 
-#region 🔎 Prompt Classification
+#region 🧠 Prompt Classification
 $isGlossaryQuery = false;
 $isOperationalQuery = false;
 $isGlossaryListQuery = false;
 $requestedTerm = null;
 
 if ($prompt) {
-    // Glossary: What does MTCO mean? / Define MTCO / Tell me about MTCO
-    if (preg_match('/\b(what\s+(is|does)|define|tell\s+me\s+about)\s+([A-Z0-9]+)\s*(mean)?\b/i', $prompt, $matches)) {
+    // Detect glossary term queries, e.g.: "What does MTCO mean?", "Define MTCO", "Tell me about MTCO"
+    if (preg_match('/\b(what\s+(is|does)\s+|define\s+|tell\s+me\s+about\s+)([A-Z0-9]{2,10})\b/i', $prompt, $matches)) {
         $isGlossaryQuery = true;
         $requestedTerm = strtoupper(trim($matches[3]));
-        error_log("🟪 Detected glossary query for term: $requestedTerm");
+        error_log("🟪 Detected glossary query for term: $requestedTerm | Prompt: $prompt");
     }
-    // Glossary List: What is in the glossary? / List glossary terms
-    elseif (preg_match('/\b(what\s+is\s+in\s+the\s+glossary|list\s+(glossary\s+terms|glossary))\b/i', $prompt)) {
+    // Detect glossary list queries, e.g.: "What is in the glossary", "Show glossary", "List glossary terms", "Show glossary terms"
+    elseif (
+        preg_match('/\b(glossary)\b/i', $prompt) &&
+        preg_match('/\b(list|show|display|terms)\b/i', $prompt)
+    ) {
         $isGlossaryListQuery = true;
-        error_log("🟧 Detected glossary list query");
+        error_log("🟧 Detected glossary list query | Prompt: $prompt");
     }
-    // Operational: What is the time? / What’s the weather? / Current time
-    elseif (preg_match('/\b(what\s*(is|’s)?\s*(the)?\s*(weather|date|time|contacts|siteVersion|tip)|current\s+(weather|date|time|contacts|siteVersion|tip))\b/i', $prompt)) {
+    // Detect operational queries (weather, date, time, contacts, etc.) with looser matching
+    elseif (preg_match('/\b(weather|date|time|contacts|site\s?version|tip|kpi)\b/i', $prompt)) {
         $isOperationalQuery = true;
-        error_log("🟨 Detected operational query: $prompt");
+        error_log("🟨 Detected operational query for: $prompt");
     }
 }
+error_log("🟦 Query type: Glossary=$isGlossaryQuery, GlossaryList=$isGlossaryListQuery, Operational=$isOperationalQuery, RequestedTerm=$requestedTerm");
 #endregion
 
 #region 📝 Build System Prompt (Context)
