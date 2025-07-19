@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.119",
-  "lastDeployNote": "♻️ Skyebot: Codex handoff fully backend, JS no longer sends codex, version bump",
-  "lastDeployTime": "2025-07-19 20:40:55",
-  "commitHash": "83fda77",
+  "siteVersion": "v0.0.120",
+  "lastDeployNote": "♻️ Skyebot context: enforce SOT/Codex distinction, robust glossary, version bump",
+  "lastDeployTime": "2025-07-19 20:45:10",
+  "commitHash": "7b78ee6",
   "deployState": "live",
   "deployIsLive": true
 }
