@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.127",
-  "lastDeployNote": "� Robust query classification: glossary/operational/list matching, debug logs, version bump",
-  "lastDeployTime": "2025-07-19 23:20:22",
-  "commitHash": "6956bab",
+  "siteVersion": "v0.0.128",
+  "lastDeployNote": "♻️ Patch: strict glossary/operational logic, debug logging, version bump",
+  "lastDeployTime": "2025-07-19 23:34:07",
+  "commitHash": "9131337",
   "deployState": "live",
   "deployIsLive": true
 }
