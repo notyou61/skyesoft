@@ -67,34 +67,46 @@ $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 $codex = isset($input["codex"]) ? $input["codex"] : [];
 #endregion
 
-#region 🧠 Prompt Classification
+#region 🟦 Prompt Classification & Extraction
+
 $isGlossaryQuery = false;
 $isOperationalQuery = false;
 $isGlossaryListQuery = false;
 $requestedTerm = null;
 
-if ($prompt) {
-    // Detect glossary term queries, e.g.: "What does MTCO mean?", "Define MTCO", "Tell me about MTCO"
-    if (preg_match('/\b(what\s+(is|does)\s+|define\s+|tell\s+me\s+about\s+)([A-Z0-9]{2,10})\b/i', $prompt, $matches)) {
-        $isGlossaryQuery = true;
-        $requestedTerm = strtoupper(trim($matches[3]));
-        error_log("🟪 Detected glossary query for term: $requestedTerm | Prompt: $prompt");
-    }
-    // Detect glossary list queries, e.g.: "What is in the glossary", "Show glossary", "List glossary terms", "Show glossary terms"
-    elseif (
-        preg_match('/\b(glossary)\b/i', $prompt) &&
-        preg_match('/\b(list|show|display|terms)\b/i', $prompt)
-    ) {
+// Clean prompt for easier matching
+$normalizedPrompt = trim(preg_replace('/[\?\.\!]+$/', '', $prompt));
+
+if ($normalizedPrompt) {
+    // 1. Glossary List (must come first to avoid term confusion)
+    if (preg_match('/(what\s+is\s+in\s+the\s+glossary|list\s+glossary\s+terms?|show\s+glossary)/i', $normalizedPrompt)) {
         $isGlossaryListQuery = true;
-        error_log("🟧 Detected glossary list query | Prompt: $prompt");
+        error_log("🟧 Detected glossary list query");
     }
-    // Detect operational queries (weather, date, time, contacts, etc.) with looser matching
-    elseif (preg_match('/\b(weather|date|time|contacts|site\s?version|tip|kpi)\b/i', $prompt)) {
-        $isOperationalQuery = true;
-        error_log("🟨 Detected operational query for: $prompt");
+    // 2. Glossary: What is X? Define X. X? (as a question), Tell me about X, What does X mean?
+    elseif (preg_match('/^(what\s+(is|does)\s+)?([A-Za-z0-9\-\_ ]+)\s*(mean)?$/i', $normalizedPrompt, $matches)) {
+        $possibleTerm = strtoupper(trim($matches[3]));
+        // See if the term matches any in the glossary
+        foreach ($codexGlossary as $termDef) {
+            if (strpos($termDef, '—') !== false) {
+                list($term, $def) = explode('—', $termDef, 2);
+                if (strtoupper(trim($term)) === $possibleTerm) {
+                    $isGlossaryQuery = true;
+                    $requestedTerm = $possibleTerm;
+                    error_log("🟪 Detected glossary query for term: $requestedTerm");
+                    break;
+                }
+            }
+        }
+    }
+    // 3. Operational (weather, time, etc. - very flexible)
+    if (!$isGlossaryQuery && !$isGlossaryListQuery) {
+        if (preg_match('/(weather|date|time|contacts|siteversion|tip)/i', $normalizedPrompt, $matches)) {
+            $isOperationalQuery = true;
+            error_log("🟨 Detected operational query: $normalizedPrompt");
+        }
     }
 }
-error_log("🟦 Query type: Glossary=$isGlossaryQuery, GlossaryList=$isGlossaryListQuery, Operational=$isOperationalQuery, RequestedTerm=$requestedTerm");
 #endregion
 
 #region 📝 Build System Prompt (Context)
