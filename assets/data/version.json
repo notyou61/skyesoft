@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.108",
-  "lastDeployNote": "🔁 Auto-bump version metadata",
-  "lastDeployTime": "2025-07-18 21:29:59",
-  "commitHash": "0e7f6bf",
+  "siteVersion": "v0.0.109",
+  "lastDeployNote": "♻️ Reverted to origin version of codex-version.md",
+  "lastDeployTime": "2025-07-19 13:46:57",
+  "commitHash": "c2b4f64",
   "deployState": "live",
   "deployIsLive": true
 }
