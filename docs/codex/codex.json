@@ -482,5 +482,12 @@
       "Use codex tags and glossary to answer specialized questions.",
       "Infer user meaning from context (not hardcoded logic)."
     ]
+  },
+  "glossary": {
+    "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+    "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
+    "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
+    "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
+    "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
   }
 }
