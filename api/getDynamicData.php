@@ -246,31 +246,35 @@ if (file_exists($dataPath)) {
 #endregion
 
 #region 🛰️ Version Metadata
-// 🔧 Default values
+// 🔧 Set default version values (used if version.json missing or unreadable)
 $version = [
-    "siteVersion"     => "unknown",
-    "lastDeployNote"  => "Unavailable",
-    "lastDeployTime"  => null,
-    "commitHash"      => "unknown",
-    "deployState"     => "unknown",
-    "deployIsLive"    => false,
-    "cronCount"       => 0,
-    "streamCount"     => 0,
-    "aiQueryCount"    => 0,
-    "uptimeSeconds"   => null
+    "siteVersion"     => "unknown",         // Fallback site version label
+    "lastDeployNote"  => "Unavailable",     // Fallback deploy note
+    "lastDeployTime"  => null,              // Fallback last deploy time
+    "commitHash"      => "unknown",         // Fallback Git commit hash
+    "deployState"     => "unknown",         // Fallback deploy state
+    "deployIsLive"    => false,             // Fallback live/deployed status
+    "cronCount"       => 0,                 // Fallback cron job count
+    "streamCount"     => 0,                 // Fallback SSE stream count
+    "aiQueryCount"    => 0,                 // Fallback AI query count
+    "uptimeSeconds"   => null               // Fallback uptime
 ];
-// 📁 Load version.json
-echo "Looking for: $versionPath\n";
-// 📥 Attempt to load from file
+// 📥 Check if version.json exists at $versionPath
 if (file_exists($versionPath)) {
+    // 📖 Read the contents of version.json into $json
     $json = file_get_contents($versionPath);
+    // 🧩 Decode the JSON into an associative array
     $verData = json_decode($json, true);
+    // ✅ If decoding succeeded (result is an array)
     if (is_array($verData)) {
+        // 🔄 Merge values from version.json into the default $version array
         $version = array_merge($version, $verData);
     } else {
+        // ⚠️ Log an error if JSON is invalid or cannot be parsed
         error_log("❌ version.json found but contains invalid JSON.");
     }
 } else {
+    // ⚠️ Log a warning if version.json was not found at the specified path
     error_log("⚠️ version.json not found at: $versionPath");
 }
 #endregion
