@@ -16,7 +16,6 @@ if (file_exists($codexPath)) {
     $codexData = json_decode($codexRaw, true);
 }
 
-// -- ADD THIS: log raw JSON input for debugging
 $inputRaw = file_get_contents("php://input");
 file_put_contents(__DIR__ . '/debug-rawinput.log', $inputRaw); // LOG RAW POST
 
@@ -27,6 +26,37 @@ $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 file_put_contents(__DIR__ . '/debug-sseinput.log', print_r($sseSnapshot, true));
+#endregion
+
+#region 🚦 Directly answer time/date/weather/etc using SSE data
+$lowerPrompt = strtolower($prompt);
+
+// Time
+if (
+    (strpos($lowerPrompt, "time") !== false || strpos($lowerPrompt, "clock") !== false)
+    && isset($sseSnapshot['timeDateArray']['currentLocalTime'])
+) {
+    $tz = (isset($sseSnapshot['timeDateArray']['timeZone']) && $sseSnapshot['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
+    $response = $sseSnapshot['timeDateArray']['currentLocalTime'] . $tz;
+    echo json_encode(["response" => $response, "action" => "none"]);
+    exit;
+}
+
+// Date
+if (strpos($lowerPrompt, "date") !== false && isset($sseSnapshot['timeDateArray']['currentDate'])) {
+    echo json_encode(["response" => $sseSnapshot['timeDateArray']['currentDate'], "action" => "none"]);
+    exit;
+}
+
+// Weather
+if (strpos($lowerPrompt, "weather") !== false && isset($sseSnapshot['weatherData']['description'])) {
+    $temp = isset($sseSnapshot['weatherData']['temp']) ? $sseSnapshot['weatherData']['temp'] . "°F, " : "";
+    $desc = $sseSnapshot['weatherData']['description'];
+    echo json_encode(["response" => $temp . $desc, "action" => "none"]);
+    exit;
+}
+
+// Add more rules here as needed
 #endregion
 
 #region 📚 Build All Codex Data (Glossary, Modules, Other)
