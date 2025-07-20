@@ -21,6 +21,15 @@ $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 #endregion
+// Test for empty sseSnapshot (remove when not needed)
+if (empty($sseSnapshot)) {
+    $sseSnapshot = [
+        'timeDateArray' => [
+            'currentDate' => '2025-07-20',
+            'currentLocalTime' => '07:55 AM'
+        ]
+    ];
+}
 
 #region 📚 Build All Codex Data (Glossary, Modules, Other)
 // --- Glossary (old and new formats) ---
@@ -155,39 +164,41 @@ if (isset($codexData['shared']['aiBehaviorRules'])) {
 #endregion
 
 #region 📊 Build sseSnapshot Summary & Array for Validation
+// Initialize empty summary and values array
 $snapshotSummary = "";
+// Initialize empty array for SSE values
 $sseValues = [];
+// Helper function for flattening key-value pairs
+function flattenSse($arr, &$summary, &$values, $prefix = "") {
+    foreach ($arr as $k => $v) {
+        $key = $prefix ? "$prefix.$k" : $k;
+        if (is_array($v)) {
+            // If this is a numerically-indexed array (e.g., announcements), make a summary line
+            if (array_keys($v) === range(0, count($v) - 1)) {
+                foreach ($v as $i => $entry) {
+                    if (is_array($entry)) {
+                        // For array of objects (e.g., announcements), summarize
+                        $title = isset($entry['title']) ? $entry['title'] : '';
+                        $desc = isset($entry['description']) ? $entry['description'] : '';
+                        $summary .= "$key[$i]: $title $desc\n";
+                        $values[] = trim("$title $desc");
+                    } else {
+                        $summary .= "$key[$i]: $entry\n";
+                        $values[] = $entry;
+                    }
+                }
+            } else {
+                flattenSse($v, $summary, $values, $key);
+            }
+        } else {
+            $summary .= "$key: $v\n";
+            $values[] = $v;
+        }
+    }
+}
+// Only if sseSnapshot is not empty
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    if (isset($sseSnapshot['timeDateArray']['currentDate'])) {
-        $val = $sseSnapshot['timeDateArray']['currentDate'];
-        $snapshotSummary .= "date: " . $val . "\n";
-        $sseValues[] = $val;
-    }
-    if (isset($sseSnapshot['timeDateArray']['currentLocalTime'])) {
-        $val = $sseSnapshot['timeDateArray']['currentLocalTime'];
-        $snapshotSummary .= "time: " . $val . "\n";
-        $sseValues[] = $val;
-    }
-    if (isset($sseSnapshot['weatherData']['temp']) && isset($sseSnapshot['weatherData']['description'])) {
-        $val = $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'];
-        $snapshotSummary .= "weather: " . $val . "\n";
-        $sseValues[] = $val;
-    }
-    if (isset($sseSnapshot['kpiData']['contacts'])) {
-        $val = $sseSnapshot['kpiData']['contacts'];
-        $snapshotSummary .= "contacts: " . $val . "\n";
-        $sseValues[] = $val;
-    }
-    if (isset($sseSnapshot['siteMeta']['siteVersion'])) {
-        $val = $sseSnapshot['siteMeta']['siteVersion'];
-        $snapshotSummary .= "siteVersion: " . $val . "\n";
-        $sseValues[] = $val;
-    }
-    if (isset($sseSnapshot['uiHints']['tips'][0])) {
-        $val = $sseSnapshot['uiHints']['tips'][0];
-        $snapshotSummary .= "tip: " . $val . "\n";
-        $sseValues[] = $val;
-    }
+    flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
 }
 #endregion
 
