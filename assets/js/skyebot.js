@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   //#endregion
 
-  //#region 🚀 Prompt Submission Logic
+  //#region 🚀 Prompt Submission Logic (Snapshot fetched at submit)
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = input.value.trim();
@@ -80,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
     input.focus();
 
     conversationHistory.push({ role: "user", content: prompt });
-
     showThinking();
 
     // 📡 Fetch a fresh SSE snapshot at prompt time!
@@ -88,7 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/skyesoft/api/getDynamicData.php");
       sseSnapshot = await res.json();
-      // DEBUG
       console.log("🛰️ Using live SSE snapshot:", sseSnapshot);
       if (!sseSnapshot || !sseSnapshot.timeDateArray) {
         throw new Error("Live data not ready.");
@@ -118,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //#region 🛰️ Skyebot Prompt Function (send latest SOT)
   async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
-    // DEBUG
     console.log("🛰️ Sending prompt, convo, and SSE snapshot:", {prompt, conversationHistory, sseSnapshot});
     const response = await fetch("/skyesoft/api/askOpenAI.php", {
       method: "POST",
