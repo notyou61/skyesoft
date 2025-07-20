@@ -70,65 +70,67 @@ document.addEventListener("DOMContentLoaded", () => {
   //#endregion
 
   //#region 🚀 Prompt Submission Logic (Snapshot fetched at submit)
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const prompt = input.value.trim();
-    if (!prompt) return;
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const prompt = input.value.trim();
+  if (!prompt) return;
 
-    addMessage("user", prompt);
-    input.value = "";
-    input.focus();
+  addMessage("user", prompt);
+  input.value = "";
+  input.focus();
 
-    conversationHistory.push({ role: "user", content: prompt });
-    showThinking();
+  conversationHistory.push({ role: "user", content: prompt });
+  showThinking();
 
-    // 📡 Fetch a fresh SSE snapshot at prompt time!
-    let sseSnapshot = {};
-    try {
-      const res = await fetch("/skyesoft/api/getDynamicData.php");
-      sseSnapshot = await res.json();
-      console.log("🛰️ Using live SSE snapshot:", sseSnapshot);
-      if (!sseSnapshot || !sseSnapshot.timeDateArray) {
-        throw new Error("Live data not ready.");
-      }
-    } catch (err) {
-      removeThinking();
-      addMessage("bot", "⏳ Please wait a moment while I load live data…");
-      return;
+  // 📡 Fetch a fresh SSE snapshot at prompt time!
+  let sseSnapshot = {};
+  try {
+    const res = await fetch("/skyesoft/api/getDynamicData.php");
+    sseSnapshot = await res.json();
+    console.log("🛰️ Using live SSE snapshot:", sseSnapshot);
+    if (!sseSnapshot || !sseSnapshot.timeDateArray) {
+      throw new Error("Live data not ready.");
     }
-
-    try {
-      const data = await sendSkyebotPrompt(prompt, conversationHistory, sseSnapshot);
-      removeThinking();
-      const reply = data.response || "🤖 Sorry, I didn’t understand that.";
-      addMessage("bot", reply);
-      conversationHistory.push({ role: "assistant", content: reply });
-
-      if (data.action === "logout" && typeof window.logoutUser === "function") window.logoutUser();
-      if (data.action === "versionCheck") alert(data.response || "📦 Version info unavailable.");
-    } catch (err) {
-      console.error("Client fetch error:", err.message);
-      removeThinking();
-      addMessage("bot", "❌ Network error. Please check your connection and try again.");
-    }
-  });
-  //#endregion
-
-  //#region 🛰️ Skyebot Prompt Function (send latest SOT)
-  async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
-    console.log("🛰️ Sending prompt, convo, and SSE snapshot:", {prompt, conversationHistory, sseSnapshot});
-    const response = await fetch("/skyesoft/api/askOpenAI.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt,
-        conversation: conversationHistory,
-        sseSnapshot
-      }),
-    });
-    return await response.json();
+    // Debug: log snapshot at submit
+    console.log("🚦 sseSnapshot at submit:", sseSnapshot);
+  } catch (err) {
+    removeThinking();
+    addMessage("bot", "⏳ Please wait a moment while I load live data…");
+    return;
   }
-  //#endregion
+
+  try {
+    const data = await sendSkyebotPrompt(prompt, conversationHistory, sseSnapshot);
+    removeThinking();
+    const reply = data.response || "🤖 Sorry, I didn’t understand that.";
+    addMessage("bot", reply);
+    conversationHistory.push({ role: "assistant", content: reply });
+
+    if (data.action === "logout" && typeof window.logoutUser === "function") window.logoutUser();
+    if (data.action === "versionCheck") alert(data.response || "📦 Version info unavailable.");
+  } catch (err) {
+    console.error("Client fetch error:", err.message);
+    removeThinking();
+    addMessage("bot", "❌ Network error. Please check your connection and try again.");
+  }
+});
+//#endregion
+
+//#region 🛰️ Skyebot Prompt Function (send latest SOT)
+async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
+  console.log("🛰️ Sending prompt, convo, and SSE snapshot:", {prompt, conversationHistory, sseSnapshot});
+  const response = await fetch("/skyesoft/api/askOpenAI.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      conversation: conversationHistory,
+      sseSnapshot
+    }),
+  });
+  return await response.json();
+}
+//#endregion
 
   //#region 👋 Startup Message
   addMessage("bot", "Hello! How can I assist you today?");
