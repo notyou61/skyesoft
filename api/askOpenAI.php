@@ -15,12 +15,17 @@ if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
     $codexData = json_decode($codexRaw, true);
 }
+
+// -- ADD THIS: log raw JSON input for debugging
 $inputRaw = file_get_contents("php://input");
+file_put_contents(__DIR__ . '/debug-rawinput.log', $inputRaw); // LOG RAW POST
+
 $input = json_decode($inputRaw, true);
+file_put_contents(__DIR__ . '/debug-decodedinput.log', print_r($input, true)); // LOG DECODED
+
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
-// Test
 file_put_contents(__DIR__ . '/debug-sseinput.log', print_r($sseSnapshot, true));
 #endregion
 
