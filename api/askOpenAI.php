@@ -8,26 +8,13 @@ if (!$apiKey) {
 }
 #endregion
 
-#region 📚 Load Codex Glossary (Old & New Format)
+#region 📚 Load Codex JSON (and Parse Input)
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
-$codexGlossary = [];
-$codexGlossaryAssoc = [];
+$codexData = [];
 if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
     $codexData = json_decode($codexRaw, true);
-
-    // Old: Array of definition lines (for legacy support)
-    if (isset($codexData['modules']['glossaryModule']['contents'])) {
-        $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
-    }
-    // New: Associative glossary ("glossary": { ... })
-    if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
-        $codexGlossaryAssoc = $codexData['glossary'];
-    }
 }
-#endregion
-
-#region 📦 Parse Input
 $inputRaw = file_get_contents("php://input");
 $input = json_decode($inputRaw, true);
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
@@ -35,12 +22,21 @@ $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 #endregion
 
-#region 📘 Build codexGlossary Block & Array for Validation
+#region 📚 Build All Codex Data (Glossary, Modules, Other)
+// --- Glossary (old and new formats) ---
+$codexGlossary = [];
+$codexGlossaryAssoc = [];
+if (isset($codexData['modules']['glossaryModule']['contents'])) {
+    $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+}
+if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
+    $codexGlossaryAssoc = $codexData['glossary'];
+}
+
+// --- Build glossary block/terms ---
 $codexGlossaryBlock = "";
 $codexTerms = [];
-
-// Old glossary (array)
-if (!empty($codexGlossary)) {
+if (!empty($codexGlossary) && is_array($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
         if (strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
@@ -52,15 +48,109 @@ if (!empty($codexGlossary)) {
         }
     }
 }
-
-// New glossary (assoc array)
 if (!empty($codexGlossaryAssoc)) {
     foreach ($codexGlossaryAssoc as $term => $def) {
         $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
         $codexTerms[] = trim($def);
-        // Also allow "Term: Definition" for matching
         $codexTerms[] = trim($term) . ": " . trim($def);
     }
+}
+
+// --- Build modules array for quick user display ---
+$modulesArr = [];
+if (isset($codexData['readme']['modules'])) {
+    foreach ($codexData['readme']['modules'] as $mod) {
+        if (isset($mod['name'], $mod['purpose'])) {
+            $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
+        }
+    }
+}
+
+// --- Build Codex Other block/terms (use $modulesArr for modules) ---
+$codexOtherBlock = "";
+$codexOtherTerms = [];
+
+// --- Version Info ---
+if (isset($codexData['version']['number'])) {
+    $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
+    $codexOtherTerms[] = $codexData['version']['number'];
+    $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
+}
+
+// --- Changelog (latest entry only) ---
+if (isset($codexData['changelog'][0]['description'])) {
+    $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
+    $codexOtherTerms[] = $codexData['changelog'][0]['description'];
+    $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
+}
+
+// --- Readme: Title & Vision ---
+if (isset($codexData['readme']['title'])) {
+    $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
+    $codexOtherTerms[] = $codexData['readme']['title'];
+    $codexOtherTerms[] = "Readme Title: " . $codexData['readme']['title'];
+}
+if (isset($codexData['readme']['vision'])) {
+    $codexOtherBlock .= "Vision: " . $codexData['readme']['vision'] . "\n";
+    $codexOtherTerms[] = $codexData['readme']['vision'];
+    $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
+}
+
+// --- Modules block for prompt/validator (already in $modulesArr) ---
+if ($modulesArr) {
+    $modBlock = implode("\n", $modulesArr);
+    $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
+    $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
+}
+
+// --- Meta Section ---
+if (isset($codexData['meta']['description'])) {
+    $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
+    $codexOtherTerms[] = $codexData['meta']['description'];
+    $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
+}
+
+// --- Constitution Section ---
+if (isset($codexData['constitution']['description'])) {
+    $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
+    $codexOtherTerms[] = $codexData['constitution']['description'];
+    $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
+}
+
+// --- RAG Explanation ---
+if (isset($codexData['ragExplanation']['summary'])) {
+    $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
+    $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
+    $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
+}
+
+// --- Included Documents ---
+if (isset($codexData['includedDocuments']['summary'])) {
+    $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
+    $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
+    $codexOtherTerms[] = "Included Documents: " . $codexData['includedDocuments']['summary'];
+    if (isset($codexData['includedDocuments']['documents'])) {
+        $docList = implode(", ", $codexData['includedDocuments']['documents']);
+        $codexOtherBlock .= "Documents: " . $docList . "\n";
+        $codexOtherTerms[] = $docList;
+        $codexOtherTerms[] = "Documents: " . $docList;
+    }
+}
+
+// --- Shared Sources of Truth ---
+if (isset($codexData['shared']['sourcesOfTruth'])) {
+    $sotList = implode("; ", $codexData['shared']['sourcesOfTruth']);
+    $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
+    $codexOtherTerms[] = $sotList;
+    $codexOtherTerms[] = "Sources of Truth: " . $sotList;
+}
+
+// --- Shared AI Behavior Rules ---
+if (isset($codexData['shared']['aiBehaviorRules'])) {
+    $ruleList = implode(" | ", $codexData['shared']['aiBehaviorRules']);
+    $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
+    $codexOtherTerms[] = $ruleList;
+    $codexOtherTerms[] = "AI Behavior Rules: " . $ruleList;
 }
 #endregion
 
@@ -101,20 +191,63 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
 }
 #endregion
 
+#region 📋 User Codex Commands (Glossary, Modules, etc.)
+
+// --- Show Full Glossary (deduped) ---
+if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $prompt)) {
+    $displayed = [];
+    $uniqueGlossary = "";
+    foreach (explode("\n", $codexGlossaryBlock) as $line) {
+        $key = strtolower(trim(strtok($line, ":")));
+        if ($key && !isset($displayed[$key])) {
+            $uniqueGlossary .= $line . "\n\n";
+            $displayed[$key] = true;
+        }
+    }
+    $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
+    echo json_encode([
+        "response" => $formattedGlossary,
+        "action" => "none"
+    ]);
+    exit;
+}
+
+// --- Show Modules (if requested) ---
+if (preg_match('/\b(show modules|list modules|all modules)\b/i', $prompt)) {
+    $modulesDisplay = "";
+    if (!empty($modulesArr)) {
+        $modulesDisplay = nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
+    } else {
+        $modulesDisplay = "No modules found in Codex.";
+    }
+    echo json_encode([
+        "response" => $modulesDisplay,
+        "action" => "none"
+    ]);
+    exit;
+}
+
+// (Add more codex commands here if you want!)
+#endregion
+
 #region 📝 Build System Prompt
 $systemPrompt = <<<PROMPT
-You are Skyebot, an assistant for a signage company. You have two sources of truth:
+You are Skyebot, an assistant for a signage company. You have three sources of truth:
 - codexGlossary: internal company terms/definitions
+- codexOther: other company knowledge base items (version, modules, constitution, etc.)
 - sseSnapshot: current operational data (date, time, weather, KPIs, etc.)
 
 Rules:
-- Infer what the user is asking about (a term or an operational value).
-- If the answer is found in codexGlossary or sseSnapshot, respond ONLY with that value or definition. No extra wording.
+- Infer what the user is asking about (a term, a module, an operational value, etc.).
+- If the answer is found in codexGlossary, codexOther, or sseSnapshot, respond ONLY with that value or definition. No extra wording.
 - If no information is found, reply: "No information available."
 - Do not repeat the user’s question, explain reasoning, or add extra context.
 
 codexGlossary:
 $codexGlossaryBlock
+
+codexOther:
+$codexOtherBlock
 
 sseSnapshot:
 $snapshotSummary
@@ -125,7 +258,6 @@ PROMPT;
 $messages = [
     ["role" => "system", "content" => $systemPrompt]
 ];
-// Optionally add the last 1-2 user/assistant turns for context
 if (!empty($conversation)) {
     $history = array_slice($conversation, -2);
     foreach ($history as $entry) {
@@ -135,28 +267,6 @@ if (!empty($conversation)) {
     }
 }
 $messages[] = ["role" => "user", "content" => $prompt];
-#endregion
-
-#region 📋 User Glossary Command — Show Full Glossary
-if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $prompt)) {
-    // Unique glossary display
-    $displayed = [];
-    $uniqueGlossary = "";
-    foreach (explode("\n", $codexGlossaryBlock) as $line) {
-        $key = strtolower(trim(strtok($line, ":")));
-        if ($key && !isset($displayed[$key])) {
-            $uniqueGlossary .= $line . "\n\n";
-            $displayed[$key] = true;
-        }
-    }
-$formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
-
-    echo json_encode([
-        "response" => $formattedGlossary,
-        "action" => "none"
-    ]);
-    exit;
-}
 #endregion
 
 #region 🚀 OpenAI API Request
@@ -195,14 +305,13 @@ $responseText = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
 #region ✅ Final Post-Validation Step
-$allValid = array_merge($codexTerms, $sseValues);
+$allValid = array_merge($codexTerms, $codexOtherTerms, $sseValues);
 $isValid = false;
 foreach ($allValid as $entry) {
     if (strcasecmp(trim($responseText), trim($entry)) === 0) {
         $isValid = true;
         break;
     }
-    // Allow "Term: Definition" match if that's how glossary returns it
     if (strpos($responseText, ":") !== false && stripos($entry, trim($responseText)) !== false) {
         $isValid = true;
         break;
