@@ -28,35 +28,57 @@ $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 #endregion
 
-#region 📘 Build codexGlossary Block
+#region 📘 Build codexGlossary Block & Array for Validation
 $codexGlossaryBlock = "";
+$codexTerms = [];
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
         if (strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
+            $codexTerms[] = trim($def);
         } else {
             $codexGlossaryBlock .= $termDef . "\n";
+            $codexTerms[] = trim($termDef);
         }
     }
 }
 #endregion
 
-#region 📊 Build sseSnapshot Summary
+#region 📊 Build sseSnapshot Summary & Array for Validation
 $snapshotSummary = "";
+$sseValues = [];
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    if (isset($sseSnapshot['timeDateArray']['currentDate']))
-        $snapshotSummary .= "date: " . $sseSnapshot['timeDateArray']['currentDate'] . "\n";
-    if (isset($sseSnapshot['timeDateArray']['currentLocalTime']))
-        $snapshotSummary .= "time: " . $sseSnapshot['timeDateArray']['currentLocalTime'] . "\n";
-    if (isset($sseSnapshot['weatherData']['temp']) && isset($sseSnapshot['weatherData']['description']))
-        $snapshotSummary .= "weather: " . $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'] . "\n";
-    if (isset($sseSnapshot['kpiData']['contacts']))
-        $snapshotSummary .= "contacts: " . $sseSnapshot['kpiData']['contacts'] . "\n";
-    if (isset($sseSnapshot['siteMeta']['siteVersion']))
-        $snapshotSummary .= "siteVersion: " . $sseSnapshot['siteMeta']['siteVersion'] . "\n";
-    if (isset($sseSnapshot['uiHints']['tips'][0]))
-        $snapshotSummary .= "tip: " . $sseSnapshot['uiHints']['tips'][0] . "\n";
+    if (isset($sseSnapshot['timeDateArray']['currentDate'])) {
+        $val = $sseSnapshot['timeDateArray']['currentDate'];
+        $snapshotSummary .= "date: " . $val . "\n";
+        $sseValues[] = $val;
+    }
+    if (isset($sseSnapshot['timeDateArray']['currentLocalTime'])) {
+        $val = $sseSnapshot['timeDateArray']['currentLocalTime'];
+        $snapshotSummary .= "time: " . $val . "\n";
+        $sseValues[] = $val;
+    }
+    if (isset($sseSnapshot['weatherData']['temp']) && isset($sseSnapshot['weatherData']['description'])) {
+        $val = $sseSnapshot['weatherData']['temp'] . "°F, " . $sseSnapshot['weatherData']['description'];
+        $snapshotSummary .= "weather: " . $val . "\n";
+        $sseValues[] = $val;
+    }
+    if (isset($sseSnapshot['kpiData']['contacts'])) {
+        $val = $sseSnapshot['kpiData']['contacts'];
+        $snapshotSummary .= "contacts: " . $val . "\n";
+        $sseValues[] = $val;
+    }
+    if (isset($sseSnapshot['siteMeta']['siteVersion'])) {
+        $val = $sseSnapshot['siteMeta']['siteVersion'];
+        $snapshotSummary .= "siteVersion: " . $val . "\n";
+        $sseValues[] = $val;
+    }
+    if (isset($sseSnapshot['uiHints']['tips'][0])) {
+        $val = $sseSnapshot['uiHints']['tips'][0];
+        $snapshotSummary .= "tip: " . $val . "\n";
+        $sseValues[] = $val;
+    }
 }
 #endregion
 
@@ -84,7 +106,7 @@ PROMPT;
 $messages = [
     ["role" => "system", "content" => $systemPrompt]
 ];
-// Optionally add the last 1-2 user/assistant turns for context (avoid drift)
+// Optionally add the last 1-2 user/assistant turns for context
 if (!empty($conversation)) {
     $history = array_slice($conversation, -2);
     foreach ($history as $entry) {
@@ -100,7 +122,7 @@ $messages[] = ["role" => "user", "content" => $prompt];
 $payload = json_encode([
     "model" => "gpt-4",
     "messages" => $messages,
-    "temperature" => 0.1,   // Minimal creativity, stick to rules
+    "temperature" => 0.1,
     "max_tokens" => 200
 ], JSON_UNESCAPED_SLASHES);
 
@@ -129,9 +151,23 @@ if (!isset($result["choices"][0]["message"]["content"])) {
 }
 
 $responseText = trim($result["choices"][0]["message"]["content"]);
+#endregion
 
-// Final fallback: if empty or contains the question, block it
-if ($responseText === "" || stripos($responseText, $prompt) !== false) {
+#region ✅ Final Post-Validation Step
+$allValid = array_merge($codexTerms, $sseValues);
+$isValid = false;
+foreach ($allValid as $entry) {
+    if (strcasecmp(trim($responseText), trim($entry)) === 0) {
+        $isValid = true;
+        break;
+    }
+    // Allow "Term: Definition" match if that's how glossary returns it
+    if (strpos($responseText, ":") !== false && stripos($entry, trim($responseText)) !== false) {
+        $isValid = true;
+        break;
+    }
+}
+if (!$isValid || $responseText === "") {
     $responseText = "No information available.";
 }
 #endregion

@@ -6,17 +6,15 @@ const execSync = require("child_process").execSync;
 // 🧠 Define bump type (default: patch)
 const bumpType = process.argv[2] || "patch";
 
-// 📌 Define paths
-const codexPath = path.resolve(__dirname, "../docs/codex/codex-version.md");
+// 📌 Define path for version.json only
 const versionJsonPath = path.resolve(__dirname, "../assets/data/version.json");
 
-// 🧮 Read current version
+// 🧮 Read current version from version.json (fallback to 0.0.1)
 let version = "0.0.1";
-if (fs.existsSync(codexPath)) {
-  const versionText = fs.readFileSync(codexPath, "utf8").trim();
-  const match = versionText.match(/v(\d+)\.(\d+)\.(\d+)/);
-  if (match) {
-    let [major, minor, patch] = match.slice(1).map(Number);
+if (fs.existsSync(versionJsonPath)) {
+  const json = JSON.parse(fs.readFileSync(versionJsonPath, "utf8"));
+  if (json.siteVersion && /^v?\d+\.\d+\.\d+$/.test(json.siteVersion)) {
+    let [major, minor, patch] = json.siteVersion.replace(/^v/, "").split(".").map(Number);
     if (bumpType === "major") major++;
     else if (bumpType === "minor") minor++;
     else patch++;
@@ -24,9 +22,8 @@ if (fs.existsSync(codexPath)) {
   }
 }
 
-// 🖊️ Write updated codex version
+// 🖊️ Set new version string
 const newVersionText = `v${version}`;
-fs.writeFileSync(codexPath, newVersionText);
 
 // 📅 Get Git metadata
 const commitMsg = execSync("git log -1 --pretty=%s").toString().trim();
@@ -46,4 +43,4 @@ const versionJson = {
 fs.writeFileSync(versionJsonPath, JSON.stringify(versionJson, null, 2));
 
 console.log(`✅ Version bumped to ${newVersionText} (${bumpType})`);
-console.log(`📄 Updated ${path.basename(versionJsonPath)} and ${path.basename(codexPath)}`);
+console.log(`📄 Updated ${path.basename(versionJsonPath)}`);
