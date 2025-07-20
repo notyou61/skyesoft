@@ -139,7 +139,18 @@ $messages[] = ["role" => "user", "content" => $prompt];
 
 #region 📋 User Glossary Command — Show Full Glossary
 if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $prompt)) {
-    $formattedGlossary = nl2br(htmlspecialchars($codexGlossaryBlock));
+    // Unique glossary display
+    $displayed = [];
+    $uniqueGlossary = "";
+    foreach (explode("\n", $codexGlossaryBlock) as $line) {
+        $key = strtolower(trim(strtok($line, ":")));
+        if ($key && !isset($displayed[$key])) {
+            $uniqueGlossary .= $line . "\n\n";
+            $displayed[$key] = true;
+        }
+    }
+$formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
+
     echo json_encode([
         "response" => $formattedGlossary,
         "action" => "none"
