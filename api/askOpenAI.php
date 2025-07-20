@@ -8,14 +8,21 @@ if (!$apiKey) {
 }
 #endregion
 
-#region 📚 Load Codex Glossary
+#region 📚 Load Codex Glossary (Old & New Format)
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codexGlossary = [];
+$codexGlossaryAssoc = [];
 if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
     $codexData = json_decode($codexRaw, true);
+
+    // Old: Array of definition lines (for legacy support)
     if (isset($codexData['modules']['glossaryModule']['contents'])) {
         $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+    }
+    // New: Associative glossary ("glossary": { ... })
+    if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
+        $codexGlossaryAssoc = $codexData['glossary'];
     }
 }
 #endregion
@@ -31,7 +38,9 @@ $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 #region 📘 Build codexGlossary Block & Array for Validation
 $codexGlossaryBlock = "";
 $codexTerms = [];
-if (!empty($codexGlossary) && is_array($codexGlossary)) {
+
+// Old glossary (array)
+if (!empty($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
         if (strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
@@ -41,6 +50,16 @@ if (!empty($codexGlossary) && is_array($codexGlossary)) {
             $codexGlossaryBlock .= $termDef . "\n";
             $codexTerms[] = trim($termDef);
         }
+    }
+}
+
+// New glossary (assoc array)
+if (!empty($codexGlossaryAssoc)) {
+    foreach ($codexGlossaryAssoc as $term => $def) {
+        $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
+        $codexTerms[] = trim($def);
+        // Also allow "Term: Definition" for matching
+        $codexTerms[] = trim($term) . ": " . trim($def);
     }
 }
 #endregion
