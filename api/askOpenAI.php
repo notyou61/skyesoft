@@ -137,6 +137,17 @@ if (!empty($conversation)) {
 $messages[] = ["role" => "user", "content" => $prompt];
 #endregion
 
+#region 📋 User Glossary Command — Show Full Glossary
+if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $prompt)) {
+    $formattedGlossary = nl2br(htmlspecialchars($codexGlossaryBlock));
+    echo json_encode([
+        "response" => $formattedGlossary,
+        "action" => "none"
+    ]);
+    exit;
+}
+#endregion
+
 #region 🚀 OpenAI API Request
 $payload = json_encode([
     "model" => "gpt-4",
