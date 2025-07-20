@@ -2,11 +2,16 @@
 
 //#region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
+
+// 🌐 Holds latest live SSE snapshot (GLOBAL!)
+let sseSnapshot = {};
+// ✅ Tracks if stream is ready to use (GLOBAL!)
+let streamReady = false;
 //#endregion
 
 //#region 🧠 Skyebot Main Chat Loader
 document.addEventListener("DOMContentLoaded", () => {
-  
+
   //#region 🟩 Element Selection & Early Checks
   const form = document.getElementById("promptForm");        // 📝 Chat form element
   const input = document.getElementById("promptInput");       // ⌨️ User input box
@@ -25,19 +30,14 @@ document.addEventListener("DOMContentLoaded", () => {
     role: "assistant",
     content: "Hello! How can I assist you today?"
   }];
-
-  // 🌐 Holds latest live SSE snapshot
-  let sseSnapshot = {};
-  // ✅ Tracks if stream is ready to use
-  let streamReady = false;
   //#endregion
 
   //#region 📚 Fetch Codex Glossary from Server
-fetch("/skyesoft/docs/codex/codex.json")
-  .then(res => res.json())
-  .then(json => { codexData = json; })
-  .catch(() => { codexData = {}; });
-//#endregion
+  fetch("/skyesoft/docs/codex/codex.json")
+    .then(res => res.json())
+    .then(json => { codexData = json; })
+    .catch(() => { codexData = {}; });
+  //#endregion
 
   //#region 🟧 Live Stream Polling and Skyebot Prompt
 
@@ -56,27 +56,27 @@ fetch("/skyesoft/docs/codex/codex.json")
   fetchStreamData();                     // ⏩ Run immediately
   setInterval(fetchStreamData, 1000);    // 🔁 Repeat every 1 second
 
-// 🌟 Skyebot Prompt Function — Always sends the latest SOT!
-async function sendSkyebotPrompt(prompt, conversationHistory = []) {
-  if (!streamReady) {
-    return { response: "Live stream not ready." };
+  // 🌟 Skyebot Prompt Function — Always sends the latest SOT!
+  async function sendSkyebotPrompt(prompt, conversationHistory = []) {
+    if (!streamReady) {
+      return { response: "Live stream not ready." };
+    }
+    // DEBUG: Show what we're sending to the backend
+    console.log("🛰️ Sending SSE snapshot:", sseSnapshot);
+
+    const response = await fetch("/skyesoft/api/askOpenAI.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        conversation: conversationHistory,
+        sseSnapshot   // 👈 Includes all live data!
+      }),
+    });
+    return await response.json();
   }
-  // Add a log here:
-  console.log("🛰️ Sending SSE snapshot:", sseSnapshot);
 
-  const response = await fetch("/skyesoft/api/askOpenAI.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      conversation: conversationHistory,
-      sseSnapshot   // 👈 Includes all live data!
-    }),
-  });
-  return await response.json();
-}
-
-//#endregion
+  //#endregion
 
   //#region 💬 Chat Message Rendering
   // 🟦 Add a chat message to the log
@@ -142,25 +142,9 @@ async function sendSkyebotPrompt(prompt, conversationHistory = []) {
 
     try {
       // 📨 Send prompt, convo, and stream to backend AI API
-      const res = await fetch("/skyesoft/api/askOpenAI.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversation: conversationHistory,
-          prompt,
-          sseSnapshot: sseSnapshot,
-          codex: codexData   // ✅ NOW INCLUDED!
-        })
-      });
+      const data = await sendSkyebotPrompt(prompt, conversationHistory);
 
-      const data = await res.json();
       removeThinking();
-
-      if (!res.ok) {
-        console.error("Server error:", data.error || "Unknown error");
-        addMessage("bot", "❌ Sorry, something went wrong. Please try again.");
-        return;
-      }
 
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);                           // 🤖 Show AI reply
