@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.128",
-  "lastDeployNote": "♻️ Patch: strict glossary/operational logic, debug logging, version bump",
-  "lastDeployTime": "2025-07-19 23:34:07",
-  "commitHash": "9131337",
+  "siteVersion": "v0.0.130",
+  "lastDeployNote": "Bump: DRY full Codex SOT integration for Skyebot—single-pass glossary, modules, and Codex user commands",
+  "lastDeployTime": "2025-07-20 14:56:05",
+  "commitHash": "dd855d2",
   "deployState": "live",
   "deployIsLive": true
 }
