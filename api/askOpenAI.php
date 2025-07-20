@@ -20,6 +20,8 @@ $input = json_decode($inputRaw, true);
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+// Test
+file_put_contents(__DIR__ . '/debug-sseinput.log', print_r($sseSnapshot, true));
 #endregion
 
 #region 📚 Build All Codex Data (Glossary, Modules, Other)
