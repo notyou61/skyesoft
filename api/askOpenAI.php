@@ -21,15 +21,6 @@ $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 #endregion
-// Test for empty sseSnapshot (remove when not needed)
-if (empty($sseSnapshot)) {
-    $sseSnapshot = [
-        'timeDateArray' => [
-            'currentDate' => '2025-07-20',
-            'currentLocalTime' => '07:55 AM'
-        ]
-    ];
-}
 
 #region 📚 Build All Codex Data (Glossary, Modules, Other)
 // --- Glossary (old and new formats) ---
