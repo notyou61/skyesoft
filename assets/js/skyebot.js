@@ -39,7 +39,8 @@ fetch("/skyesoft/docs/codex/codex.json")
   .catch(() => { codexData = {}; });
 //#endregion
 
-  //#region 🟧 Live Stream Polling
+  //#region 🟧 Live Stream Polling and Skyebot Prompt
+
   // 🔄 Fetch SSE stream (site SOT) on interval
   async function fetchStreamData() {
     try {
@@ -53,8 +54,25 @@ fetch("/skyesoft/docs/codex/codex.json")
     }
   }
   fetchStreamData();                     // ⏩ Run immediately
-  setInterval(fetchStreamData, 5000);    // 🔁 Repeat every 5 seconds
-  //#endregion
+  setInterval(fetchStreamData, 1000);    // 🔁 Repeat every 1 second
+
+  // 🌟 Skyebot Prompt Function — Always sends the latest SOT!
+  async function sendSkyebotPrompt(prompt, conversationHistory = []) {
+    if (!streamReady) {
+      return { response: "Live stream not ready." };
+    }
+    const response = await fetch("/skyesoft/api/askOpenAI.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        conversation: conversationHistory,
+        sseSnapshot   // 👈 Includes all live data!
+      }),
+    });
+    return await response.json();
+  }
+//#endregion
 
   //#region 💬 Chat Message Rendering
   // 🟦 Add a chat message to the log

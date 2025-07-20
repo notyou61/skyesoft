@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.130",
-  "lastDeployNote": "Bump: DRY full Codex SOT integration for Skyebot—single-pass glossary, modules, and Codex user commands",
-  "lastDeployTime": "2025-07-20 14:56:05",
-  "commitHash": "dd855d2",
+  "siteVersion": "v0.0.131",
+  "lastDeployNote": "Test mode: inject sample SOT/SSE if not provided for Skyebot backend verification",
+  "lastDeployTime": "2025-07-20 15:25:50",
+  "commitHash": "f9c1db9",
   "deployState": "live",
   "deployIsLive": true
 }
