@@ -1,6 +1,6 @@
 // 📁 File: assets/js/workdayTicker.js
 
-// #region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
+//#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
@@ -14,33 +14,44 @@ function formatDurationPadded(seconds) {
 
   return `${dayPart}${hourPart} ${minutePart} ${secondPart}`.trim();
 }
-// #endregion
+//#endregion
 
-// #region 🔁 Poll Every Second for Dynamic Data
+//#region 🌤️ Weather Emoji Helper
+function getWeatherEmoji(iconCode) {
+  if (!iconCode) return "❓";
+  if (iconCode.startsWith("01")) return "☀️";        // Clear sky
+  if (iconCode.startsWith("02")) return "🌤️";        // Few clouds
+  if (iconCode.startsWith("03")) return "⛅";         // Scattered clouds
+  if (iconCode.startsWith("04")) return "☁️";        // Broken clouds
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️"; // Rain
+  if (iconCode.startsWith("11")) return "⛈️";        // Thunderstorm
+  if (iconCode.startsWith("13")) return "❄️";        // Snow
+  if (iconCode.startsWith("50")) return "🌫️";        // Mist
+  return "❓";
+}
+//#endregion
+
+//#region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
       // #region 🧪 Debug Log
-      console.log("🕒 Polled:", data);
-      console.log("🌡️ Weather Snapshot:", {
-        temp: data.weatherData?.temp,
-        description: data.weatherData?.description,
-        icon: data.weatherData?.icon
-      });
+      // console.log("🕒 Polled:", data);
+      // console.log("🌡️ Weather Snapshot:", data.weatherData);
       // #endregion
 
       // #region ⏰ Update Time Display
-      if (data.timeDateArray?.currentLocalTime) {
+      if (data?.timeDateArray?.currentLocalTime) {
         const timeEl = document.getElementById("currentTime");
         if (timeEl) timeEl.textContent = data.timeDateArray.currentLocalTime;
       }
       // #endregion
 
       // #region ⏳ Update Interval Remaining Message
-      const seconds = data.intervalsArray?.currentDaySecondsRemaining;
-      const label = data.intervalsArray?.intervalLabel;
-      const dayType = data.intervalsArray?.dayType;
+      const seconds = data?.intervalsArray?.currentDaySecondsRemaining;
+      const label = data?.intervalsArray?.intervalLabel;
+      const dayType = data?.intervalsArray?.dayType;
       if (seconds !== undefined && label !== undefined && dayType !== undefined) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
@@ -49,15 +60,15 @@ setInterval(() => {
           case "0-1": message = `🔜 Workday begins in ${formatted}`; break;
           default:    message = `📆 Next workday begins in ${formatted}`; break;
         }
-
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
-        console.log("⏳ Interval Remaining:", message);
+        // Optional debug:
+        // console.log("⏳ Interval Remaining:", message);
       }
       // #endregion
 
       // #region 🏷️ Version Tag
-      if (data.siteMeta?.siteVersion) {
+      if (data?.siteMeta?.siteVersion) {
         const versionEl = document.querySelector(".version");
         if (versionEl) {
           versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteMeta.siteVersion}`;
@@ -66,7 +77,10 @@ setInterval(() => {
       // #endregion
 
       // #region 🌦️ Update Weather Display
-      if (data.weatherData?.temp !== null && data.weatherData?.description) {
+      if (
+        typeof data?.weatherData?.temp === "number" &&
+        data.weatherData.description
+      ) {
         const tempEl = document.getElementById("weatherTemp");
         const descEl = document.getElementById("weatherDesc");
         const iconEl = document.getElementById("weatherIcon");
@@ -81,21 +95,6 @@ setInterval(() => {
     .catch(err => {
       console.error("❌ Polling Error:", err);
     });
-    // #endregion
+  // #endregion
 }, 1000);
-// #endregion
-
-// #region 🌤️ Weather Emoji Helper
-function getWeatherEmoji(iconCode) {
-  if (!iconCode) return "❓";
-  if (iconCode.startsWith("01")) return "☀️";        // Clear sky
-  if (iconCode.startsWith("02")) return "🌤️";        // Few clouds
-  if (iconCode.startsWith("03")) return "⛅";         // Scattered clouds
-  if (iconCode.startsWith("04")) return "☁️";        // Broken clouds
-  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️"; // Rain
-  if (iconCode.startsWith("11")) return "⛈️";        // Thunderstorm
-  if (iconCode.startsWith("13")) return "❄️";        // Snow
-  if (iconCode.startsWith("50")) return "🌫️";        // Mist
-  return "❓";
-}
-// #endregion
+//#endregion
