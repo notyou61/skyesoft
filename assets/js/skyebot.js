@@ -56,22 +56,26 @@ fetch("/skyesoft/docs/codex/codex.json")
   fetchStreamData();                     // ⏩ Run immediately
   setInterval(fetchStreamData, 1000);    // 🔁 Repeat every 1 second
 
-  // 🌟 Skyebot Prompt Function — Always sends the latest SOT!
-  async function sendSkyebotPrompt(prompt, conversationHistory = []) {
-    if (!streamReady) {
-      return { response: "Live stream not ready." };
-    }
-    const response = await fetch("/skyesoft/api/askOpenAI.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt,
-        conversation: conversationHistory,
-        sseSnapshot   // 👈 Includes all live data!
-      }),
-    });
-    return await response.json();
+// 🌟 Skyebot Prompt Function — Always sends the latest SOT!
+async function sendSkyebotPrompt(prompt, conversationHistory = []) {
+  if (!streamReady) {
+    return { response: "Live stream not ready." };
   }
+  // Add a log here:
+  console.log("🛰️ Sending SSE snapshot:", sseSnapshot);
+
+  const response = await fetch("/skyesoft/api/askOpenAI.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      conversation: conversationHistory,
+      sseSnapshot   // 👈 Includes all live data!
+    }),
+  });
+  return await response.json();
+}
+
 //#endregion
 
   //#region 💬 Chat Message Rendering
