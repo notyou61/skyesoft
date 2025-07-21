@@ -12,7 +12,7 @@ function getCookie(name) {
 }
 
 // 🚪 Logout Function
-function logoutUser() {
+function logoutUser1() {
   console.log('DEBUG: logoutUser called', new Error().stack);
   // Pre-fill username before wiping
   const savedUser = getCookie('skyelogin_user');
