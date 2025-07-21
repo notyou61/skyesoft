@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
-
+      // 🖼️ Validate inputs
       try {
         // Fetch user list (update path if needed)
         const userData = await fetch('/skyesoft-data.json').then(r => r.json());
