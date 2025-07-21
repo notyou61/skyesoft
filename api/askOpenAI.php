@@ -19,7 +19,7 @@ if (file_exists($codexPath)) {
 }
 
 // 2. Load SSE/live data
-$sseRaw = @file_get_contents('http://localhost/skyesoft/api/getDynamicData.php'); // adjust to match your server/URL
+$sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
 $sseData = $sseRaw ? json_decode($sseRaw, true) : [];
 
 // 3. Add other sources if needed
