@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.0.131",
-  "lastDeployNote": "Test mode: inject sample SOT/SSE if not provided for Skyebot backend verification",
-  "lastDeployTime": "2025-07-20 15:25:50",
-  "commitHash": "f9c1db9",
+  "siteVersion": "v0.1.131",
+  "lastDeployNote": "SNPS: Version bump, feature/refactor/whatever",
+  "lastDeployTime": "2025-07-21 16:10:50",
+  "commitHash": "9ec8d32",
   "deployState": "live",
   "deployIsLive": true
 }

@@ -1,122 +1,8 @@
 {
-  "version": {
-    "number": "1.0.6",
-    "lastUpdated": "2025-07-13T16:21:08"
-  },
-  "changelog": [
-    {
-      "date": "2025-06-15T15:11:46.335Z",
-      "file": "scripts/update-changelog.js",
-      "description": "Test: verify full versioning flow after update [patch]",
-      "user": "Steve Skye",
-      "type": "update"
-    },
-    {
-      "date": "2025-06-15T15:11:46.335Z",
-      "file": "docs/codex/real-time-sse.md",
-      "description": "Test: verify full versioning flow after update [patch]",
-      "user": "Steve Skye",
-      "type": "update"
-    },
-    {
-      "date": "2025-06-15T14:22:17.059Z",
-      "file": "real-time-sse.md",
-      "description": "Updated real-time-sse.md via changelog script",
-      "user": "SteveS",
-      "type": "update"
-    },
-    {
-      "date": "2025-06-15T14:07:36.334Z",
-      "file": "test.md",
-      "description": "Updated test.md via changelog script",
-      "user": "SteveS",
-      "type": "update"
-    },
-    {
-      "date": "2025-06-15T00:48:56.301Z",
-      "file": "time-interval-standards.md",
-      "description": "Updated time-interval-standards.md via changelog script",
-      "user": "SteveS",
-      "type": "update"
-    },
-    {
-      "date": "2025-06-14T23:59:46.414515",
-      "file": "codex-version.json",
-      "description": "Initial version file created for Skyesoft Codex version tracking",
-      "user": "Steve Skye",
-      "type": "version"
-    }
-  ],
-  "readme": {
-    "title": "\ud83d\udcd8 Skyesoft Codex",
-    "vision": "The Codex is not just documentation \u2014 it is the operational DNA of Skyesoft.",
-    "modules": [
-      {
-        "name": "Time Interval Standards",
-        "file": "time-interval-standards.md",
-        "purpose": "Defines day types and time blocks for accurate turnaround tracking."
-      },
-      {
-        "name": "Real-Time SSE",
-        "file": "real-time-sse.md",
-        "purpose": "Establishes server-sent event pipelines for live system updates."
-      },
-      {
-        "name": "Core Database Structure",
-        "file": "core-database-structure.md",
-        "purpose": "Centralized schema that powers all dynamic modules."
-      },
-      {
-        "name": "One-Line Task",
-        "file": "one-line-task.md",
-        "purpose": "AI-enhanced input that recognizes task types from free-form text."
-      },
-      {
-        "name": "File Management",
-        "file": "file-management.md",
-        "purpose": "Architecture for upload, classification, and lifecycle of files."
-      },
-      {
-        "name": "Mobile-First Modals",
-        "file": "mobile-first-modals.md",
-        "purpose": "Responsive UI templates for field, office, and dashboard actions."
-      },
-      {
-        "name": "Attendance Suite",
-        "file": "attendance-suite.md",
-        "purpose": "Tracks presence, absences, exceptions, and generates insights."
-      },
-      {
-        "name": "Office Bulletins",
-        "file": "office-bulletins.md",
-        "purpose": "Central notice system for daily updates and interdepartmental news."
-      },
-      {
-        "name": "Financial Control Suite",
-        "file": "financial-control-suite.md",
-        "purpose": "Tracks job costing, budget flags, and financial alerts."
-      },
-      {
-        "name": "Permit Management Suite",
-        "file": "permit-management-suite.md",
-        "purpose": "Full workflow and SLA tracking for sign permits."
-      },
-      {
-        "name": "Service Management Suite",
-        "file": "service-management-suite.md",
-        "purpose": "Handles service orders, maintenance, and support dispatch."
-      },
-      {
-        "name": "Management Escalation Trees",
-        "file": "management-escalation-trees.md",
-        "purpose": "Rules and paths for auto-escalating unresolved or overdue issues."
-      }
-    ]
-  },
   "modules": {
     "mobileFirstModals": {
-      "title": "\ud83d\udcf1 Mobile-First Modals",
-      "purpose": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop \u2014 consistent across shop, office, and field.",
+      "title": "📱 Mobile-First Modals",
+      "purpose": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop — consistent across shop, office, and field.",
       "features": [
         "Adaptive modal forms that adjust per device and role",
         "AI-linked context insertion for prefilled fields",
@@ -130,7 +16,7 @@
       ]
     },
     "officeBulletins": {
-      "title": "\ud83d\udce2 Office Bulletins",
+      "title": "📢 Office Bulletins",
       "purpose": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic.",
       "bulletinTypes": [
         "Global",
@@ -150,7 +36,7 @@
       ]
     },
     "oneLineTask": {
-      "title": "\ud83e\udde0 One-Line Task (OLT) Input",
+      "title": "🧠 One-Line Task (OLT) Input",
       "purpose": "Freeform natural language entry system to initiate tasks, contacts, permits, or communication triggers.",
       "mechanism": [
         "Keyword and entity parsing",
@@ -170,7 +56,7 @@
       ]
     },
     "permitManagementSuite": {
-      "title": "\ud83d\uddc2\ufe0f Permit Management Suite",
+      "title": "🗂️ Permit Management Suite",
       "purpose": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates.",
       "features": [
         "Submission logs and timestamps",
@@ -195,7 +81,7 @@
       ]
     },
     "realTimeSSE": {
-      "title": "\ud83d\udd04 Real-Time SSE",
+      "title": "🔄 Real-Time SSE",
       "purpose": "Server-Sent Events push real-time updates for orders, permits, attendance, and alerts across interfaces.",
       "functions": [
         "Permit and task updates live-streamed",
@@ -209,7 +95,7 @@
       ]
     },
     "skyebotContactParser": {
-      "title": "\ud83e\udd16 Skyebot Contact Parser",
+      "title": "🤖 Skyebot Contact Parser",
       "purpose": "Parses email signatures to detect structured contact data and prevent duplicates in entity/location/contact logic.",
       "logic": [
         "Detect name, title, phones, company, address",
@@ -220,7 +106,7 @@
       "outputs": "Structured contact block added to `skyesoft-data.json`"
     },
     "timeIntervalStandards": {
-      "title": "\u23f0 Time Interval Standards (TIS)",
+      "title": "⏰ Time Interval Standards (TIS)",
       "purpose": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations.",
       "dayTypes": [
         "Workday",
@@ -229,14 +115,14 @@
       ],
       "segments": {
         "Office": {
-          "before": "12:00 AM \u2013 7:29 AM",
-          "worktime": "7:30 AM \u2013 3:30 PM",
-          "after": "3:31 PM \u2013 11:59 PM"
+          "before": "12:00 AM – 7:29 AM",
+          "worktime": "7:30 AM – 3:30 PM",
+          "after": "3:31 PM – 11:59 PM"
         },
         "Shop": {
-          "before": "12:00 AM \u2013 5:59 AM",
-          "worktime": "6:00 AM \u2013 2:00 PM",
-          "after": "2:01 PM \u2013 11:59 PM"
+          "before": "12:00 AM – 5:59 AM",
+          "worktime": "6:00 AM – 2:00 PM",
+          "after": "2:01 PM – 11:59 PM"
         }
       },
       "exclusions": "Weekends and Holidays are excluded from time-sensitive calculations",
@@ -249,8 +135,8 @@
       ]
     },
     "financialControlSuite": {
-      "title": "\ud83d\udcbc Financial Control Suite",
-      "purpose": "Track, validate, and approve all financial activities related to sign projects \u2014 enforce budget integrity, reduce waste, and ensure traceability.",
+      "title": "💼 Financial Control Suite",
+      "purpose": "Track, validate, and approve all financial activities related to sign projects — enforce budget integrity, reduce waste, and ensure traceability.",
       "components": [
         "Job Costing Tracker (labor, materials, subs)",
         "PO System with thresholds and approvals",
@@ -283,7 +169,7 @@
       ]
     },
     "serviceManagementSuite": {
-      "title": "\ud83d\udee0\ufe0f Service Management Suite",
+      "title": "🛠️ Service Management Suite",
       "purpose": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces.",
       "features": [
         "Track service requests by type (repair, install, warranty)",
@@ -291,14 +177,14 @@
         "Log outcomes, photos, and signatures",
         "Integrate with order history and permit status"
       ],
-      "status": "Placeholder \u2014 detailed specs to be added in next revision"
+      "status": "Placeholder — detailed specs to be added in next revision"
     },
     "glossaryModule": {
-      "title": "\ud83d\udcd8 Skyesoft Codex Glossary",
+      "title": "📘 Skyesoft Codex Glossary",
       "purpose": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows.",
       "contents": [
-        "LGBAS \u2014 Let\u2019s Go Back A Step: A reflective tool to pause and reassess logic or flow.",
-        "MTCO \u2014 Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+        "LGBAS — Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow.",
+        "MTCO — Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
         "Codex Context: Memory schema loaded by the AI to operate with Skyesoft-specific logic.",
         "Codex App: Modular UI tool for managing and accessing structured documentation."
       ],
@@ -309,7 +195,7 @@
       ]
     },
     "attendanceSuite": {
-      "title": "\ud83d\udd52 Attendance Suite",
+      "title": "🕒 Attendance Suite",
       "purpose": "Manages employee time tracking, absences, and shift accountability across office, shop, and field roles.",
       "features": [
         "Clock-in/out with location tracking",
@@ -318,8 +204,8 @@
         "Auto-logging to financial and service modules"
       ],
       "workflows": [
-        "Shift Scheduled \u2192 Present or Absent \u2192 Auto-reconciliation",
-        "Flag anomalies \u2192 Route to Escalation Tree",
+        "Shift Scheduled → Present or Absent → Auto-reconciliation",
+        "Flag anomalies → Route to Escalation Tree",
         "Sync with Financial and Permit modules for SLA impact"
       ],
       "integrations": [
@@ -330,8 +216,8 @@
       ]
     },
     "managementEscalationTrees": {
-      "title": "\ud83d\udcc8 Management Escalation Trees (MET)",
-      "purpose": "Defines escalation logic for overdue tasks, permit delays, and automation exceptions \u2014 ensuring issues are addressed quickly and with accountability.",
+      "title": "📈 Management Escalation Trees (MET)",
+      "purpose": "Defines escalation logic for overdue tasks, permit delays, and automation exceptions — ensuring issues are addressed quickly and with accountability.",
       "triggers": [
         "Time threshold breaches",
         "Unacknowledged task statuses",
@@ -367,49 +253,72 @@
       ]
     },
     "coreDatabaseStructure": {
-    "title": "🧬 Core Database Structure",
-    "purpose": "Serves as the centralized schema for all Skyesoft operations, enforcing consistency across CRUD operations, AI logic, and system automations.",
-    "architecture": {
-      "staticTables": [
-        "actionTypesArray",
-        "applicationCorrectionTypes",
-        "applicationFeeTypes",
-        "applicationStatus"
+      "title": "🧬 Core Database Structure",
+      "purpose": "Serves as the centralized schema for all Skyesoft operations, enforcing consistency across CRUD operations, AI logic, and system automations.",
+      "architecture": {
+        "staticTables": [
+          "actionTypesArray",
+          "applicationCorrectionTypes",
+          "applicationFeeTypes",
+          "applicationStatus"
+        ],
+        "updatableTables": [
+          "entities",
+          "locations",
+          "contacts",
+          "orders",
+          "orderNotes",
+          "applications",
+          "applicationNotes",
+          "applicationFees"
+        ],
+        "relationships": {
+          "Entity ➝ Location": "One-to-many",
+          "Location ➝ Contact": "One-to-many",
+          "Contact ➝ Order": "One-to-many",
+          "Order ➝ Application": "One-to-many",
+          "Application ➝ ApplicationFee": "One-to-many",
+          "Application ➝ ApplicationNote": "One-to-many"
+        }
+      },
+      "keyFunctions": [
+        "Supports dynamic AI parsing and auto-matching to prevent duplicates",
+        "All changes routed through `actionTypesArray` for auditability",
+        "Enables cascading logic (e.g., if an Entity is deleted, all child records are flagged or archived)",
+        "Accessible via modal forms and One-Line Task engine"
       ],
-      "updatableTables": [
-        "entities",
-        "locations",
-        "contacts",
-        "orders",
-        "orderNotes",
-        "applications",
-        "applicationNotes",
-        "applicationFees"
+      "integrations": [
+        "Permit Management Suite",
+        "Financial Control Suite",
+        "Attendance Suite",
+        "Skyebot Contact Parser",
+        "Mobile-First Modals"
       ],
-      "relationships": {
-        "Entity ➝ Location": "One-to-many",
-        "Location ➝ Contact": "One-to-many",
-        "Contact ➝ Order": "One-to-many",
-        "Order ➝ Application": "One-to-many",
-        "Application ➝ ApplicationFee": "One-to-many",
-        "Application ➝ ApplicationNote": "One-to-many"
-      }
+      "status": "🟢 Live and actively used across all modules"
     },
-    "keyFunctions": [
-      "Supports dynamic AI parsing and auto-matching to prevent duplicates",
-      "All changes routed through `actionTypesArray` for auditability",
-      "Enables cascading logic (e.g., if an Entity is deleted, all child records are flagged or archived)",
-      "Accessible via modal forms and One-Line Task engine"
-    ],
-    "integrations": [
-      "Permit Management Suite",
-      "Financial Control Suite",
-      "Attendance Suite",
-      "Skyebot Contact Parser",
-      "Mobile-First Modals"
-    ],
-    "status": "🟢 Live and actively used across all modules"
-  }
+    "loginSessionSuite": {
+      "title": "🔐 Login/Logout & Chat Session Suite",
+      "purpose": "Defines authentication, session, and chat logging protocols for Skyebot, requiring valid user login and tracking chat sessions with user ID, session ID, agentic actions, and full audit trail. Integrated with contacts and action types.",
+      "features": [
+        "Bot visibility only after login with valid session cookie",
+        "Each chat session has a unique session ID",
+        "Chat logs include timestamp, sessionId, userId, role, actionPk, prompt, and botResponse",
+        "Logout handled via agentic action or user request",
+        "Links to contacts table for user ID",
+        "Persistent, queryable chat log (e.g., chatlog.json) for all sessions"
+      ],
+      "workflow": [
+        "User logs in, system creates sessionId and sets cookie",
+        "Each message logs all context",
+        "Logout clears cookie and ends session"
+      ],
+      "integrations": [
+        "contacts",
+        "actionTypesArray",
+        "session management",
+        "Skyebot agentic actions"
+      ]
+    }
   },
   "meta": {
     "title": "Skyesoft Codex",
