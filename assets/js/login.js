@@ -83,26 +83,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // 🧼 Clear login error
   usernameInput?.addEventListener('input', () => loginError.textContent = '');
   passwordInput?.addEventListener('input', () => loginError.textContent = '');
-  // 🔑 Form Submit Logic
-  loginForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
+    // 🔑 Form Submit Logic — Loads users from skyesoft-data.json!
+    loginForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
 
-    if (username === 'admin' && password === 'skyelogin') {
-      localStorage.setItem('userLoggedIn', 'true');
-      document.cookie = `skyelogin_user=${username}; path=/; max-age=604800`; // 7 days
+      try {
+        // Fetch user list (update path if needed)
+        const userData = await fetch('/skyesoft-data.json').then(r => r.json());
+        // Find a match by email and password
+        const match = userData.contacts.find(
+          c => c.email === username && c.password === password
+        );
+        if (match) {
+          localStorage.setItem('userLoggedIn', 'true');
+          localStorage.setItem('userId', match.id); // <— save userId for chat history etc.
+          document.cookie = `skyelogin_user=${username}; path=/; max-age=604800`; // 7 days
 
-      loginForm.style.display = 'none';
-      loginError.textContent = '';
-      loginError.style.display = 'none';
+          loginForm.style.display = 'none';
+          loginError.textContent = '';
+          loginError.style.display = 'none';
 
-      pageHeader.textContent = '📊 Skyesoft Dashboard';
-      if (dashboard) dashboard.style.display = 'block';
-    } else {
-      loginError.textContent = '❌ Invalid username or password.';
-      loginError.style.display = 'block';
-      loginForm.reset();
-    }
+          pageHeader.textContent = '📊 Skyesoft Dashboard';
+          if (dashboard) dashboard.style.display = 'block';
+        } else {
+          loginError.textContent = '❌ Invalid username or password.';
+          loginError.style.display = 'block';
+          loginForm.reset();
+        }
+      } catch (err) {
+        loginError.textContent = '❌ Login failed: user data unavailable.';
+        loginError.style.display = 'block';
+        console.error('Login error:', err);
+      }
+    });
   });
-});
