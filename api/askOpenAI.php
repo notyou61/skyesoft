@@ -8,6 +8,33 @@ if (!$apiKey) {
 }
 #endregion
 
+header("Content-Type: application/json");
+
+// 1. Load Codex data
+$codexPath = __DIR__ . '/../docs/codex/codex.json';
+$codexData = [];
+if (file_exists($codexPath)) {
+    $codexRaw = file_get_contents($codexPath);
+    $codexData = json_decode($codexRaw, true);
+}
+
+// 2. Load SSE/live data
+$sseRaw = @file_get_contents('http://localhost/skyesoft/api/getDynamicData.php'); // adjust to match your server/URL
+$sseData = $sseRaw ? json_decode($sseRaw, true) : [];
+
+// 3. Add other sources if needed
+$otherData = []; // Expand as needed
+
+// 4. Combine into skyebotSOT
+$skyebotSOT = [
+    'codex' => $codexData,
+    'sse'   => $sseData,
+    'other' => $otherData
+];
+
+// (Optional: For debugging)
+file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
+
 #region 📚 Load Codex JSON (and Parse Input)
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codexData = [];
