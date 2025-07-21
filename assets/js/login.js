@@ -96,13 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const match = userData.contacts.find(
           c => c.email === username && c.password === password
         );
+        // 🖼️ If match found, set session and update UI
         if (match) {
           localStorage.setItem('userLoggedIn', 'true');
           localStorage.setItem('userId', match.id); // <— save userId for chat history etc.
           // 🖼️ Assign Cookie For local dev or non-SSL hosting:
-          document.cookie = `skyelogin_user=${username}; path=/skyesoft/; max-age=604800; SameSite=Lax; Secure`;
-          // For subpath (optional, only if you need it):
-          // document.cookie = `skyelogin_user=${username}; path=/skyesoft/; max-age=604800; SameSite=Lax`; 
+          document.cookie = `skyelogin_user=${username}; path=/skyesoft/; max-age=604800; SameSite=Lax`;
           // 🖼️ Update UI
           loginForm.style.display = 'none';
           loginError.textContent = '';
