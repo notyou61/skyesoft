@@ -100,8 +100,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (match) {
           localStorage.setItem('userLoggedIn', 'true');
           localStorage.setItem('userId', match.id); // <— save userId for chat history etc.
-          // 🖼️ Assign Cookie For local dev or non-SSL hosting:
+
+          // 🔎 Debug: Log before setting cookie
+          console.log("Setting cookie with value:", username);
+
+          // 🖼️ Assign Cookie For local dev or non-SSL hosting
           document.cookie = `skyelogin_user=${username}; path=/; max-age=604800; SameSite=Lax`;
+
+          // 🔎 Debug: Read cookie immediately after set
+          console.log("Cookie after set:", document.cookie);
+
           // 🖼️ Update UI
           loginForm.style.display = 'none';
           loginError.textContent = '';
