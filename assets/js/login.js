@@ -99,8 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (match) {
           localStorage.setItem('userLoggedIn', 'true');
           localStorage.setItem('userId', match.id); // <— save userId for chat history etc.
-          document.cookie = `skyelogin_user=${username}; path=/; max-age=604800`; // 7 days
-
+          document.cookie = `skyelogin_user=${username};path=/;max-age=604800;SameSite=Lax;Secure`;
+          // 🖼️ Update UI
           loginForm.style.display = 'none';
           loginError.textContent = '';
           loginError.style.display = 'none';
