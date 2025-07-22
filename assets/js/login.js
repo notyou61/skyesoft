@@ -12,7 +12,7 @@ function getCookie(name) {
 }
 
 // 🚪 Logout Function
-function logoutUser1() {
+function logoutUser() {
   console.log('DEBUG: logoutUser called', new Error().stack);
   // Pre-fill username before wiping
   const savedUser = getCookie('skyelogin_user');
@@ -35,6 +35,9 @@ function isTrulyLoggedOut() {
 
 // 🏠 DOMContentLoaded: Restore session or show login
 document.addEventListener('DOMContentLoaded', () => {
+  // 📝 Debugging: Log the login form element
+  console.log("Login submit handler ATTACHED!", loginForm);
+  // 📝 Selectors
   const loginForm = document.querySelector('.login-form');
   const loginError = document.getElementById('loginError');
   const usernameInput = loginForm?.querySelector('[name="username"]');
