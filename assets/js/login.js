@@ -8,22 +8,21 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Minimal login: Form or input not found.');
     return;
   }
-
+  // Set the username input to the current user if available
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = usernameInput.value.trim();
 
-    // 1. Fetch the contacts JSON
     try {
-      // Fetch the JSON data from the specified path
       const data = await fetch('assets/data/skyesoft-data.json').then(r => r.json());
-      // 2. Find the contact by email (case-insensitive)
+      console.log("All contacts:", data.contacts);
+      console.log("Entered username:", username);
+
       const match = data.contacts.find(
         c => c.email.toLowerCase() === username.toLowerCase()
       );
 
       if (match) {
-        // 3. Set cookie and userId in localStorage
         document.cookie = `skyelogin_user=${username}; path=/; max-age=604800; SameSite=Lax`;
         localStorage.setItem('userId', match.id);
         alert(`Cookie set! userId = ${match.id}`);
