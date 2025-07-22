@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = usernameInput.value.trim();
 
     try {
-      const data = await fetch('assets/data/skyesoft-data.json').then(r => r.json());
+      const data = await fetch('/skyesoft/assets/data/skyesoft-data.json').then(r => r.json());
       console.log("All contacts:", data.contacts);
       console.log("Entered username:", username);
 
