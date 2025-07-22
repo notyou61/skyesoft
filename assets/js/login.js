@@ -35,8 +35,6 @@ function isTrulyLoggedOut() {
 
 // 🏠 DOMContentLoaded: Restore session or show login
 document.addEventListener('DOMContentLoaded', () => {
-  // 📝 Debugging: Log the login form element
-  console.log("Login submit handler ATTACHED!", loginForm);
   // 📝 Selectors
   const loginForm = document.querySelector('.login-form');
   const loginError = document.getElementById('loginError');
@@ -44,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const passwordInput = loginForm?.querySelector('[name="password"]');
   const pageHeader = document.getElementById('bodyHeaderCopy');
   const dashboard = document.getElementById('dashboardSection');
-
+    // 📝 Debugging: Log the login form element
+  console.log("Login submit handler ATTACHED!", loginForm);
   // 🧠 Auto-Login Check: Accept session if EITHER is present
   const isLoggedIn =
     localStorage.getItem('userLoggedIn') === 'true' ||
