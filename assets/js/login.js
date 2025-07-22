@@ -1,5 +1,5 @@
 // 🔐 Session & Login Handling — login.js
-
+console.log("login.js loaded!");
 // 🖼️ Modal Toggle Logic
 function toggleModal() {
   const modal = document.getElementById('skyebotModal');
