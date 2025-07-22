@@ -15,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 1. Fetch the contacts JSON
     try {
-      const data = await fetch('/skyesoft-data.json').then(r => r.json());
+      // Fetch the JSON data from the specified path
+      const data = await fetch('assets/data/skyesoft-data.json').then(r => r.json());
       // 2. Find the contact by email (case-insensitive)
       const match = data.contacts.find(
         c => c.email.toLowerCase() === username.toLowerCase()
