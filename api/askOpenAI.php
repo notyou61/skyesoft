@@ -1,4 +1,10 @@
 <?php
+
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/error.log');
+error_reporting(E_ALL);
+
 #region 🛡️ Headers and API Key
 header("Content-Type: application/json");
 $apiKey = getenv("OPENAI_API_KEY");
@@ -364,7 +370,7 @@ $response = @file_get_contents("https://api.openai.com/v1/chat/completions", fal
 
 if ($response === false) {
     $error = error_get_last();
-    file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . ($error['message'] ?? 'Unknown error') . "\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . (isset($error['message']) ? $error['message'] : 'Unknown error') . "\n", FILE_APPEND);
     echo json_encode(["response" => "❌ Error reaching OpenAI API.", "action" => "none"]);
     exit;
 }
@@ -395,8 +401,8 @@ if (
     switch ($type) {
         case "Create":
             if ($name === "Login") {
-                $username = $crudData["details"]["username"] ?? '';
-                $password = $crudData["details"]["password"] ?? '';
+                $username = isset($crudData["details"]["username"]) ? $crudData["details"]["username"] : '';
+                $password = isset($crudData["details"]["password"]) ? $crudData["details"]["password"] : '';
                 if (authenticateUser($username, $password)) {
                     $_SESSION['user_id'] = $username;
                     echo json_encode([
