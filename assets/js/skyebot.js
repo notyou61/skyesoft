@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
       addMessage("bot", "⏳ Please wait a moment while I load live data…");
       return;
     }
-
+    // Try
     try {
       const data = await sendSkyebotPrompt(prompt, conversationHistory, sseSnapshot);
       removeThinking();
@@ -112,14 +112,17 @@ document.addEventListener("DOMContentLoaded", () => {
       conversationHistory.push({ role: "assistant", content: reply });
       // --- Debug: show the data returned by the backend ---
       console.log("Bot response data:", data);
+      console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
       // Logout or version check handling
       if (
         (data.action === "logout" ||
-        (data.actionType === "Create" && data.actionName === "Logout")
-        ) && typeof window.logoutUser === "function"
+        (data.actionType === "Create" && data.actionName === "Logout"))
+        && typeof window.logoutUser === "function"
       ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
         window.logoutUser();
+      } else {
+        console.log("[DEBUG] Logout condition NOT met. action:", data.action, "actionType:", data.actionType, "actionName:", data.actionName, "logoutUser:", typeof window.logoutUser);
       }
       // Version check handling
       if (data.action === "versionCheck") {
