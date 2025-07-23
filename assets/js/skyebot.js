@@ -105,7 +105,7 @@ form.addEventListener("submit", async (e) => {
     const reply = data.response || "🤖 Sorry, I didn’t understand that.";
     addMessage("bot", reply);
     conversationHistory.push({ role: "assistant", content: reply });
-
+    // Logout or version check handling
     if (data.action === "logout" && typeof window.logoutUser === "function") window.logoutUser();
     if (data.action === "versionCheck") alert(data.response || "📦 Version info unavailable.");
   } catch (err) {
