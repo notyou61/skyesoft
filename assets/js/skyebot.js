@@ -1,11 +1,16 @@
 // File: assets/js/skyebot.js
 
+//
+console.log("✅ skyebot.js loaded!");
+
 //#region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
 //#endregion
 
 //#region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
+    // Log here, runs when the DOM is ready
+  console.log("✅ DOMContentLoaded event in skyebot.js");
   //#region 🟩 Element Selection & Early Checks
   const form = document.getElementById("promptForm");        // 📝 Chat form element
   const input = document.getElementById("promptInput");       // ⌨️ User input box
