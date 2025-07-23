@@ -8,9 +8,26 @@ if (!$apiKey) {
 }
 #endregion
 
-header("Content-Type: application/json");
+#region 📨 Parse Input
+$inputRaw = file_get_contents("php://input");
+$input = json_decode($inputRaw, true);
+$prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
+$conversation = isset($input["conversation"]) ? $input["conversation"] : [];
+$sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+#endregion
 
-// 1. Load Codex data
+#region ⚡️ Quick Agentic Actions (logout, etc)
+if (preg_match('/\blog\s*out\b/i', $prompt)) {
+    echo json_encode([
+        "response" => "Logging you out...",
+        "action" => "logout"
+    ]);
+    exit;
+}
+// You can add other quick actions here (version, reset, etc)
+#endregion
+
+#region 📂 Load Codex and SSE Data (only if needed)
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codexData = [];
 if (file_exists($codexPath)) {
@@ -18,41 +35,20 @@ if (file_exists($codexPath)) {
     $codexData = json_decode($codexRaw, true);
 }
 
-// 2. Load SSE/live data
+// Load SSE/live data
 $sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
 $sseData = $sseRaw ? json_decode($sseRaw, true) : [];
 
-// 3. Add other sources if needed
-$otherData = []; // Expand as needed
-
-// 4. Combine into skyebotSOT
+// Combine for skyebotSOT, add more sources as needed
+$otherData = [];
 $skyebotSOT = [
     'codex' => $codexData,
     'sse'   => $sseData,
     'other' => $otherData
 ];
 
-// (Optional: For debugging)
+// Optional debug
 file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
-
-#region 📚 Load Codex JSON (and Parse Input)
-$codexPath = __DIR__ . '/../docs/codex/codex.json';
-$codexData = [];
-if (file_exists($codexPath)) {
-    $codexRaw = file_get_contents($codexPath);
-    $codexData = json_decode($codexRaw, true);
-}
-
-$inputRaw = file_get_contents("php://input");
-file_put_contents(__DIR__ . '/debug-rawinput.log', $inputRaw); // LOG RAW POST
-
-$input = json_decode($inputRaw, true);
-file_put_contents(__DIR__ . '/debug-decodedinput.log', print_r($input, true)); // LOG DECODED
-
-$conversation = isset($input["conversation"]) ? $input["conversation"] : [];
-$prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
-$sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
-file_put_contents(__DIR__ . '/debug-sseinput.log', print_r($sseSnapshot, true));
 #endregion
 
 #region 🚦 Directly answer time/date/weather/etc using SSE data
