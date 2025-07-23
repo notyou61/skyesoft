@@ -110,15 +110,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);
       conversationHistory.push({ role: "assistant", content: reply });
-
       // --- Debug: show the data returned by the backend ---
       console.log("Bot response data:", data);
-
       // Logout or version check handling
-      if (data.action === "logout" && typeof window.logoutUser === "function") {
+      if (
+        (data.action === "logout" ||
+        (data.actionType === "Create" && data.actionName === "Logout")
+        ) && typeof window.logoutUser === "function"
+      ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
         window.logoutUser();
       }
+      // Version check handling
       if (data.action === "versionCheck") {
         alert(data.response || "📦 Version info unavailable.");
       }
@@ -154,9 +157,15 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
   window.logoutUser = function () {
     // Console log for debugging
     console.log("🚪 Logging out user...");
-    // Local storage cleanup
-    localStorage.removeItem("userLoggedIn");
-    // Window location redirect
+    //
+    localStorage.removeItem('userLoggedIn');
+    //
+    localStorage.removeItem('userId');
+    //
+    document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    //
+    document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
+    // Redirect to login
     window.location.href = "/skyesoft/login.html";
   };
   //#endregion
