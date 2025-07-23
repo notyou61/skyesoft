@@ -2,6 +2,7 @@
 
 //
 console.log("✅ skyebot.js loaded!");
+console.log("🟢 Chat response handler triggered! Data:", data);
 
 //#region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
