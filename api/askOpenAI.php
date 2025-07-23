@@ -1,10 +1,5 @@
 <?php
 
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/error.log');
-error_reporting(E_ALL);
-
 #region 🛡️ Headers and API Key
 header("Content-Type: application/json");
 $apiKey = getenv("OPENAI_API_KEY");
@@ -397,9 +392,10 @@ if (
 ) {
     $type = $crudData["actionType"];
     $name = $crudData["actionName"];
-
+    // Switch based on action type
     switch ($type) {
         case "Create":
+            // Login Conditional
             if ($name === "Login") {
                 $username = isset($crudData["details"]["username"]) ? $crudData["details"]["username"] : '';
                 $password = isset($crudData["details"]["password"]) ? $crudData["details"]["password"] : '';
@@ -425,20 +421,43 @@ if (
                 }
                 exit;
             }
-
+            // Logout Conditional
             if ($name === "Logout") {
+                // Unset session variables
                 session_unset();
+                // Destroy session
                 session_destroy();
+                // Unset PHPSESSID
+                if (ini_get("session.use_cookies")) {
+                    // Expire session cookie
+                    $params = session_get_cookie_params();
+                    // Unset session cookie
+                    setcookie(session_name(), '', time() - 42000,
+                        // Set Path  
+                        $params["path"], $params["domain"],
+                        // Secure flag
+                        $params["secure"], isset($params["httponly"]) ? $params["httponly"] : false
+                    );
+                }
+                // Expire custom login cookie
+                setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
+                // Echo logout response
                 echo json_encode([
+                    // Response message
                     "response" => "You have been logged out.",
+                    // Action Type
                     "actionType" => $type,
+                    // Action Name
                     "actionName" => $name,
+                    // Session ID
                     "sessionId" => session_id(),
+                    // Logged In Status
                     "loggedIn" => false
                 ]);
+                // Exit after logout
                 exit;
             }
-
+            // Create CRUD Entity
             if (isset($crudData["details"]) && is_array($crudData["details"])) {
                 $result = createCrudEntity($name, $crudData["details"]);
                 echo json_encode([
