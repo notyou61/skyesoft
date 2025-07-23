@@ -4,6 +4,7 @@
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
 //#endregion
 
+//#region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
   //#region 🟩 Element Selection & Early Checks
   const form = document.getElementById("promptForm");        // 📝 Chat form element
@@ -116,7 +117,7 @@ form.addEventListener("submit", async (e) => {
 });
 //#endregion
 
-//#region 🛰️ Skyebot Prompt Function (send latest SOT)
+  //#region 🛰️ Skyebot Prompt Function (send latest SOT)
 async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
   console.log("🛰️ Sending prompt, convo, and SSE snapshot:", {prompt, conversationHistory, sseSnapshot});
   const response = await fetch("/skyesoft/api/askOpenAI.php", {
@@ -138,9 +139,12 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
 
   //#region 🔐 Logout Utility
   window.logoutUser = function () {
+    // Console log for debugging
     console.log("🚪 Logging out user...");
+    // Local storage cleanup
     localStorage.removeItem("userLoggedIn");
-    location.reload();
+    // Window location redirect
+    window.location.href = "/skyesoft/login.html";
   };
   //#endregion
 
@@ -159,6 +163,5 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
     return summary;
   };
   //#endregion
-
 });
 //#endregion
