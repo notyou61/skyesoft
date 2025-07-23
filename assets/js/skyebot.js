@@ -72,11 +72,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //#region 🚀 Prompt Submission Logic (Snapshot fetched at submit)
   form.addEventListener("submit", async (e) => {
+    // Prevent default form submission
     e.preventDefault();
+    // Get user input and validate
     const prompt = input.value.trim();
+    // If no input, do nothing
     if (!prompt) return;
-
+    // Add user message to chat log
     addMessage("user", prompt);
+    // Clear input field and focus
     input.value = "";
     input.focus();
 
