@@ -11,50 +11,90 @@ if (!$apiKey) {
 #region 📨 Parse Input
 $inputRaw = file_get_contents("php://input");
 $input = json_decode($inputRaw, true);
-$prompt = isset($input["prompt"]) ? trim($input["prompt"]) : "";
+if (json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode(["response" => "❌ Invalid JSON input.", "action" => "none"]);
+    exit;
+}
+$prompt = isset($input["prompt"]) ? trim(filter_var($input["prompt"], FILTER_SANITIZE_STRING)) : "";
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+if (empty($prompt)) {
+    echo json_encode(["response" => "❌ Empty prompt.", "action" => "none"]);
+    exit;
+}
 #endregion
 
-#region ⚡️ Quick Agentic Actions (logout, etc)
-if (preg_match('/\blog\s*out\b/i', $prompt)) {
+#region ⚡️ Quick Agentic Actions
+$lowerPrompt = strtolower($prompt);
+if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
+    session_start();
+    session_unset();
+    session_destroy();
     echo json_encode([
-        "response" => "Logging you out...",
-        "action" => "logout"
+        "response" => "You have been logged out (quick action).",
+        "actionType" => "Create",
+        "actionName" => "Logout",
+        "sessionId" => session_id(),
+        "loggedIn" => false
     ]);
     exit;
 }
-// You can add other quick actions here (version, reset, etc)
+if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
+    session_start();
+    $username = $matches[1];
+    $password = $matches[2];
+    if (authenticateUser($username, $password)) {
+        $_SESSION['user_id'] = $username;
+        echo json_encode([
+            "response" => "Login successful (quick action).",
+            "actionType" => "Create",
+            "actionName" => "Login",
+            "details" => ["username" => $username],
+            "sessionId" => session_id(),
+            "loggedIn" => true
+        ]);
+    } else {
+        echo json_encode([
+            "response" => "Login failed (quick action).",
+            "actionType" => "Create",
+            "actionName" => "Login",
+            "details" => ["username" => $username],
+            "sessionId" => session_id(),
+            "loggedIn" => false
+        ]);
+    }
+    exit;
+}
 #endregion
 
-#region 📂 Load Codex and SSE Data (only if needed)
+#region 📂 Load Codex and SSE Data
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codexData = [];
 if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
     $codexData = json_decode($codexRaw, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        file_put_contents(__DIR__ . '/error.log', "Codex JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
+        $codexData = [];
+    }
 }
 
-// Load SSE/live data
 $sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
 $sseData = $sseRaw ? json_decode($sseRaw, true) : [];
+if (json_last_error() !== JSON_ERROR_NONE) {
+    file_put_contents(__DIR__ . '/error.log', "SSE JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
+    $sseData = [];
+}
 
-// Combine for skyebotSOT, add more sources as needed
-$otherData = [];
 $skyebotSOT = [
     'codex' => $codexData,
     'sse'   => $sseData,
-    'other' => $otherData
+    'other' => []
 ];
-
-// Optional debug
 file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
 #endregion
 
-#region 🚦 Directly answer time/date/weather/etc using SSE data
-$lowerPrompt = strtolower($prompt);
-
-// Time
+#region 🚦 Direct Responses for Time/Date/Weather
 if (
     (strpos($lowerPrompt, "time") !== false || strpos($lowerPrompt, "clock") !== false)
     && isset($sseSnapshot['timeDateArray']['currentLocalTime'])
@@ -65,25 +105,20 @@ if (
     exit;
 }
 
-// Date
 if (strpos($lowerPrompt, "date") !== false && isset($sseSnapshot['timeDateArray']['currentDate'])) {
     echo json_encode(["response" => $sseSnapshot['timeDateArray']['currentDate'], "action" => "none"]);
     exit;
 }
 
-// Weather
 if (strpos($lowerPrompt, "weather") !== false && isset($sseSnapshot['weatherData']['description'])) {
     $temp = isset($sseSnapshot['weatherData']['temp']) ? $sseSnapshot['weatherData']['temp'] . "°F, " : "";
     $desc = $sseSnapshot['weatherData']['description'];
     echo json_encode(["response" => $temp . $desc, "action" => "none"]);
     exit;
 }
-
-// Add more rules here as needed
 #endregion
 
-#region 📚 Build All Codex Data (Glossary, Modules, Other)
-// --- Glossary (old and new formats) ---
+#region 📚 Build Codex Data
 $codexGlossary = [];
 $codexGlossaryAssoc = [];
 if (isset($codexData['modules']['glossaryModule']['contents'])) {
@@ -93,7 +128,6 @@ if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
     $codexGlossaryAssoc = $codexData['glossary'];
 }
 
-// --- Build glossary block/terms ---
 $codexGlossaryBlock = "";
 $codexTerms = [];
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
@@ -116,7 +150,6 @@ if (!empty($codexGlossaryAssoc)) {
     }
 }
 
-// --- Build modules array for quick user display ---
 $modulesArr = [];
 if (isset($codexData['readme']['modules'])) {
     foreach ($codexData['readme']['modules'] as $mod) {
@@ -126,25 +159,18 @@ if (isset($codexData['readme']['modules'])) {
     }
 }
 
-// --- Build Codex Other block/terms (use $modulesArr for modules) ---
 $codexOtherBlock = "";
 $codexOtherTerms = [];
-
-// --- Version Info ---
 if (isset($codexData['version']['number'])) {
     $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
     $codexOtherTerms[] = $codexData['version']['number'];
     $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
 }
-
-// --- Changelog (latest entry only) ---
 if (isset($codexData['changelog'][0]['description'])) {
     $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
     $codexOtherTerms[] = $codexData['changelog'][0]['description'];
     $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
 }
-
-// --- Readme: Title & Vision ---
 if (isset($codexData['readme']['title'])) {
     $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
     $codexOtherTerms[] = $codexData['readme']['title'];
@@ -155,36 +181,26 @@ if (isset($codexData['readme']['vision'])) {
     $codexOtherTerms[] = $codexData['readme']['vision'];
     $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
 }
-
-// --- Modules block for prompt/validator (already in $modulesArr) ---
 if ($modulesArr) {
     $modBlock = implode("\n", $modulesArr);
     $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
     $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
 }
-
-// --- Meta Section ---
 if (isset($codexData['meta']['description'])) {
     $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
     $codexOtherTerms[] = $codexData['meta']['description'];
     $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
 }
-
-// --- Constitution Section ---
 if (isset($codexData['constitution']['description'])) {
     $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
     $codexOtherTerms[] = $codexData['constitution']['description'];
     $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
 }
-
-// --- RAG Explanation ---
 if (isset($codexData['ragExplanation']['summary'])) {
     $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
     $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
     $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
 }
-
-// --- Included Documents ---
 if (isset($codexData['includedDocuments']['summary'])) {
     $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
     $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
@@ -196,16 +212,12 @@ if (isset($codexData['includedDocuments']['summary'])) {
         $codexOtherTerms[] = "Documents: " . $docList;
     }
 }
-
-// --- Shared Sources of Truth ---
 if (isset($codexData['shared']['sourcesOfTruth'])) {
     $sotList = implode("; ", $codexData['shared']['sourcesOfTruth']);
     $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
     $codexOtherTerms[] = $sotList;
     $codexOtherTerms[] = "Sources of Truth: " . $sotList;
 }
-
-// --- Shared AI Behavior Rules ---
 if (isset($codexData['shared']['aiBehaviorRules'])) {
     $ruleList = implode(" | ", $codexData['shared']['aiBehaviorRules']);
     $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
@@ -214,21 +226,16 @@ if (isset($codexData['shared']['aiBehaviorRules'])) {
 }
 #endregion
 
-#region 📊 Build sseSnapshot Summary & Array for Validation
-// Initialize empty summary and values array
+#region 📊 Build sseSnapshot Summary & Array
 $snapshotSummary = "";
-// Initialize empty array for SSE values
 $sseValues = [];
-// Helper function for flattening key-value pairs
 function flattenSse($arr, &$summary, &$values, $prefix = "") {
     foreach ($arr as $k => $v) {
         $key = $prefix ? "$prefix.$k" : $k;
         if (is_array($v)) {
-            // If this is a numerically-indexed array (e.g., announcements), make a summary line
             if (array_keys($v) === range(0, count($v) - 1)) {
                 foreach ($v as $i => $entry) {
                     if (is_array($entry)) {
-                        // For array of objects (e.g., announcements), summarize
                         $title = isset($entry['title']) ? $entry['title'] : '';
                         $desc = isset($entry['description']) ? $entry['description'] : '';
                         $summary .= "$key[$i]: $title $desc\n";
@@ -247,16 +254,13 @@ function flattenSse($arr, &$summary, &$values, $prefix = "") {
         }
     }
 }
-// Only if sseSnapshot is not empty
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
     flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
 }
 #endregion
 
-#region 📋 User Codex Commands (Glossary, Modules, etc.)
-
-// --- Show Full Glossary (deduped) ---
-if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $prompt)) {
+#region 📋 User Codex Commands
+if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
     $displayed = [];
     $uniqueGlossary = "";
     foreach (explode("\n", $codexGlossaryBlock) as $line) {
@@ -274,25 +278,24 @@ if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i
     exit;
 }
 
-// --- Show Modules (if requested) ---
-if (preg_match('/\b(show modules|list modules|all modules)\b/i', $prompt)) {
-    $modulesDisplay = "";
-    if (!empty($modulesArr)) {
-        $modulesDisplay = nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
-    } else {
-        $modulesDisplay = "No modules found in Codex.";
-    }
+if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
+    $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
     echo json_encode([
         "response" => $modulesDisplay,
         "action" => "none"
     ]);
     exit;
 }
-
-// (Add more codex commands here if you want!)
 #endregion
 
 #region 📝 Build System Prompt
+$actionTypesArray = [
+    "Create" => ["Contact", "Order", "Application", "Location", "Login", "Logout"],
+    "Read" => ["Contact", "Order", "Application", "Location"],
+    "Update" => ["Contact", "Order", "Application", "Location"],
+    "Delete" => ["Contact", "Order", "Application", "Location"]
+];
+
 $systemPrompt = <<<PROMPT
 You are Skyebot, an assistant for a signage company. You have three sources of truth:
 - codexGlossary: internal company terms/definitions
@@ -300,8 +303,16 @@ You are Skyebot, an assistant for a signage company. You have three sources of t
 - sseSnapshot: current operational data (date, time, weather, KPIs, etc.)
 
 Rules:
-- Infer what the user is asking about (a term, a module, an operational value, etc.).
-- If the answer is found in codexGlossary, codexOther, or sseSnapshot, respond ONLY with that value or definition. No extra wording.
+- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), reply ONLY with a JSON object using this structure:
+  - {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}
+  - {"actionType":"Create","actionName":"Login","details":{"username":"jane","password":"yourpassword"}}
+  - {"actionType":"Create","actionName":"Logout"}
+  - {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}
+  - {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}
+  - {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}
+- Allowed actionTypes: Create, Read, Update, Delete
+- Allowed actionNames: Contact, Order, Application, Location, Login, Logout
+- For all other queries, respond ONLY with the value or definition from codexGlossary, codexOther, or sseSnapshot. No extra wording.
 - If no information is found, reply: "No information available."
 - Do not repeat the user’s question, explain reasoning, or add extra context.
 
@@ -352,41 +363,220 @@ $context = stream_context_create($opts);
 $response = @file_get_contents("https://api.openai.com/v1/chat/completions", false, $context);
 
 if ($response === false) {
+    $error = error_get_last();
+    file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . ($error['message'] ?? 'Unknown error') . "\n", FILE_APPEND);
     echo json_encode(["response" => "❌ Error reaching OpenAI API.", "action" => "none"]);
     exit;
 }
 
 $result = json_decode($response, true);
-
 if (!isset($result["choices"][0]["message"]["content"])) {
+    file_put_contents(__DIR__ . '/error.log', "Invalid OpenAI Response: " . $response . "\n", FILE_APPEND);
     echo json_encode(["response" => "❌ Invalid response from AI.", "action" => "none"]);
     exit;
 }
 
-$responseText = trim($result["choices"][0]["message"]["content"]);
+$responseContent = trim($result["choices"][0]["message"]["content"]);
+#endregion
+
+#region ✅ Agentic CRUD Action Handler
+session_start();
+$crudData = json_decode($responseContent, true);
+
+if (
+    is_array($crudData) &&
+    isset($crudData["actionType"], $crudData["actionName"]) &&
+    isset($actionTypesArray[$crudData["actionType"]]) &&
+    in_array($crudData["actionName"], $actionTypesArray[$crudData["actionType"]])
+) {
+    $type = $crudData["actionType"];
+    $name = $crudData["actionName"];
+
+    switch ($type) {
+        case "Create":
+            if ($name === "Login") {
+                $username = $crudData["details"]["username"] ?? '';
+                $password = $crudData["details"]["password"] ?? '';
+                if (authenticateUser($username, $password)) {
+                    $_SESSION['user_id'] = $username;
+                    echo json_encode([
+                        "response" => "Login successful.",
+                        "actionType" => $type,
+                        "actionName" => $name,
+                        "details" => ["username" => $username],
+                        "sessionId" => session_id(),
+                        "loggedIn" => true
+                    ]);
+                } else {
+                    echo json_encode([
+                        "response" => "Login failed.",
+                        "actionType" => $type,
+                        "actionName" => $name,
+                        "details" => ["username" => $username],
+                        "sessionId" => session_id(),
+                        "loggedIn" => false
+                    ]);
+                }
+                exit;
+            }
+
+            if ($name === "Logout") {
+                session_unset();
+                session_destroy();
+                echo json_encode([
+                    "response" => "You have been logged out.",
+                    "actionType" => $type,
+                    "actionName" => $name,
+                    "sessionId" => session_id(),
+                    "loggedIn" => false
+                ]);
+                exit;
+            }
+
+            if (isset($crudData["details"]) && is_array($crudData["details"])) {
+                $result = createCrudEntity($name, $crudData["details"]);
+                echo json_encode([
+                    "response" => $result ? "$name created successfully." : "Failed to create $name.",
+                    "actionType" => $type,
+                    "actionName" => $name,
+                    "details" => $crudData["details"],
+                    "sessionId" => session_id()
+                ]);
+                exit;
+            }
+            break;
+
+        case "Read":
+            if (isset($crudData["criteria"]) && is_array($crudData["criteria"])) {
+                $result = readCrudEntity($name, $crudData["criteria"]);
+                echo json_encode([
+                    "response" => $result !== false ? $result : "No $name found matching criteria.",
+                    "actionType" => $type,
+                    "actionName" => $name,
+                    "criteria" => $crudData["criteria"],
+                    "sessionId" => session_id()
+                ]);
+                exit;
+            }
+            break;
+
+        case "Update":
+            if (isset($crudData["updates"]) && is_array($crudData["updates"])) {
+                $result = updateCrudEntity($name, $crudData["updates"]);
+                echo json_encode([
+                    "response" => $result ? "$name updated successfully." : "Failed to update $name.",
+                    "actionType" => $type,
+                    "actionName" => $name,
+                    "updates" => $crudData["updates"],
+                    "sessionId" => session_id()
+                ]);
+                exit;
+            }
+            break;
+
+        case "Delete":
+            if (isset($crudData["target"]) && is_array($crudData["target"])) {
+                $result = deleteCrudEntity($name, $crudData["target"]);
+                echo json_encode([
+                    "response" => $result ? "$name deleted successfully." : "Failed to delete $name.",
+                    "actionType" => $type,
+                    "actionName" => $name,
+                    "target" => $crudData["target"],
+                    "sessionId" => session_id()
+                ]);
+                exit;
+            }
+            break;
+    }
+
+    echo json_encode([
+        "response" => "Invalid or incomplete CRUD action data.",
+        "actionType" => $type,
+        "actionName" => $name,
+        "sessionId" => session_id()
+    ]);
+    exit;
+}
 #endregion
 
 #region ✅ Final Post-Validation Step
 $allValid = array_merge($codexTerms, $codexOtherTerms, $sseValues);
 $isValid = false;
 foreach ($allValid as $entry) {
-    if (strcasecmp(trim($responseText), trim($entry)) === 0) {
+    if (strcasecmp(trim($responseContent), trim($entry)) === 0) {
         $isValid = true;
         break;
     }
-    if (strpos($responseText, ":") !== false && stripos($entry, trim($responseText)) !== false) {
+    if (strpos($responseContent, ":") !== false && stripos($entry, trim($responseContent)) !== false) {
         $isValid = true;
         break;
     }
 }
-if (!$isValid || $responseText === "") {
-    $responseText = "No information available.";
+if (!$isValid || $responseContent === "") {
+    $responseContent = "No information available.";
 }
 #endregion
 
 #region 📤 Output
 echo json_encode([
-    "response" => $responseText,
-    "action" => "none"
+    "response" => $responseContent,
+    "action" => "none",
+    "sessionId" => session_id()
 ]);
 #endregion
+
+/**
+ * Authenticate a user (placeholder).
+ * @param string $username
+ * @param string $password
+ * @return bool
+ */
+function authenticateUser($username, $password) {
+    // TODO: Replace with secure authentication (e.g., password_hash, database check)
+    // NEVER store or log plain passwords
+    $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)]; // Example only
+    return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
+}
+
+/**
+ * Create a new entity (placeholder).
+ * @param string $entity
+ * @param array $details
+ * @return bool
+ */
+function createCrudEntity($entity, $details) {
+    file_put_contents(__DIR__ . "/create_$entity.log", json_encode($details) . "\n", FILE_APPEND);
+    return true;
+}
+
+/**
+ * Read an entity based on criteria (placeholder).
+ * @param string $entity
+ * @param array $criteria
+ * @return mixed
+ */
+function readCrudEntity($entity, $criteria) {
+    return "Sample $entity details for: " . json_encode($criteria);
+}
+
+/**
+ * Update an entity (placeholder).
+ * @param string $entity
+ * @param array $updates
+ * @return bool
+ */
+function updateCrudEntity($entity, $updates) {
+    file_put_contents(__DIR__ . "/update_$entity.log", json_encode($updates) . "\n", FILE_APPEND);
+    return true;
+}
+
+/**
+ * Delete an entity (placeholder).
+ * @param string $entity
+ * @param array $target
+ * @return bool
+ */
+function deleteCrudEntity($entity, $target) {
+    file_put_contents(__DIR__ . "/delete_$entity.log", json_encode($target) . "\n", FILE_APPEND);
+    return true;
+}
