@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.133",
-  "lastDeployNote": "feat: SNPS updates",
-  "lastDeployTime": "2025-07-23 18:18:43",
-  "commitHash": "3f7c20f",
+  "siteVersion": "v0.1.134",
+  "lastDeployNote": "SNPS: Bump version and implement robust Skyebot logout/redirect",
+  "lastDeployTime": "2025-07-23 21:11:38",
+  "commitHash": "add8666",
   "deployState": "live",
   "deployIsLive": true
 }
