@@ -2,7 +2,6 @@
 
 //
 console.log("✅ skyebot.js loaded!");
-console.log("🟢 Chat response handler triggered! Data:", data);
 
 //#region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
@@ -111,7 +110,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // Try
     try {
+      // Send the prompt, conversation history, and SSE snapshot to the backend
       const data = await sendSkyebotPrompt(prompt, conversationHistory, sseSnapshot);
+      // Debug: log the data returned by the backend
+      console.log("Bot response data:", data);
+      // Add the bot's response to the chat log
+      console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
       removeThinking();
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);
