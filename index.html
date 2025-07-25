@@ -151,7 +151,7 @@
     </div>
   </div>
   <!-- Floating Prompt Button (tied to modal) -->
-  <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
+  <button id="floatingChatBtn" onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
   </div>
 <!-- Modal Script: Handles Skyebot modal interactions, file input, DataTables, and session management -->
 <script>
@@ -217,40 +217,8 @@
   });
   // Session Manager: Handle login state and UI visibility on page load
   document.addEventListener("DOMContentLoaded", () => {
-    // Check if user is logged in
-    const userLoggedIn = localStorage.getItem("userLoggedIn") === "true";
-    // Show/hide login form
-    const loginWrapper = document.querySelector(".login-wrapper");
-    if (loginWrapper) {
-      loginWrapper.style.display = userLoggedIn ? "none" : "flex";
-    }
-    // Show/hide News & Updates panel
-    const newsUpdates = document.querySelector(".news-updates");
-    if (newsUpdates) {
-      newsUpdates.style.display = userLoggedIn ? "block" : "none";
-    }
-    // Show/hide Project Summary panel
-    const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-    if (projectSummary) {
-      projectSummary.style.display = userLoggedIn ? "block" : "none";
-    }
-    // Update header text based on login state
-    const header = document.getElementById("bodyHeaderCopy");
-    if (header) {
-      header.textContent = userLoggedIn ? "📋 Project Dashboard" : "🔒 User Log In";
-    }
-    // Initialize file info display
-    const fileInput = document.getElementById("fileUpload");
-    if (fileInput) {
-      updateFileLabel(fileInput); // Set initial file info state
-    }
-    // Floating chat button control
-    const floatingBtn = document.getElementById("floatingChatBtn");
-      // If the floating button exists, set its display style
-    if (floatingBtn) {
-      // Set the display style based on login state
-      floatingBtn.style.display = userLoggedIn ? "block" : "none";
-    }
+     // Update login UI if the function exists
+    if (typeof window.updateLoginUI === "function") window.updateLoginUI();
   });
   // Handle login form submission
   document.querySelector(".login-form")?.addEventListener("submit", (e) => {
@@ -406,34 +374,33 @@
     // Join the parts with a space and return the formatted string
     return parts.join(" ");
   }
-  //
-// 1. Centralized UI update function
-window.updateLoginUI = function() {
-    const loginWrapper = document.querySelector('.login-wrapper');
-    const dashboard = document.getElementById('dashboardSection');
-    const newsUpdates = document.querySelector('.news-updates');
-    const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-    const header = document.getElementById("bodyHeaderCopy");
-    const floatingBtn = document.getElementById('floatingChatBtn');
-    const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
+  // Centralized UI update function
+  window.updateLoginUI = function() {
+      const loginWrapper = document.querySelector('.login-wrapper');
+      const dashboard = document.getElementById('dashboardSection');
+      const newsUpdates = document.querySelector('.news-updates');
+      const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
+      const header = document.getElementById("bodyHeaderCopy");
+      const floatingBtn = document.getElementById('floatingChatBtn');
+      const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
 
-    if (isLoggedIn) {
-        if (loginWrapper) loginWrapper.style.display = "none";
-        if (dashboard) dashboard.style.display = "block";
-        if (newsUpdates) newsUpdates.style.display = "block";
-        if (projectSummary) projectSummary.style.display = "block";
-        if (header) header.textContent = "📋 Project Dashboard";
-        if (floatingBtn) floatingBtn.style.display = "block";
-    } else {
-        if (loginWrapper) loginWrapper.style.display = "flex";
-        if (dashboard) dashboard.style.display = "none";
-        if (newsUpdates) newsUpdates.style.display = "none";
-        if (projectSummary) projectSummary.style.display = "none";
-        if (header) header.textContent = "🔒 User Log In";
-        if (floatingBtn) floatingBtn.style.display = "none";
-    }
-    // Add any other session-dependent UI updates here!
-};
+      if (isLoggedIn) {
+          if (loginWrapper) loginWrapper.style.display = "none";
+          if (dashboard) dashboard.style.display = "block";
+          if (newsUpdates) newsUpdates.style.display = "block";
+          if (projectSummary) projectSummary.style.display = "block";
+          if (header) header.textContent = "📋 Project Dashboard";
+          if (floatingBtn) floatingBtn.style.display = "block";
+      } else {
+          if (loginWrapper) loginWrapper.style.display = "flex";
+          if (dashboard) dashboard.style.display = "none";
+          if (newsUpdates) newsUpdates.style.display = "none";
+          if (projectSummary) projectSummary.style.display = "none";
+          if (header) header.textContent = "🔒 User Log In";
+          if (floatingBtn) floatingBtn.style.display = "none";
+      }
+      // Add any other session-dependent UI updates here!
+  };
 </script>
 <!-- Skyebot Script -->
 <script src="assets/js/skyebot.js"></script>
