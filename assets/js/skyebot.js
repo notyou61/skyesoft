@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Logout or version check handling
       if (
         (data.action === "logout" ||
-        (data.actionType === "Create" && data.actionName === "Logout"))
+        (data.actionType === "create" && data.actionName === "logout"))
         && typeof window.logoutUser === "function"
       ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
