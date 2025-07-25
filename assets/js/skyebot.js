@@ -179,6 +179,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     // Clear cookies related to user session
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
+    // Hide or reset the chat panel
+    const chatPanel = document.getElementById('chatPanel') || document.querySelector('.chat-wrapper');
+    // If the chat panel exists, hide it
+    if (chatPanel) chatPanel.style.display = "none";
     // After state is cleared, update the UI
     if (typeof updateLoginUI === "function") {
       // Call the updateLoginUI function if it exists  
