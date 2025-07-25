@@ -27,19 +27,21 @@ if (empty($prompt)) {
 
 #region ⚡️ Quick Agentic Actions
 $lowerPrompt = strtolower($prompt);
+// Quick logout or login actions
 if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
     session_start();
     session_unset();
     session_destroy();
     echo json_encode([
-        "response" => "You have been logged out (quick action).",
-        "actionType" => "Create",
-        "actionName" => "Logout",
-        "sessionId" => session_id(),
-        "loggedIn" => false
+        "response"    => "You have been logged out (quick action).",
+        "actionType"  => "create",  // lowercased
+        "actionName"  => "logout",  // lowercased
+        "sessionId"   => session_id(),
+        "loggedIn"    => false
     ]);
     exit;
 }
+// Quick login action
 if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
     session_start();
     $username = $matches[1];
@@ -47,21 +49,21 @@ if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $
     if (authenticateUser($username, $password)) {
         $_SESSION['user_id'] = $username;
         echo json_encode([
-            "response" => "Login successful (quick action).",
-            "actionType" => "Create",
-            "actionName" => "Login",
-            "details" => ["username" => $username],
-            "sessionId" => session_id(),
-            "loggedIn" => true
+            "response"    => "Login successful (quick action).",
+            "actionType"  => "create",  // lowercased
+            "actionName"  => "login",   // lowercased
+            "details"     => ["username" => $username],
+            "sessionId"   => session_id(),
+            "loggedIn"    => true
         ]);
     } else {
         echo json_encode([
-            "response" => "Login failed (quick action).",
-            "actionType" => "Create",
-            "actionName" => "Login",
-            "details" => ["username" => $username],
-            "sessionId" => session_id(),
-            "loggedIn" => false
+            "response"    => "Login failed (quick action).",
+            "actionType"  => "create",  // lowercased
+            "actionName"  => "login",   // lowercased
+            "details"     => ["username" => $username],
+            "sessionId"   => session_id(),
+            "loggedIn"    => false
         ]);
     }
     exit;
