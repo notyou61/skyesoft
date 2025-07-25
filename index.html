@@ -429,9 +429,13 @@
         if (dashboard) dashboard.style.display = "none";
         if (header) header.textContent = "🔒 User Log In";
     }
-
     // 👇 Floating chat button control
     const floatingBtn = document.getElementById('floatingChatBtn');
+    // Check if the floating button exists
+    console.log("🛰️ Floating button visibility:", isLoggedIn ? "Visible" : "Hidden");
+    // Debug: log the floating button element
+    console.log("Floating button element:", floatingBtn);
+    // Show/hide floating button based on login state
     if (floatingBtn) floatingBtn.style.display = isLoggedIn ? "block" : "none";
   };
 </script>
