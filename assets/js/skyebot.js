@@ -1,8 +1,5 @@
 // File: assets/js/skyebot.js
 
-//
-console.log("✅ skyebot.js loaded!");
-
 //#region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
 //#endregion
@@ -124,20 +121,20 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- Debug: show the data returned by the backend ---
       console.log("Bot response data:", data);
       console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
-      // Logout or version check handling
+      // --- Logout or version check handling (case-insensitive and robust) ---
+      const action      = data.action ? data.action.toLowerCase().trim() : "";
+      const actionType  = data.actionType ? data.actionType.toLowerCase().trim() : "";
+      const actionName  = data.actionName ? data.actionName.toLowerCase().trim() : "";
+      console.log("[DEBUG] Checking logout:", { action, actionType, actionName, logoutUser: typeof window.logoutUser });
+      // If the action is logout or actionType is create and actionName is logout
       if (
-        (data.action === "logout" ||
-        (data.actionType === "create" && data.actionName === "logout"))
-        && typeof window.logoutUser === "function"
+        (action === "logout") ||
+        (actionType === "create" && actionName === "logout")
       ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
         window.logoutUser();
       } else {
-        console.log("[DEBUG] Logout condition NOT met. action:", data.action, "actionType:", data.actionType, "actionName:", data.actionName, "logoutUser:", typeof window.logoutUser);
-      }
-      // Version check handling
-      if (data.action === "versionCheck") {
-        alert(data.response || "📦 Version info unavailable.");
+        console.log("[DEBUG] Logout condition NOT met.", { action, actionType, actionName, logoutUser: typeof window.logoutUser });
       }
     } catch (err) {
       console.error("Client fetch error:", err.message);
