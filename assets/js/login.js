@@ -5,32 +5,6 @@ function getCookie(name) {
   const value = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return value ? value.pop() : '';
 }
-// Update Login UI Function
-window.updateLoginUI = function() {
-    // Example: adapt selectors to your actual UI!
-    const loginWrapper = document.querySelector('.login-wrapper');
-    const dashboard = document.getElementById('dashboardSection');
-    const newsUpdates = document.querySelector('.news-updates');
-    const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-    const header = document.getElementById("bodyHeaderCopy");
-
-    // Check login state from cookies/localStorage
-    const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
-
-    if (isLoggedIn) {
-        if (loginWrapper) loginWrapper.style.display = "none";
-        if (newsUpdates) newsUpdates.style.display = "block";
-        if (projectSummary) projectSummary.style.display = "block";
-        if (dashboard) dashboard.style.display = "block";
-        if (header) header.textContent = "📋 Project Dashboard";
-    } else {
-        if (loginWrapper) loginWrapper.style.display = "flex";
-        if (newsUpdates) newsUpdates.style.display = "none";
-        if (projectSummary) projectSummary.style.display = "none";
-        if (dashboard) dashboard.style.display = "none";
-        if (header) header.textContent = "🔒 User Log In";
-    }
-};
 
 // Function to set a cookie
 document.addEventListener('DOMContentLoaded', () => {
