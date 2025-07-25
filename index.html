@@ -407,37 +407,33 @@
     return parts.join(" ");
   }
   //
-  window.updateLoginUI = function() {
+// 1. Centralized UI update function
+window.updateLoginUI = function() {
     const loginWrapper = document.querySelector('.login-wrapper');
     const dashboard = document.getElementById('dashboardSection');
     const newsUpdates = document.querySelector('.news-updates');
     const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
     const header = document.getElementById("bodyHeaderCopy");
-
+    const floatingBtn = document.getElementById('floatingChatBtn');
     const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
 
     if (isLoggedIn) {
         if (loginWrapper) loginWrapper.style.display = "none";
+        if (dashboard) dashboard.style.display = "block";
         if (newsUpdates) newsUpdates.style.display = "block";
         if (projectSummary) projectSummary.style.display = "block";
-        if (dashboard) dashboard.style.display = "block";
         if (header) header.textContent = "📋 Project Dashboard";
+        if (floatingBtn) floatingBtn.style.display = "block";
     } else {
         if (loginWrapper) loginWrapper.style.display = "flex";
+        if (dashboard) dashboard.style.display = "none";
         if (newsUpdates) newsUpdates.style.display = "none";
         if (projectSummary) projectSummary.style.display = "none";
-        if (dashboard) dashboard.style.display = "none";
         if (header) header.textContent = "🔒 User Log In";
+        if (floatingBtn) floatingBtn.style.display = "none";
     }
-    // 👇 Floating chat button control
-    const floatingBtn = document.getElementById('floatingChatBtn');
-    // Check if the floating button exists
-    console.log("🛰️ Floating button visibility:", isLoggedIn ? "Visible" : "Hidden");
-    // Debug: log the floating button element
-    console.log("Floating button element:", floatingBtn);
-    // Show/hide floating button based on login state
-    if (floatingBtn) floatingBtn.style.display = isLoggedIn ? "block" : "none";
-  };
+    // Add any other session-dependent UI updates here!
+};
 </script>
 <!-- Skyebot Script -->
 <script src="assets/js/skyebot.js"></script>
