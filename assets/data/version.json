@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.135",
-  "lastDeployNote": "SNPS: Bump site version after deploy",
-  "lastDeployTime": "2025-07-23 21:49:07",
-  "commitHash": "f1808b6",
+  "siteVersion": "v0.1.136",
+  "lastDeployNote": "SNPS: Standardize agentic actionType/actionName to lowercase; align backend and frontend for clean agentic detection [version bump]",
+  "lastDeployTime": "2025-07-25 12:19:47",
+  "commitHash": "9883fc9",
   "deployState": "live",
   "deployIsLive": true
 }
