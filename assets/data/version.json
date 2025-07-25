@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.136",
-  "lastDeployNote": "SNPS: Standardize agentic actionType/actionName to lowercase; align backend and frontend for clean agentic detection [version bump]",
-  "lastDeployTime": "2025-07-25 12:19:47",
-  "commitHash": "9883fc9",
+  "siteVersion": "v0.1.137",
+  "lastDeployNote": "SNPS/MTCO: Remove verbose debug logs from skyebot.js; retain only critical error and agentic action logs for clean production UX",
+  "lastDeployTime": "2025-07-25 15:21:38",
+  "commitHash": "d7c5f70",
   "deployState": "live",
   "deployIsLive": true
 }

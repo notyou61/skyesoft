@@ -151,7 +151,7 @@
     </div>
   </div>
   <!-- Floating Prompt Button (tied to modal) -->
-  <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt">🤖</button>
+  <button onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
   </div>
 <!-- Modal Script: Handles Skyebot modal interactions, file input, DataTables, and session management -->
 <script>
@@ -243,6 +243,15 @@
     const fileInput = document.getElementById("fileUpload");
     if (fileInput) {
       updateFileLabel(fileInput); // Set initial file info state
+    }
+    // Floating chat button control
+    const floatingBtn = document.getElementById("floatingChatBtn");
+    // Show/hide floating button based on login state
+    const userLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    // If the floating button exists, set its display style
+    if (floatingBtn) {
+      // Set the display style based on login state
+      floatingBtn.style.display = userLoggedIn ? "block" : "none";
     }
   });
   // Handle login form submission
