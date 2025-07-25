@@ -116,6 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("Bot response data:", data);
       // Add the bot's response to the chat log
       console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
+      //
       removeThinking();
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);
@@ -179,7 +180,7 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
     //
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
     // Redirect to login
-    window.location.href = "/skyesoft/login.html";
+    //window.location.href = "/skyesoft/login.html";
   };
   //#endregion
 
