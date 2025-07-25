@@ -5,6 +5,16 @@ function getCookie(name) {
   const value = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return value ? value.pop() : '';
 }
+// Update Login UI Function
+function updateLoginUI() {
+    const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!getCookie('skyelogin_user');
+    if (isLoggedIn) {
+        showDashboard();
+    } else {
+        showLogin();
+    }
+}
+
 // Function to set a cookie
 document.addEventListener('DOMContentLoaded', () => {
   const loginWrapper = document.querySelector('.login-wrapper');

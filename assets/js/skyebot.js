@@ -74,6 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //#region 🚀 Prompt Submission Logic (Snapshot fetched at submit)
   form.addEventListener("submit", async (e) => {
+    //
+    console.log("🟢 [DEBUG] Form submit handler entered!");
     // Prevent default form submission
     e.preventDefault();
     // Get user input and validate
@@ -176,8 +178,13 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     //
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
-    // Redirect to login
-    //window.location.href = "/skyesoft/login.html";
+    // After state is cleared, update the UI
+    if (typeof updateLoginUI === "function") {
+        updateLoginUI();
+    } else {
+        // As a fallback, you may still want to reload:
+        location.reload();
+    }
   };
   //#endregion
 
