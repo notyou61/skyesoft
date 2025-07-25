@@ -13,9 +13,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const input = document.getElementById("promptInput");       // ⌨️ User input box
   const clearBtn = document.getElementById("clearBtn");       // 🧹 Clear button
   const chatLog = document.getElementById("chatLog");         // 🗂️ Chat log display
-
+  // 🛑 Early exit if any element is missing
   if (!form || !input || !clearBtn || !chatLog) {
+    // 🛑 Log error and prevent runtime issues
     console.error("❌ Skyebot setup error: Missing elements."); // 🛑 Prevents runtime errors
+    // 🛑 Show an alert to the user
     return;
   }
   //#endregion
@@ -43,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chatLog.appendChild(entry);
     chatLog.scrollTop = chatLog.scrollHeight;
   };
-
+  // Show a thinking indicator while processing
   const showThinking = () => {
     const div = document.createElement("div");
     div.id = "thinking";
@@ -52,9 +54,11 @@ document.addEventListener("DOMContentLoaded", () => {
     chatLog.appendChild(div);
     chatLog.scrollTop = chatLog.scrollHeight;
   };
-
+  // Remove the thinking indicator
   const removeThinking = () => {
+    // Const Thinking = document.querySelector("#thinking");
     const thinking = document.getElementById("thinking");
+    // If the thinking indicator exists, remove it
     if (thinking) thinking.remove();
   };
   //#endregion
@@ -74,8 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   //#region 🚀 Prompt Submission Logic (Snapshot fetched at submit)
   form.addEventListener("submit", async (e) => {
-    //
-    console.log("🟢 [DEBUG] Form submit handler entered!");
     // Prevent default form submission
     e.preventDefault();
     // Get user input and validate
@@ -86,57 +88,55 @@ document.addEventListener("DOMContentLoaded", () => {
     addMessage("user", prompt);
     // Clear input field and focus
     input.value = "";
+    // Reset input field
     input.focus();
-
+    // Add user message to conversation history
     conversationHistory.push({ role: "user", content: prompt });
+    // Show thinking indicator
     showThinking();
-
     // 📡 Fetch a fresh SSE snapshot at prompt time!
     let sseSnapshot = {};
     try {
+      // Fetch the latest SSE snapshot from the server
       const res = await fetch("/skyesoft/api/getDynamicData.php");
+      // Check if the response is ok
       sseSnapshot = await res.json();
+      // Debug: log the snapshot
       console.log("🛰️ Using live SSE snapshot:", sseSnapshot);
+      // Validate the snapshot structure
       if (!sseSnapshot || !sseSnapshot.timeDateArray) {
+        // If the snapshot is empty or malformed, throw an error
         throw new Error("Live data not ready.");
       }
       // Debug: log snapshot at submit
       console.log("🚦 sseSnapshot at submit:", sseSnapshot);
     } catch (err) {
+      // If fetching the snapshot fails, log the error
       removeThinking();
+      // Add a message to the chat log
       addMessage("bot", "⏳ Please wait a moment while I load live data…");
+      // Log the error
       return;
     }
     // Try
     try {
       // Send the prompt, conversation history, and SSE snapshot to the backend
       const data = await sendSkyebotPrompt(prompt, conversationHistory, sseSnapshot);
-      // Debug: log the data returned by the backend
-      console.log("Bot response data:", data);
-      // Add the bot's response to the chat log
-      console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
-      //
       removeThinking();
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);
       conversationHistory.push({ role: "assistant", content: reply });
-      // --- Debug: show the data returned by the backend ---
-      console.log("Bot response data:", data);
-      console.log("[DEBUG] About to check logout:", data, typeof window.logoutUser);
-      // --- Logout or version check handling (case-insensitive and robust) ---
+
       const action      = data.action ? data.action.toLowerCase().trim() : "";
       const actionType  = data.actionType ? data.actionType.toLowerCase().trim() : "";
       const actionName  = data.actionName ? data.actionName.toLowerCase().trim() : "";
-      console.log("[DEBUG] Checking logout:", { action, actionType, actionName, logoutUser: typeof window.logoutUser });
-      // If the action is logout or actionType is create and actionName is logout
+
       if (
         (action === "logout") ||
         (actionType === "create" && actionName === "logout")
       ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
         window.logoutUser();
-      } else {
-        console.log("[DEBUG] Logout condition NOT met.", { action, actionType, actionName, logoutUser: typeof window.logoutUser });
       }
     } catch (err) {
       console.error("Client fetch error:", err.message);
@@ -147,19 +147,20 @@ document.addEventListener("DOMContentLoaded", () => {
   //#endregion
 
   //#region 🛰️ Skyebot Prompt Function (send latest SOT)
-async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
-  console.log("🛰️ Sending prompt, convo, and SSE snapshot:", {prompt, conversationHistory, sseSnapshot});
-  const response = await fetch("/skyesoft/api/askOpenAI.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      conversation: conversationHistory,
-      sseSnapshot
-    }),
-  });
-  return await response.json();
-}
+  async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot = {}) {
+    // Res[ponse from the server]
+    const response = await fetch("/skyesoft/api/askOpenAI.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        conversation: conversationHistory,
+        sseSnapshot
+      }),
+    });
+    // Return the JSON response
+    return await response.json();
+  }
 //#endregion
 
   //#region 👋 Startup Message
@@ -170,17 +171,18 @@ async function sendSkyebotPrompt(prompt, conversationHistory = [], sseSnapshot =
   window.logoutUser = function () {
     // Console log for debugging
     console.log("🚪 Logging out user...");
-    //
+    // Clear local storage items related to user session
     localStorage.removeItem('userLoggedIn');
-    //
+    // localStorage.removeItem('userName');
     localStorage.removeItem('userId');
-    //
+    // Clear session storage items related to user session
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    //
+    // Clear cookies related to user session
     document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
     // After state is cleared, update the UI
     if (typeof updateLoginUI === "function") {
-        updateLoginUI();
+      // Call the updateLoginUI function if it exists  
+      updateLoginUI();
     } else {
         // As a fallback, you may still want to reload:
         location.reload();
