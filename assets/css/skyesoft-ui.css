@@ -484,3 +484,14 @@ body.modal-open {
     min-width: 100px;
   }
 }
+/* ✨ Skyebot Modal: Fade-Out Animation */
+#skyebotModal.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+/* 🤖 Skyebot Modal: Default State */
+#skyebotModal {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}

@@ -236,109 +236,7 @@
     if (fileInput) fileInput.value = ""; // Clear file input
     if (fileInfo) fileInfo.textContent = "No files selected"; // Reset file info display
   });
-  /*
-  // Handle chat form submission
-  document.getElementById("promptForm").addEventListener("submit", async function (e) {
-    // Prevent default form submission behavior
-    e.preventDefault();
-    // Optional debug log
-    console.log("📝 Skyebot: User submitted a message"); // Optional debug log
-    // Get input and chat log elements
-    const input = document.getElementById("promptInput");
-    // Ensure input is not empty
-    const log = document.getElementById("chatLog");
-    // Check if chat log exists
-    const userMessage = input.value.trim();
-    // Validate user input
-    if (!userMessage) return;
-      // Show user message
-      const userEntry = document.createElement("div");
-      // Set user message class and content
-      userEntry.className = "chat-entry user-message";
-      // Set user message content
-      userEntry.innerHTML = `<span>🧑‍💬 ${userMessage}</span>`;
-      // Append user message to chat log
-      log.appendChild(userEntry);
-      // Show typing indicator
-      const typing = document.createElement("div");
-      // Set typing indicator class and content
-      typing.className = "chat-entry bot-message typing-indicator";
-      // Set typing indicator content
-      // Use a span to indicate typing
-      typing.innerHTML = `<span>Skyebot is typing...</span>`;
-      // Append typing indicator to chat log
-      log.appendChild(typing);
-      // Disable input while waiting for response
-      input.value = ""; // clear input
-      // Disable input field to prevent further messages
-      input.disabled = true;
-    // Scroll to bottom of chat log
-    try {
-      // Send user message to Netlify Function
-      const response = await fetch("/skyesoft/api/askOpenAI.php", {
-        // Set request method to POST
-        method: "POST",
-        // Set request headers
-        headers: { "Content-Type": "application/json" },
-        // Set request body with user message
-        body: JSON.stringify({ prompt: userMessage })
-      });
-      // Check if response is ok
-      const data = await response.json();
-      // Optional debug log
-      console.log("🤖 Bot response payload:", data);
-      // Check if response contains an error
-      const botReply = data.response || "Skyebot could not reply.";
-      // Optional debug log
-      log.removeChild(typing);
-      // Show bot reply in chat log
-      const botEntry = document.createElement("div");
-      // Set bot message class and content
-      botEntry.className = "chat-entry bot-message";
-      // Set bot message content
-      botEntry.innerHTML = `<span>🤖 ${botReply}</span>`;
-      // Append bot message to chat log
-      log.appendChild(botEntry);
-      // 🔐 Handle logout intent from backend
-      if (data.action === "logout") {
-        // Optional debug log
-        setTimeout(() => logoutUser(), 2000);
-      }
-      // 💾 Save chat log
-      saveStructuredChatLog();
-    // 
-    } catch (err) {
-      // Handle any errors that occur during the fetch
-      log.removeChild(typing);
-      // Show error message in chat log
-      const errEntry = document.createElement("div");
-      // Set error message class and content
-      errEntry.className = "chat-entry bot-message";
-      // Set error message content
-      errEntry.innerHTML = `<span>⚠️ Skyebot encountered an error.</span>`;
-      // Append error message to chat log
-      log.appendChild(errEntry);
-      // 
-      console.error("Skyebot Error:", err);
-    } finally {
-      // Re-enable input field after response
-      input.disabled = false;
-      // Clear input field
-      input.focus();
-      // Scroll to bottom of chat log
-      log.scrollTop = log.scrollHeight;
-    }
-    // 🔐 Logout utility function
-    function logoutUser() {
-      // Optional debug log
-      console.log("🚪 Logging out user..."); // Optional debug log
-      // Clear user login state
-      localStorage.removeItem("userLoggedIn");
-      // Hide login form
-      location.reload();
-    }
-  });
-  */
+
   // Save structured chat log to Netlify Function
   function saveStructuredChatLog() {
     // Collect chat entries from the chat log
@@ -383,7 +281,7 @@
       const header = document.getElementById("bodyHeaderCopy");
       const floatingBtn = document.getElementById('floatingChatBtn');
       const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
-
+      //If Logged In
       if (isLoggedIn) {
           if (loginWrapper) loginWrapper.style.display = "none";
           if (dashboard) dashboard.style.display = "block";
@@ -398,6 +296,15 @@
           if (projectSummary) projectSummary.style.display = "none";
           if (header) header.textContent = "🔒 User Log In";
           if (floatingBtn) floatingBtn.style.display = "none";
+          // ✨ Close Skyebot modal with fade-out if open
+          if (skyebotModal && skyebotModal.style.display === "block") {
+              skyebotModal.classList.add("fade-out");
+              document.body.classList.remove("modal-open");
+              setTimeout(() => {
+                  skyebotModal.style.display = "none";
+                  skyebotModal.classList.remove("fade-out");
+              }, 400); // Match your CSS transition duration
+          }
       }
       // Add any other session-dependent UI updates here!
   };
