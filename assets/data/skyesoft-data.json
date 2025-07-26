@@ -29,5 +29,20 @@
       "cellPhone": "6023974722",
       "password": "9571"
     }
-  ]
+  ],
+  "actionTypes": [
+    {
+      "actionTypeID": 1,
+      "actionCRUDType": "Create",
+      "actionName": "Login",
+      "actionDescription": "User logged into the system."
+    },
+    {
+      "actionTypeID": 2,
+      "actionCRUDType": "Create",
+      "actionName": "Logout",
+      "actionDescription": "User logged out of the system."
+    }
+  ],
+  "actions": []
 }
