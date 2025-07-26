@@ -1,6 +1,6 @@
 // 📁 File: assets/js/login.js
 
-// #region 🍪 Cookie Utility
+// #region  Cookie Utility 🍪
 // Get a cookie value by name
 function getCookie(name) {
   const value = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
