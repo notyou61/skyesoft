@@ -1,60 +1,65 @@
 // 📁 File: assets/js/login.js
-// Skyesoft MTCO: login.js - Cookie/session dashboard control
-// This script manages the login state of the user, showing the dashboard or login form
+
+// #region 🍪 Cookie Utility
+// Get a cookie value by name
 function getCookie(name) {
   const value = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return value ? value.pop() : '';
 }
+// #endregion
 
-// Function to set a cookie
+// #region 🔐 DOMContentLoaded: Login UI/Session Handler
 document.addEventListener('DOMContentLoaded', () => {
-  const loginWrapper = document.querySelector('.login-wrapper');
-  const loginForm = document.querySelector('.login-form');
-  const usernameInput = loginForm?.querySelector('[name="username"]');
-  const loginError = document.getElementById('loginError');
-  const dashboard = document.getElementById('dashboardSection');
-  const newsUpdates = document.querySelector('.news-updates');
+  // #region 🏷️ Element References
+  const loginWrapper   = document.querySelector('.login-wrapper');
+  const loginForm      = document.querySelector('.login-form');
+  const usernameInput  = loginForm?.querySelector('[name="username"]');
+  const loginError     = document.getElementById('loginError');
+  const dashboard      = document.getElementById('dashboardSection');
+  const newsUpdates    = document.querySelector('.news-updates');
   const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-  const header = document.getElementById("bodyHeaderCopy");
+  const header         = document.getElementById("bodyHeaderCopy");
+  // #endregion
 
-  // --- Toggle UI based on cookie presence ---
+  // #region 🚦 UI Show/Hide Functions
   function showDashboard() {
-    if (loginWrapper) loginWrapper.style.display = "none";
-    if (newsUpdates) newsUpdates.style.display = "block";
+    if (loginWrapper)   loginWrapper.style.display = "none";
+    if (newsUpdates)    newsUpdates.style.display = "block";
     if (projectSummary) projectSummary.style.display = "block";
-    if (dashboard) dashboard.style.display = "block";
-    if (header) header.textContent = "📋 Project Dashboard";
+    if (dashboard)      dashboard.style.display = "block";
+    if (header)         header.textContent = "📋 Project Dashboard";
   }
   function showLogin() {
-    if (loginWrapper) loginWrapper.style.display = "flex";
-    if (newsUpdates) newsUpdates.style.display = "none";
+    if (loginWrapper)   loginWrapper.style.display = "flex";
+    if (newsUpdates)    newsUpdates.style.display = "none";
     if (projectSummary) projectSummary.style.display = "none";
-    if (dashboard) dashboard.style.display = "none";
-    if (header) header.textContent = "🔒 User Log In";
-    if (loginError) loginError.textContent = '';
+    if (dashboard)      dashboard.style.display = "none";
+    if (header)         header.textContent = "🔒 User Log In";
+    if (loginError)     loginError.textContent = '';
   }
+  // #endregion
 
+  // #region 🧠 Initial UI State (on load)
   if (getCookie('skyelogin_user')) {
     showDashboard();
   } else {
     showLogin();
   }
+  // #endregion
 
-  // --- Login form submit: set cookie and userId ---
+  // #region 📝 Login Form Handler
   loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = usernameInput.value.trim();
-
     try {
+      // Fetch user data and validate username
       const data = await fetch('/skyesoft/assets/data/skyesoft-data.json').then(r => r.json());
       const match = data.contacts.find(
         c => c.email.toLowerCase() === username.toLowerCase()
       );
-
       if (match) {
         document.cookie = `skyelogin_user=${username}; path=/; max-age=604800; SameSite=Lax`;
         localStorage.setItem('userId', match.id);
-        // On login, show dashboard immediately
         showDashboard();
       } else {
         if (loginError) loginError.textContent = '❌ Invalid username or password.';
@@ -65,4 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error("JSON load error:", err);
     }
   });
+  // #endregion
 });
+// #endregion

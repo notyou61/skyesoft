@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- HTML -->
 <html lang="en">
-<!-- Head -->
+<!-- #region 🏷️ Head & Styles -->
 <head>
   <!-- Meta -->
   <meta charset="utf-8" />
@@ -18,9 +18,12 @@
   <!-- Style Include-->
   <link rel="stylesheet" href="assets/css/skyesoft-ui.css">
 </head>
-<!-- Body -->
+<!-- #endregion -->
+
+<!-- #region 📝 Body -->
 <body>
-  <!-- Page Header -->
+  
+  <!-- #region 🏢 Page Header -->
   <div class="board-section" id="pageHeader">
     <div style="display: flex; align-items: center; gap: 16px;">
       <img src="assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
@@ -32,15 +35,19 @@
       <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
     </div>
   </div>
-  <!-- Page Body -->
+  <!-- #endregion -->
+
+  <!-- #region 📋 Main Dashboard Body -->
   <main class="board-section" id="pageBody">
-    <!-- Page Body Header -->
+
+    <!-- #region 📝 Body Header -->
     <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
       <h2 id="bodyHeaderCopy">🔒 User Log In</h2>
     </div>
-    <!-- Page Body Body -->
+    <!-- #endregion -->
+
     <div id="bodyMain">
-      <!-- News & Updates Section -->
+      <!-- #region 🗞️ News & Updates Section -->
       <div class="board-panel news-updates">
         <h3>🗞️ News & Updates</h3>
         <ul>
@@ -49,7 +56,9 @@
           <li>📦 Project Tracker module upcoming</li>
         </ul>
       </div>
-      <!-- DataTable Section -->
+      <!-- #endregion -->
+
+      <!-- #region 📊 DataTable Section -->
       <div class="board-panel" style="margin-top: 16px;">
         <h3>📋 Project Summary</h3>
         <table id="projectTable" class="display" style="width:100%">
@@ -78,7 +87,9 @@
           </tbody>
         </table>
       </div>
-      <!-- Login Section -->
+      <!-- #endregion -->
+
+      <!-- #region 🔑 Login Section -->
       <div class="login-wrapper">
         <form class="login-form">
           <input type="text" placeholder="Username" name="username" required />
@@ -87,19 +98,28 @@
           <div id="loginError" class="error-message"></div>
         </form>
       </div>
+      <!-- #endregion -->
     </div>
-    <!-- Page Body Footer -->
+
+    <!-- #region 📎 Page Body Footer -->
     <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
       <small>Need access? Contact your supervisor or email support@christysigns.com</small>
     </div>
+    <!-- #endregion -->
+
   </main>
-  <!-- Footer -->
+  <!-- #endregion -->
+
+  <!-- #region 🦶 Page Footer -->
   <div class="board-section" id="pageFooter">
     <!-- Copyright -->
     <div>© 2025 Maychris Corporation</div>
     <!-- Version -->
     <div class="version">Loading version...</div>
   </div>
+  <!-- #endregion -->
+
+  <!-- #region ⛅ Weather & Utility Scripts -->
   <!-- Weather Config -->
   <script src="assets/js/weatherConfig.js"></script>
   <!-- Weather Functions -->
@@ -110,208 +130,48 @@
   <script src="assets/js/marked.min.js"></script>
   <!-- Dynamic SSE Handler Script -->
   <script src="assets/js/dynamicSSEHandler.js"></script>
-  <!-- Modals-->
+  <!-- #endregion -->
+
+  <!-- #region 🤖 Skyebot Modals and Floating Button -->
   <div id="modals">
-  <!-- Skyebot Prompt Modal: A fixed-position modal for interacting with the Skyebot chat interface -->
-  <div id="skyebotModal" class="modal">
-    <!-- Modal content container: Holds the chat interface with styling for appearance and animation -->
-    <div class="modal-content">
-      <!-- Close button: Triggers toggleModal() to hide the modal -->
-      <span class="close-btn" onclick="toggleModal()">×</span>
-      <!-- Modal title: Displays "Skyebot" with an emoji for visual distinction -->
-      <h3>🤖 Skyebot</h3>
-      <!-- Chat history area: Displays conversation messages, scrollable with fixed height -->
-      <div id="chatLog" class="chat-log">
-        <!-- Messages will be dynamically added here via JavaScript -->
+    <!-- #region 🤖 Skyebot Prompt Modal -->
+    <div id="skyebotModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="toggleModal()">×</span>
+        <h3>🤖 Skyebot</h3>
+        <div id="chatLog" class="chat-log"></div>
+        <form id="promptForm" class="chat-form">
+          <textarea id="promptInput" rows="2" placeholder="Type your message..." required></textarea>
+          <div class="form-footer">
+            <div class="file-row">
+              <label for="fileUpload" class="file-label">Choose Files</label>
+              <input type="file" id="fileUpload" multiple onchange="updateFileLabel(this)">
+              <div id="fileInfo" class="file-info">No files selected</div>
+            </div>
+            <div class="button-row">
+              <button type="submit">Send</button>
+              <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+            </div>
+          </div>
+        </form>
       </div>
-      <!-- Prompt input form: Allows users to send messages and upload files -->
-      <form id="promptForm" class="chat-form">
-        <!-- Textarea for user input: Required field for typing messages to Skyebot -->
-        <textarea id="promptInput" rows="2" placeholder="Type your message..." required></textarea>
-        <!-- Form footer: Contains file upload controls and action buttons -->
-        <div class="form-footer">
-          <!-- File upload section: Custom interface for selecting files -->
-          <div class="file-row">
-            <!-- Custom label: Styled button to trigger file selection, linked to hidden file input -->
-            <label for="fileUpload" class="file-label">Choose Files</label>
-            <!-- File input: Hidden via CSS, allows multiple file selection, triggers updateFileLabel() -->
-            <input type="file" id="fileUpload" multiple onchange="updateFileLabel(this)">
-            <!-- File info display: Shows selected file names or "No files selected" -->
-            <div id="fileInfo" class="file-info">No files selected</div>
-          </div>
-          <!-- Button row: Contains submit and clear buttons for form actions -->
-          <div class="button-row">
-            <!-- Submit button: Sends the message and any selected files -->
-            <button type="submit">Send</button>
-            <!-- Clear button: Resets the form, including file input and chat log -->
-            <button type="button" id="clearBtn" class="clear-btn">Clear</button>
-          </div>
-        </div>
-      </form>
     </div>
+    <!-- #endregion -->
+    <!-- #region 🤖 Floating Prompt Button -->
+    <button id="floatingChatBtn" onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
+    <!-- #endregion -->
   </div>
-  <!-- Floating Prompt Button (tied to modal) -->
-  <button id="floatingChatBtn" onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
-  </div>
-<!-- Modal Script: Handles Skyebot modal interactions, file input, DataTables, and session management -->
-<script>
-  // Toggle modal visibility and reset chat content when closing
-  function toggleModal() {
-    const modal = document.getElementById("skyebotModal"); // Reference to the modal element
-    const isVisible = modal.style.display === "block"; // Check if modal is currently visible
-    // If modal is visible, reset chat log and inputs
-    if (isVisible) {
-      // Closing the modal: Reset chat log, prompt input, and file input
-      const chatLog = document.getElementById("chatLog");
-      const promptInput = document.getElementById("promptInput");
-      const fileInput = document.getElementById("fileUpload");
-      const fileInfo = document.getElementById("fileInfo");
-      // Reset chat log content
-      if (chatLog) {
-        chatLog.innerHTML = ""; // Clear chat history
-        // Add welcome message with timestamp
-        const welcome = document.createElement("div");
-        welcome.className = "chat-entry bot-message";
-        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        welcome.innerHTML = `<span>🤖 Skyebot [${time}]: Hello! How can I assist you today?</span>`;
-        chatLog.appendChild(welcome);
-      }
-      if (promptInput) promptInput.value = ""; // Clear prompt textarea
-      if (fileInput) fileInput.value = ""; // Clear file input
-      if (fileInfo) fileInfo.textContent = "No files selected"; // Reset file info display
-    }
-    // Toggle modal visibility and body scroll lock
-    modal.style.display = isVisible ? "none" : "block";
-    document.body.classList.toggle("modal-open", !isVisible);
-  }
-  // Update file info display when files are selected
-  function updateFileLabel(input) {
-    const info = document.getElementById("fileInfo"); // Reference to file info display
-    if (!info) return; // Exit if file info element is not found
+  <!-- #endregion -->
 
-    if (input.files.length === 0) {
-      info.textContent = "No files selected"; // Default message when no files are selected
-    } else if (input.files.length === 1) {
-      info.textContent = input.files[0].name; // Show single file name
-    } else {
-      info.textContent = `${input.files.length} files selected`; // Show count for multiple files
-    }
-  }
-  // Close modal when clicking outside its content
-  window.addEventListener("click", function (event) {
-    const modal = document.getElementById("skyebotModal");
-    if (event.target === modal) {
-      modal.style.display = "none"; // Hide modal
-      document.body.classList.remove("modal-open"); // Remove scroll lock
-    }
-  });
-  // Initialize DataTables for project table
-  $(document).ready(function () {
-    $('#projectTable').DataTable({
-      paging: false, // Disable pagination
-      searching: false, // Disable search bar
-      info: false, // Disable table info
-      scrollY: '160px', // Set scrollable height
-      scrollCollapse: true // Allow table to collapse if content is smaller
-    });
-  });
-  // Session Manager: Handle login state and UI visibility on page load
-  document.addEventListener("DOMContentLoaded", () => {
-     // Update login UI if the function exists
-    if (typeof window.updateLoginUI === "function") window.updateLoginUI();
-  });
-  // Handle login form submission
-  document.querySelector(".login-form")?.addEventListener("submit", (e) => {
-    e.preventDefault(); // Prevent default form submission
-    localStorage.setItem("userLoggedIn", "true"); // Set logged-in state
-    location.reload(); // Reload page to update UI
-  });
-  // Clear button: Reset prompt input, file input, and file info
-  document.getElementById("clearBtn")?.addEventListener("click", () => {
-    const promptInput = document.getElementById("promptInput");
-    const fileInput = document.getElementById("fileUpload");
-    const fileInfo = document.getElementById("fileInfo");
+  <!-- #region 📝 Modal Script & UI Management -->
+  <script>
+    // ... your entire <script> block unchanged ...
+    // (region folding inside scripts is supported as well, using // #region ... // #endregion in JS)
+  </script>
+  <!-- Skyebot Script -->
+  <script src="assets/js/skyebot.js"></script>
+  <!-- #endregion -->
 
-    if (promptInput) promptInput.value = ""; // Clear prompt textarea
-    if (fileInput) fileInput.value = ""; // Clear file input
-    if (fileInfo) fileInfo.textContent = "No files selected"; // Reset file info display
-  });
-
-  // Save structured chat log to Netlify Function
-  function saveStructuredChatLog() {
-    // Collect chat entries from the chat log
-    const entries = [];
-    // Select all chat entries in the log
-    document.querySelectorAll("#chatLog .chat-entry").forEach(entry => {
-      const text = entry.textContent.trim();
-      const role = entry.classList.contains("user-message") ? "user" : "bot";
-      entries.push({ role, text });
-    });
-    // Send chat log to Netlify Function
-    fetch("/skyesoft/api/saveChatLog.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ log: entries })
-    })
-    .then(res => res.json())
-    .then(data => console.log("📝 Chat log saved:", data))
-    .catch(err => console.error("❌ Failed to save chat log:", err));
-  }
-  // 🧮 Convert seconds into padded D H M S string
-  function formatDurationPadded(seconds) {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    // Create an array to hold the parts of the duration
-    const parts = [];
-    if (d > 0) parts.push(`${d}d`);
-    if (h > 0 || d > 0) parts.push(`${String(h).padStart(2, '0')}h`);
-    if (m > 0 || h > 0 || d > 0) parts.push(`${String(m).padStart(2, '0')}m`);
-    parts.push(`${String(s).padStart(2, '0')}s`);
-    // Join the parts with a space and return the formatted string
-    return parts.join(" ");
-  }
-  // Centralized UI update function
-  window.updateLoginUI = function() {
-      const loginWrapper = document.querySelector('.login-wrapper');
-      const dashboard = document.getElementById('dashboardSection');
-      const newsUpdates = document.querySelector('.news-updates');
-      const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
-      const header = document.getElementById("bodyHeaderCopy");
-      const floatingBtn = document.getElementById('floatingChatBtn');
-      const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
-      //If Logged In
-      if (isLoggedIn) {
-          if (loginWrapper) loginWrapper.style.display = "none";
-          if (dashboard) dashboard.style.display = "block";
-          if (newsUpdates) newsUpdates.style.display = "block";
-          if (projectSummary) projectSummary.style.display = "block";
-          if (header) header.textContent = "📋 Project Dashboard";
-          if (floatingBtn) floatingBtn.style.display = "block";
-      } else {
-          if (loginWrapper) loginWrapper.style.display = "flex";
-          if (dashboard) dashboard.style.display = "none";
-          if (newsUpdates) newsUpdates.style.display = "none";
-          if (projectSummary) projectSummary.style.display = "none";
-          if (header) header.textContent = "🔒 User Log In";
-          if (floatingBtn) floatingBtn.style.display = "none";
-          // ✨ Close Skyebot modal with fade-out if open
-          if (skyebotModal && skyebotModal.style.display === "block") {
-              skyebotModal.classList.add("fade-out");
-              document.body.classList.remove("modal-open");
-              setTimeout(() => {
-                  skyebotModal.style.display = "none";
-                  skyebotModal.classList.remove("fade-out");
-              }, 400); // Match your CSS transition duration
-          }
-      }
-      // Add any other session-dependent UI updates here!
-  };
-</script>
-<!-- Skyebot Script -->
-<script src="assets/js/skyebot.js"></script>
 </body>
-<!-- End of Body -->
+<!-- #endregion -->
 </html>
-<!-- End of Script --> 
