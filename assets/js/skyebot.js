@@ -1,8 +1,68 @@
 // 📁 File: assets/js/skyebot.js
 
-//#region 📚 Codex State
+// #region 📚 Codex State
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
-//#endregion
+// #endregion
+
+// #region 🧠 Skyebot Action Router
+async function handleSkyebotAction(actionType, note, customData = {}) {
+    const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+    const getLocationAsync = () => new Promise(resolve => {
+        if (!navigator.geolocation) return resolve({ lat: null, lng: null });
+        navigator.geolocation.getCurrentPosition(
+            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => resolve({ lat: null, lng: null }),
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    });
+    const { lat, lng } = await getLocationAsync();
+
+    let actionTypeID;
+    let actionNote = note || "";
+    switch (actionType) {
+        case "logout":
+            actionTypeID = 2;
+            actionNote = note || "User logged out";
+            break;
+        case "add":
+            actionTypeID = 3;
+            actionNote = note || "Added record";
+            break;
+        case "edit":
+            actionTypeID = 4;
+            actionNote = note || "Edited record";
+            break;
+        case "delete":
+            actionTypeID = 5;
+            actionNote = note || "Deleted record";
+            break;
+        default:
+            actionTypeID = 99;
+            actionNote = note || "Other Skyebot action";
+    }
+
+    // Compose the action object for AJAX log
+    const actionObj = {
+        actionTypeID,
+        actionContactID: contactID,
+        actionNote,
+        actionLatitude: lat,
+        actionLongitude: lng,
+        actionTime: Date.now(),
+        ...customData
+    };
+
+    // Always log to backend!
+    const result = await logAction(actionObj);
+
+    if (result && result.success) {
+        console.log(`[Skyebot] Action logged (${actionType}):`, result.actionID);
+        // Optionally notify/chat
+    } else {
+        alert(`Skyebot action '${actionType}' could not be logged.`);
+    }
+}
+// #endregion
 
 // #region ⏺️ Universal Action Logger
 
@@ -36,7 +96,7 @@ function logAction(actionObj) {
 }
 //#endregion
 
-//#region DomContent Loaded Event
+// #region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
 
   //#region 🟩 Element Selection & Early Checks
@@ -240,80 +300,31 @@ document.addEventListener("DOMContentLoaded", () => {
     return summary;
   };
   //#endregion
+  
+  // #region 🚪 Skyebot Universal Logout Handler (Server-Audited, LGBAS/MTCO)
+  window.logoutUser = async function () {
+      // #region ⏺️ Server-Side Action Logging (Universal)
+      // Logs this logout action server-side for audit/compliance
+      await handleSkyebotAction("logout");
+      // #endregion
 
-  // #region 🚪 Logout Action Logger (Client-Side, MTCO-Style)
-  /**
-   * Logs a logout action to localStorage actions array.
-   * Structure matches login action, uses "actionTypeID": 2 for logout.
-   */
-  async function logLogoutAction() {
-    let latitude = null, longitude = null;
-
-    // #region 🌐 Get Live Geolocation
-    try {
-      if (navigator.geolocation) {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 5000});
-        });
-        latitude = pos.coords.latitude;
-        longitude = pos.coords.longitude;
-      }
-    } catch (e) {
-      // Location unavailable/denied is acceptable
-    }
-    // #endregion
-
-    // #region 📝 Build Logout Action Object
-    // Get contactID from cookie, fallback to 1 if not set
-    const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
-    
-    const actions = JSON.parse(localStorage.getItem("actions")) || [];
-    const nextId = actions.length > 0
-      ? Math.max(...actions.map(a => a.actionID)) + 1
-      : 1;
-    const now = Date.now();
-
-    const logoutAction = {
-      actionID: nextId,
-      actionTypeID: 2,                       // 2 = Logout
-      actionContactID: contactID,                    // TODO: Replace with dynamic user/contact ID
-      actionNote: "User logged out",
-      actionGooglePlaceId: "Place ID unavailable",
-      actionLatitude: latitude,
-      actionLongitude: longitude,
-      actionTime: now
-    };
-    // #endregion
-
-    // #region 💾 Save to Local Storage
-    actions.push(logoutAction);
-    localStorage.setItem("actions", JSON.stringify(actions));
-    console.log("Logout action added:", logoutAction);
-    return logoutAction;   // <--- return the object!
-    // #endregion
-    }
-    // #endregion
-
-  // #region 🚪 Logout Handler With Action Logging
-    window.logoutUser = async function () {
-      const logoutAction = await logLogoutAction();
-      // Show the action object to the user in chat:
-      addMessage("bot", `✅ Logout logged:\n\`\`\`json\n${JSON.stringify(logoutAction, null, 2)}\n\`\`\``);
-
-      // Your existing session cleanup...
+      // #region 🧹 Session Cleanup & UI Reset
+      // Clear all relevant session and user state (localStorage, cookies, UI)
       localStorage.removeItem('userLoggedIn');
       localStorage.removeItem('userId');
       document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
+      // Hide or reset the chat panel, if present
       const chatPanel = document.getElementById('chatPanel') || document.querySelector('.chat-wrapper');
       if (chatPanel) chatPanel.style.display = "none";
+      // Update the UI to reflect logged-out state
       if (typeof updateLoginUI === "function") {
-        updateLoginUI();
+          updateLoginUI();
       } else {
-        location.reload();
+          location.reload();
       }
-    };
-    // #endregion
-
+      // #endregion
+  };
+  // #endregion
 });
-//#endregion
+// #endregion
