@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.143",
-  "lastDeployNote": "� SNPS: Add Skyebot Easter egg handler! Fun phrases like 'push it' and '/fortune' now get playful bot responses. Push it real good!",
-  "lastDeployTime": "2025-07-27 22:40:55",
-  "commitHash": "7c4c9bb",
+  "siteVersion": "v0.1.144",
+  "lastDeployNote": "� SNPS: Skyebot now responds to 'push it' and other Easter eggs instantly (pre-backend)! Pushing the fun real good!",
+  "lastDeployTime": "2025-07-27 22:47:03",
+  "commitHash": "056157d",
   "deployState": "live",
   "deployIsLive": true
 }

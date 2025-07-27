@@ -138,8 +138,9 @@ function handleEasterEggs(message) {
 
     // 'push it' Easter egg
     if (msg.includes("push it")) {
-        showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
-        // You can add animation, sound, etc. here!
+        //showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
+        showAsciiConfetti("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
+        // Return true to indicate an Easter egg was triggered
         return true;
     }
 
@@ -175,6 +176,31 @@ function showEasterEggResponse(text) {
         chatLog.appendChild(entry);
         chatLog.scrollTop = chatLog.scrollHeight;
     }
+}
+// #endregion
+
+// #region 🎉 ASCII Confetti Drop (Skyebot Easter Egg)
+/**
+ * Appends a burst of ASCII confetti to the chat log.
+ * @param {string} [message] - Optional message to show with confetti
+ */
+function showAsciiConfetti(message) {
+    const chatLog = document.getElementById("chatLog");
+    if (!chatLog) return;
+    // Fun ASCII confetti burst
+    const confettiArt = [
+        "✨  *  .   .  ✦   *  ✨",
+        " . *  🌟   .  * ✨ .  .",
+        "🎉  ✨  *   .  ✦   🎊  *",
+        "  *  .  ✨   .  *  🎉   "
+    ].join("<br>");
+
+    const entry = document.createElement("div");
+    entry.className = "chat-entry bot-message easter-egg";
+    entry.innerHTML = `<pre style="font-size:1.2em;line-height:1.1;">${confettiArt}</pre>` +
+                      (message ? `<div>${message}</div>` : "");
+    chatLog.appendChild(entry);
+    chatLog.scrollTop = chatLog.scrollHeight;
 }
 // #endregion
 
