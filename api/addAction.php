@@ -1,0 +1,94 @@
+<?php
+// #region ⏺️ Universal Action Logger — addAction.php
+
+header('Content-Type: application/json');
+
+// Set your file paths
+$jsonPath = 'C:/Users/SteveS/Documents/skyesoft/assets/data/skyesoft-data.json';
+$envPath  = 'C:/Users/SteveS/Documents/skyesoft/assets/data/.env';
+
+// region: .env loader
+function getEnvVar($key, $envPath) {
+    static $env = null;
+    if ($env === null) {
+        $env = array();
+        if (file_exists($envPath)) {
+            foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                if (strpos(trim($line), '#') === 0) continue;
+                if (strpos($line, '=') !== false) {
+                    list($k, $v) = explode('=', $line, 2);
+                    $env[trim($k)] = trim($v);
+                }
+            }
+        }
+    }
+    return isset($env[$key]) ? $env[$key] : null;
+}
+// endregion
+
+// region: Place ID lookup via Google Geocoding API
+function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
+    $url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={$lat},{$lng}&key={$apiKey}";
+    $response = @file_get_contents($url);
+    $data = json_decode($response, true);
+    if (!empty($data['results'][0]['place_id'])) {
+        return $data['results'][0]['place_id'];
+    }
+    return "Place ID unavailable";
+}
+// endregion
+
+// region: Load action object from POST
+$input = file_get_contents('php://input');
+$action = json_decode($input, true);
+if (!$action) {
+    echo json_encode(array('success' => false, 'error' => 'Invalid JSON'));
+    exit;
+}
+// endregion
+
+// region: Validate required fields
+$required = array('actionTypeID', 'actionContactID', 'actionNote', 'actionTime', 'actionLatitude', 'actionLongitude');
+foreach ($required as $key) {
+    if (!isset($action[$key])) {
+        echo json_encode(array('success' => false, 'error' => "Missing: $key"));
+        exit;
+    }
+}
+// endregion
+
+// region: Always look up Place ID server-side (ignore what frontend sends)
+$apiKey = getEnvVar('GOOGLE_MAPS_BACKEND_API_KEY', $envPath);
+$action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatitude'], $action['actionLongitude'], $apiKey);
+// endregion
+
+// region: Load current skyesoft-data.json
+$data = json_decode(file_get_contents($jsonPath), true);
+if (!$data) {
+    echo json_encode(array('success' => false, 'error' => 'Could not read JSON data'));
+    exit;
+}
+// endregion
+
+// region: Assign next actionID (auto-increment)
+$maxId = 0;
+if (isset($data['actions']) && is_array($data['actions'])) {
+    foreach ($data['actions'] as $act) {
+        if (isset($act['actionID']) && $act['actionID'] > $maxId) {
+            $maxId = $act['actionID'];
+        }
+    }
+}
+$action['actionID'] = $maxId + 1;
+// endregion
+
+// region: Append and save
+$data['actions'][] = $action;
+if (file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT))) {
+    echo json_encode(array('success' => true, 'actionID' => $action['actionID']));
+} else {
+    echo json_encode(array('success' => false, 'error' => 'Failed to write to JSON file'));
+}
+// endregion
+
+// #endregion
