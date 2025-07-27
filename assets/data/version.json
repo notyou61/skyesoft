@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.138",
-  "lastDeployNote": "SNPS/MTCO: Add missing id='floatingChatBtn' to floating prompt button for centralized UI session logic",
-  "lastDeployTime": "2025-07-26 13:59:13",
-  "commitHash": "9aa8ce4",
+  "siteVersion": "v0.1.139",
+  "lastDeployNote": "SNPS: Removed cookie check from UI login state",
+  "lastDeployTime": "2025-07-27 13:07:25",
+  "commitHash": "9f2f3cc",
   "deployState": "live",
   "deployIsLive": true
 }
