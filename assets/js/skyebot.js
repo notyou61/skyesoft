@@ -124,6 +124,60 @@ function toggleModal() {
 }
 // #endregion
 
+// #region 🥚 Skyebot Easter Egg Handler
+
+/**
+ * Checks a user message for special Easter egg triggers.
+ * If a phrase is matched, performs a fun action and returns true.
+ * Otherwise returns false (normal processing).
+ * @param {string} message - The user's chat input
+ * @returns {boolean}
+ */
+function handleEasterEggs(message) {
+    const msg = message.trim().toLowerCase();
+
+    // 'push it' Easter egg
+    if (msg.includes("push it")) {
+        showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
+        // You can add animation, sound, etc. here!
+        return true;
+    }
+
+    // 'fortune' Easter egg
+    if (msg === "/fortune") {
+        const fortunes = [
+            "🚀 Success is just a commit away.",
+            "💡 Today’s bug is tomorrow’s feature.",
+            "🧂 Keep pushing it!",
+            "🎲 Luck favors the persistent debugger.",
+            "🍪 You will find a semicolon where you least expect it."
+        ];
+        const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+        showEasterEggResponse(fortune);
+        return true;
+    }
+
+    // More fun triggers can go here!
+
+    return false; // No Easter egg matched
+}
+
+/**
+ * Displays an Easter egg response in the chat log.
+ * @param {string} text
+ */
+function showEasterEggResponse(text) {
+    const chatLog = document.getElementById("chatLog");
+    if (chatLog) {
+        const entry = document.createElement("div");
+        entry.className = "chat-entry bot-message easter-egg";
+        entry.innerHTML = `<span>${text}</span>`;
+        chatLog.appendChild(entry);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+}
+// #endregion
+
 // #region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
 
