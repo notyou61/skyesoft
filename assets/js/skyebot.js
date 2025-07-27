@@ -96,6 +96,34 @@ function logAction(actionObj) {
 }
 //#endregion
 
+// #region 🧹 Modal Reset On Close
+function toggleModal() {
+  const modal = document.getElementById("skyebotModal");
+  const isVisible = modal.style.display === "block";
+  // #region 🧹 Modal Reset On Close
+  if (isVisible) {
+    const chatLog = document.getElementById("chatLog");
+    const promptInput = document.getElementById("promptInput");
+    const fileInput = document.getElementById("fileUpload");
+    const fileInfo = document.getElementById("fileInfo");
+    if (chatLog) {
+      chatLog.innerHTML = "";
+      const welcome = document.createElement("div");
+      welcome.className = "chat-entry bot-message";
+      const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      welcome.innerHTML = `<span>🤖 Skyebot [${time}]: Hello! How can I assist you today?</span>`;
+      chatLog.appendChild(welcome);
+    }
+    if (promptInput) promptInput.value = "";
+    if (fileInput) fileInput.value = "";
+    if (fileInfo) fileInfo.textContent = "No files selected";
+  }
+  // #endregion
+  modal.style.display = isVisible ? "none" : "block";
+  document.body.classList.toggle("modal-open", !isVisible);
+}
+// #endregion
+
 // #region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
 
