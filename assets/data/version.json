@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.139",
-  "lastDeployNote": "SNPS: Removed cookie check from UI login state",
-  "lastDeployTime": "2025-07-27 13:07:25",
-  "commitHash": "9f2f3cc",
+  "siteVersion": "v0.1.140",
+  "lastDeployNote": "Log logout actions with user contactID, geolocation, and timestamp (MTCO pattern)",
+  "lastDeployTime": "2025-07-27 15:49:51",
+  "commitHash": "95a7922",
   "deployState": "live",
   "deployIsLive": true
 }

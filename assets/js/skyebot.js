@@ -262,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     // #endregion
 
-    // #region 🚪 Logout Handler With Action Logging
+  // #region 🚪 Logout Handler With Action Logging
     window.logoutUser = async function () {
       const logoutAction = await logLogoutAction();
       // Show the action object to the user in chat:
@@ -282,6 +282,38 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
     // #endregion
+
+  // #region ⏺️ Universal Action Logger
+
+/**
+ * Posts any action to the backend audit log.
+ * @param {Object} actionObj - Structured action data (see schema below)
+ * @returns {Promise} Resolves with server response or error
+ */
+function logAction(actionObj) {
+    // Ensure actionObj contains all required fields
+    // You can add defaults/checks here if needed
+    return fetch('/skyesoft/api/addAction.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(actionObj)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Optionally show a toast or chat bubble here
+            console.log('Action logged:', data.actionID || actionObj);
+        } else {
+            console.warn('Logging failed:', data.error || data);
+        }
+        return data;
+    })
+    .catch(err => {
+        console.error('AJAX logAction error:', err);
+        return { success: false, error: err };
+    });
+}
+//#endregion
 
 });
 //#endregion

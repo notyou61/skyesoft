@@ -427,37 +427,59 @@
     }
     // #endregion
 
-    // #region 🔑 Login Form Handler (with CRUD Logging + Live Geolocation)
+    // #region 🔑 Login Form Handler (with Universal AJAX Logging + Live Geolocation)
     document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
+        e.preventDefault();
 
-      // Find the submit button with a crudX class
-      const btn = e.submitter || document.querySelector(".crud1");
-      const actionTypeID = getCrudActionTypeID(btn);
+        // Find the submit button with a crudX class (get action type, e.g., 1=login)
+        const btn = e.submitter || document.querySelector(".crud1");
+        const actionTypeID = getCrudActionTypeID(btn); // Your function (returns an int, e.g., 1 for login)
 
-      // Load actions array from storage
-      let actions = [];
-      try { actions = JSON.parse(localStorage.getItem("actions")) || []; } catch { actions = []; }
+        // Get contactID from cookie, fallback to 1
+        const actionContactID = parseInt(getCookie('skye_contactID'), 10) || 1;
 
-      // Get contactID from cookie, fallback to 1 if not set
-      const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+        // Compose actionNote (customize as needed)
+        const actionNote = "User logged in";
 
-      // Get API key for Google Maps from global, env, or config
-      const apiKey = window.GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY";
+        // Capture current timestamp
+        const actionTime = Date.now();
 
-      // Await the action log with live location (async!)
-      await addAction(actions, {
-        actionTypeID: actionTypeID, // From button class
-        contactID: contactID,   // Set dynamically for each user
-        notes: "User logged in"
-      }, apiKey);
+        // Get user's location (returns a promise)
+        function getLocationAsync() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) return resolve({lat: null, lng: null});
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+                    () => resolve({lat: null, lng: null}),
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            });
+        }
 
-      // Save updated actions array
-      localStorage.setItem("actions", JSON.stringify(actions));
-      localStorage.setItem("userLoggedIn", "true");
+        // Wait for live location
+        const {lat, lng} = await getLocationAsync();
 
-      // Update UI instantly after login
-      if (typeof window.updateLoginUI === "function") window.updateLoginUI();
+        // Compose the action object for AJAX log
+        const actionObj = {
+            actionTypeID,
+            actionContactID,
+            actionNote,
+            actionLatitude: lat,
+            actionLongitude: lng,
+            actionTime
+        };
+
+        // Call universal logger (AJAX to /api/addAction.php)
+        const result = await logAction(actionObj);
+
+        // Optionally update UI or notify user
+        if (result && result.success) {
+            console.log("Login action logged. ID:", result.actionID);
+            localStorage.setItem("userLoggedIn", "true");
+            if (typeof window.updateLoginUI === "function") window.updateLoginUI();
+        } else {
+            alert("Login action could not be logged. Please try again.");
+        }
     });
     // #endregion
 
