@@ -279,6 +279,9 @@
 
     // #region 🧩 Centralized UI Update (Login/Logout/Modal Fade)
     window.updateLoginUI = function() {
+      // Console.log('updateLoginUI called');
+      console.log('updateLoginUI: userLoggedIn=', localStorage.getItem('userLoggedIn'), ', cookie=', document.cookie);
+      // login UI and session state management
       const loginWrapper = document.querySelector('.login-wrapper');
       const dashboard = document.getElementById('dashboardSection');
       const newsUpdates = document.querySelector('.news-updates');
@@ -286,7 +289,7 @@
       const header = document.getElementById("bodyHeaderCopy");
       const floatingBtn = document.getElementById('floatingChatBtn');
       const skyebotModal = document.getElementById('skyebotModal');
-      const isLoggedIn = !!localStorage.getItem('userLoggedIn');
+      const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
 
       if (isLoggedIn) {
         if (loginWrapper) loginWrapper.style.display = "none";
@@ -387,7 +390,9 @@
       // Save updated actions array
       localStorage.setItem("actions", JSON.stringify(actions));
       localStorage.setItem("userLoggedIn", "true");
-    
+
+      // Update UI instantly after login
+      if (typeof window.updateLoginUI === "function") window.updateLoginUI();
     });
     // #endregion
 
