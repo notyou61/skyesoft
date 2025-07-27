@@ -4,6 +4,38 @@
 let codexData = null; // 🗃️ Will hold Codex glossary/policies
 //#endregion
 
+// #region ⏺️ Universal Action Logger
+
+/**
+ * Posts any action to the backend audit log.
+ * @param {Object} actionObj - Structured action data (see schema below)
+ * @returns {Promise} Resolves with server response or error
+ */
+function logAction(actionObj) {
+    // Ensure actionObj contains all required fields
+    // You can add defaults/checks here if needed
+    return fetch('/skyesoft/api/addAction.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(actionObj)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Optionally show a toast or chat bubble here
+            console.log('Action logged:', data.actionID || actionObj);
+        } else {
+            console.warn('Logging failed:', data.error || data);
+        }
+        return data;
+    })
+    .catch(err => {
+        console.error('AJAX logAction error:', err);
+        return { success: false, error: err };
+    });
+}
+//#endregion
+
 //#region DomContent Loaded Event
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -282,38 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
     // #endregion
-
-  // #region ⏺️ Universal Action Logger
-
-/**
- * Posts any action to the backend audit log.
- * @param {Object} actionObj - Structured action data (see schema below)
- * @returns {Promise} Resolves with server response or error
- */
-function logAction(actionObj) {
-    // Ensure actionObj contains all required fields
-    // You can add defaults/checks here if needed
-    return fetch('/skyesoft/api/addAction.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(actionObj)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Optionally show a toast or chat bubble here
-            console.log('Action logged:', data.actionID || actionObj);
-        } else {
-            console.warn('Logging failed:', data.error || data);
-        }
-        return data;
-    })
-    .catch(err => {
-        console.error('AJAX logAction error:', err);
-        return { success: false, error: err };
-    });
-}
-//#endregion
 
 });
 //#endregion
