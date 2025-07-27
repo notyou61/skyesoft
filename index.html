@@ -331,42 +331,102 @@
     }
     // #endregion
 
-    // #region 📝 Centralized CRUD Action Logger
+    // #region 📝 Centralized CRUD Action Logger (ALWAYS live geolocation)
     /**
-     * Adds a CRUD action object to the provided actions array.
-     * @param {Array} actionsArray - The array to append the new action to
-     * @param {Object} params - Parameters for the action (see schema)
-     * @returns {Object} - The newly created action object
+     * Gets the user's current location as a Promise.
+     * @returns {Promise<Object>} - Resolves with { latitude, longitude } or rejects on error.
      */
-    function addAction(actionsArray, params) {
+    function getCurrentPositionPromise() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject('Geolocation not supported.');
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve(pos.coords),
+          err => reject(err)
+        );
+      });
+    }
+
+    /**
+     * Fetches Google Place ID for given coordinates using the Google Maps Geocoding API.
+     * @param {number} latitude
+     * @param {number} longitude
+     * @param {string} apiKey
+     * @returns {Promise<string|null>}
+     */
+    async function getGooglePlaceId(latitude, longitude, apiKey) {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.results?.[0]?.place_id || null;
+      } catch (err) {
+        console.warn("Error fetching Google Place ID:", err);
+        return null;
+      }
+    }
+
+    /**
+     * ALWAYS gets current geolocation and place ID before logging an action.
+     * Never uses supplied lat/lon/Place ID. If location is denied/unavailable, logs nulls.
+     * @param {Array} actionsArray - The array to append the new action to.
+     * @param {Object} params - { actionTypeID, contactID, notes }
+     * @param {string} apiKey - Google Maps API key.
+     * @returns {Promise<Object>} - Resolves with the new action object.
+     */
+    async function addAction(actionsArray, params, apiKey) {
+      let latitude = null;
+      let longitude = null;
+      let googlePlaceId = null;
+
+      try {
+        const coords = await getCurrentPositionPromise();
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+        if (apiKey) {
+          googlePlaceId = await getGooglePlaceId(latitude, longitude, apiKey);
+        } else {
+          console.warn("Google Maps API key not provided.");
+        }
+      } catch (err) {
+        console.warn("Location not available or denied:", err);
+      }
+
       const nextId = actionsArray.length > 0
         ? Math.max(...actionsArray.map(a => a.actionID)) + 1
         : 1;
-      const now = Date.now(); // <-- Unix timestamp (milliseconds)
+      const now = Date.now();
+
       const newAction = {
         actionID: nextId,
         actionTypeID: params.actionTypeID,
-        entityID: params.entityID || null,
-        projectID: params.projectID || null,
-        locationID: params.locationID || null,
-        contactID: params.contactID,
-        assignedTo: params.assignedTo || params.contactID,
-        dueDate: params.dueDate || null,
-        completedDate: params.completedDate || null,
-        status: params.status || "open",
-        priority: params.priority || "normal",
-        notes: params.notes || "",
-        createdAt: now,
-        updatedAt: now
+        actionContactID: params.contactID,
+        actionNote: params.notes || "",
+        actionGooglePlaceId: googlePlaceId,
+        actionLatitude: latitude,
+        actionLongitude: longitude,
+        actionTime: now
       };
+
       actionsArray.push(newAction);
-      console.log("Action added:", newAction);  // <-- THIS LINE
+      console.log("Action added:", newAction);
       return newAction;
     }
     // #endregion
 
-    // #region 🔑 Login Form Handler (with CRUD Logging)
-    document.querySelector(".login-form")?.addEventListener("submit", (e) => {
+    // #region 🍪 Cookie Utility: getCookie
+    /**
+     * Returns the value of a named cookie, or null if not found.
+     * @param {string} name - Cookie name
+     * @returns {string|null}
+     */
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+    // #endregion
+
+    // #region 🔑 Login Form Handler (with CRUD Logging + Live Geolocation)
+    document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       // Find the submit button with a crudX class
@@ -377,15 +437,18 @@
       let actions = [];
       try { actions = JSON.parse(localStorage.getItem("actions")) || []; } catch { actions = []; }
 
-      // Call addAction with login params
-      addAction(actions, {
-        actionTypeID: actionTypeID, // From the button class, e.g. 1
-        entityID: 1,
-        locationID: 1,
-        contactID: 1, // Set dynamically if you have multiple users
-        notes: "User logged in",
-        status: "completed"
-      });
+      // Get contactID from cookie, fallback to 1 if not set
+      const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+
+      // Get API key for Google Maps from global, env, or config
+      const apiKey = window.GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY";
+
+      // Await the action log with live location (async!)
+      await addAction(actions, {
+        actionTypeID: actionTypeID, // From button class
+        contactID: contactID,   // Set dynamically for each user
+        notes: "User logged in"
+      }, apiKey);
 
       // Save updated actions array
       localStorage.setItem("actions", JSON.stringify(actions));
