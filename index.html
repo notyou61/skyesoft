@@ -358,10 +358,12 @@
       try {
         const res = await fetch(url);
         const data = await res.json();
-        return data.results?.[0]?.place_id || null;
+        // MTCO log (optional): console.log("Google Geocode API raw response:", data);
+        const placeId = data.results?.find(r => r.place_id)?.place_id;
+        return placeId || "Place ID unavailable";
       } catch (err) {
         console.warn("Error fetching Google Place ID:", err);
-        return null;
+        return "Place ID unavailable";
       }
     }
 
