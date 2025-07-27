@@ -257,6 +257,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const prompt = input.value.trim();
     // If no input, do nothing
     if (!prompt) return;
+    // 🥚 Easter Egg: If triggered, return early!
+    if (handleEasterEggs(prompt)) {
+        input.value = "";
+        input.focus();
+        return; // Don't run the rest of the handler
+    }
     // Add user message to chat log
     addMessage("user", prompt);
     // Clear input field and focus
