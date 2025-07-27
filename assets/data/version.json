@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.140",
-  "lastDeployNote": "Log logout actions with user contactID, geolocation, and timestamp (MTCO pattern)",
-  "lastDeployTime": "2025-07-27 15:49:51",
-  "commitHash": "95a7922",
+  "siteVersion": "v0.1.141",
+  "lastDeployNote": "Refactor: Skyebot action logging now universal, MTCO/LGBAS-compliant; regionalized, no localStorage logging remains",
+  "lastDeployTime": "2025-07-27 22:28:24",
+  "commitHash": "7540219",
   "deployState": "live",
   "deployIsLive": true
 }
