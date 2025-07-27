@@ -339,7 +339,7 @@
       const nextId = actionsArray.length > 0
         ? Math.max(...actionsArray.map(a => a.actionID)) + 1
         : 1;
-      const now = new Date().toISOString();
+      const now = Date.now(); // <-- Unix timestamp (milliseconds)
       const newAction = {
         actionID: nextId,
         actionTypeID: params.actionTypeID,
