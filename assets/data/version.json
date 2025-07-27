@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.141",
-  "lastDeployNote": "Refactor: Skyebot action logging now universal, MTCO/LGBAS-compliant; regionalized, no localStorage logging remains",
-  "lastDeployTime": "2025-07-27 22:28:24",
-  "commitHash": "7540219",
+  "siteVersion": "v0.1.142",
+  "lastDeployNote": "� Salt 'n Pepa style: Push it real good! Regionalize Skyebot, universal action logging, modal chat reset, MTCO-ready.",
+  "lastDeployTime": "2025-07-27 22:36:11",
+  "commitHash": "25e44b7",
   "deployState": "live",
   "deployIsLive": true
 }
