@@ -234,8 +234,15 @@
 
     // #region 🔑 Login Form Handler
     document.querySelector(".login-form")?.addEventListener("submit", (e) => {
+      // Prevent default form submission
       e.preventDefault();
+      // localStorage
       localStorage.setItem("userLoggedIn", "true");
+      // Console.log("User logged in, updating UI...");
+      console.log("ActionTypeID used:", actionTypeID);
+      // Console.log("User logged in, saving actions...");
+      console.log("Actions array about to save:", actions);
+      // Location reload to refresh UI
       location.reload();
     });
     // #endregion
@@ -322,6 +329,107 @@
       }
       // Add any other session-dependent UI updates here!
     };
+    // #endregion
+
+    // #region 📝 Centralized CRUD Action Logger
+    function addAction(actionsArray, params) {
+      const nextId = actionsArray.length > 0
+        ? Math.max(...actionsArray.map(a => a.actionID)) + 1
+        : 1;
+      const now = new Date().toISOString();
+      const newAction = {
+        actionID: nextId,
+        actionTypeID: params.actionTypeID,      // e.g., 1 (Login)
+        entityID: params.entityID || null,
+        projectID: params.projectID || null,
+        locationID: params.locationID || null,
+        contactID: params.contactID,
+        assignedTo: params.assignedTo || params.contactID,
+        dueDate: params.dueDate || null,
+        completedDate: params.completedDate || null,
+        status: params.status || "open",
+        priority: params.priority || "normal",
+        notes: params.notes || "",
+        createdAt: now,
+        updatedAt: now
+      };
+      actionsArray.push(newAction);
+      return newAction;
+    }
+    // #endregion
+
+    // #region 🏷️ CRUD ActionTypeID Utility
+    /**
+     * Utility: Extracts actionTypeID from button class, e.g., "crud1" => 1
+     * @param {HTMLElement} element - Button element to inspect
+     * @returns {number|null} - The actionTypeID or null if not found
+     */
+    function getCrudActionTypeID(element) {
+      const match = Array.from(element.classList).find(c => c.startsWith('crud'));
+      return match ? parseInt(match.replace('crud', ''), 10) : null;
+    }
+    // #endregion
+
+    // #region 📝 Centralized CRUD Action Logger
+    /**
+     * Adds a CRUD action object to the provided actions array.
+     * @param {Array} actionsArray - The array to append the new action to
+     * @param {Object} params - Parameters for the action (see schema)
+     * @returns {Object} - The newly created action object
+     */
+    function addAction(actionsArray, params) {
+      const nextId = actionsArray.length > 0
+        ? Math.max(...actionsArray.map(a => a.actionID)) + 1
+        : 1;
+      const now = new Date().toISOString();
+      const newAction = {
+        actionID: nextId,
+        actionTypeID: params.actionTypeID,
+        entityID: params.entityID || null,
+        projectID: params.projectID || null,
+        locationID: params.locationID || null,
+        contactID: params.contactID,
+        assignedTo: params.assignedTo || params.contactID,
+        dueDate: params.dueDate || null,
+        completedDate: params.completedDate || null,
+        status: params.status || "open",
+        priority: params.priority || "normal",
+        notes: params.notes || "",
+        createdAt: now,
+        updatedAt: now
+      };
+      actionsArray.push(newAction);
+      return newAction;
+    }
+    // #endregion
+
+    // #region 🔑 Login Form Handler (with CRUD Logging)
+    document.querySelector(".login-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      // Find the submit button with a crudX class
+      const btn = e.submitter || document.querySelector(".crud1");
+      const actionTypeID = getCrudActionTypeID(btn);
+
+      // Load actions array from storage
+      let actions = [];
+      try { actions = JSON.parse(localStorage.getItem("actions")) || []; } catch { actions = []; }
+
+      // Call addAction with login params
+      addAction(actions, {
+        actionTypeID: actionTypeID, // From the button class, e.g. 1
+        entityID: 1,
+        locationID: 1,
+        contactID: 1, // Set dynamically if you have multiple users
+        notes: "User logged in",
+        status: "completed"
+      });
+
+      // Save updated actions array
+      localStorage.setItem("actions", JSON.stringify(actions));
+      localStorage.setItem("userLoggedIn", "true");
+      location.reload();
+    });
     // #endregion
 
   </script>
