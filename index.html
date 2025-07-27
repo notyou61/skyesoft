@@ -286,7 +286,7 @@
       const header = document.getElementById("bodyHeaderCopy");
       const floatingBtn = document.getElementById('floatingChatBtn');
       const skyebotModal = document.getElementById('skyebotModal');
-      const isLoggedIn = !!localStorage.getItem('userLoggedIn') && !!document.cookie.match(/skyelogin_user=/);
+      const isLoggedIn = !!localStorage.getItem('userLoggedIn');
 
       if (isLoggedIn) {
         if (loginWrapper) loginWrapper.style.display = "none";
