@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.142",
-  "lastDeployNote": "� Salt 'n Pepa style: Push it real good! Regionalize Skyebot, universal action logging, modal chat reset, MTCO-ready.",
-  "lastDeployTime": "2025-07-27 22:36:11",
-  "commitHash": "25e44b7",
+  "siteVersion": "v0.1.143",
+  "lastDeployNote": "� SNPS: Add Skyebot Easter egg handler! Fun phrases like 'push it' and '/fortune' now get playful bot responses. Push it real good!",
+  "lastDeployTime": "2025-07-27 22:40:55",
+  "commitHash": "7c4c9bb",
   "deployState": "live",
   "deployIsLive": true
 }
