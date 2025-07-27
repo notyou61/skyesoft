@@ -208,5 +208,80 @@ document.addEventListener("DOMContentLoaded", () => {
     return summary;
   };
   //#endregion
+
+  // #region 🚪 Logout Action Logger (Client-Side, MTCO-Style)
+  /**
+   * Logs a logout action to localStorage actions array.
+   * Structure matches login action, uses "actionTypeID": 2 for logout.
+   */
+  async function logLogoutAction() {
+    let latitude = null, longitude = null;
+
+    // #region 🌐 Get Live Geolocation
+    try {
+      if (navigator.geolocation) {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout: 5000});
+        });
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      }
+    } catch (e) {
+      // Location unavailable/denied is acceptable
+    }
+    // #endregion
+
+    // #region 📝 Build Logout Action Object
+    // Get contactID from cookie, fallback to 1 if not set
+    const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+    
+    const actions = JSON.parse(localStorage.getItem("actions")) || [];
+    const nextId = actions.length > 0
+      ? Math.max(...actions.map(a => a.actionID)) + 1
+      : 1;
+    const now = Date.now();
+
+    const logoutAction = {
+      actionID: nextId,
+      actionTypeID: 2,                       // 2 = Logout
+      actionContactID: contactID,                    // TODO: Replace with dynamic user/contact ID
+      actionNote: "User logged out",
+      actionGooglePlaceId: "Place ID unavailable",
+      actionLatitude: latitude,
+      actionLongitude: longitude,
+      actionTime: now
+    };
+    // #endregion
+
+    // #region 💾 Save to Local Storage
+    actions.push(logoutAction);
+    localStorage.setItem("actions", JSON.stringify(actions));
+    console.log("Logout action added:", logoutAction);
+    return logoutAction;   // <--- return the object!
+    // #endregion
+    }
+    // #endregion
+
+    // #region 🚪 Logout Handler With Action Logging
+    window.logoutUser = async function () {
+      const logoutAction = await logLogoutAction();
+      // Show the action object to the user in chat:
+      addMessage("bot", `✅ Logout logged:\n\`\`\`json\n${JSON.stringify(logoutAction, null, 2)}\n\`\`\``);
+
+      // Your existing session cleanup...
+      localStorage.removeItem('userLoggedIn');
+      localStorage.removeItem('userId');
+      document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
+      const chatPanel = document.getElementById('chatPanel') || document.querySelector('.chat-wrapper');
+      if (chatPanel) chatPanel.style.display = "none";
+      if (typeof updateLoginUI === "function") {
+        updateLoginUI();
+      } else {
+        location.reload();
+      }
+    };
+    // #endregion
+
 });
 //#endregion
