@@ -4,8 +4,8 @@
 header('Content-Type: application/json');
 
 // Set your file paths
-$jsonPath = 'C:/Users/SteveS/Documents/skyesoft/assets/data/skyesoft-data.json';
-$envPath  = 'C:/Users/SteveS/Documents/skyesoft/assets/data/.env';
+$jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
+$envPath = __DIR__ . '/../.env';
 
 // region: .env loader
 function getEnvVar($key, $envPath) {
