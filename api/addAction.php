@@ -7,6 +7,9 @@ header('Content-Type: application/json');
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
 
+//
+file_put_contents(__DIR__ . '/debug-path.txt', $jsonPath . "\n", FILE_APPEND);
+
 // Debug: Write out the resolved JSON path to a file
 file_put_contents('/home/notyou64/public_html/skyesoft/assets/data/debug.txt', "PATH=" . $jsonPath . "\n", FILE_APPEND);
 
