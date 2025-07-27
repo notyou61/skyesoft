@@ -232,21 +232,6 @@
     });
     // #endregion
 
-    // #region 🔑 Login Form Handler
-    document.querySelector(".login-form")?.addEventListener("submit", (e) => {
-      // Prevent default form submission
-      e.preventDefault();
-      // localStorage
-      localStorage.setItem("userLoggedIn", "true");
-      // Console.log("User logged in, updating UI...");
-      console.log("ActionTypeID used:", actionTypeID);
-      // Console.log("User logged in, saving actions...");
-      console.log("Actions array about to save:", actions);
-      // Location reload to refresh UI
-      location.reload();
-    });
-    // #endregion
-
     // #region 🧹 Clear Chat/File Inputs
     document.getElementById("clearBtn")?.addEventListener("click", () => {
       const promptInput = document.getElementById("promptInput");
@@ -331,33 +316,6 @@
     };
     // #endregion
 
-    // #region 📝 Centralized CRUD Action Logger
-    function addAction(actionsArray, params) {
-      const nextId = actionsArray.length > 0
-        ? Math.max(...actionsArray.map(a => a.actionID)) + 1
-        : 1;
-      const now = new Date().toISOString();
-      const newAction = {
-        actionID: nextId,
-        actionTypeID: params.actionTypeID,      // e.g., 1 (Login)
-        entityID: params.entityID || null,
-        projectID: params.projectID || null,
-        locationID: params.locationID || null,
-        contactID: params.contactID,
-        assignedTo: params.assignedTo || params.contactID,
-        dueDate: params.dueDate || null,
-        completedDate: params.completedDate || null,
-        status: params.status || "open",
-        priority: params.priority || "normal",
-        notes: params.notes || "",
-        createdAt: now,
-        updatedAt: now
-      };
-      actionsArray.push(newAction);
-      return newAction;
-    }
-    // #endregion
-
     // #region 🏷️ CRUD ActionTypeID Utility
     /**
      * Utility: Extracts actionTypeID from button class, e.g., "crud1" => 1
@@ -428,7 +386,7 @@
       // Save updated actions array
       localStorage.setItem("actions", JSON.stringify(actions));
       localStorage.setItem("userLoggedIn", "true");
-      location.reload();
+    
     });
     // #endregion
 
