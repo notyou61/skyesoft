@@ -143,8 +143,6 @@ if (!$weatherApiKey) {
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
-
-// Initialize site metadata array
 $siteMeta = array();
 
 // If data file exists, load site metadata
@@ -268,40 +266,6 @@ if (file_exists($dataPath)) {
 }
 #endregion
 
-#region 🛰️ Version Metadata
-// 🔧 Set default version values (used if version.json missing or unreadable)
-$version = [
-    "siteVersion"     => "unknown",         // Fallback site version label
-    "lastDeployNote"  => "Unavailable",     // Fallback deploy note
-    "lastDeployTime"  => null,              // Fallback last deploy time
-    "commitHash"      => "unknown",         // Fallback Git commit hash
-    "deployState"     => "unknown",         // Fallback deploy state
-    "deployIsLive"    => false,             // Fallback live/deployed status
-    "cronCount"       => 0,                 // Fallback cron job count
-    "streamCount"     => 0,                 // Fallback SSE stream count
-    "aiQueryCount"    => 0,                 // Fallback AI query count
-    "uptimeSeconds"   => null               // Fallback uptime
-];
-// 📥 Check if version.json exists at $versionPath
-if (file_exists($versionPath)) {
-    // 📖 Read the contents of version.json into $json
-    $json = file_get_contents($versionPath);
-    // 🧩 Decode the JSON into an associative array
-    $verData = json_decode($json, true);
-    // ✅ If decoding succeeded (result is an array)
-    if (is_array($verData)) {
-        // 🔄 Merge values from version.json into the default $version array
-        $version = array_merge($version, $verData);
-    } else {
-        // ⚠️ Log an error if JSON is invalid or cannot be parsed
-        error_log("❌ version.json found but contains invalid JSON.");
-    }
-} else {
-    // ⚠️ Log a warning if version.json was not found at the specified path
-    error_log("⚠️ version.json not found at: $versionPath");
-}
-#endregion
-
 #region 📤 Response
 
 // 🕒 Master response array for SSE/SOT stream
@@ -401,24 +365,24 @@ $response = array(
     "announcements" => $announcements,
     // 🏷️ Meta/versioning information for deployment tracking
     "siteMeta" => array(
-        // 🏷️ Current site version (from version.json)
-        "siteVersion" => $siteMeta['siteVersion'],
+        // 🏷️ Current site version (from siteMeta, persistent)
+        "siteVersion"    => isset($siteMeta['siteVersion'])    ? $siteMeta['siteVersion']    : "unknown",
         // 📝 Last deploy note/summary
-        "lastDeployNote" => $siteMeta['lastDeployNote'],
+        "lastDeployNote" => isset($siteMeta['lastDeployNote']) ? $siteMeta['lastDeployNote'] : "",
         // 🕐 Timestamp of last deploy
-        "lastDeployTime" => $siteMeta['lastDeployTime'],
+        "lastDeployTime" => isset($siteMeta['lastDeployTime']) ? $siteMeta['lastDeployTime'] : "",
         // 🚦 Deploy state (e.g., "published", "staging")
-        "deployState" => $siteMeta['deployState'],
+        "deployState"    => isset($siteMeta['deployState'])    ? $siteMeta['deployState']    : "",
         // ✅ True if site is live/published, else false
-        "deployIsLive"   => $siteMeta['deployIsLive'],
+        "deployIsLive"   => isset($siteMeta['deployIsLive'])   ? $siteMeta['deployIsLive']   : false,
         // 🔄 Cron job counter for live monitoring
-        "cronCount" => $siteMeta['cronCount'],
+        "cronCount"      => isset($siteMeta['cronCount'])      ? $siteMeta['cronCount']      : 0,
         // 📡 Number of active SSE streams
-        "streamCount" => 23,
+        "streamCount"    => 23,
         // 🤖 AI queries processed (running total)
-        "aiQueryCount" => $siteMeta['aiQueryCount'],
+        "aiQueryCount"   => isset($siteMeta['aiQueryCount'])   ? $siteMeta['aiQueryCount']   : 0,
         // ⏳ Uptime in seconds (null if unknown)
-        "uptimeSeconds" => null
+        "uptimeSeconds"  => null
     )
 );
 
