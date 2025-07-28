@@ -230,6 +230,9 @@
     // #region 🔐 Session Manager & Login State
     document.addEventListener("DOMContentLoaded", () => {
       if (typeof window.updateLoginUI === "function") window.updateLoginUI();
+        // 🔢 Show Local Polling Stream Count
+        const streamCountEl = document.getElementById("streamCount");
+        if (streamCountEl) streamCountEl.textContent = "Active streams: 1";
     });
     // #endregion
 
