@@ -143,7 +143,9 @@ if (!$weatherApiKey) {
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
 $dataPath = "../../assets/data/skyesoft-data.json";
-$versionPath = __DIR__ . "/../assets/data/version.json";
+$data = json_decode(file_get_contents($dataPath), true);
+//$versionPath = __DIR__ . "/../assets/data/version.json";
+$siteMeta = isset($data['siteMeta']) ? $data['siteMeta'] : [];
 $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
@@ -390,21 +392,21 @@ $response = array(
     // 🏷️ Meta/versioning information for deployment tracking
     "siteMeta" => array(
         // 🏷️ Current site version (from version.json)
-        "siteVersion" => $version['siteVersion'],
+        "siteVersion" => $siteMeta['siteVersion'],
         // 📝 Last deploy note/summary
-        "lastDeployNote" => $version['lastDeployNote'],
+        "lastDeployNote" => $siteMeta['lastDeployNote'],
         // 🕐 Timestamp of last deploy
-        "lastDeployTime" => $version['lastDeployTime'],
+        "lastDeployTime" => $siteMeta['lastDeployTime'],
         // 🚦 Deploy state (e.g., "published", "staging")
-        "deployState" => $version['deployState'],
+        "deployState" => $siteMeta['deployState'],
         // ✅ True if site is live/published, else false
-        "deployIsLive" => ($version['deployState'] === "published"),
+        "deployIsLive"   => $siteMeta['deployIsLive'],
         // 🔄 Cron job counter for live monitoring
-        "cronCount" => $version['cronCount'],
+        "cronCount" => $siteMeta['cronCount'],
         // 📡 Number of active SSE streams
         "streamCount" => 23,
         // 🤖 AI queries processed (running total)
-        "aiQueryCount" => $version['aiQueryCount'],
+        "aiQueryCount" => $siteMeta['aiQueryCount'],
         // ⏳ Uptime in seconds (null if unknown)
         "uptimeSeconds" => null
     )
