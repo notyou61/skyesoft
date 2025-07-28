@@ -1,5 +1,12 @@
 // 📁 File: assets/js/dynamicSSEHandler.js
 
+// #region 🆔 Ensure Unique StreamID per Tab (for real-time stream counting)
+if (!sessionStorage.getItem('streamID')) {
+  sessionStorage.setItem('streamID', Math.random().toString(36).substr(2, 10));
+}
+const streamID = sessionStorage.getItem('streamID');
+// #endregion
+
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -33,7 +40,7 @@ function getWeatherEmoji(iconCode) {
 
 //#region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
-  fetch("/skyesoft/api/getDynamicData.php")
+  fetch("/skyesoft/api/getDynamicData.php?streamID=" + encodeURIComponent(streamID))
     .then(res => res.json())
     .then(data => {
       // #region 🧪 Debug Log
