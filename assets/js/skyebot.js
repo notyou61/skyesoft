@@ -130,6 +130,7 @@ function showAnimatedEmojiConfetti(count = 18) {
     const chatModal = document.getElementById("skyebotModal");
     if (!chatModal) return;
     const modalRect = chatModal.getBoundingClientRect();
+    const modalHeight = modalRect.height;
 
     for (let i = 0; i < count; i++) {
         const emoji = emojis[Math.floor(Math.random() * emojis.length)];
@@ -144,6 +145,9 @@ function showAnimatedEmojiConfetti(count = 18) {
         span.style.top = "-25px";
         span.style.animationDelay = (Math.random() * 0.5) + "s";
 
+        // Animate to the actual modal bottom using a CSS custom property
+        span.style.setProperty('--confetti-distance', `${modalHeight}px`);
+
         // Place it inside the modal (relative to modal's top/left)
         span.style.position = "absolute";
         span.style.pointerEvents = "none";
@@ -152,7 +156,7 @@ function showAnimatedEmojiConfetti(count = 18) {
         // Remove after animation
         setTimeout(() => {
             span.remove();
-        }, 1400);
+        }, 2600); // 2.4s + buffer
     }
 }
 // #endregion
