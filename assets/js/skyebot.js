@@ -124,6 +124,39 @@ function toggleModal() {
 }
 // #endregion
 
+// #region 🎉 Skyebot Animated Emoji Confetti
+function showAnimatedEmojiConfetti(count = 18) {
+    const emojis = ["🎉", "✨", "🧂", "💾", "🎊", "🌟", "🔥", "🥳", "💡"];
+    const chatModal = document.getElementById("skyebotModal");
+    if (!chatModal) return;
+    const modalRect = chatModal.getBoundingClientRect();
+
+    for (let i = 0; i < count; i++) {
+        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+        const span = document.createElement("span");
+        span.textContent = emoji;
+        span.className = "skyebot-confetti-emoji";
+
+        // Random horizontal position within the modal
+        const left = Math.random() * (modalRect.width - 30);
+        span.style.left = left + "px";
+        // Random delay for a burst effect
+        span.style.top = "-25px";
+        span.style.animationDelay = (Math.random() * 0.5) + "s";
+
+        // Place it inside the modal (relative to modal's top/left)
+        span.style.position = "absolute";
+        span.style.pointerEvents = "none";
+        chatModal.appendChild(span);
+
+        // Remove after animation
+        setTimeout(() => {
+            span.remove();
+        }, 1400);
+    }
+}
+// #endregion
+
 // #region 🥚 Skyebot Easter Egg Handler
 
 /**
