@@ -1,6 +1,6 @@
 // 📁 File: assets/js/dynamicSSEHandler.js
 
-// At the very top
+// Start the browser-local stream count at 0 for this tab/window
 window.activeStreams = 0;
 
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
@@ -36,8 +36,8 @@ function getWeatherEmoji(iconCode) {
 
 //#region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
-  // Window Stream Count  
-  window.activeStreams++; // Increment with every polling tick
+  // 🕒 Increment Active Stream Count
+  window.activeStreams++; // Increment by 1 every poll tick  
   // 🗺️ Fetch Dynamic Data
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())

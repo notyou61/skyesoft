@@ -222,32 +222,6 @@ function findNextWorkdayStart($startDate, $holidays) {
     return strtotime(date("Y-m-d", $date) . " " . WORKDAY_START);
 }
 
-// ----- Stream Counting Logic ----- //
-$streamClientsPath = dirname(__FILE__) . '/../assets/data/streamClients.json';
-$streamID = isset($_GET['streamID']) ? $_GET['streamID'] : (isset($_COOKIE['PHPSESSID']) ? $_COOKIE['PHPSESSID'] : uniqid());
-
-// Load current clients
-$clients = array();
-if (file_exists($streamClientsPath)) {
-    $clients = json_decode(file_get_contents($streamClientsPath), true);
-    if (!is_array($clients)) $clients = array();
-}
-
-// Update this stream's heartbeat
-$clients[$streamID] = time();
-
-// Remove “expired” streams (no ping in last 45s)
-$cutoff = time() - 45;
-foreach ($clients as $id => $lastSeen) {
-    if ($lastSeen < $cutoff) unset($clients[$id]);
-}
-
-// Save back to file
-file_put_contents($streamClientsPath, json_encode($clients));
-
-// Get the current count!
-$streamCount = count($clients);
-
 #endregion
 
 #region 📅 Load Data and Holidays
@@ -404,8 +378,6 @@ $response = array(
         "deployIsLive"   => isset($siteMeta['deployIsLive'])   ? $siteMeta['deployIsLive']   : false,
         // 🔄 Cron job counter for live monitoring
         "cronCount"      => isset($siteMeta['cronCount'])      ? $siteMeta['cronCount']      : 0,
-        // 📡 Number of active SSE streams
-        "streamCount"    => $streamCount,
         // 🤖 AI queries processed (running total)
         "aiQueryCount"   => isset($siteMeta['aiQueryCount'])   ? $siteMeta['aiQueryCount']   : 0,
         // ⏳ Uptime in seconds (null if unknown)
