@@ -175,9 +175,11 @@ function handleEasterEggs(message) {
 
     // 'push it' Easter egg
     if (msg.includes("push it")) {
-        // Show a fun animated emoji confetti
-        showAnimatedEmojiConfetti();
-        // Show a fun confetti burst
+        // Show emoji confetti on Office Board if available
+        if (typeof window.showSkyebotConfetti === "function") {
+            window.showSkyebotConfetti();
+        }
+        // Show a fun confetti burst in chat
         showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
         // Return true to indicate an Easter egg was triggered
         return true;
@@ -217,6 +219,7 @@ function showEasterEggResponse(text) {
     }
 }
 // #endregion
+
 
 // #region 🎉 ASCII Confetti Drop (Skyebot Easter Egg)
 /**
