@@ -44,5 +44,12 @@
       "actionDescription": "User logged out of the system."
     }
   ],
-  "actions": []
+  "actions": [],
+  "siteMeta": {
+    "siteVersion": "v0.1.145",
+    "lastDeployNote": "",
+    "lastDeployTime": "",
+    "cronCount": 0,
+    "aiQueryCount": 0
+  }
 }
