@@ -353,6 +353,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // If the snapshot is empty or malformed, throw an error
         throw new Error("Live data not ready.");
       }
+      // Stream Count
+       sseSnapshot.localStreamCount = typeof window.activeStreams === "number" ? window.activeStreams : 1
       // Debug: log snapshot at submit
       console.log("🚦 sseSnapshot at submit:", sseSnapshot);
     } catch (err) {
