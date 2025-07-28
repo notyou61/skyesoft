@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.145",
-  "lastDeployNote": "� SNPS: Add ASCII confetti to Skyebot Easter eggs! Chat now celebrates with fun bursts on 'push it' and more.",
-  "lastDeployTime": "2025-07-28 12:29:13",
-  "commitHash": "82ede71",
+  "siteVersion": "v0.1.146",
+  "lastDeployNote": "chore: Update siteMeta section—remove unused fields, streamline persistent site status (cronCount, deploy, aiQueryCount)",
+  "lastDeployTime": "2025-07-28 13:34:34",
+  "commitHash": "687c5cf",
   "deployState": "live",
   "deployIsLive": true
 }
