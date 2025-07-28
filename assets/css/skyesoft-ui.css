@@ -495,3 +495,17 @@ body.modal-open {
   opacity: 1;
   transition: opacity 0.4s ease;
 }
+/* #region 🎉 Animated Emoji Confetti (Skyebot Easter Egg) */
+.skyebot-confetti-emoji {
+  position: absolute;
+  z-index: 9999;
+  font-size: 2em;
+  pointer-events: none;
+  animation: emoji-confetti-fall 1.2s linear forwards;
+}
+@keyframes emoji-confetti-fall {
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(400px) scale(0.6) rotate(720deg); opacity: 0; }
+}
+/* #endregion */

@@ -138,8 +138,10 @@ function handleEasterEggs(message) {
 
     // 'push it' Easter egg
     if (msg.includes("push it")) {
-        //showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
-        showAsciiConfetti("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
+        // Show a fun animated emoji confetti
+        showAnimatedEmojiConfetti();
+        // Show a fun confetti burst
+        showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
         // Return true to indicate an Easter egg was triggered
         return true;
     }
