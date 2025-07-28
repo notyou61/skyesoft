@@ -142,16 +142,20 @@ if (!$weatherApiKey) {
 
 #region 📁 Paths and Constants
 $holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
-$dataPath = __DIR__ . '/../assets/data/skyesoft-data.json';
-$siteMeta = [];
+$dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
+
+// Initialize site metadata array
+$siteMeta = array();
+
+// If data file exists, load site metadata
 if (file_exists($dataPath)) {
-    $data = json_decode(file_get_contents($dataPath), true);
-    if ($data && isset($data['siteMeta'])) {
+    $json = file_get_contents($dataPath);
+    $data = json_decode($json, true);
+    if (is_array($data) && isset($data['siteMeta'])) {
         $siteMeta = $data['siteMeta'];
     }
 }
-//$versionPath = __DIR__ . "/../assets/data/version.json";
-$siteMeta = isset($data['siteMeta']) ? $data['siteMeta'] : [];
+
 $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
