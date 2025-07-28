@@ -1,5 +1,8 @@
 // 📁 File: assets/js/dynamicSSEHandler.js
 
+// At the very top
+window.activeStreams = 0;
+
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -33,6 +36,9 @@ function getWeatherEmoji(iconCode) {
 
 //#region 🔁 Poll Every Second for Dynamic Data
 setInterval(() => {
+  // Window Stream Count  
+  window.activeStreams++; // Increment with every polling tick
+  // 🗺️ Fetch Dynamic Data
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
@@ -90,6 +96,7 @@ setInterval(() => {
         if (iconEl) iconEl.textContent = getWeatherEmoji(data.weatherData.icon);
       }
       // #endregion
+      
     })
     // #region ❌ Handle Fetch Errors
     .catch(err => {
