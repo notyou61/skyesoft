@@ -343,6 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       // Fetch the latest SSE snapshot from the server
       const res = await fetch("/skyesoft/api/getDynamicData.php");
+      
       // Check if the response is ok
       sseSnapshot = await res.json();
       // Debug: log the snapshot
