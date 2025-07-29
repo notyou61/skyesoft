@@ -351,10 +351,10 @@
 <div>© 2025 Maychris Corporation</div>
 <div class="version">Loading version...</div>
 </div>
-<!--<script src="/assets/js/glbVar.js"></script>-->
+<!-- Weather Config Include-->
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<!-- Weather Include-->
 <script src="/skyesoft/assets/js/weather.js"></script>
-<!--<script src="/assets/js/workdayTicker.js"></script>-->
 <script>
     // Import variables from weatherConfig.js
     // Removed duplicate weatherApiKey and weatherLocation declarations
@@ -1021,7 +1021,7 @@ function updateTipOfTheDay() {
     }
 }
 // Show confetti animation with emojis
-function showOfficeBoardConfetti(count = 24, emojis = ["🎉", "✨", "🎊", "⭐", "💡", "🦄"]) {
+function showConfetti(count = 24, emojis = ["🎉", "✨", "🎊", "⭐", "💡", "🦄"]) {
   if (document.querySelectorAll('.skyebot-confetti-emoji').length > 60) return;
   const board = document.body;
   const width = window.innerWidth;
@@ -1041,7 +1041,6 @@ function showOfficeBoardConfetti(count = 24, emojis = ["🎉", "✨", "🎊", "�
     setTimeout(() => { span.remove(); }, 2500);
   }
 }
-
 /**
  * Updates the "Today's Highlights" card with dynamic data.
  */

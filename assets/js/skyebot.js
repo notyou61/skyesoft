@@ -178,7 +178,7 @@ function handleEasterEggs(message) {
         // Show a fun animated emoji confetti
         showAnimatedEmojiConfetti();
         //
-        showOfficeBoardConfetti();
+        showConfetti();
         // Show a fun confetti burst
         showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
         // Return true to indicate an Easter egg was triggered
@@ -203,7 +203,6 @@ function handleEasterEggs(message) {
 
     return false; // No Easter egg matched
 }
-
 /**
  * Displays an Easter egg response in the chat log.
  * @param {string} text
