@@ -175,6 +175,8 @@ function handleEasterEggs(message) {
 
     // 'push it' Easter egg
     if (msg.includes("push it")) {
+        // Log for debugging!
+        console.log("🟢 Skyebot Easter Egg: 'push it' triggered!");  // <--- ADD THIS LINE
         // Show a fun animated emoji confetti
         showAnimatedEmojiConfetti();
         // Prefer the global confetti if available
