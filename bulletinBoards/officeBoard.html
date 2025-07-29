@@ -327,6 +327,22 @@
   list-style-position: inside; /* Keep the bullets visible within the content box */
 }
 
+/* 🎉 Animated Emoji Confetti (Skyebot Easter Egg) */
+.skyebot-confetti-emoji {
+  position: absolute;
+  z-index: 9999;
+  font-size: 2em;
+  pointer-events: none;
+  animation: emoji-confetti-fall 2.4s linear forwards;
+}
+@keyframes emoji-confetti-fall {
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { 
+    transform: translateY(var(--confetti-distance, 400px)) scale(0.6) rotate(720deg); 
+    opacity: 0; 
+  }
+}
 </style>
 </head>
 <body>
@@ -1171,6 +1187,7 @@ window.addEventListener("DOMContentLoaded", () => {
 <!-- 🌐 Global Vars + Clock Ticker -->
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/workdayTicker.js"></script>
+<script src="/skyesoft/assets/js/confetti.js"></script>
 <!-- Skyebot Include-->
  <script src="/skyesoft/assets/js/skyebot.js"></script>
 </body>
