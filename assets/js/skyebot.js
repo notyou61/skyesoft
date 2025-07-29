@@ -171,22 +171,17 @@ function showAnimatedEmojiConfetti(count = 18) {
  * @returns {boolean}
  */
 function handleEasterEggs(message) {
-    const msg = message.trim().toLowerCase();
-
+  // Normalize the message for easier matching  
+  const msg = message.trim().toLowerCase();
     // 'push it' Easter egg
     if (msg.includes("push it")) {
         // Log for debugging!
         console.log("🟢 Skyebot Easter Egg: 'push it' triggered!");  // <--- ADD THIS LINE
-        // Show a fun animated emoji confetti
-        showAnimatedEmojiConfetti();
-        // Prefer the global confetti if available
-        if (typeof window.showConfetti === "function") window.showConfetti();
         // Show a fun confetti burst
         showEasterEggResponse("🎶 Yo, it's Skyebot! Pushin' it real good... 🧂🕺💃");
         // Return true to indicate an Easter egg was triggered
         return true;
     }
-
     // 'fortune' Easter egg
     if (msg === "/fortune") {
         const fortunes = [
@@ -200,9 +195,9 @@ function handleEasterEggs(message) {
         showEasterEggResponse(fortune);
         return true;
     }
-
     // More fun triggers can go here!
-
+    // Code Goes Here
+    // Return (False)
     return false; // No Easter egg matched
 }
 //
