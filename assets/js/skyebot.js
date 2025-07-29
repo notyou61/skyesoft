@@ -205,6 +205,8 @@ function handleEasterEggs(message) {
 
     return false; // No Easter egg matched
 }
+//
+window.handleEasterEggs = handleEasterEggs;
 /**
  * Displays an Easter egg response in the chat log.
  * @param {string} text
