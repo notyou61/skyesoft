@@ -6,7 +6,7 @@ const execSync = require("child_process").execSync;
 // 🧠 Define bump type (default: patch)
 const bumpType = process.argv[2] || "patch";
 
-// 📌 Define path for version.json only
+// 📌 Define path for version.json
 const versionJsonPath = path.resolve(__dirname, "../assets/data/version.json");
 
 // 🧮 Read current version from version.json (fallback to 0.0.1)
@@ -41,6 +41,21 @@ const versionJson = {
 };
 
 fs.writeFileSync(versionJsonPath, JSON.stringify(versionJson, null, 2));
-
 console.log(`✅ Version bumped to ${newVersionText} (${bumpType})`);
 console.log(`📄 Updated ${path.basename(versionJsonPath)}`);
+
+// === NEW: Also update skyesoft-data.json siteMeta block ===
+const skyeSoftPath = path.resolve(__dirname, "../assets/data/skyesoft-data.json");
+
+if (fs.existsSync(skyeSoftPath)) {
+  const skyeSoftData = JSON.parse(fs.readFileSync(skyeSoftPath, "utf8"));
+  if (!skyeSoftData.siteMeta) skyeSoftData.siteMeta = {};
+  skyeSoftData.siteMeta.siteVersion = newVersionText;
+  skyeSoftData.siteMeta.lastDeployNote = commitMsg;
+  skyeSoftData.siteMeta.lastDeployTime = timestamp;
+  skyeSoftData.siteMeta.commitHash = commitHash;
+  fs.writeFileSync(skyeSoftPath, JSON.stringify(skyeSoftData, null, 2));
+  console.log(`📄 Updated skyesoft-data.json`);
+} else {
+  console.warn("⚠️ skyesoft-data.json not found; skipped updating siteMeta.");
+}

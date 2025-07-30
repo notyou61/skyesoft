@@ -46,9 +46,9 @@
   ],
   "actions": [],
   "siteMeta": {
-    "siteVersion": "v0.1.150",
-    "lastDeployNote": "SNPS: Manual bump of siteMeta.siteVersion to v0.1.146 for Office Board sync",
-    "lastDeployTime": "2025-07-30 17:20:46",
+    "siteVersion": "v0.1.146",
+    "lastDeployNote": "SNPS: Roll back to v0.1.146 (manual)",
+    "lastDeployTime": "2025-07-30 18:45:00",
     "commitHash": "a54a984",
     "deployState": "live",
     "deployIsLive": true,
