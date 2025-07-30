@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.148",
-  "lastDeployNote": "SNPS: Bump version after event endpoint deploy",
-  "lastDeployTime": "2025-07-30 16:04:42",
-  "commitHash": "d9ff7a6",
+  "siteVersion": "v0.1.149",
+  "lastDeployNote": "SNPS: Push version.json v0.1.148 after successful version bump",
+  "lastDeployTime": "2025-07-30 16:57:17",
+  "commitHash": "0f3226f",
   "deployState": "live",
   "deployIsLive": true
 }
