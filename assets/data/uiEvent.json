@@ -1,1 +1,9 @@
-{}
+{
+  "type": "modal",
+  "title": "🔔 Quick Test",
+  "message": "This is a test event. If you see this, event wiring works!",
+  "color": "#ffaa00",
+  "icon": "🔔",
+  "durationSec": 7,
+  "source": "cron"
+}
