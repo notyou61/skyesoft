@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.146",
-  "lastDeployNote": "chore: Update siteMeta section—remove unused fields, streamline persistent site status (cronCount, deploy, aiQueryCount)",
-  "lastDeployTime": "2025-07-28 13:34:34",
-  "commitHash": "687c5cf",
+  "siteVersion": "v0.1.147",
+  "lastDeployNote": "SNPS: Add setUiEvent.php – unified server/client event endpoint for office board UI events",
+  "lastDeployTime": "2025-07-30 16:02:47",
+  "commitHash": "fb1a1ef",
   "deployState": "live",
   "deployIsLive": true
 }
