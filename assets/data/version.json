@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.147",
-  "lastDeployNote": "SNPS: Add setUiEvent.php – unified server/client event endpoint for office board UI events",
-  "lastDeployTime": "2025-07-30 16:02:47",
-  "commitHash": "fb1a1ef",
+  "siteVersion": "v0.1.148",
+  "lastDeployNote": "SNPS: Bump version after event endpoint deploy",
+  "lastDeployTime": "2025-07-30 16:04:42",
+  "commitHash": "d9ff7a6",
   "deployState": "live",
   "deployIsLive": true
 }
