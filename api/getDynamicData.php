@@ -158,9 +158,23 @@ $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
 $announcementsPath = "../assets/data/announcements.json";  // 📢 Office announcements and tips
+$uiEventPath = "../assets/data/uiEvent.json";  // 🎛️ Real-time UI event (modal, effect, etc.)
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
+#endregion
+
+#region 🚦 Load UI Event Data (single event, PHP 5.6+ safe)
+$uiEvent = null;
+
+if (file_exists($uiEventPath)) {
+    $json = file_get_contents($uiEventPath);
+    $eventData = json_decode($json, true);
+    // If file contains a valid event object
+    if (is_array($eventData) && count($eventData) > 0) {
+        $uiEvent = $eventData;
+    }
+}
 #endregion
 
 #region 📢 Load Announcements Data (PHP 5.6 Safe)
@@ -364,6 +378,8 @@ $response = array(
     ),
     // 📢 Announcements and notices (from announcements.json)
     "announcements" => $announcements,
+    // 🎛️ UI event (modal popups, effects, etc.; loaded from uiEvent.json; can be null or a single event object)
+    "uiEvent" => $uiEvent,
     // 🏷️ Meta/versioning information for deployment tracking
     "siteMeta" => array(
         // 🏷️ Current site version (from siteMeta, persistent)
