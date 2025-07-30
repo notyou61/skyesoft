@@ -1,6 +1,5 @@
 <?php
 
-
 // #region ⏺️ Universal Action Logger — addAction.php
 
 header('Content-Type: application/json');
@@ -9,7 +8,6 @@ header('Content-Type: application/json');
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
 
-//
 file_put_contents(__DIR__ . '/debug-path.txt', $jsonPath . "\n", FILE_APPEND);
 
 // Debug: Write out the resolved JSON path to a file
@@ -93,6 +91,33 @@ $action['actionID'] = $maxId + 1;
 // region: Append and save
 $data['actions'][] = $action;
 if (file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT))) {
+    // --- Office Board Event Trigger: Login/Logout/Other
+    // Only trigger for specific action types (e.g., 1=login, 2=logout)
+    $triggerTypes = array(1, 2); // Expand as needed for other events
+    if (in_array($action['actionTypeID'], $triggerTypes)) {
+        require_once(__DIR__ . '/setUiEvent.php');
+
+        // Define actionTypes here or load from JSON/DB as you scale
+        $actionTypes = array(
+            array("actionTypeID" => 1, "actionCRUDType" => "Create", "actionName" => "Login",  "actionDescription" => "logged into the system."),
+            array("actionTypeID" => 2, "actionCRUDType" => "Create", "actionName" => "Logout", "actionDescription" => "logged out of the system.")
+            // Add more as needed...
+        );
+
+        // --- Dynamic user name lookup by contactID (if present in contacts array) ---
+        $userName = "User";
+        if (isset($data['contacts']) && is_array($data['contacts'])) {
+            foreach ($data['contacts'] as $c) {
+                if (isset($c['contactID']) && $c['contactID'] == $action['actionContactID']) {
+                    $userName = $c['contactName'];
+                    break;
+                }
+            }
+        }
+
+        triggerUserUiEvent($action['actionTypeID'], $action['actionContactID'], $userName, $actionTypes);
+    }
+
     echo json_encode(array('success' => true, 'actionID' => $action['actionID']));
 } else {
     echo json_encode(array('success' => false, 'error' => 'Failed to write to JSON file'));
