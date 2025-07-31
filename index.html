@@ -446,7 +446,7 @@
         const actionNote = "User logged in";
 
         // Capture current timestamp
-        const actionTimestamp = new Date().toISOString();
+        const actionTimestamp = Date.now();
 
         // Get user's location (returns a promise)
         function getLocationAsync() {
