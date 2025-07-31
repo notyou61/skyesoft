@@ -45,6 +45,7 @@ setInterval(() => {
       // #region 🧪 Debug Log
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
+      console.log("🎛️ UI Event received:", data.uiEvent); // <-- Add this line!
       // #endregion
 
       // #region ⏰ Update Time Display
