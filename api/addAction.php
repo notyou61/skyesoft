@@ -54,7 +54,7 @@ if (!$action) {
 // endregion
 
 // region: Validate required fields
-$required = array('actionTypeID', 'actionContactID', 'actionNote', 'actionTime', 'actionLatitude', 'actionLongitude');
+$required = array('actionTypeID', 'actionContactID', 'actionNote', 'actionTimestamp', 'actionLatitude', 'actionLongitude');
 foreach ($required as $key) {
     if (!isset($action[$key])) {
         echo json_encode(array('success' => false, 'error' => "Missing: $key"));
