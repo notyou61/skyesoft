@@ -472,7 +472,8 @@
             actionLongitude: lng,
             actionTime
         };
-
+        // Console.log("Action object to log:", actionObj);
+        console.log("Login actionObj:", actionObj);
         // Call universal logger (AJAX to /api/addAction.php)
         const result = await logAction(actionObj);
 
