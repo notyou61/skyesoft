@@ -410,7 +410,7 @@
         actionGooglePlaceId: googlePlaceId,
         actionLatitude: latitude,
         actionLongitude: longitude,
-        actionTime: now
+        actionTimestamp: now
       };
 
       actionsArray.push(newAction);
@@ -446,7 +446,7 @@
         const actionNote = "User logged in";
 
         // Capture current timestamp
-        const actionTime = Date.now();
+        const actionTimestamp = new Date().toISOString();
 
         // Get user's location (returns a promise)
         function getLocationAsync() {
@@ -470,7 +470,7 @@
             actionNote,
             actionLatitude: lat,
             actionLongitude: lng,
-            actionTime
+            actionTimestamp
         };
         // Console.log("Action object to log:", actionObj);
         console.log("Login actionObj:", actionObj);
@@ -483,7 +483,7 @@
             localStorage.setItem("userLoggedIn", "true");
             if (typeof window.updateLoginUI === "function") window.updateLoginUI();
         } else {
-            alert("Login action could not be logged. Please try again.");
+            console.log("Login action could not be logged. Please try again.");
         }
     });
     // #endregion
