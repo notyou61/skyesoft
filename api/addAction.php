@@ -47,6 +47,10 @@ function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
 // region: Load action object from POST
 $input = file_get_contents('php://input');
 $action = json_decode($input, true);
+//
+file_put_contents(__DIR__ . '/debug-action-raw.txt', $input . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/debug-action-parsed.txt', print_r($action, true) . "\n", FILE_APPEND);
+//
 if (!$action) {
     echo json_encode(array('success' => false, 'error' => 'Invalid JSON'));
     exit;
