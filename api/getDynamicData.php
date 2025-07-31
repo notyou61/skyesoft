@@ -158,23 +158,46 @@ $codexPath = "../../assets/data/codex.json";
 $chatLogPath = "../../assets/data/chatLog.json";
 $weatherPath = "../../assets/data/weatherCache.json";
 $announcementsPath = "../assets/data/announcements.json";  // 📢 Office announcements and tips
-$uiEventPath = "../assets/data/uiEvent.json";  // 🎛️ Real-time UI event (modal, effect, etc.)
+$uiEventPath = "../assets/data/uiEvent.json"; // 🎛️ Real-time UI event (modal, effect, etc.)
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 #endregion
 
-#region 🚦 Load UI Event Data (single event, PHP 5.6+ safe)
-$uiEvent = null;
+#region 🎛️ Dynamic UI Event Creation (Reusable Block)
+// Usage: Place this in any script that needs to trigger a UI event.
+//        All fields should be set dynamically based on the event context.
 
-if (file_exists($uiEventPath)) {
-    $json = file_get_contents($uiEventPath);
-    $eventData = json_decode($json, true);
-    // If file contains a valid event object
-    if (is_array($eventData) && count($eventData) > 0) {
-        $uiEvent = $eventData;
-    }
+// Dynamically set these variables from your application logic, user input, or API call
+$eventType     = isset($eventType)      ? $eventType      : (isset($_POST['type'])        ? $_POST['type']        : "modal");
+$eventTitle    = isset($eventTitle)     ? $eventTitle     : (isset($_POST['title'])       ? $_POST['title']       : "");
+$eventMessage  = isset($eventMessage)   ? $eventMessage   : (isset($_POST['message'])     ? $_POST['message']     : "");
+$eventColor    = isset($eventColor)     ? $eventColor     : (isset($_POST['color'])       ? $_POST['color']       : "");
+$eventIcon     = isset($eventIcon)      ? $eventIcon      : (isset($_POST['icon'])        ? $_POST['icon']        : "");
+$eventDuration = isset($eventDuration)  ? $eventDuration  : (isset($_POST['durationSec']) ? intval($_POST['durationSec']) : 8);
+$eventSource   = isset($eventSource)    ? $eventSource    : (isset($_POST['source'])      ? $_POST['source']      : "");
+
+// Optional: For "effect" events
+$eventEffect   = isset($eventEffect)    ? $eventEffect    : (isset($_POST['effect'])      ? $_POST['effect']      : "");
+
+// Build the event array dynamically
+$event = array(
+    "type"        => $eventType,
+    "title"       => $eventTitle,
+    "message"     => $eventMessage,
+    "color"       => $eventColor,
+    "icon"        => $eventIcon,
+    "durationSec" => $eventDuration,
+    "source"      => $eventSource
+);
+
+// Add effect property if this is an effect event
+if ($eventType === "effect" && $eventEffect !== "") {
+    $event["effect"] = $eventEffect;
 }
+
+// Write to uiEvent.json, overwriting any previous event
+file_put_contents($uiEventPath, json_encode($event, JSON_PRETTY_PRINT));
 #endregion
 
 #region 📢 Load Announcements Data (PHP 5.6 Safe)
@@ -379,7 +402,7 @@ $response = array(
     // 📢 Announcements and notices (from announcements.json)
     "announcements" => $announcements,
     // 🎛️ UI event (modal popups, effects, etc.; loaded from uiEvent.json; can be null or a single event object)
-    "uiEvent" => $uiEvent,
+    "uiEvent" => $event,
     // 🏷️ Meta/versioning information for deployment tracking
     "siteMeta" => array(
         // 🏷️ Current site version (from siteMeta, persistent)
