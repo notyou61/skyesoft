@@ -10,14 +10,11 @@ $envPath  = __DIR__ . '/../.env';
 
 // Read JSON POST body
 $input  = file_get_contents('php://input');
+file_put_contents(__DIR__ . '/debug-path.txt', "RAW INPUT: " . $input . "\n", FILE_APPEND); // <--- Add this!
 $action = json_decode($input, true);
 
-// Debug: Write out the resolved JSON path and action object
-file_put_contents(__DIR__ . '/debug-path.txt', "JSON PATH: $jsonPath\n", FILE_APPEND);
 file_put_contents(__DIR__ . '/debug-path.txt', "ACTION: " . print_r($action, true) . "\n", FILE_APPEND);
 
-// Debug: Also write to public debug for troubleshooting (optional, can remove)
-file_put_contents('/home/notyou64/public_html/skyesoft/assets/data/debug.txt', "PATH=" . $jsonPath . "\n", FILE_APPEND);
 
 // Required fields to check
 $required = [
