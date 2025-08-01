@@ -48,7 +48,7 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
         actionNote,
         actionLatitude: lat,
         actionLongitude: lng,
-        actionTime: Date.now(),
+        actionTimestamp: Date.now(),
         ...customData
     };
 
