@@ -1,5 +1,7 @@
 <?php
 // 📁 File: api/getDynamicData.php
+// At the very top of getDynamicData.php (before anything else)
+ob_start();
 
 #region 🔧 Init and Headers
 error_reporting(E_ALL);
@@ -426,6 +428,15 @@ $response = array(
 
 #endregion
 
-#region 🟢 Output
-echo json_encode($response);
-#endregion
+// #region 🟢 Output
+
+$rawJson = json_encode($response);
+echo $rawJson;
+
+// Capture everything actually sent to the client (including accidental output)
+$actualOutput = ob_get_contents();
+file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
+
+ob_end_flush();
+
+// #endregion
