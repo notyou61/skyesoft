@@ -3,18 +3,18 @@
 // #region ⏺️ Universal Action Logger — addAction.php
 
 header('Content-Type: application/json');
+ob_start(); // <--- Buffer all output
 
-// Set your file paths
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath  = __DIR__ . '/../.env';
 
 // Read JSON POST body
 $input  = file_get_contents('php://input');
-file_put_contents(__DIR__ . '/debug-path.txt', "RAW INPUT: " . $input . "\n", FILE_APPEND); // <--- Add this!
 $action = json_decode($input, true);
 
+// Debug: log input and action
+file_put_contents(__DIR__ . '/debug-path.txt', "RAW INPUT: " . $input . "\n", FILE_APPEND);
 file_put_contents(__DIR__ . '/debug-path.txt', "ACTION: " . print_r($action, true) . "\n", FILE_APPEND);
-
 
 // Required fields to check
 $required = [
@@ -26,10 +26,16 @@ $required = [
 foreach ($required as $key) {
     if (!isset($action[$key]) || $action[$key] === '') {
         file_put_contents(__DIR__ . '/debug-path.txt', "MISSING: $key\n", FILE_APPEND);
-        echo json_encode([
+        $response = [
             "status" => "error",
             "message" => "Missing required field: $key"
-        ]);
+        ];
+        echo json_encode($response);
+
+        // Capture and save the full output (for debug!)
+        $actualOutput = ob_get_contents();
+        file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
+        ob_end_flush();
         exit;
     }
 }
@@ -37,14 +43,30 @@ foreach ($required as $key) {
 // Log that all fields are present
 file_put_contents(__DIR__ . '/debug-path.txt', "ALL FIELDS PRESENT. Logging action.\n", FILE_APPEND);
 
-// Append action to data file (newline-delimited JSON)
-file_put_contents($jsonPath, json_encode($action) . "\n", FILE_APPEND);
+// --- Optional: Store all actions as a JSON array for JS-friendly logs (RECOMMENDED) ---
+// Read existing actions (as an array)
+$allActions = [];
+if (file_exists($jsonPath)) {
+    $raw = file_get_contents($jsonPath);
+    $allActions = json_decode($raw, true);
+    if (!is_array($allActions)) $allActions = [];
+}
+$allActions[] = $action;
+// Save back as JSON array (overwrite file)
+file_put_contents($jsonPath, json_encode($allActions, JSON_PRETTY_PRINT));
 
 // Respond to client
-echo json_encode([
+$response = [
     "status"  => "ok",
     "message" => "Action logged successfully."
-]);
+];
+echo json_encode($response);
+
+// Capture and save the full output (for debug!)
+$actualOutput = ob_get_contents();
+file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
+ob_end_flush();
+
 
 // #region .env loader (template, not used here but ready)
 /*
