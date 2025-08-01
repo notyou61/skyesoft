@@ -8,6 +8,15 @@ header('Content-Type: application/json');
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
 
+$input = file_get_contents('php://input');
+$action = json_decode($input, true);
+die(json_encode(array(
+  "input" => $input,
+  "action" => $action,
+  "php_version" => phpversion()
+)));
+
+
 file_put_contents(__DIR__ . '/debug-path.txt', $jsonPath . "\n", FILE_APPEND);
 
 // Debug: Write out the resolved JSON path to a file
