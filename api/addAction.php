@@ -6,23 +6,61 @@ header('Content-Type: application/json');
 
 // Set your file paths
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
-$envPath = __DIR__ . '/../.env';
+$envPath  = __DIR__ . '/../.env';
 
-$input = file_get_contents('php://input');
+// Read JSON POST body
+$input  = file_get_contents('php://input');
 $action = json_decode($input, true);
-die(json_encode(array(
-  "input" => $input,
-  "action" => $action,
-  "php_version" => phpversion()
-)));
 
+// Debug: Write out the resolved JSON path and action object
+file_put_contents(__DIR__ . '/debug-path.txt', "JSON PATH: $jsonPath\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/debug-path.txt', "ACTION: " . print_r($action, true) . "\n", FILE_APPEND);
 
-file_put_contents(__DIR__ . '/debug-path.txt', $jsonPath . "\n", FILE_APPEND);
-
-// Debug: Write out the resolved JSON path to a file
+// Debug: Also write to public debug for troubleshooting (optional, can remove)
 file_put_contents('/home/notyou64/public_html/skyesoft/assets/data/debug.txt', "PATH=" . $jsonPath . "\n", FILE_APPEND);
 
-// region: .env loader
+// Required fields to check
+$required = [
+    'actionTypeID', 'actionContactID', 'actionNote',
+    'actionLatitude', 'actionLongitude', 'actionTimestamp'
+];
+
+// Validate required fields
+foreach ($required as $key) {
+    if (!isset($action[$key]) || $action[$key] === '') {
+        file_put_contents(__DIR__ . '/debug-path.txt', "MISSING: $key\n", FILE_APPEND);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Missing required field: $key"
+        ]);
+        exit;
+    }
+}
+
+// Log that all fields are present
+file_put_contents(__DIR__ . '/debug-path.txt', "ALL FIELDS PRESENT. Logging action.\n", FILE_APPEND);
+
+// Append action to data file (newline-delimited JSON)
+file_put_contents($jsonPath, json_encode($action) . "\n", FILE_APPEND);
+
+// Respond to client
+echo json_encode([
+    "status"  => "ok",
+    "message" => "Action logged successfully."
+]);
+
+// #region .env loader (template, not used here but ready)
+/*
+// Example: Load .env if you need it later
+if (file_exists($envPath)) {
+    $envVars = parse_ini_file($envPath, false, INI_SCANNER_TYPED);
+    // Access like $envVars['YOUR_KEY']
+}
+*/
+// #endregion
+
+// #endregion
+
 function getEnvVar($key, $envPath) {
     static $env = null;
     if ($env === null) {
