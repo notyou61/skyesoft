@@ -3,87 +3,48 @@
 // #region ⏺️ Universal Action Logger — addAction.php
 
 header('Content-Type: application/json');
-ob_start(); // <--- Buffer all output
 
+// ---- Paths and Setup
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath  = __DIR__ . '/../.env';
+require_once(__DIR__ . '/setUiEvent.php'); // Should define $actionTypes and helpers only
 
-// Read JSON POST body
-$input  = file_get_contents('php://input');
+// ---- Load POSTed action
+$input = file_get_contents('php://input');
 $action = json_decode($input, true);
 
-// Debug: log input and action
-file_put_contents(__DIR__ . '/debug-path.txt', "RAW INPUT: " . $input . "\n", FILE_APPEND);
-file_put_contents(__DIR__ . '/debug-path.txt', "ACTION: " . print_r($action, true) . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/debug-action-raw.txt', $input . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/debug-action-parsed.txt', print_r($action, true) . "\n", FILE_APPEND);
 
-// Required fields to check
-$required = [
-    'actionTypeID', 'actionContactID', 'actionNote',
-    'actionLatitude', 'actionLongitude', 'actionTimestamp'
-];
+if (!$action) {
+    echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
+    exit;
+}
 
-// Validate required fields
+// ---- Validate required fields
+$required = ['actionTypeID', 'actionContactID', 'actionNote', 'actionTimestamp', 'actionLatitude', 'actionLongitude'];
 foreach ($required as $key) {
     if (!isset($action[$key]) || $action[$key] === '') {
-        file_put_contents(__DIR__ . '/debug-path.txt', "MISSING: $key\n", FILE_APPEND);
-        $response = [
-            "status" => "error",
-            "message" => "Missing required field: $key"
-        ];
-        echo json_encode($response);
-
-        // Capture and save the full output (for debug!)
-        $actualOutput = ob_get_contents();
-        file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
-        ob_end_flush();
+        echo json_encode(['success' => false, 'error' => "Missing: $key"]);
         exit;
     }
 }
 
-// Log that all fields are present
-file_put_contents(__DIR__ . '/debug-path.txt', "ALL FIELDS PRESENT. Logging action.\n", FILE_APPEND);
-
-// --- Optional: Store all actions as a JSON array for JS-friendly logs (RECOMMENDED) ---
-// Read existing actions (as an array)
-$allActions = [];
-if (file_exists($jsonPath)) {
-    $raw = file_get_contents($jsonPath);
-    $allActions = json_decode($raw, true);
-    if (!is_array($allActions)) $allActions = [];
+// ---- Validate numeric fields
+if (!is_numeric($action['actionLatitude']) || $action['actionLatitude'] < -90 || $action['actionLatitude'] > 90) {
+    echo json_encode(['success' => false, 'error' => 'Invalid latitude']);
+    exit;
 }
-$allActions[] = $action;
-// Save back as JSON array (overwrite file)
-file_put_contents($jsonPath, json_encode($allActions, JSON_PRETTY_PRINT));
-
-// Respond to client
-$response = [
-    "status"  => "ok",
-    "message" => "Action logged successfully."
-];
-echo json_encode($response);
-
-// Capture and save the full output (for debug!)
-$actualOutput = ob_get_contents();
-file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
-ob_end_flush();
-
-
-// #region .env loader (template, not used here but ready)
-/*
-// Example: Load .env if you need it later
-if (file_exists($envPath)) {
-    $envVars = parse_ini_file($envPath, false, INI_SCANNER_TYPED);
-    // Access like $envVars['YOUR_KEY']
+if (!is_numeric($action['actionLongitude']) || $action['actionLongitude'] < -180 || $action['actionLongitude'] > 180) {
+    echo json_encode(['success' => false, 'error' => 'Invalid longitude']);
+    exit;
 }
-*/
-// #endregion
 
-// #endregion
-
+// ---- Always look up Place ID server-side (ignore what frontend sends)
 function getEnvVar($key, $envPath) {
     static $env = null;
     if ($env === null) {
-        $env = array();
+        $env = [];
         if (file_exists($envPath)) {
             foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
                 if (strpos(trim($line), '#') === 0) continue;
@@ -96,57 +57,39 @@ function getEnvVar($key, $envPath) {
     }
     return isset($env[$key]) ? $env[$key] : null;
 }
-// endregion
 
-// region: Place ID lookup via Google Geocoding API
 function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
     $url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={$lat},{$lng}&key={$apiKey}";
     $response = @file_get_contents($url);
+    if ($response === false) {
+        return "Place ID unavailable: Network error";
+    }
     $data = json_decode($response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return "Place ID unavailable: Invalid response";
+    }
     if (!empty($data['results'][0]['place_id'])) {
         return $data['results'][0]['place_id'];
     }
     return "Place ID unavailable";
 }
-// endregion
 
-// region: Load action object from POST
-$input = file_get_contents('php://input');
-$action = json_decode($input, true);
-//
-file_put_contents(__DIR__ . '/debug-action-raw.txt', $input . "\n", FILE_APPEND);
-file_put_contents(__DIR__ . '/debug-action-parsed.txt', print_r($action, true) . "\n", FILE_APPEND);
-//
-if (!$action) {
-    echo json_encode(array('success' => false, 'error' => 'Invalid JSON'));
-    exit;
-}
-// endregion
+$apiKey = getEnvVar('GOOGLE_MAPS_BACKEND_API_KEY', $envPath);
+$action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatitude'], $action['actionLongitude'], $apiKey);
 
-// region: Validate required fields
-$required = array('actionTypeID', 'actionContactID', 'actionNote', 'actionTimestamp', 'actionLatitude', 'actionLongitude');
-foreach ($required as $key) {
-    if (!isset($action[$key])) {
-        echo json_encode(array('success' => false, 'error' => "Missing: $key"));
+// ---- Robust JSON file load/init
+if (!file_exists($jsonPath)) {
+    $data = ['actions' => [], 'contacts' => []];
+    file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT));
+} else {
+    $data = json_decode(file_get_contents($jsonPath), true);
+    if (!$data) {
+        echo json_encode(['success' => false, 'error' => 'Could not read JSON data']);
         exit;
     }
 }
-// endregion
 
-// region: Always look up Place ID server-side (ignore what frontend sends)
-$apiKey = getEnvVar('GOOGLE_MAPS_BACKEND_API_KEY', $envPath);
-$action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatitude'], $action['actionLongitude'], $apiKey);
-// endregion
-
-// region: Load current skyesoft-data.json
-$data = json_decode(file_get_contents($jsonPath), true);
-if (!$data) {
-    echo json_encode(array('success' => false, 'error' => 'Could not read JSON data'));
-    exit;
-}
-// endregion
-
-// region: Assign next actionID (auto-increment)
+// ---- Assign next actionID (auto-increment)
 $maxId = 0;
 if (isset($data['actions']) && is_array($data['actions'])) {
     foreach ($data['actions'] as $act) {
@@ -156,42 +99,48 @@ if (isset($data['actions']) && is_array($data['actions'])) {
     }
 }
 $action['actionID'] = $maxId + 1;
-// endregion
 
-// region: Append and save
-$data['actions'][] = $action;
-if (file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT))) {
-    // --- Office Board Event Trigger: Login/Logout/Other
-    // Only trigger for specific action types (e.g., 1=login, 2=logout)
-    $triggerTypes = array(1, 2); // Expand as needed for other events
-    if (in_array($action['actionTypeID'], $triggerTypes)) {
-        require_once(__DIR__ . '/setUiEvent.php');
+// ---- Atomic append & save (with file lock)
+$success = false;
+$fp = fopen($jsonPath, 'c+');
+if ($fp && flock($fp, LOCK_EX)) {
+    $raw = stream_get_contents($fp);
+    $currentData = $raw ? json_decode($raw, true) : ['actions' => [], 'contacts' => []];
+    if (!$currentData) $currentData = ['actions' => [], 'contacts' => []];
+    $currentData['actions'][] = $action;
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode($currentData, JSON_PRETTY_PRINT));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    $success = true;
+    $data = $currentData; // For downstream use
+} else {
+    if ($fp) fclose($fp);
+    echo json_encode(['success' => false, 'error' => 'Failed to lock/write JSON file']);
+    exit;
+}
 
-        // Define actionTypes here or load from JSON/DB as you scale
-        $actionTypes = array(
-            array("actionTypeID" => 1, "actionCRUDType" => "Create", "actionName" => "Login",  "actionDescription" => "logged into the system."),
-            array("actionTypeID" => 2, "actionCRUDType" => "Create", "actionName" => "Logout", "actionDescription" => "logged out of the system.")
-            // Add more as needed...
-        );
-
-        // --- Dynamic user name lookup by contactID (if present in contacts array) ---
-        $userName = "User";
-        if (isset($data['contacts']) && is_array($data['contacts'])) {
-            foreach ($data['contacts'] as $c) {
-                if (isset($c['contactID']) && $c['contactID'] == $action['actionContactID']) {
-                    $userName = $c['contactName'];
-                    break;
-                }
+// ---- Event trigger for login/logout
+$triggerTypes = [1, 2];
+if (in_array($action['actionTypeID'], $triggerTypes)) {
+    // Dynamic user name lookup by contactID (if present in contacts array)
+    $userName = "User";
+    if (isset($data['contacts']) && is_array($data['contacts'])) {
+        foreach ($data['contacts'] as $c) {
+            if (isset($c['contactID']) && $c['contactID'] == $action['actionContactID']) {
+                $userName = $c['contactName'];
+                break;
             }
         }
-
-        triggerUserUiEvent($action['actionTypeID'], $action['actionContactID'], $userName, $actionTypes);
     }
-
-    echo json_encode(array('success' => true, 'actionID' => $action['actionID']));
-} else {
-    echo json_encode(array('success' => false, 'error' => 'Failed to write to JSON file'));
+    // Use centralized $actionTypes (should be from setUiEvent.php)
+    triggerUserUiEvent($action['actionTypeID'], $action['actionContactID'], $userName, $actionTypes);
 }
-// endregion
+
+// ---- Final response
+echo json_encode(['success' => $success, 'actionID' => $action['actionID']]);
+exit;
 
 // #endregion
