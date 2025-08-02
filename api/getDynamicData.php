@@ -2,6 +2,41 @@
 // 📁 File: api/getDynamicData.php
 // At the very top of getDynamicData.php (before anything else)
 ob_start();
+// --- Ephemeral (session-based) UI Event Handler ---
+// Start session (must be at the very top, before any output)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Utility: Set a UI event for this session (call from action handler, e.g., after login)
+function setUiEvent($eventArr) {
+    $_SESSION['uiEvent'] = $eventArr;
+}
+
+// Retrieve and clear the UI event for this poll
+$event = isset($_SESSION['uiEvent']) ? $_SESSION['uiEvent'] : null;
+$_SESSION['uiEvent'] = null; // Clear after read (delivered exactly once)
+
+// If no event, use default empty modal structure
+if (
+    !$event ||
+    !is_array($event) ||
+    !isset($event['type']) ||
+    $event['type'] !== 'modal'
+) {
+    $event = array(
+        "type" => "modal",
+        "title" => "",
+        "message" => "",
+        "color" => "",
+        "icon" => "",
+        "durationSec" => 8,
+        "source" => ""
+    );
+}
+
+// Attach to outgoing response
+$response['uiEvent'] = $event;
 
 #region 🔧 Init and Headers
 error_reporting(E_ALL);
@@ -428,7 +463,7 @@ $response = array(
 
 #endregion
 
-// #region 🟢 Output
+#region 🟢 Output
 
 $rawJson = json_encode($response);
 echo $rawJson;
@@ -439,4 +474,4 @@ file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
 
 ob_end_flush();
 
-// #endregion
+#endregion
