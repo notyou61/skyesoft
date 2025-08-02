@@ -1,5 +1,6 @@
 <?php
-// --- Minimal, Dynamic UI Event API for Office Board ---
+// 📁 File: api/setUiEvent.php
+// --- Helper functions for dynamic UI Event (Office Board) ---
 // (PHP 5.3 compatible)
 
 // Define actionTypes here (or load from config/db/json as you scale)
@@ -23,7 +24,6 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
         error_log("Unknown actionTypeID: $actionTypeID");
         return false;
     }
-
     // Set icon and color defaults (expand as needed)
     $defaultIcons = array(
         1 => '🔑',  // Login
@@ -64,31 +64,5 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
     return true;
 }
 
-// --- API: Accept POSTed event parameters (from AJAX, PHP, etc.) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Accept JSON or form data
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (!$input) $input = $_POST;
-
-    $actionTypeID = isset($input['actionTypeID']) ? intval($input['actionTypeID']) : null;
-    $userId       = isset($input['userId']) ? intval($input['userId']) : null;
-    $userName     = isset($input['userName']) ? $input['userName'] : '';
-    $options      = array();
-    if (isset($input['extraMsg']))    $options['extraMsg']    = $input['extraMsg'];
-    if (isset($input['icon']))        $options['icon']        = $input['icon'];
-    if (isset($input['color']))       $options['color']       = $input['color'];
-    if (isset($input['durationSec'])) $options['durationSec'] = intval($input['durationSec']);
-
-    if ($actionTypeID && $userId && $userName) {
-        $ok = triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $options);
-        header('Content-Type: application/json');
-        echo json_encode(array('status' => $ok ? 'success' : 'error'));
-    } else {
-        http_response_code(400);
-        echo json_encode(array('status' => 'error', 'message' => 'Missing required fields'));
-    }
-    exit;
-}
-
+// --- Only define helpers. No POST handler, echo, or exit ---
 // --- If included from PHP, use the triggerUserUiEvent() function directly! ---
-?>
