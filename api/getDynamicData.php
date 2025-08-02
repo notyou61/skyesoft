@@ -3,7 +3,6 @@
 // At the very top of getDynamicData.php (before anything else)
 ob_start();
 // --- Ephemeral (session-based) UI Event Handler ---
-// Start session (must be at the very top, before any output)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -17,26 +16,8 @@ function setUiEvent($eventArr) {
 $event = isset($_SESSION['uiEvent']) ? $_SESSION['uiEvent'] : null;
 $_SESSION['uiEvent'] = null; // Clear after read (delivered exactly once)
 
-// If no event, use default empty modal structure
-if (
-    !$event ||
-    !is_array($event) ||
-    !isset($event['type']) ||
-    $event['type'] !== 'modal'
-) {
-    $event = array(
-        "type" => "modal",
-        "title" => "",
-        "message" => "",
-        "color" => "",
-        "icon" => "",
-        "durationSec" => 8,
-        "source" => ""
-    );
-}
-
-// Attach to outgoing response
-$response['uiEvent'] = $event;
+// Only set if an event was present; otherwise, use null
+$response['uiEvent'] = $event ? $event : null;
 
 #region 🔧 Init and Headers
 error_reporting(E_ALL);
