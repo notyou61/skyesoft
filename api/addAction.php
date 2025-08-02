@@ -7,14 +7,11 @@ header('Content-Type: application/json');
 // ---- Paths and Setup
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath  = __DIR__ . '/../.env';
-require_once(__DIR__ . '/setUiEvent.php'); // Should define $actionTypes and helpers only
+require_once(__DIR__ . '/setUiEvent.php'); // Should define $actionTypes and helpers
 
 // ---- Load POSTed action
 $input = file_get_contents('php://input');
 $action = json_decode($input, true);
-
-file_put_contents(__DIR__ . '/debug-action-raw.txt', $input . "\n", FILE_APPEND);
-file_put_contents(__DIR__ . '/debug-action-parsed.txt', print_r($action, true) . "\n", FILE_APPEND);
 
 if (!$action) {
     echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
@@ -122,8 +119,8 @@ if ($fp && flock($fp, LOCK_EX)) {
     exit;
 }
 
-// ---- Event trigger for login/logout
-$triggerTypes = [1, 2];
+// ---- Session-based UI Event Trigger (Login/Logout/etc)
+$triggerTypes = [1, 2]; // Adjust as needed for other action types
 if (in_array($action['actionTypeID'], $triggerTypes)) {
     // Dynamic user name lookup by contactID (if present in contacts array)
     $userName = "User";
@@ -135,7 +132,7 @@ if (in_array($action['actionTypeID'], $triggerTypes)) {
             }
         }
     }
-    // Use centralized $actionTypes (should be from setUiEvent.php)
+    // Use $actionTypes from setUiEvent.php
     triggerUserUiEvent($action['actionTypeID'], $action['actionContactID'], $userName, $actionTypes);
 }
 
