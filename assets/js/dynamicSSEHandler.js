@@ -45,7 +45,15 @@ setInterval(() => {
       // #region 🧪 Debug Log
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
-      console.log("🎛️ UI Event received:", data.uiEvent); // <-- Add this line!
+      // Uid Event Debuggin
+      if (
+        data.uiEvent &&
+        // Optionally: Only show if any meaningful field is set (not just empty defaults)
+        (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)
+      ) {
+        // Console Log UI Event
+        console.log("🎛️ UI Event received:", data.uiEvent);
+      }
       // #endregion
 
       // #region ⏰ Update Time Display
