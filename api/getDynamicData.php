@@ -187,12 +187,12 @@ define('WORKDAY_END', '15:30');
 //        All fields should be set dynamically based on the event context.
 
 // Dynamically set these variables from your application logic, user input, or API call
-$eventType     = isset($eventType)      ? $eventType      : (isset($_POST['type'])        ? $_POST['type']        : "modal");
+$eventType     = isset($eventType)      ? $eventType      : (isset($_POST['type'])        ? $_POST['type']        : "");
 $eventTitle    = isset($eventTitle)     ? $eventTitle     : (isset($_POST['title'])       ? $_POST['title']       : "");
 $eventMessage  = isset($eventMessage)   ? $eventMessage   : (isset($_POST['message'])     ? $_POST['message']     : "");
 $eventColor    = isset($eventColor)     ? $eventColor     : (isset($_POST['color'])       ? $_POST['color']       : "");
 $eventIcon     = isset($eventIcon)      ? $eventIcon      : (isset($_POST['icon'])        ? $_POST['icon']        : "");
-$eventDuration = isset($eventDuration)  ? $eventDuration  : (isset($_POST['durationSec']) ? intval($_POST['durationSec']) : 8);
+$eventDuration = isset($eventDuration)  ? $eventDuration  : (isset($_POST['durationSec']) ? intval($_POST['durationSec']) : "");
 $eventSource   = isset($eventSource)    ? $eventSource    : (isset($_POST['source'])      ? $_POST['source']      : "");
 
 // Optional: For "effect" events

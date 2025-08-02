@@ -1,7 +1,7 @@
 <?php
 // 📁 File: api/setUiEvent.php
-// --- Helper functions for dynamic UI Event (Office Board) ---
-// (PHP 5.3 compatible)
+// --- Ephemeral helper for dynamic UI Event (Office Board, session-based) ---
+// (PHP 5.3+ compatible; MTCO, DRY)
 
 // Define actionTypes here (or load from config/db/json as you scale)
 $actionTypes = array(
@@ -10,8 +10,12 @@ $actionTypes = array(
     // Add more as needed...
 );
 
-// -- Helper function --
+// -- Helper function: set a UI event for this user/session only --
 function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $options = array()) {
+    // Ensure session is started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
     // Lookup actionType
     $actionType = null;
     foreach ($actionTypes as $at) {
@@ -28,7 +32,6 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
     $defaultIcons = array(
         1 => '🔑',  // Login
         2 => '🚪'   // Logout
-        // Future: 3 => '📝', etc.
     );
     $defaultColors = array(
         1 => '#3bb143',
@@ -36,7 +39,7 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
     );
     $icon = isset($options['icon']) ? $options['icon'] : (isset($defaultIcons[$actionTypeID]) ? $defaultIcons[$actionTypeID] : '📢');
     $color = isset($options['color']) ? $options['color'] : (isset($defaultColors[$actionTypeID]) ? $defaultColors[$actionTypeID] : '#3498db');
-    $durationSec = isset($options['durationSec']) ? $options['durationSec'] : 10;
+    $durationSec = isset($options['durationSec']) ? $options['durationSec'] : 8;
 
     // Title and message
     $title = $icon . ' ' . $actionType['actionName'];
@@ -59,8 +62,8 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
         "source"      => "user"
     );
 
-    $uiEventPath = dirname(__FILE__) . '/../assets/data/uiEvent.json'; // Adjust path as needed
-    file_put_contents($uiEventPath, json_encode($event, JSON_PRETTY_PRINT));
+    // **NEW: Ephemeral—store in user session only!**
+    $_SESSION['uiEvent'] = $event;
     return true;
 }
 
