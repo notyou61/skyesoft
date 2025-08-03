@@ -44,7 +44,9 @@ function triggerUserUiEvent($actionTypeID, $userId, $userName, $actionTypes, $op
     // Title and message
     $title = $icon . ' ' . $actionType['actionName'];
     $desc = isset($actionType['actionDescription']) ? $actionType['actionDescription'] : $actionType['actionName'];
-    $message = $userName . ' ' . strtolower($desc) . ' at ' . date("g:i A");
+    $dt = new DateTime("now", new DateTimeZone("America/Phoenix"));
+    $phoenixTime = $dt->format("g:i A");
+    $message = $userName . ' ' . strtolower($desc) . ' at ' . $phoenixTime;
     if (!empty($options['extraMsg'])) {
         $message .= " — " . $options['extraMsg'];
     }
