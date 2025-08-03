@@ -1,7 +1,7 @@
 <?php
 // 📁 File: api/setUiEvent.php
 // --- Ephemeral helper for dynamic UI Event (Office Board, session-based) ---
-// (PHP 5.3+ compatible; MTCO, DRY)
+// (PHP 5.3+ compatible; DRY)
 
 // Define actionTypes here (or load from config/db/json as you scale)
 $actionTypes = array(
