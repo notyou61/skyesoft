@@ -1,9 +1,6 @@
 <?php
 // 📁 File: api/getDynamicData.php
 
-// Start output buffering (retained for debugging; can be removed for pure SSE)
-ob_start();
-
 // --- Ephemeral (session-based) UI Event Handler ---
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -339,20 +336,8 @@ $response = [
 ];
 // #endregion
 
-// #region 🟢 Output
-// SSE output for EventSource clients
-echo "data: " . json_encode($response) . "\n\n";
-
-// Optional: For AJAX/fetch polling (uncomment if not using SSE)
-// header('Content-Type: application/json; charset=utf-8');
-// echo json_encode($response);
-// exit;
-
-// Debug output
-$actualOutput = ob_get_contents();
-file_put_contents(__DIR__ . '/debug-actual-output.txt', $actualOutput);
-
-ob_flush();
-flush();
-ob_end_flush();
+// #region 🟢 Output (AJAX/Fetch JSON only; PHP 5.6 safe)
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode($response);
+exit;
 // #endregion
