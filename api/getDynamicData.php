@@ -149,12 +149,10 @@ $holidaysPath = '../../assets/data/federal_holidays_dynamic.json';
 $dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
 $siteMeta = [];
 
-if (file_exists($dataPath)) {
-    $json = file_get_contents($dataPath);
-    $data = json_decode($json, true);
-    if (is_array($data) && isset($data['siteMeta'])) {
-        $siteMeta = $data['siteMeta'];
-    }
+$versionPath = dirname(__FILE__) . '/../assets/data/version.json';
+if (file_exists($versionPath)) {
+    $versionJson = file_get_contents($versionPath);
+    $siteMeta = json_decode($versionJson, true);
 }
 
 $codexPath = '../../assets/data/codex.json';
@@ -323,21 +321,12 @@ $response = [
     ],
     'announcements' => $announcements,
     'uiEvent' => $event,
-    'siteMeta' => [
-        'siteVersion' => isset($siteMeta['siteVersion']) ? $siteMeta['siteVersion'] : 'unknown',
-        'lastDeployNote' => isset($siteMeta['lastDeployNote']) ? $siteMeta['lastDeployNote'] : '',
-        'lastDeployTime' => isset($siteMeta['lastDeployTime']) ? $siteMeta['lastDeployTime'] : '',
-        'deployState' => isset($siteMeta['deployState']) ? $siteMeta['deployState'] : '',
-        'deployIsLive' => isset($siteMeta['deployIsLive']) ? $siteMeta['deployIsLive'] : false,
-        'cronCount' => isset($siteMeta['cronCount']) ? $siteMeta['cronCount'] : 0,
-        'aiQueryCount' => isset($siteMeta['aiQueryCount']) ? $siteMeta['aiQueryCount'] : 0,
-        'uptimeSeconds' => null
-    ]
+    'siteMeta' => $siteMeta
 ];
 // #endregion
 
 // #region 🟢 Output (AJAX/Fetch JSON only; PHP 5.6 safe)
-header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: text/event-stream; charset=utf-8');
 echo json_encode($response);
 exit;
 // #endregion

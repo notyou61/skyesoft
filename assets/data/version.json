@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.146",
-  "lastDeployNote": "SNPS: Roll back to v0.1.146 (manual)",
-  "lastDeployTime": "2025-07-30 18:45:00",
-  "commitHash": "a54a984",
+  "siteVersion": "v0.1.147",
+  "lastDeployNote": "SNPS: UI Event Phoenix Time Fix + Login/Logout Modal Improvements",
+  "lastDeployTime": "2025-08-03 14:46:03",
+  "commitHash": "8a791a3",
   "deployState": "live",
   "deployIsLive": true
 }
