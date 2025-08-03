@@ -176,8 +176,11 @@ if (file_exists($announcementsPath)) {
 // #endregion
 
 // #region 🔄 Enhanced Time Breakdown
-date_default_timezone_set('America/Phoenix');
 $timeZone = 'America/Phoenix';
+date_default_timezone_set($timeZone);
+error_log("PHP timezone: " . date_default_timezone_get());
+error_log("PHP now: " . date('Y-m-d H:i:s'));
+error_log("Unix time: " . time());
 $now = time();
 $yearTotalDays = (date('L', $now) ? 366 : 365);
 $yearDayNumber = intval(date('z', $now)) + 1;
