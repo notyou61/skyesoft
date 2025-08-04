@@ -46,10 +46,10 @@ setInterval(() => {
       ) {
         // Debug: Log UI Event
         console.log("🟢 uiEvent received:", data.uiEvent);
+        // Show modal
+        showSkyeAlertModal(data.uiEvent);
       }
-      //
-      // Show modal
-      showSkyeAlertModal(data.uiEvent);
+
       // #endregion
 
       // #region ⏰ Update Time Display
