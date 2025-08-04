@@ -101,9 +101,10 @@ setInterval(() => {
     .then(res => res.json())
     .then(data => {
       // #region 🧪 Debug Log
-      //console.log('uiEvent in polling:', data.uiEvent);
+      console.log('uiEvent in polling:', data.uiEvent);
 
       // User Interface Event Conditional
+      // Check if uiEvent exists and has relevant properties
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
         // Use id if present, otherwise time
         let eventId = data.uiEvent.id ?? data.uiEvent.time;
