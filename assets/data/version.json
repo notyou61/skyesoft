@@ -1,8 +1,8 @@
 {
-  "siteVersion": "v0.1.147",
-  "lastDeployNote": "SNPS: UI Event Phoenix Time Fix + Login/Logout Modal Improvements",
-  "lastDeployTime": "2025-08-03 14:46:03",
-  "commitHash": "8a791a3",
+  "siteVersion": "v0.1.148",
+  "lastDeployNote": "SNPS: Dynamically inject SkyeAlert modal; eliminate order/timing bugs",
+  "lastDeployTime": "2025-08-04 17:08:59",
+  "commitHash": "a32dc22",
   "deployState": "live",
   "deployIsLive": true
 }
