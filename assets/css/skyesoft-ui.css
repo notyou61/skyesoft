@@ -511,4 +511,62 @@ body.modal-open {
     opacity: 0; 
   }
 }
-/*
+/* 🚨 Modal Overlay: covers the whole screen, centers modal */
+#skyeAlertModal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.2);        /* semi-transparent dark overlay */
+  z-index: 10000;                     /* on top of most UI */
+  display: flex;                      /* center modal */
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+/* 📝 Modal Container: rounded, shadowed box */
+#skyeAlertModalContent {
+  min-width: 320px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
+  position: relative;
+  font-family: inherit;
+  overflow: hidden;
+}
+/* 🏷️ Modal Header: icon + title, colored, flex layout */
+#skyeAlertModalHeader {
+  font-size: 1.3rem;
+  font-weight: bold;
+  padding: 16px 24px 10px 24px;
+  border-bottom: 1px solid #eee;
+  display: flex;          /* allows icon/title spacing */
+  align-items: center;
+  gap: 0.5em;
+}
+/* 📄 Modal Body: main message text */
+#skyeAlertModalBody {
+  font-size: 1rem;
+  padding: 20px 24px 16px 24px;
+}
+/* 🦶 Modal Footer: metadata, small and muted */
+#skyeAlertModalFooter {
+  font-size: 0.93rem;
+  color: #999;
+  padding: 12px 24px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+/* ❌ Close Button: top right, subtle X */
+#skyeAlertModalClose {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.6em;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+/* ✨ Fade-in animation for modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
