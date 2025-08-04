@@ -42,7 +42,7 @@ setInterval(() => {
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
       // Debug: Log uiEvent to the console every poll
-
+      console.log('uiEvent in polling:', data.uiEvent);
       // In polling .then():
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
         // Simple ID or timestamp logic (customize for your backend)
