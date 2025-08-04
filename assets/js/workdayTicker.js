@@ -40,16 +40,16 @@ setInterval(() => {
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
       // Debug: Log uiEvent to the console every poll
-      if (
-        data && data.uiEvent &&
-        (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)
-      ) {
-        // Debug: Log UI Event
-        console.log("🟢 uiEvent received:", data.uiEvent);
-        // Show modal
-        showSkyeAlertModal(data.uiEvent);
-      }
+      let lastUiEventId = null; // Place this at top-level
 
+      // In polling .then():
+      if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
+        // Simple ID or timestamp logic (customize for your backend)
+        if (data.uiEvent.id && data.uiEvent.id !== lastUiEventId) {
+          lastUiEventId = data.uiEvent.id;
+          showSkyeAlertModal(data.uiEvent);
+        }
+      }
       // #endregion
 
       // #region ⏰ Update Time Display
