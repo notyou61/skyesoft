@@ -1,5 +1,7 @@
 // 📁 File: assets/js/workdayTicker.js
 
+let lastUiEventId = null; // Place this at top-level
+
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -40,7 +42,6 @@ setInterval(() => {
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
       // Debug: Log uiEvent to the console every poll
-      let lastUiEventId = null; // Place this at top-level
 
       // In polling .then():
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
@@ -152,14 +153,3 @@ function hideSkyeAlertModal() {
   modal.style.opacity = "0";
   setTimeout(() => { modal.style.display = "none"; }, 400); // matches CSS transition
 }
-
-// #region  SkyeAlert Modal Page
-<div id="skyeAlertModal" style="display:none;">
-  <div id="skyeAlertModalContent">
-    <div id="skyeAlertModalHeader"></div>
-    <div id="skyeAlertModalBody"></div>
-    <div id="skyeAlertModalFooter"></div>
-    <button onclick="hideSkyeAlertModal()" id="skyeAlertModalClose" aria-label="Close Modal">&times;</button>
-  </div>
-</div>
-// #endregion
