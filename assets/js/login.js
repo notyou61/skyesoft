@@ -58,9 +58,26 @@ document.addEventListener('DOMContentLoaded', () => {
         c => c.email.toLowerCase() === username.toLowerCase()
       );
       if (match) {
+        // Set Cookie
         document.cookie = `skyelogin_user=${username}; path=/; max-age=604800; SameSite=Lax`;
+        // Set user ID in localStorage
         localStorage.setItem('userId', match.id);
+        // Show dashboard and update UI
         showDashboard();
+        // Fetch Add Action
+       fetch('/api/addAction.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actionTypeID: 1,
+            actionContactID: match.id,            // Set this to the user/contact id
+            actionNote: "User logged in",
+            actionTimestamp: Date.now(),
+            actionLatitude: 33.45,                // Use actual or fallback coords
+            actionLongitude: -112.07
+          })
+        });
+
       } else {
         if (loginError) loginError.textContent = '❌ Invalid username or password.';
         localStorage.removeItem('userId');
