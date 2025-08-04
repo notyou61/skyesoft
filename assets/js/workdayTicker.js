@@ -13,7 +13,6 @@ if (!document.getElementById('skyeAlertModal')) {
       <div id="skyeAlertModalHeader"></div>
       <div id="skyeAlertModalBody"></div>
       <div id="skyeAlertModalFooter"></div>
-      <button onclick="hideSkyeAlertModal()" id="skyeAlertModalClose" aria-label="Close Modal">&times;</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -102,7 +101,7 @@ setInterval(() => {
     .then(res => res.json())
     .then(data => {
       // #region 🧪 Debug Log
-      console.log('uiEvent in polling:', data.uiEvent);
+      //console.log('uiEvent in polling:', data.uiEvent);
 
       // User Interface Event Conditional
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
