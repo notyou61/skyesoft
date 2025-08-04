@@ -47,6 +47,9 @@ setInterval(() => {
         // Debug: Log UI Event
         console.log("🟢 uiEvent received:", data.uiEvent);
       }
+      //
+      // Show modal
+      showSkyeAlertModal(data.uiEvent);
       // #endregion
 
       // #region ⏰ Update Time Display
@@ -106,3 +109,56 @@ setInterval(() => {
   // #endregion
 }, 1000);
 //#endregion
+
+let skyeAlertModalTimeout = null;
+
+function showSkyeAlertModal(event) {
+  // Set header (icon + title)
+  const header = document.getElementById("skyeAlertModalHeader");
+  header.innerHTML = `${event.icon ? event.icon : ""} ${event.title ? event.title : ""}`;
+
+  // Set body (main message)
+  const body = document.getElementById("skyeAlertModalBody");
+  body.textContent = event.message || "";
+
+  // Set footer (optional: user/time/source)
+  const footer = document.getElementById("skyeAlertModalFooter");
+  const user = event.user ? `User: ${event.user}` : "";
+  const time = event.time
+    ? `Time: ${new Date(event.time * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })}`
+    : "";
+  const source = event.source ? `Source: ${event.source}` : "";
+  footer.textContent = [user, time, source].filter(Boolean).join(" • ");
+
+  // Set modal background color if present
+  const modalContent = document.getElementById("skyeAlertModalContent");
+  if (event.color) modalContent.style.borderTop = `5px solid ${event.color}`;
+  else modalContent.style.borderTop = "";
+
+  // Show modal
+  document.getElementById("skyeAlertModal").style.display = "flex";
+  document.getElementById("skyeAlertModal").style.opacity = "1";
+
+  // Auto-hide after durationSec (default: 8s)
+  clearTimeout(skyeAlertModalTimeout);
+  const duration = (event.durationSec && !isNaN(event.durationSec))
+    ? parseInt(event.durationSec) * 1000
+    : 8000;
+  skyeAlertModalTimeout = setTimeout(hideSkyeAlertModal, duration);
+}
+
+function hideSkyeAlertModal() {
+  const modal = document.getElementById("skyeAlertModal");
+  modal.style.opacity = "0";
+  setTimeout(() => { modal.style.display = "none"; }, 400); // matches CSS transition
+}
+
+//#region  SkyeAlert Modal Page
+<div id="skyeAlertModal" style="display:none;">
+  <div id="skyeAlertModalContent">
+    <div id="skyeAlertModalHeader"></div>
+    <div id="skyeAlertModalBody"></div>
+    <div id="skyeAlertModalFooter"></div>
+    <button onclick="hideSkyeAlertModal()" id="skyeAlertModalClose" aria-label="Close Modal">&times;</button>
+  </div>
+</div>
