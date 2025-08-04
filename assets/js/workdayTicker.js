@@ -1,8 +1,9 @@
 // 📁 File: assets/js/workdayTicker.js
 
-let lastUiEventId = null; // Place this at top-level
+let lastUiEventId = null; // At top-level for dedupe
+let skyeAlertModalTimeout = null; // For modal auto-hide
 
-// Dynamically inject Skye Alert Modal if not present
+// 🟢 Dynamically inject Skye Alert Modal if not present
 if (!document.getElementById('skyeAlertModal')) {
   const modal = document.createElement('div');
   modal.id = 'skyeAlertModal';
@@ -18,6 +19,53 @@ if (!document.getElementById('skyeAlertModal')) {
   document.body.appendChild(modal);
 }
 
+// 🟢 Modal Functions: Show & Hide
+function showSkyeAlertModal(event) {
+  // Set header (icon + title)
+  const header = document.getElementById("skyeAlertModalHeader");
+  if (header) header.innerHTML = `${event.icon ? event.icon : ""} ${event.title ? event.title : ""}`;
+
+  // Set body (main message)
+  const body = document.getElementById("skyeAlertModalBody");
+  if (body) body.textContent = event.message || "";
+
+  // Set footer (optional: user/time/source)
+  const footer = document.getElementById("skyeAlertModalFooter");
+  if (footer) {
+    const user = event.user ? `User: ${event.user}` : "";
+    const time = event.time
+      ? `Time: ${new Date(event.time * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })}`
+      : "";
+    const source = event.source ? `Source: ${event.source}` : "";
+    footer.textContent = [user, time, source].filter(Boolean).join(" • ");
+  }
+
+  // Set modal background color if present
+  const modalContent = document.getElementById("skyeAlertModalContent");
+  if (event.color && modalContent) modalContent.style.borderTop = `5px solid ${event.color}`;
+  else if (modalContent) modalContent.style.borderTop = "";
+
+  // Show modal
+  const modal = document.getElementById("skyeAlertModal");
+  if (modal) {
+    modal.style.display = "flex";
+    modal.style.opacity = "1";
+  }
+
+  // Auto-hide after durationSec (default: 8s)
+  clearTimeout(skyeAlertModalTimeout);
+  const duration = (event.durationSec && !isNaN(event.durationSec))
+    ? parseInt(event.durationSec) * 1000
+    : 8000;
+  skyeAlertModalTimeout = setTimeout(hideSkyeAlertModal, duration);
+}
+
+function hideSkyeAlertModal() {
+  const modal = document.getElementById("skyeAlertModal");
+  if (!modal) return;
+  modal.style.opacity = "0";
+  setTimeout(() => { modal.style.display = "none"; }, 400); // matches CSS transition
+}
 
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
@@ -25,12 +73,10 @@ function formatDurationPadded(seconds) {
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-
-  const dayPart = d > 0 ? `${d}d ` : "";  // No leading zero
+  const dayPart = d > 0 ? `${d}d ` : "";
   const hourPart = `${String(h).padStart(2, '0')}h`;
   const minutePart = `${String(m).padStart(2, '0')}m`;
   const secondPart = `${String(s).padStart(2, '0')}s`;
-
   return `${dayPart}${hourPart} ${minutePart} ${secondPart}`.trim();
 }
 //#endregion
@@ -38,14 +84,14 @@ function formatDurationPadded(seconds) {
 //#region 🌤️ Weather Emoji Helper
 function getWeatherEmoji(iconCode) {
   if (!iconCode) return "❓";
-  if (iconCode.startsWith("01")) return "☀️";        // Clear sky
-  if (iconCode.startsWith("02")) return "🌤️";        // Few clouds
-  if (iconCode.startsWith("03")) return "⛅";         // Scattered clouds
-  if (iconCode.startsWith("04")) return "☁️";        // Broken clouds
-  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️"; // Rain
-  if (iconCode.startsWith("11")) return "⛈️";        // Thunderstorm
-  if (iconCode.startsWith("13")) return "❄️";        // Snow
-  if (iconCode.startsWith("50")) return "🌫️";        // Mist
+  if (iconCode.startsWith("01")) return "☀️";
+  if (iconCode.startsWith("02")) return "🌤️";
+  if (iconCode.startsWith("03")) return "⛅";
+  if (iconCode.startsWith("04")) return "☁️";
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️";
+  if (iconCode.startsWith("11")) return "⛈️";
+  if (iconCode.startsWith("13")) return "❄️";
+  if (iconCode.startsWith("50")) return "🌫️";
   return "❓";
 }
 //#endregion
@@ -56,10 +102,8 @@ setInterval(() => {
     .then(res => res.json())
     .then(data => {
       // #region 🧪 Debug Log
-      // console.log("🕒 Polled:", data);
-      // console.log("🌡️ Weather Snapshot:", data.weatherData);
-      // Debug: Log uiEvent to the console every poll
       console.log('uiEvent in polling:', data.uiEvent);
+
       // User Interface Event Conditional
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
         // Use id if present, otherwise time
@@ -92,8 +136,6 @@ setInterval(() => {
         }
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
-        // Optional debug:
-        // console.log("⏳ Interval Remaining:", message);
       }
       // #endregion
 
@@ -114,7 +156,6 @@ setInterval(() => {
         const tempEl = document.getElementById("weatherTemp");
         const descEl = document.getElementById("weatherDesc");
         const iconEl = document.getElementById("weatherIcon");
-
         if (tempEl) tempEl.textContent = `${Math.round(data.weatherData.temp)}°F`;
         if (descEl) descEl.textContent = data.weatherData.description;
         if (iconEl) iconEl.textContent = getWeatherEmoji(data.weatherData.icon);
