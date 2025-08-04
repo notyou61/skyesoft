@@ -39,6 +39,14 @@ setInterval(() => {
       // #region 🧪 Debug Log
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
+      // Debug: Log uiEvent to the console every poll
+      if (
+        data && data.uiEvent &&
+        (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)
+      ) {
+        // Debug: Log UI Event
+        console.log("🟢 uiEvent received:", data.uiEvent);
+      }
       // #endregion
 
       // #region ⏰ Update Time Display
