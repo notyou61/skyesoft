@@ -153,7 +153,7 @@ function hideSkyeAlertModal() {
   setTimeout(() => { modal.style.display = "none"; }, 400); // matches CSS transition
 }
 
-//#region  SkyeAlert Modal Page
+// #region  SkyeAlert Modal Page
 <div id="skyeAlertModal" style="display:none;">
   <div id="skyeAlertModalContent">
     <div id="skyeAlertModalHeader"></div>
@@ -162,3 +162,4 @@ function hideSkyeAlertModal() {
     <button onclick="hideSkyeAlertModal()" id="skyeAlertModalClose" aria-label="Close Modal">&times;</button>
   </div>
 </div>
+// #endregion
