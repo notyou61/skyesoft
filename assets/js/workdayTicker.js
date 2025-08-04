@@ -2,6 +2,23 @@
 
 let lastUiEventId = null; // Place this at top-level
 
+// Dynamically inject Skye Alert Modal if not present
+if (!document.getElementById('skyeAlertModal')) {
+  const modal = document.createElement('div');
+  modal.id = 'skyeAlertModal';
+  modal.style.display = 'none';
+  modal.innerHTML = `
+    <div id="skyeAlertModalContent">
+      <div id="skyeAlertModalHeader"></div>
+      <div id="skyeAlertModalBody"></div>
+      <div id="skyeAlertModalFooter"></div>
+      <button onclick="hideSkyeAlertModal()" id="skyeAlertModalClose" aria-label="Close Modal">&times;</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+
 //#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
 function formatDurationPadded(seconds) {
   const d = Math.floor(seconds / 86400);
@@ -111,4 +128,3 @@ setInterval(() => {
   // #endregion
 }, 1000);
 //#endregion
-
