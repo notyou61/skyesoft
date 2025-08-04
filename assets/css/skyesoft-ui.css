@@ -516,24 +516,25 @@ body.modal-open {
 }
 /* 🚨 Modal Overlay: covers the whole screen, centers modal */
 #skyeAlertModal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.2);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 1;
-  min-height: 100vh; /* Ensures full vertical space */
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  width: 100vw !important;
+  background: rgba(0,0,0,0.2) !important;
 }
 /* 📝 Modal Container: rounded, shadowed box */
 #skyeAlertModalContent {
-  min-width: 320px;
+  min-width: 340px;
+  max-width: 90vw;
+  padding: 32px 36px 24px 36px;
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
   position: relative;
-  font-family: inherit;
   overflow: hidden;
 }
 /* 🏷️ Modal Header: icon + title, colored, flex layout */
