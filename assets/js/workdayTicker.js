@@ -107,8 +107,13 @@ setInterval(() => {
       if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
         // Use id if present, otherwise time
         let eventId = data.uiEvent.id ?? data.uiEvent.time;
+        // Ensure eventId is a string
         if (eventId && eventId !== lastUiEventId) {
+          // console.log('New UI Event:', eventID);
+          console.log('uiEvent in polling:', eventId);
+          // Update lastUiEventId
           lastUiEventId = eventId;
+          // Show the modal with the event data
           showSkyeAlertModal(data.uiEvent);
         }
       }
