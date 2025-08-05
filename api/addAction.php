@@ -1,19 +1,12 @@
 <?php
-//  File: api/addAction.php
-
-// #region  Universal Action Logger
+// File: api/addAction.php
 
 header('Content-Type: application/json');
-
-// --- Ephemeral (session-based) UI Event Handler ---
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 // ---- Paths and Setup
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
-require_once __DIR__ . '/setUiEvent.php'; // Defines $actionTypes and triggerUserUiEvent
+require_once __DIR__ . '/setUiEvent.php'; // Only if $actionTypes is defined here
 
 // ---- Load POSTed action
 $input = file_get_contents('php://input');
@@ -140,6 +133,46 @@ if ($fp && flock($fp, LOCK_EX)) {
         $currentData = ['actions' => [], 'contacts' => []];
     }
     $currentData['actions'][] = $action;
+
+    // --- Universal Global UI Event for ALL Actions ---
+    $eventType = null;
+    foreach ($actionTypes as $at) {
+        if (isset($at['actionTypeID']) && $at['actionTypeID'] == $action['actionTypeID']) {
+            $eventType = $at;
+            break;
+        }
+    }
+    if ($eventType) {
+        // Dynamic user name lookup
+        $userName = "User";
+        if (isset($currentData['contacts']) && is_array($currentData['contacts'])) {
+            foreach ($currentData['contacts'] as $c) {
+                if (isset($c['contactID']) && $c['contactID'] == $action['actionContactID']) {
+                    $userName = htmlspecialchars($c['contactName'], ENT_QUOTES, 'UTF-8');
+                    break;
+                }
+            }
+        }
+        // Build event title/message
+        $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['name']}" : $eventType['name'];
+        $message = "{$userName} performed action: {$eventType['name']} at " . date('g:i A', strtotime($action['actionTimestamp']));
+        if (!empty($action['actionNote'])) {
+            $message .= " — " . htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
+        }
+        // Set the global ephemeral uiEvent
+        $currentData['uiEvent'] = [
+            'type' => 'modal',
+            'action' => $action['actionTypeID'],
+            'title' => $title,
+            'message' => $message,
+            'user' => $action['actionContactID'],
+            'timestamp' => time(),
+            'eventID' => uniqid()
+        ];
+    } else {
+        error_log("Failed to set UI event: Invalid actionTypeID={$action['actionTypeID']}");
+    }
+
     ftruncate($fp, 0);
     rewind($fp);
     fwrite($fp, json_encode($currentData, JSON_PRETTY_PRINT));
@@ -147,7 +180,6 @@ if ($fp && flock($fp, LOCK_EX)) {
     flock($fp, LOCK_UN);
     fclose($fp);
     $success = true;
-    $data = $currentData; // For downstream use
 } else {
     if ($fp) fclose($fp);
     http_response_code(500);
@@ -155,28 +187,7 @@ if ($fp && flock($fp, LOCK_EX)) {
     exit;
 }
 
-// ---- Session-based UI Event Trigger (Login/Logout/etc)
-$triggerTypes = [1, 2]; // Adjust as needed for other action types
-if (in_array($action['actionTypeID'], $triggerTypes)) {
-    // Dynamic user name lookup by contactID (if present in contacts array)
-    $userName = "User";
-    if (isset($data['contacts']) && is_array($data['contacts'])) {
-        foreach ($data['contacts'] as $c) {
-            if (isset($c['contactID']) && $c['contactID'] == $action['actionContactID']) {
-                $userName = htmlspecialchars($c['contactName'], ENT_QUOTES, 'UTF-8'); // Sanitize for XSS
-                break;
-            }
-        }
-    }
-    // Trigger UI event (sets $_SESSION['uiEvent'] in setUiEvent.php)
-    if (!triggerUserUiEvent($action['actionTypeID'], $action['actionContactID'], $userName, $actionTypes)) {
-        error_log("Failed to trigger UI event for actionTypeID={$action['actionTypeID']}, contactID={$action['actionContactID']}");
-    }
-}
-
 // ---- Final response
-http_response_code($success ? 201 : 500); // 201 for resource creation (REST convention)
+http_response_code($success ? 201 : 500);
 echo json_encode(['success' => $success, 'actionID' => $action['actionID']]);
 exit;
-
-// #endregion
