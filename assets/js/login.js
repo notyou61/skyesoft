@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show dashboard and update UI
         showDashboard();
         // Fetch Add Action
-       fetch('/api/addAction.php', {
+       fetch('/skyesoft/api/addAction.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
