@@ -45,6 +45,7 @@
     }
   ],
   "actions": [],
+  "uiEvent": null,
   "siteMeta": {
     "siteVersion": "v0.1.148",
     "lastDeployNote": "SNPS: Dynamically inject SkyeAlert modal; eliminate order/timing bugs",
