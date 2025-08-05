@@ -54,37 +54,33 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Fetch user data and validate username
       const data = await fetch('/skyesoft/assets/data/skyesoft-data.json').then(r => r.json());
-      const match = data.contacts.find(
-        c => c.email.toLowerCase() === username.toLowerCase()
+      const contacts = Array.isArray(data.contacts) ? data.contacts : [];
+      const match = contacts.find(
+        c => c.contactEmail && c.contactEmail.toLowerCase() === username.toLowerCase()
       );
       if (match) {
-        // Set Cookie
         document.cookie = `skyelogin_user=${username}; path=/; max-age=604800; SameSite=Lax`;
-        // Set user ID in localStorage
-        localStorage.setItem('userId', match.id);
-        // Show dashboard and update UI
+        localStorage.setItem('userId', match.contactID);
         showDashboard();
-        // Fetch Add Action
-       fetch('/skyesoft/api/addAction.php', {
+        await fetch('/skyesoft/api/addAction.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             actionTypeID: 1,
-            actionContactID: match.id,            // Set this to the user/contact id
+            actionContactID: match.contactID,
             actionNote: "User logged in",
-            actionTimestamp: Date.now(),
-            actionLatitude: 33.45,                // Use actual or fallback coords
+            actionTimestamp: new Date().toISOString(),
+            actionLatitude: 33.45,
             actionLongitude: -112.07
           })
         });
-
       } else {
         if (loginError) loginError.textContent = '❌ Invalid username or password.';
         localStorage.removeItem('userId');
       }
     } catch (err) {
-      if (loginError) loginError.textContent = "❌ Could not load skyesoft-data.json";
-      console.error("JSON load error:", err);
+      if (loginError) loginError.textContent = '❌ Network or server error.';
+      localStorage.removeItem('userId');
     }
   });
   // #endregion
