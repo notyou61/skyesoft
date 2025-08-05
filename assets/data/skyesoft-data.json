@@ -1,33 +1,33 @@
 {
   "entities": [
     {
-      "id": 1,
-      "type": "company",
-      "name": "Christy Signs"
+      "entityID": 1,
+      "entityType": "company",
+      "entityName": "Christy Signs"
     }
   ],
   "locations": [
     {
-      "id": 1,
-      "entityId": 1,
-      "address": "3145 N 33rd Ave, Phoenix, AZ 85017",
-      "googlePlaceId": "ChIJf44w9yAKK4cRj-x2VuT63GQ",
-      "latitude": 33.4854056,
-      "longitude": -112.1296014
+      "locationID": 1,
+      "locationEntityID": 1,
+      "locationAddress": "3145 N 33rd Ave, Phoenix, AZ 85017",
+      "locationGooglePlaceID": "ChIJf44w9yAKK4cRj-x2VuT63GQ",
+      "locationLatitude": 33.4854056,
+      "locationLongitude": -112.1296014
     }
   ],
   "contacts": [
     {
-      "id": 1,
-      "entityId": 1,
-      "locationId": 1,
-      "name": "Steve Skye",
-      "title": "Permit Specialist / Account Executive",
-      "email": "steve@christysigns.com",
-      "officePhone": "6022424488",
-      "officePhoneExt": "",
-      "cellPhone": "6023974722",
-      "password": "9571"
+      "contactID": 1,
+      "contactEntityID": 1,
+      "contactLocationId": 1,
+      "contactName": "Steve Skye",
+      "contactTitle": "Permit Specialist / Account Executive",
+      "contactEmail": "steve@christysigns.com",
+      "contactOfficePhone": "6022424488",
+      "contactOfficePhoneExt": "",
+      "contactCellPhone": "6023974722",
+      "contactPassword": "9571"
     }
   ],
   "actionTypes": [
