@@ -101,7 +101,15 @@ $action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatit
 
 // ---- Robust JSON file load/init
 if (!file_exists($jsonPath)) {
-    $data = ['actions' => [], 'contacts' => []];
+    $data = [
+        'actions' => [],
+        'contacts' => [],
+        'entities' => [],
+        'locations' => [],
+        'actionTypes' => [],
+        'siteMeta' => [],
+        'uiEvent' => null
+    ];
     file_put_contents($jsonPath, json_encode($data, JSON_PRETTY_PRINT));
 } else {
     $data = json_decode(file_get_contents($jsonPath), true);
@@ -128,9 +136,25 @@ $success = false;
 $fp = fopen($jsonPath, 'c+');
 if ($fp && flock($fp, LOCK_EX)) {
     $raw = stream_get_contents($fp);
-    $currentData = $raw ? json_decode($raw, true) : ['actions' => [], 'contacts' => []];
+    $currentData = $raw ? json_decode($raw, true) : [
+        'actions' => [],
+        'contacts' => [],
+        'entities' => [],
+        'locations' => [],
+        'actionTypes' => [],
+        'siteMeta' => [],
+        'uiEvent' => null
+    ];
     if (!$currentData) {
-        $currentData = ['actions' => [], 'contacts' => []];
+        $currentData = [
+            'actions' => [],
+            'contacts' => [],
+            'entities' => [],
+            'locations' => [],
+            'actionTypes' => [],
+            'siteMeta' => [],
+            'uiEvent' => null
+        ];
     }
     $currentData['actions'][] = $action;
 
@@ -143,7 +167,7 @@ if ($fp && flock($fp, LOCK_EX)) {
         }
     }
     if ($eventType) {
-        // Dynamic user name lookup
+        // Dynamic user name lookup using contactName and contactID
         $userName = "User";
         if (isset($currentData['contacts']) && is_array($currentData['contacts'])) {
             foreach ($currentData['contacts'] as $c) {
@@ -154,8 +178,8 @@ if ($fp && flock($fp, LOCK_EX)) {
             }
         }
         // Build event title/message
-        $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['name']}" : $eventType['name'];
-        $message = "{$userName} performed action: {$eventType['name']} at " . date('g:i A', strtotime($action['actionTimestamp']));
+        $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['actionName']}" : $eventType['actionName'];
+        $message = "{$userName} performed action: {$eventType['actionName']} at " . date('g:i A', strtotime($action['actionTimestamp']));
         if (!empty($action['actionNote'])) {
             $message .= " — " . htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
         }

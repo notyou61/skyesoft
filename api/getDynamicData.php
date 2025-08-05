@@ -1,15 +1,6 @@
 <?php
 // 📁 File: api/getDynamicData.php
 
-// --- Ephemeral (session-based) UI Event Handler ---
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Retrieve and clear the UI event for this poll
-$event = isset($_SESSION['uiEvent']) ? $_SESSION['uiEvent'] : null;
-$_SESSION['uiEvent'] = null; // Clear after read (delivered exactly once)
-
 // Set SSE headers
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache');
@@ -20,6 +11,17 @@ header('Access-Control-Allow-Headers: Content-Type');
 // #region 🔧 Init and Error Reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+// #endregion
+
+// #region 🔄 Load Current UI Event from JSON
+$dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
+$uiEvent = null;
+if (file_exists($dataPath)) {
+    $mainData = json_decode(file_get_contents($dataPath), true);
+    if (isset($mainData['uiEvent'])) {
+        $uiEvent = $mainData['uiEvent'];
+    }
+}
 // #endregion
 
 // #region 🔐 Load Environment Variables
@@ -320,13 +322,12 @@ $response = [
         ]
     ],
     'announcements' => $announcements,
-    'uiEvent' => $event,
+    'uiEvent' => $uiEvent,
     'siteMeta' => $siteMeta
 ];
 // #endregion
 
 // #region 🟢 Output (AJAX/Fetch JSON only; PHP 5.6 safe)
-header('Content-Type: text/event-stream; charset=utf-8');
 echo json_encode($response);
 exit;
 // #endregion
