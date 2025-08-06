@@ -13,13 +13,16 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 // #endregion
 
-// #region 🔄 Load Current UI Event from JSON
+// #region 🔄 Load & Clear Current UI Event from JSON (Ephemeral)
 $dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
 $uiEvent = null;
 if (file_exists($dataPath)) {
     $mainData = json_decode(file_get_contents($dataPath), true);
-    if (isset($mainData['uiEvent'])) {
+    if (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
         $uiEvent = $mainData['uiEvent'];
+        // Clear uiEvent after first read
+        $mainData['uiEvent'] = null;
+        file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT));
     }
 }
 // #endregion
