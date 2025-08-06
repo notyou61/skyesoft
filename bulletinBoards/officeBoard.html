@@ -1142,26 +1142,26 @@ window.addEventListener("DOMContentLoaded", () => {
   // 🔄 Rotate bulletin board cards
   rotateCards();
   // Poll for ephemeral events every second
-setInterval(() => {
-    fetch("/skyesoft/api/getDynamicData.php")
-      .then(res => res.json())
-      .then(data => {
-        // Check for a new uiEvent
-        if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
-          let eventId = data.uiEvent.id ?? data.uiEvent.time;
-          if (eventId && eventId !== lastUiEventId) {
-            lastUiEventId = eventId;
-            //showSkyeAlertModal(data.uiEvent);
-            //
-            console.log("🔔 New UI Event:", data.uiEvent);
+  setInterval(() => {
+      fetch("/skyesoft/api/getDynamicData.php")
+        .then(res => res.json())
+        .then(data => {
+          // Check for a new uiEvent
+          if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
+            let eventId = data.uiEvent.id ?? data.uiEvent.time;
+            if (eventId && eventId !== lastUiEventId) {
+              lastUiEventId = eventId;
+              //showSkyeAlertModal(data.uiEvent);
+              //
+              console.log("🔔 New UI Event:", data.uiEvent);
+            }
           }
-        }
-        // Optionally: update time/weather/etc. here as well
-      })
-      .catch(err => {
-        console.error("❌ Polling Error:", err);
-      });
-  }, 1000);
+          // Optionally: update time/weather/etc. here as well
+        })
+        .catch(err => {
+          console.error("❌ Polling Error:", err);
+        });
+    }, 1000);
 });
 </script>
 <!-- 🌐 Global Vars + Clock Ticker -->
