@@ -2,12 +2,10 @@
 // File: api/addAction.php
 
 header('Content-Type: application/json');
-
 // ---- Paths and Setup
 $jsonPath = __DIR__ . '/../assets/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
 require_once __DIR__ . '/setUiEvent.php'; // Only if $actionTypes is defined here
-
 // ---- Load POSTed action
 $input = file_get_contents('php://input');
 $action = json_decode($input, true);
@@ -16,7 +14,6 @@ if (!$action) {
     echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
     exit;
 }
-
 // ---- Validate required fields
 $required = ['actionTypeID', 'actionContactID', 'actionNote', 'actionTimestamp', 'actionLatitude', 'actionLongitude'];
 foreach ($required as $key) {
@@ -26,7 +23,6 @@ foreach ($required as $key) {
         exit;
     }
 }
-
 // ---- Validate numeric fields
 if (!is_numeric($action['actionLatitude']) || $action['actionLatitude'] < -90 || $action['actionLatitude'] > 90) {
     http_response_code(400);
@@ -53,7 +49,6 @@ if (!actionTypeIdExists($action['actionTypeID'], $actionTypes)) {
     echo json_encode(['success' => false, 'error' => 'Invalid actionTypeID']);
     exit;
 }
-
 // ---- Sanitize actionNote to prevent XSS
 $action['actionNote'] = htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
 
@@ -98,7 +93,6 @@ function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
 
 $apiKey = getEnvVar('GOOGLE_MAPS_BACKEND_API_KEY', $envPath);
 $action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatitude'], $action['actionLongitude'], $apiKey);
-
 // ---- Robust JSON file load/init
 if (!file_exists($jsonPath)) {
     $data = [
@@ -119,7 +113,6 @@ if (!file_exists($jsonPath)) {
         exit;
     }
 }
-
 // ---- Assign next actionID (auto-increment)
 $maxId = 0;
 if (isset($data['actions']) && is_array($data['actions'])) {
@@ -130,7 +123,6 @@ if (isset($data['actions']) && is_array($data['actions'])) {
     }
 }
 $action['actionID'] = $maxId + 1;
-
 // ---- Atomic append & save (with file lock)
 $success = false;
 $backupPath = $jsonPath . '.' . date('Ymd_His') . '.bak';
@@ -207,10 +199,8 @@ if ($fp && flock($fp, LOCK_EX)) {
     } else {
         error_log("Failed to set UI event: Invalid actionTypeID={$action['actionTypeID']}");
     }
-
     // Backup current file before write (optional, but highly recommended for MTCO)
     file_put_contents($backupPath, $raw);
-
     // Write new data
     ftruncate($fp, 0);
     rewind($fp);
@@ -225,7 +215,6 @@ if ($fp && flock($fp, LOCK_EX)) {
     echo json_encode(['success' => false, 'error' => 'Failed to lock/write JSON file']);
     exit;
 }
-
 // ---- Final response
 http_response_code($success ? 201 : 500);
 echo json_encode(['success' => $success, 'actionID' => $action['actionID']]);
