@@ -1,8 +1,0 @@
-{
-  "siteVersion": "v0.1.148",
-  "lastDeployNote": "MTCO: Refactor login flow, match new JSON fields, robust ephemeral event architecture, no session logic",
-  "lastDeployTime": "2025-08-06 12:32:53",
-  "commitHash": "4553838",
-  "deployState": "live",
-  "deployIsLive": true
-}
