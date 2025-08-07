@@ -15,3 +15,5 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+# Ignore all data files (do not version control live data)
+assets/data/*
