@@ -133,8 +133,12 @@ $action['actionID'] = $maxId + 1;
 
 // ---- Atomic append & save (with file lock)
 $success = false;
+$backupPath = $jsonPath . '.' . date('Ymd_His') . '.bak';
+
 $fp = fopen($jsonPath, 'c+');
 if ($fp && flock($fp, LOCK_EX)) {
+    // Read existing data
+    rewind($fp);
     $raw = stream_get_contents($fp);
     $currentData = $raw ? json_decode($raw, true) : [
         'actions' => [],
@@ -146,6 +150,8 @@ if ($fp && flock($fp, LOCK_EX)) {
         'uiEvent' => null
     ];
     if (!$currentData) {
+        // If the file was corrupt, back it up before resetting!
+        file_put_contents($backupPath, $raw);
         $currentData = [
             'actions' => [],
             'contacts' => [],
@@ -156,6 +162,8 @@ if ($fp && flock($fp, LOCK_EX)) {
             'uiEvent' => null
         ];
     }
+
+    // Append the new action
     $currentData['actions'][] = $action;
 
     // --- Universal Global UI Event for ALL Actions ---
@@ -179,7 +187,10 @@ if ($fp && flock($fp, LOCK_EX)) {
         }
         // Build event title/message
         $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['actionName']}" : $eventType['actionName'];
-        $message = "{$userName} performed action: {$eventType['actionName']} at " . date('g:i A', strtotime($action['actionTimestamp']));
+        $msgTime = is_numeric($action['actionTimestamp'])
+            ? date('g:i A', $action['actionTimestamp'] / 1000)
+            : date('g:i A');
+        $message = "{$userName} performed action: {$eventType['actionName']} at {$msgTime}";
         if (!empty($action['actionNote'])) {
             $message .= " — " . htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
         }
@@ -197,9 +208,13 @@ if ($fp && flock($fp, LOCK_EX)) {
         error_log("Failed to set UI event: Invalid actionTypeID={$action['actionTypeID']}");
     }
 
+    // Backup current file before write (optional, but highly recommended for MTCO)
+    file_put_contents($backupPath, $raw);
+
+    // Write new data
     ftruncate($fp, 0);
     rewind($fp);
-    fwrite($fp, json_encode($currentData, JSON_PRETTY_PRINT));
+    fwrite($fp, json_encode($currentData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     fflush($fp);
     flock($fp, LOCK_UN);
     fclose($fp);
