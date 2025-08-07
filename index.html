@@ -371,6 +371,7 @@
       }
     }
 
+    
     /**
      * ALWAYS gets current geolocation and place ID before logging an action.
      * Never uses supplied lat/lon/Place ID. If location is denied/unavailable, logs nulls.
@@ -379,7 +380,8 @@
      * @param {string} apiKey - Google Maps API key.
      * @returns {Promise<Object>} - Resolves with the new action object.
      */
-    async function addAction(actionsArray, params, apiKey) {
+    /*
+     async function addAction(actionsArray, params, apiKey) {
       let latitude = null;
       let longitude = null;
       let googlePlaceId = null;
@@ -418,7 +420,7 @@
       return newAction;
     }
     // #endregion
-
+    */
     // #region 🍪 Cookie Utility: getCookie
     /**
      * Returns the value of a named cookie, or null if not found.
