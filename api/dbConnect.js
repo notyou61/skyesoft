@@ -2,7 +2,7 @@
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 
-const dbPath = path.join(__dirname, '/home/notyou64/data/skyesoft.db');
+const dbPath = path.join(__dirname, '/home/notyou64/public_html/data/skyesoft.db');
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
   if (err) {
     console.error('❌ Failed to connect to database:', err.message);

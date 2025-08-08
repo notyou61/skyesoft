@@ -3,7 +3,7 @@
 
 header('Content-Type: application/json');
 // ---- Paths and Setup
-$jsonPath = __DIR__ . '/home/notyou64/data/skyesoft-data.json';
+$jsonPath = __DIR__ . '/home/notyou64/public_html/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
 require_once __DIR__ . '/setUiEvent.php'; // Only if $actionTypes is defined here
 // ---- Load POSTed action

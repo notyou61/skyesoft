@@ -6,9 +6,9 @@ import path from "path";
 import { readFile } from "fs/promises";
 import { DateTime } from "luxon";
 
-const holidaysPath = path.resolve(__dirname, "/home/notyou64/data/federal_holidays_dynamic.json");
-const dataPath = path.resolve(__dirname, "/home/notyou64/data/skyesoft-data.json");
-const versionPath = path.resolve(__dirname, "/home/notyou64/data/version.json");
+const holidaysPath = path.resolve(__dirname, "/home/notyou64/public_html/data/federal_holidays_dynamic.json");
+const dataPath = path.resolve(__dirname, "/home/notyou64/public_html/data/skyesoft-data.json");
+const versionPath = path.resolve(__dirname, "/home/notyou64/public_html/data/version.json");
 // #endregion
 
 // #region 🕒 Workday Settings & Utilities

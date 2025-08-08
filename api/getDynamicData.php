@@ -161,7 +161,7 @@ $holidaysPath = '/home/notyou64/public_html/data/federal_holidays_dynamic.json';
 $dataPath = dirname(__FILE__) . '/home/notyou64/public_html/data/skyesoft-data.json';
 $siteMeta = [];
 
-//$versionPath = dirname(__FILE__) . '/home/notyou64/public_html/data/version.json';
+// Load site metadata if available
 if (file_exists($versionPath)) {
     $versionJson = file_get_contents($versionPath);
     $siteMeta = json_decode($versionJson, true);
