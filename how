@@ -38,9 +38,9 @@ Date:   Wed Jul 16 06:53:56 2025 -0700
  [m
 [31m-#region Paths and Constants[m
 [32m+[m[32m#region 📁 Paths and Constants[m
- $holidaysPath = "/home/notyou64/data/federal_holidays_dynamic.json";[m
- $dataPath = "/home/notyou64/data/skyesoft-data.json";[m
- $versionPath = "/home/notyou64/data/version.json";[m
+ $holidaysPath = "/home/notyou64/public_html/data/federal_holidays_dynamic.json";[m
+ $dataPath = "/home/notyou64/public_html/data/skyesoft-data.json";[m
+ $versionPath = "/home/notyou64/public_html/data/version.json";[m
 [36m@@ -21,7 +35,7 @@[m [mconst WORKDAY_START = '07:30';[m
  const WORKDAY_END = '15:30';[m
  #endregion[m

@@ -7,7 +7,7 @@ const execSync = require("child_process").execSync;
 const bumpType = process.argv[2] || "patch";
 
 // 📌 Define path for version.json
-const versionJsonPath = path.resolve(__dirname, "/home/notyou64/data/version.json");
+const versionJsonPath = path.resolve(__dirname, "/home/notyou64/public_html/data/version.json");
 
 // 🧮 Read current version from version.json (fallback to 0.0.1)
 let version = "0.0.1";
@@ -45,7 +45,7 @@ console.log(`✅ Version bumped to ${newVersionText} (${bumpType})`);
 console.log(`📄 Updated ${path.basename(versionJsonPath)}`);
 
 // === NEW: Also update skyesoft-data.json siteMeta block ===
-const skyeSoftPath = path.resolve(__dirname, "/home/notyou64/data/skyesoft-data.json");
+const skyeSoftPath = path.resolve(__dirname, "/home/notyou64/public_html/data/skyesoft-data.json");
 
 if (fs.existsSync(skyeSoftPath)) {
   const skyeSoftData = JSON.parse(fs.readFileSync(skyeSoftPath, "utf8"));

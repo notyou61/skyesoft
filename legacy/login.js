@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = usernameInput.value.trim();
     try {
       // Fetch user data and validate username
-      const data = await fetch('/home/notyou64/data/skyesoft-data.json').then(r => r.json());
+      const data = await fetch('/home/notyou64/public_html/data/skyesoft-data.json').then(r => r.json());
       const contacts = Array.isArray(data.contacts) ? data.contacts : [];
       const match = contacts.find(
         c => c.contactEmail && c.contactEmail.toLowerCase() === username.toLowerCase()

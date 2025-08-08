@@ -78,16 +78,16 @@ susan@christysigns.com
 * Prevent duplicates by normalizing input (e.g., phone number formats)
 * Use `id` integers for all objects
 * Add optional `officePhoneExt` field
-* Store in `/home/notyou64/data/skyesoft-data.json`
+* Store in `/home/notyou64/public_html/data/skyesoft-data.json`
 
 ---
 
 ## 📂 Related Paths
 
 <<<<<<< HEAD
-* JSON store: `/home/notyou64/data/skyesoft-data.json`
+* JSON store: `/home/notyou64/public_html/data/skyesoft-data.json`
 =======
-* JSON store: `/home/notyou64/data/skyesoft-data.jsonn`
+* JSON store: `/home/notyou64/public_html/data/skyesoft-data.jsonn`
 >>>>>>> a663c884ad9348a4db121ce708da82edfcc47de1
 * Parser code: `assets/js/parseSignature.js`
 * Netlify Function for write access: `netlify/functions/addContact.js`
