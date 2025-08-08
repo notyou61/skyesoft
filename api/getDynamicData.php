@@ -14,7 +14,7 @@ $dataPath = "/home/notyou64/data/skyesoft-data.json";
 $versionPath = "/home/notyou64/data/version.json";
 
 //
-$testPath = '/home/notyou64/data/skyesoft-data.json';
+$testPath = '/home/notyou64/public_html/data/skyesoft-data.json';
 if (file_exists($testPath)) {
     echo "File exists and is accessible!\n";
 } else {
