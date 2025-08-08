@@ -157,11 +157,11 @@ if (!$weatherApiKey) {
 // #endregion
 
 // #region 📁 Paths and Constants
-$holidaysPath = '/home/notyou64/data/federal_holidays_dynamic.json';
-$dataPath = dirname(__FILE__) . '/home/notyou64/data/skyesoft-data.json';
+$holidaysPath = '/home/notyou64/public_html/data/federal_holidays_dynamic.json';
+$dataPath = dirname(__FILE__) . '/home/notyou64/public_html/data/skyesoft-data.json';
 $siteMeta = [];
 
-$versionPath = dirname(__FILE__) . '/home/notyou64/data/version.json';
+$versionPath = dirname(__FILE__) . '/home/notyou64/public_html/data/version.json';
 if (file_exists($versionPath)) {
     $versionJson = file_get_contents($versionPath);
     $siteMeta = json_decode($versionJson, true);
@@ -170,7 +170,7 @@ if (file_exists($versionPath)) {
 $codexPath = '../../assets/data/codex.json';
 $chatLogPath = '../../assets/data/chatLog.json';
 $weatherPath = '../../assets/data/weatherCache.json';
-$announcementsPath = '/home/notyou64/data/announcements.json';
+$announcementsPath = '/home/notyou64/public_html/data/announcements.json';
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
