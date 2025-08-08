@@ -2,7 +2,7 @@
 // 🧠 Use native fetch (Node.js 18+ compatible)
 const path = require("path");
 // 📦 Import required modules
-const skyesoftData = require("../../assets/data/skyesoft-data.json");
+const skyesoftData = require("/home/notyou64/data/skyesoft-data.json");
 // 🚀 Function to check proposed contact against existing data
 function checkProposedContact({ name, title, email, officePhone, cellPhone, company, address }) {
   const { entities, locations, contacts } = skyesoftData;
