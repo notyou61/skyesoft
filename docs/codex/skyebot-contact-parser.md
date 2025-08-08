@@ -84,7 +84,11 @@ susan@christysigns.com
 
 ## 📂 Related Paths
 
+<<<<<<< HEAD
 * JSON store: `/home/notyou64/data/skyesoft-data.json`
+=======
+* JSON store: `/home/notyou64/data/skyesoft-data.jsonn`
+>>>>>>> a663c884ad9348a4db121ce708da82edfcc47de1
 * Parser code: `assets/js/parseSignature.js`
 * Netlify Function for write access: `netlify/functions/addContact.js`
 

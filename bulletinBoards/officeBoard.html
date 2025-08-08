@@ -326,7 +326,6 @@
   margin-bottom: 6px;
   list-style-position: inside; /* Keep the bullets visible within the content box */
 }
-
 </style>
 </head>
 <body>
@@ -351,14 +350,14 @@
 <div>© 2025 Maychris Corporation</div>
 <div class="version">Loading version...</div>
 </div>
-<!--<script src="/assets/js/glbVar.js"></script>-->
+<!-- Weather Config Include-->
 <script src="/skyesoft/assets/js/weatherConfig.js"></script>
+<!-- Weather Include-->
 <script src="/skyesoft/assets/js/weather.js"></script>
-<!--<script src="/assets/js/workdayTicker.js"></script>-->
+<!-- Confetti Include -->
+<script src="/skyesoft/assets/js/confetti.js"></script>
 <script>
     // Import variables from weatherConfig.js
-    // Removed duplicate weatherApiKey and weatherLocation declarations
-
     /**
      * Function to update the time and interval remaining
      * @returns {object} - An object containing the formatted date, day of year, and days remaining.
@@ -1144,7 +1143,6 @@ window.addEventListener("DOMContentLoaded", () => {
   rotateCards();
 });
 </script>
-<!--<script src="/skyesoft/assets/js/workdayTicker.js"></script> -->
 <!-- 🌐 Global Vars + Clock Ticker -->
 <script src="/skyesoft/assets/js/glbVar.js"></script>
 <script src="/skyesoft/assets/js/workdayTicker.js"></script>
