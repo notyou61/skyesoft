@@ -8,12 +8,11 @@ header('Connection: keep-alive');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
 
-<<<<<<< HEAD
 // Paths
 $holidaysPath = "/home/notyou64/data/federal_holidays_dynamic.json";
 $dataPath = "/home/notyou64/data/skyesoft-data.json";
 $versionPath = "/home/notyou64/data/version.json";
-=======
+
 // #region 🔧 Init and Error Reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -176,7 +175,6 @@ $codexPath = '../../assets/data/codex.json';
 $chatLogPath = '../../assets/data/chatLog.json';
 $weatherPath = '../../assets/data/weatherCache.json';
 $announcementsPath = '/home/notyou64/data/announcements.json';
->>>>>>> a663c884ad9348a4db121ce708da82edfcc47de1
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
