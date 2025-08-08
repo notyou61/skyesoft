@@ -11,13 +11,16 @@
 /* 🌐 Base Layout */
 /* #endregion */
 html, body {
-  height: 100vh;
+  min-height: 100vh;
+  height: 100%;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
   background-size: cover;
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin: 0;
+  padding: 0;
 }
 /* #region 📦 Main Content Container */
 /* 📦 Main Content Container */
@@ -484,3 +487,90 @@ body.modal-open {
     min-width: 100px;
   }
 }
+/* ✨ Skyebot Modal: Fade-Out Animation */
+#skyebotModal.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+/* 🤖 Skyebot Modal: Default State */
+#skyebotModal {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+/* 🎉 Animated Emoji Confetti (Skyebot Easter Egg) */
+.skyebot-confetti-emoji {
+  position: absolute;
+  z-index: 9999;
+  font-size: 2em;
+  pointer-events: none;
+  animation: emoji-confetti-fall 2.4s linear forwards;
+}
+@keyframes emoji-confetti-fall {
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { 
+    transform: translateY(var(--confetti-distance, 400px)) scale(0.6) rotate(720deg); 
+    opacity: 0; 
+  }
+}
+/* 🚨 Modal Overlay: covers the whole screen, centers modal */
+#skyeAlertModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  width: 100vw !important;
+  background: rgba(0,0,0,0.2) !important;
+}
+/* 📝 Modal Container: rounded, shadowed box */
+#skyeAlertModalContent {
+  min-width: 340px;
+  max-width: 90vw;
+  padding: 32px 36px 24px 36px;
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
+  background: #fff;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+/* 🏷️ Modal Header: icon + title, colored, flex layout */
+#skyeAlertModalHeader {
+  font-size: 1.3rem;
+  font-weight: bold;
+  padding: 16px 24px 10px 24px;
+  border-bottom: 1px solid #eee;
+  display: flex;          /* allows icon/title spacing */
+  align-items: center;
+  gap: 0.5em;
+}
+/* 📄 Modal Body: main message text */
+#skyeAlertModalBody {
+  font-size: 1rem;
+  padding: 20px 24px 16px 24px;
+}
+/* 🦶 Modal Footer: metadata, small and muted */
+#skyeAlertModalFooter {
+  font-size: 0.93rem;
+  color: #999;
+  padding: 12px 24px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+/* ❌ Close Button: top right, subtle X */
+#skyeAlertModalClose {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.6em;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+/* ✨ Fade-in animation for modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

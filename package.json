@@ -16,7 +16,8 @@
     "marked": "^15.0.11",
     "node-fetch": "^3.3.2",
     "puppeteer": "^24.7.1",
-    "remarkable": "^2.0.1"
+    "remarkable": "^2.0.1",
+    "sharp": "^0.34.3"
   },
   "keywords": [],
   "author": "Steve Skye",
