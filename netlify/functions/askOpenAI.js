@@ -5,7 +5,7 @@ const path = require("path");
 
 // Load Version Info
 const versionData = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "../../assets/data/version.json"))
+  fs.readFileSync(path.join(__dirname, "/home/notyou64/data/version.json"))
 );
 
 // Load Codex JSON
