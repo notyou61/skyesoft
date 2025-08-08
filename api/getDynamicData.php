@@ -7,9 +7,9 @@ header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
 
 // Paths
-$holidaysPath = "../../assets/data/federal_holidays_dynamic.json";
-$dataPath = "../../assets/data/skyesoft-data.json";
-$versionPath = "../../assets/data/version.json";
+$holidaysPath = "/home/notyou64/data/federal_holidays_dynamic.json";
+$dataPath = "/home/notyou64/data/skyesoft-data.json";
+$versionPath = "/home/notyou64/data/version.json";
 
 // Workday constants
 define('WORKDAY_START', '07:30');
