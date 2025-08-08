@@ -14,8 +14,10 @@ ini_set('display_errors', 1);
 // #endregion
 
 // #region 🔄 Load & Clear Current UI Event from JSON (Ephemeral)
-$dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
+$dataPath = dirname(__FILE__) . '/home/notyou64/data/skyesoft-data.json';
+// Initialize main data structure
 $uiEvent = null;
+// Load current UI event if it exists
 if (file_exists($dataPath)) {
     $mainData = json_decode(file_get_contents($dataPath), true);
     if (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
@@ -24,6 +26,10 @@ if (file_exists($dataPath)) {
         $mainData['uiEvent'] = null;
         file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT));
     }
+}
+// If no UI event, initialize to null
+if (!file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT))) {
+    error_log("❌ Could not write to $dataPath in getDynamicData.php");
 }
 // #endregion
 
@@ -150,11 +156,11 @@ if (!$weatherApiKey) {
 // #endregion
 
 // #region 📁 Paths and Constants
-$holidaysPath = '../../assets/data/federal_holidays_dynamic.json';
-$dataPath = dirname(__FILE__) . '/../assets/data/skyesoft-data.json';
+$holidaysPath = '/home/notyou64/data/federal_holidays_dynamic.json';
+$dataPath = dirname(__FILE__) . '/home/notyou64/data/skyesoft-data.json';
 $siteMeta = [];
 
-$versionPath = dirname(__FILE__) . '/../assets/data/version.json';
+$versionPath = dirname(__FILE__) . '/home/notyou64/data/version.json';
 if (file_exists($versionPath)) {
     $versionJson = file_get_contents($versionPath);
     $siteMeta = json_decode($versionJson, true);
@@ -163,7 +169,7 @@ if (file_exists($versionPath)) {
 $codexPath = '../../assets/data/codex.json';
 $chatLogPath = '../../assets/data/chatLog.json';
 $weatherPath = '../../assets/data/weatherCache.json';
-$announcementsPath = '../assets/data/announcements.json';
+$announcementsPath = '/home/notyou64/data/announcements.json';
 
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
