@@ -19,22 +19,18 @@ ini_set('display_errors', 1);
 // #endregion
 
 // #region 🔄 Load & Clear Current UI Event from JSON (Ephemeral)
-$dataPath = dirname(__FILE__) . '/home/notyou64/data/skyesoft-data.json';
-// Initialize main data structure
+$mainData = [];
 $uiEvent = null;
-// Load current UI event if it exists
 if (file_exists($dataPath)) {
     $mainData = json_decode(file_get_contents($dataPath), true);
     if (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
         $uiEvent = $mainData['uiEvent'];
         // Clear uiEvent after first read
         $mainData['uiEvent'] = null;
-        file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT));
+        if (!file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT))) {
+            error_log("❌ Could not write to $dataPath in getDynamicData.php");
+        }
     }
-}
-// If no UI event, initialize to null
-if (!file_put_contents($dataPath, json_encode($mainData, JSON_PRETTY_PRINT))) {
-    error_log("❌ Could not write to $dataPath in getDynamicData.php");
 }
 // #endregion
 
