@@ -13,6 +13,15 @@ $holidaysPath = "/home/notyou64/data/federal_holidays_dynamic.json";
 $dataPath = "/home/notyou64/data/skyesoft-data.json";
 $versionPath = "/home/notyou64/data/version.json";
 
+//
+$testPath = '/home/notyou64/data/skyesoft-data.json';
+if (file_exists($testPath)) {
+    echo "File exists and is accessible!\n";
+} else {
+    echo "File NOT found or not accessible: $testPath\n";
+}
+exit;
+
 // #region 🔧 Init and Error Reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
