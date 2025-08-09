@@ -1,6 +1,11 @@
 <?php
 // File: api/addAction.php
 
+// -- sanitize output: no stray bytes before JSON
+if (function_exists('apache_setenv')) @apache_setenv('no-gzip', '1');
+@ini_set('zlib.output_compression', '0');
+while (ob_get_level()) { @ob_end_clean(); }
+header_remove('X-Powered-By');
 header('Content-Type: application/json; charset=utf-8');
 ini_set('display_errors', '0'); error_reporting(0);
 
