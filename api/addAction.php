@@ -2,10 +2,15 @@
 // File: api/addAction.php
 
 header('Content-Type: application/json');
+
 // ---- Paths and Setup
 $jsonPath = '/home/notyou64/data/skyesoft-data.json';
 $envPath = __DIR__ . '/../.env';
-require_once __DIR__ . '/setUiEvent.php'; // Only if $actionTypes is defined here
+
+// ---- Init error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // ---- Load POSTed action
 $input = file_get_contents('php://input');
 $action = json_decode($input, true);
@@ -14,6 +19,7 @@ if (!$action) {
     echo json_encode(['success' => false, 'error' => 'Invalid JSON']);
     exit;
 }
+
 // ---- Validate required fields
 $required = ['actionTypeID', 'actionContactID', 'actionNote', 'actionTimestamp', 'actionLatitude', 'actionLongitude'];
 foreach ($required as $key) {
@@ -23,6 +29,7 @@ foreach ($required as $key) {
         exit;
     }
 }
+
 // ---- Validate numeric fields
 if (!is_numeric($action['actionLatitude']) || $action['actionLatitude'] < -90 || $action['actionLatitude'] > 90) {
     http_response_code(400);
@@ -32,6 +39,20 @@ if (!is_numeric($action['actionLatitude']) || $action['actionLatitude'] < -90 ||
 if (!is_numeric($action['actionLongitude']) || $action['actionLongitude'] < -180 || $action['actionLongitude'] > 180) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid longitude (must be between -180 and 180)']);
+    exit;
+}
+
+// ---- Load actionTypes from JSON data file
+$actionTypes = [];
+if (file_exists($jsonPath)) {
+    $existingData = json_decode(file_get_contents($jsonPath), true);
+    if (isset($existingData['actionTypes']) && is_array($existingData['actionTypes'])) {
+        $actionTypes = $existingData['actionTypes'];
+    }
+}
+if (empty($actionTypes)) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'No action types found in data file']);
     exit;
 }
 
@@ -49,10 +70,11 @@ if (!actionTypeIdExists($action['actionTypeID'], $actionTypes)) {
     echo json_encode(['success' => false, 'error' => 'Invalid actionTypeID']);
     exit;
 }
+
 // ---- Sanitize actionNote to prevent XSS
 $action['actionNote'] = htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
 
-// ---- Always look up Place ID server-side (ignore what frontend sends)
+// ---- Always look up Place ID server-side
 function getEnvVar($key, $envPath) {
     static $env = null;
     if ($env === null) {
@@ -75,7 +97,7 @@ function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
         return "Place ID unavailable: Missing API key";
     }
     $url = "https://maps.googleapis.com/maps/api/geocode/json?latlng={$lat},{$lng}&key={$apiKey}";
-    $response = @file_get_contents($url); // TODO: Replace with cURL for better error handling
+    $response = @file_get_contents($url);
     if ($response === false) {
         error_log("Google Maps API error: Network issue for lat={$lat}, lng={$lng}");
         return "Place ID unavailable: Network error";
@@ -93,6 +115,7 @@ function getGooglePlaceIdFromLatLng($lat, $lng, $apiKey) {
 
 $apiKey = getEnvVar('GOOGLE_MAPS_BACKEND_API_KEY', $envPath);
 $action['actionGooglePlaceId'] = getGooglePlaceIdFromLatLng($action['actionLatitude'], $action['actionLongitude'], $apiKey);
+
 // ---- Robust JSON file load/init
 if (!file_exists($jsonPath)) {
     $data = [
@@ -100,7 +123,7 @@ if (!file_exists($jsonPath)) {
         'contacts' => [],
         'entities' => [],
         'locations' => [],
-        'actionTypes' => [],
+        'actionTypes' => $actionTypes,
         'siteMeta' => [],
         'uiEvent' => null
     ];
@@ -113,7 +136,8 @@ if (!file_exists($jsonPath)) {
         exit;
     }
 }
-// ---- Assign next actionID (auto-increment)
+
+// ---- Assign next actionID
 $maxId = 0;
 if (isset($data['actions']) && is_array($data['actions'])) {
     foreach ($data['actions'] as $act) {
@@ -123,42 +147,21 @@ if (isset($data['actions']) && is_array($data['actions'])) {
     }
 }
 $action['actionID'] = $maxId + 1;
-// ---- Atomic append & save (with file lock)
-$success = false;
-$backupPath = $jsonPath . '.' . date('Ymd_His') . '.bak';
 
+// ---- Atomic append & save
+$success = false;
 $fp = fopen($jsonPath, 'c+');
 if ($fp && flock($fp, LOCK_EX)) {
-    // Read existing data
     rewind($fp);
     $raw = stream_get_contents($fp);
-    $currentData = $raw ? json_decode($raw, true) : [
-        'actions' => [],
-        'contacts' => [],
-        'entities' => [],
-        'locations' => [],
-        'actionTypes' => [],
-        'siteMeta' => [],
-        'uiEvent' => null
-    ];
+    $currentData = $raw ? json_decode($raw, true) : $data;
     if (!$currentData) {
-        // If the file was corrupt, back it up before resetting!
-        file_put_contents($backupPath, $raw);
-        $currentData = [
-            'actions' => [],
-            'contacts' => [],
-            'entities' => [],
-            'locations' => [],
-            'actionTypes' => [],
-            'siteMeta' => [],
-            'uiEvent' => null
-        ];
+        $currentData = $data;
     }
 
-    // Append the new action
     $currentData['actions'][] = $action;
 
-    // --- Universal Global UI Event for ALL Actions ---
+    // --- Universal Global UI Event
     $eventType = null;
     foreach ($actionTypes as $at) {
         if (isset($at['actionTypeID']) && $at['actionTypeID'] == $action['actionTypeID']) {
@@ -167,7 +170,6 @@ if ($fp && flock($fp, LOCK_EX)) {
         }
     }
     if ($eventType) {
-        // Dynamic user name lookup using contactName and contactID
         $userName = "User";
         if (isset($currentData['contacts']) && is_array($currentData['contacts'])) {
             foreach ($currentData['contacts'] as $c) {
@@ -177,16 +179,14 @@ if ($fp && flock($fp, LOCK_EX)) {
                 }
             }
         }
-        // Build event title/message
-        $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['actionName']}" : $eventType['actionName'];
         $msgTime = is_numeric($action['actionTimestamp'])
             ? date('g:i A', $action['actionTimestamp'] / 1000)
             : date('g:i A');
+        $title = isset($eventType['icon']) ? "{$eventType['icon']} {$eventType['actionName']}" : $eventType['actionName'];
         $message = "{$userName} performed action: {$eventType['actionName']} at {$msgTime}";
         if (!empty($action['actionNote'])) {
             $message .= " — " . htmlspecialchars($action['actionNote'], ENT_QUOTES, 'UTF-8');
         }
-        // Set the global ephemeral uiEvent
         $currentData['uiEvent'] = [
             'type' => 'modal',
             'action' => $action['actionTypeID'],
@@ -196,12 +196,8 @@ if ($fp && flock($fp, LOCK_EX)) {
             'timestamp' => time(),
             'eventID' => uniqid()
         ];
-    } else {
-        error_log("Failed to set UI event: Invalid actionTypeID={$action['actionTypeID']}");
     }
-    // Backup current file before write (optional, but highly recommended for MTCO)
-    file_put_contents($backupPath, $raw);
-    // Write new data
+
     ftruncate($fp, 0);
     rewind($fp);
     fwrite($fp, json_encode($currentData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -215,6 +211,7 @@ if ($fp && flock($fp, LOCK_EX)) {
     echo json_encode(['success' => false, 'error' => 'Failed to lock/write JSON file']);
     exit;
 }
+
 // ---- Final response
 http_response_code($success ? 201 : 500);
 echo json_encode(['success' => $success, 'actionID' => $action['actionID']]);
