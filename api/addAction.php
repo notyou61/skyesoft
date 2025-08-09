@@ -1,34 +1,31 @@
 <?php
 // File: api/addAction.php
 
-// -- sanitize output: no stray bytes before JSON
-if (function_exists('apache_setenv')) @apache_setenv('no-gzip', '1');
-@ini_set('zlib.output_compression', '0');
+// --- Output hygiene (strip any prepended junk)
 while (ob_get_level()) { @ob_end_clean(); }
+@ini_set('zlib.output_compression', '0');
 header_remove('X-Powered-By');
 header('Content-Type: application/json; charset=utf-8');
-ini_set('display_errors', '0'); error_reporting(0);
+
+// Helpers
+function sendJson($arr, $code=200){
+    $payload = json_encode($arr);
+    if ($payload === false) $payload = '{"status":"error","message":"JSON encode failed"}';
+    http_response_code($code);
+    $buf = ob_get_contents();
+    if ($buf !== false && strlen($buf)) { @ob_clean(); }
+    echo $payload;
+    exit;
+}
+function bad($msg, $code=400){ sendJson(array('status'=>'error','message'=>$msg), $code); }
+function ok($data=array(), $code=200){ sendJson(array('status'=>'ok') + $data, $code); }
 
 // Config (absolute path)
 $jsonPath = '/home/notyou64/public_html/data/skyesoft-data.json';
 
-// Helpers (concise JSON responses)
-function bad($msg, $code = 400) {
-    http_response_code($code);
-    echo json_encode(array('status' => 'error', 'message' => $msg));
-    exit;
-}
-function ok($data = array(), $code = 200) {
-    http_response_code($code);
-    echo json_encode(array('status' => 'ok') + $data);
-    exit;
-}
-
 // Read JSON body
 $rawBody = file_get_contents('php://input');
 $body = json_decode($rawBody, true);
-
-// Validate body (must be JSON object)
 if (!is_array($body)) bad('Invalid JSON body');
 
 // Load data file
@@ -37,7 +34,7 @@ $dataJson = file_get_contents($jsonPath);
 $data = json_decode($dataJson, true);
 if (!is_array($data)) bad('Data file corrupt', 500);
 
-// Ensure arrays exist (actions, actionTypes)
+// Ensure arrays exist
 if (!isset($data['actions']) || !is_array($data['actions'])) $data['actions'] = array();
 if (!isset($data['actionTypes']) || !is_array($data['actionTypes'])) $data['actionTypes'] = array();
 
@@ -45,20 +42,20 @@ if (!isset($data['actionTypes']) || !is_array($data['actionTypes'])) $data['acti
 $actionTypes = $data['actionTypes'];
 if (empty($actionTypes)) bad('No action types found in data file', 500);
 
-// Required fields (// User check)
+// Required fields
 $reqFields = array('actionTypeID', 'actionContactID');
 foreach ($reqFields as $k) {
     if (!isset($body[$k])) bad('Missing required field: ' . $k);
 }
 
-// Validate actionTypeID (must exist in data file)
+// Validate actionTypeID
 $validTypeIds = array();
 foreach ($actionTypes as $t) {
     if (isset($t['actionTypeID'])) $validTypeIds[] = (int)$t['actionTypeID'];
 }
 if (!in_array((int)$body['actionTypeID'], $validTypeIds, true)) bad('Unknown actionTypeID');
 
-// Next actionID (default 1)
+// Next actionID
 $nextId = 1;
 if (!empty($data['actions'])) {
     $ids = array();
@@ -68,7 +65,7 @@ if (!empty($data['actions'])) {
     if (!empty($ids)) $nextId = max($ids) + 1;
 }
 
-// Build action object (include all properties)
+// Build action
 $now = time();
 $action = array(
     'actionID'         => $nextId,
@@ -85,7 +82,7 @@ $action = array(
     )
 );
 
-// Append and persist (LOCK_EX to avoid race; do not wipe data)
+// Append and persist
 $data['actions'][] = $action;
 
 $fp = fopen($jsonPath, 'c+');
@@ -106,5 +103,5 @@ flock($fp, LOCK_UN);
 fclose($fp);
 if ($w === false) bad('Write failed', 500);
 
-// Success (clean JSON; skyebot.js-friendly)
+// Success
 ok(array('actionID' => $nextId), 201);
