@@ -5,7 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 ini_set('display_errors', '0'); error_reporting(0);
 
 // Config (absolute path)
-$jsonPath = '/home/notyou64/data/skyesoft-data.json';
+$jsonPath = '/home/notyou64/public_html/data/skyesoft-data.json';
 
 // Helpers (concise JSON responses)
 function bad($msg, $code = 400) {
