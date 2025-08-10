@@ -63,8 +63,10 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
   // Result (concise)
   if (result && result.ok) {
     console.log(`[Skyebot] Action logged (${actionType}):`, result.id);
+    return true;   // ← add
   } else {
     console.log(`Skyebot action '${actionType}' could not be logged.`);
+    return false;  // ← add
   }
 }
 // #endregion
