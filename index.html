@@ -429,64 +429,60 @@
       return match ? decodeURIComponent(match[2]) : null;
     }
     // #endregion
-
   
-    // #region 🔑 Login Form Handler (with Universal AJAX Logging + Live Geolocation)
-    document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    // #region 🔑 Login Form Handler (auth → audit log → UI)
+document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault(); // Stop default submit
 
-        // Find the submit button with a crudX class (get action type, e.g., 1=login)
-        const btn = e.submitter || document.querySelector(".crud1");
-        const actionTypeID = getCrudActionTypeID(btn); // Your function (returns an int, e.g., 1 for login)
+  const form = e.currentTarget;
+  const btn  = e.submitter || document.querySelector(".crud1");
+  const actionTypeID = (typeof getCrudActionTypeID === "function") ? getCrudActionTypeID(btn) : 1;
 
-        // Get contactID from cookie, fallback to 1
-        const actionContactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+  // Disable to prevent double-submits
+  if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
 
-        // Compose actionNote (customize as needed)
-        const actionNote = "User logged in";
-
-        // Capture current timestamp
-        const actionTimestamp = Date.now();
-
-        // Get user's location (returns a promise)
-        function getLocationAsync() {
-            return new Promise((resolve) => {
-                if (!navigator.geolocation) return resolve({lat: null, lng: null});
-                navigator.geolocation.getCurrentPosition(
-                    pos => resolve({lat: pos.coords.latitude, lng: pos.coords.longitude}),
-                    () => resolve({lat: null, lng: null}),
-                    { enableHighAccuracy: true, timeout: 5000 }
-                );
-            });
-        }
-
-        // Wait for live location
-        const {lat, lng} = await getLocationAsync();
-
-        // Compose the action object for AJAX log
-        const actionObj = {
-            actionTypeID,
-            actionContactID,
-            actionNote,
-            actionLatitude: lat,
-            actionLongitude: lng,
-            actionTimestamp
-        };
-        // Console.log("Action object to log:", actionObj);
-        console.log("Login actionObj:", actionObj);
-        // Call universal logger (AJAX to /api/addAction.php)
-        const result = await logAction(actionObj);
-
-        // Optionally update UI or notify user
-        if (result && result.success) {
-            console.log("Login action logged. ID:", result.actionID);
-            localStorage.setItem("userLoggedIn", "true");
-            if (typeof window.updateLoginUI === "function") window.updateLoginUI();
-        } else {
-            console.log("Login action could not be logged. Please try again.");
-        }
+  try {
+    // 1) Authenticate with server (adjust field names as needed)
+    const formData = new FormData(form); // expects inputs like name="username" / name="password"
+    const authRes  = await fetch("/skyesoft/api/login.php", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData
     });
-    // #endregion
+
+    if (!authRes.ok) throw new Error(`HTTP ${authRes.status}`);
+    const auth = await authRes.json();
+
+    // Expect { success: true, contactID, name, ... }
+    if (auth?.success !== true) {
+      console.warn("Login failed:", auth?.message || auth);
+      alert("Invalid username or password.");
+      return;
+    }
+
+    // Persist minimal client state
+    localStorage.setItem("userLoggedIn", "true");
+    if (auth?.contactID) document.cookie = `skye_contactID=${encodeURIComponent(auth.contactID)}; path=/;`;
+
+    // 2) Audit log only if this was a real login event (ID 1)
+    if (actionTypeID === 1) {
+      const ok = await handleSkyebotAction("login", "User logged in");
+      if (!ok) console.warn("Login action could not be logged.");
+      else console.log("Login action logged.");
+    }
+
+    // 3) UI updates / redirect
+    if (typeof window.updateLoginUI === "function") window.updateLoginUI(true);
+    // window.location.href = "/skyesoft/"; // optional redirect
+
+  } catch (err) {
+    console.error("Login error:", err);
+    alert("Network error during login. Please try again.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Log In"; }
+  }
+});
+// #endregion
 
   </script>
   <!-- #endregion -->
