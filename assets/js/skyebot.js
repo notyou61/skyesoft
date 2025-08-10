@@ -69,6 +69,18 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
 }
 // #endregion
 
+// #region 🔐 Login Utility (Server-Audited)
+window.loginUser = async function (customData = {}) {
+  // Server-side audit log (login)
+  await handleSkyebotAction("login", "User logged in", customData);
+
+  // Update UI to reflect logged-in state
+  if (typeof updateLoginUI === "function") {
+    updateLoginUI(true);
+  }
+};
+// #endregion
+
 // #region ⏺️ Universal Action Logger (hardened)
 // Purpose: Post action to backend and normalize success shape
 // Returns: { ok: true, id, data } | { ok: false, error, data? }
