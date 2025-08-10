@@ -431,58 +431,66 @@
     // #endregion
   
     // #region 🔑 Login Form Handler (auth → audit log → UI)
-document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault(); // Stop default submit
+    document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault(); // Stop default submit
 
-  const form = e.currentTarget;
-  const btn  = e.submitter || document.querySelector(".crud1");
-  const actionTypeID = (typeof getCrudActionTypeID === "function") ? getCrudActionTypeID(btn) : 1;
+      const form = e.currentTarget;
+      const btn  = e.submitter || document.querySelector(".crud1");
+      const actionTypeID = (typeof getCrudActionTypeID === "function") ? getCrudActionTypeID(btn) : 1;
 
-  // Disable to prevent double-submits
-  if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
+      // Disable to prevent double-submits
+      if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
 
-  try {
-    // 1) Authenticate with server (adjust field names as needed)
-    const formData = new FormData(form); // expects inputs like name="username" / name="password"
-    const authRes  = await fetch("/skyesoft/api/login.php", {
-      method: "POST",
-      credentials: "same-origin",
-      body: formData
+      try {
+        // 1) Authenticate with server (adjust field names as needed)
+        const formData = new FormData(form);
+        const authRes = await fetch("/skyesoft/api/login.php", {
+          method: "POST",
+          credentials: "same-origin",
+          body: formData
+        });
+
+        if (!authRes.ok) throw new Error(`HTTP ${authRes.status}`);
+
+        const raw = await authRes.text();
+        let auth;
+        try { auth = JSON.parse(raw); }
+        catch (e) {
+          console.error("Auth raw response (not JSON):", raw);
+          throw new Error("Bad JSON");
+        }
+
+
+        // Expect { success: true, contactID, name, ... }
+        if (auth?.success !== true) {
+          console.warn("Login failed:", auth?.message || auth);
+          alert("Invalid username or password.");
+          return;
+        }
+
+        // Persist minimal client state
+        localStorage.setItem("userLoggedIn", "true");
+        if (auth?.contactID) document.cookie = `skye_contactID=${encodeURIComponent(auth.contactID)}; path=/;`;
+
+        // 2) Audit log only if this was a real login event (ID 1)
+        if (actionTypeID === 1) {
+          const ok = await handleSkyebotAction("login", "User logged in");
+          if (!ok) console.warn("Login action could not be logged.");
+          else console.log("Login action logged.");
+        }
+
+        // 3) UI updates / redirect
+        if (typeof window.updateLoginUI === "function") window.updateLoginUI(true);
+        // window.location.href = "/skyesoft/"; // optional redirect
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Network error during login. Please try again.");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Log In"; }
+      }
     });
-
-    if (!authRes.ok) throw new Error(`HTTP ${authRes.status}`);
-    const auth = await authRes.json();
-
-    // Expect { success: true, contactID, name, ... }
-    if (auth?.success !== true) {
-      console.warn("Login failed:", auth?.message || auth);
-      alert("Invalid username or password.");
-      return;
-    }
-
-    // Persist minimal client state
-    localStorage.setItem("userLoggedIn", "true");
-    if (auth?.contactID) document.cookie = `skye_contactID=${encodeURIComponent(auth.contactID)}; path=/;`;
-
-    // 2) Audit log only if this was a real login event (ID 1)
-    if (actionTypeID === 1) {
-      const ok = await handleSkyebotAction("login", "User logged in");
-      if (!ok) console.warn("Login action could not be logged.");
-      else console.log("Login action logged.");
-    }
-
-    // 3) UI updates / redirect
-    if (typeof window.updateLoginUI === "function") window.updateLoginUI(true);
-    // window.location.href = "/skyesoft/"; // optional redirect
-
-  } catch (err) {
-    console.error("Login error:", err);
-    alert("Network error during login. Please try again.");
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Log In"; }
-  }
-});
-// #endregion
+    // #endregion
 
   </script>
   <!-- #endregion -->
