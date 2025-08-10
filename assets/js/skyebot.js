@@ -6,95 +6,107 @@ let codexData = null; // 🗃️ Will hold Codex glossary/policies
 
 // #region 🧠 Skyebot Action Router
 async function handleSkyebotAction(actionType, note, customData = {}) {
-    const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
-    const getLocationAsync = () => new Promise(resolve => {
-        if (!navigator.geolocation) return resolve({ lat: null, lng: null });
-        navigator.geolocation.getCurrentPosition(
-            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => resolve({ lat: null, lng: null }),
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
-    });
-    const { lat, lng } = await getLocationAsync();
+  // Init (contact + location)
+  const contactID = parseInt(getCookie('skye_contactID'), 10) || 1;
+  const getLocationAsync = () => new Promise(resolve => {
+    if (!navigator.geolocation) return resolve({ lat: null, lng: null }); // (no geo)
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve({ lat: null, lng: null }),
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  });
+  const { lat, lng } = await getLocationAsync();
 
-    let actionTypeID;
-    let actionNote = note || "";
-    switch (actionType) {
-        case "logout":
-            actionTypeID = 2;
-            actionNote = note || "User logged out";
-            break;
-        case "add":
-            actionTypeID = 3;
-            actionNote = note || "Added record";
-            break;
-        case "edit":
-            actionTypeID = 4;
-            actionNote = note || "Edited record";
-            break;
-        case "delete":
-            actionTypeID = 5;
-            actionNote = note || "Deleted record";
-            break;
-        default:
-            actionTypeID = 99;
-            actionNote = note || "Other Skyebot action";
-    }
+  // User check (map action → ID)
+  let actionTypeID, actionNote = note || "";
+  switch (actionType) {
+    case "login":                      // ✅ add this branch
+      actionTypeID = 1;
+      actionNote = note || "User logged in";
+      break;
+    case "logout":
+      actionTypeID = 2;
+      actionNote = note || "User logged out";
+      break;
+    case "add":
+      actionTypeID = 3;
+      actionNote = note || "Added record";
+      break;
+    case "edit":
+      actionTypeID = 4;
+      actionNote = note || "Edited record";
+      break;
+    case "delete":
+      actionTypeID = 5;
+      actionNote = note || "Deleted record";
+      break;
+    default:
+      actionTypeID = 99;
+      actionNote = note || "Other Skyebot action";
+  }
 
-    // Compose the action object for AJAX log
-    const actionObj = {
-        actionTypeID,
-        actionContactID: contactID,
-        actionNote,
-        actionLatitude: lat,
-        actionLongitude: lng,
-        actionTimestamp: Date.now(),
-        ...customData
-    };
+  // Compose (action payload)
+  const actionObj = {
+    actionTypeID,
+    actionContactID: contactID,
+    actionNote,
+    actionLatitude: lat,
+    actionLongitude: lng,
+    actionTimestamp: Date.now(),
+    ...customData
+  };
 
-    // Always log to backend!
-    const result = await logAction(actionObj);
+  // Post (audit log)
+  const result = await logAction(actionObj);
 
-    if (result && result.success) {
-        console.log(`[Skyebot] Action logged (${actionType}):`, result.actionID);
-        // Optionally notify/chat
-    } else {
-        alert(`Skyebot action '${actionType}' could not be logged.`);
-    }
+  // Result (concise)
+  if (result && result.ok) {
+    console.log(`[Skyebot] Action logged (${actionType}):`, result.id);
+  } else {
+    console.log(`Skyebot action '${actionType}' could not be logged.`);
+  }
 }
 // #endregion
 
-// #region ⏺️ Universal Action Logger
+// #region ⏺️ Universal Action Logger (hardened)
+// Purpose: Post action to backend and normalize success shape
+// Returns: { ok: true, id, data } | { ok: false, error, data? }
 
-/**
- * Posts any action to the backend audit log.
- * @param {Object} actionObj - Structured action data (see schema below)
- * @returns {Promise} Resolves with server response or error
- */
-function logAction(actionObj) {
-    // Ensure actionObj contains all required fields
-    // You can add defaults/checks here if needed
-    return fetch('/skyesoft/api/addAction.php', {
+async function logAction(actionObj) {
+    // Init fetch (JSON POST)
+    const resp = await fetch('/skyesoft/api/addAction.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',                         // Session cookie
         body: JSON.stringify(actionObj)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Optionally show a toast or chat bubble here
-            console.log('Action logged:', data.actionID || actionObj);
-        } else {
-            console.warn('Logging failed:', data.error || data);
-        }
-        return data;
-    })
-    .catch(err => {
-        console.error('AJAX logAction error:', err);
-        return { success: false, error: err };
     });
+
+    // HTTP check (// Network/HTTP)
+    if (!resp.ok) {
+        return { ok: false, error: `HTTP ${resp.status}` };
+    }
+
+    // Parse JSON (// App layer)
+    let data;
+    try { data = await resp.json(); }
+    catch { return { ok: false, error: 'Bad JSON' }; }
+
+    // Normalize success (supports {success:true} or {status:'ok'})
+    const isOk = data?.success === true || data?.status === 'ok';
+    const actionId = Number.isFinite(data?.actionID) ? data.actionID : null;
+
+    if (isOk && actionId !== null) {
+        console.log('Action logged:', actionId);           // Details (masked elsewhere)
+        return { ok: true, id: actionId, data };
+    }
+
+    // Fallback error
+    const msg = data?.message || data?.error || JSON.stringify(data);
+    console.warn('Logging failed:', msg);
+    return { ok: false, error: msg, data };
 }
-//#endregion
+// #endregion
 
 // #region 🧹 Modal Reset On Close
 function toggleModal() {
