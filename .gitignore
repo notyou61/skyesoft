@@ -1,19 +1,51 @@
-# Ignore sensitive config
-config.php
-.env
+##############################
+# OS / Editor noise
+##############################
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
 
+##############################
 # Logs
+##############################
 logs/
 *.log
 
-# System files
-.DS_Store
-Thumbs.db
+##############################
+# Environment & secrets
+##############################
+config.php
+.env
+.env.*
+*.env
+public_html/.data/.env
 
-# Vendor directory
+##############################
+# Runtime data (never version live data)
+##############################
+public_html/data/
+public_html/*/data/
+**/skyesoft-data.json
+assets/data/*.json
+
+##############################
+# Build / deps / artifacts
+##############################
+node_modules/
+dist/
+build/
+.cache/
+*.map
+
+##############################
+# PHP / Composer
+##############################
 /vendor/
+composer.lock
 
-# Local Netlify folder
+##############################
+# Platform-specific
+##############################
 .netlify
-# Ignore all data files (do not version control live data)
-assets/data/*
