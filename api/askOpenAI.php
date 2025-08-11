@@ -1,6 +1,8 @@
 <?php
 // 📁 File: api/askOpenAI.php
 
+require_once __DIR__.'/env_boot.php';
+
 #region 🛡️ Headers and API Key
 header("Content-Type: application/json");
 $apiKey = getenv("OPENAI_API_KEY");
