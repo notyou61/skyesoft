@@ -1,6 +1,6 @@
 <?php
 // File: api/addAction.php
-// Purpose: Log an action with locationID
+// Purpose: Log an action with locationID and snap to canonical office location if within range
 
 // --- Output hygiene (strip any prepended junk)
 while (ob_get_level()) { @ob_end_clean(); }
@@ -21,6 +21,16 @@ function sendJson($arr, $code=200){
 function bad($msg, $code=400){ sendJson(array('status'=>'error','message'=>$msg), $code); }
 function ok($data=array(), $code=200){ sendJson(array('status'=>'ok') + $data, $code); }
 
+// Haversine distance function (in meters)
+function dist_m($lat1, $lon1, $lat2, $lon2) {
+    $R = 6371000; // Earth's radius in meters
+    $toRad = M_PI / 180;
+    $dLat = ($lat2 - $lat1) * $toRad;
+    $dLon = ($lon2 - $lon1) * $toRad;
+    $a = sin($dLat/2) * sin($dLat/2) + cos($lat1 * $toRad) * cos($lat2 * $toRad) * sin($dLon/2) * sin($dLon/2);
+    return 2 * $R * atan2(sqrt($a), sqrt(1 - $a));
+}
+
 // Config (absolute path)
 $jsonPath = '/home/notyou64/public_html/data/skyesoft-data.json';
 
@@ -38,6 +48,7 @@ if (!is_array($data)) bad('Data file corrupt', 500);
 // Ensure arrays exist
 if (!isset($data['actions']) || !is_array($data['actions'])) $data['actions'] = array();
 if (!isset($data['actionTypes']) || !is_array($data['actionTypes'])) $data['actionTypes'] = array();
+if (!isset($data['locations']) || !is_array($data['locations'])) $data['locations'] = array();
 
 // Pull actionTypes (required)
 $actionTypes = $data['actionTypes'];
@@ -69,35 +80,43 @@ if (!empty($data['actions'])) {
 // Init ms timestamp (fallback)
 $nowMs = (int) round(microtime(true) * 1000);
 
-// Get place_id and locationID from places_reverse.php
-$placeId = null;
-$locationID = null;
+// --- Place ID lookup (graceful; never 500) -----------------------------
+$placeId = null;  // default
+$locationID = null;  // default
 if (isset($body['actionLatitude']) && isset($body['actionLongitude'])) {
-    $url = 'http://localhost/skyesoft/api/places_reverse.php?lat=' . urlencode($body['actionLatitude']) . '&lng=' . urlencode($body['actionLongitude']);
+    $url = 'https://skyelighting.com/skyesoft/api/places_reverse.php?lat='
+         . urlencode($body['actionLatitude'])
+         . '&lng=' . urlencode($body['actionLongitude'])
+         . '&ts=' . time();
+
     $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2
     ));
-    $response = curl_exec($ch);
-    $err = curl_error($ch);
+    $resp = curl_exec($ch);
+    $cerr = curl_error($ch);
     curl_close($ch);
-    
-    if ($err) {
-        bad('Failed to fetch place_id: ' . $err, 500);
-    }
-    
-    $placeData = json_decode($response, true);
-    if (is_array($placeData)) {
-        $placeId = isset($placeData['place_id']) ? $placeData['place_id'] : null;
-        $locationID = isset($placeData['locationID']) ? $placeData['locationID'] : null;
-    } else {
-        bad('Invalid response from places_reverse.php', 500);
+
+    if ($cerr) {
+        // Soft-fail: log and continue
+        error_log('[addAction] place lookup cURL error: ' . $cerr);
+    } elseif (is_string($resp) && strlen($resp) > 0) {
+        $placeData = json_decode($resp, true);
+        if (is_array($placeData)) {
+            $placeId = isset($placeData['place_id']) ? $placeData['place_id'] : null;
+            $locationID = isset($placeData['locationID']) ? $placeData['locationID'] : null;
+        } else {
+            // Soft-fail: log first 200 chars for diagnostics
+            error_log('[addAction] place lookup non-JSON: ' . substr($resp, 0, 200));
+        }
     }
 }
 
-// Use client-provided place_id if available and no locationID matched
-if ($locationID === null && isset($body['actionGooglePlaceId']) && $body['actionGooglePlaceId'] !== '') {
+// If client sent a place id, prefer it when server lookup failed
+if ($placeId === null && isset($body['actionGooglePlaceId']) && $body['actionGooglePlaceId'] !== '') {
     $placeId = (string)$body['actionGooglePlaceId'];
 }
 
@@ -119,6 +138,28 @@ $action = array(
     )
 );
 
+// Normalize location: snap to known location if within 150m
+$locations = isset($data['locations']) ? $data['locations'] : array();
+if ($action['actionLatitude'] !== null && $action['actionLongitude'] !== null && !empty($locations)) {
+    $best = null;
+    $bestDist = 1e12;
+    foreach ($locations as $loc) {
+        if (!isset($loc['locationLatitude'], $loc['locationLongitude'])) continue;
+        $d = dist_m($action['actionLatitude'], $action['actionLongitude'], $loc['locationLatitude'], $loc['locationLongitude']);
+        if ($d < $bestDist) {
+            $best = $loc;
+            $bestDist = $d;
+        }
+    }
+    // Snap within 150m
+    if ($best && $bestDist <= 150) {
+        $action['locationID'] = isset($best['locationID']) ? (int)$best['locationID'] : null;
+        if (!empty($best['locationGooglePlaceID'])) {
+            $action['actionGooglePlaceId'] = $best['locationGooglePlaceID'];
+        }
+    }
+}
+
 // Append and persist
 $data['actions'][] = $action;
 
@@ -129,7 +170,8 @@ if (!flock($fp, LOCK_EX)) { fclose($fp); bad('Unable to lock data file', 500); }
 rewind($fp);
 $encoded = json_encode($data, JSON_PRETTY_PRINT);
 if ($encoded === false) {
-    flock($fp, LOCK_UN); fclose($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
     bad('JSON encode failed', 500);
 }
 
@@ -142,4 +184,3 @@ if ($w === false) bad('Write failed', 500);
 
 // Success
 ok(array('actionID' => $nextId), 201);
-?>
