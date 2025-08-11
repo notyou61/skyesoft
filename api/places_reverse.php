@@ -42,5 +42,5 @@ $placeId = isset($data['results'][0]['place_id']) ? $data['results'][0]['place_i
 
 echo json_encode([
     'place_id' => $placeId,
-    'status'   => $data['status'] ?? null
+    'status'   => isset($data['status']) ? $data['status'] : null
 ]);
