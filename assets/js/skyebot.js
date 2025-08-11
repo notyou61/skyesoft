@@ -485,28 +485,26 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // #region 🚪 Skyebot Universal Logout Handler (Server-Audited, LGBAS/MTCO)
   window.logoutUser = async function () {
-      // #region ⏺️ Server-Side Action Logging (Universal)
-      // Logs this logout action server-side for audit/compliance
       await handleSkyebotAction("logout");
-      // #endregion
-
-      // #region 🧹 Session Cleanup & UI Reset
-      // Clear all relevant session and user state (localStorage, cookies, UI)
+      // Attempt to notify the server of logout
+      try {
+          await fetch("/skyesoft/api/logout.php", { method: "POST", credentials: "same-origin" });
+      } catch (err) {
+          console.warn("Server logout request failed:", err);
+      }
+      // Clear local storage and cookies
       localStorage.removeItem('userLoggedIn');
       localStorage.removeItem('userId');
       document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      document.cookie = "skyelogin_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/skyesoft/;";
-      // Hide or reset the chat panel, if present
-      const chatPanel = document.getElementById('chatPanel') || document.querySelector('.chat-wrapper');
-      if (chatPanel) chatPanel.style.display = "none";
-      // Update the UI to reflect logged-out state
+      document.cookie = "skye_contactID=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Hide chat panel if it exists
       if (typeof updateLoginUI === "function") {
           updateLoginUI();
       } else {
           location.reload();
       }
-      // #endregion
   };
   // #endregion
+
 });
 // #endregion
