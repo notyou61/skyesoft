@@ -55,7 +55,7 @@ foreach ($actionTypes as $t) {
 }
 if (!in_array((int)$body['actionTypeID'], $validTypeIds, true)) bad('Unknown actionTypeID');
 
-// Next actionID
+// Next actionID (scan existing)
 $nextId = 1;
 if (!empty($data['actions'])) {
     $ids = array();
@@ -65,19 +65,27 @@ if (!empty($data['actions'])) {
     if (!empty($ids)) $nextId = max($ids) + 1;
 }
 
-// Build action
-$now = time();
+// Init ms timestamp (fallback)
+$nowMs = (int) round(microtime(true) * 1000);
+
+// Build action (whitelist fields)
 $action = array(
-    'actionID'         => $nextId,
-    'actionTypeID'     => (int)$body['actionTypeID'],
-    'actionContactID'  => isset($body['actionContactID']) ? (int)$body['actionContactID'] : 0,
-    'actionNote'       => isset($body['actionNote']) ? trim((string)$body['actionNote']) : '',
-    'actionLatitude'   => isset($body['actionLatitude']) ? (float)$body['actionLatitude'] : null,
-    'actionLongitude'  => isset($body['actionLongitude']) ? (float)$body['actionLongitude'] : null,
-    'actionTimestamp'  => isset($body['actionTimestamp']) ? (int)$body['actionTimestamp'] : $now,
-    'actionMeta'       => array(
-        'ip'        => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
-        'userAgent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
+    'actionID'            => $nextId,
+    'actionTypeID'        => isset($body['actionTypeID']) ? (int)$body['actionTypeID'] : 0,  // (default 0)
+    'actionContactID'     => isset($body['actionContactID']) ? (int)$body['actionContactID'] : 0,
+    'actionNote'          => isset($body['actionNote']) ? substr(trim((string)$body['actionNote']), 0, 500) : '',
+    'actionLatitude'      => isset($body['actionLatitude']) ? (float)$body['actionLatitude'] : null,
+    'actionLongitude'     => isset($body['actionLongitude']) ? (float)$body['actionLongitude'] : null,
+    // Place ID (top-level; nullable)
+    'actionGooglePlaceId' => (isset($body['actionGooglePlaceId']) && $body['actionGooglePlaceId'] !== '')
+                              ? (string)$body['actionGooglePlaceId']
+                              : null,
+    // Use client ms if provided, else server ms
+    'actionTimestamp'     => isset($body['actionTimestamp']) ? (int)$body['actionTimestamp'] : $nowMs,
+    // Meta (server-derived)
+    'actionMeta'          => array(
+        'ip'        => isset($_SERVER['REMOTE_ADDR'])      ? $_SERVER['REMOTE_ADDR']      : '',
+        'userAgent' => isset($_SERVER['HTTP_USER_AGENT'])  ? $_SERVER['HTTP_USER_AGENT']  : '',
         'source'    => 'addAction.php'
     )
 );
