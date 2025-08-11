@@ -1,5 +1,6 @@
 <?php
 // File: api/addAction.php
+// Purpose: Log an action with locationID
 
 // --- Output hygiene (strip any prepended junk)
 while (ob_get_level()) { @ob_end_clean(); }
@@ -68,24 +69,52 @@ if (!empty($data['actions'])) {
 // Init ms timestamp (fallback)
 $nowMs = (int) round(microtime(true) * 1000);
 
+// Get place_id and locationID from places_reverse.php
+$placeId = null;
+$locationID = null;
+if (isset($body['actionLatitude']) && isset($body['actionLongitude'])) {
+    $url = 'http://localhost/skyesoft/api/places_reverse.php?lat=' . urlencode($body['actionLatitude']) . '&lng=' . urlencode($body['actionLongitude']);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, array(
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10
+    ));
+    $response = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+    
+    if ($err) {
+        bad('Failed to fetch place_id: ' . $err, 500);
+    }
+    
+    $placeData = json_decode($response, true);
+    if (is_array($placeData)) {
+        $placeId = isset($placeData['place_id']) ? $placeData['place_id'] : null;
+        $locationID = isset($placeData['locationID']) ? $placeData['locationID'] : null;
+    } else {
+        bad('Invalid response from places_reverse.php', 500);
+    }
+}
+
+// Use client-provided place_id if available and no locationID matched
+if ($locationID === null && isset($body['actionGooglePlaceId']) && $body['actionGooglePlaceId'] !== '') {
+    $placeId = (string)$body['actionGooglePlaceId'];
+}
+
 // Build action (whitelist fields)
 $action = array(
     'actionID'            => $nextId,
-    'actionTypeID'        => isset($body['actionTypeID']) ? (int)$body['actionTypeID'] : 0,  // (default 0)
+    'actionTypeID'        => isset($body['actionTypeID']) ? (int)$body['actionTypeID'] : 0,
     'actionContactID'     => isset($body['actionContactID']) ? (int)$body['actionContactID'] : 0,
     'actionNote'          => isset($body['actionNote']) ? substr(trim((string)$body['actionNote']), 0, 500) : '',
     'actionLatitude'      => isset($body['actionLatitude']) ? (float)$body['actionLatitude'] : null,
     'actionLongitude'     => isset($body['actionLongitude']) ? (float)$body['actionLongitude'] : null,
-    // Place ID (top-level; nullable)
-    'actionGooglePlaceId' => (isset($body['actionGooglePlaceId']) && $body['actionGooglePlaceId'] !== '')
-                              ? (string)$body['actionGooglePlaceId']
-                              : null,
-    // Use client ms if provided, else server ms
+    'actionGooglePlaceId' => $placeId,
+    'locationID'          => $locationID, // New field, null if no unambiguous match
     'actionTimestamp'     => isset($body['actionTimestamp']) ? (int)$body['actionTimestamp'] : $nowMs,
-    // Meta (server-derived)
     'actionMeta'          => array(
-        'ip'        => isset($_SERVER['REMOTE_ADDR'])      ? $_SERVER['REMOTE_ADDR']      : '',
-        'userAgent' => isset($_SERVER['HTTP_USER_AGENT'])  ? $_SERVER['HTTP_USER_AGENT']  : '',
+        'ip'        => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
+        'userAgent' => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
         'source'    => 'addAction.php'
     )
 );
@@ -113,3 +142,4 @@ if ($w === false) bad('Write failed', 500);
 
 // Success
 ok(array('actionID' => $nextId), 201);
+?>
