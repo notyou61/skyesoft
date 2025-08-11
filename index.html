@@ -492,6 +492,23 @@
     });
     // #endregion
 
+    // #region
+    async function resolvePlaceId(lat, lng) {
+      if (lat == null || lng == null) return null;
+      try {
+        const res = await fetch(`/skyesoft/api/places_reverse.php?lat=${lat}&lng=${lng}`, {
+          credentials: 'same-origin'
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.place_id || null;
+      } catch (err) {
+        console.warn("Failed to resolve Place ID:", err);
+        return null;
+      }
+    }
+    // #endregion
+
   </script>
   <!-- #endregion -->
   
