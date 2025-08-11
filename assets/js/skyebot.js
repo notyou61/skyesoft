@@ -17,6 +17,11 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
     );
   });
   const { lat, lng } = await getLocationAsync();
+  
+  // 🔎 NEW: lookup Google Place ID (server-side)
+  const actionGooglePlaceId = (lat != null && lng != null)
+    ? await resolvePlaceId(lat, lng)
+    : null;
 
   // User check (map action → ID)
   let actionTypeID, actionNote = note || "";
@@ -53,6 +58,7 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
     actionNote,
     actionLatitude: lat,
     actionLongitude: lng,
+    actionGooglePlaceId, // NEW: Place ID
     actionTimestamp: Date.now(),
     ...customData
   };
