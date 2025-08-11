@@ -153,7 +153,7 @@ if ($action['actionLatitude'] !== null && $action['actionLongitude'] !== null &&
     }
     // Snap within 150m
     if ($best && $bestDist <= 150) {
-        $action['locationID'] = isset($best['locationID']) ? (int)$best['locationID'] : null;
+        $action['actionLocationID'] = isset($best['locationID']) ? (int)$best['locationID'] : null;
         if (!empty($best['locationGooglePlaceID'])) {
             $action['actionGooglePlaceId'] = $best['locationGooglePlaceID'];
         }
