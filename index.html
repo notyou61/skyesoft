@@ -236,18 +236,6 @@
       } catch (e) {
         console.warn("uiEvent check failed:", e);
       }
-
-      // 🔢 Show Local Polling Stream Count
-      let streamCountEl = document.getElementById("streamCount");
-      // (create if missing)
-      if (!streamCountEl) {
-        streamCountEl = document.createElement("div");
-        streamCountEl.id = "streamCount";
-        // place it somewhere sensible (e.g., header)
-        const header = document.getElementById("bodyHeaderCopy") || document.body;
-        header.appendChild(streamCountEl);
-      }
-      streamCountEl.textContent = "Active streams: 1";
     });
     // #endregion
 
