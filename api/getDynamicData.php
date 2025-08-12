@@ -323,6 +323,54 @@ if (file_exists($dataPath)) {
 }
 // #endregion
 
+// #region 🔔 One‑shot UI Event (emit, expire, ack)
+$dirty   = false;
+$uiEvent = isset($data['uiEvent']) ? $data['uiEvent'] : null;
+
+// Auto‑expire by TTL
+if (is_array($uiEvent) && isset($uiEvent['nonce'])) {
+  $nowMs = (int) round(microtime(true) * 1000);
+  $born  = isset($uiEvent['nonce'])  ? (int)$uiEvent['nonce']  : 0;
+  $ttl   = isset($uiEvent['ttlMs'])  ? (int)$uiEvent['ttlMs']  : 15000;
+  if ($born > 0 && ($nowMs - $born) > $ttl) {
+    $data['uiEvent'] = null;
+    $uiEvent = null;
+    $dirty = true;
+  }
+}
+
+// ACK clear (supports JSON or form POST)
+if ($uiEvent && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $raw  = file_get_contents('php://input');
+  $post = array();
+  if ($raw) {
+    $json = json_decode($raw, true);
+    if (is_array($json)) $post = $json;
+  }
+  if (empty($post) && !empty($_POST)) $post = $_POST;
+
+  if (isset($post['ackNonce'])) {
+    $ack = (int) $post['ackNonce'];
+    if (isset($uiEvent['nonce']) && (int)$uiEvent['nonce'] === $ack) {
+      $data['uiEvent'] = null;
+      $uiEvent = null;
+      $dirty = true;
+    }
+  }
+}
+
+// Persist if we modified the data
+if ($dirty) {
+  $fp = fopen($jsonPath, 'c+');
+  if ($fp) {
+    flock($fp, LOCK_EX); rewind($fp);
+    ftruncate($fp, 0);
+    fwrite($fp, json_encode($data));
+    fflush($fp); flock($fp, LOCK_UN); fclose($fp);
+  }
+}
+// #endregion
+
 // #region 📤 Response
 $response = [
     'timeDateArray' => [
