@@ -102,20 +102,55 @@ setInterval(() => {
     .then(data => {
       // #region 🧪 Debug Log
       //console.log('uiEvent in polling:', data.uiEvent);
-
-      // User Interface Event Conditional
-      // Check if uiEvent exists and has relevant properties
-      if (data && data.uiEvent && (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)) {
-        // Use id if present, otherwise time
+      // User Interface Event Conditional — CRUD-aware with color mapping
+      if (data && data.uiEvent && data.uiEvent.actionTypeID) {
         let eventId = data.uiEvent.id ?? data.uiEvent.time;
-        // Ensure eventId is a string
+
         if (eventId && eventId !== lastUiEventId) {
-          // console.log('New UI Event:', eventID);
           console.log('uiEvent in polling:', eventId);
-          // Update lastUiEventId
           lastUiEventId = eventId;
-          // Show the modal with the event data
-          showSkyeAlertModal(data.uiEvent);
+
+          // 🗺️ CRUD → Color mapping
+          const crudColorMap = {
+            Create: "#28a745", // Green
+            Read:   "#17a2b8", // Teal
+            Update: "#ffc107", // Yellow/Amber
+            Delete: "#dc3545"  // Red
+          };
+
+          // Determine color from actionCRUDType or fallback
+          const actionColor = crudColorMap[data.uiEvent.actionCRUDType] || "#6c757d"; // Default gray
+
+          // Base modal payload
+          const modalPayload = {
+            icon: data.uiEvent.icon || "",
+            title: data.uiEvent.actionName || "System Event",
+            message: data.uiEvent.actionDescription || "",
+            color: actionColor,
+            durationSec: data.uiEvent.durationSec || 5,
+            user: data.uiEvent.user,
+            time: data.uiEvent.time,
+            source: data.uiEvent.source || "System"
+          };
+
+          // Optional overrides for known actionTypeIDs
+          switch (data.uiEvent.actionTypeID) {
+            case 1: // Login
+              modalPayload.icon = "✅";
+              modalPayload.title = "Login Successful";
+              modalPayload.message = data.uiEvent.actionDescription || "User logged into the system.";
+              break;
+
+            case 2: // Logout
+              modalPayload.icon = "👋";
+              modalPayload.title = "Logged Out";
+              modalPayload.message = data.uiEvent.actionDescription || "User logged out of the system.";
+              break;
+
+            // No default case needed — color & text already handled by mapping
+          }
+
+          showSkyeAlertModal(modalPayload);
         }
       }
       // #endregion
