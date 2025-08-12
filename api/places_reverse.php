@@ -47,8 +47,8 @@ $url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=' .
 $resp = file_get_contents($url);
 $data = json_decode($resp,true);
 
-echo json_encode([
-    'place_id' => $data['results'][0]['place_id'] ?? null,
-    'status'   => $data['status'] ?? 'UNKNOWN',
+echo json_encode(array(
+    'place_id' => isset($data['results'][0]['place_id']) ? $data['results'][0]['place_id'] : null,
+    'status'   => isset($data['status']) ? $data['status'] : 'UNKNOWN',
     'actionLocationID' => null
-]);
+));
