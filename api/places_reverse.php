@@ -1,5 +1,5 @@
 <?php
-// File: api/addAction.php
+// File: api/places_reverse.php
 // Purpose: Log an action with locationID and snap to canonical office location if within range
 
 // --- Output hygiene (strip any prepended junk)
