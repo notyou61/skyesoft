@@ -226,11 +226,28 @@
     // #endregion
 
     // #region 🔐 Session Manager & Login State
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      // UI refresh
       if (typeof window.updateLoginUI === "function") window.updateLoginUI();
-        // 🔢 Show Local Polling Stream Count
-        const streamCountEl = document.getElementById("streamCount");
-        if (streamCountEl) streamCountEl.textContent = "Active streams: 1";
+
+      // 🔔 Fire any pending one‑shot UI event (ACK + vanish)
+      try {
+        await handleOneShotUiEventFromServer();
+      } catch (e) {
+        console.warn("uiEvent check failed:", e);
+      }
+
+      // 🔢 Show Local Polling Stream Count
+      let streamCountEl = document.getElementById("streamCount");
+      // (create if missing)
+      if (!streamCountEl) {
+        streamCountEl = document.createElement("div");
+        streamCountEl.id = "streamCount";
+        // place it somewhere sensible (e.g., header)
+        const header = document.getElementById("bodyHeaderCopy") || document.body;
+        header.appendChild(streamCountEl);
+      }
+      streamCountEl.textContent = "Active streams: 1";
     });
     // #endregion
 
@@ -492,7 +509,42 @@
     });
     // #endregion
 
-    // #region
+    // #region 🔔 One‑shot UI Event dispatcher (reads + ACKs)
+    async function handleOneShotUiEventFromServer() {
+      try {
+        const res = await fetch('/skyesoft/api/getDynamicData.php', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const sseSnapshot = await res.json();
+        if (!sseSnapshot || !sseSnapshot.uiEvent || !sseSnapshot.uiEvent.nonce) return;
+
+        const ev = sseSnapshot.uiEvent;
+        // Central dispatcher
+        switch (ev.event) {
+          case 'modal.open': {
+            const m = document.getElementById(ev.target);
+            if (m) { m.style.display = 'block'; document.body.classList.add('modal-open'); }
+            break;
+          }
+          case 'toast.show':
+            // showToast(ev.payload && ev.payload.text);
+            break;
+          case 'route.goto':
+            if (ev.payload && ev.payload.href) location.href = ev.payload.href;
+            break;
+        }
+
+        // ACK to clear
+        fetch('/skyesoft/api/getDynamicData.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ ackNonce: ev.nonce })
+        }).catch(() => {});
+      } catch {}
+    }
+    // #endregion
+
+    // #region 📍 Resolve Google Place ID from coordinates
     async function resolvePlaceId(lat, lng) {
       if (lat == null || lng == null) return null;
       try {
