@@ -96,11 +96,21 @@ if (!is_dir($reportsDir)) {
     mkdir($reportsDir, 0777, true);
 }
 
+// Debugging: check path and permissions
+if (!is_writable($reportsDir)) {
+    error_log("❌ Reports dir not writable: " . $reportsDir);
+}
+
 // Save file
 $filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
 $filePath = $reportsDir . $filenameSafe;
 
-if (!@file_put_contents($filePath, $html)) {
+// Remove @ for testing
+$result = file_put_contents($filePath, $html);
+
+if ($result === false) {
+    error_log("❌ Failed to write report to: " . $filePath);
+    error_log("📄 Realpath: " . realpath($reportsDir));
     echo json_encode(array('success' => false, 'error' => 'Failed to save report file.'));
     exit;
 }
