@@ -297,8 +297,28 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 #region 📝 Build System Prompt (Preserve Current Functionality + Report Support)
 
 // Load report types from JSON file
-$reportTypesPath = '/home/notyou64/public_html/data/report_types.jsonn';
+$reportTypesPath = '/home/notyou64/public_html/data/report_types.json';
 $reportTypesJson = file_get_contents($reportTypesPath);
+$reportTypes = json_decode($reportTypesJson, true);
+
+// Ensure file exists and is readable before trying to load
+if (!file_exists($reportTypesPath) || !is_readable($reportTypesPath)) {
+    echo json_encode([
+        "error" => "Missing or unreadable report_types.json",
+        "path"  => $reportTypesPath
+    ]);
+    exit;
+}
+
+$reportTypesJson = file_get_contents($reportTypesPath);
+if ($reportTypesJson === false) {
+    echo json_encode([
+        "error" => "Unable to read report_types.json",
+        "path"  => $reportTypesPath
+    ]);
+    exit;
+}
+
 $reportTypes = json_decode($reportTypesJson, true);
 
 // Existing action matrix (unchanged, but "Report" added to match new feature)
