@@ -426,10 +426,45 @@ if (!isset($result["choices"][0]["message"]["content"])) {
 $responseContent = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
-#region ✅ Agentic CRUD Action Handler
+#region 📄 Universal Report Generation Hook
 session_start();
 $crudData = json_decode($responseContent, true);
 
+if (
+    is_array($crudData) &&
+    isset($crudData['actionName']) &&
+    strtolower($crudData['actionName']) === 'report' &&
+    isset($crudData['reportType'])
+) {
+    $_POST['reportType'] = $crudData['reportType'];
+    $_POST['reportData'] = $crudData['reportData'] ?? [];
+
+    ob_start();
+    include __DIR__ . '/generateReport.php';
+    $reportOutput = ob_get_clean();
+
+    $reportJson = json_decode($reportOutput, true);
+
+    if (!empty($reportJson['success']) && !empty($reportJson['reportUrl'])) {
+        echo json_encode([
+            "response" => "📄 Report created successfully. [View Report](" . $reportJson['reportUrl'] . ")",
+            "action" => "none",
+            "sessionId" => session_id(),
+            "reportUrl" => $reportJson['reportUrl']
+        ]);
+    } else {
+        echo json_encode([
+            "response" => "❌ Report creation failed.",
+            "action" => "none",
+            "sessionId" => session_id(),
+            "error" => $reportJson['error'] ?? "Unknown error"
+        ]);
+    }
+    exit; // ✅ Stop after report generation
+}
+#endregion
+
+#region ✅ Agentic CRUD Action Handler
 if (
     is_array($crudData) &&
     isset($crudData["actionType"], $crudData["actionName"]) &&
@@ -438,13 +473,13 @@ if (
 ) {
     $type = $crudData["actionType"];
     $name = $crudData["actionName"];
-    // Switch based on action type
+
     switch ($type) {
         case "Create":
             // Login Conditional
             if ($name === "Login") {
-                $username = isset($crudData["details"]["username"]) ? $crudData["details"]["username"] : '';
-                $password = isset($crudData["details"]["password"]) ? $crudData["details"]["password"] : '';
+                $username = $crudData["details"]["username"] ?? '';
+                $password = $crudData["details"]["password"] ?? '';
                 if (authenticateUser($username, $password)) {
                     $_SESSION['user_id'] = $username;
                     echo json_encode([
@@ -467,44 +502,28 @@ if (
                 }
                 exit;
             }
+
             // Logout Conditional
             if ($name === "Logout") {
-                // Unset session variables
                 session_unset();
-                // Destroy session
                 session_destroy();
-                // Unset PHPSESSID
                 if (ini_get("session.use_cookies")) {
-                    // Expire session cookie
                     $params = session_get_cookie_params();
-                    // Unset session cookie
-                    setcookie(session_name(), '', time() - 42000,
-                        // Set Path  
-                        $params["path"], $params["domain"],
-                        // Secure flag
-                        $params["secure"], isset($params["httponly"]) ? $params["httponly"] : false
-                    );
+                    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"] ?? false);
                 }
-                // Expire custom login cookie
                 setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-                // Echo logout response
                 echo json_encode([
-                    // Response message
                     "response" => "You have been logged out.",
-                    // Action Type
                     "actionType" => $type,
-                    // Action Name
                     "actionName" => $name,
-                    // Session ID
                     "sessionId" => session_id(),
-                    // Logged In Status
                     "loggedIn" => false
                 ]);
-                // Exit after logout
                 exit;
             }
+
             // Create CRUD Entity
-            if (isset($crudData["details"]) && is_array($crudData["details"])) {
+            if (!empty($crudData["details"]) && is_array($crudData["details"])) {
                 $result = createCrudEntity($name, $crudData["details"]);
                 echo json_encode([
                     "response" => $result ? "$name created successfully." : "Failed to create $name.",
@@ -518,7 +537,7 @@ if (
             break;
 
         case "Read":
-            if (isset($crudData["criteria"]) && is_array($crudData["criteria"])) {
+            if (!empty($crudData["criteria"]) && is_array($crudData["criteria"])) {
                 $result = readCrudEntity($name, $crudData["criteria"]);
                 echo json_encode([
                     "response" => $result !== false ? $result : "No $name found matching criteria.",
@@ -532,7 +551,7 @@ if (
             break;
 
         case "Update":
-            if (isset($crudData["updates"]) && is_array($crudData["updates"])) {
+            if (!empty($crudData["updates"]) && is_array($crudData["updates"])) {
                 $result = updateCrudEntity($name, $crudData["updates"]);
                 echo json_encode([
                     "response" => $result ? "$name updated successfully." : "Failed to update $name.",
@@ -546,7 +565,7 @@ if (
             break;
 
         case "Delete":
-            if (isset($crudData["target"]) && is_array($crudData["target"])) {
+            if (!empty($crudData["target"]) && is_array($crudData["target"])) {
                 $result = deleteCrudEntity($name, $crudData["target"]);
                 echo json_encode([
                     "response" => $result ? "$name deleted successfully." : "Failed to delete $name.",
