@@ -479,27 +479,27 @@ if (
         case "Create":
             // Login Conditional
             if ($name === "Login") {
-                $username = $crudData["details"]["username"] ?? '';
-                $password = $crudData["details"]["password"] ?? '';
+                $username = isset($crudData["details"]["username"]) ? $crudData["details"]["username"] : '';
+                $password = isset($crudData["details"]["password"]) ? $crudData["details"]["password"] : '';
                 if (authenticateUser($username, $password)) {
                     $_SESSION['user_id'] = $username;
-                    echo json_encode([
+                    echo json_encode(array(
                         "response" => "Login successful.",
                         "actionType" => $type,
                         "actionName" => $name,
-                        "details" => ["username" => $username],
+                        "details" => array("username" => $username),
                         "sessionId" => session_id(),
                         "loggedIn" => true
-                    ]);
+                    ));
                 } else {
-                    echo json_encode([
+                    echo json_encode(array(
                         "response" => "Login failed.",
                         "actionType" => $type,
                         "actionName" => $name,
-                        "details" => ["username" => $username],
+                        "details" => array("username" => $username),
                         "sessionId" => session_id(),
                         "loggedIn" => false
-                    ]);
+                    ));
                 }
                 exit;
             }
@@ -510,29 +510,37 @@ if (
                 session_destroy();
                 if (ini_get("session.use_cookies")) {
                     $params = session_get_cookie_params();
-                    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"] ?? false);
+                    setcookie(
+                        session_name(),
+                        '',
+                        time() - 42000,
+                        $params["path"],
+                        $params["domain"],
+                        $params["secure"],
+                        isset($params["httponly"]) ? $params["httponly"] : false
+                    );
                 }
                 setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-                echo json_encode([
+                echo json_encode(array(
                     "response" => "You have been logged out.",
                     "actionType" => $type,
                     "actionName" => $name,
                     "sessionId" => session_id(),
                     "loggedIn" => false
-                ]);
+                ));
                 exit;
             }
 
             // Create CRUD Entity
             if (!empty($crudData["details"]) && is_array($crudData["details"])) {
                 $result = createCrudEntity($name, $crudData["details"]);
-                echo json_encode([
+                echo json_encode(array(
                     "response" => $result ? "$name created successfully." : "Failed to create $name.",
                     "actionType" => $type,
                     "actionName" => $name,
                     "details" => $crudData["details"],
                     "sessionId" => session_id()
-                ]);
+                ));
                 exit;
             }
             break;
@@ -540,13 +548,13 @@ if (
         case "Read":
             if (!empty($crudData["criteria"]) && is_array($crudData["criteria"])) {
                 $result = readCrudEntity($name, $crudData["criteria"]);
-                echo json_encode([
+                echo json_encode(array(
                     "response" => $result !== false ? $result : "No $name found matching criteria.",
                     "actionType" => $type,
                     "actionName" => $name,
                     "criteria" => $crudData["criteria"],
                     "sessionId" => session_id()
-                ]);
+                ));
                 exit;
             }
             break;
@@ -554,13 +562,13 @@ if (
         case "Update":
             if (!empty($crudData["updates"]) && is_array($crudData["updates"])) {
                 $result = updateCrudEntity($name, $crudData["updates"]);
-                echo json_encode([
+                echo json_encode(array(
                     "response" => $result ? "$name updated successfully." : "Failed to update $name.",
                     "actionType" => $type,
                     "actionName" => $name,
                     "updates" => $crudData["updates"],
                     "sessionId" => session_id()
-                ]);
+                ));
                 exit;
             }
             break;
@@ -568,24 +576,24 @@ if (
         case "Delete":
             if (!empty($crudData["target"]) && is_array($crudData["target"])) {
                 $result = deleteCrudEntity($name, $crudData["target"]);
-                echo json_encode([
+                echo json_encode(array(
                     "response" => $result ? "$name deleted successfully." : "Failed to delete $name.",
                     "actionType" => $type,
                     "actionName" => $name,
                     "target" => $crudData["target"],
                     "sessionId" => session_id()
-                ]);
+                ));
                 exit;
             }
             break;
     }
 
-    echo json_encode([
+    echo json_encode(array(
         "response" => "Invalid or incomplete CRUD action data.",
         "actionType" => $type,
         "actionName" => $name,
         "sessionId" => session_id()
-    ]);
+    ));
     exit;
 }
 #endregion
