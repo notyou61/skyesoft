@@ -437,8 +437,9 @@ if (
     isset($crudData['reportType'])
 ) {
     $_POST['reportType'] = $crudData['reportType'];
-    $_POST['reportData'] = $crudData['reportData'] ?? [];
+    $_POST['reportData'] = isset($crudData['reportData']) ? $crudData['reportData'] : array();
 
+    // Generate the report
     ob_start();
     include __DIR__ . '/generateReport.php';
     $reportOutput = ob_get_clean();
@@ -446,19 +447,19 @@ if (
     $reportJson = json_decode($reportOutput, true);
 
     if (!empty($reportJson['success']) && !empty($reportJson['reportUrl'])) {
-        echo json_encode([
-            "response" => "📄 Report created successfully. <a href='" . htmlspecialchars($reportJson['reportUrl'], ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
-            "action" => "none",
-            "sessionId" => session_id(),
-            "reportUrl" => $reportJson['reportUrl']
-        ]);
+        echo json_encode(array(
+            "response"   => "📄 Report created successfully. <a href='" . htmlspecialchars($reportJson['reportUrl'], ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
+            "action"     => "none",
+            "sessionId"  => session_id(),
+            "reportUrl"  => $reportJson['reportUrl']
+        ));
     } else {
-        echo json_encode([
-            "response" => "❌ Report creation failed.",
-            "action" => "none",
-            "sessionId" => session_id(),
-            "error" => $reportJson['error'] ?? "Unknown error"
-        ]);
+        echo json_encode(array(
+            "response"   => "❌ Report creation failed.",
+            "action"     => "none",
+            "sessionId"  => session_id(),
+            "error"      => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error"
+        ));
     }
     exit; // ✅ Stop after report generation
 }
