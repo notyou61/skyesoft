@@ -26,14 +26,26 @@ $reportType = isset($_POST['reportType']) ? $_POST['reportType'] : 'custom';
 $reportData = isset($_POST['reportData']) ? $_POST['reportData'] : array();
 
 // Load report definitions
-$reportTypesFile = __DIR__ . '/report_types.json';
+// Prefer production absolute path, fallback to local relative for dev
+$reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
 if (!file_exists($reportTypesFile)) {
-    echo json_encode(array('success' => false, 'error' => 'Missing report types file.'));
+    $reportTypesFile = __DIR__ . '/../data/report_types.json';
+}
+// Check if file exists
+if (!file_exists($reportTypesFile)) {
+    echo json_encode([
+        'success' => false,
+        'error' => 'Missing report types file: ' . $reportTypesFile
+    ]);
     exit;
 }
+// Decode JSON
 $reportTypes = json_decode(file_get_contents($reportTypesFile), true);
 if ($reportTypes === null) {
-    echo json_encode(array('success' => false, 'error' => 'Invalid report types file: ' . json_last_error()));
+    echo json_encode([
+        'success' => false,
+        'error' => 'Invalid report types file: ' . json_last_error()
+    ]);
     exit;
 }
 
