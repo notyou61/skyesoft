@@ -46,6 +46,10 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
       actionTypeID = 5;
       actionNote = note || "Deleted record";
       break;
+    case "report":                     // ✅ new case for reports
+      actionTypeID = 98;
+      // Do not override note — keep whatever is passed in
+      break;
     default:
       actionTypeID = 99;
       actionNote = note || "Other Skyebot action";
