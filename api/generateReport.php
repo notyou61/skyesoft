@@ -1,84 +1,69 @@
 <?php
-// generateReport.php
+// 📄 generateReport.php
 
-// Config
-$templatePath = __DIR__ . "/../report_template.html";
-$reportsDir   = __DIR__ . "/../reports";
+// Ensure timezone
+date_default_timezone_set('America/Phoenix');
+
+// Directory for reports
+$reportsDir = __DIR__ . '/../reports/';
 if (!is_dir($reportsDir)) {
-    mkdir($reportsDir, 0775, true);
+    mkdir($reportsDir, 0755, true);
 }
 
-// Get incoming request (JSON POST)
-$input = json_decode(file_get_contents("php://input"), true);
-if (!$input || !isset($input['reportType'])) {
-    http_response_code(400);
-    echo json_encode(["error" => "Missing or invalid report data"]);
+// Inputs
+$reportType = $_POST['reportType'] ?? 'custom';
+$reportData = $_POST['reportData'] ?? [];
+
+// Load report definitions
+$reportTypesFile = __DIR__ . '/report_types.json';
+if (!file_exists($reportTypesFile)) {
+    echo json_encode(["success" => false, "error" => "Missing report types file."]);
+    exit;
+}
+$reportTypes = json_decode(file_get_contents($reportTypesFile), true);
+
+// Find matching report definition
+$reportDef = null;
+foreach ($reportTypes as $type) {
+    if ($type['reportType'] === $reportType) {
+        $reportDef = $type;
+        break;
+    }
+}
+if (!$reportDef) {
+    echo json_encode(["success" => false, "error" => "Unknown report type: $reportType"]);
     exit;
 }
 
-// Load template
-if (!file_exists($templatePath)) {
-    http_response_code(500);
-    echo json_encode(["error" => "Report template not found"]);
-    exit;
-}
-$templateHtml = file_get_contents($templatePath);
-
-// Switch by report type
-switch ($input['reportType']) {
-    case "zoning":
-        $title = "Zoning Report – {$input['projectName']}";
-        $content = "
-            <h2>Project Information</h2>
-            <p><strong>Project Name:</strong> {$input['projectName']}</p>
-            <p><strong>Address:</strong> {$input['address']}</p>
-            <p><strong>Parcel:</strong> {$input['parcel']}</p>
-            <p><strong>Jurisdiction:</strong> {$input['jurisdiction']}</p>
-            <p><strong>Sign Restrictions:</strong> {$input['signRestrictions']}</p>
-        ";
-        break;
-
-    case "sign_ordinance":
-        $title = "Sign Ordinance – {$input['projectName']}";
-        $content = "
-            <h2>Ordinance Details</h2>
-            <p><strong>Project Name:</strong> {$input['projectName']}</p>
-            <p><strong>Address:</strong> {$input['address']}</p>
-            <p><strong>Jurisdiction:</strong> {$input['jurisdiction']}</p>
-            <p><strong>Restrictions:</strong> {$input['restrictions']}</p>
-        ";
-        break;
-
-    case "custom":
-        $title = $input['title'];
-        $content = "<h2>{$input['data']['summary']}</h2><ul>";
-        foreach ($input['data']['items'] as $item) {
-            $content .= "<li>{$item}</li>";
-        }
-        $content .= "</ul>";
-        break;
-
-    default:
-        http_response_code(400);
-        echo json_encode(["error" => "Unknown report type"]);
-        exit;
+// Build report title
+$title = $reportDef['titleTemplate'];
+foreach ($reportData as $key => $value) {
+    $title = str_replace('{' . $key . '}', $value, $title);
 }
 
-// Merge into template (assumes {{title}} and {{content}} placeholders in template)
-$finalHtml = str_replace(
-    ["{{title}}", "{{content}}"],
-    [$title, $content],
-    $templateHtml
-);
+// Generate HTML content
+$html = "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><title>{$title}</title></head><body>";
+$html .= "<h1>{$title}</h1>";
+$html .= "<p><em>Generated on " . date("F j, Y, g:i a") . "</em></p><hr>";
 
-// Save to file
-$fileName = "{$input['reportType']}_" . date("Ymd_His") . ".html";
-$filePath = $reportsDir . "/" . $fileName;
-file_put_contents($filePath, $finalHtml);
+foreach ($reportData as $field => $value) {
+    $html .= "<p><strong>" . ucfirst(str_replace('_', ' ', $field)) . ":</strong> {$value}</p>";
+}
 
-// Return success + path
+$html .= "</body></html>";
+
+// Save file
+$filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
+$filePath = $reportsDir . $filenameSafe;
+file_put_contents($filePath, $html);
+
+// Public URL
+$publicUrl = "https://www.skyelighting.com/skyesoft/reports/" . $filenameSafe;
+
+// Return result
 echo json_encode([
-    "status" => "success",
-    "file" => $fileName,
-    "path" => $filePath
+    "success" => true,
+    "message" => "Report created successfully.",
+    "reportUrl" => $publicUrl,
+    "filename" => $filenameSafe
 ]);
