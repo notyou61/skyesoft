@@ -447,7 +447,7 @@ if (
 
     if (!empty($reportJson['success']) && !empty($reportJson['reportUrl'])) {
         echo json_encode([
-            "response" => "📄 Report created successfully. [View Report](" . $reportJson['reportUrl'] . ")",
+            "response" => "📄 Report created successfully. <a href='" . htmlspecialchars($reportJson['reportUrl'], ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
             "action" => "none",
             "sessionId" => session_id(),
             "reportUrl" => $reportJson['reportUrl']
