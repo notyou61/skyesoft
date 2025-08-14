@@ -90,9 +90,16 @@ foreach ($reportData as $field => $value) {
 
 $html .= '</body></html>';
 
+// Absolute path to match public reports URL
+$reportsDir = '/home/notyou64/public_html/skyesoft/reports/';
+if (!is_dir($reportsDir)) {
+    mkdir($reportsDir, 0777, true);
+}
+
 // Save file
 $filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
 $filePath = $reportsDir . $filenameSafe;
+
 if (!@file_put_contents($filePath, $html)) {
     echo json_encode(array('success' => false, 'error' => 'Failed to save report file.'));
     exit;
