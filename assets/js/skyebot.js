@@ -48,6 +48,7 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
       break;
     case "report":                     // ✅ new case for reports
       actionTypeID = 98;
+      actionCRUDType = "Create";      // <-- Force it as Create instead of default Read
       // Do not override note — keep whatever is passed in
       break;
     default:
