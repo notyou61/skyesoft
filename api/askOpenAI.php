@@ -294,42 +294,63 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 }
 #endregion
 
-#region 📝 Build System Prompt
-$actionTypesArray = [
-    "Create" => ["Contact", "Order", "Application", "Location", "Login", "Logout"],
-    "Read" => ["Contact", "Order", "Application", "Location"],
-    "Update" => ["Contact", "Order", "Application", "Location"],
-    "Delete" => ["Contact", "Order", "Application", "Location"]
-];
+#region 📝 Build System Prompt (Preserve Current Functionality + Report Support)
 
+// Load report types from JSON file
+$reportTypesPath = '/home/notyou64/public_html/data/reportTypes.json';
+$reportTypesJson = file_get_contents($reportTypesPath);
+$reportTypes = json_decode($reportTypesJson, true);
+
+// Existing action matrix (unchanged, but "Report" added to match new feature)
+$actionTypesArray = array(
+    "Create" => array("Contact", "Order", "Application", "Location", "Login", "Logout", "Report"),
+    "Read"   => array("Contact", "Order", "Application", "Location", "Report"),
+    "Update" => array("Contact", "Order", "Application", "Location", "Report"),
+    "Delete" => array("Contact", "Order", "Application", "Location", "Report")
+);
+
+// Build report types block for AI context
+$reportTypesBlock = json_encode($reportTypes);
+
+// System prompt (added reportTypes as a 4th source of truth)
 $systemPrompt = <<<PROMPT
-You are Skyebot, an assistant for a signage company. You have three sources of truth:
-- codexGlossary: internal company terms/definitions
-- codexOther: other company knowledge base items (version, modules, constitution, etc.)
-- sseSnapshot: current operational data (date, time, weather, KPIs, etc.)
+You are Skyebot, an assistant for a signage company.  
+You have four sources of truth:  
+- codexGlossary: internal company terms/definitions  
+- codexOther: other company knowledge base items (version, modules, constitution, etc.)  
+- sseSnapshot: current operational data (date, time, weather, KPIs, etc.)  
+- reportTypes: standardized report templates  
 
-Rules:
-- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), reply ONLY with a JSON object using this structure:
-  - {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}
-  - {"actionType":"Create","actionName":"Login","details":{"username":"jane","password":"yourpassword"}}
-  - {"actionType":"Create","actionName":"Logout"}
-  - {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}
-  - {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}
-  - {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}
-- Allowed actionTypes: Create, Read, Update, Delete
-- Allowed actionNames: Contact, Order, Application, Location, Login, Logout
-- For all other queries, respond ONLY with the value or definition from codexGlossary, codexOther, or sseSnapshot. No extra wording.
-- If no information is found, reply: "No information available."
-- Do not repeat the user’s question, explain reasoning, or add extra context.
+Rules:  
+- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), reply ONLY with a JSON object using this structure:  
+  - {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}  
+  - {"actionType":"Create","actionName":"Login","details":{"username":"jane","password":"yourpassword"}}  
+  - {"actionType":"Create","actionName":"Logout"}  
+  - {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}  
+  - {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}  
+  - {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
+  - For reports: {"actionType":"Create","actionName":"Report","details":{"reportType":"zoning","title":"Zoning Report – U-Haul Thatcher","data":{...}}}  
 
-codexGlossary:
-$codexGlossaryBlock
+- Allowed actionTypes: Create, Read, Update, Delete  
+- Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report  
+- For standard reports, use reportTypes as the reference for reportType names and required fields.  
+- For all other queries, respond ONLY with the value or definition from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
+- If no information is found, reply: "No information available."  
+- Do not repeat the user’s question, explain reasoning, or add extra context.  
 
-codexOther:
-$codexOtherBlock
+---
 
-sseSnapshot:
-$snapshotSummary
+codexGlossary:  
+$codexGlossaryBlock  
+
+codexOther:  
+$codexOtherBlock  
+
+sseSnapshot:  
+$snapshotSummary  
+
+reportTypes:  
+$reportTypesBlock  
 PROMPT;
 #endregion
 
