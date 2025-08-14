@@ -297,7 +297,7 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 #region 📝 Build System Prompt (Preserve Current Functionality + Report Support)
 
 // Load report types from JSON file
-$reportTypesPath = '/home/notyou64/public_html/data/reportTypes.json';
+$reportTypesPath = '/home/notyou64/public_html/data/report_types.jsonn';
 $reportTypesJson = file_get_contents($reportTypesPath);
 $reportTypes = json_decode($reportTypesJson, true);
 
