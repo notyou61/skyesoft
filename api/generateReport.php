@@ -101,18 +101,29 @@ if (!is_writable($reportsDir)) {
     error_log("❌ Reports dir not writable: " . $reportsDir);
 }
 
+// Debugging: check path and permissions
+error_log("🛠 Attempting to save report...");
+error_log("📂 Reports dir: " . $reportsDir);
+error_log("📂 Realpath: " . realpath($reportsDir));
+error_log("📂 Dir exists: " . (is_dir($reportsDir) ? 'YES' : 'NO'));
+error_log("✏ Writable: " . (is_writable($reportsDir) ? 'YES' : 'NO'));
+error_log("📄 HTML length: " . strlen($html));
+error_log("🆔 Report type: " . $reportType);
+
 // Save file
 $filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
 $filePath = $reportsDir . $filenameSafe;
 
-// Remove @ for testing
+error_log("📝 Target file path: " . $filePath);
+
 $result = file_put_contents($filePath, $html);
 
 if ($result === false) {
     error_log("❌ Failed to write report to: " . $filePath);
-    error_log("📄 Realpath: " . realpath($reportsDir));
     echo json_encode(array('success' => false, 'error' => 'Failed to save report file.'));
     exit;
+} else {
+    error_log("✅ Report saved successfully. Bytes written: " . $result);
 }
 
 // Public URL
