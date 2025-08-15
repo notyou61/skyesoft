@@ -12,39 +12,57 @@ header('Content-Type: application/json');
 // Ensure timezone
 date_default_timezone_set('America/Phoenix');
 
-// Directory for reports
-$reportsDir = __DIR__ . '/../reports/';
+// Configuration
+$baseDir = __DIR__ . '/../';
+$reportsDir = $baseDir . 'reports/';
+$dataDir = $baseDir . 'data/';
+$publicUrlBase = 'https://www.skyelighting.com/skyesoft/reports/';
+
+// Ensure reports directory exists
 if (!is_dir($reportsDir)) {
-    if (!@mkdir($reportsDir, 0755, true)) {
-        echo json_encode(array('success' => false, 'error' => 'Failed to create reports directory.'));
+    if (!mkdir($reportsDir, 0755, true)) {
+        error_log("❌ Failed to create reports directory: $reportsDir");
+        echo json_encode([
+            'success' => false,
+            'error' => 'Failed to create reports directory.'
+        ]);
         exit;
     }
 }
 
-// Inputs
-$reportType = isset($_POST['reportType']) ? $_POST['reportType'] : 'custom';
-$reportData = isset($_POST['reportData']) ? $_POST['reportData'] : array();
-
-// Load report definitions
-// Prefer production absolute path, fallback to local relative for dev
-$reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
-if (!file_exists($reportTypesFile)) {
-    $reportTypesFile = __DIR__ . '/../data/report_types.json';
-}
-// Check if file exists
-if (!file_exists($reportTypesFile)) {
+// Check if reports directory is writable
+if (!is_writable($reportsDir)) {
+    error_log("❌ Reports directory not writable: $reportsDir");
     echo json_encode([
         'success' => false,
-        'error' => 'Missing report types file: ' . $reportTypesFile
+        'error' => 'Reports directory is not writable.',
+        'details' => 'Check permissions for ' . $reportsDir
     ]);
     exit;
 }
+
+// Inputs
+$reportType = isset($_POST['reportType']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['reportType']) : 'custom';
+$reportData = isset($_POST['reportData']) && is_array($_POST['reportData']) ? $_POST['reportData'] : [];
+
+// Load report definitions
+$reportTypesFile = $dataDir . 'report_types.json';
+if (!file_exists($reportTypesFile)) {
+    error_log("❌ Missing report types file: $reportTypesFile");
+    echo json_encode([
+        'success' => false,
+        'error' => 'Missing report types file.'
+    ]);
+    exit;
+}
+
 // Decode JSON
 $reportTypes = json_decode(file_get_contents($reportTypesFile), true);
 if ($reportTypes === null) {
+    error_log("❌ Invalid report types file: " . json_last_error_msg());
     echo json_encode([
         'success' => false,
-        'error' => 'Invalid report types file: ' . json_last_error()
+        'error' => 'Invalid report types file: ' . json_last_error_msg()
     ]);
     exit;
 }
@@ -58,7 +76,11 @@ foreach ($reportTypes as $type) {
     }
 }
 if (!$reportDef) {
-    echo json_encode(array('success' => false, 'error' => 'Unknown report type: ' . $reportType));
+    error_log("❌ Unknown report type: $reportType");
+    echo json_encode([
+        'success' => false,
+        'error' => 'Unknown report type: ' . $reportType
+    ]);
     exit;
 }
 
@@ -75,7 +97,7 @@ $html .= '<p><em>Generated on ' . date('F j, Y, g:i a') . '</em></p><hr>';
 
 function formatReportValue($value) {
     if (is_array($value)) {
-        $formatted = array();
+        $formatted = [];
         foreach ($value as $k => $v) {
             $formatted[] = htmlspecialchars($k, ENT_QUOTES, 'UTF-8') . ': ' . htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
         }
@@ -90,49 +112,39 @@ foreach ($reportData as $field => $value) {
 
 $html .= '</body></html>';
 
-// Absolute path to match public reports URL
-$reportsDir = '/home/notyou64/public_html/skyesoft/reports/';
-if (!is_dir($reportsDir)) {
-    mkdir($reportsDir, 0777, true);
-}
-
-// Debugging: check path and permissions
-if (!is_writable($reportsDir)) {
-    error_log("❌ Reports dir not writable: " . $reportsDir);
-}
-
-// Debugging: check path and permissions
+// Debugging
 error_log("🛠 Attempting to save report...");
-error_log("📂 Reports dir: " . $reportsDir);
+error_log("📂 Reports dir: $reportsDir");
 error_log("📂 Realpath: " . realpath($reportsDir));
 error_log("📂 Dir exists: " . (is_dir($reportsDir) ? 'YES' : 'NO'));
 error_log("✏ Writable: " . (is_writable($reportsDir) ? 'YES' : 'NO'));
 error_log("📄 HTML length: " . strlen($html));
-error_log("🆔 Report type: " . $reportType);
+error_log("🆔 Report type: $reportType");
 
 // Save file
 $filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
 $filePath = $reportsDir . $filenameSafe;
 
-error_log("📝 Target file path: " . $filePath);
+error_log("[DEBUG] Target file path: $filePath (Realpath: " . realpath(dirname($filePath)) . ")");
 
 $result = file_put_contents($filePath, $html);
 
 if ($result === false) {
-    error_log("❌ Failed to write report to: " . $filePath);
-    echo json_encode(array('success' => false, 'error' => 'Failed to save report file.'));
+    error_log("❌ Failed to write report to: $filePath");
+    echo json_encode([
+        'success' => false,
+        'error' => 'Failed to save report file.',
+        'details' => 'Check permissions and path for ' . $filePath
+    ]);
     exit;
-} else {
-    error_log("✅ Report saved successfully. Bytes written: " . $result);
 }
 
-// Public URL
-$publicUrl = 'https://www.skyelighting.com/skyesoft/reports/' . $filenameSafe;
+error_log("✅ Report saved successfully. Bytes written: $result");
 
 // Return result
-echo json_encode(array(
+echo json_encode([
     'success' => true,
     'message' => 'Report created successfully.',
-    'reportUrl' => $publicUrl,
+    'reportUrl' => $publicUrlBase . $filenameSafe,
     'filename' => $filenameSafe
-));
+]);
