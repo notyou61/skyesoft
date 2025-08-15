@@ -13,11 +13,9 @@ header('Content-Type: application/json');
 date_default_timezone_set('America/Phoenix');
 
 // Configuration
-$baseDir = __DIR__ . '/../';
-$reportsDir = $baseDir . 'reports/';
-$dataDir = $baseDir . 'data/';
+$reportsDir = '/home/notyou64/public_html/skyesoft/reports/';
+$dataDir = __DIR__ . '/../data/'; // keep consistent base for data
 $publicUrlBase = 'https://www.skyelighting.com/skyesoft/reports/';
-
 // Ensure reports directory exists
 if (!is_dir($reportsDir)) {
     if (!mkdir($reportsDir, 0755, true)) {
