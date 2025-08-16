@@ -1,6 +1,23 @@
 <?php
 // 📄 generateReport.php
 
+// Support JSON input in addition to form-urlencoded
+if (isset($_SERVER["CONTENT_TYPE"]) && stripos($_SERVER["CONTENT_TYPE"], "application/json") !== false) {
+    $raw = file_get_contents("php://input");
+    $json = json_decode($raw, true);
+
+    if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
+        // Merge JSON payload into $_POST so existing code works
+        $_POST = array_merge($_POST, $json);
+    }
+}
+
+// 🔧 Normalize Skyebot field names
+// Skyebot sends "data" instead of "reportData"
+if (isset($_POST['data']) && !isset($_POST['reportData'])) {
+    $_POST['reportData'] = $_POST['data'];
+}
+
 // Start session for sessionId
 session_start();
 
