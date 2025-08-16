@@ -24,6 +24,10 @@ session_start();
 // Prevent HTML output from errors
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+
+// Log file for this script
+$logFile = __DIR__ . '/create_Report.log'; // Log to create_Report.log
+// Ensure log file exists
 ini_set('error_log', __DIR__ . '/error.log'); // Keep for redundancy
 
 // Set JSON content type
@@ -58,8 +62,6 @@ $reportsDir = rtrim($reportsDir, '/') . '/';
 
 $dataDir = __DIR__ . '/../data/';
 $publicUrlBase = 'https://www.skyelighting.com/skyesoft/reports/';
-$logFile = __DIR__ . '/create_Report.log'; // Log to create_Report.log
-
 
 // Log request start
 error_log("[DEBUG] Request started at " . date('Y-m-d H:i:s'), 3, $logFile);
