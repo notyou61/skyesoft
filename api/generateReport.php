@@ -33,10 +33,33 @@ header('Content-Type: application/json');
 date_default_timezone_set('America/Phoenix');
 
 // Configuration
-$reportsDir = '/home/notyou64/public_html/skyesoft/reports/';
+//$reportsDir = '/home/notyou64/public_html/skyesoft/reports/';
+$reportsDir = realpath(__DIR__ . '/../reports');
+
+// If reports directory does not exist, attempt to create it
+if ($reportsDir === false) {
+    $reportsDir = __DIR__ . '/../reports';
+    if (!is_dir($reportsDir)) {
+        if (!mkdir($reportsDir, 0755, true)) {
+            error_log("[ERROR] Failed to create reports directory: $reportsDir", 3, $logFile);
+            echo json_encode([
+                'success' => false,
+                'response' => 'Reports directory could not be created.',
+                'actionType' => 'Create',
+                'actionName' => 'Report'
+            ]);
+            exit;
+        }
+    }
+}
+
+// Ensure trailing slash
+$reportsDir = rtrim($reportsDir, '/') . '/';
+
 $dataDir = __DIR__ . '/../data/';
 $publicUrlBase = 'https://www.skyelighting.com/skyesoft/reports/';
 $logFile = __DIR__ . '/create_Report.log'; // Log to create_Report.log
+
 
 // Log request start
 error_log("[DEBUG] Request started at " . date('Y-m-d H:i:s'), 3, $logFile);
@@ -164,7 +187,9 @@ error_log("[DEBUG] Target file path: $filePath", 3, $logFile);
 error_log("[DEBUG] Parent dir realpath: " . realpath(dirname($filePath)), 3, $logFile);
 error_log("[DEBUG] Parent dir exists: " . (is_dir(dirname($filePath)) ? 'YES' : 'NO'), 3, $logFile);
 error_log("[DEBUG] Parent dir writable: " . (is_writable(dirname($filePath)) ? 'YES' : 'NO'), 3, $logFile);
-
+error_log("[DEBUG] Attempting to write report. Path: $filePath", 3, $logFile);
+error_log("[DEBUG] HTML length: " . strlen($html), 3, $logFile);
+// Attempt to write the file
 $result = file_put_contents($filePath, $html);
 
 if ($result === false) {
