@@ -26,6 +26,40 @@ if (empty($prompt)) {
     echo json_encode(["response" => "❌ Empty prompt.", "action" => "none"]);
     exit;
 }
+// --- PATCH: Intercept Zoning Report requests ---
+if (stripos($prompt, 'create a zoning report') !== false) {
+    // Map prompt to POST fields for generateReport.php
+    $postFields = array(
+        'reportType' => 'zoning',
+        'reportData[projectName]'      => 'U-Haul Thatcher',
+        'reportData[address]'          => '2629 W Thatcher Blvd, Thatcher, AZ',
+        'reportData[parcel]'           => '104-33-032L',
+        'reportData[jurisdiction]'     => 'AMERCO REAL ESTATE COMPANY',
+        'reportData[signRestrictions]' => 'Max height 20ft, max area 150 sq ft',
+        'reportData[notes][contactPerson]' => 'Rocky',
+        'reportData[notes][contactPhone]' => '(602) 000-1234'
+    );
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://www.skyelighting.com/skyesoft/api/generateReport.php");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $result = curl_exec($ch);
+    if ($result === false) {
+        $result = json_encode(array(
+            "success" => false,
+            "response" => "Error calling generateReport.php: " . curl_error($ch)
+        ));
+    }
+    curl_close($ch);
+
+    // Return directly to the frontend, bypassing OpenAI
+    header("Content-Type: application/json");
+    echo $result;
+    exit;
+}
 #endregion
 
 #region ⚡️ Quick Agentic Actions
