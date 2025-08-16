@@ -96,11 +96,17 @@ if (!is_writable($reportsDir)) {
 error_log("[DEBUG] Reports directory writable: $reportsDir", 3, $logFile);
 
 // Inputs
-$reportType = isset($_POST['reportType']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['reportType']) : 'custom';
+$reportType = isset($_POST['reportType'])
+    ? strtolower(trim(preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['reportType'])))
+    : 'custom';
+// Normalize reportType to lowercase and remove special characters
+error_log("[DEBUG] Normalized reportType: " . $reportType, 3, $logFile);
+// Get report data, default to empty array if not set or not an array
 $reportData = isset($_POST['reportData']) && is_array($_POST['reportData']) ? $_POST['reportData'] : [];
+// Log report type and data
 error_log("[DEBUG] Report type: $reportType", 3, $logFile);
+// Log report data
 error_log("[DEBUG] Report data: " . json_encode($reportData), 3, $logFile);
-
 // Load report definitions
 $reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
 // Check if report types file exists
