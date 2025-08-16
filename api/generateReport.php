@@ -110,6 +110,12 @@ error_log("[DEBUG] Report data: " . json_encode($reportData), 3, $logFile);
 // Load report definitions
 //$reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
 $reportTypesFile = realpath(__DIR__ . '/../data/report_types.json');
+if ($reportTypesFile === false) {
+    $reportTypesFile = __DIR__ . '/../data/report_types.json';
+    error_log("[WARN] realpath failed, falling back to: $reportTypesFile", 3, $logFile);
+} else {
+    error_log("[DEBUG] Looking for report types file at: $reportTypesFile", 3, $logFile);
+}
 // Check if report types file exists
 if (!file_exists($reportTypesFile)) {
     error_log("[ERROR] Missing report types file: $reportTypesFile", 3, $logFile);
