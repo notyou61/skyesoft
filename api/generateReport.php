@@ -108,7 +108,8 @@ error_log("[DEBUG] Report type: $reportType", 3, $logFile);
 // Log report data
 error_log("[DEBUG] Report data: " . json_encode($reportData), 3, $logFile);
 // Load report definitions
-$reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
+//$reportTypesFile = '/home/notyou64/public_html/data/report_types.json';
+$reportTypesFile = realpath(__DIR__ . '/../data/report_types.json');
 // Check if report types file exists
 if (!file_exists($reportTypesFile)) {
     error_log("[ERROR] Missing report types file: $reportTypesFile", 3, $logFile);
