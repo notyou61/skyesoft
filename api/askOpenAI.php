@@ -434,21 +434,26 @@ if (
     $reportResult = curl_exec($ch);
     curl_close($ch);
     $reportJson = json_decode($reportResult, true);
-    if (!empty($reportJson['success']) && !empty($reportJson['reportUrl'])) {
+    $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
+
+    if (!empty($reportJson['success']) && $reportUrl) {
         echo json_encode([
-            "response" => "📄 Report created successfully. <a href='" . htmlspecialchars($reportJson['reportUrl'], ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
+            "response" => "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
             "action" => "none",
             "sessionId" => session_id(),
-            "reportUrl" => $reportJson['reportUrl']
+            "reportUrl" => $reportUrl,
+            "details" => $reportJson['details']
         ]);
     } else {
         echo json_encode([
             "response" => "❌ Report creation failed.",
             "action" => "none",
             "sessionId" => session_id(),
-            "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error"
+            "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
+            "raw" => $reportJson
         ]);
     }
+
     exit;
 }
 #endregion
