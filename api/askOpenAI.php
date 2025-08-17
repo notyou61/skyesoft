@@ -308,6 +308,7 @@ if (!file_exists($reportTypesPath) || !is_readable($reportTypesPath)) {
     ]);
     exit;
 }
+
 $reportTypesJson = file_get_contents($reportTypesPath);
 if ($reportTypesJson === false) {
     echo json_encode([
@@ -319,6 +320,7 @@ if ($reportTypesJson === false) {
     ]);
     exit;
 }
+
 $reportTypes = json_decode($reportTypesJson, true);
 $reportTypesBlock = json_encode($reportTypes);
 
@@ -338,22 +340,37 @@ You have four sources of truth:
 - reportTypes: standardized report templates  
 
 Rules:  
-- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), reply ONLY with a JSON object using this structure:  
-  - {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}  
-  - {"actionType":"Create","actionName":"Login","details":{"username":"jane","password":"yourpassword"}}  
-  - {"actionType":"Create","actionName":"Logout"}  
-  - {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}  
-  - {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}  
-  - {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
-  - For reports: {"actionType":"Create","actionName":"Report","details":{"reportType":"zoning","title":"Zoning Report – U-Haul Thatcher","data":{...}}}  
+- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), respond ONLY with a JSON object. No plain text or explanations.  
 - Allowed actionTypes: Create, Read, Update, Delete  
 - Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report  
-- For standard reports, use reportTypes as the reference for reportType names and required fields.  
-- For all other queries, respond ONLY with the value or definition from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
-- If no information is found, reply: "No information available."  
-- Do not repeat the user’s question, explain reasoning, or add extra context.  
 
-When asked to create a report, include the reportType, title, and data fields in the JSON response as specified above.
+Examples:  
+  {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}  
+  {"actionType":"Create","actionName":"Login","details":{"username":"jane","password":"yourpassword"}}  
+  {"actionType":"Create","actionName":"Logout"}  
+  {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}  
+  {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}  
+  {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
+
+Report Rules:  
+- For reports, ALWAYS return JSON in this form:  
+  {
+    "actionType": "Create",
+    "actionName": "Report",
+    "details": {
+      "reportType": "<one of reportTypes>",
+      "title": "<auto-generate using reportType + projectName>",
+      "data": {
+        // include all required fields from reportTypes
+        // include optional fields provided by the user
+        // include any extra fields (jazz) without filtering
+      }
+    }
+  }
+- Do not return plain text, explanations, or the user’s prompt. JSON only.  
+- For standard reports, required fields are defined in reportTypes. If missing, still generate JSON with available fields.  
+- For non-report queries, respond ONLY with the raw value from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
+- If no information is found, reply with: "No information available."  
 
 ---
 codexGlossary:  

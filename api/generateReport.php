@@ -1,5 +1,5 @@
 <?php
-// 📄 File: generateReport.php (Merged Original + Patch)
+// 📄 File: generateReport.php (Improved & Regionalized)
 
 // Start session for sessionId
 session_start();
@@ -60,13 +60,19 @@ error_log("[DEBUG] ✅ Reports directory is writable." . PHP_EOL, 3, $logFile);
 #endregion
 
 #region 📨 Parse Input
-$reportType = isset($_POST['reportType']) ? strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['reportType'])) : 'custom';
-$reportData = isset($_POST['reportData']) && is_array($_POST['reportData']) ? $_POST['reportData'] : [];
-error_log("[DEBUG] Heartbeat 5: Report type: $reportType", 3, $logFile);
-error_log("[DEBUG] Heartbeat 5: Report data: " . json_encode($reportData), 3, $logFile);
+$reportType = isset($_POST['reportType']) 
+    ? strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['reportType'])) 
+    : 'custom';
+
+$reportData = isset($_POST['reportData']) && is_array($_POST['reportData']) 
+    ? array_map('trim', $_POST['reportData']) 
+    : [];
+
+error_log("[DEBUG] Heartbeat 5: Report type: $reportType" . PHP_EOL, 3, $logFile);
+error_log("[DEBUG] Heartbeat 5: Report data: " . json_encode($reportData) . PHP_EOL, 3, $logFile);
 
 if (empty($reportType) || empty($reportData)) {
-    error_log("[ERROR] Heartbeat 5: Missing reportType or reportData", 3, $logFile);
+    error_log("[ERROR] Heartbeat 5: Missing reportType or reportData" . PHP_EOL, 3, $logFile);
     echo json_encode([
         'success' => false,
         'response' => 'Missing reportType or reportData',
@@ -77,33 +83,6 @@ if (empty($reportType) || empty($reportData)) {
 }
 #endregion
 
-#region 📋 Validation Rules
-$requiredFields = [];
-if ($reportType === 'zoning') {
-    $requiredFields = ['projectName', 'address', 'parcel', 'jurisdiction'];
-}
-
-$missing = [];
-foreach ($requiredFields as $field) {
-    if (empty($reportData[$field])) {
-        $missing[] = $field;
-    }
-}
-
-if (!empty($missing)) {
-    error_log("[ERROR] Heartbeat 5: Missing required fields: " . implode(', ', $missing), 3, $logFile);
-    echo json_encode([
-        'success' => false,
-        'response' => 'Missing required field(s): ' . implode(', ', $missing),
-        'actionType' => 'Create',
-        'actionName' => 'Report',
-        'reportType' => $reportType
-    ]);
-    exit;
-}
-error_log("[DEBUG] Heartbeat 5: Input validation passed", 3, $logFile);
-#endregion
-
 #region 📚 Load Report Definitions
 $reportTypesFile = $dataDir . 'report_types.json';
 $alternativePaths = [
@@ -112,36 +91,25 @@ $alternativePaths = [
 ];
 $reportTypes = null;
 
-error_log("[DEBUG] Heartbeat 6: Checking report types file: $reportTypesFile", 3, $logFile);
 if (file_exists($reportTypesFile)) {
     $reportTypes = json_decode(file_get_contents($reportTypesFile), true);
 } else {
-    error_log("[DEBUG] Heartbeat 6: Primary report types file not found, checking alternatives", 3, $logFile);
     foreach ($alternativePaths as $path) {
         if (file_exists($path)) {
-            error_log("[DEBUG] Heartbeat 6: Report types file found at alternative path: $path", 3, $logFile);
             $reportTypes = json_decode(file_get_contents($path), true);
             $reportTypesFile = $path;
             break;
         }
     }
     if ($reportTypes === null) {
-        error_log("[DEBUG] Heartbeat 6: No report types file found, using fallback definition", 3, $logFile);
         $reportTypes = [
-            [
-                'reportType' => 'zoning',
-                'titleTemplate' => 'Zoning Report – {projectName}'
-            ],
-            [
-                'reportType' => 'custom',
-                'titleTemplate' => 'Custom Report – {projectName}'
-            ]
+            ['reportType' => 'zoning', 'titleTemplate' => 'Zoning Report – {projectName}', 'required' => ['projectName','address','parcel','jurisdiction']],
+            ['reportType' => 'custom', 'titleTemplate' => 'Custom Report – {projectName}', 'required' => []]
         ];
     }
 }
 
 if ($reportTypes === null) {
-    error_log("[ERROR] Heartbeat 6: Invalid report types file: " . json_last_error_msg(), 3, $logFile);
     echo json_encode([
         'success' => false,
         'response' => 'Invalid report types file: ' . json_last_error_msg(),
@@ -150,9 +118,8 @@ if ($reportTypes === null) {
     ]);
     exit;
 }
-error_log("[DEBUG] Heartbeat 6: Report types loaded successfully from: $reportTypesFile", 3, $logFile);
 
-// Find matching report definition
+// Match report definition
 $reportDef = null;
 foreach ($reportTypes as $type) {
     if ($type['reportType'] === $reportType) {
@@ -161,7 +128,6 @@ foreach ($reportTypes as $type) {
     }
 }
 if (!$reportDef) {
-    error_log("[ERROR] Heartbeat 6: Unknown report type: $reportType", 3, $logFile);
     echo json_encode([
         'success' => false,
         'response' => 'Unknown report type: ' . $reportType,
@@ -170,7 +136,27 @@ if (!$reportDef) {
     ]);
     exit;
 }
-error_log("[DEBUG] Heartbeat 6: Report definition found for type: $reportType", 3, $logFile);
+#endregion
+
+#region 📋 Validation Rules
+$requiredFields = isset($reportDef['required']) ? $reportDef['required'] : [];
+$missing = [];
+foreach ($requiredFields as $field) {
+    if (empty($reportData[$field])) {
+        $missing[] = $field;
+    }
+}
+if (!empty($missing)) {
+    echo json_encode([
+        'success' => false,
+        'response' => 'Missing required field(s): ' . implode(', ', $missing),
+        'actionType' => 'Create',
+        'actionName' => 'Report',
+        'reportType' => $reportType,
+        'missing' => $missing
+    ]);
+    exit;
+}
 #endregion
 
 #region 🏷️ Known Labels
@@ -187,7 +173,6 @@ $labels = [
 #endregion
 
 #region 📝 Build Report HTML
-// Build report title
 $title = $reportDef['titleTemplate'];
 foreach ($reportData as $key => $value) {
     $title = str_replace('{' . $key . '}', is_array($value) ? implode(', ', $value) : $value, $title);
@@ -200,48 +185,44 @@ $html .= '<style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     h1 { border-bottom: 2px solid #444; padding-bottom: 4px; }
     h2 { margin-top: 20px; }
-    p, li { margin: 4px 0; }
+    p, li, dt, dd { margin: 4px 0; }
+    dt { font-weight: bold; }
 </style></head><body>';
 
 $html .= '<h1>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h1>';
 $html .= '<p><em>Generated on ' . $timestamp . '</em></p>';
 
-// Render known fields first
+// Known fields
 $remainingData = $reportData;
 foreach ($labels as $key => $label) {
     if (!empty($reportData[$key])) {
         $value = is_array($reportData[$key]) ? implode(', ', $reportData[$key]) : $reportData[$key];
         $html .= '<p><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ':</strong> ' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</p>';
-        unset($remainingData[$key]); // Remove handled fields
+        unset($remainingData[$key]);
     }
 }
 
-// Jazz section: any extra data
+// Jazz section
 if (!empty($remainingData)) {
-    $html .= '<h2>Additional Information</h2><ul>';
+    $html .= '<h2>Additional Information</h2><dl>';
     foreach ($remainingData as $key => $value) {
         $formattedValue = is_array($value) ? implode(', ', $value) : $value;
-        $html .= '<li><strong>' . htmlspecialchars(ucfirst(str_replace('_', ' ', $key)), ENT_QUOTES, 'UTF-8') . ':</strong> ' . htmlspecialchars($formattedValue, ENT_QUOTES, 'UTF-8') . '</li>';
+        $html .= '<dt>' . htmlspecialchars(ucfirst(str_replace('_', ' ', $key)), ENT_QUOTES, 'UTF-8') . '</dt>';
+        $html .= '<dd>' . htmlspecialchars($formattedValue, ENT_QUOTES, 'UTF-8') . '</dd>';
     }
-    $html .= '</ul>';
+    $html .= '</dl>';
 }
 
 $html .= '</body></html>';
-error_log("[DEBUG] Heartbeat 7: HTML generated, length: " . strlen($html), 3, $logFile);
+
 #endregion
 
 #region 💾 Save File
-$filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '.html';
+$filenameSafe = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($reportType)) . '_' . date('Ymd_His') . '_' . uniqid() . '.html';
 $filePath = $reportsDir . $filenameSafe;
-
-error_log("[DEBUG] Heartbeat 7: Target file path: $filePath", 3, $logFile);
-error_log("[DEBUG] Heartbeat 7: Parent dir realpath: " . realpath(dirname($filePath)), 3, $logFile);
-error_log("[DEBUG] Heartbeat 7: Parent dir exists: " . (is_dir(dirname($filePath)) ? 'YES' : 'NO'), 3, $logFile);
-error_log("[DEBUG] Heartbeat 7: Parent dir writable: " . (is_writable(dirname($filePath)) ? 'YES' : 'NO'), 3, $logFile);
 
 $result = file_put_contents($filePath, $html);
 if ($result === false) {
-    error_log("[ERROR] Heartbeat 7: Failed to write report to: $filePath", 3, $logFile);
     echo json_encode([
         'success' => false,
         'response' => 'Failed to save report file.',
@@ -251,14 +232,11 @@ if ($result === false) {
     ]);
     exit;
 }
-error_log("[DEBUG] Heartbeat 7: Report saved successfully. Bytes written: $result", 3, $logFile);
-error_log("[DEBUG] Heartbeat 7: File exists after write: " . (file_exists($filePath) ? 'YES' : 'NO'), 3, $logFile);
 
-// Verify file accessibility
 $publicUrl = $publicUrlBase . $filenameSafe;
 $headers = @get_headers($publicUrl);
 $httpStatus = $headers ? $headers[0] : 'Unknown';
-error_log("[DEBUG] Heartbeat 7: HTTP status for $publicUrl: $httpStatus", 3, $logFile);
+
 #endregion
 
 #region 📤 Return JSON
