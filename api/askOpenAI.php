@@ -107,20 +107,34 @@ file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true))
 #endregion
 
 #region 🚦 Direct Responses for Time/Date/Weather
+// Only trigger these quick answers if the prompt is short and clearly asking
+// about time, date, or weather (not when it's part of a larger request like a report).
+
 if (
-    (strpos($lowerPrompt, "time") !== false || strpos($lowerPrompt, "clock") !== false)
-    && isset($sseSnapshot['timeDateArray']['currentLocalTime'])
+    preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) &&
+    strlen($lowerPrompt) < 40 &&
+    isset($sseSnapshot['timeDateArray']['currentLocalTime'])
 ) {
     $tz = (isset($sseSnapshot['timeDateArray']['timeZone']) && $sseSnapshot['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
     $response = $sseSnapshot['timeDateArray']['currentLocalTime'] . $tz;
     echo json_encode(["response" => $response, "action" => "none", "sessionId" => session_id()]);
     exit;
 }
-if (strpos($lowerPrompt, "date") !== false && isset($sseSnapshot['timeDateArray']['currentDate'])) {
+
+if (
+    preg_match('/\b(date|today.?s date|current date)\b/i', $lowerPrompt) &&
+    strlen($lowerPrompt) < 40 &&
+    isset($sseSnapshot['timeDateArray']['currentDate'])
+) {
     echo json_encode(["response" => $sseSnapshot['timeDateArray']['currentDate'], "action" => "none", "sessionId" => session_id()]);
     exit;
 }
-if (strpos($lowerPrompt, "weather") !== false && isset($sseSnapshot['weatherData']['description'])) {
+
+if (
+    preg_match('/\b(weather|forecast)\b/i', $lowerPrompt) &&
+    strlen($lowerPrompt) < 40 &&
+    isset($sseSnapshot['weatherData']['description'])
+) {
     $temp = isset($sseSnapshot['weatherData']['temp']) ? $sseSnapshot['weatherData']['temp'] . "°F, " : "";
     $desc = $sseSnapshot['weatherData']['description'];
     echo json_encode(["response" => $temp . $desc, "action" => "none", "sessionId" => session_id()]);
