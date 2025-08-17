@@ -1,5 +1,5 @@
 <?php
-// 📄 File: api/askOpenAI.php (Refactored with Regionalized Sections)
+// 📄 File: api/askOpenAI.php (Refactored with Regionalized Sections and Fixes)
 
 #region 🛡️ Headers and Setup
 require_once __DIR__ . '/env_boot.php';
@@ -145,6 +145,7 @@ if (!empty($codexGlossary) && is_array($codexGlossary)) {
             list($term, $def) = explode('—', $termDef, 2);
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
             $codexTerms[] = trim($def);
+            $codexTerms[] = trim($term) . ": " . trim($def);
         } else {
             $codexGlossaryBlock .= $termDef . "\n";
             $codexTerms[] = trim($termDef);
@@ -418,17 +419,34 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_TIMEOUT, 25);
 $response = curl_exec($ch);
 if ($response === false) {
-    file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . curl_error($ch) . "\n", FILE_APPEND);
-    echo json_encode(["response" => "❌ Curl error: " . curl_error($ch), "action" => "none", "sessionId" => session_id()]);
+    $curlError = curl_error($ch);
+    file_put_contents(__DIR__ . '/error.log', "OpenAI API Curl Error: " . $curlError . "\n", FILE_APPEND);
+    echo json_encode(["response" => "❌ Curl error: " . $curlError, "action" => "none", "sessionId" => session_id()]);
+    curl_close($ch);
     exit;
 }
 curl_close($ch);
+
+// Improved JSON decoding and error handling
 $result = json_decode($response, true);
-if (!isset($result["choices"][0]["message"]["content"])) {
-    file_put_contents(__DIR__ . '/error.log', "Invalid OpenAI Response: " . $response . "\n", FILE_APPEND);
-    echo json_encode(["response" => "❌ Invalid response from AI.", "action" => "none", "sessionId" => session_id()]);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    file_put_contents(__DIR__ . '/error.log', "JSON Decode Error: " . json_last_error_msg() . "\nResponse: $response\n", FILE_APPEND);
+    echo json_encode(["response" => "❌ JSON decode error from AI.", "action" => "none", "sessionId" => session_id()]);
     exit;
 }
+
+// Check for API errors or missing content
+if (!isset($result["choices"][0]["message"]["content"])) {
+    if (isset($result["error"]["message"])) {
+        file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . $result["error"]["message"] . "\nResponse: $response\n", FILE_APPEND);
+        echo json_encode(["response" => "❌ API error: " . $result["error"]["message"], "action" => "none", "sessionId" => session_id()]);
+    } else {
+        file_put_contents(__DIR__ . '/error.log', "Invalid OpenAI Response: " . $response . "\n", FILE_APPEND);
+        echo json_encode(["response" => "❌ Invalid response structure from AI.", "action" => "none", "sessionId" => session_id()]);
+    }
+    exit;
+}
+
 $aiResponse = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
@@ -623,17 +641,32 @@ if (
 $allValid = array_merge($codexTerms, $codexOtherTerms, $sseValues);
 $isValid = false;
 foreach ($allValid as $entry) {
-    if (strcasecmp(trim($aiResponse), trim($entry)) === 0) {
-        $isValid = true;
-        break;
-    }
-    if (strpos($aiResponse, ":") !== false && stripos($entry, trim($aiResponse)) !== false) {
+    // Case-insensitive partial match for validation
+    if (stripos($aiResponse, trim($entry)) !== false || stripos(trim($entry), $aiResponse) !== false) {
         $isValid = true;
         break;
     }
 }
+
+// Enhanced validation fallback
 if (!$isValid || $aiResponse === "") {
-    $aiResponse = "No information available.";
+    if (preg_match('/\b(mtco|lgbas|codex|constitution|glossary)\b/i', $lowerPrompt)) {
+        $aiResponse = $codexGlossaryBlock !== "" ? trim($codexGlossaryBlock) : "No Codex glossary available.";
+    } elseif (!empty($codexOtherBlock) && preg_match('/\b(version|modules|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
+        $aiResponse = trim($codexOtherBlock);
+    } else {
+        // Check if the prompt matches any term directly
+        foreach ($allValid as $entry) {
+            if (stripos($lowerPrompt, strtolower(trim($entry))) !== false) {
+                $aiResponse = trim($entry);
+                $isValid = true;
+                break;
+            }
+        }
+        if (!$isValid) {
+            $aiResponse = "No information available.";
+        }
+    }
 }
 #endregion
 
