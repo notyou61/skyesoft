@@ -423,9 +423,29 @@ if (
     strtolower($crudData['actionName']) === 'report' &&
     isset($crudData['details']['reportType'], $crudData['details']['data'])
 ) {
+    $reportType = strtolower($crudData['details']['reportType']);
+    $data = $crudData['details']['data'];
+
+    // 🔍 Validation: required fields for zoning report
+    if ($reportType === 'zoning') {
+        $requiredFields = ['projectName', 'address', 'parcel', 'jurisdiction'];
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                echo json_encode([
+                    "response" => "❌ Missing required field: $field (needed for zoning report).",
+                    "action" => "none",
+                    "sessionId" => session_id(),
+                    "error" => "Validation failed"
+                ]);
+                exit;
+            }
+        }
+    }
+
+    // ✅ Passed validation → forward to generator
     $postFields = [
         "reportType" => $crudData['details']['reportType'],
-        "reportData" => $crudData['details']['data']
+        "reportData" => $data
     ];
     $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
     curl_setopt($ch, CURLOPT_POST, true);
@@ -433,6 +453,7 @@ if (
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $reportResult = curl_exec($ch);
     curl_close($ch);
+
     $reportJson = json_decode($reportResult, true);
     $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
 
