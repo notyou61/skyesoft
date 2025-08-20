@@ -545,95 +545,76 @@ PROMPT;
 #endregion
 
 // 📄 Report Generation Hook
-#region 📄 Report Generation Hook
-$crudData = json_decode($aiResponse, true);
+#region Report Generation Hook
+$crudData = array();
+
+// Make sure $aiResponse is defined
+if (isset($aiResponse) && !empty($aiResponse)) {
+    $decoded = json_decode($aiResponse, true);
+    if (is_array($decoded)) {
+        $crudData = $decoded;
+    }
+}
+
 if (
     is_array($crudData) &&
     isset($crudData['actionName']) &&
     strtolower($crudData['actionName']) === 'report' &&
-    isset($crudData['details']['reportType'], $crudData['details']['data'])
+    isset($crudData['details']['reportType']) &&
+    isset($crudData['details']['data'])
 ) {
     $reportType = strtolower($crudData['details']['reportType']);
     $data = $crudData['details']['data'];
 
-    // 🔍 Validation + Auto-fetch for zoning report
-    if ($reportType === 'zoning') {
-        $requiredFields = ['projectName', 'address', 'parcel', 'jurisdiction'];
-        $missing = [];
-
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                $missing[] = $field;
-            }
-        }
-
-        // If parcel/jurisdiction missing → try to auto-fetch
-        if (in_array('parcel', $missing) || in_array('jurisdiction', $missing)) {
-            if (!empty($data['address'])) {
-                $fetchUrl = "https://www.skyelighting.com/skyesoft/api/getParcel.php?address=" . urlencode($data['address']);
-                $parcelJson = @file_get_contents($fetchUrl);
-                if ($parcelJson !== false) {
-                    $parcelData = json_decode($parcelJson, true);
-                    if (is_array($parcelData)) {
-                        if (!empty($parcelData['parcel'])) {
-                            $data['parcel'] = $parcelData['parcel'];
-                        }
-                        if (!empty($parcelData['jurisdiction'])) {
-                            $data['jurisdiction'] = $parcelData['jurisdiction'];
-                        }
-                    }
-                }
-            }
-        }
-
-        // Re-check required fields
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                echo json_encode([
-                    "response"  => "Missing required field(s): " . implode(", ", $missing),
-                    "action"    => "none",
-                    "sessionId" => session_id(),
-                    "error"     => "Validation failed",
-                    "missing"   => $missing
-                ]);
-                exit;
-            }
-        }
+    // 🔍 Validate required fields
+    $validation = validateReportData($reportType, $data, $reportTypes);
+    if (!$validation['valid']) {
+        sendJsonResponse(
+            "❌ Missing required fields: " . implode(", ", $validation['missing']) . " (needed for $reportType report).",
+            "none",
+            array("sessionId" => session_id(), "error" => "Validation failed")
+        );
     }
 
-    // ✅ Passed validation → forward to generator
-    $postFields = [
-        "reportType" => $crudData['details']['reportType'],
+    // Prepare cURL call to generator
+    $postFields = array(
+        "reportType" => $reportType,
         "reportData" => $data
-    ];
+    );
     $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $reportResult = curl_exec($ch);
+    if ($reportResult === false) {
+        logError("Report generation curl error: " . curl_error($ch));
+        sendJsonResponse("❌ Report generation failed due to curl error.", "none", array("sessionId" => session_id()));
+    }
     curl_close($ch);
 
+    // Parse result
     $reportJson = json_decode($reportResult, true);
-    $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
+    $reportUrl = (is_array($reportJson) && isset($reportJson['details']['reportUrl']))
+        ? $reportJson['details']['reportUrl']
+        : null;
 
-    if (!empty($reportJson['success']) && $reportUrl) {
-        echo json_encode([
-            "response"  => "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
-            "action"    => "none",
-            "sessionId" => session_id(),
-            "reportUrl" => $reportUrl,
-            "details"   => $reportJson['details']
-        ]);
+    if (is_array($reportJson) && !empty($reportJson['success']) && $reportUrl) {
+        sendJsonResponse(
+            "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
+            "none",
+            array("sessionId" => session_id(), "reportUrl" => $reportUrl, "details" => $reportJson['details'])
+        );
     } else {
-        echo json_encode([
-            "response"  => "❌ Report creation failed.",
-            "action"    => "none",
-            "sessionId" => session_id(),
-            "error"     => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
-            "raw"       => $reportJson
-        ]);
+        sendJsonResponse(
+            "❌ Report creation failed.",
+            "none",
+            array(
+                "sessionId" => session_id(),
+                "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
+                "raw"   => $reportJson
+            )
+        );
     }
-
     exit;
 }
 #endregion
@@ -650,6 +631,7 @@ if (!empty($conversation)) {
     }
 }
 $messages[] = array("role" => "user", "content" => $prompt);
+
 #endregion
 
 #region OpenAI API Request 
@@ -708,8 +690,12 @@ if (!isset($result["choices"][0]["message"]["content"])) {
     sendJsonResponse("❌ API error: " . $errorMsg, "none", array("sessionId" => session_id()));
     exit;
 }
+//
+$aiResponse = '';
+if (isset($responseData['choices'][0]['message']['content'])) {
+    $aiResponse = $responseData['choices'][0]['message']['content'];
+}
 
-$aiResponse = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
 #region Report Validation // 📄 Report Validation
