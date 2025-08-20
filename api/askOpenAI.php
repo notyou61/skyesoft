@@ -698,28 +698,6 @@ if (isset($responseData['choices'][0]['message']['content'])) {
 
 #endregion
 
-#region Report Validation // 📄 Report Validation
-/**
- * Validate report data against required fields
- * @param string $reportType
- * @param array $data
- * @param array $reportTypes
- * @return array
- */
-function validateReportData($reportType, $data, $reportTypes) {
-    $requiredFields = isset($reportTypes['options'][$reportType]['requiredFields']) 
-        ? $reportTypes['options'][$reportType]['requiredFields'] 
-        : array();
-    $missingFields = array();
-    foreach ($requiredFields as $field) {
-        if (empty($data[$field])) {
-            $missingFields[] = $field;
-        }
-    }
-    return $missingFields ? array("valid" => false, "missing" => $missingFields) : array("valid" => true);
-}
-#endregion
-
 // 📄 Report Generation Hook
 #region Report Generation Hook
 $crudData = json_decode($aiResponse, true);
@@ -729,20 +707,98 @@ if (
     strtolower($crudData['actionName']) === 'report' &&
     isset($crudData['details']['reportType'], $crudData['details']['data'])
 ) {
+    // 📄 Report Validation
+    /**
+     * Validate report data against required fields
+     * @param string $reportType
+     * @param array $data
+     * @param array $reportTypes
+     * @return array
+     */
+    function validateReportData($reportType, $data, $reportTypes) {
+        $requiredFields = isset($reportTypes['options'][$reportType]['requiredFields']) 
+            ? $reportTypes['options'][$reportType]['requiredFields'] 
+            : array();
+        $missingFields = array();
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                $missingFields[] = $field;
+            }
+        }
+        return $missingFields
+            ? array("valid" => false, "missing" => $missingFields)
+            : array("valid" => true);
+    }
+
+    // Ensure reportType and data are set
     $reportType = strtolower($crudData['details']['reportType']);
     $data = $crudData['details']['data'];
 
+    // 📄 Report Validation + Auto-fill for zoning reports
+    if ($reportType === 'zoning' && !empty($data['address'])) {
+        if (empty($data['parcel']) || empty($data['jurisdiction'])) {
+            $parcelCh = curl_init("https://www.skyelighting.com/skyesoft/api/getParcel.php");
+            curl_setopt($parcelCh, CURLOPT_POST, true);
+            curl_setopt($parcelCh, CURLOPT_POSTFIELDS, http_build_query(array("address" => $data['address'])));
+            curl_setopt($parcelCh, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($parcelCh, CURLOPT_TIMEOUT, 10);
+            $parcelResult = curl_exec($parcelCh);
+            $curlError = curl_error($parcelCh);
+            curl_close($parcelCh);
+
+            if ($parcelResult === false) {
+                logError("Parcel lookup failed due to CURL error", array(
+                    "address" => $data['address'],
+                    "error" => $curlError
+                ));
+            } else {
+                $parcelJson = json_decode($parcelResult, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    logError("Invalid JSON from parcel lookup", array(
+                        "address" => $data['address'],
+                        "raw" => $parcelResult,
+                        "json_error" => json_last_error_msg()
+                    ));
+                } elseif (!is_array($parcelJson)) {
+                    logError("Parcel lookup returned non-array data", array(
+                        "address" => $data['address'],
+                        "raw" => $parcelResult
+                    ));
+                } else {
+                    if (empty($data['parcel']) && isset($parcelJson['parcel'])) {
+                        $data['parcel'] = $parcelJson['parcel'];
+                    }
+                    if (empty($data['jurisdiction']) && isset($parcelJson['jurisdiction'])) {
+                        $data['jurisdiction'] = $parcelJson['jurisdiction'];
+                    }
+                }
+            }
+        }
+    } elseif ($reportType === 'zoning' && empty($data['address'])) {
+        logError("Missing address for zoning report", array(
+            "reportType" => $reportType,
+            "data" => $data
+        ));
+    }
+
+    // Run validation after attempting auto-fill
     $validation = validateReportData($reportType, $data, $reportTypes);
+
     if (!$validation['valid']) {
         sendJsonResponse(
             "❌ Missing required fields: " . implode(", ", $validation['missing']) . " (needed for $reportType report).",
             "none",
-            array("sessionId" => session_id(), "error" => "Validation failed")
+            array(
+                "sessionId" => session_id(),
+                "error" => "Validation failed",
+                "missing" => $validation['missing'],
+                "data" => $data // Include partially filled data
+            )
         );
     }
-
+    // ✅ Passed validation → forward to generator
     $postFields = array(
-        "reportType" => $reportType,
+        "reportType" => $crudData['details']['reportType'],
         "reportData" => $data
     );
     $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
@@ -750,22 +806,45 @@ if (
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $reportResult = curl_exec($ch);
-    if ($reportResult === false) {
-        logError("Report generation curl error: " . curl_error($ch));
-        sendJsonResponse("❌ Report generation failed due to curl error.", "none", array("sessionId" => session_id()));
-    }
+    $curlError = curl_error($ch);
     curl_close($ch);
 
+    if ($reportResult === false) {
+        logError("Report generation curl error", array("error" => $curlError));
+        sendJsonResponse(
+            "❌ Report generation failed due to curl error: " . $curlError,
+            "none",
+            array("sessionId" => session_id())
+        );
+    }
+
     $reportJson = json_decode($reportResult, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logError("Invalid JSON from report generation", array(
+            "raw" => $reportResult,
+            "json_error" => json_last_error_msg()
+        ));
+        sendJsonResponse(
+            "❌ Report generation failed: Invalid JSON response",
+            "none",
+            array("sessionId" => session_id(), "error" => "Invalid JSON")
+        );
+    }
+
     $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
 
     if (!empty($reportJson['success']) && $reportUrl) {
         sendJsonResponse(
             "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
             "none",
-            array("sessionId" => session_id(), "reportUrl" => $reportUrl, "details" => $reportJson['details'])
+            array(
+                "sessionId" => session_id(),
+                "reportUrl" => $reportUrl,
+                "details" => $reportJson['details']
+            )
         );
     } else {
+        logError("Report creation failed", array("raw" => $reportJson));
         sendJsonResponse(
             "❌ Report creation failed.",
             "none",
@@ -776,7 +855,6 @@ if (
             )
         );
     }
-    exit;
 }
 #endregion
 
