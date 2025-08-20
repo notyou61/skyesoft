@@ -399,6 +399,9 @@ Report Rules:
       }
     }
   }
+- Always include both `projectName` and `address` inside report `data`.  
+  → If the user did not provide a projectName, auto-generate one in the form:  
+    "Untitled Project – <address>".  
 - If the user provides only a raw address (e.g., "3145 N 33rd Ave, Phoenix, AZ"), do NOT assume.  
   → If multiple report options apply (zoning, sign ordinance, map), return a Clarify JSON object with "options".  
   → If only one option applies, generate the JSON report automatically.  
@@ -420,6 +423,7 @@ $snapshotSummary
 reportTypes:  
 $reportTypesBlock  
 PROMPT;
+
 #endregion
 
 #region 💬 Build OpenAI Message Array
