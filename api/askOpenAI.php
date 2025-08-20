@@ -1,8 +1,8 @@
 <?php
 // 📄 File: api/askOpenAI.php (PHP 5.6 Compatible, Optimized for IDE)
 
-// 🛡️ Dependency Checks
-#region Dependency Checks
+
+#region Dependency Checks // 🛡️ Dependency Checks
 if (!extension_loaded('curl')) {
     logError("CURL extension not loaded.");
     sendJsonResponse("❌ CURL extension required.", "none", array("sessionId" => session_id()));
@@ -74,8 +74,7 @@ $addressRegex = '/^\d+\s+[A-Za-z0-9\s]+,\s*[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(-\d{4
 $isAddress = preg_match($addressRegex, trim($prompt));
 #endregion
 
-// ⚡️ Quick Agentic Actions
-#region Quick Agentic Actions
+#region Quick Agentic Actions // ⚡️ Quick Agentic Actions
 if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
     session_unset();
     session_destroy();
@@ -124,8 +123,8 @@ if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $
 }
 #endregion
 
+#region Load Codex and SSE Data 
 // 📂 Load Codex and SSE Data
-#region Load Codex and SSE Data
 /**
  * Load and parse codex data
  * @return array
@@ -194,8 +193,7 @@ if (
 }
 #endregion
 
-// 📚 Build Codex Data
-#region Build Codex Data
+#region Build Codex Data // 📚 Build Codex Data
 /**
  * Build codex glossary block and terms
  * @param array $codexData
@@ -325,8 +323,7 @@ $codexOtherBlock = $codexOtherData['block'];
 $codexOtherTerms = $codexOtherData['terms'];
 #endregion
 
-// 📊 Build SSE Snapshot Summary
-#region Build SSE Snapshot Summary
+#region Build SSE Snapshot Summary // 📊 Build SSE Snapshot Summary
 /**
  * Build SSE snapshot summary
  * @param array $sseSnapshot
@@ -413,12 +410,41 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 }
 #endregion
 
-// 📝 Build System Prompt and Report Types
-#region Build System Prompt and Report Types
-//$reportTypesPath = __DIR__ . '/../../data/report_types.json';
-$reportTypesPath = "/home/notyou64/public_html/data/report_types.json";
-
-$reportTypes = array();
+#region Build System Prompt and Report Types // 📝 Build System Prompt and Report Types
+// Define paths for report types
+$localPath  = __DIR__ . "/../../data/report_types.json"; // dev environment
+//  Define server path for production
+$serverPath = "/home/notyou64/public_html/data/report_types.json"; // GoDaddy live
+// Check for report types file
+if (file_exists($localPath)) {
+    $reportTypesPath = $localPath;
+} elseif (file_exists($serverPath)) {
+    $reportTypesPath = $serverPath;
+} else {
+    echo json_encode([
+        "response"  => "❌ Missing or unreadable report_types.json",
+        "action"    => "none",
+        "sessionId" => session_id(),
+        "error"     => "File not found",
+        "checked"   => [$localPath, $serverPath]
+    ]);
+    exit;
+}
+// Load Report Types
+$reportTypes = json_decode(file_get_contents($reportTypesPath), true);
+// Validate report types
+if (!is_array($reportTypes)) {
+    echo json_encode([
+        "response"  => "❌ Failed to parse report_types.json",
+        "action"    => "none",
+        "sessionId" => session_id(),
+        "error"     => "JSON decode failed",
+        "path"      => $reportTypesPath
+    ]);
+    // Exit
+    exit;
+}
+// Default clarify options
 $clarifyOptions = array("Zoning Report", "Sign Ordinance Report", "Map", "Permit Lookup");
 if (file_exists($reportTypesPath) && is_readable($reportTypesPath)) {
     $reportTypesJson = file_get_contents($reportTypesPath);
@@ -518,6 +544,100 @@ $reportTypesBlock
 PROMPT;
 #endregion
 
+// 📄 Report Generation Hook
+#region 📄 Report Generation Hook
+$crudData = json_decode($aiResponse, true);
+if (
+    is_array($crudData) &&
+    isset($crudData['actionName']) &&
+    strtolower($crudData['actionName']) === 'report' &&
+    isset($crudData['details']['reportType'], $crudData['details']['data'])
+) {
+    $reportType = strtolower($crudData['details']['reportType']);
+    $data = $crudData['details']['data'];
+
+    // 🔍 Validation + Auto-fetch for zoning report
+    if ($reportType === 'zoning') {
+        $requiredFields = ['projectName', 'address', 'parcel', 'jurisdiction'];
+        $missing = [];
+
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                $missing[] = $field;
+            }
+        }
+
+        // If parcel/jurisdiction missing → try to auto-fetch
+        if (in_array('parcel', $missing) || in_array('jurisdiction', $missing)) {
+            if (!empty($data['address'])) {
+                $fetchUrl = "https://www.skyelighting.com/skyesoft/api/getParcel.php?address=" . urlencode($data['address']);
+                $parcelJson = @file_get_contents($fetchUrl);
+                if ($parcelJson !== false) {
+                    $parcelData = json_decode($parcelJson, true);
+                    if (is_array($parcelData)) {
+                        if (!empty($parcelData['parcel'])) {
+                            $data['parcel'] = $parcelData['parcel'];
+                        }
+                        if (!empty($parcelData['jurisdiction'])) {
+                            $data['jurisdiction'] = $parcelData['jurisdiction'];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Re-check required fields
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                echo json_encode([
+                    "response"  => "Missing required field(s): " . implode(", ", $missing),
+                    "action"    => "none",
+                    "sessionId" => session_id(),
+                    "error"     => "Validation failed",
+                    "missing"   => $missing
+                ]);
+                exit;
+            }
+        }
+    }
+
+    // ✅ Passed validation → forward to generator
+    $postFields = [
+        "reportType" => $crudData['details']['reportType'],
+        "reportData" => $data
+    ];
+    $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $reportResult = curl_exec($ch);
+    curl_close($ch);
+
+    $reportJson = json_decode($reportResult, true);
+    $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
+
+    if (!empty($reportJson['success']) && $reportUrl) {
+        echo json_encode([
+            "response"  => "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
+            "action"    => "none",
+            "sessionId" => session_id(),
+            "reportUrl" => $reportUrl,
+            "details"   => $reportJson['details']
+        ]);
+    } else {
+        echo json_encode([
+            "response"  => "❌ Report creation failed.",
+            "action"    => "none",
+            "sessionId" => session_id(),
+            "error"     => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
+            "raw"       => $reportJson
+        ]);
+    }
+
+    exit;
+}
+#endregion
+
 // 💬 Build OpenAI Message Array
 #region Build OpenAI Message Array
 $messages = array(array("role" => "system", "content" => $systemPrompt));
@@ -532,8 +652,8 @@ if (!empty($conversation)) {
 $messages[] = array("role" => "user", "content" => $prompt);
 #endregion
 
+#region OpenAI API Request 
 // 🚀 OpenAI API Request
-#region OpenAI API Request
 $payload = json_encode(array(
     "model" => "gpt-4",
     "messages" => $messages,
@@ -592,8 +712,7 @@ if (!isset($result["choices"][0]["message"]["content"])) {
 $aiResponse = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
-// 📄 Report Validation
-#region Report Validation
+#region Report Validation // 📄 Report Validation
 /**
  * Validate report data against required fields
  * @param string $reportType
@@ -675,8 +794,7 @@ if (
 }
 #endregion
 
-// ✅ Agentic CRUD Action Handler
-#region Agentic CRUD Action Handler
+#region Agentic CRUD Action Handler // ✅ Agentic CRUD Action Handler
 /**
  * Handle Create actions
  * @param string $actionName
@@ -1078,8 +1196,7 @@ if (!$isValid || $aiResponse === "") {
 sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
 #endregion
 
-// 🛠 Helper Functions
-#region Helper Functions
+#region Helper Functions // 🛠 Helper Functions
 /**
  * Send JSON response with proper HTTP status code
  * @param string $response
