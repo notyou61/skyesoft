@@ -19,16 +19,31 @@ if (!$apiKey) {
 $inputRaw = file_get_contents("php://input");
 $input = json_decode($inputRaw, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
-    echo json_encode(["response" => "❌ Invalid JSON input.", "action" => "none", "sessionId" => session_id()]);
+    echo json_encode([
+        "response" => "❌ Invalid JSON input.", 
+        "action" => "none", 
+        "sessionId" => session_id()
+    ]);
     exit;
 }
-$prompt = isset($input["prompt"]) ? trim(filter_var($input["prompt"], FILTER_SANITIZE_STRING)) : "";
+
+// ✅ Future-proof sanitization: works in PHP 5.6+ and avoids deprecated FILTER_SANITIZE_STRING
+$prompt = isset($input["prompt"]) 
+    ? trim(strip_tags(filter_var($input["prompt"], FILTER_UNSAFE_RAW))) 
+    : "";
+
 $conversation = isset($input["conversation"]) ? $input["conversation"] : [];
 $sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+
 if (empty($prompt)) {
-    echo json_encode(["response" => "❌ Empty prompt.", "action" => "none", "sessionId" => session_id()]);
+    echo json_encode([
+        "response" => "❌ Empty prompt.", 
+        "action" => "none", 
+        "sessionId" => session_id()
+    ]);
     exit;
 }
+
 $lowerPrompt = strtolower($prompt);
 #endregion
 
@@ -340,10 +355,11 @@ $reportTypes = json_decode($reportTypesJson, true);
 $reportTypesBlock = json_encode($reportTypes);
 
 $actionTypesArray = [
-    "Create" => ["Contact", "Order", "Application", "Location", "Login", "Logout", "Report"],
-    "Read"   => ["Contact", "Order", "Application", "Location", "Report"],
-    "Update" => ["Contact", "Order", "Application", "Location", "Report"],
-    "Delete" => ["Contact", "Order", "Application", "Location", "Report"]
+    "Create"  => ["Contact", "Order", "Application", "Location", "Login", "Logout", "Report"],
+    "Read"    => ["Contact", "Order", "Application", "Location", "Report"],
+    "Update"  => ["Contact", "Order", "Application", "Location", "Report"],
+    "Delete"  => ["Contact", "Order", "Application", "Location", "Report"],
+    "Clarify" => ["Options"] // ✅ Added Clarify type
 ];
 
 $systemPrompt = <<<PROMPT
@@ -356,8 +372,8 @@ You have four sources of truth:
 
 Rules:  
 - If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), respond ONLY with a JSON object. No plain text or explanations.  
-- Allowed actionTypes: Create, Read, Update, Delete  
-- Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report  
+- Allowed actionTypes: Create, Read, Update, Delete, Clarify  
+- Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report, Options  
 
 Examples:  
   {"actionType":"Create","actionName":"Contact","details":{"name":"John Doe","email":"john@example.com"}}  
@@ -366,6 +382,7 @@ Examples:
   {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}  
   {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}  
   {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
+  {"actionType":"Clarify","actionName":"Options","options":["Zoning Report","Sign Ordinance Report","Map"],"details":{"address":"123 Main St, Phoenix, AZ"}}  
 
 Report Rules:  
 - For reports, ALWAYS return JSON in this form:  
@@ -382,7 +399,10 @@ Report Rules:
       }
     }
   }
-- Do not return plain text, explanations, or the user’s prompt. JSON only.  
+- If the user provides only a raw address (e.g., "3145 N 33rd Ave, Phoenix, AZ"), do NOT assume.  
+  → If multiple report options apply (zoning, sign ordinance, map), return a Clarify JSON object with "options".  
+  → If only one option applies, generate the JSON report automatically.  
+- Do not return plain text, explanations, or echo the user’s prompt. JSON only.  
 - For standard reports, required fields are defined in reportTypes. If missing, still generate JSON with available fields.  
 - For non-report queries, respond ONLY with the raw value from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
 - If no information is found, reply with: "No information available."  
