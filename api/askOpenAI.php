@@ -1,53 +1,76 @@
 <?php
-// 📄 File: api/askOpenAI.php (Refactored with Regionalized Sections and Fixes)
+// 📄 File: api/askOpenAI.php (PHP 5.6 Compatible with Enhanced Regionalization)
 
-#region 🛡️ Headers and Setup
+// 🛡️ Dependency Checks
+#region Dependency Checks
+if (!extension_loaded('curl')) {
+    logError("CURL extension not loaded.");
+    sendJsonResponse("❌ CURL extension required.", "none", array("sessionId" => session_id()));
+}
+
+if (!file_exists(__DIR__ . '/env_boot.php')) {
+    logError("env_boot.php not found.");
+    sendJsonResponse("❌ env_boot.php not found.", "none", array("sessionId" => session_id()));
+}
 require_once __DIR__ . '/env_boot.php';
+#endregion
+
+// 🛠 Session Configuration
+#region Session Configuration
+ini_set('session.cookie_secure', 1); // HTTPS only, if applicable
+ini_set('session.use_only_cookies', 1);
+ini_set('session.httponly', 1);
+session_start();
+#endregion
+
+// 📡 Headers and Setup
+#region Headers and Setup
 header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
-session_start();
 
 // Load API key
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
-    echo json_encode(["response" => "❌ API key not found.", "action" => "none", "sessionId" => session_id()]);
-    exit;
+    sendJsonResponse("❌ API key not found.", "none", array("sessionId" => session_id()));
+}
+
+// Initialize logging
+$logFile = __DIR__ . '/error.log';
+function logError($message, $context = array()) {
+    global $logFile;
+    $logEntry = date('Y-m-d H:i:s') . " - $message\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n";
+    file_put_contents($logFile, $logEntry, FILE_APPEND);
 }
 #endregion
 
-#region 📨 Parse Input
+// 📨 Parse Input
+#region Parse Input
 $inputRaw = file_get_contents("php://input");
 $input = json_decode($inputRaw, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
-    echo json_encode([
-        "response" => "❌ Invalid JSON input.", 
-        "action" => "none", 
-        "sessionId" => session_id()
-    ]);
-    exit;
+    sendJsonResponse("❌ Invalid JSON input.", "none", array("sessionId" => session_id()));
 }
 
-// ✅ Future-proof sanitization: works in PHP 5.6+ and avoids deprecated FILTER_SANITIZE_STRING
+// Sanitize prompt and validate inputs
 $prompt = isset($input["prompt"]) 
-    ? trim(strip_tags(filter_var($input["prompt"], FILTER_UNSAFE_RAW))) 
+    ? trim(htmlspecialchars(strip_tags(filter_var($input["prompt"], FILTER_UNSAFE_RAW)), ENT_QUOTES, 'UTF-8')) 
     : "";
-
-$conversation = isset($input["conversation"]) ? $input["conversation"] : [];
-$sseSnapshot = isset($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+$conversation = isset($input["conversation"]) && is_array($input["conversation"]) ? $input["conversation"] : [];
+$sseSnapshot = isset($input["sseSnapshot"]) && is_array($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
 
 if (empty($prompt)) {
-    echo json_encode([
-        "response" => "❌ Empty prompt.", 
-        "action" => "none", 
-        "sessionId" => session_id()
-    ]);
-    exit;
+    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => session_id()));
 }
 
 $lowerPrompt = strtolower($prompt);
+
+// Basic address validation
+$addressRegex = '/^\d+\s+[A-Za-z0-9\s]+,\s*[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(-\d{4})?$/';
+$isAddress = preg_match($addressRegex, trim($prompt));
 #endregion
 
-#region ⚡️ Quick Agentic Actions
+// ⚡️ Quick Agentic Actions
+#region Quick Agentic Actions
 if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
     session_unset();
     session_destroy();
@@ -64,76 +87,70 @@ if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerProm
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-    echo json_encode([
-        "response" => "You have been logged out (quick action).",
+    sendJsonResponse("You have been logged out (quick action).", "none", array(
         "actionType" => "create",
         "actionName" => "logout",
         "sessionId" => session_id(),
         "loggedIn" => false
-    ]);
-    exit;
+    ));
 }
+
 if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
     $username = $matches[1];
     $password = $matches[2];
     if (authenticateUser($username, $password)) {
         $_SESSION['user_id'] = $username;
-        echo json_encode([
-            "response" => "Login successful (quick action).",
+        sendJsonResponse("Login successful (quick action).", "none", array(
             "actionType" => "create",
             "actionName" => "login",
-            "details" => ["username" => $username],
+            "details" => array("username" => $username),
             "sessionId" => session_id(),
             "loggedIn" => true
-        ]);
+        ));
     } else {
-        echo json_encode([
-            "response" => "Login failed (quick action).",
+        sendJsonResponse("Login failed (quick action).", "none", array(
             "actionType" => "create",
             "actionName" => "login",
-            "details" => ["username" => $username],
+            "details" => array("username" => $username),
             "sessionId" => session_id(),
             "loggedIn" => false
-        ]);
+        ));
     }
-    exit;
 }
 #endregion
 
-#region 📂 Load Codex and SSE Data
+// 📂 Load Codex and SSE Data
+#region Load Codex and SSE Data
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
-$codexData = [];
+$codexData = array();
 if (file_exists($codexPath)) {
     $codexRaw = file_get_contents($codexPath);
     $codexData = json_decode($codexRaw, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        file_put_contents(__DIR__ . '/error.log', "Codex JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
-        $codexData = [];
+        logError("Codex JSON Error: " . json_last_error_msg(), array("path" => $codexPath));
+        $codexData = array();
     }
 }
+
 $sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
-$sseData = $sseRaw ? json_decode($sseRaw, true) : [];
+$sseData = $sseRaw ? json_decode($sseRaw, true) : array();
 if (json_last_error() !== JSON_ERROR_NONE) {
-    file_put_contents(__DIR__ . '/error.log', "SSE JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
-    $sseData = [];
+    logError("SSE JSON Error: " . json_last_error_msg(), array("raw" => $sseRaw));
+    $sseData = array();
 }
-$skyebotSOT = ['codex' => $codexData, 'sse' => $sseData, 'other' => []];
+$skyebotSOT = array('codex' => $codexData, 'sse' => $sseData, 'other' => array());
 file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
 #endregion
 
-#region 🚦 Direct Responses for Time/Date/Weather
-// Only trigger these quick answers if the prompt is short and clearly asking
-// about time, date, or weather (not when it's part of a larger request like a report).
-
+// 🚦 Direct Responses for Time/Date/Weather
+#region Direct Responses for Time/Date/Weather
 if (
     preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) &&
     strlen($lowerPrompt) < 40 &&
     isset($sseSnapshot['timeDateArray']['currentLocalTime'])
 ) {
     $tz = (isset($sseSnapshot['timeDateArray']['timeZone']) && $sseSnapshot['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
-    $response = $sseSnapshot['timeDateArray']['currentLocalTime'] . $tz;
-    echo json_encode(["response" => $response, "action" => "none", "sessionId" => session_id()]);
-    exit;
+    sendJsonResponse($sseSnapshot['timeDateArray']['currentLocalTime'] . $tz, "none", array("sessionId" => session_id()));
 }
 
 if (
@@ -141,8 +158,7 @@ if (
     strlen($lowerPrompt) < 40 &&
     isset($sseSnapshot['timeDateArray']['currentDate'])
 ) {
-    echo json_encode(["response" => $sseSnapshot['timeDateArray']['currentDate'], "action" => "none", "sessionId" => session_id()]);
-    exit;
+    sendJsonResponse($sseSnapshot['timeDateArray']['currentDate'], "none", array("sessionId" => session_id()));
 }
 
 if (
@@ -152,14 +168,14 @@ if (
 ) {
     $temp = isset($sseSnapshot['weatherData']['temp']) ? $sseSnapshot['weatherData']['temp'] . "°F, " : "";
     $desc = $sseSnapshot['weatherData']['description'];
-    echo json_encode(["response" => $temp . $desc, "action" => "none", "sessionId" => session_id()]);
-    exit;
+    sendJsonResponse($temp . $desc, "none", array("sessionId" => session_id()));
 }
 #endregion
 
-#region 📚 Build Codex Data
-$codexGlossary = [];
-$codexGlossaryAssoc = [];
+// 📚 Build Codex Data
+#region Build Codex Data
+$codexGlossary = array();
+$codexGlossaryAssoc = array();
 if (isset($codexData['modules']['glossaryModule']['contents'])) {
     $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
 }
@@ -167,7 +183,7 @@ if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
     $codexGlossaryAssoc = $codexData['glossary'];
 }
 $codexGlossaryBlock = "";
-$codexTerms = [];
+$codexTerms = array();
 if (!empty($codexGlossary) && is_array($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
         if (strpos($termDef, '—') !== false) {
@@ -188,7 +204,7 @@ if (!empty($codexGlossaryAssoc)) {
         $codexTerms[] = trim($term) . ": " . trim($def);
     }
 }
-$modulesArr = [];
+$modulesArr = array();
 if (isset($codexData['readme']['modules'])) {
     foreach ($codexData['readme']['modules'] as $mod) {
         if (isset($mod['name'], $mod['purpose'])) {
@@ -197,7 +213,7 @@ if (isset($codexData['readme']['modules'])) {
     }
 }
 $codexOtherBlock = "";
-$codexOtherTerms = [];
+$codexOtherTerms = array();
 if (isset($codexData['version']['number'])) {
     $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
     $codexOtherTerms[] = $codexData['version']['number'];
@@ -263,10 +279,15 @@ if (isset($codexData['shared']['aiBehaviorRules'])) {
 }
 #endregion
 
-#region 📊 Build SSE Snapshot Summary
+// 📊 Build SSE Snapshot Summary
+#region Build SSE Snapshot Summary
 $snapshotSummary = "";
-$sseValues = [];
-function flattenSse($arr, &$summary, &$values, $prefix = "") {
+$sseValues = array();
+function flattenSse($arr, &$summary, &$values, $prefix = "", $depth = 0, $maxDepth = 10) {
+    if ($depth >= $maxDepth) {
+        $summary .= "$prefix: [Truncated due to depth limit]\n";
+        return;
+    }
     foreach ($arr as $k => $v) {
         $key = $prefix ? "$prefix.$k" : $k;
         if (is_array($v)) {
@@ -283,7 +304,7 @@ function flattenSse($arr, &$summary, &$values, $prefix = "") {
                     }
                 }
             } else {
-                flattenSse($v, $summary, $values, $key);
+                flattenSse($v, $summary, $values, $key, $depth + 1, $maxDepth);
             }
         } else {
             $summary .= "$key: $v\n";
@@ -296,9 +317,10 @@ if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
 }
 #endregion
 
-#region 📋 User Codex Commands
+// 📋 User Codex Commands
+#region User Codex Commands
 if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
-    $displayed = [];
+    $displayed = array();
     $uniqueGlossary = "";
     foreach (explode("\n", $codexGlossaryBlock) as $line) {
         $key = strtolower(trim(strtok($line, ":")));
@@ -307,63 +329,58 @@ if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i
             $displayed[$key] = true;
         }
     }
-    $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
-    echo json_encode([
-        "response" => $formattedGlossary,
-        "action" => "none",
-        "sessionId" => session_id()
-    ]);
-    exit;
+    sendJsonResponse(nl2br(htmlspecialchars($uniqueGlossary)), "none", array("sessionId" => session_id()));
 }
+
 if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
     $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
-    echo json_encode([
-        "response" => $modulesDisplay,
-        "action" => "none",
-        "sessionId" => session_id()
-    ]);
-    exit;
+    sendJsonResponse($modulesDisplay, "none", array("sessionId" => session_id()));
 }
 #endregion
 
-#region 📝 Build System Prompt and Report Types
-$reportTypesPath = '/home/notyou64/public_html/data/report_types.json';
-if (!file_exists($reportTypesPath) || !is_readable($reportTypesPath)) {
-    echo json_encode([
-        "response" => "❌ Missing or unreadable report_types.json",
-        "action" => "none",
+// 📝 Build System Prompt and Report Types
+#region Build System Prompt and Report Types
+$reportTypesPath = __DIR__ . '/../data/report_types.json';
+$reportTypes = array();
+$clarifyOptions = array("Zoning Report", "Sign Ordinance Report", "Map", "Permit Lookup");
+if (file_exists($reportTypesPath) && is_readable($reportTypesPath)) {
+    $reportTypesJson = file_get_contents($reportTypesPath);
+    if ($reportTypesJson !== false) {
+        $reportTypes = json_decode($reportTypesJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($reportTypes['options'])) {
+            $clarifyOptions = array_keys($reportTypes['options']);
+        } else {
+            logError("Invalid report_types.json", array("path" => $reportTypesPath));
+        }
+    } else {
+        logError("Unable to read report_types.json", array("path" => $reportTypesPath));
+        sendJsonResponse("❌ Unable to read report_types.json", "none", array(
+            "sessionId" => session_id(),
+            "error" => "Unable to read report_types.json",
+            "path" => $reportTypesPath
+        ));
+    }
+} else {
+    logError("Missing or unreadable report_types.json", array("path" => $reportTypesPath));
+    sendJsonResponse("❌ Missing or unreadable report_types.json", "none", array(
         "sessionId" => session_id(),
         "error" => "Missing or unreadable report_types.json",
         "path" => $reportTypesPath
-    ]);
-    exit;
+    ));
 }
 
-$reportTypesJson = file_get_contents($reportTypesPath);
-if ($reportTypesJson === false) {
-    echo json_encode([
-        "response" => "❌ Unable to read report_types.json",
-        "action" => "none",
-        "sessionId" => session_id(),
-        "error" => "Unable to read report_types.json",
-        "path" => $reportTypesPath
-    ]);
-    exit;
-}
-
-$reportTypes = json_decode($reportTypesJson, true);
 $reportTypesBlock = json_encode($reportTypes);
 
-$actionTypesArray = [
-    "Create"  => ["Contact", "Order", "Application", "Location", "Login", "Logout", "Report"],
-    "Read"    => ["Contact", "Order", "Application", "Location", "Report"],
-    "Update"  => ["Contact", "Order", "Application", "Location", "Report"],
-    "Delete"  => ["Contact", "Order", "Application", "Location", "Report"],
-    "Clarify" => ["Options"] // ✅ Added Clarify type
-];
+$actionTypesArray = array(
+    "Create"  => array("Contact", "Order", "Application", "Location", "Login", "Logout", "Report"),
+    "Read"    => array("Contact", "Order", "Application", "Location", "Report"),
+    "Update"  => array("Contact", "Order", "Application", "Location", "Report"),
+    "Delete"  => array("Contact", "Order", "Application", "Location", "Report"),
+    "Clarify" => array("Options")
+);
 
 $systemPrompt = <<<PROMPT
-You are Skyebot, an assistant for a signage company.  
+You are Skyebot, an assistant for the signage company Skyelighting.  
 You have four sources of truth:  
 - codexGlossary: internal company terms/definitions  
 - codexOther: other company knowledge base items (version, modules, constitution, etc.)  
@@ -371,7 +388,7 @@ You have four sources of truth:
 - reportTypes: standardized report templates  
 
 Rules:  
-- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete), respond ONLY with a JSON object. No plain text or explanations.  
+- If the user's intent is to perform a CRUD action (Create, Read, Update, Delete) or Clarify, respond ONLY with a JSON object. No plain text or explanations.  
 - Allowed actionTypes: Create, Read, Update, Delete, Clarify  
 - Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report, Options  
 
@@ -382,7 +399,7 @@ Examples:
   {"actionType":"Read","actionName":"Order","criteria":{"orderID":"1234"}}  
   {"actionType":"Update","actionName":"Application","updates":{"applicationID":"3456","status":"Approved"}}  
   {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
-  {"actionType":"Clarify","actionName":"Options","options":["Zoning Report","Sign Ordinance Report","Map"],"details":{"address":"123 Main St, Phoenix, AZ"}}  
+  {"actionType":"Clarify","actionName":"Options","options":["Zoning Report","Sign Ordinance Report","Map","Permit Lookup"],"details":{"address":"123 Main St, Phoenix, AZ"}}  
 
 Report Rules:  
 - For reports, ALWAYS return JSON in this form:  
@@ -402,9 +419,8 @@ Report Rules:
 - Always include both `projectName` and `address` inside report `data`.  
   → If the user did not provide a projectName, auto-generate one in the form:  
     "Untitled Project – <address>".  
-- If the user provides only a raw address (e.g., "3145 N 33rd Ave, Phoenix, AZ"), do NOT assume.  
-  → If multiple report options apply (zoning, sign ordinance, map), return a Clarify JSON object with "options".  
-  → If only one option applies, generate the JSON report automatically.  
+- If the user provides only a raw address (e.g., "3145 N 33rd Ave, Phoenix, AZ") and multiple report options apply, return a Clarify JSON object with "options".  
+- If only one option applies, generate the JSON report automatically.  
 - Do not return plain text, explanations, or echo the user’s prompt. JSON only.  
 - For standard reports, required fields are defined in reportTypes. If missing, still generate JSON with available fields.  
 - For non-report queries, respond ONLY with the raw value from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
@@ -423,72 +439,100 @@ $snapshotSummary
 reportTypes:  
 $reportTypesBlock  
 PROMPT;
-
 #endregion
 
-#region 💬 Build OpenAI Message Array
-$messages = [["role" => "system", "content" => $systemPrompt]];
+// 💬 Build OpenAI Message Array
+#region Build OpenAI Message Array
+$messages = array(array("role" => "system", "content" => $systemPrompt));
 if (!empty($conversation)) {
     $history = array_slice($conversation, -2);
     foreach ($history as $entry) {
         if (isset($entry["role"], $entry["content"])) {
-            $messages[] = ["role" => $entry["role"], "content" => $entry["content"]];
+            $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
         }
     }
 }
-$messages[] = ["role" => "user", "content" => $prompt];
+$messages[] = array("role" => "user", "content" => $prompt);
 #endregion
 
-#region 🚀 OpenAI API Request
-$payload = json_encode([
+// 🚀 OpenAI API Request
+#region OpenAI API Request
+$payload = json_encode(array(
     "model" => "gpt-4",
     "messages" => $messages,
     "temperature" => 0.1,
-    "max_tokens" => 200
-], JSON_UNESCAPED_SLASHES);
+    "max_tokens" => 300
+), JSON_UNESCAPED_SLASHES);
+
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
+curl_setopt($ch, CURLOPT_HTTPHEADER, array(
     "Content-Type: application/json",
     "Authorization: Bearer " . $apiKey
-]);
+));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_TIMEOUT, 25);
-$response = curl_exec($ch);
+
+// Retry logic for transient failures
+$maxRetries = 3;
+$retryDelay = 1;
+for ($i = 0; $i < $maxRetries; $i++) {
+    $response = curl_exec($ch);
+    if ($response !== false) {
+        break;
+    }
+    logError("OpenAI API Curl Error: " . curl_error($ch), array("attempt" => $i + 1));
+    if ($i < $maxRetries - 1) {
+        sleep($retryDelay);
+        $retryDelay *= 2;
+    }
+}
+
 if ($response === false) {
     $curlError = curl_error($ch);
-    file_put_contents(__DIR__ . '/error.log', "OpenAI API Curl Error: " . $curlError . "\n", FILE_APPEND);
-    echo json_encode(["response" => "❌ Curl error: " . $curlError, "action" => "none", "sessionId" => session_id()]);
+    logError("OpenAI API Curl Error after retries: " . $curlError);
+    sendJsonResponse("❌ Curl error: " . $curlError, "none", array("sessionId" => session_id()));
     curl_close($ch);
     exit;
 }
 curl_close($ch);
 
-// Improved JSON decoding and error handling
 $result = json_decode($response, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
-    file_put_contents(__DIR__ . '/error.log', "JSON Decode Error: " . json_last_error_msg() . "\nResponse: $response\n", FILE_APPEND);
-    echo json_encode(["response" => "❌ JSON decode error from AI.", "action" => "none", "sessionId" => session_id()]);
+    logError("JSON Decode Error: " . json_last_error_msg(), array("response" => $response));
+    sendJsonResponse("❌ JSON decode error from AI.", "none", array("sessionId" => session_id()));
     exit;
 }
 
-// Check for API errors or missing content
 if (!isset($result["choices"][0]["message"]["content"])) {
-    if (isset($result["error"]["message"])) {
-        file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . $result["error"]["message"] . "\nResponse: $response\n", FILE_APPEND);
-        echo json_encode(["response" => "❌ API error: " . $result["error"]["message"], "action" => "none", "sessionId" => session_id()]);
-    } else {
-        file_put_contents(__DIR__ . '/error.log', "Invalid OpenAI Response: " . $response . "\n", FILE_APPEND);
-        echo json_encode(["response" => "❌ Invalid response structure from AI.", "action" => "none", "sessionId" => session_id()]);
-    }
+    $errorMsg = isset($result["error"]["message"]) ? $result["error"]["message"] : "Invalid response structure";
+    logError("OpenAI API Error: " . $errorMsg, array("response" => $response));
+    sendJsonResponse("❌ API error: " . $errorMsg, "none", array("sessionId" => session_id()));
     exit;
 }
 
 $aiResponse = trim($result["choices"][0]["message"]["content"]);
 #endregion
 
-#region 📄 Report Generation Hook
+// 📄 Report Validation
+#region Report Validation
+function validateReportData($reportType, $data, $reportTypes) {
+    $requiredFields = isset($reportTypes['options'][$reportType]['requiredFields']) 
+        ? $reportTypes['options'][$reportType]['requiredFields'] 
+        : array();
+    $missingFields = array();
+    foreach ($requiredFields as $field) {
+        if (empty($data[$field])) {
+            $missingFields[] = $field;
+        }
+    }
+    return $missingFields ? array("valid" => false, "missing" => $missingFields) : array("valid" => true);
+}
+#endregion
+
+// 📄 Report Generation Hook
+#region Report Generation Hook
 $crudData = json_decode($aiResponse, true);
 if (
     is_array($crudData) &&
@@ -499,201 +543,360 @@ if (
     $reportType = strtolower($crudData['details']['reportType']);
     $data = $crudData['details']['data'];
 
-    // 🔍 Validation: required fields for zoning report
-    if ($reportType === 'zoning') {
-        $requiredFields = ['projectName', 'address', 'parcel', 'jurisdiction'];
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                echo json_encode([
-                    "response" => "❌ Missing required field: $field (needed for zoning report).",
-                    "action" => "none",
-                    "sessionId" => session_id(),
-                    "error" => "Validation failed"
-                ]);
-                exit;
-            }
-        }
+    $validation = validateReportData($reportType, $data, $reportTypes);
+    if (!$validation['valid']) {
+        sendJsonResponse(
+            "❌ Missing required fields: " . implode(", ", $validation['missing']) . " (needed for $reportType report).",
+            "none",
+            array("sessionId" => session_id(), "error" => "Validation failed")
+        );
     }
 
-    // ✅ Passed validation → forward to generator
-    $postFields = [
-        "reportType" => $crudData['details']['reportType'],
+    $postFields = array(
+        "reportType" => $reportType,
         "reportData" => $data
-    ];
+    );
     $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $reportResult = curl_exec($ch);
+    if ($reportResult === false) {
+        logError("Report generation curl error: " . curl_error($ch));
+        sendJsonResponse("❌ Report generation failed due to curl error.", "none", array("sessionId" => session_id()));
+    }
     curl_close($ch);
 
     $reportJson = json_decode($reportResult, true);
     $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
 
     if (!empty($reportJson['success']) && $reportUrl) {
-        echo json_encode([
-            "response" => "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
-            "action" => "none",
-            "sessionId" => session_id(),
-            "reportUrl" => $reportUrl,
-            "details" => $reportJson['details']
-        ]);
+        sendJsonResponse(
+            "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
+            "none",
+            array("sessionId" => session_id(), "reportUrl" => $reportUrl, "details" => $reportJson['details'])
+        );
     } else {
-        echo json_encode([
-            "response" => "❌ Report creation failed.",
-            "action" => "none",
-            "sessionId" => session_id(),
-            "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
-            "raw" => $reportJson
-        ]);
+        sendJsonResponse(
+            "❌ Report creation failed.",
+            "none",
+            array(
+                "sessionId" => session_id(),
+                "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
+                "raw" => $reportJson
+            )
+        );
     }
-
     exit;
 }
 #endregion
 
-#region ✅ Agentic CRUD Action Handler
+// ✅ Agentic CRUD Action Handler
+#region Agentic CRUD Action Handler
+$actionHandlers = array(
+    'Create' => array(
+        'Contact' => function($data) {
+            $result = createCrudEntity('Contact', $data['details']);
+            return array(
+                "response" => $result ? "Contact created successfully." : "Failed to create Contact.",
+                "actionType" => "Create",
+                "actionName" => "Contact",
+                "details" => $data['details'],
+                "sessionId" => session_id()
+            );
+        },
+        'Order' => function($data) {
+            $result = createCrudEntity('Order', $data['details']);
+            return array(
+                "response" => $result ? "Order created successfully." : "Failed to create Order.",
+                "actionType" => "Create",
+                "actionName" => "Order",
+                "details" => $data['details'],
+                "sessionId" => session_id()
+            );
+        },
+        'Application' => function($data) {
+            $result = createCrudEntity('Application', $data['details']);
+            return array(
+                "response" => $result ? "Application created successfully." : "Failed to create Application.",
+                "actionType" => "Create",
+                "actionName" => "Application",
+                "details" => $data['details'],
+                "sessionId" => session_id()
+            );
+        },
+        'Location' => function($data) {
+            $result = createCrudEntity('Location', $data['details']);
+            return array(
+                "response" => $result ? "Location created successfully." : "Failed to create Location.",
+                "actionType" => "Create",
+                "actionName" => "Location",
+                "details" => $data['details'],
+                "sessionId" => session_id()
+            );
+        },
+        'Login' => function($data) {
+            $username = isset($data['details']['username']) ? $data['details']['username'] : '';
+            $password = isset($data['details']['password']) ? $data['details']['password'] : '';
+            if (authenticateUser($username, $password)) {
+                $_SESSION['user_id'] = $username;
+                return array(
+                    "response" => "Login successful.",
+                    "actionType" => "Create",
+                    "actionName" => "Login",
+                    "details" => array("username" => $username),
+                    "sessionId" => session_id(),
+                    "loggedIn" => true
+                );
+            }
+            return array(
+                "response" => "Login failed.",
+                "actionType" => "Create",
+                "actionName" => "Login",
+                "details" => array("username" => $username),
+                "sessionId" => session_id(),
+                "loggedIn" => false
+            );
+        },
+        'Logout' => function($data) {
+            session_unset();
+            session_destroy();
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(
+                    session_name(),
+                    '',
+                    time() - 42000,
+                    $params["path"],
+                    $params["domain"],
+                    $params["secure"],
+                    isset($params["httponly"]) ? $params["httponly"] : false
+                );
+            }
+            setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
+            return array(
+                "response" => "You have been logged out.",
+                "actionType" => "Create",
+                "actionName" => "Logout",
+                "sessionId" => session_id(),
+                "loggedIn" => false
+            );
+        },
+        'Report' => function($data) {
+            return $data; // Handled in Report Generation Hook
+        }
+    ),
+    'Read' => array(
+        'Contact' => function($data) {
+            $result = readCrudEntity('Contact', $data['criteria']);
+            return array(
+                "response" => $result !== false ? $result : "No Contact found matching criteria.",
+                "actionType" => "Read",
+                "actionName" => "Contact",
+                "criteria" => $data['criteria'],
+                "sessionId" => session_id()
+            );
+        },
+        'Order' => function($data) {
+            $result = readCrudEntity('Order', $data['criteria']);
+            return array(
+                "response" => $result !== false ? $result : "No Order found matching criteria.",
+                "actionType" => "Read",
+                "actionName" => "Order",
+                "criteria" => $data['criteria'],
+                "sessionId" => session_id()
+            );
+        },
+        'Application' => function($data) {
+            $result = readCrudEntity('Application', $data['criteria']);
+            return array(
+                "response" => $result !== false ? $result : "No Application found matching criteria.",
+                "actionType" => "Read",
+                "actionName" => "Application",
+                "criteria" => $data['criteria'],
+                "sessionId" => session_id()
+            );
+        },
+        'Location' => function($data) {
+            $result = readCrudEntity('Location', $data['criteria']);
+            return array(
+                "response" => $result !== false ? $result : "No Location found matching criteria.",
+                "actionType" => "Read",
+                "actionName" => "Location",
+                "criteria" => $data['criteria'],
+                "sessionId" => session_id()
+            );
+        },
+        'Report' => function($data) {
+            return $data; // Handled in Report Generation Hook
+        }
+    ),
+    'Update' => array(
+        'Contact' => function($data) {
+            $result = updateCrudEntity('Contact', $data['updates']);
+            return array(
+                "response" => $result ? "Contact updated successfully." : "Failed to update Contact.",
+                "actionType" => "Update",
+                "actionName" => "Contact",
+                "updates" => $data['updates'],
+                "sessionId" => session_id()
+            );
+        },
+        'Order' => function($data) {
+            $result = updateCrudEntity('Order', $data['updates']);
+            return array(
+                "response" => $result ? "Order updated successfully." : "Failed to update Order.",
+                "actionType" => "Update",
+                "actionName" => "Order",
+                "updates" => $data['updates'],
+                "sessionId" => session_id()
+            );
+        },
+        'Application' => function($data) {
+            $result = updateCrudEntity('Application', $data['updates']);
+            return array(
+                "response" => $result ? "Application updated successfully." : "Failed to update Application.",
+                "actionType" => "Update",
+                "actionName" => "Application",
+                "updates" => $data['updates'],
+                "sessionId" => session_id()
+            );
+        },
+        'Location' => function($data) {
+            $result = updateCrudEntity('Location', $data['updates']);
+            return array(
+                "response" => $result ? "Location updated successfully." : "Failed to update Location.",
+                "actionType" => "Update",
+                "actionName" => "Location",
+                "updates" => $data['updates'],
+                "sessionId" => session_id()
+            );
+        },
+        'Report' => function($data) {
+            return $data; // Handled in Report Generation Hook
+        }
+    ),
+    'Delete' => array(
+        'Contact' => function($data) {
+            $result = deleteCrudEntity('Contact', $data['target']);
+            return array(
+                "response" => $result ? "Contact deleted successfully." : "Failed to delete Contact.",
+                "actionType" => "Delete",
+                "actionName" => "Contact",
+                "target" => $data['target'],
+                "sessionId" => session_id()
+            );
+        },
+        'Order' => function($data) {
+            $result = deleteCrudEntity('Order', $data['target']);
+            return array(
+                "response" => $result ? "Order deleted successfully." : "Failed to delete Order.",
+                "actionType" => "Delete",
+                "actionName" => "Order",
+                "target" => $data['target'],
+                "sessionId" => session_id()
+            );
+        },
+        'Application' => function($data) {
+            $result = deleteCrudEntity('Application', $data['target']);
+            return array(
+                "response" => $result ? "Application deleted successfully." : "Failed to delete Application.",
+                "actionType" => "Delete",
+                "actionName" => "Application",
+                "target" => $data['target'],
+                "sessionId" => session_id()
+            );
+        },
+        'Location' => function($data) {
+            $result = deleteCrudEntity('Location', $data['target']);
+            return array(
+                "response" => $result ? "Location deleted successfully." : "Failed to delete Location.",
+                "actionType" => "Delete",
+                "actionName" => "Location",
+                "target" => $data['target'],
+                "sessionId" => session_id()
+            );
+        },
+        'Report' => function($data) {
+            return $data; // Handled in Report Generation Hook
+        }
+    ),
+    'Clarify' => array(
+        'Options' => function($data) use ($isAddress, $clarifyOptions) {
+            if ($isAddress && count($clarifyOptions) > 1) {
+                return array(
+                    "response" => "Multiple options available for address.",
+                    "actionType" => "Clarify",
+                    "actionName" => "Options",
+                    "options" => $clarifyOptions,
+                    "details" => array("address" => isset($data['details']['address']) ? $data['details']['address'] : $prompt),
+                    "sessionId" => session_id()
+                );
+            } elseif ($isAddress && count($clarifyOptions) === 1) {
+                $reportType = strtolower($clarifyOptions[0]);
+                return array(
+                    "actionType" => "Create",
+                    "actionName" => "Report",
+                    "details" => array(
+                        "reportType" => $reportType,
+                        "title" => ucfirst($reportType) . " – Untitled Project",
+                        "data" => array(
+                            "projectName" => "Untitled Project – " . (isset($data['details']['address']) ? $data['details']['address'] : $prompt),
+                            "address" => isset($data['details']['address']) ? $data['details']['address'] : $prompt
+                        )
+                    )
+                );
+            }
+            return array(
+                "response" => "Invalid Clarify action.",
+                "actionType" => "Clarify",
+                "actionName" => "Options",
+                "sessionId" => session_id()
+            );
+        }
+    )
+);
+
 if (
     is_array($crudData) &&
     isset($crudData["actionType"], $crudData["actionName"]) &&
     isset($actionTypesArray[$crudData["actionType"]]) &&
-    in_array($crudData["actionName"], $actionTypesArray[$crudData["actionType"]])
+    in_array($crudData["actionName"], $actionTypesArray[$crudData["actionType"]]) &&
+    isset($actionHandlers[$crudData["actionType"]][$crudData["actionName"]])
 ) {
-    $type = $crudData["actionType"];
-    $name = $crudData["actionName"];
-    switch ($type) {
-        case "Create":
-            if ($name === "Login") {
-                $username = isset($crudData["details"]["username"]) ? $crudData["details"]["username"] : '';
-                $password = isset($crudData["details"]["password"]) ? $crudData["details"]["password"] : '';
-                if (authenticateUser($username, $password)) {
-                    $_SESSION['user_id'] = $username;
-                    echo json_encode([
-                        "response" => "Login successful.",
-                        "actionType" => $type,
-                        "actionName" => $name,
-                        "details" => ["username" => $username],
-                        "sessionId" => session_id(),
-                        "loggedIn" => true
-                    ]);
-                } else {
-                    echo json_encode([
-                        "response" => "Login failed.",
-                        "actionType" => $type,
-                        "actionName" => $name,
-                        "details" => ["username" => $username],
-                        "sessionId" => session_id(),
-                        "loggedIn" => false
-                    ]);
-                }
-                exit;
-            }
-            if ($name === "Logout") {
-                session_unset();
-                session_destroy();
-                if (ini_get("session.use_cookies")) {
-                    $params = session_get_cookie_params();
-                    setcookie(
-                        session_name(),
-                        '',
-                        time() - 42000,
-                        $params["path"],
-                        $params["domain"],
-                        $params["secure"],
-                        isset($params["httponly"]) ? $params["httponly"] : false
-                    );
-                }
-                setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-                echo json_encode([
-                    "response" => "You have been logged out.",
-                    "actionType" => $type,
-                    "actionName" => $name,
-                    "sessionId" => session_id(),
-                    "loggedIn" => false
-                ]);
-                exit;
-            }
-            if (!empty($crudData["details"]) && is_array($crudData["details"])) {
-                $result = createCrudEntity($name, $crudData["details"]);
-                echo json_encode([
-                    "response" => $result ? "$name created successfully." : "Failed to create $name.",
-                    "actionType" => $type,
-                    "actionName" => $name,
-                    "details" => $crudData["details"],
-                    "sessionId" => session_id()
-                ]);
-                exit;
-            }
-            break;
-        case "Read":
-            if (!empty($crudData["criteria"]) && is_array($crudData["criteria"])) {
-                $result = readCrudEntity($name, $crudData["criteria"]);
-                echo json_encode([
-                    "response" => $result !== false ? $result : "No $name found matching criteria.",
-                    "actionType" => $type,
-                    "actionName" => $name,
-                    "criteria" => $crudData["criteria"],
-                    "sessionId" => session_id()
-                ]);
-                exit;
-            }
-            break;
-        case "Update":
-            if (!empty($crudData["updates"]) && is_array($crudData["updates"])) {
-                $result = updateCrudEntity($name, $crudData["updates"]);
-                echo json_encode([
-                    "response" => $result ? "$name updated successfully." : "Failed to update $name.",
-                    "actionType" => $type,
-                    "actionName" => $name,
-                    "updates" => $crudData["updates"],
-                    "sessionId" => session_id()
-                ]);
-                exit;
-            }
-            break;
-        case "Delete":
-            if (!empty($crudData["target"]) && is_array($crudData["target"])) {
-                $result = deleteCrudEntity($name, $crudData["target"]);
-                echo json_encode([
-                    "response" => $result ? "$name deleted successfully." : "Failed to delete $name.",
-                    "actionType" => $type,
-                    "actionName" => $name,
-                    "target" => $crudData["target"],
-                    "sessionId" => session_id()
-                ]);
-                exit;
-            }
-            break;
-    }
-    echo json_encode([
-        "response" => "Invalid or incomplete CRUD action data.",
-        "actionType" => $type,
-        "actionName" => $name,
-        "sessionId" => session_id()
-    ]);
-    exit;
+    $handler = $actionHandlers[$crudData["actionType"]][$crudData["actionName"]];
+    $result = $handler($crudData);
+    sendJsonResponse($result["response"], "none", array_diff_key($result, array("response" => null)));
+} elseif (is_array($crudData) && isset($crudData["actionType"], $crudData["actionName"])) {
+    sendJsonResponse(
+        "Invalid or incomplete CRUD action data.",
+        "none",
+        array(
+            "actionType" => $crudData["actionType"],
+            "actionName" => $crudData["actionName"],
+            "sessionId" => session_id()
+        )
+    );
 }
 #endregion
 
-#region ✅ Final Post-Validation Step
+// ✅ Final Post-Validation Step
+#region Final Post-Validation Step
 $allValid = array_merge($codexTerms, $codexOtherTerms, $sseValues);
 $isValid = false;
 foreach ($allValid as $entry) {
-    // Case-insensitive partial match for validation
     if (stripos($aiResponse, trim($entry)) !== false || stripos(trim($entry), $aiResponse) !== false) {
         $isValid = true;
         break;
     }
 }
 
-// Enhanced validation fallback
 if (!$isValid || $aiResponse === "") {
     if (preg_match('/\b(mtco|lgbas|codex|constitution|glossary)\b/i', $lowerPrompt)) {
         $aiResponse = $codexGlossaryBlock !== "" ? trim($codexGlossaryBlock) : "No Codex glossary available.";
     } elseif (!empty($codexOtherBlock) && preg_match('/\b(version|modules|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
         $aiResponse = trim($codexOtherBlock);
     } else {
-        // Check if the prompt matches any term directly
         foreach ($allValid as $entry) {
             if (stripos($lowerPrompt, strtolower(trim($entry))) !== false) {
                 $aiResponse = trim($entry);
@@ -708,15 +911,31 @@ if (!$isValid || $aiResponse === "") {
 }
 #endregion
 
-#region 📤 Output
-echo json_encode([
-    "response" => $aiResponse,
-    "action" => "chat",
-    "sessionId" => session_id()
-]);
+// 📤 Output
+#region Output
+sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
 #endregion
 
-#region 🛠 Helper Functions
+// 🛠 Helper Functions
+#region Helper Functions
+/**
+ * Send JSON response with proper HTTP status code
+ * @param string $response
+ * @param string $action
+ * @param array $extra
+ * @param int $status
+ */
+function sendJsonResponse($response, $action = "none", $extra = array(), $status = 200) {
+    http_response_code($status);
+    $data = array_merge(array(
+        "response" => $response,
+        "action" => $action,
+        "sessionId" => session_id()
+    ), $extra);
+    echo json_encode($data);
+    exit;
+}
+
 /**
  * Authenticate a user (placeholder).
  * @param string $username
@@ -724,8 +943,7 @@ echo json_encode([
  * @return bool
  */
 function authenticateUser($username, $password) {
-    // TODO: Replace with secure authentication (e.g., password_hash, database check)
-    $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
+    $validCredentials = array('admin' => password_hash('secret', PASSWORD_DEFAULT));
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
 
