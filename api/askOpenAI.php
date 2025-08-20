@@ -1,5 +1,5 @@
 <?php
-// 📄 File: api/askOpenAI.php (PHP 5.6 Compatible with Enhanced Regionalization)
+// 📄 File: api/askOpenAI.php (PHP 5.6 Compatible, Optimized for IDE)
 
 // 🛡️ Dependency Checks
 #region Dependency Checks
@@ -36,6 +36,11 @@ if (!$apiKey) {
 
 // Initialize logging
 $logFile = __DIR__ . '/error.log';
+/**
+ * Log errors to file
+ * @param string $message
+ * @param array $context
+ */
 function logError($message, $context = array()) {
     global $logFile;
     $logEntry = date('Y-m-d H:i:s') . " - $message\n" . json_encode($context, JSON_PRETTY_PRINT) . "\n";
@@ -121,23 +126,40 @@ if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $
 
 // 📂 Load Codex and SSE Data
 #region Load Codex and SSE Data
-$codexPath = __DIR__ . '/../docs/codex/codex.json';
-$codexData = array();
-if (file_exists($codexPath)) {
-    $codexRaw = file_get_contents($codexPath);
-    $codexData = json_decode($codexRaw, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        logError("Codex JSON Error: " . json_last_error_msg(), array("path" => $codexPath));
-        $codexData = array();
+/**
+ * Load and parse codex data
+ * @return array
+ */
+function loadCodexData() {
+    $codexPath = __DIR__ . '/../docs/codex/codex.json';
+    $codexData = array();
+    if (file_exists($codexPath)) {
+        $codexRaw = file_get_contents($codexPath);
+        $codexData = json_decode($codexRaw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            logError("Codex JSON Error: " . json_last_error_msg(), array("path" => $codexPath));
+            $codexData = array();
+        }
     }
+    return $codexData;
 }
 
-$sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
-$sseData = $sseRaw ? json_decode($sseRaw, true) : array();
-if (json_last_error() !== JSON_ERROR_NONE) {
-    logError("SSE JSON Error: " . json_last_error_msg(), array("raw" => $sseRaw));
-    $sseData = array();
+/**
+ * Load and parse SSE data
+ * @return array
+ */
+function loadSseData() {
+    $sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
+    $sseData = $sseRaw ? json_decode($sseRaw, true) : array();
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logError("SSE JSON Error: " . json_last_error_msg(), array("raw" => $sseRaw));
+        $sseData = array();
+    }
+    return $sseData;
 }
+
+$codexData = loadCodexData();
+$sseData = loadSseData();
 $skyebotSOT = array('codex' => $codexData, 'sse' => $sseData, 'other' => array());
 file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
 #endregion
@@ -174,147 +196,192 @@ if (
 
 // 📚 Build Codex Data
 #region Build Codex Data
-$codexGlossary = array();
-$codexGlossaryAssoc = array();
-if (isset($codexData['modules']['glossaryModule']['contents'])) {
-    $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
-}
-if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
-    $codexGlossaryAssoc = $codexData['glossary'];
-}
-$codexGlossaryBlock = "";
-$codexTerms = array();
-if (!empty($codexGlossary) && is_array($codexGlossary)) {
-    foreach ($codexGlossary as $termDef) {
-        if (strpos($termDef, '—') !== false) {
-            list($term, $def) = explode('—', $termDef, 2);
+/**
+ * Build codex glossary block and terms
+ * @param array $codexData
+ * @return array
+ */
+function buildCodexGlossary($codexData) {
+    $codexGlossary = array();
+    $codexGlossaryAssoc = array();
+    if (isset($codexData['modules']['glossaryModule']['contents'])) {
+        $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
+    }
+    if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
+        $codexGlossaryAssoc = $codexData['glossary'];
+    }
+    $codexGlossaryBlock = "";
+    $codexTerms = array();
+    if (!empty($codexGlossary) && is_array($codexGlossary)) {
+        foreach ($codexGlossary as $termDef) {
+            if (strpos($termDef, '—') !== false) {
+                list($term, $def) = explode('—', $termDef, 2);
+                $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
+                $codexTerms[] = trim($def);
+                $codexTerms[] = trim($term) . ": " . trim($def);
+            } else {
+                $codexGlossaryBlock .= $termDef . "\n";
+                $codexTerms[] = trim($termDef);
+            }
+        }
+    }
+    if (!empty($codexGlossaryAssoc)) {
+        foreach ($codexGlossaryAssoc as $term => $def) {
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
             $codexTerms[] = trim($def);
             $codexTerms[] = trim($term) . ": " . trim($def);
-        } else {
-            $codexGlossaryBlock .= $termDef . "\n";
-            $codexTerms[] = trim($termDef);
         }
     }
+    return array('block' => $codexGlossaryBlock, 'terms' => $codexTerms);
 }
-if (!empty($codexGlossaryAssoc)) {
-    foreach ($codexGlossaryAssoc as $term => $def) {
-        $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
-        $codexTerms[] = trim($def);
-        $codexTerms[] = trim($term) . ": " . trim($def);
-    }
-}
-$modulesArr = array();
-if (isset($codexData['readme']['modules'])) {
-    foreach ($codexData['readme']['modules'] as $mod) {
-        if (isset($mod['name'], $mod['purpose'])) {
-            $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
+
+/**
+ * Build codex other block and terms
+ * @param array $codexData
+ * @return array
+ */
+function buildCodexOther($codexData) {
+    $modulesArr = array();
+    if (isset($codexData['readme']['modules'])) {
+        foreach ($codexData['readme']['modules'] as $mod) {
+            if (isset($mod['name'], $mod['purpose'])) {
+                $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
+            }
         }
     }
-}
-$codexOtherBlock = "";
-$codexOtherTerms = array();
-if (isset($codexData['version']['number'])) {
-    $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
-    $codexOtherTerms[] = $codexData['version']['number'];
-    $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
-}
-if (isset($codexData['changelog'][0]['description'])) {
-    $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
-    $codexOtherTerms[] = $codexData['changelog'][0]['description'];
-    $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
-}
-if (isset($codexData['readme']['title'])) {
-    $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
-    $codexOtherTerms[] = $codexData['readme']['title'];
-    $codexOtherTerms[] = "Readme Title: " . $codexData['readme']['title'];
-}
-if (isset($codexData['readme']['vision'])) {
-    $codexOtherBlock .= "Vision: " . $codexData['readme']['vision'] . "\n";
-    $codexOtherTerms[] = $codexData['readme']['vision'];
-    $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
-}
-if ($modulesArr) {
-    $modBlock = implode("\n", $modulesArr);
-    $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
-    $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
-}
-if (isset($codexData['meta']['description'])) {
-    $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
-    $codexOtherTerms[] = $codexData['meta']['description'];
-    $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
-}
-if (isset($codexData['constitution']['description'])) {
-    $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
-    $codexOtherTerms[] = $codexData['constitution']['description'];
-    $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
-}
-if (isset($codexData['ragExplanation']['summary'])) {
-    $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
-    $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
-    $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
-}
-if (isset($codexData['includedDocuments']['summary'])) {
-    $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
-    $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
-    $codexOtherTerms[] = "Included Documents: " . $codexData['includedDocuments']['summary'];
-    if (isset($codexData['includedDocuments']['documents'])) {
-        $docList = implode(", ", $codexData['includedDocuments']['documents']);
-        $codexOtherBlock .= "Documents: " . $docList . "\n";
-        $codexOtherTerms[] = $docList;
-        $codexOtherTerms[] = "Documents: " . $docList;
+    $codexOtherBlock = "";
+    $codexOtherTerms = array();
+    if (isset($codexData['version']['number'])) {
+        $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
+        $codexOtherTerms[] = $codexData['version']['number'];
+        $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
     }
+    if (isset($codexData['changelog'][0]['description'])) {
+        $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
+        $codexOtherTerms[] = $codexData['changelog'][0]['description'];
+        $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
+    }
+    if (isset($codexData['readme']['title'])) {
+        $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
+        $codexOtherTerms[] = $codexData['readme']['title'];
+        $codexOtherTerms[] = "Readme Title: " . $codexData['readme']['title'];
+    }
+    if (isset($codexData['readme']['vision'])) {
+        $codexOtherBlock .= "Vision: " . $codexData['readme']['vision'] . "\n";
+        $codexOtherTerms[] = $codexData['readme']['vision'];
+        $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
+    }
+    if ($modulesArr) {
+        $modBlock = implode("\n", $modulesArr);
+        $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
+        $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
+    }
+    if (isset($codexData['meta']['description'])) {
+        $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
+        $codexOtherTerms[] = $codexData['meta']['description'];
+        $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
+    }
+    if (isset($codexData['constitution']['description'])) {
+        $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
+        $codexOtherTerms[] = $codexData['constitution']['description'];
+        $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
+    }
+    if (isset($codexData['ragExplanation']['summary'])) {
+        $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
+        $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
+        $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
+    }
+    if (isset($codexData['includedDocuments']['summary'])) {
+        $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
+        $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
+        $codexOtherTerms[] = "Included Documents: " . $codexData['includedDocuments']['summary'];
+        if (isset($codexData['includedDocuments']['documents'])) {
+            $docList = implode(", ", $codexData['includedDocuments']['documents']);
+            $codexOtherBlock .= "Documents: " . $docList . "\n";
+            $codexOtherTerms[] = $docList;
+            $codexOtherTerms[] = "Documents: " . $docList;
+        }
+    }
+    if (isset($codexData['shared']['sourcesOfTruth'])) {
+        $sotList = implode("; ", $codexData['shared']['sourcesOfTruth']);
+        $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
+        $codexOtherTerms[] = $sotList;
+        $codexOtherTerms[] = "Sources of Truth: " . $sotList;
+    }
+    if (isset($codexData['shared']['aiBehaviorRules'])) {
+        $ruleList = implode(" | ", $codexData['shared']['aiBehaviorRules']);
+        $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
+        $codexOtherTerms[] = $ruleList;
+        $codexOtherTerms[] = "AI Behavior Rules: " . $ruleList;
+    }
+    return array('block' => $codexOtherBlock, 'terms' => $codexOtherTerms);
 }
-if (isset($codexData['shared']['sourcesOfTruth'])) {
-    $sotList = implode("; ", $codexData['shared']['sourcesOfTruth']);
-    $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
-    $codexOtherTerms[] = $sotList;
-    $codexOtherTerms[] = "Sources of Truth: " . $sotList;
-}
-if (isset($codexData['shared']['aiBehaviorRules'])) {
-    $ruleList = implode(" | ", $codexData['shared']['aiBehaviorRules']);
-    $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
-    $codexOtherTerms[] = $ruleList;
-    $codexOtherTerms[] = "AI Behavior Rules: " . $ruleList;
-}
+
+$codexGlossaryData = buildCodexGlossary($codexData);
+$codexGlossaryBlock = $codexGlossaryData['block'];
+$codexTerms = $codexGlossaryData['terms'];
+$codexOtherData = buildCodexOther($codexData);
+$codexOtherBlock = $codexOtherData['block'];
+$codexOtherTerms = $codexOtherData['terms'];
 #endregion
 
 // 📊 Build SSE Snapshot Summary
 #region Build SSE Snapshot Summary
-$snapshotSummary = "";
-$sseValues = array();
-function flattenSse($arr, &$summary, &$values, $prefix = "", $depth = 0, $maxDepth = 10) {
-    if ($depth >= $maxDepth) {
-        $summary .= "$prefix: [Truncated due to depth limit]\n";
-        return;
-    }
-    foreach ($arr as $k => $v) {
-        $key = $prefix ? "$prefix.$k" : $k;
-        if (is_array($v)) {
-            if (array_keys($v) === range(0, count($v) - 1)) {
-                foreach ($v as $i => $entry) {
-                    if (is_array($entry)) {
-                        $title = isset($entry['title']) ? $entry['title'] : '';
-                        $desc = isset($entry['description']) ? $entry['description'] : '';
-                        $summary .= "$key[$i]: $title $desc\n";
-                        $values[] = trim("$title $desc");
-                    } else {
-                        $summary .= "$key[$i]: $entry\n";
-                        $values[] = $entry;
+/**
+ * Build SSE snapshot summary
+ * @param array $sseSnapshot
+ * @return array
+ */
+function buildSseSummary($sseSnapshot) {
+    $snapshotSummary = "";
+    $sseValues = array();
+    /**
+     * Flatten SSE array recursively
+     * @param array $arr
+     * @param string $summary
+     * @param array $values
+     * @param string $prefix
+     * @param int $depth
+     * @param int $maxDepth
+     */
+    function flattenSse($arr, &$summary, &$values, $prefix = "", $depth = 0, $maxDepth = 10) {
+        if ($depth >= $maxDepth) {
+            $summary .= "$prefix: [Truncated due to depth limit]\n";
+            return;
+        }
+        foreach ($arr as $k => $v) {
+            $key = $prefix ? "$prefix.$k" : $k;
+            if (is_array($v)) {
+                if (array_keys($v) === range(0, count($v) - 1)) {
+                    foreach ($v as $i => $entry) {
+                        if (is_array($entry)) {
+                            $title = isset($entry['title']) ? $entry['title'] : '';
+                            $desc = isset($entry['description']) ? $entry['description'] : '';
+                            $summary .= "$key[$i]: $title $desc\n";
+                            $values[] = trim("$title $desc");
+                        } else {
+                            $summary .= "$key[$i]: $entry\n";
+                            $values[] = $entry;
+                        }
                     }
+                } else {
+                    flattenSse($v, $summary, $values, $key, $depth + 1, $maxDepth);
                 }
             } else {
-                flattenSse($v, $summary, $values, $key, $depth + 1, $maxDepth);
+                $summary .= "$key: $v\n";
+                $values[] = $v;
             }
-        } else {
-            $summary .= "$key: $v\n";
-            $values[] = $v;
         }
     }
+    if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
+        flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
+    }
+    return array('summary' => $snapshotSummary, 'values' => $sseValues);
 }
-if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
-}
+
+$sseSummaryData = buildSseSummary($sseSnapshot);
+$snapshotSummary = $sseSummaryData['summary'];
+$sseValues = $sseSummaryData['values'];
 #endregion
 
 // 📋 User Codex Commands
@@ -333,6 +400,14 @@ if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i
 }
 
 if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
+    $modulesArr = array();
+    if (isset($codexData['readme']['modules'])) {
+        foreach ($codexData['readme']['modules'] as $mod) {
+            if (isset($mod['name'], $mod['purpose'])) {
+                $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
+            }
+        }
+    }
     $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
     sendJsonResponse($modulesDisplay, "none", array("sessionId" => session_id()));
 }
@@ -517,6 +592,13 @@ $aiResponse = trim($result["choices"][0]["message"]["content"]);
 
 // 📄 Report Validation
 #region Report Validation
+/**
+ * Validate report data against required fields
+ * @param string $reportType
+ * @param array $data
+ * @param array $reportTypes
+ * @return array
+ */
 function validateReportData($reportType, $data, $reportTypes) {
     $requiredFields = isset($reportTypes['options'][$reportType]['requiredFields']) 
         ? $reportTypes['options'][$reportType]['requiredFields'] 
@@ -593,9 +675,15 @@ if (
 
 // ✅ Agentic CRUD Action Handler
 #region Agentic CRUD Action Handler
-$actionHandlers = array(
-    'Create' => array(
-        'Contact' => function($data) {
+/**
+ * Handle Create actions
+ * @param string $actionName
+ * @param array $data
+ * @return array
+ */
+function handleCreateAction($actionName, $data) {
+    switch ($actionName) {
+        case 'Contact':
             $result = createCrudEntity('Contact', $data['details']);
             return array(
                 "response" => $result ? "Contact created successfully." : "Failed to create Contact.",
@@ -604,8 +692,7 @@ $actionHandlers = array(
                 "details" => $data['details'],
                 "sessionId" => session_id()
             );
-        },
-        'Order' => function($data) {
+        case 'Order':
             $result = createCrudEntity('Order', $data['details']);
             return array(
                 "response" => $result ? "Order created successfully." : "Failed to create Order.",
@@ -614,8 +701,7 @@ $actionHandlers = array(
                 "details" => $data['details'],
                 "sessionId" => session_id()
             );
-        },
-        'Application' => function($data) {
+        case 'Application':
             $result = createCrudEntity('Application', $data['details']);
             return array(
                 "response" => $result ? "Application created successfully." : "Failed to create Application.",
@@ -624,8 +710,7 @@ $actionHandlers = array(
                 "details" => $data['details'],
                 "sessionId" => session_id()
             );
-        },
-        'Location' => function($data) {
+        case 'Location':
             $result = createCrudEntity('Location', $data['details']);
             return array(
                 "response" => $result ? "Location created successfully." : "Failed to create Location.",
@@ -634,8 +719,7 @@ $actionHandlers = array(
                 "details" => $data['details'],
                 "sessionId" => session_id()
             );
-        },
-        'Login' => function($data) {
+        case 'Login':
             $username = isset($data['details']['username']) ? $data['details']['username'] : '';
             $password = isset($data['details']['password']) ? $data['details']['password'] : '';
             if (authenticateUser($username, $password)) {
@@ -657,8 +741,7 @@ $actionHandlers = array(
                 "sessionId" => session_id(),
                 "loggedIn" => false
             );
-        },
-        'Logout' => function($data) {
+        case 'Logout':
             session_unset();
             session_destroy();
             if (ini_get("session.use_cookies")) {
@@ -681,13 +764,27 @@ $actionHandlers = array(
                 "sessionId" => session_id(),
                 "loggedIn" => false
             );
-        },
-        'Report' => function($data) {
+        case 'Report':
             return $data; // Handled in Report Generation Hook
-        }
-    ),
-    'Read' => array(
-        'Contact' => function($data) {
+        default:
+            return array(
+                "response" => "Invalid Create action.",
+                "actionType" => "Create",
+                "actionName" => $actionName,
+                "sessionId" => session_id()
+            );
+    }
+}
+
+/**
+ * Handle Read actions
+ * @param string $actionName
+ * @param array $data
+ * @return array
+ */
+function handleReadAction($actionName, $data) {
+    switch ($actionName) {
+        case 'Contact':
             $result = readCrudEntity('Contact', $data['criteria']);
             return array(
                 "response" => $result !== false ? $result : "No Contact found matching criteria.",
@@ -696,8 +793,7 @@ $actionHandlers = array(
                 "criteria" => $data['criteria'],
                 "sessionId" => session_id()
             );
-        },
-        'Order' => function($data) {
+        case 'Order':
             $result = readCrudEntity('Order', $data['criteria']);
             return array(
                 "response" => $result !== false ? $result : "No Order found matching criteria.",
@@ -706,8 +802,7 @@ $actionHandlers = array(
                 "criteria" => $data['criteria'],
                 "sessionId" => session_id()
             );
-        },
-        'Application' => function($data) {
+        case 'Application':
             $result = readCrudEntity('Application', $data['criteria']);
             return array(
                 "response" => $result !== false ? $result : "No Application found matching criteria.",
@@ -716,8 +811,7 @@ $actionHandlers = array(
                 "criteria" => $data['criteria'],
                 "sessionId" => session_id()
             );
-        },
-        'Location' => function($data) {
+        case 'Location':
             $result = readCrudEntity('Location', $data['criteria']);
             return array(
                 "response" => $result !== false ? $result : "No Location found matching criteria.",
@@ -726,13 +820,27 @@ $actionHandlers = array(
                 "criteria" => $data['criteria'],
                 "sessionId" => session_id()
             );
-        },
-        'Report' => function($data) {
+        case 'Report':
             return $data; // Handled in Report Generation Hook
-        }
-    ),
-    'Update' => array(
-        'Contact' => function($data) {
+        default:
+            return array(
+                "response" => "Invalid Read action.",
+                "actionType" => "Read",
+                "actionName" => $actionName,
+                "sessionId" => session_id()
+            );
+    }
+}
+
+/**
+ * Handle Update actions
+ * @param string $actionName
+ * @param array $data
+ * @return array
+ */
+function handleUpdateAction($actionName, $data) {
+    switch ($actionName) {
+        case 'Contact':
             $result = updateCrudEntity('Contact', $data['updates']);
             return array(
                 "response" => $result ? "Contact updated successfully." : "Failed to update Contact.",
@@ -741,8 +849,7 @@ $actionHandlers = array(
                 "updates" => $data['updates'],
                 "sessionId" => session_id()
             );
-        },
-        'Order' => function($data) {
+        case 'Order':
             $result = updateCrudEntity('Order', $data['updates']);
             return array(
                 "response" => $result ? "Order updated successfully." : "Failed to update Order.",
@@ -751,8 +858,7 @@ $actionHandlers = array(
                 "updates" => $data['updates'],
                 "sessionId" => session_id()
             );
-        },
-        'Application' => function($data) {
+        case 'Application':
             $result = updateCrudEntity('Application', $data['updates']);
             return array(
                 "response" => $result ? "Application updated successfully." : "Failed to update Application.",
@@ -761,8 +867,7 @@ $actionHandlers = array(
                 "updates" => $data['updates'],
                 "sessionId" => session_id()
             );
-        },
-        'Location' => function($data) {
+        case 'Location':
             $result = updateCrudEntity('Location', $data['updates']);
             return array(
                 "response" => $result ? "Location updated successfully." : "Failed to update Location.",
@@ -771,13 +876,27 @@ $actionHandlers = array(
                 "updates" => $data['updates'],
                 "sessionId" => session_id()
             );
-        },
-        'Report' => function($data) {
+        case 'Report':
             return $data; // Handled in Report Generation Hook
-        }
-    ),
-    'Delete' => array(
-        'Contact' => function($data) {
+        default:
+            return array(
+                "response" => "Invalid Update action.",
+                "actionType" => "Update",
+                "actionName" => $actionName,
+                "sessionId" => session_id()
+            );
+    }
+}
+
+/**
+ * Handle Delete actions
+ * @param string $actionName
+ * @param array $data
+ * @return array
+ */
+function handleDeleteAction($actionName, $data) {
+    switch ($actionName) {
+        case 'Contact':
             $result = deleteCrudEntity('Contact', $data['target']);
             return array(
                 "response" => $result ? "Contact deleted successfully." : "Failed to delete Contact.",
@@ -786,8 +905,7 @@ $actionHandlers = array(
                 "target" => $data['target'],
                 "sessionId" => session_id()
             );
-        },
-        'Order' => function($data) {
+        case 'Order':
             $result = deleteCrudEntity('Order', $data['target']);
             return array(
                 "response" => $result ? "Order deleted successfully." : "Failed to delete Order.",
@@ -796,8 +914,7 @@ $actionHandlers = array(
                 "target" => $data['target'],
                 "sessionId" => session_id()
             );
-        },
-        'Application' => function($data) {
+        case 'Application':
             $result = deleteCrudEntity('Application', $data['target']);
             return array(
                 "response" => $result ? "Application deleted successfully." : "Failed to delete Application.",
@@ -806,8 +923,7 @@ $actionHandlers = array(
                 "target" => $data['target'],
                 "sessionId" => session_id()
             );
-        },
-        'Location' => function($data) {
+        case 'Location':
             $result = deleteCrudEntity('Location', $data['target']);
             return array(
                 "response" => $result ? "Location deleted successfully." : "Failed to delete Location.",
@@ -816,45 +932,74 @@ $actionHandlers = array(
                 "target" => $data['target'],
                 "sessionId" => session_id()
             );
-        },
-        'Report' => function($data) {
+        case 'Report':
             return $data; // Handled in Report Generation Hook
-        }
-    ),
-    'Clarify' => array(
-        'Options' => function($data) use ($isAddress, $clarifyOptions) {
-            if ($isAddress && count($clarifyOptions) > 1) {
-                return array(
-                    "response" => "Multiple options available for address.",
-                    "actionType" => "Clarify",
-                    "actionName" => "Options",
-                    "options" => $clarifyOptions,
-                    "details" => array("address" => isset($data['details']['address']) ? $data['details']['address'] : $prompt),
-                    "sessionId" => session_id()
-                );
-            } elseif ($isAddress && count($clarifyOptions) === 1) {
-                $reportType = strtolower($clarifyOptions[0]);
-                return array(
-                    "actionType" => "Create",
-                    "actionName" => "Report",
-                    "details" => array(
-                        "reportType" => $reportType,
-                        "title" => ucfirst($reportType) . " – Untitled Project",
-                        "data" => array(
-                            "projectName" => "Untitled Project – " . (isset($data['details']['address']) ? $data['details']['address'] : $prompt),
-                            "address" => isset($data['details']['address']) ? $data['details']['address'] : $prompt
-                        )
-                    )
-                );
-            }
+        default:
             return array(
-                "response" => "Invalid Clarify action.",
-                "actionType" => "Clarify",
-                "actionName" => "Options",
+                "response" => "Invalid Delete action.",
+                "actionType" => "Delete",
+                "actionName" => $actionName,
                 "sessionId" => session_id()
             );
+    }
+}
+
+/**
+ * Handle Clarify actions
+ * @param string $actionName
+ * @param array $data
+ * @param bool $isAddress
+ * @param array $clarifyOptions
+ * @return array
+ */
+function handleClarifyAction($actionName, $data, $isAddress, $clarifyOptions) {
+    if ($actionName === 'Options') {
+        $address = isset($data['details']['address']) ? $data['details']['address'] : null;
+        if ($isAddress && count($clarifyOptions) > 1) {
+            return array(
+                "response" => "Multiple options available for address.",
+                "actionType" => "Clarify",
+                "actionName" => "Options",
+                "options" => $clarifyOptions,
+                "details" => array("address" => $address),
+                "sessionId" => session_id()
+            );
+        } elseif ($isAddress && count($clarifyOptions) === 1) {
+            $reportType = strtolower($clarifyOptions[0]);
+            return array(
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "details" => array(
+                    "reportType" => $reportType,
+                    "title" => ucfirst($reportType) . " – Untitled Project",
+                    "data" => array(
+                        "projectName" => "Untitled Project – " . ($address ? $address : "Unknown Address"),
+                        "address" => $address
+                    )
+                )
+            );
         }
-    )
+        return array(
+            "response" => "Invalid Clarify action.",
+            "actionType" => "Clarify",
+            "actionName" => "Options",
+            "sessionId" => session_id()
+        );
+    }
+    return array(
+        "response" => "Invalid Clarify action.",
+        "actionType" => "Clarify",
+        "actionName" => $actionName,
+        "sessionId" => session_id()
+    );
+}
+
+$actionHandlers = array(
+    'Create' => 'handleCreateAction',
+    'Read' => 'handleReadAction',
+    'Update' => 'handleUpdateAction',
+    'Delete' => 'handleDeleteAction',
+    'Clarify' => 'handleClarifyAction'
 );
 
 if (
@@ -862,11 +1007,26 @@ if (
     isset($crudData["actionType"], $crudData["actionName"]) &&
     isset($actionTypesArray[$crudData["actionType"]]) &&
     in_array($crudData["actionName"], $actionTypesArray[$crudData["actionType"]]) &&
-    isset($actionHandlers[$crudData["actionType"]][$crudData["actionName"]])
+    isset($actionHandlers[$crudData["actionType"]])
 ) {
-    $handler = $actionHandlers[$crudData["actionType"]][$crudData["actionName"]];
-    $result = $handler($crudData);
-    sendJsonResponse($result["response"], "none", array_diff_key($result, array("response" => null)));
+    $handler = $actionHandlers[$crudData["actionType"]];
+    $result = $handler($crudData["actionName"], $crudData, $isAddress, $clarifyOptions);
+
+    // For Create Report or Clarify Options generating a report, return raw JSON
+    if (
+        isset($result["actionType"], $result["actionName"]) &&
+        $result["actionType"] === "Create" &&
+        $result["actionName"] === "Report"
+    ) {
+        echo json_encode($result);
+    } else {
+        // Otherwise, use standard response format
+        sendJsonResponse(
+            isset($result["response"]) ? $result["response"] : "Action processed.",
+            "none",
+            array_diff_key($result, array("response" => null))
+        );
+    }
 } elseif (is_array($crudData) && isset($crudData["actionType"], $crudData["actionName"])) {
     sendJsonResponse(
         "Invalid or incomplete CRUD action data.",
