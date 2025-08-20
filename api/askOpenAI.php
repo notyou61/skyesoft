@@ -415,7 +415,9 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 
 // 📝 Build System Prompt and Report Types
 #region Build System Prompt and Report Types
-$reportTypesPath = __DIR__ . '/../data/report_types.json';
+//$reportTypesPath = __DIR__ . '/../../data/report_types.json';
+$reportTypesPath = "/home/notyou64/public_html/data/report_types.json";
+
 $reportTypes = array();
 $clarifyOptions = array("Zoning Report", "Sign Ordinance Report", "Map", "Permit Lookup");
 if (file_exists($reportTypesPath) && is_readable($reportTypesPath)) {
