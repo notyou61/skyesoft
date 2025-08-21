@@ -318,12 +318,43 @@
         "session management",
         "Skyebot agentic actions"
       ]
+    },
+    "reportGenerationSuite": {
+      "title": "📑 Report Generation Suite",
+      "purpose": "Standardized framework for creating, validating, and rendering reports using CRUD JSON, templates, and Skyebot automation.",
+      "workflow": [
+        "Prompt → Skyebot determines reportType via CRUD JSON",
+        "Validation → check requiredFields in report_types.json",
+        "Auto-fill → pull missing data from APIs or SSE stream",
+        "Template merge → apply header, body, footer per reportType",
+        "Render → output HTML/PDF with Christy Signs branding"
+      ],
+      "reportTypes": [
+        "Zoning Report",
+        "Sign Ordinance Report",
+        "Photo Survey Report",
+        "Custom Report"
+      ],
+      "features": [
+        "Dynamic CRUD JSON creation",
+        "Validation against report_types.json",
+        "Conditional auto-fill from APIs (parcel, jurisdiction, etc.)",
+        "Report template codex for standardized header/body/footer",
+        "Custom report type for freeform/jazz cases"
+      ],
+      "integrations": [
+        "Core Database",
+        "Permit Management Suite",
+        "Mobile-First Modals",
+        "Skyebot AI Engine"
+      ],
+      "status": "🟢 Initial implementation with zoning, sign ordinance, and photo survey live"
     }
   },
   "meta": {
     "title": "Skyesoft Codex",
     "version": "2025.07",
-    "lastUpdated": "2025-07-13",
+    "lastUpdated": "2025-08-21",
     "description": "All-in-one source of truth for Skyebot and the Skyesoft platform."
   },
   "constitution": {
@@ -337,7 +368,7 @@
     ],
     "aiBehavior": {
       "rules": [
-        "Do not claim to lack real-time access \u2014 refer to SSE.",
+        "Do not claim to lack real-time access — refer to SSE.",
         "Always normalize names and phone formats before inserting contacts.",
         "Use codex tags and glossary to answer specialized questions.",
         "Infer user meaning from context (not hardcoded logic)."
@@ -354,14 +385,14 @@
       "saveChatLog.php (chat memory archive)"
     ],
     "guidelines": [
-      "Do not claim to lack real-time access \u2014 refer to SSE.",
+      "Do not claim to lack real-time access — refer to SSE.",
       "Always normalize names and phone formats before inserting contacts.",
       "Use codex tags and glossary to answer specialized questions.",
       "Infer user meaning from context (not hardcoded logic)."
     ]
   },
   "includedDocuments": {
-    "summary": "The following 13 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
+    "summary": "The following 14 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
     "documents": [
       "glossary.md",
       "attendance-suite.md",
@@ -375,7 +406,8 @@
       "permit-management-suite.md",
       "real-time-sse.md",
       "skyebot-contact-parser.md",
-      "time-interval-standards.md"
+      "time-interval-standards.md",
+      "report-generation-suite.md"
     ]
   },
   "shared": {
@@ -386,7 +418,7 @@
       "saveChatLog.php (chat memory archive)"
     ],
     "aiBehaviorRules": [
-      "Do not claim to lack real-time access \u2014 refer to SSE.",
+      "Do not claim to lack real-time access — refer to SSE.",
       "Always normalize names and phone formats before inserting contacts.",
       "Use codex tags and glossary to answer specialized questions.",
       "Infer user meaning from context (not hardcoded logic)."
