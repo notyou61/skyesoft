@@ -1,5 +1,22 @@
 <?php
 // 📄 File: api/askOpenAI.php (PHP 5.6 Compatible, Optimized for IDE)
+// Force JSON output
+header('Content-Type: application/json');
+
+// 🔍 Debug logger setup
+$debugLog = __DIR__ . "/../../logs/skyesoft-debug.log";
+if (!file_exists(dirname($debugLog))) {
+    mkdir(dirname($debugLog), 0777, true);
+}
+function debugLog($message, $context = array()) {
+    global $debugLog;
+    $timestamp = date("Y-m-d H:i:s");
+    $line = "[$timestamp] $message";
+    if (!empty($context)) {
+        $line .= " " . json_encode($context);
+    }
+    file_put_contents($debugLog, $line . "\n", FILE_APPEND);
+}
 
 // 🛡️ Dependency Checks
 #region Dependency Checks 
@@ -471,7 +488,9 @@ $actionTypesArray = array(
 // Convert reportTypes to JSON for inclusion in system prompt
 $reportTypesBlock = json_encode($reportTypes);
 
-error_log("DEBUG: Report Types Block -> " . $reportTypesBlock);
+debugLog("Resolving report_types.json", ["localPath" => $localPath, "serverPath" => $serverPath]);
+debugLog("Using path", ["reportTypesPath" => $reportTypesPath]);
+debugLog("Decoded reportTypes", $reportTypes);
 
 // Build system prompt safely as double-quoted string (variables interpolate)
 $systemPrompt = "
