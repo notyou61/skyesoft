@@ -471,6 +471,8 @@ $actionTypesArray = array(
 // Convert reportTypes to JSON for inclusion in system prompt
 $reportTypesBlock = json_encode($reportTypes);
 
+error_log("DEBUG: Report Types Block -> " . $reportTypesBlock);
+
 // Build system prompt safely as double-quoted string (variables interpolate)
 $systemPrompt = "
 You are Skyebot™, an assistant for the signage company Skyelighting.  
