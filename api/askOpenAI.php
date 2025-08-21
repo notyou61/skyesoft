@@ -22,6 +22,13 @@ function debugLog($message, $context = array()) {
     file_put_contents($logFile, $entry, FILE_APPEND);
 }
 
+// ✅ Test log entry when script runs
+debugLog("✅ askOpenAI.php started", [
+    "script" => __FILE__,
+    "phpVersion" => phpversion()
+]);
+
+
 // 🛡️ Dependency Checks
 #region Dependency Checks 
 if (!extension_loaded('curl')) {
