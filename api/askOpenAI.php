@@ -1,8 +1,8 @@
 <?php
 // 📄 File: api/askOpenAI.php (PHP 5.6 Compatible, Optimized for IDE)
 
-
-#region Dependency Checks // 🛡️ Dependency Checks
+// 🛡️ Dependency Checks
+#region Dependency Checks 
 if (!extension_loaded('curl')) {
     logError("CURL extension not loaded.");
     sendJsonResponse("❌ CURL extension required.", "none", array("sessionId" => session_id()));
@@ -74,7 +74,8 @@ $addressRegex = '/^\d+\s+[A-Za-z0-9\s]+,\s*[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(-\d{4
 $isAddress = preg_match($addressRegex, trim($prompt));
 #endregion
 
-#region Quick Agentic Actions // ⚡️ Quick Agentic Actions
+// ⚡️ Quick Agentic Actions
+#region Quick Agentic Actions 
 if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
     session_unset();
     session_destroy();
@@ -123,8 +124,8 @@ if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $
 }
 #endregion
 
-#region Load Codex and SSE Data 
 // 📂 Load Codex and SSE Data
+#region Load Codex and SSE Data 
 /**
  * Load and parse codex data
  * @return array
@@ -193,7 +194,8 @@ if (
 }
 #endregion
 
-#region Build Codex Data // 📚 Build Codex Data
+// 📚 Build Codex Data
+#region Build Codex Data 
 /**
  * Build codex glossary block and terms
  * @param array $codexData
@@ -323,7 +325,8 @@ $codexOtherBlock = $codexOtherData['block'];
 $codexOtherTerms = $codexOtherData['terms'];
 #endregion
 
-#region Build SSE Snapshot Summary // 📊 Build SSE Snapshot Summary
+// 📊 Build SSE Snapshot Summary
+#region Build SSE Snapshot Summary 
 /**
  * Build SSE snapshot summary
  * @param array $sseSnapshot
@@ -410,7 +413,8 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 }
 #endregion
 
-#region Build System Prompt and Report Types // 📝 Build System Prompt and Report Types
+// 📝 Build System Prompt and Report Types
+#region Build System Prompt and Report Types 
 // Define paths for report types
 $localPath  = __DIR__ . "/../../data/report_types.json"; // dev environment
 //  Define server path for production
@@ -504,31 +508,35 @@ Examples:
   {"actionType":"Delete","actionName":"Location","target":{"locationID":"21"}}  
   {"actionType":"Clarify","actionName":"Options","options":["Zoning Report","Sign Ordinance Report","Map","Permit Lookup"],"details":{"address":"123 Main St, Phoenix, AZ"}}  
 
-Report Rules:  
-- For reports, ALWAYS return JSON in this form:  
+Report Rules:
+- For reports, ALWAYS return JSON in this form:
   {
     "actionType": "Create",
     "actionName": "Report",
     "details": {
       "reportType": "<one of reportTypes>",
-      "title": "<auto-generate using reportType + projectName>",
+      "title": "<auto-generate using reportType + identifying field(s)>",
       "data": {
-        // include all required fields from reportTypes
-        // include optional fields provided by the user
-        // include any extra fields (jazz) without filtering
+        // include all required fields defined in reportTypes.json
+        // include optional fields if provided by the user
+        // if required values are missing, output them as ""
+        // if the user provides additional fields not in the template, include them without filtering
       }
     }
   }
-- Always include both `projectName` and `address` inside report `data`.  
-  → If the user did not provide a projectName, auto-generate one in the form:  
-    "Untitled Project – <address>".  
-- If the user provides only a raw address (e.g., "3145 N 33rd Ave, Phoenix, AZ") and multiple report options apply, return a Clarify JSON object with "options".  
-- If only one option applies, generate the JSON report automatically.  
-- Do not return plain text, explanations, or echo the user’s prompt. JSON only.  
-- For standard reports, required fields are defined in reportTypes. If missing, still generate JSON with available fields.  
-- For non-report queries, respond ONLY with the raw value from codexGlossary, codexOther, or sseSnapshot. No extra wording.  
-- If no information is found, reply with: "No information available."  
 
+- Required fields come from report_types.json:
+  → Example: zoning, sign_ordinance require projectName + address.  
+  → Example: other future reports may require different identifiers (e.g., vehicleId, employeeId).  
+- Do NOT assume all reports are project-based.  
+- Titles must follow the titleTemplate defined in report_types.json.  
+- For project-based reports, the title uses projectName (e.g., "Zoning Report – Christy Signs HQ").  
+- For non-project reports, the title uses the relevant identifier (e.g., "Truck Report – Truck-23").  
+
+- If multiple reportTypes apply, return a Clarify JSON object listing the options.  
+- If only one reportType applies, generate the JSON report automatically.  
+- Never return plain text, numbers, or explanations. JSON only.  
+ 
 ---
 codexGlossary:  
 $codexGlossaryBlock  
@@ -548,14 +556,33 @@ PROMPT;
 #region Report Generation Hook
 $crudData = array();
 
-// Make sure $aiResponse is defined
 if (isset($aiResponse) && !empty($aiResponse)) {
     $decoded = json_decode($aiResponse, true);
+
     if (is_array($decoded)) {
+        // ✅ AI returned valid JSON object
         $crudData = $decoded;
+    } else {
+        // 🚨 AI returned invalid or scalar JSON ("4", "null", etc.)
+        $crudData = array(
+            "actionType" => "Create",
+            "actionName" => "Report",
+            "details" => array(
+                "reportType" => "unknown",
+                "title" => "Invalid Report",
+                "data" => array(
+                    "projectName" => "Untitled Project",
+                    "address" => "",
+                    "parcel" => "",
+                    "jurisdiction" => ""
+                )
+            )
+        );
+        logError("AI response not in CRUD schema: " . $aiResponse);
     }
 }
 
+// ✅ Only proceed if actionName = Report
 if (
     is_array($crudData) &&
     isset($crudData['actionName']) &&
@@ -564,7 +591,7 @@ if (
     isset($crudData['details']['data'])
 ) {
     $reportType = strtolower($crudData['details']['reportType']);
-    $data = $crudData['details']['data'];
+    $data       = $crudData['details']['data'];
 
     // 🔍 Validate required fields
     $validation = validateReportData($reportType, $data, $reportTypes);
@@ -594,7 +621,7 @@ if (
 
     // Parse result
     $reportJson = json_decode($reportResult, true);
-    $reportUrl = (is_array($reportJson) && isset($reportJson['details']['reportUrl']))
+    $reportUrl  = (is_array($reportJson) && isset($reportJson['details']['reportUrl']))
         ? $reportJson['details']['reportUrl']
         : null;
 
@@ -634,8 +661,8 @@ $messages[] = array("role" => "user", "content" => $prompt);
 
 #endregion
 
-#region OpenAI API Request 
 // 🚀 OpenAI API Request
+#region OpenAI API Request 
 $payload = json_encode(array(
     "model" => "gpt-4",
     "messages" => $messages,
@@ -716,15 +743,23 @@ if (
      * @return array
      */
     function validateReportData($reportType, $data, $reportTypes) {
-        $requiredFields = isset($reportTypes['options'][$reportType]['requiredFields']) 
-            ? $reportTypes['options'][$reportType]['requiredFields'] 
-            : array();
+        $requiredFields = array();
+        
+        // Find the matching reportType object
+        foreach ($reportTypes as $typeDef) {
+            if (isset($typeDef['reportType']) && $typeDef['reportType'] === $reportType) {
+                $requiredFields = isset($typeDef['requiredFields']) ? $typeDef['requiredFields'] : array();
+                break;
+            }
+        }
+
         $missingFields = array();
         foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
+            if (!isset($data[$field]) || $data[$field] === "") {
                 $missingFields[] = $field;
             }
         }
+
         return $missingFields
             ? array("valid" => false, "missing" => $missingFields)
             : array("valid" => true);
@@ -858,7 +893,8 @@ if (
 }
 #endregion
 
-#region Agentic CRUD Action Handler // ✅ Agentic CRUD Action Handler
+// ✅ Agentic CRUD Action Handler
+#region Agentic CRUD Action Handler 
 /**
  * Handle Create actions
  * @param string $actionName
@@ -1260,7 +1296,8 @@ if (!$isValid || $aiResponse === "") {
 sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
 #endregion
 
-#region Helper Functions // 🛠 Helper Functions
+// 🛠 Helper Functions
+#region Helper Functions 
 /**
  * Send JSON response with proper HTTP status code
  * @param string $response
