@@ -414,82 +414,68 @@ if (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) 
 #endregion
 
 // 📝 Build System Prompt and Report Types
-#region Build System Prompt and Report Types 
+#region Build System Prompt and Report Types
+
 // Define paths for report types
 $localPath  = __DIR__ . "/../../data/report_types.json"; // dev environment
-//  Define server path for production
 $serverPath = "/home/notyou64/public_html/data/report_types.json"; // GoDaddy live
-// Check for report types file
+
+// Resolve reportTypes path
 if (file_exists($localPath)) {
     $reportTypesPath = $localPath;
 } elseif (file_exists($serverPath)) {
     $reportTypesPath = $serverPath;
 } else {
-    echo json_encode([
+    echo json_encode(array(
         "response"  => "❌ Missing or unreadable report_types.json",
         "action"    => "none",
         "sessionId" => session_id(),
         "error"     => "File not found",
-        "checked"   => [$localPath, $serverPath]
-    ]);
+        "checked"   => array($localPath, $serverPath)
+    ));
     exit;
 }
-// Load Report Types
-$reportTypes = json_decode(file_get_contents($reportTypesPath), true);
-// Validate report types
+
+// Load and validate report_types.json
+$reportTypesJson = file_get_contents($reportTypesPath);
+$reportTypes     = json_decode($reportTypesJson, true);
+
 if (!is_array($reportTypes)) {
-    echo json_encode([
+    echo json_encode(array(
         "response"  => "❌ Failed to parse report_types.json",
         "action"    => "none",
         "sessionId" => session_id(),
         "error"     => "JSON decode failed",
         "path"      => $reportTypesPath
-    ]);
-    // Exit
+    ));
     exit;
 }
-// Default clarify options
-$clarifyOptions = array("Zoning Report", "Sign Ordinance Report", "Map", "Permit Lookup");
-if (file_exists($reportTypesPath) && is_readable($reportTypesPath)) {
-    $reportTypesJson = file_get_contents($reportTypesPath);
-    if ($reportTypesJson !== false) {
-        $reportTypes = json_decode($reportTypesJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && isset($reportTypes['options'])) {
-            $clarifyOptions = array_keys($reportTypes['options']);
-        } else {
-            logError("Invalid report_types.json", array("path" => $reportTypesPath));
-        }
-    } else {
-        logError("Unable to read report_types.json", array("path" => $reportTypesPath));
-        sendJsonResponse("❌ Unable to read report_types.json", "none", array(
-            "sessionId" => session_id(),
-            "error" => "Unable to read report_types.json",
-            "path" => $reportTypesPath
-        ));
+
+// Build clarifyOptions dynamically
+$clarifyOptions = array();
+foreach ($reportTypes as $type) {
+    if (isset($type['reportType'])) {
+        $clarifyOptions[] = $type['reportType'];
     }
-} else {
-    logError("Missing or unreadable report_types.json", array("path" => $reportTypesPath));
-    sendJsonResponse("❌ Missing or unreadable report_types.json", "none", array(
-        "sessionId" => session_id(),
-        "error" => "Missing or unreadable report_types.json",
-        "path" => $reportTypesPath
-    ));
 }
 
-$reportTypesBlock = json_encode($reportTypes);
-
+// Action types
 $actionTypesArray = array(
     "Create"  => array("Contact", "Order", "Application", "Location", "Login", "Logout", "Report"),
     "Read"    => array("Contact", "Order", "Application", "Location", "Report"),
     "Update"  => array("Contact", "Order", "Application", "Location", "Report"),
     "Delete"  => array("Contact", "Order", "Application", "Location", "Report"),
     "Clarify" => array("Options")
-)
-// Build system prompt with all components
-$systemPrompt = <<<PROMPT
+);
+
+// Convert reportTypes to JSON for inclusion in system prompt
+$reportTypesBlock = json_encode($reportTypes);
+
+// Build system prompt safely as double-quoted string (variables interpolate)
+$systemPrompt = "
 You are Skyebot™, an assistant for the signage company Skyelighting.  
 
-You must always reply in **valid JSON only** — never text, markdown, or explanations.  
+You must always reply in valid JSON only — never text, markdown, or explanations.  
 
 You have four sources of truth:  
 - codexGlossary: internal company terms/definitions  
@@ -502,19 +488,19 @@ You have four sources of truth:
 - Responses must be one of these: Create, Read, Update, Delete, Clarify.  
 - Allowed actionNames: Contact, Order, Application, Location, Login, Logout, Report, Options.  
 - If unsure, still return JSON — never plain text.  
-- If required values are missing, include them as empty strings ("").  
+- If required values are missing, include them as empty strings (\"\").  
 - If multiple interpretations exist, return a Clarify JSON object listing options.  
 
 ---
 ## Report Rules
-When creating reports, **always use this format**:
+When creating reports, always use this format:
 {
-  "actionType": "Create",
-  "actionName": "Report",
-  "details": {
-    "reportType": "<one of reportTypes>",
-    "title": "<auto-generate using titleTemplate + identifying field(s)>",
-    "data": {
+  \"actionType\": \"Create\",
+  \"actionName\": \"Report\",
+  \"details\": {
+    \"reportType\": \"<one of reportTypes>\",
+    \"title\": \"<auto-generate using titleTemplate + identifying field(s)>\",
+    \"data\": {
       // all requiredFields from report_types.json
       // optionalFields if provided
       // extra user-provided fields included as-is
@@ -538,8 +524,8 @@ sseSnapshot:
 $snapshotSummary  
 
 reportTypes (from report_types.json):  
-$reportTypesBlock  
-PROMPT;
+$reportTypesBlock
+";
 
 #endregion
 
