@@ -3,12 +3,12 @@
 // Force JSON output
 header('Content-Type: application/json');
 
-// Debug logger function
+// Debug logger
 function debugLog($message, $context = array()) {
-    $logDir  = "/home/notyou64/public_html/logs";
+    $logDir  = __DIR__ . "/../logs"; // this resolves to /home/notyou64/public_html/skyesoft/logs
     $logFile = $logDir . "/skyesoft-debug.log";
 
-    // Make sure logs directory exists
+    // Ensure logs directory exists
     if (!is_dir($logDir)) {
         mkdir($logDir, 0755, true);
     }
