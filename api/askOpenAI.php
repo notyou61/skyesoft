@@ -3,19 +3,23 @@
 // Force JSON output
 header('Content-Type: application/json');
 
-// 🔍 Debug logger setup
-$debugLog = __DIR__ . "/../../logs/skyesoft-debug.log";
-if (!file_exists(dirname($debugLog))) {
-    mkdir(dirname($debugLog), 0777, true);
-}
+// Debug logger function
 function debugLog($message, $context = array()) {
-    global $debugLog;
-    $timestamp = date("Y-m-d H:i:s");
-    $line = "[$timestamp] $message";
-    if (!empty($context)) {
-        $line .= " " . json_encode($context);
+    $logDir  = "/home/notyou64/public_html/logs";
+    $logFile = $logDir . "/skyesoft-debug.log";
+
+    // Make sure logs directory exists
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
     }
-    file_put_contents($debugLog, $line . "\n", FILE_APPEND);
+
+    $entry = date("Y-m-d H:i:s") . " | " . $message;
+    if (!empty($context)) {
+        $entry .= " | " . json_encode($context);
+    }
+    $entry .= "\n";
+
+    file_put_contents($logFile, $entry, FILE_APPEND);
 }
 
 // 🛡️ Dependency Checks
