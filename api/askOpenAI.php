@@ -1302,7 +1302,31 @@ if (!$isValid || $aiResponse === "") {
 
 // 📤 Output
 #region Output
-sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
+$decoded = json_decode($aiResponse, true);
+
+if (is_array($decoded)) {
+    // ✅ AI gave valid JSON → return as-is
+    echo json_encode($decoded);
+    exit;
+} else {
+    // 🚨 AI slipped (e.g., "5") → fallback to safe CRUD schema
+    $fallback = array(
+        "actionType" => "Create",
+        "actionName" => "Report",
+        "details" => array(
+            "reportType" => "unknown",
+            "title" => "Invalid Report",
+            "data" => array(
+                "projectName" => "",
+                "address" => "",
+                "parcel" => "",
+                "jurisdiction" => ""
+            )
+        )
+    );
+    echo json_encode($fallback);
+    exit;
+}
 #endregion
 
 // 🛠 Helper Functions
