@@ -709,14 +709,22 @@ $messages[] = array("role" => "user", "content" => $prompt);
 // Load model (defaults to gpt-5 if not set)
 $model = getenv("OPENAI_MODEL") ?: "gpt-5";
 
-// Prepare payload
-$payload = json_encode(array(
-    "model" => $model,   // ✅ use the variable instead of hardcoding
-    "messages" => $messages,
-    "temperature" => 0.1,
-    "max_completion_tokens" => 300
-), JSON_UNESCAPED_SLASHES);
+// Prepare payload dynamically by model
+$payloadArray = array(
+    "model"    => $model,
+    "messages" => $messages
+);
 
+if ($model === "gpt-4") {
+    // ✅ GPT-4 uses temperature + max_tokens
+    $payloadArray["temperature"] = 0.1;
+    $payloadArray["max_tokens"]  = 300;
+} else {
+    // ✅ GPT-5 uses only max_completion_tokens (temperature locked at 1)
+    $payloadArray["max_completion_tokens"] = 300;
+}
+
+$payload = json_encode($payloadArray, JSON_UNESCAPED_SLASHES);
 // Initialize cURL
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
 curl_setopt($ch, CURLOPT_HTTPHEADER, array(
