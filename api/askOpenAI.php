@@ -714,7 +714,7 @@ $payload = json_encode(array(
     "model" => $model,   // ✅ use the variable instead of hardcoding
     "messages" => $messages,
     "temperature" => 0.1,
-    "max_completion_token" => 300
+    "max_completion_tokens" => 300
 ), JSON_UNESCAPED_SLASHES);
 
 // Initialize cURL
