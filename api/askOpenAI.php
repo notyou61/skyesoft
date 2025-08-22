@@ -837,8 +837,12 @@ function prepareReportData($crudData, $reportTypes) {
         $titleTemplate = isset($reportTypeDef['titleTemplate']) ? $reportTypeDef['titleTemplate'] : '{reportType} Report – {projectName}';
         $title = $titleTemplate;
         $title = str_replace('{reportType}', ucfirst($reportType), $title);
-        $title = str_replace('{projectName}', $enrichedData['projectName'] ?? 'Untitled Project', $title);
-        $title = str_replace('{address}', $enrichedData['address'] ?? 'Unknown Address', $title);
+        $title = str_replace(
+            '{projectName}',
+            isset($enrichedData['projectName']) ? $enrichedData['projectName'] : 'Untitled Project',
+            $title
+        );
+        $title = str_replace('{address}', isset($enrichedData['address']) ? $enrichedData['address'] : 'Unknown Address', $title);
         $crudData['details']['title'] = $title;
     }
 
