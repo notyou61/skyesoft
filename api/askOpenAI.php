@@ -706,7 +706,7 @@ $messages[] = array("role" => "user", "content" => $prompt);
 // 🚀 OpenAI API Request
 #region OpenAI API Request 
 $payload = json_encode(array(
-    "model" => "gpt-4",
+    "model" => "gpt-5",
     "messages" => $messages,
     "temperature" => 0.1,
     "max_tokens" => 300
