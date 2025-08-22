@@ -704,32 +704,36 @@ $messages[] = array("role" => "user", "content" => $prompt);
 #endregion
 
 // 🚀 OpenAI API Request
-#region OpenAI API Request 
+#region OpenAI API Request
+
+// Load model (defaults to gpt-5 if not set)
+$model = getenv("OPENAI_MODEL") ?: "gpt-5";
+
+// Prepare payload
 $payload = json_encode(array(
-    "model" => "gpt-5",
+    "model" => $model,   // ✅ use the variable instead of hardcoding
     "messages" => $messages,
     "temperature" => 0.1,
     "max_tokens" => 300
 ), JSON_UNESCAPED_SLASHES);
 
+// Initialize cURL
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
 curl_setopt($ch, CURLOPT_HTTPHEADER, array(
     "Content-Type: application/json",
-    "Authorization: Bearer " . $apiKey
+    "Authorization: " . "Bearer " . $apiKey
 ));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_TIMEOUT, 25);
 
-// Retry logic for transient failures
+// Retry logic
 $maxRetries = 3;
 $retryDelay = 1;
 for ($i = 0; $i < $maxRetries; $i++) {
     $response = curl_exec($ch);
-    if ($response !== false) {
-        break;
-    }
+    if ($response !== false) break;
     logError("OpenAI API Curl Error: " . curl_error($ch), array("attempt" => $i + 1));
     if ($i < $maxRetries - 1) {
         sleep($retryDelay);
@@ -746,6 +750,7 @@ if ($response === false) {
 }
 curl_close($ch);
 
+// Decode API response
 $result = json_decode($response, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
     logError("JSON Decode Error: " . json_last_error_msg(), array("response" => $response));
@@ -753,17 +758,16 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
+// Validate structure
 if (!isset($result["choices"][0]["message"]["content"])) {
     $errorMsg = isset($result["error"]["message"]) ? $result["error"]["message"] : "Invalid response structure";
     logError("OpenAI API Error: " . $errorMsg, array("response" => $response));
     sendJsonResponse("❌ API error: " . $errorMsg, "none", array("sessionId" => session_id()));
     exit;
 }
-//
-$aiResponse = '';
-if (isset($responseData['choices'][0]['message']['content'])) {
-    $aiResponse = $responseData['choices'][0]['message']['content'];
-}
+
+// Extract response safely
+$aiResponse = $result["choices"][0]["message"]["content"];
 
 #endregion
 
