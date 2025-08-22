@@ -546,6 +546,39 @@ When creating reports, always use this format:
 - Titles must follow titleTemplate from report_types.json.  
 
 ---
+## Glossary Rules
+- If the user asks \"What is …\" or requests a definition/explanation of a known term  
+  (from codexGlossary, codexOther, or sseSnapshot), return JSON in this form:
+
+  {
+    \"actionType\": \"Read\",
+    \"actionName\": \"Options\",
+    \"details\": {
+      \"term\": \"<the term>\",
+      \"definition\": \"<the definition>\"
+    }
+  }
+
+- If the term is not found, return:
+  {
+    \"actionType\": \"Read\",
+    \"actionName\": \"Options\",
+    \"details\": {
+      \"term\": \"<user’s term>\",
+      \"definition\": \"No information available.\"
+    }
+  }
+
+---
+## Logout Rules
+- If the user says quit, exit, logout, log out, sign out, or end session, always return:
+
+  {
+    \"actionType\": \"Create\",
+    \"actionName\": \"Logout\"
+  }
+
+---
 codexGlossary:  
 $codexGlossaryBlock  
 
