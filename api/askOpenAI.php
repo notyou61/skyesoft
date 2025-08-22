@@ -1302,31 +1302,30 @@ if (!$isValid || $aiResponse === "") {
 
 // 📤 Output
 #region Output
-$decoded = json_decode($aiResponse, true);
 
-if (is_array($decoded)) {
-    // ✅ AI gave valid JSON → return as-is
-    echo json_encode($decoded);
-    exit;
-} else {
-    // 🚨 AI slipped (e.g., "5") → fallback to safe CRUD schema
-    $fallback = array(
-        "actionType" => "Create",
-        "actionName" => "Report",
-        "details" => array(
-            "reportType" => "unknown",
-            "title" => "Invalid Report",
-            "data" => array(
-                "projectName" => "",
-                "address" => "",
-                "parcel" => "",
-                "jurisdiction" => ""
-            )
-        )
+// Clean up possible code fences from AI
+$cleanAiResponse = trim($aiResponse);
+$cleanAiResponse = preg_replace('/^```(?:json)?/i', '', $cleanAiResponse); // strip opening ```
+$cleanAiResponse = preg_replace('/```$/', '', $cleanAiResponse);           // strip closing ```
+$cleanAiResponse = trim($cleanAiResponse);
+
+$decoded = json_decode($cleanAiResponse, true);
+
+// If decoding fails or response is not JSON, show raw AI response
+if (!is_array($decoded)) {
+    sendJsonResponse(
+        "❌ AI returned non-JSON response. See rawAiResponse for details.",
+        "none",
+        array(
+            "rawAiResponse" => $aiResponse
+        ),
+        200
     );
-    echo json_encode($fallback);
-    exit;
+} else {
+    // Normal output path
+    sendJsonResponse($decoded, "chat", array("sessionId" => session_id()));
 }
+
 #endregion
 
 // 🛠 Helper Functions
