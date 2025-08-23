@@ -279,12 +279,16 @@ You have four sources of truth:
 
 ---
 ## Logout Rules
-For logout, if the user says quit, exit, logout, log out, sign out, or end session → 
-always return exactly this JSON object:
-{
-  "actionType": "Create",
-  "actionName": "Logout"
-}
+- If the user says quit, exit, logout, log out, sign out, or end session → 
+- you must reply in plain text:
+- "You have been logged out"
++ If the user says quit, exit, logout, log out, sign out, or end session →
++ always return this JSON object (nothing else, no text, no symbols):
++ {
++   "actionType": "Create",
++   "actionName": "Logout"
++ }
+
 
 ---
 ## CRUD + Report Rules
@@ -477,9 +481,17 @@ function deleteCrudEntity($entity, $target) {
  */
 function handleQuickAction($prompt) {
     $lowerPrompt = strtolower($prompt);
-    if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt)) {
+
+    // Logout quick action
+    if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b/i', $lowerPrompt)) {
         session_unset();
         session_destroy();
+        session_write_close();
+
+        // Start a new session to guarantee a valid ID for response
+        session_start();
+        $newSessionId = session_id();
+
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(
@@ -493,28 +505,33 @@ function handleQuickAction($prompt) {
             );
         }
         setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-        sendJsonResponse("You have been logged out (quick action).", "none", [
-            "actionType" => "create",
-            "actionName" => "logout",
-            "sessionId" => session_id(),
+
+        // Match CRUD Logout handler response
+        sendJsonResponse("You have been logged out", "none", [
+            "actionType" => "Create",
+            "actionName" => "Logout",
+            "sessionId" => $newSessionId,
             "loggedIn" => false
         ]);
-    } elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
+    }
+
+    // Login quick action
+    elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
         $username = $matches[1];
         $password = $matches[2];
         if (authenticateUser($username, $password)) {
             $_SESSION['user_id'] = $username;
-            sendJsonResponse("Login successful (quick action).", "none", [
-                "actionType" => "create",
-                "actionName" => "login",
+            sendJsonResponse("Login successful", "none", [
+                "actionType" => "Create",
+                "actionName" => "Login",
                 "details" => ["username" => $username],
                 "sessionId" => session_id(),
                 "loggedIn" => true
             ]);
         } else {
-            sendJsonResponse("Login failed (quick action).", "none", [
-                "actionType" => "create",
-                "actionName" => "login",
+            sendJsonResponse("Login failed", "none", [
+                "actionType" => "Create",
+                "actionName" => "Login",
                 "details" => ["username" => $username],
                 "sessionId" => session_id(),
                 "loggedIn" => false
