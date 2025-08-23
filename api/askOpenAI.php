@@ -239,6 +239,29 @@ $actionTypesArray = [
     "Clarify" => ["Options"]
 ];
 
+// 🧐 Glossary filter: only inject term if user asked "What is …"
+$glossaryTerm = null;
+if (preg_match('/\bwhat is\s+([a-z0-9\-]+)\??/i', strtolower($prompt), $matches)) {
+    $glossaryTerm = strtoupper($matches[1]);
+}
+
+// If glossary filter is triggered
+if ($glossaryTerm) {
+    $filteredGlossary = [];
+    $allGlossaryLines = explode("\n", $codexGlossaryBlock);
+
+    foreach ($allGlossaryLines as $line) {
+        if (stripos($line, $glossaryTerm) === 0) {
+            $filteredGlossary[] = $line;
+        }
+    }
+
+    // Only inject the requested entry
+    $codexGlossaryBlock = !empty($filteredGlossary)
+        ? implode("\n", $filteredGlossary)
+        : "$glossaryTerm: No information available";
+}
+
 $systemPrompt = <<<PROMPT
 You are Skyebot™, an assistant for a signage company.  
 
@@ -280,12 +303,25 @@ Example Report format:
 
 ---
 ## Glossary + SSE Rules
-- If the user asks "What is …" or for a definition, answer in plain text.  
-- If the user asks for the current date, respond naturally (e.g., "Today is August 23rd, 2025 ⁂").  
-- If the user asks for the current time, respond naturally (e.g., "It is 07:15 AM MST ⁂").  
-- If the user asks for a KPI, respond with its natural value in plain text.  
-- If the requested term is unknown, reply: "No information available ⁂".  
+- If the user asks "What is …" or for a definition:
+  → Return ONLY the definition for that specific term in plain text.
+  → Do NOT return the entire glossary unless the user explicitly asks
+     "show glossary" or "list all glossary terms."
 
+- Example:
+  User: "What is MTCO?"
+  Response: "MTCO: Measure Twice, Cut Once: A guiding principle to encourage pre-action validation. ⁂"
+
+- If the user asks for the current date, respond naturally:
+  "Today is August 23rd, 2025 ⁂"
+
+- If the user asks for the current time, respond naturally:
+  "It is 07:15 AM MST ⁂"
+
+- If the user asks for a KPI, respond with its natural value in plain text.
+
+- If the requested term is unknown, reply:
+  "<term>: No information available ⁂"
 ---
 ## Logout Rules
 - If the user says quit, exit, logout, log out, sign out, or end session → respond in plain text:
@@ -304,7 +340,6 @@ $snapshotSummary
 reportTypes:  
 $reportTypesBlock
 PROMPT;
-
 #endregion
 
 #region 🎯 Routing Layer
