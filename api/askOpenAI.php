@@ -312,22 +312,15 @@ Example Report format:
 ---
 ## Glossary + SSE Rules
 - If the user asks "What is …" or for a definition:
-  → Return ONLY the definition for that specific term in plain text.
-  → Do NOT return the entire glossary unless the user explicitly asks
-     "show glossary" or "list all glossary terms."
-
-- Example:
-  User: "What is MTCO?"
-  Response: "MTCO: Measure Twice, Cut Once: A guiding principle to encourage pre-action validation."
-
-- If the user asks for the current date, respond naturally:
-  "Today is August 23rd, 2025"
-
-- If the user asks for the current time, respond naturally:
-  "It is 07:15 AM MST"
-
-- If the requested term is unknown, reply:
-  "<term>: No information available"
+-   → Return ONLY the definition for that specific term in plain text.
+-   → Do NOT return the entire glossary unless the user explicitly asks
+-      "show glossary" or "list all glossary terms."
++ If the user asks "What is …", "Define …", or "<term>?":
++   → Return ONLY the definition for that exact term, as found in codexGlossary, codexOther, or sseSnapshot.
++   → Never include multiple terms unless explicitly requested (e.g., "show glossary").
++   → Never repeat the same definition twice.
++   → If both codexGlossary and codexOther contain the same term, return the shorter glossary form.
++   → If the term is not found, reply: "<term>: No information available".
 
 ---
 codexGlossary:  
