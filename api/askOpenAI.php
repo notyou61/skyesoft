@@ -476,50 +476,62 @@ function deleteCrudEntity($entity, $target) {
 }
 
 /**
- * Handle quick login/logout actions
- * @param string $prompt
+ * Perform logout (shared between quick action and CRUD)
  */
-function handleQuickAction($prompt) {
-    $lowerPrompt = strtolower($prompt);
+function performLogout() {
+    session_unset();
+    session_destroy();
+    session_write_close();
 
-    // Logout quick action
-    if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b/i', $lowerPrompt)) {
-        session_unset();
-        session_destroy();
-        session_write_close();
+    // start a new clean session ID for response
+    session_start();
+    $newSessionId = session_id();
 
-        // Start a new session to guarantee a valid ID for response
-        session_start();
-        $newSessionId = session_id();
+    // cookie cleanup …
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"], $params["secure"], $params["httponly"] ?? false
+        );
+    }
+    setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
 
-        if (ini_get("session.use_cookies")) {
-            $params = session_get_cookie_params();
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params["path"],
-                $params["domain"],
-                $params["secure"],
-                isset($params["httponly"]) ? $params["httponly"] : false
-            );
-        }
-        setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
+    sendJsonResponse("You have been logged out", "none", [
+        "actionType" => "Create",
+        "actionName" => "Logout",
+        "sessionId" => $newSessionId,
+        "loggedIn" => false
+    ]);
+}
 
-        // Match CRUD Logout handler response
-        sendJsonResponse("You have been logged out", "none", [
-            "actionType" => "Create",
-            "actionName" => "Logout",
-            "sessionId" => $newSessionId,
-            "loggedIn" => false
-        ]);
+/**
+ * Handle quick login/logout actions (string prompt or AI JSON)
+ * @param mixed $input
+ */
+function handleQuickAction($input) {
+    // Normalize input into lowercase string
+    if (is_array($input) && isset($input['actionName'])) {
+        $prompt = strtolower($input['actionName']); // from AI JSON
+    } else {
+        $prompt = strtolower((string)$input); // from raw user prompt
     }
 
-    // Login quick action
-    elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
-        $username = $matches[1];
-        $password = $matches[2];
-        if (authenticateUser($username, $password)) {
+    // --- Logout ---
+    if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b/i', $prompt)) {
+        performLogout();
+    }
+
+    // --- Login ---
+    elseif (preg_match('/\blogin\b/i', $prompt)) {
+        // If details are provided from AI JSON, use them
+        $username = is_array($input) && isset($input['details']['username'])
+            ? $input['details']['username']
+            : null;
+        $password = is_array($input) && isset($input['details']['password'])
+            ? $input['details']['password']
+            : null;
+
+        if ($username && $password && authenticateUser($username, $password)) {
             $_SESSION['user_id'] = $username;
             sendJsonResponse("Login successful", "none", [
                 "actionType" => "Create",
@@ -656,6 +668,7 @@ function handleReportRequest($prompt, $reportTypes, $conversation) {
     $cleanAiResponse = trim($cleanAiResponse);
 
     $crudData = json_decode($cleanAiResponse, true);
+    // Validate JSON structure
     if (!is_array($crudData)) {
         $crudData = [
             "actionType" => "Create",
@@ -673,7 +686,15 @@ function handleReportRequest($prompt, $reportTypes, $conversation) {
         ];
         file_put_contents(__DIR__ . '/error.log', "AI response not in CRUD schema: " . $aiResponse . "\n", FILE_APPEND);
     }
-
+    // If AI requested Logout or Login, delegate to quick action instead of report
+    if (
+        isset($crudData['actionName']) &&
+        in_array(strtolower($crudData['actionName']), ['logout', 'login'])
+    ) {
+        handleQuickAction($crudData);
+        return; // stop further report handling
+    }
+    // Process Report creation
     if (
         isset($crudData['actionName']) &&
         strtolower($crudData['actionName']) === 'report' &&
