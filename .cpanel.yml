@@ -1,7 +1,15 @@
 ---
 deployment:
   tasks:
+    # 1. Clean the cPanel-managed repo so it's always in a good state
+    - cd /home/notyou64/git-repos/skyesoft && git reset --hard HEAD && git clean -fd
+
+    # 2. Set deployment path
     - export DEPLOYPATH=/home/notyou64/public_html/skyesoft
+
+    # 3. Sync files (mirror with delete, exclude .git and this yaml file)
     - /bin/rsync -av --delete --exclude='.git' --exclude='.cpanel.yml' ./ $DEPLOYPATH
+
+    # 4. Reset file and folder permissions
     - find $DEPLOYPATH -type d -exec chmod 755 {} \;
     - find $DEPLOYPATH -type f -exec chmod 644 {} \;
