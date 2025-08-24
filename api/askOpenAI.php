@@ -952,3 +952,56 @@ function prepareReportData($crudData, $reportTypes) {
     return $result;
 }
 #endregion
+
+/**
+ * Perform logout (shared between quick action and CRUD)
+ */
+function performLogout() {
+    session_unset();
+    session_destroy();
+    session_write_close();
+
+    // start a new clean session ID for response
+    session_start();
+    $newSessionId = session_id();
+
+    // cookie cleanup
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            isset($params["httponly"]) ? $params["httponly"] : false
+        );
+    }
+    setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
+
+    sendJsonResponse("You have been logged out", "none", [
+        "actionType" => "Create",
+        "actionName" => "Logout",
+        "sessionId" => $newSessionId,
+        "loggedIn" => false
+    ]);
+}
+
+/**
+ * Handle quick actions (AI JSON or raw text)
+ */
+function handleQuickAction($input) {
+    // Normalize
+    if (is_array($input) && isset($input['actionName'])) {
+        $action = strtolower($input['actionName']);
+    } else {
+        $action = strtolower(trim($input));
+    }
+
+    switch ($action) {
+        case 'logout':
+            performLogout();
+            break;
+        case 'login':
+            // TODO: implement login handler here
+            sendJsonResponse("Login requested.", "none");
+            break;
+        default:
+            sendJsonResponse("Unknown quick action: $action", "none");
+    }
+}
