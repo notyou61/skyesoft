@@ -216,7 +216,7 @@ if (file_exists($versionPath)) {
 }
 
 // Load Codex
-$codexPath = '/home/notyou64/public_html/assets/docs/codex/codex.json';
+$codexPath = '/home/notyou64/public_html/docs/codex/codex.json';
 $codex = array();
 if (file_exists($codexPath)) {
     $codex = json_decode(file_get_contents($codexPath), true);
