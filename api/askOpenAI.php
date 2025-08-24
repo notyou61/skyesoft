@@ -514,25 +514,21 @@ function performLogout() {
  * Handle quick actions (AI JSON or raw text)
  */
 function handleQuickAction($input) {
-    // Normalize input
-    if (is_array($input) && isset($input['actionName'])) {
-        $action = strtolower($input['actionName']);
-    } else {
-        $action = strtolower(trim($input));
+    $action = is_array($input) && isset($input['actionName'])
+        ? strtolower($input['actionName'])
+        : strtolower(trim($input));
+
+    if (in_array($action, ['logout', 'sign out', 'signout', 'exit', 'quit'])) {
+        performLogout();
+        return;
+    }
+    if (in_array($action, ['login', 'sign in'])) {
+        // login handler...
+        return;
     }
 
-    switch ($action) {
-        case 'logout':
-            performLogout();
-            break;
-        case 'login':
-            // your login handler here
-            break;
-        default:
-            sendJsonResponse("Unknown quick action: $action", "none");
-    }
+    sendJsonResponse("Unknown quick action: $action", "none");
 }
-
 
 /**
  * Handle SSE shortcut responses (time, date, weather)
