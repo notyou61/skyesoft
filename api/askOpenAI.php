@@ -25,7 +25,7 @@ if (json_last_error() !== JSON_ERROR_NONE) {
 
 // Sanitize prompt
 $prompt = isset($input["prompt"]) 
-    ? trim(strip_tags(filter_var($input["prompt"], FILTER_UNSAFE_RAW))) 
+    ? trim(strip_tags(filter_var($input["prompt"], FILTER_DEFAULT))) 
     : "";
 $conversation = isset($input["conversation"]) && is_array($input["conversation"]) ? $input["conversation"] : [];
 $sseSnapshot = isset($input["sseSnapshot"]) && is_array($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
@@ -487,11 +487,17 @@ function performLogout() {
     session_start();
     $newSessionId = session_id();
 
-    // cookie cleanup …
+    // cookie cleanup
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            isset($params["httponly"]) ? $params["httponly"] : false
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params["path"],
+            $params["domain"],
+            $params["secure"],
+            $params["httponly"]
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
@@ -505,52 +511,28 @@ function performLogout() {
 }
 
 /**
- * Handle quick login/logout actions (string prompt or AI JSON)
- * @param mixed $input
+ * Handle quick actions (AI JSON or raw text)
  */
 function handleQuickAction($input) {
-    // Normalize input into lowercase string
+    // Normalize input
     if (is_array($input) && isset($input['actionName'])) {
-        $prompt = strtolower($input['actionName']); // from AI JSON
+        $action = strtolower($input['actionName']);
     } else {
-        $prompt = strtolower((string)$input); // from raw user prompt
+        $action = strtolower(trim($input));
     }
 
-    // --- Logout ---
-    if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b/i', $prompt)) {
-        performLogout();
-    }
-
-    // --- Login ---
-    elseif (preg_match('/\blogin\b/i', $prompt)) {
-        // If details are provided from AI JSON, use them
-        $username = is_array($input) && isset($input['details']['username'])
-            ? $input['details']['username']
-            : null;
-        $password = is_array($input) && isset($input['details']['password'])
-            ? $input['details']['password']
-            : null;
-
-        if ($username && $password && authenticateUser($username, $password)) {
-            $_SESSION['user_id'] = $username;
-            sendJsonResponse("Login successful", "none", [
-                "actionType" => "Create",
-                "actionName" => "Login",
-                "details" => ["username" => $username],
-                "sessionId" => session_id(),
-                "loggedIn" => true
-            ]);
-        } else {
-            sendJsonResponse("Login failed", "none", [
-                "actionType" => "Create",
-                "actionName" => "Login",
-                "details" => ["username" => $username],
-                "sessionId" => session_id(),
-                "loggedIn" => false
-            ]);
-        }
+    switch ($action) {
+        case 'logout':
+            performLogout();
+            break;
+        case 'login':
+            // your login handler here
+            break;
+        default:
+            sendJsonResponse("Unknown quick action: $action", "none");
     }
 }
+
 
 /**
  * Handle SSE shortcut responses (time, date, weather)
@@ -642,147 +624,27 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
 }
 
 /**
- * Handle report requests
- * @param string $prompt
- * @param array $reportTypes
- * @param array $conversation
+ * Handle AI report output (detect JSON vs plain text)
  */
-function handleReportRequest($prompt, $reportTypes, $conversation) {
-    $lowerPrompt = strtolower($prompt);
-    $messages = [["role" => "system", "content" => $GLOBALS['systemPrompt']]];
-    if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry["role"], $entry["content"])) {
-                $messages[] = ["role" => $entry["role"], "content" => $entry["content"]];
-            }
-        }
+function handleReportRequest($aiResponse) {
+    $decoded = json_decode($aiResponse, true);
+
+    if ($decoded && isset($decoded['actionName'])) {
+        // Route AI JSON action to quick actions
+        handleQuickAction($decoded);
+        return;
     }
-    $messages[] = ["role" => "user", "content" => $prompt];
-    $aiResponse = callOpenAi($messages);
 
-    // Clean up possible code fences
-    $cleanAiResponse = trim($aiResponse);
-    $cleanAiResponse = preg_replace('/^```(?:json)?/i', '', $cleanAiResponse);
-    $cleanAiResponse = preg_replace('/```$/', '', $cleanAiResponse);
-    $cleanAiResponse = trim($cleanAiResponse);
-
-    $crudData = json_decode($cleanAiResponse, true);
-    // Validate JSON structure
-    if (!is_array($crudData)) {
-        $crudData = [
-            "actionType" => "Create",
-            "actionName" => "Report",
-            "details" => [
-                "reportType" => "unknown",
-                "title" => "Invalid Report",
-                "data" => [
-                    "projectName" => "Untitled Project",
-                    "address" => "",
-                    "parcel" => "",
-                    "jurisdiction" => ""
-                ]
-            ]
-        ];
-        file_put_contents(__DIR__ . '/error.log', "AI response not in CRUD schema: " . $aiResponse . "\n", FILE_APPEND);
+    // Fallback: raw prompt quick action check
+    if (preg_match('/\b(logout|login)\b/i', $aiResponse)) {
+        handleQuickAction($aiResponse);
+        return;
     }
-    // If AI requested Logout or Login, delegate to quick action instead of report
-    if (
-        isset($crudData['actionName']) &&
-        in_array(strtolower($crudData['actionName']), ['logout', 'login'])
-    ) {
-        handleQuickAction($crudData);
-        return; // stop further report handling
-    }
-    // Process Report creation
-    if (
-        isset($crudData['actionName']) &&
-        strtolower($crudData['actionName']) === 'report' &&
-        isset($crudData['details']['reportType'], $crudData['details']['data'])
-    ) {
-        $prepResult = prepareReportData($crudData, $reportTypes);
-        if (!$prepResult['valid']) {
-            sendJsonResponse(
-                "❌ Report preparation failed: " . implode("; ", $prepResult['errors']),
-                "none",
-                [
-                    "sessionId" => session_id(),
-                    "error" => "Preparation failed",
-                    "details" => $prepResult['errors']
-                ]
-            );
-        }
 
-        $crudData = $prepResult['data'];
-        $reportType = strtolower($crudData['details']['reportType']);
-        $data = $crudData['details']['data'];
-
-        $postFields = [
-            "reportType" => $reportType,
-            "reportData" => $data
-        ];
-        $ch = curl_init("https://www.skyelighting.com/skyesoft/api/generateReport.php");
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $reportResult = curl_exec($ch);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($reportResult === false) {
-            file_put_contents(__DIR__ . '/error.log', "Report generation curl error: " . $curlError . "\n", FILE_APPEND);
-            sendJsonResponse(
-                "❌ Report generation failed due to curl error: " . $curlError,
-                "none",
-                ["sessionId" => session_id()]
-            );
-        }
-
-        $reportJson = json_decode($reportResult, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            file_put_contents(__DIR__ . '/error.log', "Invalid JSON from report generation: " . json_last_error_msg() . "\nRaw: $reportResult\n", FILE_APPEND);
-            sendJsonResponse(
-                "❌ Report generation failed: Invalid JSON response",
-                "none",
-                ["sessionId" => session_id(), "error" => "Invalid JSON"]
-            );
-        }
-
-        $reportUrl = isset($reportJson['details']['reportUrl']) ? $reportJson['details']['reportUrl'] : null;
-
-        if (is_array($reportJson) && !empty($reportJson['success']) && $reportUrl) {
-            sendJsonResponse(
-                "📄 Report created successfully. <a href='" . htmlspecialchars($reportUrl, ENT_QUOTES, 'UTF-8') . "' target='_blank'>View Report</a>",
-                "none",
-                [
-                    "sessionId" => session_id(),
-                    "reportUrl" => $reportUrl,
-                    "details" => $reportJson['details']
-                ]
-            );
-        } else {
-            file_put_contents(__DIR__ . '/error.log', "Report creation failed: " . json_encode($reportJson) . "\n", FILE_APPEND);
-            sendJsonResponse(
-                "❌ Report creation failed.",
-                "none",
-                [
-                    "sessionId" => session_id(),
-                    "error" => isset($reportJson['error']) ? $reportJson['error'] : "Unknown error",
-                    "raw" => $reportJson
-                ]
-            );
-        }
-    } else {
-        sendJsonResponse(
-            "❌ Invalid report structure from AI.",
-            "none",
-            [
-                "sessionId" => session_id(),
-                "rawAiResponse" => $aiResponse
-            ]
-        );
-    }
+    // Otherwise continue with report logic…
+    runReportLogic($aiResponse);
 }
+
 
 /**
  * Call OpenAI API
@@ -954,54 +816,10 @@ function prepareReportData($crudData, $reportTypes) {
 #endregion
 
 /**
- * Perform logout (shared between quick action and CRUD)
+ * Fallback report logic handler (stub for now).
+ * This prevents fatal errors when quick actions are not triggered.
+ * Extend this with your real CRUD/report logic as needed.
  */
-function performLogout() {
-    session_unset();
-    session_destroy();
-    session_write_close();
-
-    // start a new clean session ID for response
-    session_start();
-    $newSessionId = session_id();
-
-    // cookie cleanup
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            isset($params["httponly"]) ? $params["httponly"] : false
-        );
-    }
-    setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-
-    sendJsonResponse("You have been logged out", "none", [
-        "actionType" => "Create",
-        "actionName" => "Logout",
-        "sessionId" => $newSessionId,
-        "loggedIn" => false
-    ]);
-}
-
-/**
- * Handle quick actions (AI JSON or raw text)
- */
-function handleQuickAction($input) {
-    // Normalize
-    if (is_array($input) && isset($input['actionName'])) {
-        $action = strtolower($input['actionName']);
-    } else {
-        $action = strtolower(trim($input));
-    }
-
-    switch ($action) {
-        case 'logout':
-            performLogout();
-            break;
-        case 'login':
-            // TODO: implement login handler here
-            sendJsonResponse("Login requested.", "none");
-            break;
-        default:
-            sendJsonResponse("Unknown quick action: $action", "none");
-    }
+function runReportLogic($aiResponse) {
+    sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
 }
