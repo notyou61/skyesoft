@@ -491,7 +491,7 @@ function performLogout() {
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
         setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"], $params["secure"], $params["httponly"] ?? false
+            $params["path"], $params["domain"], $params["secure"], isset($params["httponly"]) ? $params["httponly"] : false
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
