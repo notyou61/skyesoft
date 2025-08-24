@@ -351,6 +351,69 @@
       "status": "🟢 Initial implementation with zoning, sign ordinance, and photo survey live"
     }
   },
+  "skyebotCodeAccess": {
+    "purpose": "Allows Skyebot to describe and reference its own implementation files for transparency, debugging, and context.",
+    "files": [
+      {
+        "name": "askOpenAI.php",
+        "role": "Backend PHP endpoint for AI requests. Manages API key, sends prompts, and returns AI responses."
+      },
+      {
+        "name": "chat.js",
+        "role": "Frontend chat interface logic. Handles conversation flow, message bubbles, timestamps, and SSE integration."
+      },
+      {
+        "name": "codex.json",
+        "role": "Knowledge schema (this file). Provides definitions, rules, glossary, and modules for Skyebot’s reasoning."
+      },
+      {
+        "name": "getDynamicData.php",
+        "role": "Feeds real-time data (time intervals, KPIs, forecasts, holidays) into SSE for Skyebot context."
+      },
+      {
+        "name": "skyesoft-data.json",
+        "role": "Structured database of entities, locations, contacts, and history. Skyebot uses this for lookups and avoiding duplicates."
+      },
+      {
+        "name": "saveChatLog.php",
+        "role": "Stores full chat history, including user prompts, responses, session IDs, and timestamps."
+      }
+    ],
+    "rules": [
+      "Skyebot may summarize the purpose of its files when asked.",
+      "Skyebot should not output raw code unless explicitly requested and available as a codified source.",
+      "Skyebot uses this module to explain its architecture when asked how it works."
+    ],
+    "integrations": [
+      "Skyebot AI Engine",
+      "Login/Logout & Chat Session Suite",
+      "Codex Glossary",
+      "Report Generation Suite",
+      "Permit Management Suite"
+    ],
+    "mappings": [
+      {
+        "module": "Permit Management Suite",
+        "file": "permitManagementSuite.php"
+      },
+      {
+        "module": "Report Generation Suite",
+        "file": "reportGenerationSuite.php"
+      },
+      {
+        "module": "Login/Logout & Chat Session Suite",
+        "file": "loginSessionSuite.php"
+      },
+      {
+        "module": "Attendance Suite",
+        "file": "attendanceSuite.php"
+      },
+      {
+        "module": "Management Escalation Trees",
+        "file": "managementEscalationTrees.php"
+      }
+    ]
+  },
   "meta": {
     "title": "Skyesoft Codex",
     "version": "2025.07",
