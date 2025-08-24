@@ -7,5 +7,5 @@ deployment:
     # 2. Set deployment path
     - export DEPLOYPATH=/home/notyou64/public_html/skyesoft
 
-    # 3. Copy files (use cp instead of rsync for compatibility)
-    - /bin/cp -R ./ $DEPLOYPATH
+    # 3. Sync files (mirror with delete, exclude .git and this yaml file)
+    - rsync -av --delete --exclude='.git' --exclude='.cpanel.yml' ./ $DEPLOYPATH
