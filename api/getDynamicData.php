@@ -215,11 +215,19 @@ if (file_exists($versionPath)) {
     $siteMeta = json_decode($versionJson, true);
 }
 
+// Load Codex
 $codexPath = '/home/notyou64/public_html/assets/docs/codex/codex.json';
+$codex = array();
+if (file_exists($codexPath)) {
+    $codex = json_decode(file_get_contents($codexPath), true);
+}
+// One-shot UI event handling
 $chatLogPath = '../../assets/data/chatLog.json';
+// Weather cache path (not used in this script, but defined)
 $weatherPath = '../../assets/data/weatherCache.json';
+// Announcements path
 $announcementsPath = '/home/notyou64/public_html/data/announcements.json';
-
+// JSON data file path
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 // #endregion
@@ -429,7 +437,8 @@ $response = [
     ],
     'announcements' => $announcements,
     'uiEvent' => $uiEvent,
-    'siteMeta' => $siteMeta
+    'siteMeta' => $siteMeta,
+    "codex" => $codex   // 👈 Add this line
 ];
 // #endregion
 
