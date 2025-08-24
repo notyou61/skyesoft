@@ -216,11 +216,16 @@ if (file_exists($versionPath)) {
 }
 
 // Load Codex
-$codexPath = '/home/notyou64/public_html/docs/codex/codex.json';
+$codexPath = '/home/notyou64/public_html/skyesoft/docs/codex/codex.json'; // ✅ corrected path
 $codex = array();
 if (file_exists($codexPath)) {
-    $codex = json_decode(file_get_contents($codexPath), true);
+    $raw = file_get_contents($codexPath);
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $codex = $decoded;
+    }
 }
+
 // One-shot UI event handling
 $chatLogPath = '../../assets/data/chatLog.json';
 // Weather cache path (not used in this script, but defined)
