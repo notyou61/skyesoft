@@ -215,7 +215,7 @@ if (file_exists($versionPath)) {
     $siteMeta = json_decode($versionJson, true);
 }
 
-$codexPath = '../../assets/data/codex.json';
+$codexPath = '/home/notyou64/public_html/assets/docs/codex/codex.json';
 $chatLogPath = '../../assets/data/chatLog.json';
 $weatherPath = '../../assets/data/weatherCache.json';
 $announcementsPath = '/home/notyou64/public_html/data/announcements.json';
