@@ -9,3 +9,7 @@ deployment:
 
     # 3. Sync files (mirror with delete, exclude .git and this yaml file)
     - rsync -av --delete --exclude='.git' --exclude='.cpanel.yml' ./ $DEPLOYPATH
+
+    # 4. Reset directory and file permissions
+    - find $DEPLOYPATH -type d -exec chmod 755 {} \;
+    - find $DEPLOYPATH -type f -exec chmod 644 {} \;
