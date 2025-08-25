@@ -731,16 +731,16 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
         $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
-        $county     = $countyData['NAME'] ?? null;
-        $stateFIPS  = $countyData['STATE'] ?? null;
-        $countyFIPS = $countyData['COUNTY'] ?? null;
+        $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
+        $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
+        $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     }
 
     // ✅ Get Assessor API URL
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
     // ✅ Parcel lookup (Maricopa only for now)
-    $parcels = [];
+    $parcels = array();
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         // Extract street part only (remove city/state/zip)
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
@@ -754,9 +754,9 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
-                $apn   = $feature['attributes']['APN'] ?? null;
-                $situs = $feature['attributes']['PHYSICAL_ADDRESS'] ?? null;
-                $owner = $feature['attributes']['OWNER_NAME'] ?? null;
+                $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
+                $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
+                $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
                 // Step 2: Fetch parcel details from Assessor API
                 $details = null;
@@ -766,13 +766,13 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     if ($parcelData) $details = json_decode($parcelData, true);
                 }
 
-                $parcels[] = [
+                $parcels[] = array(
                     "apn" => $apn,
                     "situs" => $situs,
                     "owner" => $owner,
                     "assessorApi" => $apn ? rtrim($assessorApi, "/") . "/parcel/" . $apn : null,
                     "details" => $details
-                ];
+                );
             }
         }
     }
@@ -780,7 +780,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Normal response
     $response = array(
         "error" => false,
-        "response" => "📄 Zoning report request created for {$address}.",
+        "response" => "📄 Zoning report request created for " . $address . ".",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
         "inputs" => array(
