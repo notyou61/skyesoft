@@ -747,8 +747,8 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
         // Build GIS query using LIKE
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . urlencode($shortAddress) . "%')";
-        $params = "f=json&where=" . $where . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
+        $params = "f=json&where=" . urlencode($where) . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
 
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
