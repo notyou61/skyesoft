@@ -736,7 +736,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     }
 
-    // ✅ Get Assessor API URL
+    // ✅ Get Assessor API URL (placeholder for scaling counties later)
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
     // ✅ Parcel lookup (Maricopa only for now)
@@ -756,7 +756,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
                 $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
-                // Step 2: Fetch parcel details from Assessor API
+                // Step 2: Fetch parcel details from ArcGIS REST API (outFields=*)
                 $details = null;
                 $jurisdiction = null;
                 $lotSize = null;
@@ -770,22 +770,26 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 $str = null;
 
                 if ($apn) {
-                    $parcelUrl = rtrim($assessorApi, "/") . "/parcel/" . urlencode($apn);
-                    $parcelData = @file_get_contents($parcelUrl);
-                    if ($parcelData) {
-                        $details = json_decode($parcelData, true);
-                        if (is_array($details)) {
-                            $jurisdiction  = isset($details['jurisdiction']) ? $details['jurisdiction'] : null;
-                            $lotSize       = isset($details['lot_sq_ft']) ? $details['lot_sq_ft'] : null;
-                            $puc           = isset($details['puc']) ? $details['puc'] : null;
-                            $subdivision   = isset($details['subdivision_name']) ? $details['subdivision_name'] : null;
-                            $mcr           = isset($details['mcr_number']) ? $details['mcr_number'] : null;
-                            $lot           = isset($details['lot_number']) ? $details['lot_number'] : null;
-                            $tractBlock    = isset($details['tract_block']) ? $details['tract_block'] : null;
-                            $floor         = isset($details['floor']) ? $details['floor'] : null;
-                            $yearBuilt     = isset($details['year_built']) ? $details['year_built'] : null;
-                            $str           = isset($details['str']) ? $details['str'] : null;
-                        }
+                    $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                        . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
+
+                    $detailsJson = @file_get_contents($detailsUrl);
+                    $detailsData = json_decode($detailsJson, true);
+
+                    if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
+                        $attrs = $detailsData['features'][0]['attributes'];
+
+                        $details       = $attrs;
+                        $jurisdiction  = isset($attrs['JURISDICTION']) ? $attrs['JURISDICTION'] : null;
+                        $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
+                        $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
+                        $subdivision   = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
+                        $mcr           = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
+                        $lot           = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
+                        $tractBlock    = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
+                        $floor         = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
+                        $yearBuilt     = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
+                        $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
                     }
                 }
 
@@ -793,7 +797,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     "apn" => $apn,
                     "situs" => $situs,
                     "owner" => $owner,
-                    "assessorApi" => $apn ? rtrim($assessorApi, "/") . "/parcel/" . $apn : null,
                     "jurisdiction" => $jurisdiction,
                     "lotSizeSqFt" => $lotSize,
                     "puc" => $puc,
@@ -804,7 +807,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     "floor" => $floor,
                     "constructionYear" => $yearBuilt,
                     "str" => $str,
-                    "detailsRaw" => $details // keep raw in case you need more
+                    "detailsRaw" => $details // full attributes
                 );
             }
         }
@@ -833,7 +836,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
-
 
 /**
  * Call OpenAI API
