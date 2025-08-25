@@ -620,27 +620,77 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
 }
 
 /**
- * Handle AI report output (detect JSON vs plain text)
+ * Normalize address string:
+ * - Collapse extra spaces
+ * - Title-case words
+ * - Keep ordinal suffixes (1st, 2nd, 3rd, 4th, etc.) in lowercase
  */
-function handleReportRequest($aiResponse) {
-    $decoded = json_decode($aiResponse, true);
+function normalizeAddress($address) {
+    // Collapse multiple spaces
+    $address = preg_replace('/\s+/', ' ', trim($address));
 
-    if ($decoded && isset($decoded['actionName'])) {
-        // Route AI JSON action to quick actions
-        handleQuickAction($decoded);
-        return;
-    }
+    // Lowercase everything
+    $address = strtolower($address);
 
-    // Fallback: raw prompt quick action check
-    if (preg_match('/\b(logout|login)\b/i', $aiResponse)) {
-        handleQuickAction($aiResponse);
-        return;
-    }
+    // Title case words
+    $address = ucwords($address);
 
-    // Otherwise continue with report logic…
-    runReportLogic($aiResponse);
+    // Fix ordinal suffixes back to lowercase (St, Nd, Rd, Th)
+    $address = preg_replace_callback(
+        '/\b(\d+)(St|Nd|Rd|Th)\b/i',
+        function ($matches) {
+            return $matches[1] . strtolower($matches[2]);
+        },
+        $address
+    );
+
+    return $address;
 }
 
+/**
+ * Handle AI report output (detect JSON vs plain text)
+ */
+function handleReportRequest($prompt, $reportTypes, &$conversation) {
+    // Extract address (basic pattern, can refine later)
+    if (preg_match('/(\d{3,5}\s+[^,]+,\s*[^,]+,\s*[A-Z]{2}\s*\d{5})/i', $prompt, $matches)) {
+        $address = trim($matches[1]);
+    } else {
+        $address = trim($prompt);
+    }
+
+    // ✅ Normalize address
+    $address = normalizeAddress($address);
+
+    // Validation: require street number + 5-digit ZIP for Census API
+    $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
+    $hasZip = preg_match('/\b\d{5}\b/', $address);
+
+    if (!$hasStreetNum || !$hasZip) {
+        $response = [
+            "error" => true,
+            "response" => "⚠️ Please include both a street number and a 5-digit ZIP code to create a zoning report.",
+            "providedInput" => $address
+        ];
+        header('Content-Type: application/json');
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        exit;
+    }
+
+    // ✅ Normal response
+    $response = [
+        "error" => false,
+        "response" => "📄 Zoning report request created for {$address}.",
+        "actionType" => "Create",
+        "reportType" => "Zoning Report",
+        "inputs" => [
+            "address" => $address
+        ]
+    ];
+
+    header('Content-Type: application/json');
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    exit;
+}
 
 /**
  * Call OpenAI API
@@ -809,7 +859,6 @@ function prepareReportData($crudData, $reportTypes) {
     $result['data'] = $crudData;
     return $result;
 }
-#endregion
 
 /**
  * Fallback report logic handler (stub for now).
@@ -819,3 +868,4 @@ function prepareReportData($crudData, $reportTypes) {
 function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
 }
+#endregion
