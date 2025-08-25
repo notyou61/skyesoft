@@ -643,7 +643,16 @@ function normalizeAddress($address) {
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
-    $address = normalizeAddress(trim($prompt));
+    // ✅ Extract the address portion: street number ... ZIP
+    $address = null;
+    if (preg_match('/\d{3,5}\s+.*?\b\d{5}\b/', $prompt, $matches)) {
+        $address = trim($matches[0]);
+    } else {
+        $address = trim($prompt); // fallback if no match
+    }
+
+    // ✅ Normalize address
+    $address = normalizeAddress($address);
 
     // Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
@@ -672,11 +681,15 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $countyFIPS = null;
     $latitude = null;
     $longitude = null;
+    $matchedAddress = null;
 
-    if ($geoData 
-        && isset($geoData['result']['addressMatches'][0])) {
-        
+    if ($geoData && isset($geoData['result']['addressMatches'][0])) {
         $match = $geoData['result']['addressMatches'][0];
+
+        // Official matched address
+        if (isset($match['matchedAddress'])) {
+            $matchedAddress = $match['matchedAddress'];
+        }
 
         // County info
         if (isset($match['geographies']['Counties'][0])) {
@@ -701,6 +714,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         "reportType" => "Zoning Report",
         "inputs" => array(
             "address" => $address,
+            "matchedAddress" => $matchedAddress,
             "county" => $county,
             "stateFIPS" => $stateFIPS,
             "countyFIPS" => $countyFIPS,
