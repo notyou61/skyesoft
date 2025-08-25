@@ -648,20 +648,41 @@ function normalizeAddress($address) {
 }
 
 /**
+ * Normalize address string:
+ * - Collapse extra spaces
+ * - Title-case words
+ * - Keep ordinal suffixes (1st, 2nd, 3rd, 4th, etc.) in lowercase
+ */
+function normalizeAddress($address) {
+    // Collapse multiple spaces
+    $address = preg_replace('/\s+/', ' ', trim($address));
+
+    // Lowercase everything
+    $address = strtolower($address);
+
+    // Title case words
+    $address = ucwords($address);
+
+    // Fix ordinal suffixes back to lowercase (St, Nd, Rd, Th)
+    $address = preg_replace_callback(
+        '/\b(\d+)(St|Nd|Rd|Th)\b/i',
+        function ($matches) {
+            return $matches[1] . strtolower($matches[2]);
+        },
+        $address
+    );
+
+    return $address;
+}
+
+/**
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
-    // Extract address (basic pattern, can refine later)
-    if (preg_match('/(\d{3,5}\s+[^,]+,\s*[^,]+,\s*[A-Z]{2}\s*\d{5})/i', $prompt, $matches)) {
-        $address = trim($matches[1]);
-    } else {
-        $address = trim($prompt);
-    }
+    // Extract + normalize
+    $address = normalizeAddress(trim($prompt));
 
-    // ✅ Normalize address
-    $address = normalizeAddress($address);
-
-    // Validation: require street number + 5-digit ZIP for Census API
+    // ✅ Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
     $hasZip = preg_match('/\b\d{5}\b/', $address);
 
@@ -676,6 +697,24 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         exit;
     }
 
+    // ✅ Call Census Geocoder API
+    $url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+         . "?address=" . urlencode($address)
+         . "&benchmark=Public_AR_Current&format=json";
+
+    $geoData = json_decode(@file_get_contents($url), true);
+
+    $county = null;
+    $stateFIPS = null;
+    $countyFIPS = null;
+
+    if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
+        $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
+        $county = $countyData['NAME'] ?? null;
+        $stateFIPS = $countyData['STATE'] ?? null;
+        $countyFIPS = $countyData['COUNTY'] ?? null;
+    }
+
     // ✅ Normal response
     $response = [
         "error" => false,
@@ -683,7 +722,10 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         "actionType" => "Create",
         "reportType" => "Zoning Report",
         "inputs" => [
-            "address" => $address
+            "address" => $address,
+            "county" => $county,
+            "stateFIPS" => $stateFIPS,
+            "countyFIPS" => $countyFIPS
         ]
     ];
 
@@ -691,6 +733,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
+
 
 /**
  * Call OpenAI API
