@@ -618,29 +618,21 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
         sendJsonResponse($aiResponse, "none", ["sessionId" => session_id()]);
     }
 }
+// Normalize address (fix ordinal suffixes)
+function fixOrdinalSuffix($matches) {
+    return $matches[1] . strtolower($matches[2]);
+}
 
-/**
- * Normalize address string:
- * - Collapse extra spaces
- * - Title-case words
- * - Keep ordinal suffixes (1st, 2nd, 3rd, 4th, etc.) in lowercase
- */
+// Normalize address (fix spacing, casing, suffixes)
 function normalizeAddress($address) {
-    // Collapse multiple spaces
     $address = preg_replace('/\s+/', ' ', trim($address));
-
-    // Lowercase everything
     $address = strtolower($address);
-
-    // Title case words
     $address = ucwords($address);
 
-    // Fix ordinal suffixes back to lowercase (St, Nd, Rd, Th)
+    // Use named callback (safe for PHP 5.6)
     $address = preg_replace_callback(
         '/\b(\d+)(St|Nd|Rd|Th)\b/i',
-        function ($matches) {
-            return $matches[1] . strtolower($matches[2]);
-        },
+        'fixOrdinalSuffix',
         $address
     );
 
@@ -651,19 +643,18 @@ function normalizeAddress($address) {
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
-    // Extract + normalize
     $address = normalizeAddress(trim($prompt));
 
-    // ✅ Validation: require street number + 5-digit ZIP
+    // Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
     $hasZip = preg_match('/\b\d{5}\b/', $address);
 
     if (!$hasStreetNum || !$hasZip) {
-        $response = [
+        $response = array(
             "error" => true,
             "response" => "⚠️ Please include both a street number and a 5-digit ZIP code to create a zoning report.",
             "providedInput" => $address
-        ];
+        );
         header('Content-Type: application/json');
         echo json_encode($response, JSON_PRETTY_PRINT);
         exit;
@@ -679,33 +670,49 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $county = null;
     $stateFIPS = null;
     $countyFIPS = null;
+    $latitude = null;
+    $longitude = null;
 
-    if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
-        $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
-        $county = $countyData['NAME'] ?? null;
-        $stateFIPS = $countyData['STATE'] ?? null;
-        $countyFIPS = $countyData['COUNTY'] ?? null;
+    if ($geoData 
+        && isset($geoData['result']['addressMatches'][0])) {
+        
+        $match = $geoData['result']['addressMatches'][0];
+
+        // County info
+        if (isset($match['geographies']['Counties'][0])) {
+            $countyData = $match['geographies']['Counties'][0];
+            $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
+            $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
+            $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
+        }
+
+        // Coordinates
+        if (isset($match['coordinates'])) {
+            $longitude = isset($match['coordinates']['x']) ? $match['coordinates']['x'] : null;
+            $latitude  = isset($match['coordinates']['y']) ? $match['coordinates']['y'] : null;
+        }
     }
 
     // ✅ Normal response
-    $response = [
+    $response = array(
         "error" => false,
         "response" => "📄 Zoning report request created for {$address}.",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
-        "inputs" => [
+        "inputs" => array(
             "address" => $address,
             "county" => $county,
             "stateFIPS" => $stateFIPS,
-            "countyFIPS" => $countyFIPS
-        ]
-    ];
+            "countyFIPS" => $countyFIPS,
+            "latitude" => $latitude,
+            "longitude" => $longitude
+        )
+    );
 
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
-
 
 /**
  * Call OpenAI API
