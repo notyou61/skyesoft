@@ -746,28 +746,45 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
     // ✅ Parcel lookup (Maricopa only for now)
-    $parcelNumber = null;
-    $parcelDetails = null;
+    $parcels = [];
     if ($countyFIPS === "013" && $stateFIPS === "04" && $latitude && $longitude) {
-        // Step 1: Get APN from GIS REST API
-        $gisUrl = "https://maps.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+        // Step 1: Query GIS REST API by coordinates
+        $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
         $params = http_build_query(array(
             "f" => "json",
             "geometry" => $longitude . "," . $latitude, // lon,lat order
             "geometryType" => "esriGeometryPoint",
             "inSR" => "4326",
             "spatialRel" => "esriSpatialRelIntersects",
-            "outFields" => "APN",
+            "outFields" => "APN,PHYSICAL_ADDRESS,OWNER_NAME",
             "returnGeometry" => "false"
         ));
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
-        if ($gisData && isset($gisData['features'][0]['attributes']['APN'])) {
-            $parcelNumber = $gisData['features'][0]['attributes']['APN'];
+        if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
+            foreach ($gisData['features'] as $feature) {
+                $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
+                $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
+                $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
-            // Step 2: Fetch parcel details from Assessor API
-            $parcelUrl = rtrim($assessorApi, "/") . "/parcel/" . urlencode($parcelNumber);
-            $parcelDetails = json_decode(@file_get_contents($parcelUrl), true);
+                // Step 2: Fetch parcel details from Assessor API
+                $details = null;
+                if ($apn) {
+                    $parcelUrl = rtrim($assessorApi, "/") . "/parcel/" . urlencode($apn);
+                    $parcelData = @file_get_contents($parcelUrl);
+                    if ($parcelData) {
+                        $details = json_decode($parcelData, true);
+                    }
+                }
+
+                $parcels[] = [
+                    "apn" => $apn,
+                    "situs" => $situs,
+                    "owner" => $owner,
+                    "assessorApi" => $apn ? rtrim($assessorApi, "/") . "/parcel/" . $apn : null,
+                    "details" => $details
+                ];
+            }
         }
     }
 
@@ -786,8 +803,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "latitude" => $latitude,
             "longitude" => $longitude,
             "assessorApi" => $assessorApi,
-            "parcelNumber" => $parcelNumber,
-            "parcelDetails" => $parcelDetails
+            "parcels" => $parcels   // ✅ array instead of single parcelNumber
         )
     );
 
@@ -795,6 +811,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
+
 
 /**
  * Call OpenAI API
