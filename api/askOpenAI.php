@@ -669,15 +669,13 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         exit;
     }
 
-    // ✅ Call Census Geocoder API
-    $url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+    // ✅ Call Census Locations API (for matchedAddress + coordinates)
+    $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current"
-        . "&vintage=Current_Current"
-        . "&layers=all"
         . "&format=json";
 
-    $geoData = json_decode(@file_get_contents($url), true);
+    $locData = json_decode(@file_get_contents($locUrl), true);
 
     $county = null;
     $stateFIPS = null;
@@ -686,20 +684,12 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $longitude = null;
     $matchedAddress = null;
 
-    if ($geoData && isset($geoData['result']['addressMatches'][0])) {
-        $match = $geoData['result']['addressMatches'][0];
+    if ($locData && isset($locData['result']['addressMatches'][0])) {
+        $match = $locData['result']['addressMatches'][0];
 
         // Official matched address
         if (isset($match['matchedAddress'])) {
             $matchedAddress = $match['matchedAddress'];
-        }
-
-        // County info
-        if (isset($match['geographies']['Counties'][0])) {
-            $countyData = $match['geographies']['Counties'][0];
-            $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
-            $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
-            $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
         }
 
         // Coordinates
@@ -707,6 +697,23 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $longitude = isset($match['coordinates']['x']) ? $match['coordinates']['x'] : null;
             $latitude  = isset($match['coordinates']['y']) ? $match['coordinates']['y'] : null;
         }
+    }
+
+    // ✅ Call Census Geographies API (for county + FIPS)
+    $geoUrl = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
+        . "?address=" . urlencode($address)
+        . "&benchmark=Public_AR_Current"
+        . "&vintage=Current_Current"
+        . "&layers=all"
+        . "&format=json";
+
+    $geoData = json_decode(@file_get_contents($geoUrl), true);
+
+    if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
+        $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
+        $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
+        $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
+        $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     }
 
     // ✅ Normal response
