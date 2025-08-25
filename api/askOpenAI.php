@@ -712,16 +712,10 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     if ($locData && isset($locData['result']['addressMatches'][0])) {
         $match = $locData['result']['addressMatches'][0];
-
-        // Official matched address
-        if (isset($match['matchedAddress'])) {
-            $matchedAddress = $match['matchedAddress'];
-        }
-
-        // Coordinates
+        if (isset($match['matchedAddress'])) $matchedAddress = $match['matchedAddress'];
         if (isset($match['coordinates'])) {
-            $longitude = isset($match['coordinates']['x']) ? $match['coordinates']['x'] : null;
-            $latitude  = isset($match['coordinates']['y']) ? $match['coordinates']['y'] : null;
+            $longitude = $match['coordinates']['x'];
+            $latitude  = $match['coordinates']['y'];
         }
     }
 
@@ -737,9 +731,9 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
         $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
-        $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
-        $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
-        $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
+        $county     = $countyData['NAME'] ?? null;
+        $stateFIPS  = $countyData['STATE'] ?? null;
+        $countyFIPS = $countyData['COUNTY'] ?? null;
     }
 
     // ✅ Get Assessor API URL
@@ -747,34 +741,29 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     // ✅ Parcel lookup (Maricopa only for now)
     $parcels = [];
-    if ($countyFIPS === "013" && $stateFIPS === "04" && $latitude && $longitude) {
-        // Step 1: Query GIS REST API by coordinates
+    if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
+        // Extract street part only (remove city/state/zip)
+        $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
+
+        // Build GIS query using LIKE
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
-        $params = http_build_query(array(
-            "f" => "json",
-            "geometry" => $longitude . "," . $latitude, // lon,lat order
-            "geometryType" => "esriGeometryPoint",
-            "inSR" => "4326",
-            "spatialRel" => "esriSpatialRelIntersects",
-            "outFields" => "APN,PHYSICAL_ADDRESS,OWNER_NAME",
-            "returnGeometry" => "false"
-        ));
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . urlencode($shortAddress) . "%')";
+        $params = "f=json&where=" . $where . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
+
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
-                $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
-                $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
-                $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
+                $apn   = $feature['attributes']['APN'] ?? null;
+                $situs = $feature['attributes']['PHYSICAL_ADDRESS'] ?? null;
+                $owner = $feature['attributes']['OWNER_NAME'] ?? null;
 
                 // Step 2: Fetch parcel details from Assessor API
                 $details = null;
                 if ($apn) {
                     $parcelUrl = rtrim($assessorApi, "/") . "/parcel/" . urlencode($apn);
                     $parcelData = @file_get_contents($parcelUrl);
-                    if ($parcelData) {
-                        $details = json_decode($parcelData, true);
-                    }
+                    if ($parcelData) $details = json_decode($parcelData, true);
                 }
 
                 $parcels[] = [
@@ -803,7 +792,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "latitude" => $latitude,
             "longitude" => $longitude,
             "assessorApi" => $assessorApi,
-            "parcels" => $parcels   // ✅ array instead of single parcelNumber
+            "parcels" => $parcels
         )
     );
 
