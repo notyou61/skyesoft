@@ -638,6 +638,59 @@ function normalizeAddress($address) {
 
     return $address;
 }
+/**
+ * Get Assessor API URL for Arizona counties by FIPS code
+ */
+function getAssessorApi($stateFIPS, $countyFIPS) {
+    if ($stateFIPS !== "04") {
+        return null; // Not Arizona
+    }
+
+    switch ($countyFIPS) {
+        case "001": return "https://placeholder.apache.az.gov/api/parcel/";      // Apache
+        case "003": return "https://placeholder.cochise.az.gov/api/parcel/";     // Cochise
+        case "005": return "https://placeholder.coconino.az.gov/api/parcel/";    // Coconino
+        case "007": return "https://placeholder.gila.az.gov/api/parcel/";        // Gila
+        case "009": return "https://placeholder.graham.az.gov/api/parcel/";      // Graham
+        case "011": return "https://placeholder.greenlee.az.gov/api/parcel/";    // Greenlee
+        case "013": return "https://mcassessor.maricopa.gov/api/parcel/";        // Maricopa (real)
+        case "015": return "https://placeholder.mohave.az.gov/api/parcel/";      // Mohave
+        case "017": return "https://placeholder.navajo.az.gov/api/parcel/";      // Navajo
+        case "019": return "https://placeholder.pima.az.gov/api/parcel/";        // Pima
+        case "021": return "https://placeholder.pinal.az.gov/api/parcel/";       // Pinal
+        case "023": return "https://placeholder.santacruz.az.gov/api/parcel/";   // Santa Cruz
+        case "025": return "https://placeholder.yavapai.az.gov/api/parcel/";     // Yavapai
+        case "027": return "https://placeholder.yuma.az.gov/api/parcel/";        // Yuma
+        default:    return null;
+    }
+}
+
+/**
+ * Get Assessor API URL for Arizona counties by FIPS code
+ */
+function getAssessorApi($stateFIPS, $countyFIPS) {
+    if ($stateFIPS !== "04") {
+        return null; // Only handle Arizona
+    }
+
+    switch ($countyFIPS) {
+        case "001": return "https://placeholder.apache.az.gov/api/parcel/";      // Apache
+        case "003": return "https://placeholder.cochise.az.gov/api/parcel/";     // Cochise
+        case "005": return "https://placeholder.coconino.az.gov/api/parcel/";    // Coconino
+        case "007": return "https://placeholder.gila.az.gov/api/parcel/";        // Gila
+        case "009": return "https://placeholder.graham.az.gov/api/parcel/";      // Graham
+        case "011": return "https://placeholder.greenlee.az.gov/api/parcel/";    // Greenlee
+        case "013": return "https://mcassessor.maricopa.gov/api/parcel/";        // Maricopa (real)
+        case "015": return "https://placeholder.mohave.az.gov/api/parcel/";      // Mohave
+        case "017": return "https://placeholder.navajo.az.gov/api/parcel/";      // Navajo
+        case "019": return "https://placeholder.pima.az.gov/api/parcel/";        // Pima
+        case "021": return "https://placeholder.pinal.az.gov/api/parcel/";       // Pinal
+        case "023": return "https://placeholder.santacruz.az.gov/api/parcel/";   // Santa Cruz
+        case "025": return "https://placeholder.yavapai.az.gov/api/parcel/";     // Yavapai
+        case "027": return "https://placeholder.yuma.az.gov/api/parcel/";        // Yuma
+        default:    return null;
+    }
+}
 
 /**
  * Handle AI report output (detect JSON vs plain text)
@@ -716,6 +769,9 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     }
 
+    // ✅ Get Assessor API URL
+    $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
+
     // ✅ Normal response
     $response = array(
         "error" => false,
@@ -729,7 +785,8 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "stateFIPS" => $stateFIPS,
             "countyFIPS" => $countyFIPS,
             "latitude" => $latitude,
-            "longitude" => $longitude
+            "longitude" => $longitude,
+            "assessorApi" => $assessorApi
         )
     );
 
