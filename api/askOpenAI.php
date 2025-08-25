@@ -648,34 +648,6 @@ function normalizeAddress($address) {
 }
 
 /**
- * Normalize address string:
- * - Collapse extra spaces
- * - Title-case words
- * - Keep ordinal suffixes (1st, 2nd, 3rd, 4th, etc.) in lowercase
- */
-function normalizeAddress($address) {
-    // Collapse multiple spaces
-    $address = preg_replace('/\s+/', ' ', trim($address));
-
-    // Lowercase everything
-    $address = strtolower($address);
-
-    // Title case words
-    $address = ucwords($address);
-
-    // Fix ordinal suffixes back to lowercase (St, Nd, Rd, Th)
-    $address = preg_replace_callback(
-        '/\b(\d+)(St|Nd|Rd|Th)\b/i',
-        function ($matches) {
-            return $matches[1] . strtolower($matches[2]);
-        },
-        $address
-    );
-
-    return $address;
-}
-
-/**
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
