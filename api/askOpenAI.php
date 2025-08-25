@@ -695,7 +695,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         exit;
     }
 
-    // ✅ Call Census Locations API (for matchedAddress + coordinates)
+    // ✅ Call Census Locations API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current"
@@ -719,7 +719,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // ✅ Call Census Geographies API (for county + FIPS)
+    // ✅ Call Census Geographies API
     $geoUrl = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current"
@@ -742,10 +742,8 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Parcel lookup (Maricopa only for now)
     $parcels = array();
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
-        // Extract street part only (remove city/state/zip)
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
 
-        // Build GIS query using LIKE
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
         $params = "f=json&where=" . urlencode($where) . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
@@ -760,10 +758,35 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
                 // Step 2: Fetch parcel details from Assessor API
                 $details = null;
+                $jurisdiction = null;
+                $lotSize = null;
+                $puc = null;
+                $subdivision = null;
+                $mcr = null;
+                $lot = null;
+                $tractBlock = null;
+                $floor = null;
+                $yearBuilt = null;
+                $str = null;
+
                 if ($apn) {
                     $parcelUrl = rtrim($assessorApi, "/") . "/parcel/" . urlencode($apn);
                     $parcelData = @file_get_contents($parcelUrl);
-                    if ($parcelData) $details = json_decode($parcelData, true);
+                    if ($parcelData) {
+                        $details = json_decode($parcelData, true);
+                        if (is_array($details)) {
+                            $jurisdiction  = isset($details['jurisdiction']) ? $details['jurisdiction'] : null;
+                            $lotSize       = isset($details['lotSize']) ? $details['lotSize'] : null;
+                            $puc           = isset($details['puc']) ? $details['puc'] : null;
+                            $subdivision   = isset($details['subdivision']) ? $details['subdivision'] : null;
+                            $mcr           = isset($details['mcr']) ? $details['mcr'] : null;
+                            $lot           = isset($details['lot']) ? $details['lot'] : null;
+                            $tractBlock    = isset($details['tractBlock']) ? $details['tractBlock'] : null;
+                            $floor         = isset($details['floor']) ? $details['floor'] : null;
+                            $yearBuilt     = isset($details['yearBuilt']) ? $details['yearBuilt'] : null;
+                            $str           = isset($details['str']) ? $details['str'] : null;
+                        }
+                    }
                 }
 
                 $parcels[] = array(
@@ -771,7 +794,17 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     "situs" => $situs,
                     "owner" => $owner,
                     "assessorApi" => $apn ? rtrim($assessorApi, "/") . "/parcel/" . $apn : null,
-                    "details" => $details
+                    "jurisdiction" => $jurisdiction,
+                    "lotSizeSqFt" => $lotSize,
+                    "puc" => $puc,
+                    "subdivision" => $subdivision,
+                    "mcr" => $mcr,
+                    "lot" => $lot,
+                    "tractBlock" => $tractBlock,
+                    "floor" => $floor,
+                    "constructionYear" => $yearBuilt,
+                    "str" => $str,
+                    "detailsRaw" => $details // keep raw in case you need more
                 );
             }
         }
