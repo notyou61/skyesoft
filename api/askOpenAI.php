@@ -776,14 +776,14 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                         $details = json_decode($parcelData, true);
                         if (is_array($details)) {
                             $jurisdiction  = isset($details['jurisdiction']) ? $details['jurisdiction'] : null;
-                            $lotSize       = isset($details['lotSize']) ? $details['lotSize'] : null;
+                            $lotSize       = isset($details['lot_sq_ft']) ? $details['lot_sq_ft'] : null;
                             $puc           = isset($details['puc']) ? $details['puc'] : null;
-                            $subdivision   = isset($details['subdivision']) ? $details['subdivision'] : null;
-                            $mcr           = isset($details['mcr']) ? $details['mcr'] : null;
-                            $lot           = isset($details['lot']) ? $details['lot'] : null;
-                            $tractBlock    = isset($details['tractBlock']) ? $details['tractBlock'] : null;
+                            $subdivision   = isset($details['subdivision_name']) ? $details['subdivision_name'] : null;
+                            $mcr           = isset($details['mcr_number']) ? $details['mcr_number'] : null;
+                            $lot           = isset($details['lot_number']) ? $details['lot_number'] : null;
+                            $tractBlock    = isset($details['tract_block']) ? $details['tract_block'] : null;
                             $floor         = isset($details['floor']) ? $details['floor'] : null;
-                            $yearBuilt     = isset($details['yearBuilt']) ? $details['yearBuilt'] : null;
+                            $yearBuilt     = isset($details['year_built']) ? $details['year_built'] : null;
                             $str           = isset($details['str']) ? $details['str'] : null;
                         }
                     }
