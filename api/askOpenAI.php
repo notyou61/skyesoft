@@ -671,8 +671,11 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     // ✅ Call Census Geocoder API
     $url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
-         . "?address=" . urlencode($address)
-         . "&benchmark=Public_AR_Current&format=json";
+        . "?address=" . urlencode($address)
+        . "&benchmark=Public_AR_Current"
+        . "&vintage=Current_Current"
+        . "&layers=all"
+        . "&format=json";
 
     $geoData = json_decode(@file_get_contents($url), true);
 
