@@ -664,7 +664,25 @@ function getAssessorApi($stateFIPS, $countyFIPS) {
         default:    return null;
     }
 }
+/**
+ * Normalize Jurisdiction Names
+ */
+function normalizeJurisdiction($jurisdiction, $county = null) {
+    if (!$jurisdiction) return null;
+    $jurisdiction = strtoupper(trim($jurisdiction));
 
+    if ($jurisdiction === "NO CITY/TOWN") {
+        return $county ? $county : "Unincorporated Area";
+    }
+
+    switch ($jurisdiction) {
+        case "CITY OF PHOENIX":
+        case "PHOENIX":
+            return "Phoenix";
+    }
+
+    return ucwords(strtolower($jurisdiction));
+}
 /**
  * Handle AI report output (detect JSON vs plain text)
  */
@@ -768,18 +786,19 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 $floor = null;
                 $yearBuilt = null;
                 $str = null;
-
+                // Full attributes
+                $attrs = array(); // always defined
+                // Fetch details only if APN is available
                 if ($apn) {
                     $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
                         . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
 
                     $detailsJson = @file_get_contents($detailsUrl);
                     $detailsData = json_decode($detailsJson, true);
-
+                    // Extract attributes if available
                     if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
-                        $attrs = $detailsData['features'][0]['attributes'];
-
-                        $details       = $attrs;
+                        $attrs   = $detailsData['features'][0]['attributes']; // overwrite
+                        $details = $attrs;
                         $jurisdiction  = isset($attrs['JURISDICTION']) ? $attrs['JURISDICTION'] : null;
                         $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
                         $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
@@ -792,22 +811,26 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                         $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
                     }
                 }
-
+                // Compile parcel info
                 $parcels[] = array(
-                    "apn" => $apn,
-                    "situs" => $situs,
-                    "owner" => $owner,
-                    "jurisdiction" => $jurisdiction,
-                    "lotSizeSqFt" => $lotSize,
-                    "puc" => $puc,
-                    "subdivision" => $subdivision,
-                    "mcr" => $mcr,
-                    "lot" => $lot,
-                    "tractBlock" => $tractBlock,
-                    "floor" => $floor,
-                    "constructionYear" => $yearBuilt,
-                    "str" => $str,
-                    "detailsRaw" => $details // full attributes
+                    "assessorsParcelNumber"      => $apn,
+                    "parcelSitusAddress"         => $situs,
+                    "ownerEntityName"            => $owner,
+                    "jurisdictionName"           => normalizeJurisdiction($jurisdiction),
+                    "parcelLotSizeSquareFeet"    => $lotSize ? intval($lotSize) : null,
+                    "propertyUseCode"            => $puc,
+                    "parcelSubdivisionName"      => $subdivision,
+                    "mapPlatReferenceNumber"     => $mcr ? "MCR " . $mcr : null,
+                    "parcelLotNumber"            => $lot,
+                    "parcelTractBlock"           => $tractBlock,
+                    "structureFloorNumber"       => $floor,
+                    "structureConstructionYear"  => $yearBuilt ? intval($yearBuilt) : null,
+                    "sectionTownshipRange"       => $str,
+                    "parcelZoneDesignation"      => isset($attrs['CITY_ZONING']) ? $attrs['CITY_ZONING'] : "CONTACT LOCAL JURISDICTION",
+                    "deedInstrumentNumber"       => isset($attrs['DEED_NUMBER']) ? $attrs['DEED_NUMBER'] : null,
+                    "deedSaleDate"               => isset($attrs['SALE_DATE']) ? $attrs['SALE_DATE'] : null,
+                    "deedSalePrice"              => isset($attrs['SALE_PRICE']) ? "$" . number_format($attrs['SALE_PRICE']) : null,
+                    "detailsRaw"                 => $details // full attributes preserved
                 );
             }
         }
