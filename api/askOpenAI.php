@@ -689,8 +689,8 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
  */
 function getApplicableDisclaimers($reportType, $context = array()) {
     // Load disclaimers from JSON file
-    $file = __DIR__ . "/../assets/data/reportDisclaimers.json"; // adjust path if needed
-    
+    $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
+
     // Fail gracefully if file missing
     if (!file_exists($file)) {
         return array("⚠️ Disclaimer library not found.");
