@@ -1,0 +1,42 @@
+{
+  "Zoning Report": {
+    "dataSources": [
+      "Parcel data provided by the Maricopa County Assessor’s Office GIS services.",
+      "Zoning boundaries provided by the City of Phoenix Planning & Development Department.",
+      "Supplemental geographic validation provided by the U.S. Census Bureau Geocoder."
+    ],
+    "multipleParcels": [
+      "⚠️ Multiple parcels were matched to the provided address. Ensure the correct parcel is selected for this report.",
+      "⚠️ Reports based on multiple parcels may require additional validation to confirm zoning and ownership."
+    ],
+    "unsupportedJurisdiction": [
+      "⚠️ This parcel falls within a jurisdiction that is not currently supported by automated zoning integration. Contact the relevant city or county planning department for confirmation."
+    ],
+    "pucMismatch": [
+      "⚠️ The Assessor’s property use code (PUC) does not match the city zoning designation. Confirm with the jurisdiction’s zoning ordinance before proceeding."
+    ],
+    "splitZoning": [
+      "⚠️ This parcel appears to have multiple zoning designations. Review the zoning map carefully to determine applicable restrictions."
+    ]
+  },
+  "Sign Ordinance Report": {
+    "dataSources": [
+      "City sign ordinances obtained from official planning department code libraries.",
+      "Jurisdiction verification via municipal websites or clerk’s office."
+    ],
+    "unsupportedJurisdiction": [
+      "⚠️ The jurisdiction is not yet supported for automated sign ordinance checks. Consult the official municipal code."
+    ]
+  },
+  "Photo Survey Report": {
+    "dataSources": [
+      "Survey photos collected and processed internally by Christy Signs.",
+      "Parcel context verified via Maricopa County GIS."
+    ]
+  },
+  "Custom Report": {
+    "dataSources": [
+      "Custom data sources vary depending on user input and report configuration."
+    ]
+  }
+}

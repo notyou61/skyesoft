@@ -420,7 +420,6 @@ function sendJsonResponse($response, $action = "none", $extra = [], $status = 20
     echo json_encode($data);
     exit;
 }
-
 /**
  * Authenticate a user (placeholder)
  * @param string $username
@@ -431,7 +430,6 @@ function authenticateUser($username, $password) {
     $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
-
 /**
  * Create a new entity (placeholder)
  * @param string $entity
@@ -442,7 +440,6 @@ function createCrudEntity($entity, $details) {
     file_put_contents(__DIR__ . "/create_$entity.log", json_encode($details) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Read an entity based on criteria (placeholder)
  * @param string $entity
@@ -452,7 +449,6 @@ function createCrudEntity($entity, $details) {
 function readCrudEntity($entity, $criteria) {
     return "Sample $entity details for: " . json_encode($criteria);
 }
-
 /**
  * Update an entity (placeholder)
  * @param string $entity
@@ -463,7 +459,6 @@ function updateCrudEntity($entity, $updates) {
     file_put_contents(__DIR__ . "/update_$entity.log", json_encode($updates) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Delete an entity (placeholder)
  * @param string $entity
@@ -474,7 +469,6 @@ function deleteCrudEntity($entity, $target) {
     file_put_contents(__DIR__ . "/delete_$entity.log", json_encode($target) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Perform logout (shared between quick action and CRUD)
  */
@@ -509,7 +503,6 @@ function performLogout() {
         "loggedIn" => false
     ]);
 }
-
 /**
  * Handle quick actions (AI JSON or raw text)
  */
@@ -529,7 +522,6 @@ function handleQuickAction($input) {
 
     sendJsonResponse("Unknown quick action: $action", "none");
 }
-
 /**
  * Handle SSE shortcut responses (time, date, weather)
  * @param string $prompt
@@ -560,7 +552,6 @@ function handleSseShortcut($prompt, $sseSnapshot) {
         sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
     }
 }
-
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
@@ -618,11 +609,10 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
         sendJsonResponse($aiResponse, "none", ["sessionId" => session_id()]);
     }
 }
-// Normalize address (fix ordinal suffixes)
+// Fix Ordinal Suffix (fix ordinal suffixes)
 function fixOrdinalSuffix($matches) {
     return $matches[1] . strtolower($matches[2]);
 }
-
 // Normalize address (fix spacing, casing, suffixes)
 function normalizeAddress($address) {
     $address = preg_replace('/\s+/', ' ', trim($address));
@@ -666,6 +656,12 @@ function getAssessorApi($stateFIPS, $countyFIPS) {
 }
 /**
  * Normalize Jurisdiction Names
+ *
+ * Converts assessor-provided jurisdiction values into consistent labels.
+ *
+ * @param string $jurisdiction  Raw jurisdiction string (e.g., "NO CITY/TOWN", "PHOENIX")
+ * @param string|null $county   Optional county name (used for unincorporated mapping)
+ * @return string|null          Normalized jurisdiction name
  */
 function normalizeJurisdiction($jurisdiction, $county = null) {
     if (!$jurisdiction) return null;
@@ -681,26 +677,85 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
             return "Phoenix";
     }
 
+    // Default: convert to Title Case
     return ucwords(strtolower($jurisdiction));
 }
 /**
+ * Load and apply disclaimers for a report
+ *
+ * @param string $reportType  The type of report (e.g., "Zoning Report")
+ * @param array  $context     Context flags (e.g., array('multipleParcels' => true, 'pucMismatch' => false))
+ * @return array              Array of disclaimers applicable to this report
+ */
+function getApplicableDisclaimers($reportType, $context = array()) {
+    $file = __DIR__ . "/../assets/data/reportDisclaimers.json"; // adjust path if needed
+    
+    // Fail gracefully if file missing
+    if (!file_exists($file)) {
+        return array("⚠️ Disclaimer library not found.");
+    }
+
+    $json = file_get_contents($file);
+    $allDisclaimers = json_decode($json, true);
+
+    // Handle JSON parse errors
+    if ($allDisclaimers === null) {
+        return array("⚠️ Disclaimer library is invalid JSON.");
+    }
+
+    // Ensure the report type is defined
+    if (!isset($allDisclaimers[$reportType])) {
+        return array("⚠️ No disclaimers defined for " . $reportType . ".");
+    }
+
+    $reportDisclaimers = $allDisclaimers[$reportType];
+    $result = array();
+
+    // Always include "dataSources" if present
+    if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
+        foreach ($reportDisclaimers['dataSources'] as $ds) {
+            if (is_string($ds) && trim($ds) !== "") {
+                $result[] = $ds;
+            }
+        }
+    }
+
+    // Conditionally include others based on $context flags
+    if (is_array($context)) {
+        foreach ($context as $key => $value) {
+            if ($value && isset($reportDisclaimers[$key])) {
+                if (is_array($reportDisclaimers[$key])) {
+                    foreach ($reportDisclaimers[$key] as $d) {
+                        if (is_string($d) && trim($d) !== "") {
+                            $result[] = $d;
+                        }
+                    }
+                } elseif (is_string($reportDisclaimers[$key])) {
+                    $result[] = $reportDisclaimers[$key];
+                }
+            }
+        }
+    }
+
+    // Deduplicate disclaimers
+    $result = array_values(array_unique($result));
+
+    return $result;
+}
+/**
  * Handle AI report output (detect JSON vs plain text)
- * Main entry point for creating Zoning Reports
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
-    // -------------------------------------------------------------
-    // STEP 1: Extract and normalize the input address
-    // -------------------------------------------------------------
+    // ✅ Extract and normalize address
     $address = null;
     if (preg_match('/\d{3,5}\s+.*?\b\d{5}\b/', $prompt, $matches)) {
         $address = trim($matches[0]);
     } else {
-        $address = trim($prompt); // fallback if regex doesn't match
+        $address = trim($prompt);
     }
-
     $address = normalizeAddress($address);
 
-    // Validate input (require street number + 5-digit ZIP)
+    // Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
     $hasZip = preg_match('/\b\d{5}\b/', $address);
     if (!$hasStreetNum || !$hasZip) {
@@ -714,9 +769,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         exit;
     }
 
-    // -------------------------------------------------------------
-    // STEP 2: Geocode address → Census API (location + geography)
-    // -------------------------------------------------------------
+    // ✅ Census Location API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current&format=json";
@@ -734,11 +787,10 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // Census → County & FIPS
+    // ✅ Census Geographies API
     $geoUrl = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
         . "?address=" . urlencode($address)
-        . "&benchmark=Public_AR_Current&vintage=Current_Current"
-        . "&layers=all&format=json";
+        . "&benchmark=Public_AR_Current&vintage=Current_Current&layers=all&format=json";
     $geoData = json_decode(@file_get_contents($geoUrl), true);
 
     if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
@@ -748,20 +800,15 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     }
 
-    // -------------------------------------------------------------
-    // STEP 3: Assessor API URL → only Maricopa for now
-    // -------------------------------------------------------------
+    // ✅ Assessor API
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
-    // -------------------------------------------------------------
-    // STEP 4: Parcel lookup (Maricopa only for now)
-    // -------------------------------------------------------------
+    // ✅ Parcel lookup (Maricopa only for now)
     $parcels = array();
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
-
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
-        $where  = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
+        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
         $params = "f=json&where=" . urlencode($where) . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
@@ -771,68 +818,86 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
                 $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
-                // Fetch details for this APN
-                $details = null; $jurisdiction = null; $lotSize = null;
-                $puc = null; $subdivision = null; $mcr = null; $lot = null;
-                $tractBlock = null; $floor = null; $yearBuilt = null; $str = null;
-                $attrs = array(); // always defined
+                // Parcel details
+                $details = null; $jurisdiction = null; $lotSize = null; $puc = null;
+                $subdivision = null; $mcr = null; $lot = null; $tractBlock = null;
+                $floor = null; $yearBuilt = null; $str = null; $attrs = array();
 
                 if ($apn) {
                     $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
                         . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
-                    $detailsData = json_decode(@file_get_contents($detailsUrl), true);
+                    $detailsJson = @file_get_contents($detailsUrl);
+                    $detailsData = json_decode($detailsJson, true);
 
                     if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
                         $attrs = $detailsData['features'][0]['attributes'];
-                        $details = $attrs;
-                        $jurisdiction = isset($attrs['JURISDICTION']) ? $attrs['JURISDICTION'] : null;
-                        $lotSize      = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
-                        $puc          = isset($attrs['PUC']) ? $attrs['PUC'] : null;
-                        $subdivision  = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
-                        $mcr          = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
-                        $lot          = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
-                        $tractBlock   = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
-                        $floor        = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
-                        $yearBuilt    = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
-                        $str          = isset($attrs['STR']) ? $attrs['STR'] : null;
+                        $details       = $attrs;
+                        $jurisdiction  = isset($attrs['JURISDICTION']) ? $attrs['JURISDICTION'] : null;
+                        $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
+                        $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
+                        $subdivision   = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
+                        $mcr           = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
+                        $lot           = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
+                        $tractBlock    = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
+                        $floor         = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
+                        $yearBuilt     = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
+                        $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
                     }
                 }
 
-                // Lookup zoning (dispatcher handles jurisdiction)
-                $zoneCode = lookupZoning(
-                    $jurisdiction,
-                    isset($attrs['LATITUDE']) ? $attrs['LATITUDE'] : $latitude,
-                    isset($attrs['LONGITUDE']) ? $attrs['LONGITUDE'] : $longitude
-                );
-
-                // Build normalized parcel record
                 $parcels[] = array(
-                    "assessorsParcelNumber"      => $apn,
-                    "parcelSitusAddress"         => $situs,
-                    "ownerEntityName"            => $owner,
-                    "jurisdictionName"           => normalizeJurisdiction($jurisdiction, $county),
-                    "parcelLotSizeSquareFeet"    => $lotSize ? intval($lotSize) : null,
-                    "propertyUseCode"            => $puc,
-                    "parcelSubdivisionName"      => $subdivision,
-                    "mapPlatReferenceNumber"     => $mcr ? "MCR " . $mcr : null,
-                    "parcelLotNumber"            => $lot,
-                    "parcelTractBlock"           => $tractBlock,
-                    "structureFloorNumber"       => $floor,
-                    "structureConstructionYear"  => $yearBuilt ? intval($yearBuilt) : null,
-                    "sectionTownshipRange"       => $str,
-                    "parcelZoneDesignation"      => $zoneCode,
-                    "deedInstrumentNumber"       => isset($attrs['DEED_NUMBER']) ? $attrs['DEED_NUMBER'] : null,
-                    "deedSaleDate"               => isset($attrs['SALE_DATE']) ? $attrs['SALE_DATE'] : null,
-                    "deedSalePrice"              => isset($attrs['SALE_PRICE']) ? "$" . number_format($attrs['SALE_PRICE']) : null,
-                    "detailsRaw"                 => $details
+                    "apn" => $apn,
+                    "situs" => $situs,
+                    "owner" => $owner,
+                    "jurisdiction" => $jurisdiction,
+                    "lotSizeSqFt" => $lotSize,
+                    "puc" => $puc,
+                    "subdivision" => $subdivision,
+                    "mcr" => $mcr,
+                    "lot" => $lot,
+                    "tractBlock" => $tractBlock,
+                    "floor" => $floor,
+                    "constructionYear" => $yearBuilt,
+                    "str" => $str,
+                    "detailsRaw" => $details
                 );
             }
         }
     }
 
-    // -------------------------------------------------------------
-    // STEP 5: Build final response
-    // -------------------------------------------------------------
+    // ✅ Context for disclaimers
+    $context = array(
+        "multipleParcels" => (count($parcels) > 1),
+        "unsupportedJurisdiction" => false,
+        "pucMismatch" => false,
+        "splitZoning" => false
+    );
+
+    // Jurisdiction check (for now, only Phoenix supported)
+    if (count($parcels) > 0) {
+        $j = strtoupper(trim($parcels[0]['jurisdiction']));
+        if ($j !== "PHOENIX") {
+            $context['unsupportedJurisdiction'] = true;
+        }
+    }
+
+    // PUC vs Zoning mismatch check
+    if (count($parcels) > 0) {
+        $puc = isset($parcels[0]['puc']) ? $parcels[0]['puc'] : null;
+        $zone = null;
+
+        $detailsRaw = isset($parcels[0]['detailsRaw']) ? $parcels[0]['detailsRaw'] : null;
+        if (is_array($detailsRaw) && isset($detailsRaw['CITY_ZONING'])) {
+            $zone = $detailsRaw['CITY_ZONING'];
+        }
+
+        if ($puc && $zone && $puc !== $zone) {
+            $context['pucMismatch'] = true;
+        }
+    }
+    // ✅ Pull disclaimers dynamically
+    $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
+    // ✅ Response
     $response = array(
         "error" => false,
         "response" => "📄 Zoning report request created for " . $address . ".",
@@ -848,60 +913,14 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "longitude" => $longitude,
             "assessorApi" => $assessorApi,
             "parcels" => $parcels
-        )
+        ),
+        "disclaimers" => array("Zoning Report" => $disclaimers)
     );
-
+    // Header and output
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
-
-/**
- * Dispatcher: Lookup zoning designation for a parcel
- * - Phoenix implemented (ArcGIS REST service)
- * - Other jurisdictions flagged until supported
- */
-function lookupZoning($jurisdictionName, $latitude, $longitude) {
-    $jurisdictionName = strtoupper(trim($jurisdictionName));
-
-    if ($jurisdictionName === "PHOENIX") {
-        return lookupPhoenixZoning($latitude, $longitude);
-    }
-
-    // Known Maricopa cities (to be added later)
-    $future = array("MESA","CHANDLER","GLENDALE","TEMPE");
-    if (in_array($jurisdictionName, $future)) {
-        return "⚠️ Zoning lookup for " . $jurisdictionName . " not implemented yet. Please update config.";
-    }
-
-    return "⚠️ Jurisdiction " . $jurisdictionName . " not supported. Requires updates.";
-}
-
-/**
- * Phoenix-specific zoning lookup
- * Queries City of Phoenix ArcGIS Zoning Layer by lat/long
- * Returns zoning code (e.g., "C-2", "A-2", "R-1-6")
- */
-function lookupPhoenixZoning($latitude, $longitude) {
-    $url = "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query"
-         . "?f=json"
-         . "&geometry=" . urlencode($longitude . "," . $latitude)
-         . "&geometryType=esriGeometryPoint"
-         . "&inSR=4326"
-         . "&spatialRel=esriSpatialRelIntersects"
-         . "&outFields=ZONING,GEN_ZONE"
-         . "&returnGeometry=false";
-
-    $data = json_decode(@file_get_contents($url), true);
-
-    if ($data && isset($data['features'][0]['attributes']['ZONING'])) {
-        return $data['features'][0]['attributes']['ZONING'];
-    }
-
-    return "CONTACT LOCAL JURISDICTION";
-}
-
-
 /**
  * Call OpenAI API
  * @param array $messages
@@ -950,7 +969,6 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
-
 /**
  * Prepares and enriches report data
  * @param array $crudData
@@ -1069,7 +1087,6 @@ function prepareReportData($crudData, $reportTypes) {
     $result['data'] = $crudData;
     return $result;
 }
-
 /**
  * Fallback report logic handler (stub for now).
  * This prevents fatal errors when quick actions are not triggered.

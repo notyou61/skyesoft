@@ -30,6 +30,9 @@ public_html/*/data/
 **/skyesoft-data.json
 assets/data/*.json
 
+# Exception: keep this one tracked
+!assets/data/reportDisclaimers.json
+
 ##############################
 # Build / deps / artifacts
 ##############################
