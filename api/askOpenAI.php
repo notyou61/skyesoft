@@ -688,32 +688,39 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
  * @return array              Array of disclaimers applicable to this report
  */
 function getApplicableDisclaimers($reportType, $context = array()) {
-    // Load disclaimers from JSON file
     $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
 
-    // Fail gracefully if file missing
     if (!file_exists($file)) {
+        file_put_contents(__DIR__ . '/error.log',
+            date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
+            FILE_APPEND
+        );
         return array("⚠️ Disclaimer library not found.");
     }
 
     $json = file_get_contents($file);
     $allDisclaimers = json_decode($json, true);
 
-    // Handle JSON parse errors
     if ($allDisclaimers === null) {
+        file_put_contents(__DIR__ . '/error.log',
+            date('Y-m-d H:i:s') . " - Disclaimer JSON parse error: " . json_last_error_msg() . "\n",
+            FILE_APPEND
+        );
         return array("⚠️ Disclaimer library is invalid JSON.");
     }
 
-    // Ensure the report type is defined
     if (!isset($allDisclaimers[$reportType])) {
+        file_put_contents(__DIR__ . '/error.log',
+            date('Y-m-d H:i:s') . " - No disclaimers defined for report type: $reportType\n",
+            FILE_APPEND
+        );
         return array("⚠️ No disclaimers defined for " . $reportType . ".");
     }
 
     $reportDisclaimers = $allDisclaimers[$reportType];
     $result = array();
 
-    // Always include "dataSources" if present
-    if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
+    if (isset($reportDisclaimers['dataSources'])) {
         foreach ($reportDisclaimers['dataSources'] as $ds) {
             if (is_string($ds) && trim($ds) !== "") {
                 $result[] = $ds;
@@ -721,27 +728,15 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         }
     }
 
-    // Conditionally include others based on $context flags
     if (is_array($context)) {
         foreach ($context as $key => $value) {
             if ($value && isset($reportDisclaimers[$key])) {
-                if (is_array($reportDisclaimers[$key])) {
-                    foreach ($reportDisclaimers[$key] as $d) {
-                        if (is_string($d) && trim($d) !== "") {
-                            $result[] = $d;
-                        }
-                    }
-                } elseif (is_string($reportDisclaimers[$key])) {
-                    $result[] = $reportDisclaimers[$key];
-                }
+                $result = array_merge($result, (array) $reportDisclaimers[$key]);
             }
         }
     }
 
-    // Deduplicate disclaimers
-    $result = array_values(array_unique($result));
-
-    return $result;
+    return array_values(array_unique($result));
 }
 /**
  * Handle AI report output (detect JSON vs plain text)
