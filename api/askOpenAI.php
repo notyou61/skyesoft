@@ -688,6 +688,7 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
  * @return array              Array of disclaimers applicable to this report
  */
 function getApplicableDisclaimers($reportType, $context = array()) {
+    // Load disclaimers from JSON file
     $file = __DIR__ . "/../assets/data/reportDisclaimers.json"; // adjust path if needed
     
     // Fail gracefully if file missing
