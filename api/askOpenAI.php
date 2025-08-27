@@ -894,7 +894,8 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     }
     // ✅ Pull disclaimers dynamically (inline)
     $disclaimers = (function($reportType, $context) {
-        $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
+        //$file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
+        $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
         if (!file_exists($file)) {
             file_put_contents(__DIR__ . '/error.log',
                 date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
