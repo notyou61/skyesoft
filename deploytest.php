@@ -23,4 +23,3 @@ if (file_exists($gitHeadFile)) {
 
 // Done
 echo "✅ If you can read this in your browser, deployment is working.\n";
-?>
