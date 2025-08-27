@@ -25,6 +25,7 @@ if (isset($data['reportType']) && $data['reportType'] === "Zoning Report") {
 
 // 👉 continue here with normal OpenAI / prompt handling...
 
+
 #region 🛡️ Headers and Setup
 require_once __DIR__ . '/env_boot.php';
 header("Content-Type: application/json");
@@ -916,17 +917,18 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $context['pucMismatch'] = true;
         }
     }
-    // ✅ Pull disclaimers dynamically (inline)
-    $disclaimers = (function($reportType, $context) {
-        //$file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
+    // ✅ Define disclaimer loader closure (PHP 5.6 safe)
+    $getDisclaimers = function($reportType, $context = array()) {
         $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
+
         if (!file_exists($file)) {
             file_put_contents(__DIR__ . '/error.log',
-                date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
+                date('Y-m-d H:i:s') . " - Disclaimer file missing: " . $file . "\n",
                 FILE_APPEND
             );
             return array("⚠️ Disclaimer library not found.");
         }
+
         $json = file_get_contents($file);
         $allDisclaimers = json_decode($json, true);
         if ($allDisclaimers === null) {
@@ -936,25 +938,29 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             );
             return array("⚠️ Disclaimer library is invalid JSON.");
         }
+
         if (!isset($allDisclaimers[$reportType])) {
             file_put_contents(__DIR__ . '/error.log',
-                date('Y-m-d H:i:s') . " - No disclaimers defined for report type: $reportType\n",
+                date('Y-m-d H:i:s') . " - No disclaimers defined for report type: " . $reportType . "\n",
                 FILE_APPEND
             );
             return array("⚠️ No disclaimers defined for " . $reportType . ".");
         }
-        // Report-specific disclaimers
+
+        // ✅ Collect disclaimers
         $reportDisclaimers = $allDisclaimers[$reportType];
         $result = array();
-        // Always include general disclaimers
-        if (isset($reportDisclaimers['dataSources'])) {
+
+        // Always include general dataSources
+        if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
             foreach ($reportDisclaimers['dataSources'] as $ds) {
                 if (is_string($ds) && trim($ds) !== "") {
                     $result[] = $ds;
                 }
             }
         }
-        // Context-specific disclaimers
+
+        // Add context-specific disclaimers
         if (is_array($context)) {
             foreach ($context as $key => $value) {
                 if ($value && isset($reportDisclaimers[$key])) {
@@ -963,8 +969,16 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             }
         }
 
+        if (empty($result)) {
+            return array("⚠️ No applicable disclaimers resolved.");
+        }
+
         return array_values(array_unique($result));
-    })("Zoning Report", $context);
+    };
+
+    // ✅ Call the closure
+    $disclaimers = $getDisclaimers("Zoning Report", is_array($context) ? $context : array());
+
     // ✅ Response
     $response = array(
         "error" => false,
@@ -972,19 +986,20 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         "actionType" => "Create",
         "reportType" => "Zoning Report",
         "inputs" => array(
-            "address" => $address,
+            "address"        => $address,
             "matchedAddress" => $matchedAddress,
-            "county" => $county,
-            "stateFIPS" => $stateFIPS,
-            "countyFIPS" => $countyFIPS,
-            "latitude" => $latitude,
-            "longitude" => $longitude,
-            "assessorApi" => $assessorApi,
-            "parcels" => $parcels
+            "county"         => $county,
+            "stateFIPS"      => $stateFIPS,
+            "countyFIPS"     => $countyFIPS,
+            "latitude"       => $latitude,
+            "longitude"      => $longitude,
+            "assessorApi"    => $assessorApi,
+            "parcels"        => $parcels
         ),
         "disclaimers" => array("Zoning Report" => $disclaimers)
     );
-    // Header and output
+
+    // ✅ Output
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
