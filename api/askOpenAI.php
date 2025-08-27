@@ -1,13 +1,16 @@
 <?php
-// 📄 File: api/askOpenAI.php (Refactored with Routing Layer Pattern)
+// 📄 File: api/askOpenAI.php
 
-// Decode input
+#region 🛡️ Input & Session Bootstrap
 $input = file_get_contents("php://input");
 $data  = json_decode($input, true);
 
-session_start(); // ensure sessionId is always available
+// Start session only if not already active
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 
-// ❌ Handle invalid JSON early
+// Handle invalid JSON early
 if ($data === null) {
     echo json_encode([
         "response"  => "❌ Invalid or empty JSON payload.",
@@ -17,14 +20,9 @@ if ($data === null) {
     exit;
 }
 
-// 🚦 Dispatch by reportType
-if (isset($data['reportType']) && $data['reportType'] === "Zoning Report") {
-    include __DIR__ . "/zoningReport.php";
-    exit;
-}
-
-// 👉 continue here with normal OpenAI / prompt handling...
-
+// Load jurisdiction zoning lookup helper
+include_once __DIR__ . "/jurisdictionZoning.php";
+#endregion
 
 #region 🛡️ Headers and Setup
 require_once __DIR__ . '/env_boot.php';
@@ -884,6 +882,21 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     "detailsRaw" => $details
                 );
             }
+        }
+    }
+
+    // ✅ Jurisdiction zoning lookup
+    $jurisdictionZoning = null;
+    if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
+        $jurisdictionZoning = getJurisdictionZoning(
+            $parcels[0]['jurisdiction'],
+            $latitude,
+            $longitude
+        );
+
+        // Attach zoning to all parcels
+        foreach ($parcels as $k => $parcel) {
+            $parcels[$k]['jurisdictionZoning'] = $jurisdictionZoning;
         }
     }
 
