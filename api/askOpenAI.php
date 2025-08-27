@@ -1,6 +1,30 @@
 <?php
 // 📄 File: api/askOpenAI.php (Refactored with Routing Layer Pattern)
 
+// Decode input
+$input = file_get_contents("php://input");
+$data  = json_decode($input, true);
+
+session_start(); // ensure sessionId is always available
+
+// ❌ Handle invalid JSON early
+if ($data === null) {
+    echo json_encode([
+        "response"  => "❌ Invalid or empty JSON payload.",
+        "action"    => "none",
+        "sessionId" => session_id()
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
+
+// 🚦 Dispatch by reportType
+if (isset($data['reportType']) && $data['reportType'] === "Zoning Report") {
+    include __DIR__ . "/zoningReport.php";
+    exit;
+}
+
+// 👉 continue here with normal OpenAI / prompt handling...
+
 #region 🛡️ Headers and Setup
 require_once __DIR__ . '/env_boot.php';
 header("Content-Type: application/json");
