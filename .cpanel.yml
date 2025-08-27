@@ -1,8 +1,8 @@
 ---
 deployment:
   tasks:
-    # 1. Clean the cPanel-managed repo
-    - cd /home/notyou64/skyesoft && git reset --hard HEAD && git clean -fd
+    # 1. Clean the cPanel-managed repo (corrected path)
+    - cd /home/notyou64/repositories/skyesoft && git reset --hard HEAD && git clean -fd
 
     # 2. Set deployment path
     - export DEPLOYPATH=/home/notyou64/public_html/skyesoft
