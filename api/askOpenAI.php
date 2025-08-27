@@ -688,8 +688,9 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
  * @return array              Array of disclaimers applicable to this report
  */
 function getApplicableDisclaimers($reportType, $context = array()) {
+    // Load disclaimers from JSON file
     $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
-
+    // If file missing or unreadable, log error and return generic message
     if (!file_exists($file)) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
@@ -697,10 +698,10 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ Disclaimer library not found.");
     }
-
+    // Read and parse JSON
     $json = file_get_contents($file);
     $allDisclaimers = json_decode($json, true);
-
+    // If JSON parse error, log and return generic message
     if ($allDisclaimers === null) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - Disclaimer JSON parse error: " . json_last_error_msg() . "\n",
@@ -708,7 +709,7 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ Disclaimer library is invalid JSON.");
     }
-
+    // If report type not found, log and return generic message
     if (!isset($allDisclaimers[$reportType])) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - No disclaimers defined for report type: $reportType\n",
@@ -716,10 +717,10 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ No disclaimers defined for " . $reportType . ".");
     }
-
+    // Collect applicable disclaimers
     $reportDisclaimers = $allDisclaimers[$reportType];
     $result = array();
-
+    // Always include general disclaimers
     if (isset($reportDisclaimers['dataSources'])) {
         foreach ($reportDisclaimers['dataSources'] as $ds) {
             if (is_string($ds) && trim($ds) !== "") {
@@ -727,7 +728,7 @@ function getApplicableDisclaimers($reportType, $context = array()) {
             }
         }
     }
-
+    // Include context-specific disclaimers
     if (is_array($context)) {
         foreach ($context as $key => $value) {
             if ($value && isset($reportDisclaimers[$key])) {
@@ -735,7 +736,7 @@ function getApplicableDisclaimers($reportType, $context = array()) {
             }
         }
     }
-
+    // Remove duplicates and return
     return array_values(array_unique($result));
 }
 /**
@@ -891,8 +892,54 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $context['pucMismatch'] = true;
         }
     }
-    // ✅ Pull disclaimers dynamically
-    $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
+    // ✅ Pull disclaimers dynamically (inline)
+    $disclaimers = (function($reportType, $context) {
+        $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
+        if (!file_exists($file)) {
+            file_put_contents(__DIR__ . '/error.log',
+                date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
+                FILE_APPEND
+            );
+            return array("⚠️ Disclaimer library not found.");
+        }
+        $json = file_get_contents($file);
+        $allDisclaimers = json_decode($json, true);
+        if ($allDisclaimers === null) {
+            file_put_contents(__DIR__ . '/error.log',
+                date('Y-m-d H:i:s') . " - Disclaimer JSON parse error: " . json_last_error_msg() . "\n",
+                FILE_APPEND
+            );
+            return array("⚠️ Disclaimer library is invalid JSON.");
+        }
+        if (!isset($allDisclaimers[$reportType])) {
+            file_put_contents(__DIR__ . '/error.log',
+                date('Y-m-d H:i:s') . " - No disclaimers defined for report type: $reportType\n",
+                FILE_APPEND
+            );
+            return array("⚠️ No disclaimers defined for " . $reportType . ".");
+        }
+        // Report-specific disclaimers
+        $reportDisclaimers = $allDisclaimers[$reportType];
+        $result = array();
+        // Always include general disclaimers
+        if (isset($reportDisclaimers['dataSources'])) {
+            foreach ($reportDisclaimers['dataSources'] as $ds) {
+                if (is_string($ds) && trim($ds) !== "") {
+                    $result[] = $ds;
+                }
+            }
+        }
+        // Context-specific disclaimers
+        if (is_array($context)) {
+            foreach ($context as $key => $value) {
+                if ($value && isset($reportDisclaimers[$key])) {
+                    $result = array_merge($result, (array) $reportDisclaimers[$key]);
+                }
+            }
+        }
+
+        return array_values(array_unique($result));
+    })("Zoning Report", $context);
     // ✅ Response
     $response = array(
         "error" => false,
