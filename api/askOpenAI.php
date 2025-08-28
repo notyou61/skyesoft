@@ -6,8 +6,8 @@ $input = file_get_contents("php://input");
 $data  = json_decode($input, true);
 
 // Start session only if not already active
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start(); // @ suppresses "already started" notice
 }
 
 // Handle invalid JSON early
