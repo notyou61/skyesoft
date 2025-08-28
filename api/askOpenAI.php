@@ -825,24 +825,38 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
     // ✅ Parcel lookup (Maricopa only for now)
     $parcels = array();
+    // Only Maricopa County (FIPS 013) has a public GIS API for parcel search by address
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
-        $params = "f=json&where=" . urlencode($where) . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME&returnGeometry=false";
+        // Parcel search (by address)
+        $params = "f=json&where=" . urlencode($where) 
+            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+            . "&returnGeometry=true&outSR=4326";
+        // echo "GIS URL: $gisUrl?$params\n";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-
+        // echo "GIS Data: " . json_encode($gisData) . "\n";
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
                 $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
                 $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
                 $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
+                // ✅ Geometry from the search result
+                $geometry = (isset($feature['geometry']) && !empty($feature['geometry'])) 
+                    ? array(
+                        "type" => "esriGeometryPolygon",
+                        "coordinates" => $feature['geometry']
+                    )
+                    : null;
+
                 // Parcel details
                 $details = null; $jurisdiction = null; $lotSize = null; $puc = null;
                 $subdivision = null; $mcr = null; $lot = null; $tractBlock = null;
                 $floor = null; $yearBuilt = null; $str = null; $attrs = array();
 
+                // Additional details lookup (if APN available)
                 if ($apn) {
                     $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
                         . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
@@ -852,7 +866,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
                         $attrs = $detailsData['features'][0]['attributes'];
                         $details       = $attrs;
-                        $jurisdiction  = isset($attrs['JURISDICTION']) ? $attrs['JURISDICTION'] : null;
+                        $jurisdiction  = isset($attrs['JURISDICTION']) ? strtoupper(trim($attrs['JURISDICTION'])) : null;
                         $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
                         $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
                         $subdivision   = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
@@ -879,27 +893,49 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     "floor" => $floor,
                     "constructionYear" => $yearBuilt,
                     "str" => $str,
-                    "detailsRaw" => $details
+                    "detailsRaw" => $details,
+                    "geometry" => $geometry   // ✅ polygon packaged with type + coordinates
                 );
             }
         }
     }
 
+
     // ✅ Jurisdiction zoning lookup
     $jurisdictionZoning = null;
+    // ✅ Jurisdiction zoning lookup with parcel-centroid fallback
     if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
-        $jurisdictionZoning = getJurisdictionZoning(
-            $parcels[0]['jurisdiction'],
-            $latitude,
-            $longitude
-        );
-
-        // Attach zoning to all parcels
         foreach ($parcels as $k => $parcel) {
-            $parcels[$k]['jurisdictionZoning'] = $jurisdictionZoning;
+            $lat = $latitude;
+            $lon = $longitude;
+
+            // If polygon geometry exists, compute centroid for better accuracy
+            if (!empty($parcel['geometry']['coordinates']['rings'][0])) {
+                $coords = $parcel['geometry']['coordinates']['rings'][0];
+                $sumLat = 0;
+                $sumLon = 0;
+                $count  = count($coords);
+
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0]; // X
+                    $sumLat += $pt[1]; // Y
+                }
+
+                if ($count > 0) {
+                    $lon = $sumLon / $count;
+                    $lat = $sumLat / $count;
+                }
+            }
+
+            // Run zoning lookup with polygon (preferred) and centroid fallback
+            $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
+                $parcel['jurisdiction'],
+                $lat,
+                $lon,
+                isset($parcel['geometry']) ? $parcel['geometry'] : null
+            );
         }
     }
-
     // ✅ Context for disclaimers
     $context = array(
         "multipleParcels" => (count($parcels) > 1),

@@ -17,6 +17,9 @@
     ],
     "splitZoning": [
       "⚠️ This parcel appears to have multiple zoning designations. Review the zoning map carefully to determine applicable restrictions."
+    ],
+    "centroidUsed": [
+      "ℹ️ Parcel centroid was used for zoning determination to ensure accuracy when parcel polygon data was available."
     ]
   },
   "Sign Ordinance Report": {
