@@ -829,48 +829,71 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
             if ($googleData && isset($googleData['results'][0])) {
                 $gResult = $googleData['results'][0];
-                $matchedAddress = $gResult['formatted_address'];
 
+                // ✅ Only use Google for lat/long + county/state
                 if (isset($gResult['geometry']['location'])) {
                     $latitude = $gResult['geometry']['location']['lat'];
                     $longitude = $gResult['geometry']['location']['lng'];
                 }
 
-                // Extract county + state
                 foreach ($gResult['address_components'] as $comp) {
                     if (in_array("administrative_area_level_2", $comp['types'])) {
-                        $county = $comp['long_name']; // e.g. "Maricopa County"
+                        $county = $comp['long_name']; // "Maricopa County"
                     }
                     if (in_array("administrative_area_level_1", $comp['types'])) {
-                        $state = $comp['short_name']; // e.g. "AZ"
+                        $state = $comp['short_name']; // "AZ"
                     }
                 }
 
-                // Map to FIPS for Maricopa specifically (expandable later)
                 if ($county === "Maricopa County" && $state === "AZ") {
                     $stateFIPS = "04";
                     $countyFIPS = "013";
                 }
+
+                // ⚠️ Don't overwrite $matchedAddress with Google's formatted_address
+                // Leave $matchedAddress from Census/original input for Assessor lookup
             }
         }
     }
-
     // ✅ Assessor API
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
+    // ✅ Ensure ZIP code is present in matchedAddress for Assessor lookup
+    if ($matchedAddress && !preg_match('/\b\d{5}\b/', $matchedAddress)) {
+        if (preg_match('/\b\d{5}\b/', $address, $zipMatch)) {
+            $matchedAddress .= " " . $zipMatch[0];
+        }
+    }
+
     // ✅ Parcel lookup (Maricopa only for now)
     $parcels = array();
-    // Only Maricopa County (FIPS 013) has a public GIS API for parcel search by address
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+
+        // --- First try: full address
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
-        // Parcel search (by address)
-        $params = "f=json&where=" . urlencode($where) 
+        $params = "f=json&where=" . urlencode($where)
             . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
             . "&returnGeometry=true&outSR=4326";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
+        // --- Fallback: if no parcels, try lat/long geometry query
+        if (empty($gisData['features']) && $latitude !== null && $longitude !== null) {
+            $geometry = json_encode([
+                "x" => $longitude,
+                "y" => $latitude
+            ]);
+            $params = "f=json"
+                . "&geometry=" . urlencode($geometry)
+                . "&geometryType=esriGeometryPoint"
+                . "&inSR=4326"
+                . "&spatialRel=esriSpatialRelIntersects"
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+                . "&returnGeometry=true&outSR=4326";
+            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        }
+        // --- Process GIS results
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
                 $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
@@ -932,7 +955,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             }
         }
     }
-
 
     // ✅ Jurisdiction zoning lookup
     $jurisdictionZoning = null;
