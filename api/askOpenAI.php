@@ -28,7 +28,6 @@ include_once __DIR__ . "/jurisdictionZoning.php";
 require_once __DIR__ . '/env_boot.php';
 header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
-session_start();
 
 // Load API key
 $apiKey = getenv("OPENAI_API_KEY");
