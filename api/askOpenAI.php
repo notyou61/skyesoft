@@ -872,12 +872,28 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             . "&returnGeometry=true&outSR=4326";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
-        // --- Retry: if nothing found, try street name only ---
+        // --- Retry: street name only ---
         if (empty($gisData['features'])) {
-            $streetNameOnly = preg_replace('/^\d+\s+/', '', $shortAddress); 
-            // "E CIVIC CENTER DR"
+            $streetNameOnly = preg_replace('/^\d+\s+/', '', $shortAddress);
             $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNameOnly) . "%')";
             $params = "f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+                . "&returnGeometry=true&outSR=4326";
+            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        }
+
+        // --- Final fallback: spatial query using lat/lon ---
+        if ((empty($gisData['features'])) && $latitude && $longitude) {
+            $geom = json_encode([
+                "x" => $longitude,
+                "y" => $latitude,
+                "spatialReference" => ["wkid" => 4326]
+            ]);
+            $params = "f=json"
+                . "&geometry=" . urlencode($geom)
+                . "&geometryType=esriGeometryPoint"
+                . "&inSR=4326"
+                . "&spatialRel=esriSpatialRelIntersects"
                 . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
                 . "&returnGeometry=true&outSR=4326";
             $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
@@ -889,8 +905,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             }
         }
     }
-
-
 
     // ✅ Jurisdiction zoning lookup
     $jurisdictionZoning = null;
