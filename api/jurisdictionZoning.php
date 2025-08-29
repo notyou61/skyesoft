@@ -57,34 +57,50 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Mesa zoning (point query using Accela_Base service)
+        // ✅ Mesa zoning (point query via local GIS)
         case "MESA":
             if ($latitude !== null && $longitude !== null) {
-                // Build geometry JSON (point in WGS84, EPSG:4326)
-                $geometry = json_encode([
-                    "x" => $longitude,
-                    "y" => $latitude,
-                    "spatialReference" => ["wkid" => 4326]
+                // Project WGS84 -> Mesa’s local 2868 using ArcGIS GeometryServer
+                $geom = json_encode([
+                    "geometryType" => "esriGeometryPoint",
+                    "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
                 ]);
-
-                // Zoning layer = Accela_Base -> MapServer/33 (Zoning Districts)
-                $url = "https://gis.mesaaz.gov/mesaaz/rest/services/Accela/Accela_Base/MapServer/33/query"
+                $projectUrl = "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project"
                     . "?f=json"
-                    . "&geometry=" . urlencode($geometry)
-                    . "&geometryType=esriGeometryPoint"
                     . "&inSR=4326"
-                    . "&spatialRel=esriSpatialRelIntersects"
-                    . "&outFields=Zoning,Description";
+                    . "&outSR=2868"
+                    . "&geometries=" . urlencode($geom);
 
-                $resp = @file_get_contents($url);
-                if ($resp !== false) {
-                    $data = json_decode($resp, true);
-                    if (!empty($data['features'][0]['attributes'])) {
-                        $attrs = $data['features'][0]['attributes'];
-                        if (!empty($attrs['Zoning'])) {
-                            $zoning = $attrs['Zoning'];
-                            if (!empty($attrs['Description'])) {
-                                $zoning .= " (" . $attrs['Description'] . ")";
+                $projResp = @file_get_contents($projectUrl);
+                $projData = json_decode($projResp, true);
+
+                if (!empty($projData['geometries'][0])) {
+                    $pt = $projData['geometries'][0];
+                    $geometry = json_encode([
+                        "x" => $pt['x'],
+                        "y" => $pt['y'],
+                        "spatialReference" => ["wkid" => 2868]
+                    ]);
+
+                    $url = "https://gis.mesaaz.gov/mesaaz/rest/services/Accela/Accela_Base/MapServer/33/query"
+                        . "?f=json"
+                        . "&geometry=" . urlencode($geometry)
+                        . "&geometryType=esriGeometryPoint"
+                        . "&inSR=2868"
+                        . "&spatialRel=esriSpatialRelIntersects"
+                        . "&outFields=Zoning,Description"
+                        . "&returnGeometry=false";
+
+                    $resp = @file_get_contents($url);
+                    if ($resp !== false) {
+                        $data = json_decode($resp, true);
+                        if (!empty($data['features'][0]['attributes'])) {
+                            $attrs = $data['features'][0]['attributes'];
+                            if (!empty($attrs['Zoning'])) {
+                                $zoning = $attrs['Zoning'];
+                                if (!empty($attrs['Description'])) {
+                                    $zoning .= " (" . $attrs['Description'] . ")";
+                                }
                             }
                         }
                     }
