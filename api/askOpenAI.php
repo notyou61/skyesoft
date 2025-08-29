@@ -819,7 +819,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     } else {
         // 🚨 Census failed → fallback to Google Geocoding API
-        $googleKey = getenv("GOOGLE_MAPS_API_KEY");
+        $googleKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
         if ($googleKey) {
             $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
                 . "?address=" . urlencode($address)
