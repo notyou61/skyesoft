@@ -767,16 +767,28 @@ function getApplicableDisclaimers($reportType, $context = array()) {
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Extract and normalize address
     $address = null;
-    if (preg_match('/\d{3,5}\s+.*?\b\d{5}\b/', $prompt, $matches)) {
+
+    // ✅ Intent-aware address sanitizer
+    $cleanPrompt = preg_replace(
+        '/\b(zoning|permit|report|lookup|check|for|at|create|make|please)\b/i',
+        '',
+        $prompt
+    );
+    // ✅ Extract address-like part (number + street + optional city/zip)
+    if (preg_match('/\d{1,5}[^,]+(?:,[^,]+){0,2}\b\d{5}\b/', $cleanPrompt, $matches)) {
         $address = trim($matches[0]);
     } else {
-        $address = trim($prompt);
+        // fallback: keep whatever remains
+        $address = trim($cleanPrompt);
     }
+
+    // Normalize address formatting
     $address = normalizeAddress($address);
 
-    // Validation: require street number + 5-digit ZIP
+    // ✅ Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
     $hasZip = preg_match('/\b\d{5}\b/', $address);
+
     if (!$hasStreetNum || !$hasZip) {
         $response = array(
             "error" => true,
@@ -787,7 +799,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         echo json_encode($response, JSON_PRETTY_PRINT);
         exit;
     }
-
     // ✅ Census Location API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
