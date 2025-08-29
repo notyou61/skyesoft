@@ -57,21 +57,36 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Mesa (point only, placeholder service)
+        // ✅ Mesa zoning (point query using Accela_Base service)
         case "MESA":
             if ($latitude !== null && $longitude !== null) {
-                $url = "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/Zoning/FeatureServer/0/query"
-                     . "?f=json"
-                     . "&geometry=" . $longitude . "," . $latitude
-                     . "&geometryType=esriGeometryPoint"
-                     . "&inSR=4326"
-                     . "&spatialRel=esriSpatialRelIntersects"
-                     . "&outFields=ZONE";
+                // Build geometry JSON (point in WGS84, EPSG:4326)
+                $geometry = json_encode([
+                    "x" => $longitude,
+                    "y" => $latitude,
+                    "spatialReference" => ["wkid" => 4326]
+                ]);
+
+                // Zoning layer = Accela_Base -> MapServer/33 (Zoning Districts)
+                $url = "https://gis.mesaaz.gov/mesaaz/rest/services/Accela/Accela_Base/MapServer/33/query"
+                    . "?f=json"
+                    . "&geometry=" . urlencode($geometry)
+                    . "&geometryType=esriGeometryPoint"
+                    . "&inSR=4326"
+                    . "&spatialRel=esriSpatialRelIntersects"
+                    . "&outFields=Zoning,Description";
+
                 $resp = @file_get_contents($url);
                 if ($resp !== false) {
                     $data = json_decode($resp, true);
-                    if (!empty($data['features'][0]['attributes']['ZONE'])) {
-                        $zoning = $data['features'][0]['attributes']['ZONE'];
+                    if (!empty($data['features'][0]['attributes'])) {
+                        $attrs = $data['features'][0]['attributes'];
+                        if (!empty($attrs['Zoning'])) {
+                            $zoning = $attrs['Zoning'];
+                            if (!empty($attrs['Description'])) {
+                                $zoning .= " (" . $attrs['Description'] . ")";
+                            }
+                        }
                     }
                 }
             }
