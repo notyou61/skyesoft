@@ -871,14 +871,24 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-        // --- First try: full address
+        // --- First try: full address (street + ZIP)
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
         $params = "f=json&where=" . urlencode($where)
             . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
             . "&returnGeometry=true&outSR=4326";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
 
-        // --- Fallback: if no parcels, try lat/long geometry query
+        // --- Retry #1: drop the street number (sometimes assessor uses alternate numbers)
+        if (empty($gisData['features'])) {
+            $streetNoDropped = preg_replace('/^\d+\s+/', '', $shortAddress); // remove leading number
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%')";
+            $params = "f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+                . "&returnGeometry=true&outSR=4326";
+            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        }
+
+        // --- Retry #2: fallback to lat/long geometry query
         if (empty($gisData['features']) && $latitude !== null && $longitude !== null) {
             $geometry = json_encode([
                 "x" => $longitude,
@@ -893,6 +903,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 . "&returnGeometry=true&outSR=4326";
             $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
         }
+
         // --- Process GIS results
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
@@ -934,7 +945,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                         $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
                     }
                 }
-
+                // Parcel object
                 $parcels[] = array(
                     "apn" => $apn,
                     "situs" => $situs,
