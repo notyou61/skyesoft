@@ -943,10 +943,14 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         "splitZoning" => false
     );
 
-    // Jurisdiction check (for now, only Phoenix supported)
+    // Jurisdiction check (expand supported cities)
     if (count($parcels) > 0) {
         $j = strtoupper(trim($parcels[0]['jurisdiction']));
-        if ($j !== "PHOENIX") {
+        if ($j === "PHOENIX") {
+            $context['phoenix'] = true;
+        } elseif ($j === "MESA") {
+            $context['mesa'] = true;
+        } else {
             $context['unsupportedJurisdiction'] = true;
         }
     }
