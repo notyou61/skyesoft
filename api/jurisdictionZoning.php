@@ -60,7 +60,7 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
         // ✅ Mesa zoning (point query via local GIS)
         case "MESA":
             if ($latitude !== null && $longitude !== null) {
-                // Project WGS84 -> Mesa’s local 2868 using ArcGIS GeometryServer
+                // Project from WGS84 (4326) → Mesa’s local 2868
                 $geom = json_encode([
                     "geometryType" => "esriGeometryPoint",
                     "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
@@ -94,13 +94,11 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                     $resp = @file_get_contents($url);
                     if ($resp !== false) {
                         $data = json_decode($resp, true);
-                        if (!empty($data['features'][0]['attributes'])) {
+                        if (!empty($data['features'][0]['attributes']['Zoning'])) {
                             $attrs = $data['features'][0]['attributes'];
-                            if (!empty($attrs['Zoning'])) {
-                                $zoning = $attrs['Zoning'];
-                                if (!empty($attrs['Description'])) {
-                                    $zoning .= " (" . $attrs['Description'] . ")";
-                                }
+                            $zoning = $attrs['Zoning'];
+                            if (!empty($attrs['Description'])) {
+                                $zoning .= " (" . $attrs['Description'] . ")";
                             }
                         }
                     }
