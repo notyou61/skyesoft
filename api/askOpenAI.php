@@ -864,76 +864,32 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+
+        // --- First try: full address ---
         $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
-        // Parcel search (by address)
         $params = "f=json&where=" . urlencode($where) 
             . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
             . "&returnGeometry=true&outSR=4326";
-        // echo "GIS URL: $gisUrl?$params\n";
         $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-        // echo "GIS Data: " . json_encode($gisData) . "\n";
+
+        // --- Retry: if nothing found, try street name only ---
+        if (empty($gisData['features'])) {
+            $streetNameOnly = preg_replace('/^\d+\s+/', '', $shortAddress); 
+            // "E CIVIC CENTER DR"
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNameOnly) . "%')";
+            $params = "f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+                . "&returnGeometry=true&outSR=4326";
+            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        }
+
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
-                $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
-                $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
-                $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
-
-                // ✅ Geometry from the search result
-                $geometry = (isset($feature['geometry']) && !empty($feature['geometry'])) 
-                    ? array(
-                        "type" => "esriGeometryPolygon",
-                        "coordinates" => $feature['geometry']
-                    )
-                    : null;
-
-                // Parcel details
-                $details = null; $jurisdiction = null; $lotSize = null; $puc = null;
-                $subdivision = null; $mcr = null; $lot = null; $tractBlock = null;
-                $floor = null; $yearBuilt = null; $str = null; $attrs = array();
-
-                // Additional details lookup (if APN available)
-                if ($apn) {
-                    $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-                        . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
-                    $detailsJson = @file_get_contents($detailsUrl);
-                    $detailsData = json_decode($detailsJson, true);
-
-                    if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
-                        $attrs = $detailsData['features'][0]['attributes'];
-                        $details       = $attrs;
-                        $jurisdiction  = isset($attrs['JURISDICTION']) ? strtoupper(trim($attrs['JURISDICTION'])) : null;
-                        $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
-                        $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
-                        $subdivision   = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
-                        $mcr           = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
-                        $lot           = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
-                        $tractBlock    = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
-                        $floor         = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
-                        $yearBuilt     = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
-                        $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
-                    }
-                }
-
-                $parcels[] = array(
-                    "apn" => $apn,
-                    "situs" => $situs,
-                    "owner" => $owner,
-                    "jurisdiction" => $jurisdiction,
-                    "lotSizeSqFt" => $lotSize,
-                    "puc" => $puc,
-                    "subdivision" => $subdivision,
-                    "mcr" => $mcr,
-                    "lot" => $lot,
-                    "tractBlock" => $tractBlock,
-                    "floor" => $floor,
-                    "constructionYear" => $yearBuilt,
-                    "str" => $str,
-                    "detailsRaw" => $details,
-                    "geometry" => $geometry   // ✅ polygon packaged with type + coordinates
-                );
+                // ... your existing APN / owner / geometry handling ...
             }
         }
     }
+
 
 
     // ✅ Jurisdiction zoning lookup
