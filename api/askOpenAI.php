@@ -793,10 +793,10 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current&format=json";
     $locData = json_decode(@file_get_contents($locUrl), true);
-
+    // Initialize variables
     $county = null; $stateFIPS = null; $countyFIPS = null;
     $latitude = null; $longitude = null; $matchedAddress = null;
-
+    // Extract matched address + coordinates if available
     if ($locData && isset($locData['result']['addressMatches'][0])) {
         $match = $locData['result']['addressMatches'][0];
         if (isset($match['matchedAddress'])) $matchedAddress = $match['matchedAddress'];
@@ -830,31 +830,36 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             if ($googleData && isset($googleData['results'][0])) {
                 $gResult = $googleData['results'][0];
 
-                // ✅ Only use Google for lat/long + county/state
+                // ✅ Use Google's formatted_address as matchedAddress if Census gave none
+                if (!$matchedAddress && isset($gResult['formatted_address'])) {
+                    $matchedAddress = strtoupper($gResult['formatted_address']);
+                }
+
+                // ✅ Coordinates from Google
                 if (isset($gResult['geometry']['location'])) {
                     $latitude = $gResult['geometry']['location']['lat'];
                     $longitude = $gResult['geometry']['location']['lng'];
                 }
 
+                // ✅ Extract county + state
                 foreach ($gResult['address_components'] as $comp) {
                     if (in_array("administrative_area_level_2", $comp['types'])) {
-                        $county = $comp['long_name']; // "Maricopa County"
+                        $county = $comp['long_name']; // e.g. "Maricopa County"
                     }
                     if (in_array("administrative_area_level_1", $comp['types'])) {
-                        $state = $comp['short_name']; // "AZ"
+                        $state = $comp['short_name']; // e.g. "AZ"
                     }
                 }
 
+                // ✅ Map to FIPS for Maricopa (expand later as needed)
                 if ($county === "Maricopa County" && $state === "AZ") {
                     $stateFIPS = "04";
                     $countyFIPS = "013";
                 }
-
-                // ⚠️ Don't overwrite $matchedAddress with Google's formatted_address
-                // Leave $matchedAddress from Census/original input for Assessor lookup
             }
         }
     }
+
     // ✅ Assessor API
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
