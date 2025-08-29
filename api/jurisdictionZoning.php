@@ -106,40 +106,57 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Gilbert zoning (point query)
+        // ✅ Gilbert zoning (point query via Growth_Development_Maps_1/MapServer/8)
         case "GILBERT":
             if ($latitude !== null && $longitude !== null) {
-                $geometry = json_encode([
-                    "x" => $longitude,
-                    "y" => $latitude,
-                    "spatialReference" => ["wkid" => 4326]
+                // Project WGS84 (4326) -> Web Mercator (102100)
+                $geom = json_encode([
+                    "geometryType" => "esriGeometryPoint",
+                    "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
                 ]);
-
-                $url = "https://maps.gilbertaz.gov/arcgis/rest/services/OD/Growth_Development_Maps_1/MapServer/8/query"
+                $projectUrl = "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project"
                     . "?f=json"
-                    . "&geometry=" . urlencode($geometry)
-                    . "&geometryType=esriGeometryPoint"
                     . "&inSR=4326"
-                    . "&spatialRel=esriSpatialRelIntersects"
-                    . "&outFields=ZCODE,Description"
-                    . "&returnGeometry=false";
+                    . "&outSR=102100"
+                    . "&geometries=" . urlencode($geom);
 
-                $resp = @file_get_contents($url);
-                if ($resp !== false) {
-                    $data = json_decode($resp, true);
-                    if (!empty($data['features'][0]['attributes'])) {
-                        $attrs = $data['features'][0]['attributes'];
-                        if (!empty($attrs['ZCODE'])) {
-                            $zoning = $attrs['ZCODE'];
-                            if (!empty($attrs['Description'])) {
-                                $zoning .= " (" . $attrs['Description'] . ")";
+                $projResp = @file_get_contents($projectUrl);
+                $projData = json_decode($projResp, true);
+
+                if (!empty($projData['geometries'][0])) {
+                    $pt = $projData['geometries'][0];
+                    $geometry = json_encode([
+                        "x" => $pt['x'],
+                        "y" => $pt['y'],
+                        "spatialReference" => ["wkid" => 102100]
+                    ]);
+
+                    $url = "https://maps.gilbertaz.gov/arcgis/rest/services/OD/Growth_Development_Maps_1/MapServer/8/query"
+                        . "?f=json"
+                        . "&geometry=" . urlencode($geometry)
+                        . "&geometryType=esriGeometryPoint"
+                        . "&inSR=102100"
+                        . "&spatialRel=esriSpatialRelIntersects"
+                        . "&outFields=ZCODE,Description"
+                        . "&returnGeometry=false";
+
+                    $resp = @file_get_contents($url);
+                    if ($resp !== false) {
+                        $data = json_decode($resp, true);
+                        if (!empty($data['features'][0]['attributes'])) {
+                            $attrs = $data['features'][0]['attributes'];
+                            if (!empty($attrs['ZCODE'])) {
+                                $zoning = $attrs['ZCODE'];
+                                if (!empty($attrs['Description'])) {
+                                    $zoning .= " (" . $attrs['Description'] . ")";
+                                }
                             }
                         }
                     }
                 }
             }
             break;
-
+        // Default case for unsupported jurisdictions
         default:
             // Unsupported jurisdiction
             return null;
