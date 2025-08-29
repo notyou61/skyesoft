@@ -806,7 +806,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // ✅ Census Geographies API
+    // ✅ Census Geographies API (primary)
     $geoUrl = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current&vintage=Current_Current&layers=all&format=json";
@@ -817,6 +817,42 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
         $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
+    } else {
+        // 🚨 Census failed → fallback to Google Geocoding API
+        $googleKey = getenv("GOOGLE_MAPS_API_KEY");
+        if ($googleKey) {
+            $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
+                . "?address=" . urlencode($address)
+                . "&key=" . $googleKey;
+
+            $googleData = json_decode(@file_get_contents($googleUrl), true);
+
+            if ($googleData && isset($googleData['results'][0])) {
+                $gResult = $googleData['results'][0];
+                $matchedAddress = $gResult['formatted_address'];
+
+                if (isset($gResult['geometry']['location'])) {
+                    $latitude = $gResult['geometry']['location']['lat'];
+                    $longitude = $gResult['geometry']['location']['lng'];
+                }
+
+                // Extract county + state
+                foreach ($gResult['address_components'] as $comp) {
+                    if (in_array("administrative_area_level_2", $comp['types'])) {
+                        $county = $comp['long_name']; // e.g. "Maricopa County"
+                    }
+                    if (in_array("administrative_area_level_1", $comp['types'])) {
+                        $state = $comp['short_name']; // e.g. "AZ"
+                    }
+                }
+
+                // Map to FIPS for Maricopa specifically (expandable later)
+                if ($county === "Maricopa County" && $state === "AZ") {
+                    $stateFIPS = "04";
+                    $countyFIPS = "013";
+                }
+            }
+        }
     }
 
     // ✅ Assessor API
