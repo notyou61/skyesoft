@@ -106,21 +106,35 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Gilbert (point only, placeholder service)
+        // ✅ Gilbert zoning (point query)
         case "GILBERT":
             if ($latitude !== null && $longitude !== null) {
-                $url = "https://gis.gilbertaz.gov/arcgis/rest/services/Zoning/MapServer/0/query"
-                     . "?f=json"
-                     . "&geometry=" . $longitude . "," . $latitude
-                     . "&geometryType=esriGeometryPoint"
-                     . "&inSR=4326"
-                     . "&spatialRel=esriSpatialRelIntersects"
-                     . "&outFields=ZONING";
+                $geometry = json_encode([
+                    "x" => $longitude,
+                    "y" => $latitude,
+                    "spatialReference" => ["wkid" => 4326]
+                ]);
+
+                $url = "https://maps.gilbertaz.gov/arcgis/rest/services/OD/Growth_Development_Maps_1/MapServer/8/query"
+                    . "?f=json"
+                    . "&geometry=" . urlencode($geometry)
+                    . "&geometryType=esriGeometryPoint"
+                    . "&inSR=4326"
+                    . "&spatialRel=esriSpatialRelIntersects"
+                    . "&outFields=ZCODE,Description"
+                    . "&returnGeometry=false";
+
                 $resp = @file_get_contents($url);
                 if ($resp !== false) {
                     $data = json_decode($resp, true);
-                    if (!empty($data['features'][0]['attributes']['ZONING'])) {
-                        $zoning = $data['features'][0]['attributes']['ZONING'];
+                    if (!empty($data['features'][0]['attributes'])) {
+                        $attrs = $data['features'][0]['attributes'];
+                        if (!empty($attrs['ZCODE'])) {
+                            $zoning = $attrs['ZCODE'];
+                            if (!empty($attrs['Description'])) {
+                                $zoning .= " (" . $attrs['Description'] . ")";
+                            }
+                        }
                     }
                 }
             }
