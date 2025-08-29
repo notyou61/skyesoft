@@ -950,6 +950,8 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $context['phoenix'] = true;
         } elseif ($j === "MESA") {
             $context['mesa'] = true;
+        } elseif ($j === "GILBERT") {
+            $context['gilbert'] = true;
         } else {
             $context['unsupportedJurisdiction'] = true;
         }
