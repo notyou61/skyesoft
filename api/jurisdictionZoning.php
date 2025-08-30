@@ -156,53 +156,32 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                 }
             }
             break;
-        // ✅ Scottsdale zoning (point query only, no geometry dump)
+        // ✅ Scottsdale zoning (point query only)
         case "SCOTTSDALE":
             if ($latitude !== null && $longitude !== null) {
-                // Project WGS84 (4326) -> Web Mercator (102100)
-                $geom = json_encode([
-                    "geometryType" => "esriGeometryPoint",
-                    "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
+                $geometry = json_encode([
+                    "x" => $longitude,
+                    "y" => $latitude,
+                    "spatialReference" => ["wkid" => 4326]
                 ]);
-                $projectUrl = "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project"
+
+                $url = "https://gis.scottsdaleaz.gov/arcgis/rest/services/Planning/Zoning/MapServer/0/query"
                     . "?f=json"
+                    . "&geometry=" . urlencode($geometry)
+                    . "&geometryType=esriGeometryPoint"
                     . "&inSR=4326"
-                    . "&outSR=102100"
-                    . "&geometries=" . urlencode($geom);
+                    . "&spatialRel=esriSpatialRelIntersects"
+                    . "&outFields=ZONE_CODE,ZONE_DESC"
+                    . "&returnGeometry=false";   // 🚨 no geometry dump
 
-                $projResp = @file_get_contents($projectUrl);
-                $projData = json_decode($projResp, true);
-
-                if (!empty($projData['geometries'][0])) {
-                    $pt = $projData['geometries'][0];
-                    $geometry = json_encode([
-                        "x" => $pt['x'],
-                        "y" => $pt['y'],
-                        "spatialReference" => ["wkid" => 102100]
-                    ]);
-
-                    // Scottsdale Zoning Layer (MapServer index may differ, adjust if needed)
-                    $url = "https://gis.scottsdaleaz.gov/arcgis/rest/services/Maps/Zoning/MapServer/0/query"
-                        . "?f=json"
-                        . "&geometry=" . urlencode($geometry)
-                        . "&geometryType=esriGeometryPoint"
-                        . "&inSR=102100"
-                        . "&spatialRel=esriSpatialRelIntersects"
-                        . "&outFields=ZONE_CODE,DESCRIPTN"
-                        . "&returnGeometry=false";
-
-                    $resp = @file_get_contents($url);
-                    if ($resp !== false) {
-                        $data = json_decode($resp, true);
-                        if (!empty($data['features'][0]['attributes'])) {
-                            $attrs = $data['features'][0]['attributes'];
-                            if (!empty($attrs['ZONE_CODE'])) {
-                                $zoning = $attrs['ZONE_CODE'];
-                                if (!empty($attrs['DESCRIPTN'])) {
-                                    $zoning .= " (" . $attrs['DESCRIPTN'] . ")";
-                                }
-                            }
-                        }
+                $resp = @file_get_contents($url);
+                if ($resp !== false) {
+                    $data = json_decode($resp, true);
+                    if (!empty($data['features'][0]['attributes']['ZONE_CODE'])) {
+                        $attrs = $data['features'][0]['attributes'];
+                        $z     = $attrs['ZONE_CODE'];
+                        $d     = !empty($attrs['ZONE_DESC']) ? $attrs['ZONE_DESC'] : '';
+                        $zoning = trim($z . ($d ? " ($d)" : ""));
                     }
                 }
             }
