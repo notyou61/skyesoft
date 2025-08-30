@@ -2,8 +2,8 @@
 // 📄 File: api/askOpenAI.php
 
 #region 🛡️ Input & Session Bootstrap
-$input = file_get_contents("php://input");
-$data  = json_decode($input, true);
+// Read and decode input once
+$data = json_decode(file_get_contents("php://input"), true);
 
 // Start session only if not already active
 if (session_status() === PHP_SESSION_NONE) {
@@ -38,19 +38,12 @@ if (!$apiKey) {
 #endregion
 
 #region 📨 Parse Input
-$inputRaw = file_get_contents("php://input");
-$input = json_decode($inputRaw, true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    sendJsonResponse("❌ Invalid JSON input.", "none", ["sessionId" => session_id()]);
-    exit;
-}
-
-// Sanitize prompt
-$prompt = isset($input["prompt"]) 
-    ? trim(strip_tags(filter_var($input["prompt"], FILTER_DEFAULT))) 
+// Use $data from bootstrap region
+$prompt = isset($data["prompt"]) 
+    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT))) 
     : "";
-$conversation = isset($input["conversation"]) && is_array($input["conversation"]) ? $input["conversation"] : [];
-$sseSnapshot = isset($input["sseSnapshot"]) && is_array($input["sseSnapshot"]) ? $input["sseSnapshot"] : [];
+$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : [];
+$sseSnapshot = isset($data["sseSnapshot"]) && is_array($data["sseSnapshot"]) ? $data["sseSnapshot"] : [];
 
 if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", ["sessionId" => session_id()]);
@@ -82,18 +75,24 @@ file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true))
 #endregion
 
 #region 📚 Build Codex Data
+// Initialize variables as empty strings to ensure type safety
+$codexGlossaryBlock = '';
+$codexOtherBlock = '';
 $codexGlossary = [];
 $codexGlossaryAssoc = [];
-if (isset($codexData['modules']['glossaryModule']['contents'])) {
+$codexTerms = [];
+$codexOtherTerms = [];
+
+if (isset($codexData['modules']['glossaryModule']['contents']) && is_array($codexData['modules']['glossaryModule']['contents'])) {
     $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
 }
 if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
     $codexGlossaryAssoc = $codexData['glossary'];
 }
-$codexGlossaryBlock = "";
-$codexTerms = [];
-if (!empty($codexGlossary) && is_array($codexGlossary)) {
+
+if (!empty($codexGlossary)) {
     foreach ($codexGlossary as $termDef) {
+        if (!is_string($termDef)) continue; // Skip non-string entries
         if (strpos($termDef, '—') !== false) {
             list($term, $def) = explode('—', $termDef, 2);
             $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
@@ -107,37 +106,41 @@ if (!empty($codexGlossary) && is_array($codexGlossary)) {
 }
 if (!empty($codexGlossaryAssoc)) {
     foreach ($codexGlossaryAssoc as $term => $def) {
+        if (!is_string($term) || !is_string($def)) continue; // Ensure string types
         $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
         $codexTerms[] = trim($def);
         $codexTerms[] = trim($term) . ": " . trim($def);
     }
 }
+if (empty($codexGlossaryBlock)) {
+    $codexGlossaryBlock = "No glossary data available.\n";
+}
+
 $modulesArr = [];
-if (isset($codexData['readme']['modules'])) {
+if (isset($codexData['readme']['modules']) && is_array($codexData['readme']['modules'])) {
     foreach ($codexData['readme']['modules'] as $mod) {
-        if (isset($mod['name'], $mod['purpose'])) {
+        if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
             $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
         }
     }
 }
-$codexOtherBlock = "";
-$codexOtherTerms = [];
-if (isset($codexData['version']['number'])) {
+
+if (isset($codexData['version']['number']) && is_string($codexData['version']['number'])) {
     $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
     $codexOtherTerms[] = $codexData['version']['number'];
     $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
 }
-if (isset($codexData['changelog'][0]['description'])) {
+if (isset($codexData['changelog'][0]['description']) && is_string($codexData['changelog'][0]['description'])) {
     $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
     $codexOtherTerms[] = $codexData['changelog'][0]['description'];
     $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
 }
-if (isset($codexData['readme']['title'])) {
+if (isset($codexData['readme']['title']) && is_string($codexData['readme']['title'])) {
     $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
     $codexOtherTerms[] = $codexData['readme']['title'];
     $codexOtherTerms[] = "Readme Title: " . $codexData['readme']['title'];
 }
-if (isset($codexData['readme']['vision'])) {
+if (isset($codexData['readme']['vision']) && is_string($codexData['readme']['vision'])) {
     $codexOtherBlock .= "Vision: " . $codexData['readme']['vision'] . "\n";
     $codexOtherTerms[] = $codexData['readme']['vision'];
     $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
@@ -147,48 +150,51 @@ if ($modulesArr) {
     $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
     $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
 }
-if (isset($codexData['meta']['description'])) {
+if (isset($codexData['meta']['description']) && is_string($codexData['meta']['description'])) {
     $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
     $codexOtherTerms[] = $codexData['meta']['description'];
     $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
 }
-if (isset($codexData['constitution']['description'])) {
+if (isset($codexData['constitution']['description']) && is_string($codexData['constitution']['description'])) {
     $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
     $codexOtherTerms[] = $codexData['constitution']['description'];
     $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
 }
-if (isset($codexData['ragExplanation']['summary'])) {
+if (isset($codexData['ragExplanation']['summary']) && is_string($codexData['ragExplanation']['summary'])) {
     $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
     $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
     $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
 }
-if (isset($codexData['includedDocuments']['summary'])) {
+if (isset($codexData['includedDocuments']['summary']) && is_string($codexData['includedDocuments']['summary'])) {
     $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
     $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
     $codexOtherTerms[] = "Included Documents: " . $codexData['includedDocuments']['summary'];
-    if (isset($codexData['includedDocuments']['documents'])) {
-        $docList = implode(", ", $codexData['includedDocuments']['documents']);
+    if (isset($codexData['includedDocuments']['documents']) && is_array($codexData['includedDocuments']['documents'])) {
+        $docList = implode(", ", array_filter($codexData['includedDocuments']['documents'], 'is_string'));
         $codexOtherBlock .= "Documents: " . $docList . "\n";
         $codexOtherTerms[] = $docList;
         $codexOtherTerms[] = "Documents: " . $docList;
     }
 }
-if (isset($codexData['shared']['sourcesOfTruth'])) {
-    $sotList = implode("; ", $codexData['shared']['sourcesOfTruth']);
+if (isset($codexData['shared']['sourcesOfTruth']) && is_array($codexData['shared']['sourcesOfTruth'])) {
+    $sotList = implode("; ", array_filter($codexData['shared']['sourcesOfTruth'], 'is_string'));
     $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
     $codexOtherTerms[] = $sotList;
     $codexOtherTerms[] = "Sources of Truth: " . $sotList;
 }
-if (isset($codexData['shared']['aiBehaviorRules'])) {
-    $ruleList = implode(" | ", $codexData['shared']['aiBehaviorRules']);
+if (isset($codexData['shared']['aiBehaviorRules']) && is_array($codexData['shared']['aiBehaviorRules'])) {
+    $ruleList = implode(" | ", array_filter($codexData['shared']['aiBehaviorRules'], 'is_string'));
     $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
     $codexOtherTerms[] = $ruleList;
     $codexOtherTerms[] = "AI Behavior Rules: " . $ruleList;
 }
+if (empty($codexOtherBlock)) {
+    $codexOtherBlock = "No additional codex data available.\n";
+}
 #endregion
 
 #region 📊 Build SSE Snapshot Summary
-$snapshotSummary = "";
+$snapshotSummary = '';
 $sseValues = [];
 function flattenSse($arr, &$summary, &$values, $prefix = "") {
     foreach ($arr as $k => $v) {
@@ -197,26 +203,33 @@ function flattenSse($arr, &$summary, &$values, $prefix = "") {
             if (array_keys($v) === range(0, count($v) - 1)) {
                 foreach ($v as $i => $entry) {
                     if (is_array($entry)) {
-                        $title = isset($entry['title']) ? $entry['title'] : '';
-                        $desc = isset($entry['description']) ? $entry['description'] : '';
+                        $title = isset($entry['title']) && is_string($entry['title']) ? $entry['title'] : '';
+                        $desc = isset($entry['description']) && is_string($entry['description']) ? $entry['description'] : '';
                         $summary .= "$key[$i]: $title $desc\n";
                         $values[] = trim("$title $desc");
                     } else {
-                        $summary .= "$key[$i]: $entry\n";
-                        $values[] = $entry;
+                        if (is_string($entry)) {
+                            $summary .= "$key[$i]: $entry\n";
+                            $values[] = $entry;
+                        }
                     }
                 }
             } else {
                 flattenSse($v, $summary, $values, $key);
             }
         } else {
-            $summary .= "$key: $v\n";
-            $values[] = $v;
+            if (is_string($v)) {
+                $summary .= "$key: $v\n";
+                $values[] = $v;
+            }
         }
     }
 }
 if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
     flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
+}
+if (empty($snapshotSummary)) {
+    $snapshotSummary = "No SSE snapshot data available.\n";
 }
 #endregion
 
@@ -251,7 +264,10 @@ if (!is_array($reportTypes)) {
     exit;
 }
 
-$reportTypesBlock = json_encode($reportTypes);
+$reportTypesBlock = json_encode($reportTypes, JSON_UNESCAPED_SLASHES);
+if (!is_string($reportTypesBlock)) {
+    $reportTypesBlock = "No report types data available.\n";
+}
 
 $actionTypesArray = [
     "Create"  => ["Contact", "Order", "Application", "Location", "Login", "Logout", "Report"],
@@ -281,8 +297,9 @@ if ($glossaryTerm) {
     // Only inject the requested entry
     $codexGlossaryBlock = !empty($filteredGlossary)
         ? implode("\n", $filteredGlossary)
-        : "$glossaryTerm: No information available";
+        : "$glossaryTerm: No information available\n";
 }
+
 // System prompt
 $systemPrompt = <<<PROMPT
 You are Skyebot™, an assistant for a signage company.  
@@ -301,16 +318,12 @@ You have four sources of truth:
 
 ---
 ## Logout Rules
-- If the user says quit, exit, logout, log out, sign out, or end session → 
-- you must reply in plain text:
-- "You have been logged out"
-+ If the user says quit, exit, logout, log out, sign out, or end session →
-+ always return this JSON object (nothing else, no text, no symbols):
-+ {
-+   "actionType": "Create",
-+   "actionName": "Logout"
-+ }
-
+- If the user says quit, exit, logout, log out, sign out, or end session →
+- always return this JSON object (nothing else, no text, no symbols):
+- {
+-   "actionType": "Create",
+-   "actionName": "Logout"
+- }
 
 ---
 ## CRUD + Report Rules
@@ -338,17 +351,13 @@ Example Report format:
 
 ---
 ## Glossary + SSE Rules
-- If the user asks "What is …" or for a definition:
--   → Return ONLY the definition for that specific term in plain text.
--   → Do NOT return the entire glossary unless the user explicitly asks
--      "show glossary" or "list all glossary terms."
-+ If the user asks "What is …", "Define …", or provides a bare term (e.g., "MTCO"):
-+   → Return ONLY the definition for that exact term in plain text.
-+   → Do NOT include multiple terms unless the user explicitly says 
-+     "show glossary" or "list all glossary terms".
-+   → Do NOT repeat the same definition twice.
-+   → If a term exists in both codexGlossary and codexOther, prefer the glossary entry.
-+   → If the term is not found, reply: "<term>: No information available".
+- If the user asks "What is …", "Define …", or provides a bare term (e.g., "MTCO"):
+-   → Return ONLY the definition for that exact term in plain text.
+-   → Do NOT include multiple terms unless the user explicitly says 
+-      "show glossary" or "list all glossary terms".
+-   → Do NOT repeat the same definition twice.
+-   → If a term exists in both codexGlossary and codexOther, prefer the glossary entry.
+-   → If the term is not found, reply: "<term>: No information available".
 
 ---
 codexGlossary:  
@@ -424,6 +433,10 @@ if (!$handled) {
 }
 #endregion
 
+// 📄 File: api/askOpenAI.php
+
+// [Previous regions: Input & Session Bootstrap, Headers and Setup, Parse Input, Load Codex and SSE Data, Build Codex Data, Build SSE Snapshot Summary, Build System Prompt and Report Types remain as fixed previously]
+
 #region 🛠 Helper Functions
 /**
  * Send JSON response with proper HTTP status code
@@ -439,9 +452,10 @@ function sendJsonResponse($response, $action = "none", $extra = [], $status = 20
         "action" => $action,
         "sessionId" => session_id()
     ], $extra);
-    echo json_encode($data);
+    echo json_encode($data, JSON_PRETTY_PRINT);
     exit;
 }
+
 /**
  * Authenticate a user (placeholder)
  * @param string $username
@@ -452,6 +466,7 @@ function authenticateUser($username, $password) {
     $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
+
 /**
  * Create a new entity (placeholder)
  * @param string $entity
@@ -462,6 +477,7 @@ function createCrudEntity($entity, $details) {
     file_put_contents(__DIR__ . "/create_$entity.log", json_encode($details) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
  * Read an entity based on criteria (placeholder)
  * @param string $entity
@@ -471,6 +487,7 @@ function createCrudEntity($entity, $details) {
 function readCrudEntity($entity, $criteria) {
     return "Sample $entity details for: " . json_encode($criteria);
 }
+
 /**
  * Update an entity (placeholder)
  * @param string $entity
@@ -481,6 +498,7 @@ function updateCrudEntity($entity, $updates) {
     file_put_contents(__DIR__ . "/update_$entity.log", json_encode($updates) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
  * Delete an entity (placeholder)
  * @param string $entity
@@ -491,6 +509,7 @@ function deleteCrudEntity($entity, $target) {
     file_put_contents(__DIR__ . "/delete_$entity.log", json_encode($target) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
  * Perform logout (shared between quick action and CRUD)
  */
@@ -499,11 +518,11 @@ function performLogout() {
     session_destroy();
     session_write_close();
 
-    // start a new clean session ID for response
+    // Start a new clean session ID for response
     session_start();
     $newSessionId = session_id();
 
-    // cookie cleanup
+    // Cookie cleanup
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
         setcookie(
@@ -525,6 +544,7 @@ function performLogout() {
         "loggedIn" => false
     ]);
 }
+
 /**
  * Handle quick actions (AI JSON or raw text)
  */
@@ -544,6 +564,7 @@ function handleQuickAction($input) {
 
     sendJsonResponse("Unknown quick action: $action", "none");
 }
+
 /**
  * Handle SSE shortcut responses (time, date, weather)
  * @param string $prompt
@@ -574,6 +595,7 @@ function handleSseShortcut($prompt, $sseSnapshot) {
         sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
     }
 }
+
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
@@ -599,9 +621,9 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
         sendJsonResponse($formattedGlossary, "none", ["sessionId" => session_id()]);
     } elseif (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
         $modulesArr = [];
-        if (isset($codexData['readme']['modules'])) {
+        if (isset($codexData['readme']['modules']) && is_array($codexData['readme']['modules'])) {
             foreach ($codexData['readme']['modules'] as $mod) {
-                if (isset($mod['name'], $mod['purpose'])) {
+                if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
                     $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
                 }
             }
@@ -631,11 +653,17 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
         sendJsonResponse($aiResponse, "none", ["sessionId" => session_id()]);
     }
 }
-// Fix Ordinal Suffix (fix ordinal suffixes)
+
+/**
+ * Fix Ordinal Suffix (fix ordinal suffixes)
+ */
 function fixOrdinalSuffix($matches) {
     return $matches[1] . strtolower($matches[2]);
 }
-// Normalize address (fix spacing, casing, suffixes)
+
+/**
+ * Normalize address (fix spacing, casing, suffixes)
+ */
 function normalizeAddress($address) {
     $address = preg_replace('/\s+/', ' ', trim($address));
     $address = strtolower($address);
@@ -650,6 +678,7 @@ function normalizeAddress($address) {
 
     return $address;
 }
+
 /**
  * Get Assessor API URL for Arizona counties by FIPS code
  */
@@ -657,7 +686,6 @@ function getAssessorApi($stateFIPS, $countyFIPS) {
     if ($stateFIPS !== "04") {
         return null; // Not Arizona
     }
-
     switch ($countyFIPS) {
         case "013": return "https://mcassessor.maricopa.gov/api";  // Maricopa (real)
         case "019": return "https://placeholder.pima.az.gov/api";  // Pima
@@ -676,11 +704,9 @@ function getAssessorApi($stateFIPS, $countyFIPS) {
         default:    return null;
     }
 }
+
 /**
  * Normalize Jurisdiction Names
- *
- * Converts assessor-provided jurisdiction values into consistent labels.
- *
  * @param string $jurisdiction  Raw jurisdiction string (e.g., "NO CITY/TOWN", "PHOENIX")
  * @param string|null $county   Optional county name (used for unincorporated mapping)
  * @return string|null          Normalized jurisdiction name
@@ -702,17 +728,15 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
     // Default: convert to Title Case
     return ucwords(strtolower($jurisdiction));
 }
+
 /**
  * Load and apply disclaimers for a report
- *
  * @param string $reportType  The type of report (e.g., "Zoning Report")
  * @param array  $context     Context flags (e.g., array('multipleParcels' => true, 'pucMismatch' => false))
  * @return array              Array of disclaimers applicable to this report
  */
 function getApplicableDisclaimers($reportType, $context = array()) {
-    // Load disclaimers from JSON file
-    $file = "/home/notyou64/public_html/skyesoft/assets/data/reportDisclaimers.json";
-    // If file missing or unreadable, log error and return generic message
+    $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
     if (!file_exists($file)) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - Disclaimer file missing: $file\n",
@@ -720,10 +744,9 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ Disclaimer library not found.");
     }
-    // Read and parse JSON
+
     $json = file_get_contents($file);
     $allDisclaimers = json_decode($json, true);
-    // If JSON parse error, log and return generic message
     if ($allDisclaimers === null) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - Disclaimer JSON parse error: " . json_last_error_msg() . "\n",
@@ -731,7 +754,7 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ Disclaimer library is invalid JSON.");
     }
-    // If report type not found, log and return generic message
+
     if (!isset($allDisclaimers[$reportType])) {
         file_put_contents(__DIR__ . '/error.log',
             date('Y-m-d H:i:s') . " - No disclaimers defined for report type: $reportType\n",
@@ -739,26 +762,30 @@ function getApplicableDisclaimers($reportType, $context = array()) {
         );
         return array("⚠️ No disclaimers defined for " . $reportType . ".");
     }
-    // Collect applicable disclaimers
+
     $reportDisclaimers = $allDisclaimers[$reportType];
     $result = array();
-    // Always include general disclaimers
-    if (isset($reportDisclaimers['dataSources'])) {
+
+    if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
         foreach ($reportDisclaimers['dataSources'] as $ds) {
             if (is_string($ds) && trim($ds) !== "") {
                 $result[] = $ds;
             }
         }
     }
-    // Include context-specific disclaimers
+
     if (is_array($context)) {
         foreach ($context as $key => $value) {
-            if ($value && isset($reportDisclaimers[$key])) {
-                $result = array_merge($result, (array) $reportDisclaimers[$key]);
+            if ($value && isset($reportDisclaimers[$key]) && is_array($reportDisclaimers[$key])) {
+                $result = array_merge($result, $reportDisclaimers[$key]);
             }
         }
     }
-    // Remove duplicates and return
+
+    if (empty($result)) {
+        return array("⚠️ No applicable disclaimers resolved.");
+    }
+
     return array_values(array_unique($result));
 }
 /**
@@ -767,22 +794,17 @@ function getApplicableDisclaimers($reportType, $context = array()) {
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Extract and normalize address
     $address = null;
-
-    // ✅ Intent-aware address sanitizer
     $cleanPrompt = preg_replace(
         '/\b(zoning|permit|report|lookup|check|for|at|create|make|please)\b/i',
         '',
         $prompt
     );
-    // ✅ Extract address-like part (number + street + optional city/zip)
     if (preg_match('/\d{1,5}[^,]+(?:,[^,]+){0,2}\b\d{5}\b/', $cleanPrompt, $matches)) {
         $address = trim($matches[0]);
     } else {
-        // fallback: keep whatever remains
         $address = trim($cleanPrompt);
     }
 
-    // Normalize address formatting
     $address = normalizeAddress($address);
 
     // ✅ Validation: require street number + 5-digit ZIP
@@ -799,15 +821,14 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         echo json_encode($response, JSON_PRETTY_PRINT);
         exit;
     }
+
     // ✅ Census Location API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current&format=json";
     $locData = json_decode(@file_get_contents($locUrl), true);
-    // Initialize variables
     $county = null; $stateFIPS = null; $countyFIPS = null;
     $latitude = null; $longitude = null; $matchedAddress = null;
-    // Extract matched address + coordinates if available
     if ($locData && isset($locData['result']['addressMatches'][0])) {
         $match = $locData['result']['addressMatches'][0];
         if (isset($match['matchedAddress'])) $matchedAddress = $match['matchedAddress'];
@@ -835,34 +856,25 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
                 . "?address=" . urlencode($address)
                 . "&key=" . $googleKey;
-
             $googleData = json_decode(@file_get_contents($googleUrl), true);
 
             if ($googleData && isset($googleData['results'][0])) {
                 $gResult = $googleData['results'][0];
-
-                // ✅ Use Google's formatted_address as matchedAddress if Census gave none
                 if (!$matchedAddress && isset($gResult['formatted_address'])) {
                     $matchedAddress = strtoupper($gResult['formatted_address']);
                 }
-
-                // ✅ Coordinates from Google
                 if (isset($gResult['geometry']['location'])) {
                     $latitude = $gResult['geometry']['location']['lat'];
                     $longitude = $gResult['geometry']['location']['lng'];
                 }
-
-                // ✅ Extract county + state
                 foreach ($gResult['address_components'] as $comp) {
                     if (in_array("administrative_area_level_2", $comp['types'])) {
-                        $county = $comp['long_name']; // e.g. "Maricopa County"
+                        $county = $comp['long_name'];
                     }
                     if (in_array("administrative_area_level_1", $comp['types'])) {
-                        $state = $comp['short_name']; // e.g. "AZ"
+                        $state = $comp['short_name'];
                     }
                 }
-
-                // ✅ Map to FIPS for Maricopa (expand later as needed)
                 if ($county === "Maricopa County" && $state === "AZ") {
                     $stateFIPS = "04";
                     $countyFIPS = "013";
@@ -871,7 +883,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // ✅ Assessor API
+    // ✅ Set assessorApi after stateFIPS and countyFIPS are defined
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
     // ✅ Ensure ZIP code is present in matchedAddress for Assessor lookup
@@ -887,55 +899,74 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
         $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-        // --- First try: full address (street + ZIP)
-        $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
-        $params = "f=json&where=" . urlencode($where)
-            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
-            . "&returnGeometry=true&outSR=4326";
-        $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-
-        // --- Retry #1: drop the street number (sometimes assessor uses alternate numbers)
-        if (empty($gisData['features'])) {
-            $streetNoDropped = preg_replace('/^\d+\s+/', '', $shortAddress); // remove leading number
-            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%')";
-            $params = "f=json&where=" . urlencode($where)
-                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
-                . "&returnGeometry=true&outSR=4326";
-            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        // Extract ZIP code for filtering
+        $zipMatch = array();
+        $where = '';
+        if (preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch)) {
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%') AND PHYSICAL_ZIP = '" . urlencode($zipMatch[0]) . "'";
+        } else {
+            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
         }
 
-        // --- Retry #2: fallback to lat/long geometry query
+        // First try: full address (street + ZIP)
+        $params = "f=json&where=" . urlencode($where)
+            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
+            . "&returnGeometry=true&outSR=4326";
+        $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+        file_put_contents(__DIR__ . '/debug-gis.log',
+            date('Y-m-d H:i:s') . " - GIS query: " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
+            FILE_APPEND
+        );
+
+        // Retry #1: drop the street number
+        if (empty($gisData['features'])) {
+            $streetNoDropped = preg_replace('/^\d+\s+/', '', $shortAddress);
+            if (preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch)) {
+                $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%') AND PHYSICAL_ZIP = '" . urlencode($zipMatch[0]) . "'";
+            } else {
+                $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%')";
+            }
+            $params = "f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
+                . "&returnGeometry=true&outSR=4326";
+            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+            file_put_contents(__DIR__ . '/debug-gis.log',
+                date('Y-m-d H:i:s') . " - GIS query (retry 1): " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
+                FILE_APPEND
+            );
+        }
+
+        // Retry #2: fallback to lat/long geometry query
         if (empty($gisData['features']) && $latitude !== null && $longitude !== null) {
-            $geometry = json_encode([
-                "x" => $longitude,
-                "y" => $latitude
-            ]);
+            $geometry = $longitude . ',' . $latitude;
             $params = "f=json"
                 . "&geometry=" . urlencode($geometry)
                 . "&geometryType=esriGeometryPoint"
                 . "&inSR=4326"
                 . "&spatialRel=esriSpatialRelIntersects"
-                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME"
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
                 . "&returnGeometry=true&outSR=4326";
             $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
+            file_put_contents(__DIR__ . '/debug-gis.log',
+                date('Y-m-d H:i:s') . " - GIS query (geometry): " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
+                FILE_APPEND
+            );
         }
 
-        // --- Process GIS results
+        // Process GIS results
         if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
             foreach ($gisData['features'] as $feature) {
-                $apn   = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
+                $apn = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
                 $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
                 $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
 
-                // ✅ Geometry from the search result
-                $geometry = (isset($feature['geometry']) && !empty($feature['geometry'])) 
+                $geometry = (isset($feature['geometry']) && !empty($feature['geometry']))
                     ? array(
                         "type" => "esriGeometryPolygon",
                         "coordinates" => $feature['geometry']
                     )
                     : null;
 
-                // Parcel details lookup
                 $details = null; $jurisdiction = null; $lotSize = null; $puc = null;
                 $subdivision = null; $mcr = null; $lot = null; $tractBlock = null;
                 $floor = null; $yearBuilt = null; $str = null; $attrs = array();
@@ -948,25 +979,25 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
 
                     if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
                         $attrs = $detailsData['features'][0]['attributes'];
-                        $details       = $attrs;
-                        $jurisdiction  = isset($attrs['JURISDICTION']) ? strtoupper(trim($attrs['JURISDICTION'])) : null;
-                        $lotSize       = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
-                        $puc           = isset($attrs['PUC']) ? $attrs['PUC'] : null;
-                        $subdivision   = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
-                        $mcr           = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
-                        $lot           = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
-                        $tractBlock    = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
-                        $floor         = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
-                        $yearBuilt     = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
-                        $str           = isset($attrs['STR']) ? $attrs['STR'] : null;
+                        $details = $attrs;
+                        $jurisdiction = isset($attrs['JURISDICTION']) ? strtoupper(trim($attrs['JURISDICTION'])) : null;
+                        $lotSize = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
+                        $puc = isset($attrs['PUC']) ? $attrs['PUC'] : null;
+                        $subdivision = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
+                        $mcr = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
+                        $lot = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
+                        $tractBlock = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
+                        $floor = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
+                        $yearBuilt = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
+                        $str = isset($attrs['STR']) ? $attrs['STR'] : null;
                     }
                 }
-                // Parcel object
+
                 $parcels[] = array(
                     "apn" => $apn,
                     "situs" => $situs,
                     "owner" => $owner,
-                    "jurisdiction" => $jurisdiction,
+                    "jurisdiction" => normalizeJurisdiction($jurisdiction, $county),
                     "lotSizeSqFt" => $lotSize,
                     "puc" => $puc,
                     "subdivision" => $subdivision,
@@ -983,15 +1014,12 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // ✅ Jurisdiction zoning lookup
-    $jurisdictionZoning = null;
     // ✅ Jurisdiction zoning lookup with parcel-centroid fallback
     if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
         foreach ($parcels as $k => $parcel) {
             $lat = $latitude;
             $lon = $longitude;
 
-            // If polygon geometry exists, compute centroid for better accuracy
             if (!empty($parcel['geometry']['coordinates']['rings'][0])) {
                 $coords = $parcel['geometry']['coordinates']['rings'][0];
                 $sumLat = 0;
@@ -1009,7 +1037,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 }
             }
 
-            // Run zoning lookup with polygon (preferred) and centroid fallback
             $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
                 $parcel['jurisdiction'],
                 $lat,
@@ -1018,6 +1045,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             );
         }
     }
+
     // ✅ Context for disclaimers
     $context = array(
         "multipleParcels" => (count($parcels) > 1),
@@ -1026,7 +1054,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         "splitZoning" => false
     );
 
-    // Jurisdiction check (expand supported cities)
     if (count($parcels) > 0) {
         $j = strtoupper(trim($parcels[0]['jurisdiction']));
         if ($j === "PHOENIX") {
@@ -1054,82 +1081,20 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-
     // PUC vs Zoning mismatch check
     if (count($parcels) > 0) {
         $puc = isset($parcels[0]['puc']) ? $parcels[0]['puc'] : null;
         $zone = null;
-
-        $detailsRaw = isset($parcels[0]['detailsRaw']) ? $parcels[0]['detailsRaw'] : null;
-        if (is_array($detailsRaw) && isset($detailsRaw['CITY_ZONING'])) {
-            $zone = $detailsRaw['CITY_ZONING'];
+        if (isset($parcels[0]['detailsRaw']) && is_array($parcels[0]['detailsRaw']) && isset($parcels[0]['detailsRaw']['CITY_ZONING'])) {
+            $zone = $parcels[0]['detailsRaw']['CITY_ZONING'];
         }
-
         if ($puc && $zone && $puc !== $zone) {
             $context['pucMismatch'] = true;
         }
     }
-    // ✅ Define disclaimer loader closure (PHP 5.6 safe)
-    $getDisclaimers = function($reportType, $context = array()) {
-        $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
 
-        if (!file_exists($file)) {
-            file_put_contents(__DIR__ . '/error.log',
-                date('Y-m-d H:i:s') . " - Disclaimer file missing: " . $file . "\n",
-                FILE_APPEND
-            );
-            return array("⚠️ Disclaimer library not found.");
-        }
-
-        $json = file_get_contents($file);
-        $allDisclaimers = json_decode($json, true);
-        if ($allDisclaimers === null) {
-            file_put_contents(__DIR__ . '/error.log',
-                date('Y-m-d H:i:s') . " - Disclaimer JSON parse error: " . json_last_error_msg() . "\n",
-                FILE_APPEND
-            );
-            return array("⚠️ Disclaimer library is invalid JSON.");
-        }
-
-        if (!isset($allDisclaimers[$reportType])) {
-            file_put_contents(__DIR__ . '/error.log',
-                date('Y-m-d H:i:s') . " - No disclaimers defined for report type: " . $reportType . "\n",
-                FILE_APPEND
-            );
-            return array("⚠️ No disclaimers defined for " . $reportType . ".");
-        }
-
-        // ✅ Collect disclaimers
-        $reportDisclaimers = $allDisclaimers[$reportType];
-        $result = array();
-
-        // Always include general dataSources
-        if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
-            foreach ($reportDisclaimers['dataSources'] as $ds) {
-                if (is_string($ds) && trim($ds) !== "") {
-                    $result[] = $ds;
-                }
-            }
-        }
-
-        // Add context-specific disclaimers
-        if (is_array($context)) {
-            foreach ($context as $key => $value) {
-                if ($value && isset($reportDisclaimers[$key])) {
-                    $result = array_merge($result, (array) $reportDisclaimers[$key]);
-                }
-            }
-        }
-
-        if (empty($result)) {
-            return array("⚠️ No applicable disclaimers resolved.");
-        }
-
-        return array_values(array_unique($result));
-    };
-
-    // ✅ Call the closure
-    $disclaimers = $getDisclaimers("Zoning Report", is_array($context) ? $context : array());
+    // ✅ Disclaimers using getApplicableDisclaimers
+    $disclaimers = getApplicableDisclaimers("Zoning Report", is_array($context) ? $context : array());
 
     // ✅ Response
     $response = array(
@@ -1204,6 +1169,7 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
+
 /**
  * Prepares and enriches report data
  * @param array $crudData
@@ -1257,8 +1223,7 @@ function prepareReportData($crudData, $reportTypes) {
 
     if (!isset($crudData['details']['title']) || $crudData['details']['title'] === '') {
         $titleTemplate = isset($reportTypeDef['titleTemplate']) ? $reportTypeDef['titleTemplate'] : '{reportType} Report – {projectName}';
-        $title = $titleTemplate;
-        $title = str_replace('{reportType}', ucfirst($reportType), $title);
+        $title = str_replace('{reportType}', ucfirst($reportType), $titleTemplate);
         $title = str_replace(
             '{projectName}',
             isset($enrichedData['projectName']) ? $enrichedData['projectName'] : 'Untitled Project',
@@ -1322,10 +1287,13 @@ function prepareReportData($crudData, $reportTypes) {
     $result['data'] = $crudData;
     return $result;
 }
+
 /**
- * Fallback report logic handler (stub for now).
- * This prevents fatal errors when quick actions are not triggered.
- * Extend this with your real CRUD/report logic as needed.
+ * Fallback report logic handler.
+ * Processes AI response for report generation and ensures JSON output.
+ * Extend this with real CRUD/report logic as needed.
+ * @param string $aiResponse The response from OpenAI or other processing
+ * @return void
  */
 function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
