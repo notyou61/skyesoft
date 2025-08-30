@@ -455,7 +455,6 @@ function sendJsonResponse($response, $action = "none", $extra = [], $status = 20
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit;
 }
-
 /**
  * Authenticate a user (placeholder)
  * @param string $username
@@ -466,7 +465,6 @@ function authenticateUser($username, $password) {
     $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
-
 /**
  * Create a new entity (placeholder)
  * @param string $entity
@@ -477,7 +475,6 @@ function createCrudEntity($entity, $details) {
     file_put_contents(__DIR__ . "/create_$entity.log", json_encode($details) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Read an entity based on criteria (placeholder)
  * @param string $entity
@@ -487,7 +484,6 @@ function createCrudEntity($entity, $details) {
 function readCrudEntity($entity, $criteria) {
     return "Sample $entity details for: " . json_encode($criteria);
 }
-
 /**
  * Update an entity (placeholder)
  * @param string $entity
@@ -498,7 +494,6 @@ function updateCrudEntity($entity, $updates) {
     file_put_contents(__DIR__ . "/update_$entity.log", json_encode($updates) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Delete an entity (placeholder)
  * @param string $entity
@@ -509,7 +504,6 @@ function deleteCrudEntity($entity, $target) {
     file_put_contents(__DIR__ . "/delete_$entity.log", json_encode($target) . "\n", FILE_APPEND);
     return true;
 }
-
 /**
  * Perform logout (shared between quick action and CRUD)
  */
@@ -544,7 +538,6 @@ function performLogout() {
         "loggedIn" => false
     ]);
 }
-
 /**
  * Handle quick actions (AI JSON or raw text)
  */
@@ -564,7 +557,6 @@ function handleQuickAction($input) {
 
     sendJsonResponse("Unknown quick action: $action", "none");
 }
-
 /**
  * Handle SSE shortcut responses (time, date, weather)
  * @param string $prompt
@@ -595,7 +587,6 @@ function handleSseShortcut($prompt, $sseSnapshot) {
         sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
     }
 }
-
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
@@ -653,14 +644,12 @@ function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOthe
         sendJsonResponse($aiResponse, "none", ["sessionId" => session_id()]);
     }
 }
-
 /**
  * Fix Ordinal Suffix (fix ordinal suffixes)
  */
 function fixOrdinalSuffix($matches) {
     return $matches[1] . strtolower($matches[2]);
 }
-
 /**
  * Normalize address (fix spacing, casing, suffixes)
  */
@@ -678,7 +667,6 @@ function normalizeAddress($address) {
 
     return $address;
 }
-
 /**
  * Get Assessor API URL for Arizona counties by FIPS code
  */
@@ -704,7 +692,6 @@ function getAssessorApi($stateFIPS, $countyFIPS) {
         default:    return null;
     }
 }
-
 /**
  * Normalize Jurisdiction Names
  * @param string $jurisdiction  Raw jurisdiction string (e.g., "NO CITY/TOWN", "PHOENIX")
@@ -728,7 +715,6 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
     // Default: convert to Title Case
     return ucwords(strtolower($jurisdiction));
 }
-
 /**
  * Load and apply disclaimers for a report
  * @param string $reportType  The type of report (e.g., "Zoning Report")
@@ -1012,6 +998,9 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                 );
             }
         }
+
+        // ✅ Filter parcels by address match, with proximity fallback
+        $parcels = filterParcels($parcels, $address, $latitude, $longitude);
     }
 
     // ✅ Jurisdiction zoning lookup with parcel-centroid fallback
@@ -1120,6 +1109,115 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
+
+    /**
+     * Filter parcels by address match, with proximity fallback
+     * @param array $parcels Array of parcels from Assessor API
+     * @param string $inputAddress Normalized input address (e.g., "3931 S Gilbert Rd, Gilbert, AZ 85295")
+     * @param float|null $latitude Geocoded latitude
+     * @param float|null $longitude Geocoded longitude
+     * @return array Filtered parcels
+     */
+    function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
+        if (empty($parcels)) {
+            return [];
+        }
+
+        // Normalize input address components
+        $inputAddress = normalizeAddress($inputAddress);
+        preg_match('/^(\d+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i', 
+            $inputAddress, $inputMatches);
+        $inputStreetNum = isset($inputMatches[1]) ? $inputMatches[1] : null;
+        $inputStreetName = isset($inputMatches[2]) ? trim(strtoupper($inputMatches[2])) : null;
+        $inputStreetType = isset($inputMatches[3]) ? strtoupper($inputMatches[3]) : null;
+
+        // Normalize street type abbreviations (e.g., RD → ROAD)
+        $streetTypeMap = [
+            'RD' => 'ROAD', 'AVE' => 'AVENUE', 'BLVD' => 'BOULEVARD', 
+            'ST' => 'STREET', 'DR' => 'DRIVE', 'LN' => 'LANE', 
+            'PL' => 'PLACE', 'CT' => 'COURT'
+        ];
+        if ($inputStreetType && isset($streetTypeMap[$inputStreetType])) {
+            $inputStreetType = $streetTypeMap[$inputStreetType];
+        }
+
+        $filteredParcels = [];
+        foreach ($parcels as $parcel) {
+            $situs = isset($parcel['situs']) ? strtoupper(trim($parcel['situs'])) : '';
+            if (!$situs) {
+                continue; // Skip parcels with no situs address
+            }
+
+            // Parse situs address
+            preg_match('/^(\d+)\s+([A-Z\s]+)\s+(ROAD|AVENUE|BOULEVARD|STREET|DRIVE|LANE|PLACE|WAY|COURT)\b/i', 
+                $situs, $situsMatches);
+            $situsStreetNum = isset($situsMatches[1]) ? $situsMatches[1] : null;
+            $situsStreetName = isset($situsMatches[2]) ? trim(strtoupper($situsMatches[2])) : null;
+            $situsStreetType = isset($situsMatches[3]) ? strtoupper($situsMatches[3]) : null;
+
+            // Match street number and name
+            if ($inputStreetNum && $inputStreetName && 
+                $situsStreetNum === $inputStreetNum && 
+                $situsStreetName === $inputStreetName) {
+                $filteredParcels[] = $parcel;
+            }
+        }
+
+        // Fallback: If no address matches, select closest parcel by centroid (within 5m)
+        if (empty($filteredParcels) && $latitude !== null && $longitude !== null) {
+            $closestParcel = null;
+            $minDistance = PHP_INT_MAX;
+
+            foreach ($parcels as $parcel) {
+                if (!isset($parcel['geometry']['coordinates']['rings'][0])) {
+                    continue;
+                }
+                $coords = $parcel['geometry']['coordinates']['rings'][0];
+                $sumLat = 0;
+                $sumLon = 0;
+                $count = count($coords);
+
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0]; // X
+                    $sumLat += $pt[1]; // Y
+                }
+
+                if ($count > 0) {
+                    $centroidLon = $sumLon / $count;
+                    $centroidLat = $sumLat / $count;
+
+                    // Calculate distance (approximate, in meters, using Haversine formula)
+                    $earthRadius = 6371000; // meters
+                    $dLat = deg2rad($centroidLat - $latitude);
+                    $dLon = deg2rad($centroidLon - $longitude);
+                    $a = sin($dLat/2) * sin($dLat/2) +
+                         cos(deg2rad($latitude)) * cos(deg2rad($centroidLat)) *
+                         sin($dLon/2) * sin($dLon/2);
+                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+                    $distance = $earthRadius * $c;
+
+                    if ($distance < $minDistance && $distance <= 5) { // 5m tolerance
+                        $minDistance = $distance;
+                        $closestParcel = $parcel;
+                    }
+                }
+            }
+
+            if ($closestParcel) {
+                $filteredParcels = [$closestParcel];
+            }
+        }
+
+        // Log filtering results for debugging
+        file_put_contents(__DIR__ . '/debug-parcel-filter.log',
+            date('Y-m-d H:i:s') . " - Input: $inputAddress, Parcels: " . count($parcels) . 
+            ", Filtered: " . count($filteredParcels) . "\n" .
+            "Filtered Parcels: " . json_encode(array_map(function($p) { return $p['situs']; }, $filteredParcels)) . "\n",
+            FILE_APPEND
+        );
+
+        return $filteredParcels;
+    }
 }
 /**
  * Call OpenAI API
@@ -1169,7 +1267,6 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
-
 /**
  * Prepares and enriches report data
  * @param array $crudData
@@ -1287,7 +1384,6 @@ function prepareReportData($crudData, $reportTypes) {
     $result['data'] = $crudData;
     return $result;
 }
-
 /**
  * Fallback report logic handler.
  * Processes AI response for report generation and ensures JSON output.
