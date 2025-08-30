@@ -1118,105 +1118,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
      * @param float|null $longitude Geocoded longitude
      * @return array Filtered parcels
      */
-    function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
-        if (empty($parcels)) {
-            return [];
-        }
-
-        // Normalize input address components
-        $inputAddress = normalizeAddress($inputAddress);
-        preg_match('/^(\d+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i', 
-            $inputAddress, $inputMatches);
-        $inputStreetNum = isset($inputMatches[1]) ? $inputMatches[1] : null;
-        $inputStreetName = isset($inputMatches[2]) ? trim(strtoupper($inputMatches[2])) : null;
-        $inputStreetType = isset($inputMatches[3]) ? strtoupper($inputMatches[3]) : null;
-
-        // Normalize street type abbreviations (e.g., RD → ROAD)
-        $streetTypeMap = [
-            'RD' => 'ROAD', 'AVE' => 'AVENUE', 'BLVD' => 'BOULEVARD', 
-            'ST' => 'STREET', 'DR' => 'DRIVE', 'LN' => 'LANE', 
-            'PL' => 'PLACE', 'CT' => 'COURT'
-        ];
-        if ($inputStreetType && isset($streetTypeMap[$inputStreetType])) {
-            $inputStreetType = $streetTypeMap[$inputStreetType];
-        }
-
-        $filteredParcels = [];
-        foreach ($parcels as $parcel) {
-            $situs = isset($parcel['situs']) ? strtoupper(trim($parcel['situs'])) : '';
-            if (!$situs) {
-                continue; // Skip parcels with no situs address
-            }
-
-            // Parse situs address
-            preg_match('/^(\d+)\s+([A-Z\s]+)\s+(ROAD|AVENUE|BOULEVARD|STREET|DRIVE|LANE|PLACE|WAY|COURT)\b/i', 
-                $situs, $situsMatches);
-            $situsStreetNum = isset($situsMatches[1]) ? $situsMatches[1] : null;
-            $situsStreetName = isset($situsMatches[2]) ? trim(strtoupper($situsMatches[2])) : null;
-            $situsStreetType = isset($situsMatches[3]) ? strtoupper($situsMatches[3]) : null;
-
-            // Match street number and name
-            if ($inputStreetNum && $inputStreetName && 
-                $situsStreetNum === $inputStreetNum && 
-                $situsStreetName === $inputStreetName) {
-                $filteredParcels[] = $parcel;
-            }
-        }
-
-        // Fallback: If no address matches, select closest parcel by centroid (within 5m)
-        if (empty($filteredParcels) && $latitude !== null && $longitude !== null) {
-            $closestParcel = null;
-            $minDistance = PHP_INT_MAX;
-
-            foreach ($parcels as $parcel) {
-                if (!isset($parcel['geometry']['coordinates']['rings'][0])) {
-                    continue;
-                }
-                $coords = $parcel['geometry']['coordinates']['rings'][0];
-                $sumLat = 0;
-                $sumLon = 0;
-                $count = count($coords);
-
-                foreach ($coords as $pt) {
-                    $sumLon += $pt[0]; // X
-                    $sumLat += $pt[1]; // Y
-                }
-
-                if ($count > 0) {
-                    $centroidLon = $sumLon / $count;
-                    $centroidLat = $sumLat / $count;
-
-                    // Calculate distance (approximate, in meters, using Haversine formula)
-                    $earthRadius = 6371000; // meters
-                    $dLat = deg2rad($centroidLat - $latitude);
-                    $dLon = deg2rad($centroidLon - $longitude);
-                    $a = sin($dLat/2) * sin($dLat/2) +
-                         cos(deg2rad($latitude)) * cos(deg2rad($centroidLat)) *
-                         sin($dLon/2) * sin($dLon/2);
-                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-                    $distance = $earthRadius * $c;
-
-                    if ($distance < $minDistance && $distance <= 5) { // 5m tolerance
-                        $minDistance = $distance;
-                        $closestParcel = $parcel;
-                    }
-                }
-            }
-
-            if ($closestParcel) {
-                $filteredParcels = [$closestParcel];
-            }
-        }
-
-        // Log filtering results for debugging
-        file_put_contents(__DIR__ . '/debug-parcel-filter.log',
-            date('Y-m-d H:i:s') . " - Input: $inputAddress, Parcels: " . count($parcels) . 
-            ", Filtered: " . count($filteredParcels) . "\n" .
-            "Filtered Parcels: " . json_encode(array_map(function($p) { return $p['situs']; }, $filteredParcels)) . "\n",
-            FILE_APPEND
-        );
-
-        return $filteredParcels;
     }
 }
 /**
@@ -1395,3 +1296,50 @@ function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
 }
 #endregion
+/**
+ * Filter parcels by address match, with proximity fallback
+ */
+function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
+    if (empty($parcels)) return [];
+
+    $inputAddress = normalizeAddress($inputAddress);
+    preg_match('/^(\d+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
+        $inputAddress, $inputMatches);
+    $inputStreetNum = $inputMatches[1] ?? null;
+    $inputStreetName = isset($inputMatches[2]) ? trim(strtoupper($inputMatches[2])) : null;
+
+    $filtered = [];
+    foreach ($parcels as $parcel) {
+        $situs = strtoupper(trim($parcel['situs'] ?? ''));
+        if (preg_match('/^(\d+)\s+([A-Z\s]+)/', $situs, $situsMatches)) {
+            if ($inputStreetNum && $inputStreetName &&
+                $situsMatches[1] === $inputStreetNum &&
+                trim($situsMatches[2]) === $inputStreetName) {
+                $filtered[] = $parcel;
+            }
+        }
+    }
+
+    if (empty($filtered) && $latitude && $longitude) {
+        $closest = null; $minDist = PHP_INT_MAX;
+        foreach ($parcels as $parcel) {
+            if (isset($parcel['geometry']['coordinates']['rings'][0])) {
+                $coords = $parcel['geometry']['coordinates']['rings'][0];
+                $sumLat = $sumLon = 0; $count = count($coords);
+                foreach ($coords as $pt) { $sumLon += $pt[0]; $sumLat += $pt[1]; }
+                if ($count > 0) {
+                    $centroidLon = $sumLon/$count; $centroidLat = $sumLat/$count;
+                    $dLat = deg2rad($centroidLat - $latitude);
+                    $dLon = deg2rad($centroidLon - $longitude);
+                    $a = sin($dLat/2)**2 + cos(deg2rad($latitude))*cos(deg2rad($centroidLat))*sin($dLon/2)**2;
+                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+                    $dist = 6371000 * $c; // meters
+                    if ($dist < $minDist && $dist <= 5) { $minDist = $dist; $closest = $parcel; }
+                }
+            }
+        }
+        if ($closest) $filtered = [$closest];
+    }
+
+    return $filtered;
+}
