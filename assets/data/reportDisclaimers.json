@@ -10,8 +10,11 @@
   "mesa": [
     "Zoning boundaries provided by the City of Mesa Planning Division."
   ],
-"gilbert": [
-  "Zoning boundaries provided by the Town of Gilbert Planning Division."
+  "gilbert": [
+    "Zoning boundaries provided by the Town of Gilbert Planning Division."
+  ],
+  "scottsdale": [
+    "Zoning boundaries provided by the City of Scottsdale Planning Division."
   ],
   "multipleParcels": [
     "⚠️ Multiple parcels were matched to the provided address. Ensure the correct parcel is selected for this report.",
