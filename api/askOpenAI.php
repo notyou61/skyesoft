@@ -1,6 +1,76 @@
 <?php
 // 📄 File: api/askOpenAI.php
 
+#region 📦 Filter Parcels Helper
+/**
+ * Filters down the parcels returned by the Assessor API to the most relevant ones.
+ * 1. Normalizes the input address.
+ * 2. Matches parcels with the same street number + name.
+ * 3. Keeps multi-parcel sites if they share the same address.
+ * 4. Falls back to nearest parcel centroid if no direct match is found.
+ */
+function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
+    if (empty($parcels)) return array();
+
+    // Normalize address
+    $inputAddress = normalizeAddress($inputAddress);
+
+    // Extract street number + name from input
+    $m = array();
+    preg_match(
+        '/^([0-9]+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
+        $inputAddress,
+        $m
+    );
+    $num  = isset($m[1]) ? $m[1] : null;
+    $name = isset($m[2]) ? trim(strtoupper($m[2])) : null;
+
+    $filtered = array();
+    foreach ($parcels as $p) {
+        $situs = strtoupper(trim(isset($p["situs"]) ? $p["situs"] : ""));
+        $sm = array();
+        if (preg_match('/^([0-9]+)\s+([A-Z\s]+)/', $situs, $sm)) {
+            if ($num && $name && $sm[1] === $num && trim($sm[2]) === $name) {
+                $filtered[] = $p;
+            }
+        }
+    }
+
+    // Fallback: centroid-based proximity (<= 5m)
+    if (empty($filtered) && $latitude && $longitude) {
+        $closest = null; $min = PHP_INT_MAX;
+        foreach ($parcels as $p) {
+            if (isset($p["geometry"]["coordinates"]["rings"][0])) {
+                $coords = $p["geometry"]["coordinates"]["rings"][0];
+                $sumLat = 0; $sumLon = 0; $count = count($coords);
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0]; $sumLat += $pt[1];
+                }
+                if ($count > 0) {
+                    $cLon = $sumLon / $count;
+                    $cLat = $sumLat / $count;
+                    $dLat = deg2rad($cLat - $latitude);
+                    $dLon = deg2rad($cLon - $longitude);
+                    $a = sin($dLat/2)*sin($dLat/2) +
+                         cos(deg2rad($latitude)) * cos(deg2rad($cLat)) *
+                         sin($dLon/2)*sin($dLon/2);
+                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+                    $dist = 6371000 * $c;
+                    if ($dist < $min && $dist <= 5) {
+                        $min = $dist;
+                        $closest = $p;
+                    }
+                }
+            }
+        }
+        if ($closest) $filtered = array($closest);
+    }
+
+    return $filtered;
+}
+
+#endregion
+
 #region 🛡️ Input & Session Bootstrap
 // Read and decode input once
 $data = json_decode(file_get_contents("php://input"), true);
@@ -433,10 +503,6 @@ if (!$handled) {
 }
 #endregion
 
-// 📄 File: api/askOpenAI.php
-
-// [Previous regions: Input & Session Bootstrap, Headers and Setup, Parse Input, Load Codex and SSE Data, Build Codex Data, Build SSE Snapshot Summary, Build System Prompt and Report Types remain as fixed previously]
-
 #region 🛠 Helper Functions
 /**
  * Send JSON response with proper HTTP status code
@@ -796,7 +862,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
     $hasZip = preg_match('/\b\d{5}\b/', $address);
-
+    // Has Street Number AND ZIP
     if (!$hasStreetNum || !$hasZip) {
         $response = array(
             "error" => true,
@@ -1109,7 +1175,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
-
+}
     /**
      * Filter parcels by address match, with proximity fallback
      * @param array $parcels Array of parcels from Assessor API
@@ -1118,8 +1184,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
      * @param float|null $longitude Geocoded longitude
      * @return array Filtered parcels
      */
-    }
-}
 /**
  * Call OpenAI API
  * @param array $messages
@@ -1296,50 +1360,3 @@ function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
 }
 #endregion
-/**
- * Filter parcels by address match, with proximity fallback
- */
-function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
-    if (empty($parcels)) return [];
-
-    $inputAddress = normalizeAddress($inputAddress);
-    preg_match('/^(\d+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
-        $inputAddress, $inputMatches);
-    $inputStreetNum = $inputMatches[1] ?? null;
-    $inputStreetName = isset($inputMatches[2]) ? trim(strtoupper($inputMatches[2])) : null;
-
-    $filtered = [];
-    foreach ($parcels as $parcel) {
-        $situs = strtoupper(trim($parcel['situs'] ?? ''));
-        if (preg_match('/^(\d+)\s+([A-Z\s]+)/', $situs, $situsMatches)) {
-            if ($inputStreetNum && $inputStreetName &&
-                $situsMatches[1] === $inputStreetNum &&
-                trim($situsMatches[2]) === $inputStreetName) {
-                $filtered[] = $parcel;
-            }
-        }
-    }
-
-    if (empty($filtered) && $latitude && $longitude) {
-        $closest = null; $minDist = PHP_INT_MAX;
-        foreach ($parcels as $parcel) {
-            if (isset($parcel['geometry']['coordinates']['rings'][0])) {
-                $coords = $parcel['geometry']['coordinates']['rings'][0];
-                $sumLat = $sumLon = 0; $count = count($coords);
-                foreach ($coords as $pt) { $sumLon += $pt[0]; $sumLat += $pt[1]; }
-                if ($count > 0) {
-                    $centroidLon = $sumLon/$count; $centroidLat = $sumLat/$count;
-                    $dLat = deg2rad($centroidLat - $latitude);
-                    $dLon = deg2rad($centroidLon - $longitude);
-                    $a = sin($dLat/2)**2 + cos(deg2rad($latitude))*cos(deg2rad($centroidLat))*sin($dLon/2)**2;
-                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-                    $dist = 6371000 * $c; // meters
-                    if ($dist < $minDist && $dist <= 5) { $minDist = $dist; $closest = $parcel; }
-                }
-            }
-        }
-        if ($closest) $filtered = [$closest];
-    }
-
-    return $filtered;
-}
