@@ -156,11 +156,10 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                 }
             }
             break;
-        
-        // ✅ Scottsdale zoning (point query via PlanningZoning/MapServer/0)
+        // ✅ Scottsdale zoning (point query only, no geometry dump)
         case "SCOTTSDALE":
             if ($latitude !== null && $longitude !== null) {
-                // Project from WGS84 to Web Mercator (102100)
+                // Project WGS84 (4326) -> Web Mercator (102100)
                 $geom = json_encode([
                     "geometryType" => "esriGeometryPoint",
                     "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
@@ -182,28 +181,25 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                         "spatialReference" => ["wkid" => 102100]
                     ]);
 
-                    // Scottsdale zoning layer (commonly 3 or 4, not 0)
-                    $url = "https://maps.scottsdaleaz.gov/arcgis/rest/services/Planning/Zoning/MapServer/3/query"
+                    // Scottsdale Zoning Layer (MapServer index may differ, adjust if needed)
+                    $url = "https://gis.scottsdaleaz.gov/arcgis/rest/services/Maps/Zoning/MapServer/0/query"
                         . "?f=json"
                         . "&geometry=" . urlencode($geometry)
                         . "&geometryType=esriGeometryPoint"
                         . "&inSR=102100"
                         . "&spatialRel=esriSpatialRelIntersects"
-                        . "&outFields=ZONING,ZONE_NAME,ZONE_DESC"
-                        . "&returnGeometry=false"
-                        . "&resultRecordCount=1";
+                        . "&outFields=ZONE_CODE,DESCRIPTN"
+                        . "&returnGeometry=false";
 
                     $resp = @file_get_contents($url);
                     if ($resp !== false) {
                         $data = json_decode($resp, true);
                         if (!empty($data['features'][0]['attributes'])) {
                             $attrs = $data['features'][0]['attributes'];
-                            if (!empty($attrs['ZONING'])) {
-                                $zoning = $attrs['ZONING'];
-                                if (!empty($attrs['ZONE_NAME'])) {
-                                    $zoning .= " (" . $attrs['ZONE_NAME'] . ")";
-                                } elseif (!empty($attrs['ZONE_DESC'])) {
-                                    $zoning .= " (" . $attrs['ZONE_DESC'] . ")";
+                            if (!empty($attrs['ZONE_CODE'])) {
+                                $zoning = $attrs['ZONE_CODE'];
+                                if (!empty($attrs['DESCRIPTN'])) {
+                                    $zoning .= " (" . $attrs['DESCRIPTN'] . ")";
                                 }
                             }
                         }
