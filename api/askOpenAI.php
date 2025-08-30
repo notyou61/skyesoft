@@ -1035,10 +1035,25 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $context['mesa'] = true;
         } elseif ($j === "GILBERT") {
             $context['gilbert'] = true;
+        } elseif ($j === "SCOTTSDALE") {
+            $context['scottsdale'] = true;
+        } elseif ($j === "CHANDLER") {
+            $context['chandler'] = true;
+        } elseif ($j === "GLENDALE") {
+            $context['glendale'] = true;
+        } elseif ($j === "TEMPE") {
+            $context['tempe'] = true;
+        } elseif ($j === "PEORIA") {
+            $context['peoria'] = true;
+        } elseif ($j === "SURPRISE") {
+            $context['surprise'] = true;
+        } elseif ($j === "AVONDALE") {
+            $context['avondale'] = true;
         } else {
             $context['unsupportedJurisdiction'] = true;
         }
     }
+
 
     // PUC vs Zoning mismatch check
     if (count($parcels) > 0) {

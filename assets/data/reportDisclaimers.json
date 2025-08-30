@@ -16,6 +16,24 @@
   "scottsdale": [
     "Zoning boundaries provided by the City of Scottsdale Planning Division."
   ],
+  "chandler": [
+    "Zoning boundaries provided by the City of Chandler Planning Division."
+  ],
+  "glendale": [
+    "Zoning boundaries provided by the City of Glendale Planning Department."
+  ],
+  "tempe": [
+    "Zoning boundaries provided by the City of Tempe Community Development Department."
+  ],
+  "peoria": [
+    "Zoning boundaries provided by the City of Peoria Planning Division."
+  ],
+  "surprise": [
+    "Zoning boundaries provided by the City of Surprise Community Development Department."
+  ],
+  "avondale": [
+    "Zoning boundaries provided by the City of Avondale Planning Division."
+  ],
   "multipleParcels": [
     "⚠️ Multiple parcels were matched to the provided address. Ensure the correct parcel is selected for this report.",
     "⚠️ Reports based on multiple parcels may require additional validation to confirm zoning and ownership."

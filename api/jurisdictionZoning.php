@@ -4,14 +4,14 @@
 // Always returns zoning string or null. No direct output.
 
 function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = null, $geometry = null) {
+    // Initialize zoning variable
     $zoning = null;
-
+    // Validate jurisdiction input
     if (empty($jurisdiction)) {
         return null;
     }
-
+    // Handle different jurisdictions
     switch (strtoupper($jurisdiction)) {
-
         // ✅ Phoenix (supports point or parcel polygon geometry)
         case "PHOENIX":
             if ($geometry && isset($geometry['rings'])) {
@@ -156,11 +156,66 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                 }
             }
             break;
+        
+        // ✅ Scottsdale zoning (point query via PlanningZoning/MapServer/0)
+        case "SCOTTSDALE":
+            if ($latitude !== null && $longitude !== null) {
+                // Project from WGS84 to Web Mercator (102100)
+                $geom = json_encode([
+                    "geometryType" => "esriGeometryPoint",
+                    "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
+                ]);
+                $projectUrl = "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project"
+                    . "?f=json"
+                    . "&inSR=4326"
+                    . "&outSR=102100"
+                    . "&geometries=" . urlencode($geom);
+
+                $projResp = @file_get_contents($projectUrl);
+                $projData = json_decode($projResp, true);
+
+                if (!empty($projData['geometries'][0])) {
+                    $pt = $projData['geometries'][0];
+                    $geometry = json_encode([
+                        "x" => $pt['x'],
+                        "y" => $pt['y'],
+                        "spatialReference" => ["wkid" => 102100]
+                    ]);
+
+                    // Scottsdale zoning layer (commonly 3 or 4, not 0)
+                    $url = "https://maps.scottsdaleaz.gov/arcgis/rest/services/Planning/Zoning/MapServer/3/query"
+                        . "?f=json"
+                        . "&geometry=" . urlencode($geometry)
+                        . "&geometryType=esriGeometryPoint"
+                        . "&inSR=102100"
+                        . "&spatialRel=esriSpatialRelIntersects"
+                        . "&outFields=ZONING,ZONE_NAME,ZONE_DESC"
+                        . "&returnGeometry=false"
+                        . "&resultRecordCount=1";
+
+                    $resp = @file_get_contents($url);
+                    if ($resp !== false) {
+                        $data = json_decode($resp, true);
+                        if (!empty($data['features'][0]['attributes'])) {
+                            $attrs = $data['features'][0]['attributes'];
+                            if (!empty($attrs['ZONING'])) {
+                                $zoning = $attrs['ZONING'];
+                                if (!empty($attrs['ZONE_NAME'])) {
+                                    $zoning .= " (" . $attrs['ZONE_NAME'] . ")";
+                                } elseif (!empty($attrs['ZONE_DESC'])) {
+                                    $zoning .= " (" . $attrs['ZONE_DESC'] . ")";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            break;
         // Default case for unsupported jurisdictions
         default:
             // Unsupported jurisdiction
             return null;
     }
-
+    // Return the zoning result (string or null)
     return $zoning;
 }
