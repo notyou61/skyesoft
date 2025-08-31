@@ -49,6 +49,9 @@
   ],
   "centroidUsed": [
     "ℹ️ Parcel centroid was used for zoning determination to ensure accuracy when parcel polygon data was available."
+  ],
+  "mailingAddress": [
+    "⚠️ Mailing address detected — corrected to situs parcel. Verify APN and situs before proceeding."
   ]
   },
   "Sign Ordinance Report": {

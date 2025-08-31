@@ -47,6 +47,19 @@ Provide a standardized framework for creating, validating, and rendering reports
 - Multiple parcels → flag as `multipleParcels`  
 - No geometry → fallback to geocode centroid  
 
+**Known Issues**:  
+- **Mailing vs Situs Mismatch**  
+  - *Example:* 50 E Civic Center Dr, Gilbert AZ 85296  
+  - *Issue:* Address is mailing only, not situs; pipeline may return multiple fuzzy parcels.  
+  - *Fix:* Detect mailing vs situs, cross-reference APN (e.g., 304-24-991 → 90 E Civic Center Dr).  
+  - *Disclaimer:* ⚠️ Mailing address detected — corrected to situs parcel.  
+
+- **Scottsdale Zoning Null**  
+  - *Example:* 7014 E Camelback Rd, Scottsdale AZ 85251  
+  - *Issue:* APNs matched correctly but zoning returns null.  
+  - *Fix:* Add ArcGIS zoning lookup for Scottsdale, fallback disclaimer if unavailable.  
+  - *Disclaimer:* ⚠️ Scottsdale zoning service unavailable — verify directly with jurisdiction.
+
 ---
 
 ### 🟡 Sign Ordinance Report  

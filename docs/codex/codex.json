@@ -362,6 +362,20 @@
             "Multiple parcels → flag as multipleParcels",
             "No geometry → fallback to geocode centroid"
           ],
+          "knownIssues": {
+            "mailingVsSitusMismatch": {
+              "example": "50 E Civic Center Dr, Gilbert, AZ 85296",
+              "issue": "Address is only mailing, not situs. Pipeline returns multiple fuzzy parcels.",
+              "fix": "Detect mailing vs situs addresses, cross-reference APN (e.g., 304-24-991 → 90 E Civic Center Dr), and guide user to correct situs.",
+              "disclaimer": "⚠️ Mailing address detected — corrected to situs parcel."
+            },
+            "scottsdaleZoningNull": {
+              "example": "7014 E Camelback Rd, Scottsdale, AZ 85251",
+              "issue": "APNs matched correctly but zoning returns null.",
+              "fix": "Add ArcGIS zoning lookup branch for Scottsdale and fallback disclaimer.",
+              "disclaimer": "⚠️ Scottsdale zoning service unavailable — verify directly with jurisdiction."
+            }
+          },
           "status": "🟢 live"
         },
         "Sign Ordinance Report": {
