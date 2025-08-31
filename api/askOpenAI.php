@@ -923,7 +923,6 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
         "matches"      => $matches
     );
 }
-
 /**
  * Handle AI report output (detect JSON vs plain text)
  */
@@ -1030,23 +1029,38 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Parcel lookup (Maricopa only)
     $parcels = array();
     $parcelStatus = "none";
-    // Normalize jurisdiction
+
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
         $zip = isset($zipMatch[0]) ? $zipMatch[0] : null;
 
         $result = lookupParcels($matchedAddress, $zip, $latitude, $longitude);
         $parcelStatus = $result["parcelStatus"];
-        // Build parcels array with normalized jurisdiction
+
+        // Build parcels array and enrich jurisdiction from Assessor
         foreach ($result["matches"] as $m) {
+            $jurisdiction = null;
+
+            if (!empty($m["apn"])) {
+                $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                    . "?f=json&where=APN='" . urlencode($m["apn"]) . "'&outFields=JURISDICTION&returnGeometry=false";
+                $detailsJson = @file_get_contents($detailsUrl);
+                $detailsData = json_decode($detailsJson, true);
+
+                if ($detailsData && isset($detailsData['features'][0]['attributes']['JURISDICTION'])) {
+                    $jurisdiction = strtoupper(trim($detailsData['features'][0]['attributes']['JURISDICTION']));
+                }
+            }
+
             $parcels[] = array(
-                "apn"          => $m["apn"],
-                "situs"        => $m["situs"],
-                "jurisdiction" => $m["jurisdiction"], // ✅ from Assessor
-                "zip"          => $m["zip"]
+                "apn"          => isset($m["apn"]) ? $m["apn"] : null,
+                "situs"        => isset($m["situs"]) ? $m["situs"] : null,
+                "jurisdiction" => $jurisdiction ? $jurisdiction : $county,
+                "zip"          => isset($m["zip"]) ? $m["zip"] : null
             );
         }
     }
+
 
     // ✅ Jurisdiction zoning lookup (only if we have parcels)
     if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
