@@ -360,7 +360,10 @@
           ],
           "edgeCases": [
             "Multiple parcels → flag as multipleParcels",
-            "No geometry → fallback to geocode centroid"
+            "No geometry → fallback to geocode centroid",
+            "Jurisdiction code unavailable → return unsupportedJurisdiction",
+            "multiParcelSite → group APNs into one site if zoning is identical",
+            "mixedParcelZoning → show parcels separately + disclaimer if zoning differs"
           ],
           "knownIssues": {
             "mailingVsSitusMismatch": {

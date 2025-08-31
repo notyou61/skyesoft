@@ -46,13 +46,15 @@ Provide a standardized framework for creating, validating, and rendering reports
 **Edge Cases**:  
 - Multiple parcels → flag as `multipleParcels`  
 - No geometry → fallback to geocode centroid  
+- multiParcelSite → group APNs into one site if zoning is identical  
+- mixedParcelZoning → show parcels separately + disclaimer if zoning differs  
 
 **Known Issues**:  
 - **Mailing vs Situs Mismatch**  
   - *Example:* 50 E Civic Center Dr, Gilbert AZ 85296  
   - *Issue:* Address is mailing only, not situs; pipeline may return multiple fuzzy parcels.  
   - *Fix:* Detect mailing vs situs, cross-reference APN (e.g., 304-24-991 → 90 E Civic Center Dr).  
-  - *Disclaimer:* ⚠️ Mailing address detected — corrected to situs parcel.  
+  - *Disclaimer:* ⚠️ Mailing address detected — corrected to situs parcel.
 
 - **Scottsdale Zoning Null**  
   - *Example:* 7014 E Camelback Rd, Scottsdale AZ 85251  
