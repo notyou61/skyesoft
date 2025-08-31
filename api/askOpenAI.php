@@ -3,12 +3,8 @@ require_once __DIR__ . "/reports/zoning.php";
 require_once __DIR__ . "/reports/signOrdinance.php";
 require_once __DIR__ . "/reports/photoSurvey.php";
 require_once __DIR__ . "/reports/custom.php";
-require_once __DIR__ . "/utils/geocode.php";
-require_once __DIR__ . "/utils/parcels.php";
 require_once __DIR__ . "/jurisdictionZoning.php";
-?>
 
-<?php
 // 📄 File: api/askOpenAI.php
 
 #region 📦 Filter Parcels Helper
@@ -866,17 +862,25 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $detectedReportType = null;
     $p = strtolower($prompt);
 
+    // Check Codex-defined reportTypes first
     foreach ($reportTypes as $key => $type) {
-        // If $reportTypes is associative (from codex.json), use the key
-        if (is_array($type)) {
-            $candidate = $key;
-        } else {
-            $candidate = $type;
-        }
-
+        $candidate = is_array($type) ? $key : $type;
         if (is_string($candidate) && strpos($p, strtolower($candidate)) !== false) {
             $detectedReportType = $candidate;
             break;
+        }
+    }
+
+    // If still not found, fallback keyword mapping
+    if ($detectedReportType === null) {
+        if (strpos($p, "zoning") !== false) {
+            $detectedReportType = "Zoning Report";
+        } elseif (strpos($p, "sign") !== false) {
+            $detectedReportType = "Sign Ordinance Report";
+        } elseif (strpos($p, "photo") !== false) {
+            $detectedReportType = "Photo Survey Report";
+        } elseif (strpos($p, "custom") !== false) {
+            $detectedReportType = "Custom Report";
         }
     }
 
