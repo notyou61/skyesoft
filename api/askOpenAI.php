@@ -841,6 +841,71 @@ function getApplicableDisclaimers($reportType, $context = array()) {
     return array_values(array_unique($result));
 }
 /**
+* Parcel Lookup Helper
+*/
+function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude = null) {
+    $normalized = strtoupper($inputAddress);
+    $shortAddress = preg_replace('/,.*$/', '', $normalized);
+
+    $status = "none";
+    $features = [];
+
+    // --- Helper to run GIS query ---
+    $runQuery = function($where, $label) {
+        $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+            . "?f=json&where=" . urlencode($where)
+            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP&returnGeometry=false&outSR=4326";
+        $resp = json_decode(@file_get_contents($url), true);
+        return $resp['features'] ?? [];
+    };
+
+    // Step 1: Full address + ZIP
+    $where1 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+    if ($zip) $where1 .= " AND PHYSICAL_ZIP = '$zip'";
+    $features = $runQuery($where1, "Step 1");
+    if (!empty($features)) $status = "exact";
+
+    // Step 2: Relax suffix
+    if (empty($features)) {
+        $relaxed = preg_replace('/\s(BLVD|ROAD|RD|DR|DRIVE|STREET|ST|AVE|AVENUE)\b/i', '', $shortAddress);
+        $where2 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $relaxed . "%')";
+        if ($zip) $where2 .= " AND PHYSICAL_ZIP = '$zip'";
+        $features = $runQuery($where2, "Step 2");
+        if (!empty($features)) $status = "exact";
+    }
+
+    // Step 3: Fuzzy street match
+    if (empty($features) && $zip) {
+        $streetOnly = trim(preg_replace('/^\d+/', '', $shortAddress));
+        $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '$zip'";
+        $features = $runQuery($where3, "Step 3");
+        if (!empty($features)) $status = "fuzzy";
+    }
+
+    // Step 4: Last resort — full address no ZIP
+    if (empty($features)) {
+        $where4 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+        $features = $runQuery($where4, "Step 4");
+        if (!empty($features)) $status = "fuzzy";
+    }
+
+    // Build matches
+    $matches = [];
+    foreach ($features as $f) {
+        $a = $f['attributes'];
+        $matches[] = [
+            "apn"   => $a['APN'],
+            "situs" => trim($a['PHYSICAL_ADDRESS']),
+            "zip"   => $a['PHYSICAL_ZIP']
+        ];
+    }
+
+    return [
+        "parcelStatus" => $status,
+        "matches"      => $matches
+    ];
+}
+/**
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
@@ -856,13 +921,11 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     } else {
         $address = trim($cleanPrompt);
     }
-
     $address = normalizeAddress($address);
 
     // ✅ Validation: require street number + 5-digit ZIP
     $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
-    $hasZip = preg_match('/\b\d{5}\b/', $address);
-    // Has Street Number AND ZIP
+    $hasZip       = preg_match('/\b\d{5}\b/', $address);
     if (!$hasStreetNum || !$hasZip) {
         $response = array(
             "error" => true,
@@ -916,7 +979,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     $matchedAddress = strtoupper($gResult['formatted_address']);
                 }
                 if (isset($gResult['geometry']['location'])) {
-                    $latitude = $gResult['geometry']['location']['lat'];
+                    $latitude  = $gResult['geometry']['location']['lat'];
                     $longitude = $gResult['geometry']['location']['lng'];
                 }
                 foreach ($gResult['address_components'] as $comp) {
@@ -928,236 +991,93 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
                     }
                 }
                 if ($county === "Maricopa County" && $state === "AZ") {
-                    $stateFIPS = "04";
+                    $stateFIPS  = "04";
                     $countyFIPS = "013";
                 }
             }
         }
     }
 
-    // ✅ Set assessorApi after stateFIPS and countyFIPS are defined
+    // ✅ Set assessorApi
     $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
 
-    // ✅ Ensure ZIP code is present in matchedAddress for Assessor lookup
+    // ✅ Ensure ZIP in matchedAddress
     if ($matchedAddress && !preg_match('/\b\d{5}\b/', $matchedAddress)) {
         if (preg_match('/\b\d{5}\b/', $address, $zipMatch)) {
             $matchedAddress .= " " . $zipMatch[0];
         }
     }
 
-    // ✅ Parcel lookup (Maricopa only for now)
-    $parcels = array();
+    // ✅ Parcel lookup (Maricopa only)
+    $parcels = [];
+    $parcelStatus = "none";
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
-        $shortAddress = preg_replace('/,.*$/', '', $matchedAddress);
-        $gisUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+        preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
+        $zip = $zipMatch[0] ?? null;
 
-        // Extract ZIP code for filtering
-        $zipMatch = array();
-        $where = '';
-        if (preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch)) {
-            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%') AND PHYSICAL_ZIP = '" . urlencode($zipMatch[0]) . "'";
-        } else {
-            $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($shortAddress) . "%')";
+        $result = lookupParcels($matchedAddress, $zip, $latitude, $longitude);
+        $parcelStatus = $result["parcelStatus"];
+
+        foreach ($result["matches"] as $m) {
+            $parcels[] = [
+                "apn"   => $m["apn"],
+                "situs" => $m["situs"],
+                "jurisdiction" => $county,
+                "zip"   => $m["zip"]
+            ];
         }
-
-        // First try: full address (street + ZIP)
-        $params = "f=json&where=" . urlencode($where)
-            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
-            . "&returnGeometry=true&outSR=4326";
-        $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-        file_put_contents(__DIR__ . '/debug-gis.log',
-            date('Y-m-d H:i:s') . " - GIS query: " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
-            FILE_APPEND
-        );
-
-        // Retry #1: drop the street number
-        if (empty($gisData['features'])) {
-            $streetNoDropped = preg_replace('/^\d+\s+/', '', $shortAddress);
-            if (preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch)) {
-                $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%') AND PHYSICAL_ZIP = '" . urlencode($zipMatch[0]) . "'";
-            } else {
-                $where = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . strtoupper($streetNoDropped) . "%')";
-            }
-            $params = "f=json&where=" . urlencode($where)
-                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
-                . "&returnGeometry=true&outSR=4326";
-            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-            file_put_contents(__DIR__ . '/debug-gis.log',
-                date('Y-m-d H:i:s') . " - GIS query (retry 1): " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
-                FILE_APPEND
-            );
-        }
-
-        // Retry #2: fallback to lat/long geometry query
-        if (empty($gisData['features']) && $latitude !== null && $longitude !== null) {
-            $geometry = $longitude . ',' . $latitude;
-            $params = "f=json"
-                . "&geometry=" . urlencode($geometry)
-                . "&geometryType=esriGeometryPoint"
-                . "&inSR=4326"
-                . "&spatialRel=esriSpatialRelIntersects"
-                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP"
-                . "&returnGeometry=true&outSR=4326";
-            $gisData = json_decode(@file_get_contents($gisUrl . "?" . $params), true);
-            file_put_contents(__DIR__ . '/debug-gis.log',
-                date('Y-m-d H:i:s') . " - GIS query (geometry): " . $gisUrl . "?" . $params . "\nResponse: " . json_encode($gisData) . "\n",
-                FILE_APPEND
-            );
-        }
-
-        // Process GIS results
-        if ($gisData && isset($gisData['features']) && is_array($gisData['features'])) {
-            foreach ($gisData['features'] as $feature) {
-                $apn = isset($feature['attributes']['APN']) ? $feature['attributes']['APN'] : null;
-                $situs = isset($feature['attributes']['PHYSICAL_ADDRESS']) ? $feature['attributes']['PHYSICAL_ADDRESS'] : null;
-                $owner = isset($feature['attributes']['OWNER_NAME']) ? $feature['attributes']['OWNER_NAME'] : null;
-
-                $geometry = (isset($feature['geometry']) && !empty($feature['geometry']))
-                    ? array(
-                        "type" => "esriGeometryPolygon",
-                        "coordinates" => $feature['geometry']
-                    )
-                    : null;
-
-                $details = null; $jurisdiction = null; $lotSize = null; $puc = null;
-                $subdivision = null; $mcr = null; $lot = null; $tractBlock = null;
-                $floor = null; $yearBuilt = null; $str = null; $attrs = array();
-
-                if ($apn) {
-                    $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-                        . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
-                    $detailsJson = @file_get_contents($detailsUrl);
-                    $detailsData = json_decode($detailsJson, true);
-
-                    if ($detailsData && isset($detailsData['features'][0]['attributes'])) {
-                        $attrs = $detailsData['features'][0]['attributes'];
-                        $details = $attrs;
-                        $jurisdiction = isset($attrs['JURISDICTION']) ? strtoupper(trim($attrs['JURISDICTION'])) : null;
-                        $lotSize = isset($attrs['LAND_SIZE']) ? $attrs['LAND_SIZE'] : null;
-                        $puc = isset($attrs['PUC']) ? $attrs['PUC'] : null;
-                        $subdivision = isset($attrs['SUBNAME']) ? $attrs['SUBNAME'] : null;
-                        $mcr = isset($attrs['MCRNUM']) ? $attrs['MCRNUM'] : null;
-                        $lot = isset($attrs['LOT_NUM']) ? $attrs['LOT_NUM'] : null;
-                        $tractBlock = isset($attrs['TRACT']) ? $attrs['TRACT'] : null;
-                        $floor = isset($attrs['FLOOR']) ? $attrs['FLOOR'] : null;
-                        $yearBuilt = isset($attrs['CONST_YEAR']) ? $attrs['CONST_YEAR'] : null;
-                        $str = isset($attrs['STR']) ? $attrs['STR'] : null;
-                    }
-                }
-
-                $parcels[] = array(
-                    "apn" => $apn,
-                    "situs" => $situs,
-                    "owner" => $owner,
-                    "jurisdiction" => normalizeJurisdiction($jurisdiction, $county),
-                    "lotSizeSqFt" => $lotSize,
-                    "puc" => $puc,
-                    "subdivision" => $subdivision,
-                    "mcr" => $mcr,
-                    "lot" => $lot,
-                    "tractBlock" => $tractBlock,
-                    "floor" => $floor,
-                    "constructionYear" => $yearBuilt,
-                    "str" => $str,
-                    "detailsRaw" => $details,
-                    "geometry" => $geometry
-                );
-            }
-        }
-
-        // ✅ Filter parcels by address match, with proximity fallback
-        $parcels = filterParcels($parcels, $address, $latitude, $longitude);
     }
 
-    // ✅ Jurisdiction zoning lookup with parcel-centroid fallback
+    // ✅ Jurisdiction zoning lookup (only if we have parcels)
     if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
         foreach ($parcels as $k => $parcel) {
             $lat = $latitude;
             $lon = $longitude;
-
             if (!empty($parcel['geometry']['coordinates']['rings'][0])) {
                 $coords = $parcel['geometry']['coordinates']['rings'][0];
-                $sumLat = 0;
-                $sumLon = 0;
-                $count  = count($coords);
-
-                foreach ($coords as $pt) {
-                    $sumLon += $pt[0]; // X
-                    $sumLat += $pt[1]; // Y
-                }
-
+                $sumLat = 0; $sumLon = 0; $count = count($coords);
+                foreach ($coords as $pt) { $sumLon += $pt[0]; $sumLat += $pt[1]; }
                 if ($count > 0) {
                     $lon = $sumLon / $count;
                     $lat = $sumLat / $count;
                 }
             }
-
             $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
-                $parcel['jurisdiction'],
-                $lat,
-                $lon,
+                $parcel['jurisdiction'], $lat, $lon,
                 isset($parcel['geometry']) ? $parcel['geometry'] : null
             );
         }
     }
 
     // ✅ Context for disclaimers
-    $context = array(
-        "multipleParcels" => (count($parcels) > 1),
-        "unsupportedJurisdiction" => false,
-        "pucMismatch" => false,
-        "splitZoning" => false
-    );
+    $context = [
+        "multipleParcels"        => (count($parcels) > 1),
+        "unsupportedJurisdiction"=> false,
+        "pucMismatch"            => false,
+        "splitZoning"            => false
+    ];
 
     if (count($parcels) > 0) {
         $j = strtoupper(trim($parcels[0]['jurisdiction']));
-        if ($j === "PHOENIX") {
-            $context['phoenix'] = true;
-        } elseif ($j === "MESA") {
-            $context['mesa'] = true;
-        } elseif ($j === "GILBERT") {
-            $context['gilbert'] = true;
-        } elseif ($j === "SCOTTSDALE") {
-            $context['scottsdale'] = true;
-        } elseif ($j === "CHANDLER") {
-            $context['chandler'] = true;
-        } elseif ($j === "GLENDALE") {
-            $context['glendale'] = true;
-        } elseif ($j === "TEMPE") {
-            $context['tempe'] = true;
-        } elseif ($j === "PEORIA") {
-            $context['peoria'] = true;
-        } elseif ($j === "SURPRISE") {
-            $context['surprise'] = true;
-        } elseif ($j === "AVONDALE") {
-            $context['avondale'] = true;
-        } else {
-            $context['unsupportedJurisdiction'] = true;
-        }
+        $context[strtolower($j)] = true;
+    }
+    if ($parcelStatus === "fuzzy") {
+        $context["fuzzyMatch"] = true;
+    }
+    if ($parcelStatus === "none") {
+        $context["noParcel"] = true;
     }
 
-    // PUC vs Zoning mismatch check
-    if (count($parcels) > 0) {
-        $puc = isset($parcels[0]['puc']) ? $parcels[0]['puc'] : null;
-        $zone = null;
-        if (isset($parcels[0]['detailsRaw']) && is_array($parcels[0]['detailsRaw']) && isset($parcels[0]['detailsRaw']['CITY_ZONING'])) {
-            $zone = $parcels[0]['detailsRaw']['CITY_ZONING'];
-        }
-        if ($puc && $zone && $puc !== $zone) {
-            $context['pucMismatch'] = true;
-        }
-    }
-
-    // ✅ Disclaimers using getApplicableDisclaimers
-    $disclaimers = getApplicableDisclaimers("Zoning Report", is_array($context) ? $context : array());
+    // ✅ Disclaimers
+    $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
 
     // ✅ Response
-    $response = array(
+    $response = [
         "error" => false,
         "response" => "📄 Zoning report request created for " . $address . ".",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
-        "inputs" => array(
+        "inputs" => [
             "address"        => $address,
             "matchedAddress" => $matchedAddress,
             "county"         => $county,
@@ -1166,16 +1086,17 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "latitude"       => $latitude,
             "longitude"      => $longitude,
             "assessorApi"    => $assessorApi,
+            "parcelStatus"   => $parcelStatus, // ✅ new
             "parcels"        => $parcels
-        ),
-        "disclaimers" => array("Zoning Report" => $disclaimers)
-    );
+        ],
+        "disclaimers" => ["Zoning Report" => $disclaimers]
+    ];
 
-    // ✅ Output
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
 }
+
     /**
      * Filter parcels by address match, with proximity fallback
      * @param array $parcels Array of parcels from Assessor API
