@@ -889,14 +889,32 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
         if (!empty($features)) $status = "fuzzy";
     }
 
-    // Build matches
+    // Build matches (with jurisdiction lookup)
     $matches = array();
     foreach ($features as $f) {
         $a = $f['attributes'];
+        $apn = isset($a['APN']) ? $a['APN'] : null;
+
+        // Default jurisdiction = null
+        $jurisdiction = null;
+
+        // Pull jurisdiction from detailed Assessor lookup if APN is available
+        if ($apn) {
+            $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
+            $detailsJson = @file_get_contents($detailsUrl);
+            $detailsData = json_decode($detailsJson, true);
+
+            if ($detailsData && isset($detailsData['features'][0]['attributes']['JURISDICTION'])) {
+                $jurisdiction = strtoupper(trim($detailsData['features'][0]['attributes']['JURISDICTION']));
+            }
+        }
+
         $matches[] = array(
-            "apn"   => isset($a['APN']) ? $a['APN'] : null,
-            "situs" => isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null,
-            "zip"   => isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null
+            "apn"          => $apn,
+            "situs"        => isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null,
+            "zip"          => isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null,
+            "jurisdiction" => $jurisdiction
         );
     }
 
@@ -905,6 +923,7 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
         "matches"      => $matches
     );
 }
+
 /**
  * Handle AI report output (detect JSON vs plain text)
  */
@@ -1023,7 +1042,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $parcels[] = array(
                 "apn"          => $m["apn"],
                 "situs"        => $m["situs"],
-                "jurisdiction" => isset($m["jurisdiction"]) ? $m["jurisdiction"] : $county,
+                "jurisdiction" => $m["jurisdiction"], // ✅ from Assessor
                 "zip"          => $m["zip"]
             );
         }
