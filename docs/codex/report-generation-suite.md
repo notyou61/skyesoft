@@ -29,11 +29,11 @@ Provide a standardized framework for creating, validating, and rendering reports
 - Optional: `city`, `county`, `parcelId`  
 
 **Pipeline**:  
-1. Geocode via Census (fallback Google).  
-2. Lookup parcel via Assessor API.  
-3. Retrieve jurisdiction + geometry.  
-4. Perform zoning lookup (jurisdiction-specific endpoint).  
-5. Return zoning code + attributes.  
+1. Geocode via Census *(authoritative address normalization; returns FIPS + WGS84 lat/lon; fallback Google if Census fails)*  
+2. Lookup parcel via Assessor API *(normalized address/ZIP; relaxed + fuzzy matching supported)*  
+3. Retrieve jurisdiction + geometry *(jurisdiction determines zoning service endpoint; geometry provides polygon/centroid for spatial queries)*  
+4. Perform zoning lookup *(jurisdiction-specific ArcGIS endpoint; reproject coordinates if required, e.g., EPSG:4326 → Web Mercator)*  
+5. Return zoning code + attributes *(attach context-sensitive disclaimers)*  
 
 **Outputs**:  
 - address  
@@ -41,7 +41,7 @@ Provide a standardized framework for creating, validating, and rendering reports
 - county, FIPS  
 - apn, situs, jurisdiction  
 - zoningCodes  
-- disclaimers (based on context)  
+- disclaimers  
 
 **Edge Cases**:  
 - Multiple parcels → flag as `multipleParcels`  
@@ -57,14 +57,17 @@ Provide a standardized framework for creating, validating, and rendering reports
 - Optional: `jurisdiction`, `parcelId`  
 
 **Pipeline**:  
-1. Geocode + jurisdiction detection.  
-2. Query local sign code references.  
-3. Return rules on size, height, lighting, materials.  
+1. Geocode + jurisdiction detection *(normalize address, detect governing body; fallback to provided jurisdiction if unavailable)*  
+2. Query local sign code references *(municipal code DB, PDFs, or jurisdiction API)*  
+3. Return regulations summary *(rules on size, height, lighting, materials; include source citations where available)*  
 
 **Outputs**:  
 - jurisdiction  
 - signCodeSummary  
 - linksToMunicipalCode  
+
+**Edge Cases**:  
+- Jurisdiction code unavailable → return `unsupportedJurisdiction`  
 
 ---
 
@@ -76,14 +79,17 @@ Provide a standardized framework for creating, validating, and rendering reports
 - Optional: `notes`  
 
 **Pipeline**:  
-1. Validate uploaded images.  
-2. Tag photos with GPS/time.  
-3. Generate structured report with captions.  
+1. Validate uploaded images *(check type, size, and metadata)*  
+2. Tag photos with GPS/time *(ensure chain of custody; preserve EXIF or system timestamp)*  
+3. Generate structured report with captions *(organize photos + notes)*  
 
 **Outputs**:  
 - photoArray  
 - captions  
 - surveyNotes  
+
+**Edge Cases**:  
+- No photos provided → return `missingPhotos`  
 
 ---
 
@@ -95,13 +101,16 @@ Provide a standardized framework for creating, validating, and rendering reports
 - Optional: `title`, `context`  
 
 **Pipeline**:  
-1. Parse freeform details from prompt.  
-2. Generate structured narrative (header/body/footer).  
-3. Return JSON + HTML/PDF with disclaimers.  
+1. Parse freeform details from prompt *(clean and normalize user text, drop filler keywords)*  
+2. Generate structured narrative *(compose header, body, footer using AI template)*  
+3. Return JSON + HTML/PDF with disclaimers *(flag as AI-generated; requires human verification)*  
 
 **Outputs**:  
 - reportBody  
 - disclaimers  
+
+**Edge Cases**:  
+- Empty details → request clarification  
 
 ---
 

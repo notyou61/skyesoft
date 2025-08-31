@@ -329,6 +329,10 @@
         "Template merge → apply header, body, footer per reportType",
         "Render → output HTML/PDF with Christy Signs branding"
       ],
+      "conventions": {
+        "outputs": "Use singular names unless multiple values are expected, then use plural (e.g., zoningCodes)."
+      },
+      "disclaimers": "Each report type may include disclaimers generated dynamically based on context (e.g., multiple parcels, unsupported jurisdiction).",
       "reportTypesSpec": {
         "Zoning Report": {
           "purpose": "Verify zoning status for a project site.",
@@ -337,11 +341,11 @@
             "optional": ["city", "county", "parcelId"]
           },
           "pipeline": [
-            "Geocode via Census (fallback Google)",
-            "Lookup parcel via Assessor API",
-            "Retrieve jurisdiction + geometry",
-            "Perform zoning lookup (jurisdiction-specific endpoint)",
-            "Return zoning code + attributes"
+            "Geocode via Census (authoritative address normalization, returns FIPS + WGS84 lat/lon; fallback Google if Census fails)",
+            "Lookup parcel via Assessor API (normalized address/ZIP; relaxed + fuzzy match logic when exact fails)",
+            "Retrieve jurisdiction + geometry (jurisdiction determines zoning endpoint; geometry supplies polygon/centroid for spatial queries)",
+            "Perform zoning lookup (jurisdiction-specific ArcGIS endpoint; reproject coordinates if required, e.g., EPSG:4326 → Web Mercator)",
+            "Return zoning code + attributes (attach disclaimers: multipleParcels, noGeometry, unsupportedJurisdiction)"
           ],
           "outputs": [
             "address",
@@ -367,11 +371,18 @@
             "optional": ["jurisdiction", "parcelId"]
           },
           "pipeline": [
-            "Geocode + jurisdiction detection",
-            "Query local sign code references",
-            "Return size, height, lighting, and material rules"
+            "Geocode + jurisdiction detection (normalize address, detect governing body; fallback to provided jurisdiction if unavailable)",
+            "Query local sign code references (municipal code DB, PDFs, or jurisdiction API)",
+            "Return sign regulations summary (include size, height, lighting, and material rules; add source citations where possible)"
           ],
-          "outputs": ["jurisdiction", "signCodeSummary", "linksToMunicipalCode"],
+          "outputs": [
+            "jurisdiction",
+            "signCodeSummary",
+            "linksToMunicipalCode"
+          ],
+          "edgeCases": [
+            "Jurisdiction code unavailable → return unsupportedJurisdiction"
+          ],
           "status": "🟡 in progress"
         },
         "Photo Survey Report": {
@@ -381,11 +392,18 @@
             "optional": ["notes"]
           },
           "pipeline": [
-            "Validate uploaded images",
-            "Tag photos with GPS/time",
-            "Generate structured report with captions"
+            "Validate uploaded images (check file type, size, metadata)",
+            "Tag photos with GPS/time (ensure chain of custody; preserve EXIF metadata or system timestamp)",
+            "Generate structured report with captions (organize photos + annotations)"
           ],
-          "outputs": ["photoArray", "captions", "surveyNotes"],
+          "outputs": [
+            "photoArray",
+            "captions",
+            "surveyNotes"
+          ],
+          "edgeCases": [
+            "No photos provided → return missingPhotos"
+          ],
           "status": "🟡 in progress"
         },
         "Custom Report": {
@@ -395,11 +413,17 @@
             "optional": ["title", "context"]
           },
           "pipeline": [
-            "Parse freeform details from prompt",
-            "Generate structured narrative (header/body/footer)",
-            "Return JSON + HTML/PDF with disclaimers"
+            "Parse freeform details from prompt (clean and normalize user text, drop filler keywords)",
+            "Generate structured narrative (compose header, body, footer using AI template)",
+            "Return JSON + HTML/PDF with disclaimers (flag as AI-generated; requires human verification)"
           ],
-          "outputs": ["reportBody", "disclaimers"],
+          "outputs": [
+            "reportBody",
+            "disclaimers"
+          ],
+          "edgeCases": [
+            "Empty details → request clarification"
+          ],
           "status": "🟢 live"
         }
       },
