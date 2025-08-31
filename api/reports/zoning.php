@@ -27,13 +27,21 @@ function generateZoningReport($prompt, &$conversation) {
         );
     }
 
+    // âœ… Initialize
+    $county = null;
+    $stateFIPS = null;
+    $countyFIPS = null;
+    $latitude = null;
+    $longitude = null;
+    $matchedAddress = null;
+    $state = null; // needed for Google fallback
+
     // âœ… Census Location API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
         . "?address=" . urlencode($address)
         . "&benchmark=Public_AR_Current&format=json";
     $locData = json_decode(@file_get_contents($locUrl), true);
-    $county = null; $stateFIPS = null; $countyFIPS = null;
-    $latitude = null; $longitude = null; $matchedAddress = null;
+
     if ($locData && isset($locData['result']['addressMatches'][0])) {
         $match = $locData['result']['addressMatches'][0];
         if (isset($match['matchedAddress'])) $matchedAddress = $match['matchedAddress'];
@@ -55,7 +63,7 @@ function generateZoningReport($prompt, &$conversation) {
         $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     } else {
-        // íº¨ Census failed â†’ fallback to Google Geocoding API
+        // ğŸš¨ Census failed â†’ fallback to Google Geocoding API
         $googleKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
         if ($googleKey) {
             $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -170,7 +178,7 @@ function generateZoningReport($prompt, &$conversation) {
 
             // Simplify geometry
             $geometry = null;
-            if (isset($f['geometry']['rings'][0])) {
+            if (isset($f['geometry']['rings'][0]) && count($f['geometry']['rings'][0]) > 0) {
                 $coords = $f['geometry']['rings'][0];
 
                 $minLat = $maxLat = $coords[0][1];
@@ -247,8 +255,7 @@ function generateZoningReport($prompt, &$conversation) {
     );
 
     if (count($parcels) > 0) {
-        $j = strtoupper(trim($parcels[0]['jurisdiction']));
-        $context[strtolower($j)] = true;
+        $context["jurisdiction"] = strtolower(trim($parcels[0]['jurisdiction']));
     }
     if ($parcelStatus === "fuzzy") {
         $context["fuzzyMatch"] = true;
@@ -260,10 +267,15 @@ function generateZoningReport($prompt, &$conversation) {
     // âœ… Disclaimers
     $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
 
+    // âœ… Ensure matchedAddress fallback
+    if (!$matchedAddress) {
+        $matchedAddress = $address;
+    }
+
     // âœ… Return structured report
     return array(
         "error"      => false,
-        "response"   => "í³„ Zoning report request created for " . $address . ".",
+        "response"   => "ğŸ“„ Zoning report request created for " . $address . ".",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
         "inputs"     => array(
