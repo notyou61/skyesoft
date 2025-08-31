@@ -1009,22 +1009,22 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     }
 
     // ✅ Parcel lookup (Maricopa only)
-    $parcels = [];
+    $parcels = array();
     $parcelStatus = "none";
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
-        $zip = $zipMatch[0] ?? null;
+        $zip = isset($zipMatch[0]) ? $zipMatch[0] : null;
 
         $result = lookupParcels($matchedAddress, $zip, $latitude, $longitude);
         $parcelStatus = $result["parcelStatus"];
 
         foreach ($result["matches"] as $m) {
-            $parcels[] = [
-                "apn"   => $m["apn"],
-                "situs" => $m["situs"],
+            $parcels[] = array(
+                "apn"          => $m["apn"],
+                "situs"        => $m["situs"],
                 "jurisdiction" => $county,
-                "zip"   => $m["zip"]
-            ];
+                "zip"          => $m["zip"]
+            );
         }
     }
 
@@ -1050,12 +1050,12 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     }
 
     // ✅ Context for disclaimers
-    $context = [
-        "multipleParcels"        => (count($parcels) > 1),
-        "unsupportedJurisdiction"=> false,
-        "pucMismatch"            => false,
-        "splitZoning"            => false
-    ];
+    $context = array(
+        "multipleParcels"         => (count($parcels) > 1),
+        "unsupportedJurisdiction" => false,
+        "pucMismatch"             => false,
+        "splitZoning"             => false
+    );
 
     if (count($parcels) > 0) {
         $j = strtoupper(trim($parcels[0]['jurisdiction']));
@@ -1072,12 +1072,12 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
 
     // ✅ Response
-    $response = [
-        "error" => false,
-        "response" => "📄 Zoning report request created for " . $address . ".",
+    $response = array(
+        "error"      => false,
+        "response"   => "📄 Zoning report request created for " . $address . ".",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
-        "inputs" => [
+        "inputs"     => array(
             "address"        => $address,
             "matchedAddress" => $matchedAddress,
             "county"         => $county,
@@ -1088,13 +1088,14 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             "assessorApi"    => $assessorApi,
             "parcelStatus"   => $parcelStatus, // ✅ new
             "parcels"        => $parcels
-        ],
-        "disclaimers" => ["Zoning Report" => $disclaimers]
-    ];
+        ),
+        "disclaimers" => array("Zoning Report" => $disclaimers)
+    );
 
     header('Content-Type: application/json');
     echo json_encode($response, JSON_PRETTY_PRINT);
     exit;
+
 }
 
     /**
