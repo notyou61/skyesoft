@@ -866,9 +866,16 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $detectedReportType = null;
     $p = strtolower($prompt);
 
-    foreach ($reportTypes as $type) {
-        if (strpos($p, strtolower($type)) !== false) {
-            $detectedReportType = $type;
+    foreach ($reportTypes as $key => $type) {
+        // If $reportTypes is associative (from codex.json), use the key
+        if (is_array($type)) {
+            $candidate = $key;
+        } else {
+            $candidate = $type;
+        }
+
+        if (is_string($candidate) && strpos($p, strtolower($candidate)) !== false) {
+            $detectedReportType = $candidate;
             break;
         }
     }
@@ -905,6 +912,7 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     echo json_encode($report, JSON_PRETTY_PRINT);
     exit;
 }
+
     /**
      * Filter parcels by address match, with proximity fallback
      * @param array $parcels Array of parcels from Assessor API

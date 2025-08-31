@@ -1,11 +1,257 @@
 <?php
-// Zoning Report Generator (currently delegated to askOpenAI.php legacy logic)
+// Zoning Report Generator
+
 function generateZoningReport($prompt, &$conversation) {
-    // Dispatcher will still call the old inline code for now
+    // ✅ Extract and normalize address
+    $address = null;
+    $cleanPrompt = preg_replace(
+        '/\b(zoning|permit|report|lookup|check|for|at|create|make|please)\b/i',
+        '',
+        $prompt
+    );
+    if (preg_match('/\d{1,5}[^,]+(?:,[^,]+){0,2}\b\d{5}\b/', $cleanPrompt, $matches)) {
+        $address = trim($matches[0]);
+    } else {
+        $address = trim($cleanPrompt);
+    }
+    $address = normalizeAddress($address);
+
+    // ✅ Validation: require street number + 5-digit ZIP
+    $hasStreetNum = preg_match('/\b\d{3,5}\b/', $address);
+    $hasZip       = preg_match('/\b\d{5}\b/', $address);
+    if (!$hasStreetNum || !$hasZip) {
+        return array(
+            "error" => true,
+            "response" => "⚠️ Please include both a street number and a 5-digit ZIP code to create a zoning report.",
+            "providedInput" => $address
+        );
+    }
+
+    // ✅ Census Location API
+    $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+        . "?address=" . urlencode($address)
+        . "&benchmark=Public_AR_Current&format=json";
+    $locData = json_decode(@file_get_contents($locUrl), true);
+    $county = null; $stateFIPS = null; $countyFIPS = null;
+    $latitude = null; $longitude = null; $matchedAddress = null;
+    if ($locData && isset($locData['result']['addressMatches'][0])) {
+        $match = $locData['result']['addressMatches'][0];
+        if (isset($match['matchedAddress'])) $matchedAddress = $match['matchedAddress'];
+        if (isset($match['coordinates'])) {
+            $longitude = $match['coordinates']['x'];
+            $latitude  = $match['coordinates']['y'];
+        }
+    }
+
+    // ✅ Census Geographies API (primary)
+    $geoUrl = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress"
+        . "?address=" . urlencode($address)
+        . "&benchmark=Public_AR_Current&vintage=Current_Current&layers=all&format=json";
+    $geoData = json_decode(@file_get_contents($geoUrl), true);
+
+    if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
+        $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
+        $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
+        $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
+        $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
+    } else {
+        // 🚨 Census failed → fallback to Google Geocoding API
+        $googleKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
+        if ($googleKey) {
+            $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
+                . "?address=" . urlencode($address)
+                . "&key=" . $googleKey;
+            $googleData = json_decode(@file_get_contents($googleUrl), true);
+
+            if ($googleData && isset($googleData['results'][0])) {
+                $gResult = $googleData['results'][0];
+                if (!$matchedAddress && isset($gResult['formatted_address'])) {
+                    $matchedAddress = strtoupper($gResult['formatted_address']);
+                }
+                if (isset($gResult['geometry']['location'])) {
+                    $latitude  = $gResult['geometry']['location']['lat'];
+                    $longitude = $gResult['geometry']['location']['lng'];
+                }
+                foreach ($gResult['address_components'] as $comp) {
+                    if (in_array("administrative_area_level_2", $comp['types'])) {
+                        $county = $comp['long_name'];
+                    }
+                    if (in_array("administrative_area_level_1", $comp['types'])) {
+                        $state = $comp['short_name'];
+                    }
+                }
+                if ($county === "Maricopa County" && $state === "AZ") {
+                    $stateFIPS  = "04";
+                    $countyFIPS = "013";
+                }
+            }
+        }
+    }
+
+    // ✅ Set assessorApi
+    $assessorApi = getAssessorApi($stateFIPS, $countyFIPS);
+
+    // ✅ Ensure ZIP in matchedAddress
+    if ($matchedAddress && !preg_match('/\b\d{5}\b/', $matchedAddress)) {
+        if (preg_match('/\b\d{5}\b/', $address, $zipMatch)) {
+            $matchedAddress .= " " . $zipMatch[0];
+        }
+    }
+
+    // ✅ Parcel lookup (Maricopa only)
+    $parcels = array();
+    $parcelStatus = "none";
+
+    if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
+        preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
+        $zip = isset($zipMatch[0]) ? $zipMatch[0] : null;
+
+        $normalized = strtoupper($matchedAddress);
+        $shortAddress = preg_replace('/,.*$/', '', $normalized);
+
+        // --- Helper inline query runner ---
+        $runParcelQuery = function($where) {
+            $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                . "?f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP&returnGeometry=true&outSR=4326";
+            $resp = json_decode(@file_get_contents($url), true);
+            return isset($resp['features']) ? $resp['features'] : array();
+        };
+
+        $features = array();
+
+        // Step 1: full address + ZIP
+        $where1 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+        if ($zip) $where1 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
+        $features = $runParcelQuery($where1);
+        if (!empty($features)) $parcelStatus = "exact";
+
+        // Step 2: relaxed suffix
+        if (empty($features)) {
+            $relaxed = preg_replace('/\s(BLVD|ROAD|RD|DR|DRIVE|STREET|ST|AVE|AVENUE)\b/i', '', $shortAddress);
+            $where2 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $relaxed . "%')";
+            if ($zip) $where2 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
+            $features = $runParcelQuery($where2);
+            if (!empty($features)) $parcelStatus = "exact";
+        }
+
+        // Step 3: fuzzy street match
+        if (empty($features) && $zip) {
+            $streetOnly = trim(preg_replace('/^\d+/', '', $shortAddress));
+            $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '" . $zip . "'";
+            $features = $runParcelQuery($where3);
+            if (!empty($features)) $parcelStatus = "fuzzy";
+        }
+
+        // Step 4: last resort — full address no ZIP
+        if (empty($features)) {
+            $where4 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+            $features = $runParcelQuery($where4);
+            if (!empty($features)) $parcelStatus = "fuzzy";
+        }
+
+        // Enrich each parcel with jurisdiction
+        foreach ($features as $f) {
+            $a = $f['attributes'];
+            $apn   = isset($a['APN']) ? $a['APN'] : null;
+            $situs = isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null;
+            $zip   = isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null;
+
+            $jurisdiction = null;
+            if (!empty($apn)) {
+                $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                            . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=JURISDICTION&returnGeometry=false";
+                $detailsJson = @file_get_contents($detailsUrl);
+                $detailsData = json_decode($detailsJson, true);
+                if ($detailsData && isset($detailsData['features'][0]['attributes']['JURISDICTION'])) {
+                    $jurisdiction = strtoupper(trim($detailsData['features'][0]['attributes']['JURISDICTION']));
+                }
+            }
+
+            $parcels[] = array(
+                "apn"          => $apn,
+                "situs"        => $situs,
+                "jurisdiction" => $jurisdiction ? $jurisdiction : $county,
+                "zip"          => $zip,
+                "geometry"     => isset($f['geometry']) ? $f['geometry'] : null
+            );
+        }
+    }
+
+    // ✅ Jurisdiction zoning lookup (if we have parcels)
+    if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
+        foreach ($parcels as $k => $parcel) {
+            $lat = $latitude;
+            $lon = $longitude;
+
+            // If geometry is present, compute centroid
+            if (isset($parcel['geometry']) && !empty($parcel['geometry']['coordinates']['rings'][0])) {
+                $coords = $parcel['geometry']['coordinates']['rings'][0];
+                $sumLat = 0;
+                $sumLon = 0;
+                $count  = count($coords);
+
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0];
+                    $sumLat += $pt[1];
+                }
+
+                if ($count > 0) {
+                    $lon = $sumLon / $count;
+                    $lat = $sumLat / $count;
+                }
+            }
+
+            // Call zoning lookup with best available lat/lon
+            $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
+                $parcel['jurisdiction'],
+                $lat,
+                $lon,
+                isset($parcel['geometry']) ? $parcel['geometry'] : null
+            );
+        }
+    }
+
+    // ✅ Context for disclaimers
+    $context = array(
+        "multipleParcels"         => (count($parcels) > 1),
+        "unsupportedJurisdiction" => false,
+        "pucMismatch"             => false,
+        "splitZoning"             => false
+    );
+
+    if (count($parcels) > 0) {
+        $j = strtoupper(trim($parcels[0]['jurisdiction']));
+        $context[strtolower($j)] = true;
+    }
+    if ($parcelStatus === "fuzzy") {
+        $context["fuzzyMatch"] = true;
+    }
+    if ($parcelStatus === "none") {
+        $context["noParcel"] = true;
+    }
+
+    // ✅ Disclaimers
+    $disclaimers = getApplicableDisclaimers("Zoning Report", $context);
+
+    // ✅ Return structured report
     return array(
-        'error'      => false,
-        'reportType' => 'Zoning Report',
-        'response'   => '��� Zoning handled by legacy inline logic in askOpenAI.php'
+        "error"      => false,
+        "response"   => "📄 Zoning report request created for " . $address . ".",
+        "actionType" => "Create",
+        "reportType" => "Zoning Report",
+        "inputs"     => array(
+            "address"        => $address,
+            "matchedAddress" => $matchedAddress,
+            "county"         => $county,
+            "stateFIPS"      => $stateFIPS,
+            "countyFIPS"     => $countyFIPS,
+            "latitude"       => $latitude,
+            "longitude"      => $longitude,
+            "assessorApi"    => $assessorApi,
+            "parcelStatus"   => $parcelStatus,
+            "parcels"        => $parcels
+        ),
+        "disclaimers" => array("Zoning Report" => $disclaimers)
     );
 }
-
