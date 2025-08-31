@@ -55,7 +55,7 @@ function generateZoningReport($prompt, &$conversation) {
         $stateFIPS  = isset($countyData['STATE']) ? $countyData['STATE'] : null;
         $countyFIPS = isset($countyData['COUNTY']) ? $countyData['COUNTY'] : null;
     } else {
-        // ðŸš¨ Census failed â†’ fallback to Google Geocoding API
+        // íº¨ Census failed â†’ fallback to Google Geocoding API
         $googleKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
         if ($googleKey) {
             $googleUrl = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -150,7 +150,7 @@ function generateZoningReport($prompt, &$conversation) {
             if (!empty($features)) $parcelStatus = "fuzzy";
         }
 
-        // Enrich each parcel with jurisdiction
+        // Enrich each parcel with jurisdiction + simplified geometry
         foreach ($features as $f) {
             $a = $f['attributes'];
             $apn   = isset($a['APN']) ? $a['APN'] : null;
@@ -168,12 +168,51 @@ function generateZoningReport($prompt, &$conversation) {
                 }
             }
 
+            // Simplify geometry
+            $geometry = null;
+            if (isset($f['geometry']['rings'][0])) {
+                $coords = $f['geometry']['rings'][0];
+
+                $minLat = $maxLat = $coords[0][1];
+                $minLon = $maxLon = $coords[0][0];
+                $sumLat = 0;
+                $sumLon = 0;
+                $count  = 0;
+
+                foreach ($coords as $pt) {
+                    $lon = $pt[0];
+                    $lat = $pt[1];
+
+                    if ($lat < $minLat) $minLat = $lat;
+                    if ($lat > $maxLat) $maxLat = $lat;
+                    if ($lon < $minLon) $minLon = $lon;
+                    if ($lon > $maxLon) $maxLon = $lon;
+
+                    $sumLat += $lat;
+                    $sumLon += $lon;
+                    $count++;
+                }
+
+                $centroidLat = $count > 0 ? $sumLat / $count : null;
+                $centroidLon = $count > 0 ? $sumLon / $count : null;
+
+                $geometry = array(
+                    "centroid" => array("lat" => $centroidLat, "lon" => $centroidLon),
+                    "bbox" => array(
+                        "minLat" => $minLat,
+                        "maxLat" => $maxLat,
+                        "minLon" => $minLon,
+                        "maxLon" => $maxLon
+                    )
+                );
+            }
+
             $parcels[] = array(
                 "apn"          => $apn,
                 "situs"        => $situs,
                 "jurisdiction" => $jurisdiction ? $jurisdiction : $county,
                 "zip"          => $zip,
-                "geometry"     => isset($f['geometry']) ? $f['geometry'] : null
+                "geometry"     => $geometry
             );
         }
     }
@@ -184,30 +223,17 @@ function generateZoningReport($prompt, &$conversation) {
             $lat = $latitude;
             $lon = $longitude;
 
-            // If geometry is present, compute centroid
-            if (isset($parcel['geometry']) && !empty($parcel['geometry']['coordinates']['rings'][0])) {
-                $coords = $parcel['geometry']['coordinates']['rings'][0];
-                $sumLat = 0;
-                $sumLon = 0;
-                $count  = count($coords);
-
-                foreach ($coords as $pt) {
-                    $sumLon += $pt[0];
-                    $sumLat += $pt[1];
-                }
-
-                if ($count > 0) {
-                    $lon = $sumLon / $count;
-                    $lat = $sumLat / $count;
-                }
+            // Prefer geometry centroid if available
+            if (isset($parcel['geometry']['centroid'])) {
+                $lat = $parcel['geometry']['centroid']['lat'];
+                $lon = $parcel['geometry']['centroid']['lon'];
             }
 
-            // Call zoning lookup with best available lat/lon
             $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
                 $parcel['jurisdiction'],
                 $lat,
                 $lon,
-                isset($parcel['geometry']) ? $parcel['geometry'] : null
+                $parcel['geometry']
             );
         }
     }
@@ -237,7 +263,7 @@ function generateZoningReport($prompt, &$conversation) {
     // âœ… Return structured report
     return array(
         "error"      => false,
-        "response"   => "ðŸ“„ Zoning report request created for " . $address . ".",
+        "response"   => "í³„ Zoning report request created for " . $address . ".",
         "actionType" => "Create",
         "reportType" => "Zoning Report",
         "inputs"     => array(
