@@ -52,6 +52,9 @@
   ],
   "mailingAddress": [
     "⚠️ Mailing address detected — corrected to situs parcel. Verify APN and situs before proceeding."
+  ],
+  "zoningUnavailable": [
+    "⚠️ Jurisdiction service unavailable — verify zoning directly."
   ]
   },
   "Sign Ordinance Report": {
