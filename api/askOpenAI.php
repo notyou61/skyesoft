@@ -5,7 +5,7 @@ require_once __DIR__ . "/reports/photoSurvey.php";
 require_once __DIR__ . "/reports/custom.php";
 require_once __DIR__ . "/utils/geocode.php";
 require_once __DIR__ . "/utils/parcels.php";
-require_once __DIR__ . "/utils/zoningLookup.php";
+require_once __DIR__ . "/jurisdictionZoning.php";
 ?>
 
 <?php
