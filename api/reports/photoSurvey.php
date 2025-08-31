@@ -4,7 +4,7 @@ function generatePhotoSurveyReport($prompt, &$conversation) {
     return array(
         'error'      => false,
         'reportType' => 'Photo Survey Report',
-        'response'   => 'ï¿½ï¿½ Placeholder - photo survey logic TBD'
+        'response'   => 'í³¸ Placeholder - photo survey logic TBD'
     );
 }
 

@@ -1,4 +1,14 @@
 <?php
+require_once __DIR__ . "/reports/zoning.php";
+require_once __DIR__ . "/reports/signOrdinance.php";
+require_once __DIR__ . "/reports/photoSurvey.php";
+require_once __DIR__ . "/reports/custom.php";
+require_once __DIR__ . "/utils/geocode.php";
+require_once __DIR__ . "/utils/parcels.php";
+require_once __DIR__ . "/utils/zoningLookup.php";
+?>
+
+<?php
 // 📄 File: api/askOpenAI.php
 
 #region 📦 Filter Parcels Helper
@@ -79,7 +89,14 @@ $data = json_decode(file_get_contents("php://input"), true);
 if (session_status() === PHP_SESSION_NONE) {
     @session_start(); // @ suppresses "already started" notice
 }
-
+if ($data === false) {
+    echo json_encode([
+        "response"  => "❌ Failed to read input stream.",
+        "action"    => "none",
+        "sessionId" => session_id()
+    ], JSON_PRETTY_PRINT);
+    exit;
+}
 // Handle invalid JSON early
 if ($data === null) {
     echo json_encode([
@@ -187,6 +204,7 @@ if (empty($codexGlossaryBlock)) {
 }
 
 $modulesArr = [];
+$state = null; // Ensure $state is defined before use later
 if (isset($codexData['readme']['modules']) && is_array($codexData['readme']['modules'])) {
     foreach ($codexData['readme']['modules'] as $mod) {
         if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
@@ -841,89 +859,6 @@ function getApplicableDisclaimers($reportType, $context = array()) {
     return array_values(array_unique($result));
 }
 /**
- * 📦 Parcel Lookup Helper (PHP 5.6 compatible)
- */
-function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude = null) {
-    $normalized = strtoupper($inputAddress);
-    $shortAddress = preg_replace('/,.*$/', '', $normalized);
-
-    $status = "none";
-    $features = array();
-
-    // --- Helper to run GIS query ---
-    $runQuery = function($where, $label) {
-        $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-            . "?f=json&where=" . urlencode($where)
-            . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP&returnGeometry=false&outSR=4326";
-        $resp = json_decode(@file_get_contents($url), true);
-        return isset($resp['features']) ? $resp['features'] : array();
-    };
-
-    // Step 1: Full address + ZIP
-    $where1 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
-    if ($zip) $where1 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
-    $features = $runQuery($where1, "Step 1");
-    if (!empty($features)) $status = "exact";
-
-    // Step 2: Relax suffix
-    if (empty($features)) {
-        $relaxed = preg_replace('/\s(BLVD|ROAD|RD|DR|DRIVE|STREET|ST|AVE|AVENUE)\b/i', '', $shortAddress);
-        $where2 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $relaxed . "%')";
-        if ($zip) $where2 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
-        $features = $runQuery($where2, "Step 2");
-        if (!empty($features)) $status = "exact";
-    }
-
-    // Step 3: Fuzzy street match
-    if (empty($features) && $zip) {
-        $streetOnly = trim(preg_replace('/^\d+/', '', $shortAddress));
-        $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '" . $zip . "'";
-        $features = $runQuery($where3, "Step 3");
-        if (!empty($features)) $status = "fuzzy";
-    }
-
-    // Step 4: Last resort — full address no ZIP
-    if (empty($features)) {
-        $where4 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
-        $features = $runQuery($where4, "Step 4");
-        if (!empty($features)) $status = "fuzzy";
-    }
-
-    // Build matches (with jurisdiction lookup)
-    $matches = array();
-    foreach ($features as $f) {
-        $a = $f['attributes'];
-        $apn = isset($a['APN']) ? $a['APN'] : null;
-
-        // Default jurisdiction = null
-        $jurisdiction = null;
-
-        // Pull jurisdiction from detailed Assessor lookup if APN is available
-        if ($apn) {
-            $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-                . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=*&returnGeometry=false";
-            $detailsJson = @file_get_contents($detailsUrl);
-            $detailsData = json_decode($detailsJson, true);
-
-            if ($detailsData && isset($detailsData['features'][0]['attributes']['JURISDICTION'])) {
-                $jurisdiction = strtoupper(trim($detailsData['features'][0]['attributes']['JURISDICTION']));
-            }
-        }
-
-        $matches[] = array(
-            "apn"          => $apn,
-            "situs"        => isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null,
-            "zip"          => isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null,
-            "jurisdiction" => $jurisdiction
-        );
-    }
-
-    return array(
-        "parcelStatus" => $status,
-        "matches"      => $matches
-    );
-}
-/**
  * Handle AI report output (detect JSON vs plain text)
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
@@ -1034,50 +969,108 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
         $zip = isset($zipMatch[0]) ? $zipMatch[0] : null;
 
-        $result = lookupParcels($matchedAddress, $zip, $latitude, $longitude);
-        $parcelStatus = $result["parcelStatus"];
+        $normalized = strtoupper($matchedAddress);
+        $shortAddress = preg_replace('/,.*$/', '', $normalized);
 
-        // Build parcels array and enrich jurisdiction from Assessor
-        foreach ($result["matches"] as $m) {
+        // --- Helper inline query runner ---
+        $runParcelQuery = function($where) {
+            $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+                . "?f=json&where=" . urlencode($where)
+                . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP&returnGeometry=true&outSR=4326";
+            $resp = json_decode(@file_get_contents($url), true);
+            return isset($resp['features']) ? $resp['features'] : array();
+        };
+
+        $features = array();
+
+        // Step 1: full address + ZIP
+        $where1 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+        if ($zip) $where1 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
+        $features = runParcelQuery($where1);
+        if (!empty($features)) $parcelStatus = "exact";
+
+        // Step 2: relaxed suffix
+        if (empty($features)) {
+            $relaxed = preg_replace('/\s(BLVD|ROAD|RD|DR|DRIVE|STREET|ST|AVE|AVENUE)\b/i', '', $shortAddress);
+            $where2 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $relaxed . "%')";
+            if ($zip) $where2 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
+            $features = runParcelQuery($where2);
+            if (!empty($features)) $parcelStatus = "exact";
+        }
+
+        // Step 3: fuzzy street match
+        if (empty($features) && $zip) {
+            $streetOnly = trim(preg_replace('/^\d+/', '', $shortAddress));
+            $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '" . $zip . "'";
+            $features = runParcelQuery($where3);
+            if (!empty($features)) $parcelStatus = "fuzzy";
+        }
+
+        // Step 4: last resort — full address no ZIP
+        if (empty($features)) {
+            $where4 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
+            $features = runParcelQuery($where4);
+            if (!empty($features)) $parcelStatus = "fuzzy";
+        }
+
+        // Enrich each parcel with jurisdiction
+        foreach ($features as $f) {
+            $a = $f['attributes'];
+            $apn   = isset($a['APN']) ? $a['APN'] : null;
+            $situs = isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null;
+            $zip   = isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null;
+
             $jurisdiction = null;
-
-            if (!empty($m["apn"])) {
+            if (!empty($apn)) {
                 $detailsUrl = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-                    . "?f=json&where=APN='" . urlencode($m["apn"]) . "'&outFields=JURISDICTION&returnGeometry=false";
+                            . "?f=json&where=APN='" . urlencode($apn) . "'&outFields=JURISDICTION&returnGeometry=false";
                 $detailsJson = @file_get_contents($detailsUrl);
                 $detailsData = json_decode($detailsJson, true);
-
                 if ($detailsData && isset($detailsData['features'][0]['attributes']['JURISDICTION'])) {
                     $jurisdiction = strtoupper(trim($detailsData['features'][0]['attributes']['JURISDICTION']));
                 }
             }
 
             $parcels[] = array(
-                "apn"          => isset($m["apn"]) ? $m["apn"] : null,
-                "situs"        => isset($m["situs"]) ? $m["situs"] : null,
+                "apn"          => $apn,
+                "situs"        => $situs,
                 "jurisdiction" => $jurisdiction ? $jurisdiction : $county,
-                "zip"          => isset($m["zip"]) ? $m["zip"] : null
+                "zip"          => $zip,
+                "geometry"     => isset($f['geometry']) ? $f['geometry'] : null // ✅ add this
             );
         }
     }
 
-
     // ✅ Jurisdiction zoning lookup (only if we have parcels)
     if (count($parcels) > 0 && !empty($parcels[0]['jurisdiction'])) {
         foreach ($parcels as $k => $parcel) {
+            // Default to geocoded lat/lon
             $lat = $latitude;
             $lon = $longitude;
-            if (!empty($parcel['geometry']['coordinates']['rings'][0])) {
+
+            // If geometry is present, compute centroid
+            if (isset($parcel['geometry']) && !empty($parcel['geometry']['coordinates']['rings'][0])) {
                 $coords = $parcel['geometry']['coordinates']['rings'][0];
-                $sumLat = 0; $sumLon = 0; $count = count($coords);
-                foreach ($coords as $pt) { $sumLon += $pt[0]; $sumLat += $pt[1]; }
+                $sumLat = 0;
+                $sumLon = 0;
+                $count  = count($coords);
+
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0]; // X
+                    $sumLat += $pt[1]; // Y
+                }
+
                 if ($count > 0) {
                     $lon = $sumLon / $count;
                     $lat = $sumLat / $count;
                 }
             }
+
+            // ✅ Always call zoning lookup with best available lat/lon
             $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
-                $parcel['jurisdiction'], $lat, $lon,
+                $parcel['jurisdiction'],
+                $lat,
+                $lon,
                 isset($parcel['geometry']) ? $parcel['geometry'] : null
             );
         }

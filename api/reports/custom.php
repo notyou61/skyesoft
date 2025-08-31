@@ -4,7 +4,7 @@ function generateCustomReport($prompt, &$conversation) {
     return array(
         'error'      => false,
         'reportType' => 'Custom Report',
-        'response'   => 'ï¿½ï¿½ Placeholder - custom report AI generation TBD'
+        'response'   => 'í¾· Placeholder - custom report AI generation TBD'
     );
 }
 
