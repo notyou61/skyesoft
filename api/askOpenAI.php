@@ -841,14 +841,14 @@ function getApplicableDisclaimers($reportType, $context = array()) {
     return array_values(array_unique($result));
 }
 /**
-* Parcel Lookup Helper
-*/
+ * 📦 Parcel Lookup Helper (PHP 5.6 compatible)
+ */
 function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude = null) {
     $normalized = strtoupper($inputAddress);
     $shortAddress = preg_replace('/,.*$/', '', $normalized);
 
     $status = "none";
-    $features = [];
+    $features = array();
 
     // --- Helper to run GIS query ---
     $runQuery = function($where, $label) {
@@ -856,12 +856,12 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
             . "?f=json&where=" . urlencode($where)
             . "&outFields=APN,PHYSICAL_ADDRESS,OWNER_NAME,PHYSICAL_ZIP&returnGeometry=false&outSR=4326";
         $resp = json_decode(@file_get_contents($url), true);
-        return $resp['features'] ?? [];
+        return isset($resp['features']) ? $resp['features'] : array();
     };
 
     // Step 1: Full address + ZIP
     $where1 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $shortAddress . "%')";
-    if ($zip) $where1 .= " AND PHYSICAL_ZIP = '$zip'";
+    if ($zip) $where1 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
     $features = $runQuery($where1, "Step 1");
     if (!empty($features)) $status = "exact";
 
@@ -869,7 +869,7 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
     if (empty($features)) {
         $relaxed = preg_replace('/\s(BLVD|ROAD|RD|DR|DRIVE|STREET|ST|AVE|AVENUE)\b/i', '', $shortAddress);
         $where2 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $relaxed . "%')";
-        if ($zip) $where2 .= " AND PHYSICAL_ZIP = '$zip'";
+        if ($zip) $where2 .= " AND PHYSICAL_ZIP = '" . $zip . "'";
         $features = $runQuery($where2, "Step 2");
         if (!empty($features)) $status = "exact";
     }
@@ -877,7 +877,7 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
     // Step 3: Fuzzy street match
     if (empty($features) && $zip) {
         $streetOnly = trim(preg_replace('/^\d+/', '', $shortAddress));
-        $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '$zip'";
+        $where3 = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%" . $streetOnly . "%') AND PHYSICAL_ZIP = '" . $zip . "'";
         $features = $runQuery($where3, "Step 3");
         if (!empty($features)) $status = "fuzzy";
     }
@@ -890,20 +890,20 @@ function lookupParcels($inputAddress, $zip = null, $latitude = null, $longitude 
     }
 
     // Build matches
-    $matches = [];
+    $matches = array();
     foreach ($features as $f) {
         $a = $f['attributes'];
-        $matches[] = [
-            "apn"   => $a['APN'],
-            "situs" => trim($a['PHYSICAL_ADDRESS']),
-            "zip"   => $a['PHYSICAL_ZIP']
-        ];
+        $matches[] = array(
+            "apn"   => isset($a['APN']) ? $a['APN'] : null,
+            "situs" => isset($a['PHYSICAL_ADDRESS']) ? trim($a['PHYSICAL_ADDRESS']) : null,
+            "zip"   => isset($a['PHYSICAL_ZIP']) ? $a['PHYSICAL_ZIP'] : null
+        );
     }
 
-    return [
+    return array(
         "parcelStatus" => $status,
         "matches"      => $matches
-    ];
+    );
 }
 /**
  * Handle AI report output (detect JSON vs plain text)
