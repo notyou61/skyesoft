@@ -156,54 +156,48 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                 }
             }
             break;
-        // ✅ Scottsdale zoning (point query only, project to 102100)
+        // ✅ Scottsdale zoning (point query only, WGS84)
         case "SCOTTSDALE":
-            if ($latitude !== null && $longitude !== null) {
-                // Project WGS84 → Web Mercator (102100)
-                $geom = json_encode([
-                    "geometryType" => "esriGeometryPoint",
-                    "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
-                ]);
-                $projectUrl = "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project"
-                    . "?f=json"
-                    . "&inSR=4326"
-                    . "&outSR=102100"
-                    . "&geometries=" . urlencode($geom);
+            $endpoint = "https://maps.scottsdaleaz.gov/arcgis/rest/services/OpenData/MapServer/24/query";
 
-                $projResp = @file_get_contents($projectUrl);
-                $projData = json_decode($projResp, true);
+            // Build JSON geometry object using parcel centroid
+            $geometry = json_encode(array(
+                "x" => $longitude,
+                "y" => $latitude,
+                "spatialReference" => array("wkid" => 4326)
+            ));
 
-                if (!empty($projData['geometries'][0])) {
-                    $pt = $projData['geometries'][0];
-                    $geometry = json_encode([
-                        "x" => $pt['x'],
-                        "y" => $pt['y'],
-                        "spatialReference" => ["wkid" => 102100]
-                    ]);
+            $params = array(
+                "f" => "json",
+                "geometry" => $geometry,
+                "geometryType" => "esriGeometryPoint",
+                "inSR" => 4326,
+                "spatialRel" => "esriSpatialRelIntersects",
+                "outFields" => "*",
+                "outSR" => 4326
+            );
 
-                    $url = "https://gis.scottsdaleaz.gov/arcgis/rest/services/Planning/Zoning/MapServer/0/query"
-                        . "?f=json"
-                        . "&geometry=" . urlencode($geometry)
-                        . "&geometryType=esriGeometryPoint"
-                        . "&inSR=102100"
-                        . "&spatialRel=esriSpatialRelIntersects"
-                        . "&outFields=ZONE_CODE,ZONE_DESC"
-                        . "&returnGeometry=false";
+            // POST request
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-                    $resp = @file_get_contents($url);
-                    if ($resp !== false) {
-                        $data = json_decode($resp, true);
-                        if (!empty($data['features'][0]['attributes']['ZONE_CODE'])) {
-                            $attrs = $data['features'][0]['attributes'];
-                            $z     = $attrs['ZONE_CODE'];
-                            $d     = !empty($attrs['ZONE_DESC']) ? $attrs['ZONE_DESC'] : '';
-                            $zoning = trim($z . ($d ? " ($d)" : ""));
-                        }
-                    }
+            $result = curl_exec($ch);
+            curl_close($ch);
+
+            $data = json_decode($result, true);
+
+            if (isset($data["features"][0]["attributes"])) {
+                $attrs = $data["features"][0]["attributes"];
+                if (isset($attrs["full_zoning"])) {
+                    $zoning = $attrs["full_zoning"];
+                } elseif (isset($attrs["comparable_zoning"])) {
+                    $zoning = $attrs["comparable_zoning"];
                 }
             }
             break;
-
         // Default case for unsupported jurisdictions
         default:
             // Unsupported jurisdiction
