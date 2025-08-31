@@ -1011,18 +1011,19 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     // ✅ Parcel lookup (Maricopa only)
     $parcels = array();
     $parcelStatus = "none";
+    // Normalize jurisdiction
     if ($countyFIPS === "013" && $stateFIPS === "04" && $matchedAddress) {
         preg_match('/\b\d{5}\b/', $matchedAddress, $zipMatch);
         $zip = isset($zipMatch[0]) ? $zipMatch[0] : null;
 
         $result = lookupParcels($matchedAddress, $zip, $latitude, $longitude);
         $parcelStatus = $result["parcelStatus"];
-
+        // Build parcels array with normalized jurisdiction
         foreach ($result["matches"] as $m) {
             $parcels[] = array(
                 "apn"          => $m["apn"],
                 "situs"        => $m["situs"],
-                "jurisdiction" => $county,
+                "jurisdiction" => isset($m["jurisdiction"]) ? $m["jurisdiction"] : $county,
                 "zip"          => $m["zip"]
             );
         }
