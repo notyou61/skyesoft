@@ -28,10 +28,11 @@ public_html/.data/.env
 public_html/data/
 public_html/*/data/
 **/skyesoft-data.json
-assets/data/*.json
 
-# Exception: keep this one tracked
+# Ignore JSON in assets/data except for whitelisted ones
+assets/data/*.json
 !assets/data/reportDisclaimers.json
+!assets/data/jurisdictions.json
 
 ##############################
 # Build / deps / artifacts
