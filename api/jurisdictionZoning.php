@@ -18,48 +18,32 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     $origLat   = $lat;
     $origLon   = $lon;
 
-    // Handle projection if required
+    // 🔹 Step 1: Projection if required
     if (!empty($apiConfig['requiresProjection']) && $lat !== null && $lon !== null) {
-        // Project from WGS84 (4326) to target SRID
-        $projUrl = "https://gis.mesaaz.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
-        // Parameters
+        // Use ESRI sample GeometryServer (works for all jurisdictions needing reprojection)
+        $projUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
         $params = http_build_query([
             "f" => "json",
             "inSR" => 4326,
             "outSR" => $apiConfig['projectionTarget'],
             "geometryType" => "esriGeometryPoint",
-            "geometries" => json_encode(
+            "geometries" => json_encode([
                 ["x" => $lon, "y" => $lat]
             ])
         ]);
-        // Execute projection request
         $projResp = @file_get_contents($projUrl . "?" . $params);
-        // Handle response
         if ($projResp !== false) {
             $projData = json_decode($projResp, true);
-
-            // Debug projection response
-            file_put_contents(
-                __DIR__ . "/../assets/logs/zoning_debug.log",
-                "Mesa projection raw: " . $projResp . "\n---\n",
-                FILE_APPEND | LOCK_EX
-            );
-
-            if (!empty($projData['geometries'])) {
-                if (isset($projData['geometries'][0]['x'])) {
-                    $lon = $projData['geometries'][0]['x'];
-                    $lat = $projData['geometries'][0]['y'];
-                } elseif (isset($projData['geometries']['geometries'][0]['x'])) {
-                    $lon = $projData['geometries']['geometries'][0]['x'];
-                    $lat = $projData['geometries']['geometries'][0]['y'];
-                }
+            if (!empty($projData['geometries'][0])) {
+                $lon = $projData['geometries'][0]['x'];
+                $lat = $projData['geometries'][0]['y'];
             }
         }
     }
 
-
-    // Phoenix special case
+    // 🔹 Step 2: Build URL
     if (strtoupper($jurisdiction) === "PHOENIX") {
+        // Phoenix is always 4326, point queries only
         if ($lat !== null && $lon !== null) {
             $geom = json_encode([
                 "x" => $lon,
@@ -77,8 +61,8 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             return "UNKNOWN";
         }
     }
-    // Polygon handling
     elseif ($geometry && in_array('polygon', $apiConfig['modes'])) {
+        // Generic polygon query
         $geom = json_encode($geometry);
         $inSR = !empty($apiConfig['alt_srid']) ? $apiConfig['alt_srid'] : $apiConfig['srid'];
         $url = $endpoint . "?f=json"
@@ -89,8 +73,8 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             . "&outFields=" . implode(',', $apiConfig['outFields'])
             . "&returnGeometry=false";
     }
-    // Generic point handling (Mesa and others)
     elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
+        // Generic point query (Mesa, Gilbert, Scottsdale, etc.)
         $geom = json_encode([
             "x" => $lon,
             "y" => $lat,
@@ -107,25 +91,29 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         return "UNKNOWN";
     }
 
-    // Execute request
+    // 🔹 Step 3: Execute query
     $resp = @file_get_contents($url);
     if ($resp !== false) {
         $data = json_decode($resp, true);
         if (!empty($data['features'][0]['attributes'])) {
             $attrs  = $data['features'][0]['attributes'];
             $fields = $apiConfig['responseFields'];
-            foreach (['primary', 'secondary', 'tertiary'] as $level) {
-                if (!empty($fields[$level])) {
-                    $fieldName = $fields[$level];
-                    if (isset($attrs[$fieldName]) && trim($attrs[$fieldName]) !== "") {
-                        return trim($attrs[$fieldName]);
-                    }
-                }
-            }
+            $primary   = $fields['primary']   ?? null;
+            $secondary = $fields['secondary'] ?? null;
+            $tertiary  = $fields['tertiary']  ?? null;
+
+            $pVal = isset($attrs[$primary])   ? trim($attrs[$primary])   : "";
+            $sVal = isset($attrs[$secondary]) ? trim($attrs[$secondary]) : "";
+            $tVal = isset($attrs[$tertiary])  ? trim($attrs[$tertiary])  : "";
+
+            if ($pVal && $sVal) return "$pVal ($sVal)";
+            if ($pVal) return $pVal;
+            if ($sVal) return $sVal;
+            if ($tVal) return $tVal;
         }
     }
 
-    // Error logging for debugging
+    // 🔹 Step 4: Debug logging
     $logDir = __DIR__ . "/../assets/logs";
     if (!is_dir($logDir)) {
         mkdir($logDir, 0775, true);
