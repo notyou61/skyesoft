@@ -21,13 +21,29 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         // TODO: call ArcGIS GeometryServer with $lat/$lon → $apiConfig['projectionTarget']
     }
 
-    // Build geometry (point vs polygon)
-    if ($geometry && in_array('polygon', $apiConfig['modes'])) {
-        // get geometry as GeoJSON polygon
+    // Special case: Phoenix → always use point query in SRID 4326
+    if (strtoupper($jurisdiction) === "PHOENIX") {
+        if ($lat !== null && $lon !== null) {
+            $geom = json_encode([
+                "x" => $lon,
+                "y" => $lat,
+                "spatialReference" => ["wkid" => 4326]
+            ]);
+            $url = $endpoint . "?f=json"
+                 . "&geometry=" . urlencode($geom)
+                 . "&geometryType=esriGeometryPoint"
+                 . "&inSR=4326"
+                 . "&spatialRel=esriSpatialRelIntersects"
+                 . "&outFields=" . implode(',', $apiConfig['outFields'])
+                 . "&returnGeometry=false";
+        } else {
+            return "UNKNOWN";
+        }
+    }
+    // Generic handling for other jurisdictions
+    elseif ($geometry && in_array('polygon', $apiConfig['modes'])) {
         $geom = json_encode($geometry);
-        // Use alternate SRID if provided
         $inSR = !empty($apiConfig['alt_srid']) ? $apiConfig['alt_srid'] : $apiConfig['srid'];
-        // Polygon query
         $url = $endpoint . "?f=json"
             . "&geometry=" . urlencode($geom)
             . "&geometryType=esriGeometryPolygon"
@@ -56,11 +72,9 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     $resp = @file_get_contents($url);
     if ($resp !== false) {
         $data = json_decode($resp, true);
-        // Parse response
         if (!empty($data['features'][0]['attributes'])) {
             $attrs  = $data['features'][0]['attributes'];
             $fields = $apiConfig['responseFields'];
-            // For each level, return the first non-empty field
             foreach (['primary', 'secondary', 'tertiary'] as $level) {
                 if (!empty($fields[$level])) {
                     $fieldName = $fields[$level];
@@ -70,33 +84,25 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
                 }
             }
         }
-
     }
+
     // Error logging for debugging
     $logDir = __DIR__ . "/../assets/logs";
     if (!is_dir($logDir)) {
-        mkdir($logDir, 0775, true); // GoDaddy shared hosting often needs 0775
+        mkdir($logDir, 0775, true);
     }
     $debugFile = $logDir . "/zoning_debug.log";
 
-    $logMsg = "Phoenix zoning debug:\n";
+    $logMsg = strtoupper($jurisdiction) . " zoning debug:\n";
     $logMsg .= "URL: " . $url . "\n";
-
     if ($resp !== false) {
-        $logMsg .= "RAW RESPONSE: " . substr($resp, 0, 5000) . "\n"; // capture first 5k chars
+        $logMsg .= "RAW RESPONSE: " . substr($resp, 0, 5000) . "\n";
     } else {
         $logMsg .= "RAW RESPONSE: (no response)\n";
     }
+    $logMsg .= "ATTRS: " . (isset($attrs) ? json_encode($attrs) : "NONE") . "\n";
 
-    if (isset($attrs) && !empty($attrs)) {
-        $logMsg .= "ATTRS: " . json_encode($attrs) . "\n";
-    } else {
-        $logMsg .= "ATTRS: NONE\n";
-    }
-
-    // Force write and flush
     file_put_contents($debugFile, $logMsg . "\n---\n", FILE_APPEND | LOCK_EX);
 
-    // If we reach here, no zoning found
     return "UNKNOWN";
 }

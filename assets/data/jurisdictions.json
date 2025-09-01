@@ -985,21 +985,20 @@
     "incorporation": 1916,
     "api": null
   },
-"Phoenix": {
-  "api": {
-    "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
-    "modes": ["point", "polygon"],
-    "srid": 102100,
-    "requiresProjection": true,
-    "projectionTarget": 102100,
-    "outFields": ["ZONING", "GEN_ZONE", "LABEL1"],
-    "responseFields": {
-      "primary": "ZONING",
-      "secondary": "GEN_ZONE",
-      "tertiary": "LABEL1"
+  "Phoenix": {
+    "api": {
+      "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
+      "modes": ["point"], 
+      "srid": 4326,
+      "requiresProjection": false,
+      "outFields": ["ZONING", "GEN_ZONE", "LABEL1"],
+      "responseFields": {
+        "primary": "ZONING",
+        "secondary": "GEN_ZONE",
+        "tertiary": "LABEL1"
+      }
     }
-  }
-},
+  },
   "Chandler": {
     "aliases": [
       "CITY OF CHANDLER",
