@@ -72,6 +72,8 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         }
 
     }
-
+    // Error logging for debugging
+    error_log("Phoenix zoning debug: " . json_encode($attrs));
+    // If we reach here, no zoning found
     return "UNKNOWN";
 }
