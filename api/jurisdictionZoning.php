@@ -10,7 +10,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     }
 
     if (!isset($jurisdictions[$jurisdiction]['api'])) {
-        return null; // unsupported
+        return null; // unsupported jurisdiction
     }
 
     $apiConfig = $jurisdictions[$jurisdiction]['api'];
@@ -39,14 +39,13 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             ))
         ));
 
-        // Initialize cURL
+        // Send request with cURL (PHP 5.6-safe)
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $projUrl);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/x-www-form-urlencoded"));
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
-
         $projResp = curl_exec($ch);
         curl_close($ch);
 
@@ -67,9 +66,9 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         }
     }
 
-    // 🔹 Step 2: Build URL
+    // 🔹 Step 2: Build zoning query URL
     if (strtoupper($jurisdiction) === "PHOENIX") {
-        // Phoenix is always 4326, point queries only
+        // Phoenix always uses 4326
         if ($lat !== null && $lon !== null) {
             $geom = json_encode(array(
                 "x" => $lon,
@@ -88,7 +87,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         }
     }
     elseif ($geometry && in_array('polygon', $apiConfig['modes'])) {
-        // Generic polygon query
+        // Polygon mode
         $geom = json_encode($geometry);
         $inSR = !empty($apiConfig['alt_srid']) ? $apiConfig['alt_srid'] : $apiConfig['srid'];
         $url = $endpoint . "?f=json"
@@ -100,7 +99,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             . "&returnGeometry=false";
     }
     elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
-        // Generic point query (Mesa, Gilbert, Scottsdale, etc.)
+        // Generic point mode (Mesa, Gilbert, Scottsdale, etc.)
         $geom = json_encode(array(
             "x" => $lon,
             "y" => $lat,
@@ -117,7 +116,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         return "UNKNOWN";
     }
 
-    // 🔹 Step 3: Execute query
+    // 🔹 Step 3: Execute zoning query
     $resp = @file_get_contents($url);
     if ($resp !== false) {
         $data = json_decode($resp, true);
