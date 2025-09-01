@@ -1,6 +1,7 @@
 <?php
 // Zoning Report Generator (PHP 5.6 compatible)
-
+// 📄 File: api/reports/zoning.php
+// 
 function generateZoningReport($prompt, &$conversation) {
     // ✅ Extract and normalize address
     $address = null;
@@ -34,7 +35,7 @@ function generateZoningReport($prompt, &$conversation) {
     $latitude = null;
     $longitude = null;
     $matchedAddress = null;
-    $state = null; // needed for Google fallback
+    $state = null;
 
     // ✅ Census Location API
     $locUrl = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
@@ -42,7 +43,6 @@ function generateZoningReport($prompt, &$conversation) {
         . "&benchmark=Public_AR_Current&format=json";
     $locData = json_decode(@file_get_contents($locUrl), true);
 
-    // Extract matched address and coordinates if available
     if ($locData && isset($locData['result']['addressMatches'][0])) {
         $match = $locData['result']['addressMatches'][0];
         if (isset($match['matchedAddress'])) {
@@ -60,7 +60,6 @@ function generateZoningReport($prompt, &$conversation) {
         . "&benchmark=Public_AR_Current&vintage=Current_Current&layers=all&format=json";
     $geoData = json_decode(@file_get_contents($geoUrl), true);
 
-    // Extract county and FIPS if available
     if ($geoData && isset($geoData['result']['addressMatches'][0]['geographies']['Counties'][0])) {
         $countyData = $geoData['result']['addressMatches'][0]['geographies']['Counties'][0];
         $county     = isset($countyData['NAME']) ? $countyData['NAME'] : null;
@@ -237,13 +236,11 @@ function generateZoningReport($prompt, &$conversation) {
             $lat = $latitude;
             $lon = $longitude;
 
-            // Prefer geometry centroid
             if (isset($parcel['geometry']['centroid'])) {
                 $lat = $parcel['geometry']['centroid']['lat'];
                 $lon = $parcel['geometry']['centroid']['lon'];
             }
 
-            // Normalize jurisdiction
             $normalizedJurisdiction = normalizeJurisdiction(
                 $parcel['jurisdiction'],
                 "Maricopa County"
@@ -251,25 +248,63 @@ function generateZoningReport($prompt, &$conversation) {
 
             $parcels[$k]['jurisdiction'] = $normalizedJurisdiction;
 
-            $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
-                $normalizedJurisdiction,
-                $lat,
-                $lon,
-                $parcel['geometry']
-            );
+            // --- Regionalized Zoning Lookup ---
+            switch ($normalizedJurisdiction) {
+                // --- Jurisdiction: Phoenix ---
+                case "PHOENIX":
+                    $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning("Phoenix", $lat, $lon, $parcel['geometry']);
+                    break;
+                // --- Jurisdiction: Mesa ---
+                case "MESA":
+                    $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning("Mesa", $lat, $lon, $parcel['geometry']);
+                    break;
+                // --- Jurisdiction: Gilbert ---
+                case "GILBERT":
+                    $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning("Gilbert", $lat, $lon, $parcel['geometry']);
+                    break;
+                // --- Jurisdiction: Scottsdale ---
+                case "SCOTTSDALE":
+                    $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning("Scottsdale", $lat, $lon, $parcel['geometry']);
+                    break;
+                // --- Fallback: Other Jurisdictions ---
+                default:
+                    $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning($normalizedJurisdiction, $lat, $lon, $parcel['geometry']);
+                    break;
+            }
         }
     }
 
-    // ✅ Context for disclaimers
+    // ✅ Context for disclaimers (extended)
     $context = array(
         "multipleParcels"         => (count($parcels) > 1),
+        "multiParcelSite"         => false,
+        "mixedParcelZoning"       => false,
         "unsupportedJurisdiction" => false,
         "pucMismatch"             => false,
         "splitZoning"             => false
     );
+
     if (count($parcels) > 0) {
         $context["jurisdiction"] = strtolower(trim($parcels[0]['jurisdiction']));
+        $zonings = array();
+        foreach ($parcels as $parcel) {
+            if (!empty($parcel['jurisdictionZoning'])) {
+                $zonings[] = $parcel['jurisdictionZoning'];
+            }
+            if ($parcel['jurisdiction'] == "Maricopa County") {
+                $context["unsupportedJurisdiction"] = true;
+            }
+        }
+        $uniqueZonings = array_unique($zonings);
+        if (count($parcels) > 1) {
+            if (count($uniqueZonings) === 1) {
+                $context["multiParcelSite"] = true;
+            } elseif (count($uniqueZonings) > 1) {
+                $context["mixedParcelZoning"] = true;
+            }
+        }
     }
+
     if ($parcelStatus === "fuzzy") {
         $context["fuzzyMatch"] = true;
     }
