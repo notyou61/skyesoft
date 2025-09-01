@@ -56,7 +56,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             // Debug: log raw projection response
             file_put_contents(
                 __DIR__ . "/../assets/logs/zoning_debug.log",
-                "Mesa projection raw: " . $projResp . "\n---\n",
+                strtoupper($jurisdiction) . " projection raw: " . $projResp . "\n---\n",
                 FILE_APPEND | LOCK_EX
             );
 
