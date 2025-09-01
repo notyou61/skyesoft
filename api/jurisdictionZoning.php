@@ -15,13 +15,32 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     $apiConfig = $jurisdictions[$jurisdiction]['api'];
     $endpoint  = $apiConfig['endpoint'];
+    $origLat   = $lat;
+    $origLon   = $lon;
 
-    // Handle projection if required (stub — implement if needed)
-    if (!empty($apiConfig['requiresProjection'])) {
-        // TODO: call ArcGIS GeometryServer with $lat/$lon → $apiConfig['projectionTarget']
+    // Handle projection if required
+    if (!empty($apiConfig['requiresProjection']) && $lat !== null && $lon !== null) {
+        $projUrl = "https://gis.mesaaz.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
+        $params = http_build_query([
+            "f" => "json",
+            "inSR" => 4326,
+            "outSR" => $apiConfig['projectionTarget'],
+            "geometries" => json_encode([
+                "geometryType" => "esriGeometryPoint",
+                "geometries" => [["x" => $lon, "y" => $lat]]
+            ])
+        ]);
+        $projResp = @file_get_contents($projUrl . "?" . $params);
+        if ($projResp !== false) {
+            $projData = json_decode($projResp, true);
+            if (!empty($projData['geometries'][0]['x'])) {
+                $lon = $projData['geometries'][0]['x'];
+                $lat = $projData['geometries'][0]['y'];
+            }
+        }
     }
 
-    // Special case: Phoenix → always use point query in SRID 4326
+    // Phoenix special case
     if (strtoupper($jurisdiction) === "PHOENIX") {
         if ($lat !== null && $lon !== null) {
             $geom = json_encode([
@@ -40,7 +59,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             return "UNKNOWN";
         }
     }
-    // Generic handling for other jurisdictions
+    // Polygon handling
     elseif ($geometry && in_array('polygon', $apiConfig['modes'])) {
         $geom = json_encode($geometry);
         $inSR = !empty($apiConfig['alt_srid']) ? $apiConfig['alt_srid'] : $apiConfig['srid'];
@@ -51,7 +70,9 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             . "&spatialRel=esriSpatialRelIntersects"
             . "&outFields=" . implode(',', $apiConfig['outFields'])
             . "&returnGeometry=false";
-    } elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
+    }
+    // Generic point handling (Mesa and others)
+    elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
         $geom = json_encode([
             "x" => $lon,
             "y" => $lat,
@@ -93,7 +114,9 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     }
     $debugFile = $logDir . "/zoning_debug.log";
 
-    $logMsg = strtoupper($jurisdiction) . " zoning debug:\n";
+    $logMsg  = strtoupper($jurisdiction) . " zoning debug:\n";
+    $logMsg .= "Original coords (4326): $origLon, $origLat\n";
+    $logMsg .= "Projected coords (" . $apiConfig['srid'] . "): $lon, $lat\n";
     $logMsg .= "URL: " . $url . "\n";
     if ($resp !== false) {
         $logMsg .= "RAW RESPONSE: " . substr($resp, 0, 5000) . "\n";
