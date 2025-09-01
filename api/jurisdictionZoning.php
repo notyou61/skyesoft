@@ -14,11 +14,11 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     }
 
     $apiConfig = $jurisdictions[$jurisdiction]['api'];
-    $endpoint = $apiConfig['endpoint'];
+    $endpoint  = $apiConfig['endpoint'];
 
-    // Handle projection if required
+    // Handle projection if required (stub — implement if needed)
     if (!empty($apiConfig['requiresProjection'])) {
-        // call GeometryServer here with $lat/$lon → $apiConfig['projectionTarget']
+        // TODO: call ArcGIS GeometryServer with $lat/$lon → $apiConfig['projectionTarget']
     }
 
     // Build geometry (point vs polygon)
@@ -52,13 +52,16 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     $resp = @file_get_contents($url);
     if ($resp !== false) {
         $data = json_decode($resp, true);
-        if (!empty($data['features'][0]['attributes'][$apiConfig['responseFields']['primary']])) {
-            $z = $data['features'][0]['attributes'][$apiConfig['responseFields']['primary']];
-            $g = !empty($apiConfig['responseFields']['secondary']) && 
-                 !empty($data['features'][0]['attributes'][$apiConfig['responseFields']['secondary']])
-               ? $data['features'][0]['attributes'][$apiConfig['responseFields']['secondary']]
-               : '';
-            return trim($z . ($g ? " ($g)" : ""));
+        if (!empty($data['features'][0]['attributes'])) {
+            $attrs  = $data['features'][0]['attributes'];
+            $fields = $apiConfig['responseFields'];
+
+            // Try primary, secondary, tertiary in order
+            foreach (['primary', 'secondary', 'tertiary'] as $level) {
+                if (!empty($fields[$level]) && !empty($attrs[$fields[$level]])) {
+                    return trim($attrs[$fields[$level]]);
+                }
+            }
         }
     }
 

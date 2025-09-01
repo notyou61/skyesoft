@@ -985,34 +985,21 @@
     "incorporation": 1916,
     "api": null
   },
-  "Phoenix": {
-    "aliases": [
-      "CITY OF PHOENIX",
-      "PHOENIX"
-    ],
-    "county": "Maricopa",
-    "type": "City",
-    "fips": 455000,
-    "incorporation": 1881,
-    "api": {
-      "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
-      "modes": [
-        "polygon",
-        "point"
-      ],
-      "srid": 4326,
-      "alt_srid": 102100,
-      "outFields": [
-        "ZONING",
-        "GEN_ZONE",
-        "LABEL1"
-      ],
-      "responseFields": {
-        "primary": "ZONING",
-        "secondary": "GEN_ZONE"
-      }
+"Phoenix": {
+  "api": {
+    "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
+    "modes": ["point", "polygon"],
+    "srid": 102100,
+    "requiresProjection": true,
+    "projectionTarget": 102100,
+    "outFields": ["ZONING", "GEN_ZONE", "LABEL1"],
+    "responseFields": {
+      "primary": "ZONING",
+      "secondary": "GEN_ZONE",
+      "tertiary": "LABEL1"
     }
-  },
+  }
+},
   "Chandler": {
     "aliases": [
       "CITY OF CHANDLER",
