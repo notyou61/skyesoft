@@ -1,5 +1,5 @@
 {
-  "Zoning Report": {
+"Zoning Report": {
   "dataSources": [
     "Parcel data provided by the Maricopa County Assessor’s Office GIS services.",
     "Supplemental geographic validation provided by the U.S. Census Bureau Geocoder."
@@ -38,8 +38,14 @@
     "⚠️ Multiple parcels were matched to the provided address. Ensure the correct parcel is selected for this report.",
     "⚠️ Reports based on multiple parcels may require additional validation to confirm zoning and ownership."
   ],
+  "multiParcelSite": [
+    "⚠️ Multiple parcels detected at this site. Zoning applies to the overall site if designations are identical."
+  ],
+  "mixedParcelZoning": [
+    "⚠️ Multiple parcels detected with different zoning designations — confirm boundaries with jurisdiction."
+  ],
   "unsupportedJurisdiction": [
-    "⚠️ This parcel falls within a jurisdiction that is not currently supported by automated zoning integration. Contact the relevant city or county planning department for confirmation."
+    "⚠️ Parcel is outside municipal jurisdiction — zoning information must be verified with the appropriate county planning department."
   ],
   "pucMismatch": [
     "⚠️ The Assessor’s property use code (PUC) does not match the city zoning designation. Confirm with the jurisdiction’s zoning ordinance before proceeding."
@@ -56,7 +62,7 @@
   "zoningUnavailable": [
     "⚠️ Jurisdiction service unavailable — verify zoning directly."
   ]
-  },
+},
   "Sign Ordinance Report": {
     "dataSources": [
       "City sign ordinances obtained from official planning department code libraries.",
