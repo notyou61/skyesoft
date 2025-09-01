@@ -782,18 +782,35 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
     if (!$jurisdiction) return null;
     $jurisdiction = strtoupper(trim($jurisdiction));
 
+    // Handle explicit "no city" case
     if ($jurisdiction === "NO CITY/TOWN") {
         return $county ? $county : "Unincorporated Area";
     }
 
-    switch ($jurisdiction) {
-        case "CITY OF PHOENIX":
-        case "PHOENIX":
-            return "Phoenix";
+    // Load jurisdictions.json (cache it so we don’t re-read every call)
+    static $jurisdictions = null;
+    if ($jurisdictions === null) {
+        $path = __DIR__ . "/../assets/data/jurisdictions.json";
+        if (file_exists($path)) {
+            $jurisdictions = json_decode(file_get_contents($path), true);
+        } else {
+            $jurisdictions = [];
+        }
     }
 
-    // Default: convert to Title Case
-    //return ucwords(strtolower($jurisdiction));
+    // Try to match against aliases
+    foreach ($jurisdictions as $name => $info) {
+        if (!empty($info['aliases'])) {
+            foreach ($info['aliases'] as $alias) {
+                if (strtoupper($alias) === $jurisdiction) {
+                    return $name; // normalized key from JSON
+                }
+            }
+        }
+    }
+
+    // Fallback: convert to Title Case
+    return ucwords(strtolower($jurisdiction));
 }
 /**
  * Load and apply disclaimers for a report
