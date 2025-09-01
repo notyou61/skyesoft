@@ -20,20 +20,46 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     // 🔹 Step 1: Projection if required
     if (!empty($apiConfig['requiresProjection']) && $lat !== null && $lon !== null) {
-        // Use ESRI GeometryServer (works for all jurisdictions needing reprojection)
         $projUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
-        $params = http_build_query(array(
+
+        // Build POST payload
+        $postFields = http_build_query(array(
             "f" => "json",
             "inSR" => 4326,
             "outSR" => $apiConfig['projectionTarget'],
-            "geometryType" => "esriGeometryPoint",
             "geometries" => json_encode(array(
-                array("x" => $lon, "y" => $lat)
+                "geometryType" => "esriGeometryPoint",
+                "geometries" => array(
+                    array(
+                        "x" => $lon,
+                        "y" => $lat,
+                        "spatialReference" => array("wkid" => 4326)
+                    )
+                )
             ))
         ));
-        $projResp = @file_get_contents($projUrl . "?" . $params);
+
+        // Initialize cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $projUrl);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/x-www-form-urlencoded"));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+
+        $projResp = curl_exec($ch);
+        curl_close($ch);
+
         if ($projResp !== false) {
             $projData = json_decode($projResp, true);
+
+            // Debug: log raw projection response
+            file_put_contents(
+                __DIR__ . "/../assets/logs/zoning_debug.log",
+                "Mesa projection raw: " . $projResp . "\n---\n",
+                FILE_APPEND | LOCK_EX
+            );
+
             if (!empty($projData['geometries'][0])) {
                 $lon = $projData['geometries'][0]['x'];
                 $lat = $projData['geometries'][0]['y'];
