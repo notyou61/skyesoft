@@ -73,7 +73,22 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     }
     // Error logging for debugging
-    error_log("Phoenix zoning debug: " . json_encode($attrs));
+    $logDir = __DIR__ . "/../assets/logs";
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    $debugFile = $logDir . "/zoning_debug.log";
+
+    if (isset($attrs) && !empty($attrs)) {
+        error_log("Phoenix zoning debug: " . json_encode($attrs) . "\n", 3, $debugFile);
+    } else {
+        error_log("Phoenix zoning debug: NO ATTRS RETURNED\n", 3, $debugFile);
+    }
+
+    // If we reach here, no zoning found
+    return "UNKNOWN";
+
+
     // If we reach here, no zoning found
     return "UNKNOWN";
 }
