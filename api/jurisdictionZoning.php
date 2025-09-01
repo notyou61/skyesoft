@@ -25,8 +25,8 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             "f" => "json",
             "inSR" => 4326,
             "outSR" => $apiConfig['projectionTarget'],
+            "geometryType" => "esriGeometryPoint",
             "geometries" => json_encode([
-                "geometryType" => "esriGeometryPoint",
                 "geometries" => [["x" => $lon, "y" => $lat]]
             ])
         ]);
@@ -42,7 +42,6 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
             );
 
             if (!empty($projData['geometries'])) {
-                // If geometries is nested
                 if (isset($projData['geometries'][0]['x'])) {
                     $lon = $projData['geometries'][0]['x'];
                     $lat = $projData['geometries'][0]['y'];
