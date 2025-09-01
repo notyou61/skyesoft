@@ -793,7 +793,7 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
     }
 
     // Default: convert to Title Case
-    return ucwords(strtolower($jurisdiction));
+    //return ucwords(strtolower($jurisdiction));
 }
 /**
  * Load and apply disclaimers for a report

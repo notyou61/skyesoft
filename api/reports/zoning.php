@@ -237,8 +237,18 @@ function generateZoningReport($prompt, &$conversation) {
                 $lon = $parcel['geometry']['centroid']['lon'];
             }
 
-            $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
+            // Normalize jurisdiction name
+            $normalizedJurisdiction = normalizeJurisdiction(
                 $parcel['jurisdiction'],
+                "Maricopa County"
+            );
+
+            // Save normalized jurisdiction back to the parcel
+            $parcels[$k]['jurisdiction'] = $normalizedJurisdiction;
+
+            // Run zoning lookup with normalized jurisdiction
+            $parcels[$k]['jurisdictionZoning'] = getJurisdictionZoning(
+                $normalizedJurisdiction,
                 $lat,
                 $lon,
                 $parcel['geometry']
