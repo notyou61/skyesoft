@@ -23,14 +23,18 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     // Build geometry (point vs polygon)
     if ($geometry && in_array('polygon', $apiConfig['modes'])) {
+        // get geometry as GeoJSON polygon
         $geom = json_encode($geometry);
+        // Use alternate SRID if provided
+        $inSR = !empty($apiConfig['alt_srid']) ? $apiConfig['alt_srid'] : $apiConfig['srid'];
+        // Polygon query
         $url = $endpoint . "?f=json"
-             . "&geometry=" . urlencode($geom)
-             . "&geometryType=esriGeometryPolygon"
-             . "&inSR=" . $apiConfig['alt_srid']
-             . "&spatialRel=esriSpatialRelIntersects"
-             . "&outFields=" . implode(',', $apiConfig['outFields'])
-             . "&returnGeometry=false";
+            . "&geometry=" . urlencode($geom)
+            . "&geometryType=esriGeometryPolygon"
+            . "&inSR=" . $inSR
+            . "&spatialRel=esriSpatialRelIntersects"
+            . "&outFields=" . implode(',', $apiConfig['outFields'])
+            . "&returnGeometry=false";
     } elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
         $geom = json_encode([
             "x" => $lon,
