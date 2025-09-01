@@ -56,17 +56,21 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     $resp = @file_get_contents($url);
     if ($resp !== false) {
         $data = json_decode($resp, true);
+        // Parse response
         if (!empty($data['features'][0]['attributes'])) {
             $attrs  = $data['features'][0]['attributes'];
             $fields = $apiConfig['responseFields'];
-
-            // Try primary, secondary, tertiary in order
+            // For each level, return the first non-empty field
             foreach (['primary', 'secondary', 'tertiary'] as $level) {
-                if (!empty($fields[$level]) && !empty($attrs[$fields[$level]])) {
-                    return trim($attrs[$fields[$level]]);
+                if (!empty($fields[$level])) {
+                    $fieldName = $fields[$level];
+                    if (isset($attrs[$fieldName]) && trim($attrs[$fieldName]) !== "") {
+                        return trim($attrs[$fieldName]);
+                    }
                 }
             }
         }
+
     }
 
     return "UNKNOWN";
