@@ -1,21 +1,18 @@
 <?php
 // 📄 File: api/jurisdictionZoning.php
 // Provides jurisdiction-specific zoning lookups. 
-// Always returns zoning string or null. No direct output.
+// Always returns zoning string, "UNKNOWN" if lookup fails, or null if unsupported.
 
 function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = null, $geometry = null) {
-    // Initialize zoning variable
     $zoning = null;
-    // Validate jurisdiction input
     if (empty($jurisdiction)) {
         return null;
     }
-    // Handle different jurisdictions
+
     switch (strtoupper($jurisdiction)) {
         // ✅ Phoenix (supports point or parcel polygon geometry)
         case "PHOENIX":
             if ($geometry && isset($geometry['rings'])) {
-                // Polygon geometry (from parcel)
                 $geom = json_encode($geometry);
                 $url = "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query"
                      . "?f=json"
@@ -26,7 +23,6 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                      . "&outFields=ZONING,GEN_ZONE,LABEL1"
                      . "&returnGeometry=false";
             } elseif ($latitude !== null && $longitude !== null) {
-                // Point geometry (centroid)
                 $geom = json_encode([
                     "x" => $longitude,
                     "y" => $latitude,
@@ -41,7 +37,7 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                      . "&outFields=ZONING,GEN_ZONE,LABEL1"
                      . "&returnGeometry=false";
             } else {
-                return null;
+                return "UNKNOWN";
             }
 
             $resp = @file_get_contents($url);
@@ -57,10 +53,9 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Mesa zoning (point query via local GIS)
+        // ✅ Mesa zoning
         case "MESA":
             if ($latitude !== null && $longitude !== null) {
-                // Project from WGS84 (4326) → Mesa’s local 2868
                 $geom = json_encode([
                     "geometryType" => "esriGeometryPoint",
                     "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
@@ -106,10 +101,9 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
             }
             break;
 
-        // ✅ Gilbert zoning (point query via Growth_Development_Maps_1/MapServer/8)
+        // ✅ Gilbert zoning
         case "GILBERT":
             if ($latitude !== null && $longitude !== null) {
-                // Project WGS84 (4326) -> Web Mercator (102100)
                 $geom = json_encode([
                     "geometryType" => "esriGeometryPoint",
                     "geometries"   => [[ "x" => $longitude, "y" => $latitude ]]
@@ -156,53 +150,53 @@ function getJurisdictionZoning($jurisdiction, $latitude = null, $longitude = nul
                 }
             }
             break;
-        // ✅ Scottsdale zoning (point query only, WGS84)
+
+        // ✅ Scottsdale zoning
         case "SCOTTSDALE":
-            $endpoint = "https://maps.scottsdaleaz.gov/arcgis/rest/services/OpenData/MapServer/24/query";
+            if ($latitude !== null && $longitude !== null) {
+                $endpoint = "https://maps.scottsdaleaz.gov/arcgis/rest/services/OpenData/MapServer/24/query";
+                $geometry = json_encode(array(
+                    "x" => $longitude,
+                    "y" => $latitude,
+                    "spatialReference" => array("wkid" => 4326)
+                ));
+                $params = array(
+                    "f" => "json",
+                    "geometry" => $geometry,
+                    "geometryType" => "esriGeometryPoint",
+                    "inSR" => 4326,
+                    "spatialRel" => "esriSpatialRelIntersects",
+                    "outFields" => "*",
+                    "outSR" => 4326
+                );
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $endpoint);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                $result = curl_exec($ch);
+                curl_close($ch);
 
-            // Build JSON geometry object using parcel centroid
-            $geometry = json_encode(array(
-                "x" => $longitude,
-                "y" => $latitude,
-                "spatialReference" => array("wkid" => 4326)
-            ));
-
-            $params = array(
-                "f" => "json",
-                "geometry" => $geometry,
-                "geometryType" => "esriGeometryPoint",
-                "inSR" => 4326,
-                "spatialRel" => "esriSpatialRelIntersects",
-                "outFields" => "*",
-                "outSR" => 4326
-            );
-
-            // POST request
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $endpoint);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-            $result = curl_exec($ch);
-            curl_close($ch);
-
-            $data = json_decode($result, true);
-
-            if (isset($data["features"][0]["attributes"])) {
-                $attrs = $data["features"][0]["attributes"];
-                if (isset($attrs["full_zoning"])) {
-                    $zoning = $attrs["full_zoning"];
-                } elseif (isset($attrs["comparable_zoning"])) {
-                    $zoning = $attrs["comparable_zoning"];
+                $data = json_decode($result, true);
+                if (isset($data["features"][0]["attributes"])) {
+                    $attrs = $data["features"][0]["attributes"];
+                    if (isset($attrs["full_zoning"])) {
+                        $zoning = $attrs["full_zoning"];
+                    } elseif (isset($attrs["comparable_zoning"])) {
+                        $zoning = $attrs["comparable_zoning"];
+                    }
                 }
             }
             break;
-        // Default case for unsupported jurisdictions
+
+        // Default: unsupported jurisdiction
         default:
-            // Unsupported jurisdiction
             return null;
     }
-    // Return the zoning result (string or null)
+
+    // If supported but lookup failed, return UNKNOWN instead of null
+    if ($zoning === null) {
+        return "UNKNOWN";
+    }
     return $zoning;
 }
