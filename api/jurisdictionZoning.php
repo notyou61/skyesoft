@@ -75,19 +75,27 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     // Error logging for debugging
     $logDir = __DIR__ . "/../assets/logs";
     if (!is_dir($logDir)) {
-        mkdir($logDir, 0775, true); // try 0775 for GoDaddy shared hosting
+        mkdir($logDir, 0775, true); // GoDaddy shared hosting often needs 0775
     }
     $debugFile = $logDir . "/zoning_debug.log";
 
-    $logMsg = "Phoenix zoning debug: ";
-    if (isset($attrs) && !empty($attrs)) {
-        $logMsg .= json_encode($attrs);
+    $logMsg = "Phoenix zoning debug:\n";
+    $logMsg .= "URL: " . $url . "\n";
+
+    if ($resp !== false) {
+        $logMsg .= "RAW RESPONSE: " . substr($resp, 0, 5000) . "\n"; // capture first 5k chars
     } else {
-        $logMsg .= "NO ATTRS RETURNED";
+        $logMsg .= "RAW RESPONSE: (no response)\n";
+    }
+
+    if (isset($attrs) && !empty($attrs)) {
+        $logMsg .= "ATTRS: " . json_encode($attrs) . "\n";
+    } else {
+        $logMsg .= "ATTRS: NONE\n";
     }
 
     // Force write and flush
-    file_put_contents($debugFile, $logMsg . "\n", FILE_APPEND | LOCK_EX);
+    file_put_contents($debugFile, $logMsg . "\n---\n", FILE_APPEND | LOCK_EX);
 
     // If we reach here, no zoning found
     return "UNKNOWN";
