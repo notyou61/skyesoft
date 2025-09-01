@@ -12,6 +12,9 @@ Thumbs.db
 ##############################
 logs/
 *.log
+# Allow assets/logs/ folder but ignore its log files
+assets/logs/*
+!assets/logs/.gitkeep
 
 ##############################
 # Environment & secrets
@@ -53,3 +56,7 @@ composer.lock
 # Platform-specific
 ##############################
 .netlify
+
+# Debug logs exception
+assets/logs/*
+\!assets/logs/.gitkeep
