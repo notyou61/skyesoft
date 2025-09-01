@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/jurisdictionZoning.php
-// Provides jurisdiction-specific zoning lookups. 
+// Provides jurisdiction-specific zoning lookups.
 // Always returns zoning string, "UNKNOWN" if lookup fails, or null if unsupported.
 
 function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometry = null) {
@@ -20,17 +20,17 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     // 🔹 Step 1: Projection if required
     if (!empty($apiConfig['requiresProjection']) && $lat !== null && $lon !== null) {
-        // Use ESRI sample GeometryServer (works for all jurisdictions needing reprojection)
+        // Use ESRI GeometryServer (works for all jurisdictions needing reprojection)
         $projUrl = "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
-        $params = http_build_query([
+        $params = http_build_query(array(
             "f" => "json",
             "inSR" => 4326,
             "outSR" => $apiConfig['projectionTarget'],
             "geometryType" => "esriGeometryPoint",
-            "geometries" => json_encode([
-                ["x" => $lon, "y" => $lat]
-            ])
-        ]);
+            "geometries" => json_encode(array(
+                array("x" => $lon, "y" => $lat)
+            ))
+        ));
         $projResp = @file_get_contents($projUrl . "?" . $params);
         if ($projResp !== false) {
             $projData = json_decode($projResp, true);
@@ -45,11 +45,11 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     if (strtoupper($jurisdiction) === "PHOENIX") {
         // Phoenix is always 4326, point queries only
         if ($lat !== null && $lon !== null) {
-            $geom = json_encode([
+            $geom = json_encode(array(
                 "x" => $lon,
                 "y" => $lat,
-                "spatialReference" => ["wkid" => 4326]
-            ]);
+                "spatialReference" => array("wkid" => 4326)
+            ));
             $url = $endpoint . "?f=json"
                  . "&geometry=" . urlencode($geom)
                  . "&geometryType=esriGeometryPoint"
@@ -75,11 +75,11 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     }
     elseif ($lat !== null && $lon !== null && in_array('point', $apiConfig['modes'])) {
         // Generic point query (Mesa, Gilbert, Scottsdale, etc.)
-        $geom = json_encode([
+        $geom = json_encode(array(
             "x" => $lon,
             "y" => $lat,
-            "spatialReference" => ["wkid" => $apiConfig['srid']]
-        ]);
+            "spatialReference" => array("wkid" => $apiConfig['srid'])
+        ));
         $url = $endpoint . "?f=json"
              . "&geometry=" . urlencode($geom)
              . "&geometryType=esriGeometryPoint"
@@ -98,15 +98,16 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         if (!empty($data['features'][0]['attributes'])) {
             $attrs  = $data['features'][0]['attributes'];
             $fields = $apiConfig['responseFields'];
-            $primary   = $fields['primary']   ?? null;
-            $secondary = $fields['secondary'] ?? null;
-            $tertiary  = $fields['tertiary']  ?? null;
 
-            $pVal = isset($attrs[$primary])   ? trim($attrs[$primary])   : "";
-            $sVal = isset($attrs[$secondary]) ? trim($attrs[$secondary]) : "";
-            $tVal = isset($attrs[$tertiary])  ? trim($attrs[$tertiary])  : "";
+            $primary   = isset($fields['primary'])   ? $fields['primary']   : null;
+            $secondary = isset($fields['secondary']) ? $fields['secondary'] : null;
+            $tertiary  = isset($fields['tertiary'])  ? $fields['tertiary']  : null;
 
-            if ($pVal && $sVal) return "$pVal ($sVal)";
+            $pVal = ($primary   && isset($attrs[$primary]))   ? trim($attrs[$primary])   : "";
+            $sVal = ($secondary && isset($attrs[$secondary])) ? trim($attrs[$secondary]) : "";
+            $tVal = ($tertiary  && isset($attrs[$tertiary]))  ? trim($attrs[$tertiary])  : "";
+
+            if ($pVal && $sVal) return $pVal . " (" . $sVal . ")";
             if ($pVal) return $pVal;
             if ($sVal) return $sVal;
             if ($tVal) return $tVal;
@@ -123,7 +124,7 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
     $logMsg  = strtoupper($jurisdiction) . " zoning debug:\n";
     $logMsg .= "Original coords (4326): $origLon, $origLat\n";
     $logMsg .= "Projected coords (" . $apiConfig['srid'] . "): $lon, $lat\n";
-    $logMsg .= "URL: " . $url . "\n";
+    $logMsg .= "URL: " . (isset($url) ? $url : "N/A") . "\n";
     if ($resp !== false) {
         $logMsg .= "RAW RESPONSE: " . substr($resp, 0, 5000) . "\n";
     } else {
