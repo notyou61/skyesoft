@@ -33,12 +33,27 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
         $projResp = @file_get_contents($projUrl . "?" . $params);
         if ($projResp !== false) {
             $projData = json_decode($projResp, true);
-            if (!empty($projData['geometries'][0]['x'])) {
-                $lon = $projData['geometries'][0]['x'];
-                $lat = $projData['geometries'][0]['y'];
+
+            // Debug projection response
+            file_put_contents(
+                __DIR__ . "/../assets/logs/zoning_debug.log",
+                "Mesa projection raw: " . $projResp . "\n---\n",
+                FILE_APPEND | LOCK_EX
+            );
+
+            if (!empty($projData['geometries'])) {
+                // If geometries is nested
+                if (isset($projData['geometries'][0]['x'])) {
+                    $lon = $projData['geometries'][0]['x'];
+                    $lat = $projData['geometries'][0]['y'];
+                } elseif (isset($projData['geometries']['geometries'][0]['x'])) {
+                    $lon = $projData['geometries']['geometries'][0]['x'];
+                    $lat = $projData['geometries']['geometries'][0]['y'];
+                }
             }
         }
     }
+
 
     // Phoenix special case
     if (strtoupper($jurisdiction) === "PHOENIX") {
