@@ -20,17 +20,21 @@ function getJurisdictionZoning($jurisdiction, $lat = null, $lon = null, $geometr
 
     // Handle projection if required
     if (!empty($apiConfig['requiresProjection']) && $lat !== null && $lon !== null) {
+        // Project from WGS84 (4326) to target SRID
         $projUrl = "https://gis.mesaaz.gov/arcgis/rest/services/Utilities/Geometry/GeometryServer/project";
+        // Parameters
         $params = http_build_query([
             "f" => "json",
             "inSR" => 4326,
             "outSR" => $apiConfig['projectionTarget'],
             "geometryType" => "esriGeometryPoint",
-            "geometries" => json_encode([
-                "geometries" => [["x" => $lon, "y" => $lat]]
+            "geometries" => json_encode(
+                ["x" => $lon, "y" => $lat]
             ])
         ]);
+        // Execute projection request
         $projResp = @file_get_contents($projUrl . "?" . $params);
+        // Handle response
         if ($projResp !== false) {
             $projData = json_decode($projResp, true);
 
