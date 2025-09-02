@@ -195,15 +195,16 @@ PROMPT;
 $streamMap = array(
     'time'          => 'timeDateArray.currentLocalTime',
     'date'          => 'timeDateArray.currentDate',
-    'weather'       => 'weather.current',
-    'forecast'      => 'weather.current',  // handles "forecast"
-    'kpis'          => 'KPIs',             // handles "KPIs"
-    'orders'        => 'KPIs.orders',
-    'contacts'      => 'KPIs.contacts',
-    'approvals'     => 'KPIs.approvals',
+    'weather'       => 'weatherData.description',
+    'temp'          => 'weatherData.temp',
+    'forecast'      => 'weatherData.forecast',   // special handling for array
+    'kpis'          => 'kpiData',
+    'orders'        => 'kpiData.orders',
+    'contacts'      => 'kpiData.contacts',
+    'approvals'     => 'kpiData.approvals',
     'announcements' => 'announcements',
-    'announcement'  => 'announcements',    // singular
-    'bulletin'      => 'announcements'     // synonym
+    'announcement'  => 'announcements',
+    'bulletin'      => 'announcements'
 );
 
 /**
@@ -232,9 +233,7 @@ function queryMatchesStream($prompt, $dynamicData) {
 
 /**
  * Handle stream-based queries (time, date, weather, KPIs, announcements)
- * @param string $prompt
- * @param array $dynamicData
- * @return bool
+ * Returns true if handled (and exits), false otherwise for fallback to general AI
  */
 function handleStreamQuery($prompt, $dynamicData) {
     global $streamMap;
@@ -245,25 +244,55 @@ function handleStreamQuery($prompt, $dynamicData) {
             $pathParts = explode('.', $path);
             $current = $dynamicData;
             foreach ($pathParts as $part) {
-                if (!isset($current[$part])) continue 2;
+                if (!isset($current[$part])) {
+                    $current = null;
+                    break;
+                }
                 $current = $current[$part];
             }
+
             if ($current !== null) {
-                if (in_array($keyword, array('announcements','announcement','bulletin')) && is_array($current)) {
-                    $titles = array();
-                    foreach ($current as $a) {
-                        if (isset($a['title'])) {
-                            $titles[] = $a['title'] . (!empty($a['description']) ? " – ".$a['description'] : "");
+                // --- Special handlers ---
+                if (in_array($keyword, array('announcements','announcement','bulletin'))) {
+                    if (is_array($current)) {
+                        $titles = array();
+                        foreach ($current as $a) {
+                            if (isset($a['title'])) {
+                                $line = $a['title'];
+                                if (!empty($a['description'])) {
+                                    $line .= " – " . $a['description'];
+                                }
+                                $titles[] = $line;
+                            }
                         }
+                        $response = "Announcements: " . implode("; ", $titles);
+                    } else {
+                        $response = "⚠️ No announcements available.";
                     }
-                    $response = "Announcements: " . implode("; ", $titles);
-                } elseif ($keyword === 'kpis' && is_array($current)) {
-                    $response = "KPIs — Orders: ".(isset($current['orders']) ? $current['orders'] : 'N/A')
-                              . ", Contacts: ".(isset($current['contacts']) ? $current['contacts'] : 'N/A')
-                              . ", Approvals: ".(isset($current['approvals']) ? $current['approvals'] : 'N/A');
-                } else {
+                }
+                elseif ($keyword === 'forecast' && is_array($current)) {
+                    $days = array();
+                    foreach ($current as $f) {
+                        $days[] = $f['date'] . " (" . $f['description'] .
+                                  ", High " . $f['high'] . "°F / Low " . $f['low'] . "°F)";
+                    }
+                    $response = "Forecast: " . implode("; ", $days);
+                }
+                elseif ($keyword === 'temp') {
+                    $response = "Temperature: " . $current . "°F";
+                }
+                elseif ($keyword === 'kpis' && is_array($current)) {
+                    $response = "KPIs — Orders: " . (isset($current['orders']) ? $current['orders'] : 'N/A') .
+                                ", Contacts: " . (isset($current['contacts']) ? $current['contacts'] : 'N/A') .
+                                ", Approvals: " . (isset($current['approvals']) ? $current['approvals'] : 'N/A');
+                }
+                elseif (in_array($keyword, array('orders','contacts','approvals'))) {
+                    $response = ucfirst($keyword) . ": " . $current;
+                }
+                else {
                     $response = ucfirst($keyword) . ": " . (is_array($current) ? json_encode($current) : $current);
                 }
+
                 sendJsonResponse($response, "chat", array("sessionId" => session_id()));
                 exit;
             }
@@ -271,6 +300,7 @@ function handleStreamQuery($prompt, $dynamicData) {
     }
     return false; // fallback to AI
 }
+
 #endregion
 
 #region 🎯 Routing Layer
