@@ -210,27 +210,49 @@ if (!$handled && (
 
 // --- Report Requests ---
 if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
-    handleReportRequest($lowerPrompt, json_decode($reportTypesBlock, true), $conversation);
+    $reportTypesDecoded = json_decode($reportTypesBlock, true);
+
+    if (is_array($reportTypesDecoded)) {
+        // Check if prompt contains both street number and 5-digit ZIP
+        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
+            // Run actual report pipeline
+            handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
+        } else {
+            // Return Codex Report explanation instead of failing
+            $response = array(
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => "Codex Report",
+                "response"   => "ℹ️ Codex information about requested report type.",
+                "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
+            );
+            sendJsonResponse($response, "report", array("sessionId" => session_id()));
+            exit;
+        }
+    } else {
+        sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
+    }
+
     $handled = true;
 }
 
 // --- Default: General AI ---
 if (!$handled) {
-    $messages = [["role" => "system", "content" => $systemPrompt]];
+    $messages = array(array("role" => "system", "content" => $systemPrompt));
     if (!empty($conversation)) {
         $history = array_slice($conversation, -2);
         foreach ($history as $entry) {
-            if (isset($entry["role"], $entry["content"])) {
-                $messages[] = ["role" => $entry["role"], "content" => $entry["content"]];
+            if (isset($entry["role"]) && isset($entry["content"])) {
+                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
             }
         }
     }
-    $messages[] = ["role" => "user", "content" => $prompt];
+    $messages[] = array("role" => "user", "content" => $prompt);
     $aiResponse = callOpenAi($messages);
     if (is_string($aiResponse) && trim($aiResponse) !== '') {
         $aiResponse .= " ⁂";
     }
-    sendJsonResponse($aiResponse, "chat", ["sessionId" => session_id()]);
+    sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
     exit;
 }
 #endregion
