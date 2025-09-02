@@ -379,6 +379,13 @@
               "disclaimer": "⚠️ Scottsdale zoning service unavailable — verify directly with jurisdiction."
             }
           },
+          "lifecycle": [
+            "askOpenAI.php parses user intent and classifies request as Zoning Report",
+            "zoning.php orchestrates: geocode address, lookup parcels, prepare inputs",
+            "jurisdictionZoning.php performs ArcGIS/Assessor zoning lookup",
+            "zoning.php merges address-level and parcel-level zoningCodes, applies disclaimers",
+            "Final JSON returned to user via askOpenAI.php"
+          ],
           "status": "🟢 live"
         },
         "Sign Ordinance Report": {
