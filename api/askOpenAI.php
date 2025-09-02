@@ -180,7 +180,165 @@ $reportTypesBlock
 PROMPT;
 #endregion
 
+#region 🛠 Stream Query Helpers (must come before Routing Layer)
+
+// Define stream mapping (centralized for DRY and scalability)
+$streamMap = array(
+    'time'          => 'timeDateArray.currentLocalTime',
+    'date'          => 'timeDateArray.currentDate',
+    'weather'       => 'weather.current',
+    'forecast'      => 'weather.current',  // handles "forecast"
+    'kpis'          => 'KPIs',             // handles "KPIs"
+    'orders'        => 'KPIs.orders',
+    'contacts'      => 'KPIs.contacts',
+    'approvals'     => 'KPIs.approvals',
+    'announcements' => 'announcements',
+    'announcement'  => 'announcements',    // singular
+    'bulletin'      => 'announcements'     // synonym
+);
+
+/**
+ * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
+ * @param string $prompt
+ * @param array $dynamicData
+ * @return bool
+ */
+function queryMatchesStream($prompt, $dynamicData) {
+    global $streamMap;
+    $lowerPrompt = strtolower($prompt);
+
+    foreach ($streamMap as $keyword => $path) {
+        if (strpos($lowerPrompt, $keyword) !== false) {
+            $pathParts = explode('.', $path);
+            $current = $dynamicData;
+            foreach ($pathParts as $part) {
+                if (!isset($current[$part])) continue 2;
+                $current = $current[$part];
+            }
+            if ($current !== null) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Handle stream-based queries (time, date, weather, KPIs, announcements)
+ * @param string $prompt
+ * @param array $dynamicData
+ * @return bool
+ */
+function handleStreamQuery($prompt, $dynamicData) {
+    global $streamMap;
+    $p = strtolower($prompt);
+
+    foreach ($streamMap as $keyword => $path) {
+        if (strpos($p, $keyword) !== false) {
+            $pathParts = explode('.', $path);
+            $current = $dynamicData;
+            foreach ($pathParts as $part) {
+                if (!isset($current[$part])) continue 2;
+                $current = $current[$part];
+            }
+            if ($current !== null) {
+                if (in_array($keyword, array('announcements','announcement','bulletin')) && is_array($current)) {
+                    $titles = array();
+                    foreach ($current as $a) {
+                        if (isset($a['title'])) {
+                            $titles[] = $a['title'] . (!empty($a['description']) ? " – ".$a['description'] : "");
+                        }
+                    }
+                    $response = "Announcements: " . implode("; ", $titles);
+                } elseif ($keyword === 'kpis' && is_array($current)) {
+                    $response = "KPIs — Orders: ".(isset($current['orders']) ? $current['orders'] : 'N/A')
+                              . ", Contacts: ".(isset($current['contacts']) ? $current['contacts'] : 'N/A')
+                              . ", Approvals: ".(isset($current['approvals']) ? $current['approvals'] : 'N/A');
+                } else {
+                    $response = ucfirst($keyword) . ": " . (is_array($current) ? json_encode($current) : $current);
+                }
+                sendJsonResponse($response, "chat", array("sessionId" => session_id()));
+                exit;
+            }
+        }
+    }
+    return false; // fallback to AI
+}
+#endregion
+
 #region 🎯 Routing Layer
+$handled = false;
+
+// --- Quick Agentic Actions (logout, login) ---
+if (!$handled && (
+    preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit)\b/i', $lowerPrompt) ||
+    preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)
+)) {
+    handleQuickAction($lowerPrompt);
+    $handled = true;
+}
+
+// --- Stream Queries (time, date, weather, KPIs, announcements) ---
+if (!$handled && queryMatchesStream($lowerPrompt, $dynamicData)) {
+    $handled = handleStreamQuery($lowerPrompt, $dynamicData);
+}
+
+// --- Codex Commands (glossary, modules, constitution, etc.) ---
+if (!$handled && (
+    preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt) ||
+    preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt) ||
+    preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)
+)) {
+    handleCodexCommand($lowerPrompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock);
+    $handled = true;
+}
+
+// --- Report Requests ---
+if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
+    $reportTypesDecoded = json_decode($reportTypesBlock, true);
+
+    if (is_array($reportTypesDecoded)) {
+        // Check if prompt contains both street number and 5-digit ZIP
+        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
+            // Run actual report pipeline
+            handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
+        } else {
+            // Return Codex Report explanation instead of failing
+            $response = array(
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => "Codex Report",
+                "response"   => "ℹ️ Codex information about requested report type.",
+                "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
+            );
+            sendJsonResponse($response, "report", array("sessionId" => session_id()));
+            exit;
+        }
+    } else {
+        sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
+    }
+
+    $handled = true;
+}
+
+// --- Default: General AI ---
+if (!$handled) {
+    $messages = array(array("role" => "system", "content" => $systemPrompt));
+    if (!empty($conversation)) {
+        $history = array_slice($conversation, -2);
+        foreach ($history as $entry) {
+            if (isset($entry["role"]) && isset($entry["content"])) {
+                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
+            }
+        }
+    }
+    $messages[] = array("role" => "user", "content" => $prompt);
+    $aiResponse = callOpenAi($messages);
+    if (is_string($aiResponse) && trim($aiResponse) !== '') {
+        $aiResponse .= " ⁂";
+    }
+    sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
+    exit;
+}
+
 $handled = false;
 
 // --- Quick Agentic Actions (logout, login) ---
