@@ -24,131 +24,64 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 #endregion
 
-#region 🔹 Load Codex (Skyesoft Source of Truth)
-// Codex provides glossary terms, report specs, constitution, meta info, etc.
-$codexPath = __DIR__ . "/../docs/codex/codex.json";
-$codex = json_decode(file_get_contents($codexPath), true);
-#endregion
-
-#region 🔹 Build Context Blocks for System Prompt
-
-// Glossary block → internal terms/acronyms for AI definitions
-$codexGlossaryBlock = json_encode(
-    $codex["modules"]["glossaryModule"]["contents"],
-    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-);
-
-// Other block → meta, constitution, ragExplanation, shared rules
-$codexOtherBlock = json_encode(array(
-    "meta"           => $codex["meta"],
-    "constitution"   => $codex["constitution"],
-    "ragExplanation" => $codex["ragExplanation"],
-    "shared"         => $codex["shared"]
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-// Report types block → zoning, ordinance, survey, custom (used for CRUD + Report JSON)
-$reportTypesBlock = json_encode(
-    $codex["modules"]["reportGenerationSuite"]["reportTypesSpec"],
-    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-);
-
-// Snapshot block → SSE or runtime context (time, KPIs, weather, etc.)
-// Currently stubbed; replace with dynamic SSE integration later
-$snapshotSummary = json_encode(array(
-    "time"     => date("Y-m-d H:i:s"),
-    "timezone" => date_default_timezone_get()
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-#endregion
-
-#region 📦 Filter Parcels Helper
-/**
- * Filters down the parcels returned by the Assessor API to the most relevant ones.
- * 1. Normalizes the input address.
- * 2. Matches parcels with the same street number + name.
- * 3. Keeps multi-parcel sites if they share the same address.
- * 4. Falls back to nearest parcel centroid if no direct match is found.
- */
-function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
-    if (empty($parcels)) return array();
-
-    // Normalize address
-    $inputAddress = normalizeAddress($inputAddress);
-
-    // Extract street number + name from input
-    $m = array();
-    preg_match(
-        '/^([0-9]+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
-        $inputAddress,
-        $m
-    );
-    $num  = isset($m[1]) ? $m[1] : null;
-    $name = isset($m[2]) ? trim(strtoupper($m[2])) : null;
-
-    $filtered = array();
-    foreach ($parcels as $p) {
-        $situs = strtoupper(trim(isset($p["situs"]) ? $p["situs"] : ""));
-        $sm = array();
-        if (preg_match('/^([0-9]+)\s+([A-Z\s]+)/', $situs, $sm)) {
-            if ($num && $name && $sm[1] === $num && trim($sm[2]) === $name) {
-                $filtered[] = $p;
-            }
-        }
+#region 📂 Load Unified Context (DynamicData.json)
+$dynamicPath = __DIR__ . '/../data/dynamicData.json';
+$dynamicData = [];
+if (file_exists($dynamicPath)) {
+    $dynamicRaw = file_get_contents($dynamicPath);
+    $dynamicData = json_decode($dynamicRaw, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        file_put_contents(__DIR__ . '/error.log', "DynamicData JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
+        $dynamicData = [];
     }
-
-    // Fallback: centroid-based proximity (<= 5m)
-    if (empty($filtered) && $latitude && $longitude) {
-        $closest = null; $min = PHP_INT_MAX;
-        foreach ($parcels as $p) {
-            if (isset($p["geometry"]["coordinates"]["rings"][0])) {
-                $coords = $p["geometry"]["coordinates"]["rings"][0];
-                $sumLat = 0; $sumLon = 0; $count = count($coords);
-                foreach ($coords as $pt) {
-                    $sumLon += $pt[0]; $sumLat += $pt[1];
-                }
-                if ($count > 0) {
-                    $cLon = $sumLon / $count;
-                    $cLat = $sumLat / $count;
-                    $dLat = deg2rad($cLat - $latitude);
-                    $dLon = deg2rad($cLon - $longitude);
-                    $a = sin($dLat/2)*sin($dLat/2) +
-                         cos(deg2rad($latitude)) * cos(deg2rad($cLat)) *
-                         sin($dLon/2)*sin($dLon/2);
-                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-                    $dist = 6371000 * $c;
-                    if ($dist < $min && $dist <= 5) {
-                        $min = $dist;
-                        $closest = $p;
-                    }
-                }
-            }
-        }
-        if ($closest) $filtered = array($closest);
-    }
-
-    return $filtered;
 }
+#endregion
+
+#region 📚 Build Context Blocks
+
+// Glossary block
+if (!empty($dynamicData['modules']['glossaryModule']['contents'])) {
+    $codexGlossaryBlock = json_encode(
+        $dynamicData['modules']['glossaryModule']['contents'],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
+} else {
+    $codexGlossaryBlock = "No glossary data available.\n";
+}
+
+// Other block (meta, constitution, ragExplanation, shared)
+$codexOtherBlock = json_encode(array(
+    "meta"           => isset($dynamicData['meta']) ? $dynamicData['meta'] : array(),
+    "constitution"   => isset($dynamicData['constitution']) ? $dynamicData['constitution'] : array(),
+    "ragExplanation" => isset($dynamicData['ragExplanation']) ? $dynamicData['ragExplanation'] : array(),
+    "shared"         => isset($dynamicData['shared']) ? $dynamicData['shared'] : array()
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+// Report types block
+if (!empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])) {
+    $reportTypesBlock = json_encode(
+        $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
+} else {
+    $reportTypesBlock = "No report types data available.\n";
+}
+
+// Snapshot block (time, date, weather, KPIs, announcements)
+$snapshotSummary = json_encode(array(
+    "time"          => isset($dynamicData['timeDateArray']['currentLocalTime']) ? $dynamicData['timeDateArray']['currentLocalTime'] : null,
+    "date"          => isset($dynamicData['timeDateArray']['currentDate']) ? $dynamicData['timeDateArray']['currentDate'] : null,
+    "weather"       => isset($dynamicData['weather']['current']) ? $dynamicData['weather']['current'] : null,
+    "KPIs"          => isset($dynamicData['KPIs']) ? $dynamicData['KPIs'] : null,
+    "announcements" => isset($dynamicData['announcements']) ? $dynamicData['announcements'] : null
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
-// Read and decode input once
+// Read and decode input
 $data = json_decode(file_get_contents("php://input"), true);
-
-// Start session only if not already active
-if (session_status() === PHP_SESSION_NONE) {
-    @session_start(); // @ suppresses "already started" notice
-}
-if ($data === false) {
-    echo json_encode([
-        "response"  => "❌ Failed to read input stream.",
-        "action"    => "none",
-        "sessionId" => session_id()
-    ], JSON_PRETTY_PRINT);
-    exit;
-}
-// Handle invalid JSON early
-if ($data === null) {
+if ($data === null || $data === false) {
     echo json_encode([
         "response"  => "❌ Invalid or empty JSON payload.",
         "action"    => "none",
@@ -157,16 +90,20 @@ if ($data === null) {
     exit;
 }
 
-// Load jurisdiction zoning lookup helper
-include_once __DIR__ . "/jurisdictionZoning.php";
+// Extract input fields
+$prompt = isset($data["prompt"]) 
+    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT))) 
+    : "";
+$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : [];
+$lowerPrompt = strtolower($prompt);
+
+if (empty($prompt)) {
+    sendJsonResponse("❌ Empty prompt.", "none", ["sessionId" => session_id()]);
+    exit;
+}
 #endregion
 
 #region 🛡️ Headers and Setup
-require_once __DIR__ . '/env_boot.php';
-header("Content-Type: application/json");
-date_default_timezone_set("America/Phoenix");
-
-// Load API key
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
     sendJsonResponse("❌ API key not found.", "none", ["sessionId" => session_id()]);
@@ -174,340 +111,71 @@ if (!$apiKey) {
 }
 #endregion
 
-#region 📨 Parse Input
-// Use $data from bootstrap region
-$prompt = isset($data["prompt"]) 
-    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT))) 
-    : "";
-$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : [];
-$sseSnapshot = isset($data["sseSnapshot"]) && is_array($data["sseSnapshot"]) ? $data["sseSnapshot"] : [];
-
-if (empty($prompt)) {
-    sendJsonResponse("❌ Empty prompt.", "none", ["sessionId" => session_id()]);
-    exit;
-}
-
-$lowerPrompt = strtolower($prompt);
-#endregion
-
-#region 📂 Load Codex and SSE Data
-$codexPath = __DIR__ . '/../docs/codex/codex.json';
-$codexData = [];
-if (file_exists($codexPath)) {
-    $codexRaw = file_get_contents($codexPath);
-    $codexData = json_decode($codexRaw, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        file_put_contents(__DIR__ . '/error.log', "Codex JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
-        $codexData = [];
-    }
-}
-$sseRaw = @file_get_contents('https://www.skyelighting.com/skyesoft/api/getDynamicData.php');
-$sseData = $sseRaw ? json_decode($sseRaw, true) : [];
-if (json_last_error() !== JSON_ERROR_NONE) {
-    file_put_contents(__DIR__ . '/error.log', "SSE JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
-    $sseData = [];
-}
-$skyebotSOT = ['codex' => $codexData, 'sse' => $sseData, 'other' => []];
-file_put_contents(__DIR__ . '/debug-skyebotSOT.log', print_r($skyebotSOT, true));
-#endregion
-
-#region 📚 Build Codex Data
-// Initialize variables as empty strings to ensure type safety
-$codexGlossaryBlock = '';
-$codexOtherBlock = '';
-$codexGlossary = [];
-$codexGlossaryAssoc = [];
-$codexTerms = [];
-$codexOtherTerms = [];
-
-if (isset($codexData['modules']['glossaryModule']['contents']) && is_array($codexData['modules']['glossaryModule']['contents'])) {
-    $codexGlossary = $codexData['modules']['glossaryModule']['contents'];
-}
-if (isset($codexData['glossary']) && is_array($codexData['glossary'])) {
-    $codexGlossaryAssoc = $codexData['glossary'];
-}
-
-if (!empty($codexGlossary)) {
-    foreach ($codexGlossary as $termDef) {
-        if (!is_string($termDef)) continue; // Skip non-string entries
-        if (strpos($termDef, '—') !== false) {
-            list($term, $def) = explode('—', $termDef, 2);
-            $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
-            $codexTerms[] = trim($def);
-            $codexTerms[] = trim($term) . ": " . trim($def);
-        } else {
-            $codexGlossaryBlock .= $termDef . "\n";
-            $codexTerms[] = trim($termDef);
-        }
-    }
-}
-if (!empty($codexGlossaryAssoc)) {
-    foreach ($codexGlossaryAssoc as $term => $def) {
-        if (!is_string($term) || !is_string($def)) continue; // Ensure string types
-        $codexGlossaryBlock .= trim($term) . ": " . trim($def) . "\n";
-        $codexTerms[] = trim($def);
-        $codexTerms[] = trim($term) . ": " . trim($def);
-    }
-}
-if (empty($codexGlossaryBlock)) {
-    $codexGlossaryBlock = "No glossary data available.\n";
-}
-
-$modulesArr = [];
-$state = null; // Ensure $state is defined before use later
-if (isset($codexData['readme']['modules']) && is_array($codexData['readme']['modules'])) {
-    foreach ($codexData['readme']['modules'] as $mod) {
-        if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
-            $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
-        }
-    }
-}
-
-if (isset($codexData['version']['number']) && is_string($codexData['version']['number'])) {
-    $codexOtherBlock .= "Codex Version: " . $codexData['version']['number'] . "\n";
-    $codexOtherTerms[] = $codexData['version']['number'];
-    $codexOtherTerms[] = "Codex Version: " . $codexData['version']['number'];
-}
-if (isset($codexData['changelog'][0]['description']) && is_string($codexData['changelog'][0]['description'])) {
-    $codexOtherBlock .= "Latest Changelog: " . $codexData['changelog'][0]['description'] . "\n";
-    $codexOtherTerms[] = $codexData['changelog'][0]['description'];
-    $codexOtherTerms[] = "Latest Changelog: " . $codexData['changelog'][0]['description'];
-}
-if (isset($codexData['readme']['title']) && is_string($codexData['readme']['title'])) {
-    $codexOtherBlock .= "Readme Title: " . $codexData['readme']['title'] . "\n";
-    $codexOtherTerms[] = $codexData['readme']['title'];
-    $codexOtherTerms[] = "Readme Title: " . $codexData['readme']['title'];
-}
-if (isset($codexData['readme']['vision']) && is_string($codexData['readme']['vision'])) {
-    $codexOtherBlock .= "Vision: " . $codexData['readme']['vision'] . "\n";
-    $codexOtherTerms[] = $codexData['readme']['vision'];
-    $codexOtherTerms[] = "Vision: " . $codexData['readme']['vision'];
-}
-if ($modulesArr) {
-    $modBlock = implode("\n", $modulesArr);
-    $codexOtherBlock .= "Modules:\n" . $modBlock . "\n";
-    $codexOtherTerms = array_merge($codexOtherTerms, $modulesArr);
-}
-if (isset($codexData['meta']['description']) && is_string($codexData['meta']['description'])) {
-    $codexOtherBlock .= "Meta: " . $codexData['meta']['description'] . "\n";
-    $codexOtherTerms[] = $codexData['meta']['description'];
-    $codexOtherTerms[] = "Meta: " . $codexData['meta']['description'];
-}
-if (isset($codexData['constitution']['description']) && is_string($codexData['constitution']['description'])) {
-    $codexOtherBlock .= "Skyesoft Constitution: " . $codexData['constitution']['description'] . "\n";
-    $codexOtherTerms[] = $codexData['constitution']['description'];
-    $codexOtherTerms[] = "Skyesoft Constitution: " . $codexData['constitution']['description'];
-}
-if (isset($codexData['ragExplanation']['summary']) && is_string($codexData['ragExplanation']['summary'])) {
-    $codexOtherBlock .= "RAG Explanation: " . $codexData['ragExplanation']['summary'] . "\n";
-    $codexOtherTerms[] = $codexData['ragExplanation']['summary'];
-    $codexOtherTerms[] = "RAG Explanation: " . $codexData['ragExplanation']['summary'];
-}
-if (isset($codexData['includedDocuments']['summary']) && is_string($codexData['includedDocuments']['summary'])) {
-    $codexOtherBlock .= "Included Documents: " . $codexData['includedDocuments']['summary'] . "\n";
-    $codexOtherTerms[] = $codexData['includedDocuments']['summary'];
-    $codexOtherTerms[] = "Included Documents: " . $codexData['includedDocuments']['summary'];
-    if (isset($codexData['includedDocuments']['documents']) && is_array($codexData['includedDocuments']['documents'])) {
-        $docList = implode(", ", array_filter($codexData['includedDocuments']['documents'], 'is_string'));
-        $codexOtherBlock .= "Documents: " . $docList . "\n";
-        $codexOtherTerms[] = $docList;
-        $codexOtherTerms[] = "Documents: " . $docList;
-    }
-}
-if (isset($codexData['shared']['sourcesOfTruth']) && is_array($codexData['shared']['sourcesOfTruth'])) {
-    $sotList = implode("; ", array_filter($codexData['shared']['sourcesOfTruth'], 'is_string'));
-    $codexOtherBlock .= "Sources of Truth: " . $sotList . "\n";
-    $codexOtherTerms[] = $sotList;
-    $codexOtherTerms[] = "Sources of Truth: " . $sotList;
-}
-if (isset($codexData['shared']['aiBehaviorRules']) && is_array($codexData['shared']['aiBehaviorRules'])) {
-    $ruleList = implode(" | ", array_filter($codexData['shared']['aiBehaviorRules'], 'is_string'));
-    $codexOtherBlock .= "AI Behavior Rules: " . $ruleList . "\n";
-    $codexOtherTerms[] = $ruleList;
-    $codexOtherTerms[] = "AI Behavior Rules: " . $ruleList;
-}
-if (empty($codexOtherBlock)) {
-    $codexOtherBlock = "No additional codex data available.\n";
-}
-#endregion
-
-#region 📊 Build SSE Snapshot Summary
-$snapshotSummary = '';
-$sseValues = [];
-function flattenSse($arr, &$summary, &$values, $prefix = "") {
-    foreach ($arr as $k => $v) {
-        $key = $prefix ? "$prefix.$k" : $k;
-        if (is_array($v)) {
-            if (array_keys($v) === range(0, count($v) - 1)) {
-                foreach ($v as $i => $entry) {
-                    if (is_array($entry)) {
-                        $title = isset($entry['title']) && is_string($entry['title']) ? $entry['title'] : '';
-                        $desc = isset($entry['description']) && is_string($entry['description']) ? $entry['description'] : '';
-                        $summary .= "$key[$i]: $title $desc\n";
-                        $values[] = trim("$title $desc");
-                    } else {
-                        if (is_string($entry)) {
-                            $summary .= "$key[$i]: $entry\n";
-                            $values[] = $entry;
-                        }
-                    }
-                }
-            } else {
-                flattenSse($v, $summary, $values, $key);
-            }
-        } else {
-            if (is_string($v)) {
-                $summary .= "$key: $v\n";
-                $values[] = $v;
-            }
-        }
-    }
-}
-if (is_array($sseSnapshot) && !empty($sseSnapshot)) {
-    flattenSse($sseSnapshot, $snapshotSummary, $sseValues);
-}
-if (empty($snapshotSummary)) {
-    $snapshotSummary = "No SSE snapshot data available.\n";
-}
-#endregion
-
-#region 📝 Build System Prompt and Report Types
-$reportTypesPath = '/home/notyou64/public_html/data/report_types.json';
-if (!file_exists($reportTypesPath) || !is_readable($reportTypesPath)) {
-    sendJsonResponse(
-        "❌ Missing or unreadable report_types.json",
-        "none",
-        ["sessionId" => session_id(), "error" => "Missing or unreadable report_types.json", "path" => $reportTypesPath]
-    );
-    exit;
-}
-
-$reportTypesJson = file_get_contents($reportTypesPath);
-if ($reportTypesJson === false) {
-    sendJsonResponse(
-        "❌ Unable to read report_types.json",
-        "none",
-        ["sessionId" => session_id(), "error" => "Unable to read report_types.json", "path" => $reportTypesPath]
-    );
-    exit;
-}
-
-$reportTypes = json_decode($reportTypesJson, true);
-if (!is_array($reportTypes)) {
-    sendJsonResponse(
-        "❌ Failed to parse report_types.json",
-        "none",
-        ["sessionId" => session_id(), "error" => "JSON decode failed", "path" => $reportTypesPath]
-    );
-    exit;
-}
-
-$reportTypesBlock = json_encode($reportTypes, JSON_UNESCAPED_SLASHES);
-if (!is_string($reportTypesBlock)) {
-    $reportTypesBlock = "No report types data available.\n";
-}
-
-$actionTypesArray = [
-    "Create"  => ["Contact", "Order", "Application", "Location", "Login", "Logout", "Report"],
-    "Read"    => ["Contact", "Order", "Application", "Location", "Report"],
-    "Update"  => ["Contact", "Order", "Application", "Location", "Report"],
-    "Delete"  => ["Contact", "Order", "Application", "Location", "Report"],
-    "Clarify" => ["Options"]
-];
-
-// 🧐 Glossary filter: only inject term if user asked "What is …"
-$glossaryTerm = null;
-if (preg_match('/\bwhat is\s+([a-z0-9\-]+)\??/i', strtolower($prompt), $matches)) {
-    $glossaryTerm = strtoupper($matches[1]);
-}
-
-// If glossary filter is triggered
-if ($glossaryTerm) {
-    $filteredGlossary = [];
-    $allGlossaryLines = explode("\n", $codexGlossaryBlock);
-
-    foreach ($allGlossaryLines as $line) {
-        if (stripos($line, $glossaryTerm) === 0) {
-            $filteredGlossary[] = $line;
-        }
-    }
-
-    // Only inject the requested entry
-    $codexGlossaryBlock = !empty($filteredGlossary)
-        ? implode("\n", $filteredGlossary)
-        : "$glossaryTerm: No information available\n";
-}
-
-// System prompt
+#region 📝 System Prompt
 $systemPrompt = <<<PROMPT
-You are Skyebot™, an assistant for a signage company.  
+You are Skyebot™, an assistant for a signage company.
 
 ⚠️ CRITICAL RULES:
-- For CRUD and Report actions → you must ALWAYS reply in valid JSON only.  
-- For glossary lookups, date/time queries, and KPIs → reply in natural plain text.  
-- For logout → always return JSON (never plain text).  
-- Never return markdown, code fences, or mixed formats.  
+- For CRUD and Report actions → reply in valid JSON only.
+- For glossary lookups, date/time, KPIs, weather, announcements → reply in plain text.
+- For logout → always return JSON (never plain text).
+- For general queries (outside stream/codex) → reply in natural plain text.
+- Never return markdown, code fences, or mixed formats.
 
-You have four sources of truth:  
-- codexGlossary: internal company terms/definitions  
-- codexOther: other company knowledge base items (version, modules, constitution, etc.)  
-- sseSnapshot: current operational data (date, time, weather, KPIs, etc.)  
-- reportTypes: standardized report templates  
+You have four sources of truth:
+- codexGlossary: internal company terms/definitions
+- codexOther: company knowledge (meta, constitution, etc.)
+- sseSnapshot: live operational data (time, KPIs, weather, announcements)
+- reportTypes: standardized report templates
+
+---
+## Stream vs General Queries
+- If the user asks about **time, date, weather, KPIs, announcements, glossary, or codex**:
+  → Answer ONLY using data from sseSnapshot, codexGlossary, codexOther, or reportTypes.
+  → Do not invent values.
+- If the user asks about **reports**:
+  → If all required fields are present → generate the actual report JSON.
+  → If required fields are missing → return a Codex Report JSON (explanation from reportTypes).
+- If the user asks about **anything else** (not in stream or codex):
+  → Answer naturally in plain text using general AI knowledge.
 
 ---
 ## Logout Rules
-- If the user says quit, exit, logout, log out, sign out, or end session →
-- always return this JSON object (nothing else, no text, no symbols):
-- {
--   "actionType": "Create",
--   "actionName": "Logout"
-- }
+- If the user says quit, exit, logout, log out, sign out, or end session:
+  → Return JSON: {"actionType": "Create", "actionName": "Logout"}
 
 ---
 ## CRUD + Report Rules
-When creating reports or CRUD actions, always use JSON.  
-Example Report format:
+- Report format:
 {
   "actionType": "Create",
   "actionName": "Report",
   "details": {
     "reportType": "<one of reportTypes>",
-    "title": "<auto-generate using titleTemplate + identifying field(s)>",
+    "title": "<use titleTemplate + identifying field(s)>",
     "data": {
-      // all requiredFields from report_types.json
+      // requiredFields from reportTypes
       // optionalFields if provided
-      // extra user-provided fields included as-is
+      // extra user-provided fields
     }
   }
 }
-
-- RequiredFields come from report_types.json.  
-- Project-based reports must include projectName + address.  
-- Non-project reports must use the relevant identifier (e.g., vehicleId, employeeId).  
-- Titles must follow titleTemplate from report_types.json.  
-- If projectName is missing, auto-generate as "Untitled Project – <address>".  
+- RequiredFields come from reportTypes.
+- Project-based reports need projectName + address.
+- If projectName is missing, use "Untitled Project – <address>".
+- Titles follow titleTemplate from reportTypes.
 
 ---
-## Glossary + SSE Rules
-- If the user asks "What is …", "Define …", or provides a bare term (e.g., "MTCO"):
--   → Return ONLY the definition for that exact term in plain text.
--   → Do NOT include multiple terms unless the user explicitly says 
--      "show glossary" or "list all glossary terms".
--   → Do NOT repeat the same definition twice.
--   → If a term exists in both codexGlossary and codexOther, prefer the glossary entry.
--   → If the term is not found, reply: "<term>: No information available".
+codexGlossary:
+$codexGlossaryBlock
 
----
-codexGlossary:  
-$codexGlossaryBlock  
+codexOther:
+$codexOtherBlock
 
-codexOther:  
-$codexOtherBlock  
+sseSnapshot:
+$snapshotSummary
 
-sseSnapshot:  
-$snapshotSummary  
-
-reportTypes:  
+reportTypes:
 $reportTypesBlock
 PROMPT;
 #endregion
@@ -515,22 +183,18 @@ PROMPT;
 #region 🎯 Routing Layer
 $handled = false;
 
-// --- Quick Agentic Actions ---
+// --- Quick Agentic Actions (logout, login) ---
 if (!$handled && (
-    preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b/i', $lowerPrompt) ||
-    preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt)
+    preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit)\b/i', $lowerPrompt) ||
+    preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)
 )) {
     handleQuickAction($lowerPrompt);
     $handled = true;
 }
 
-// --- SSE Direct Responses (time, date, weather) ---
-if (!$handled && (
-    preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) ||
-    preg_match('/\b(date|today.?s date|current date)\b/i', $lowerPrompt) ||
-    preg_match('/\b(weather|forecast)\b/i', $lowerPrompt)
-)) {
-    handleSseShortcut($lowerPrompt, $sseSnapshot);
+// --- Stream Queries (time, date, weather, KPIs, announcements) ---
+if (!$handled && queryMatchesStream($lowerPrompt, $dynamicData)) {
+    handleStreamQuery($lowerPrompt, $dynamicData);
     $handled = true;
 }
 
@@ -540,17 +204,17 @@ if (!$handled && (
     preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt) ||
     preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)
 )) {
-    handleCodexCommand($lowerPrompt, $codexData, $codexGlossaryBlock, $codexOtherBlock, $codexTerms, $codexOtherTerms);
+    handleCodexCommand($lowerPrompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock);
     $handled = true;
 }
 
 // --- Report Requests ---
 if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
-    handleReportRequest($lowerPrompt, $reportTypes, $conversation);
+    handleReportRequest($lowerPrompt, json_decode($reportTypesBlock, true), $conversation);
     $handled = true;
 }
 
-// --- Default: AI ---
+// --- Default: General AI ---
 if (!$handled) {
     $messages = [["role" => "system", "content" => $systemPrompt]];
     if (!empty($conversation)) {
@@ -573,6 +237,105 @@ if (!$handled) {
 
 #region 🛠 Helper Functions
 /**
+ * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
+ * @param string $prompt
+ * @param array $dynamicData
+ * @return bool
+ */
+function queryMatchesStream($prompt, $dynamicData) {
+    $lowerPrompt = strtolower($prompt);
+    return (
+        preg_match('/\b(time|current time|local time|clock|date|today.?s date|current date|weather|forecast|kpis?|orders?|approvals?|announcements?)\b/i', $lowerPrompt) &&
+        (
+            isset($dynamicData['timeDateArray']['currentLocalTime']) ||
+            isset($dynamicData['timeDateArray']['currentDate']) ||
+            isset($dynamicData['weather']['current']) ||
+            isset($dynamicData['KPIs']) ||
+            isset($dynamicData['announcements'])
+        )
+    );
+}
+
+/**
+ * Handle stream-based queries (time, date, weather, KPIs, announcements)
+ * @param string $prompt
+ * @param array $dynamicData
+ */
+function handleStreamQuery($prompt, $dynamicData) {
+    $lowerPrompt = strtolower($prompt);
+    
+    if (preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) && isset($dynamicData['timeDateArray']['currentLocalTime'])) {
+        $tz = (isset($dynamicData['timeDateArray']['timeZone']) && $dynamicData['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
+        sendJsonResponse($dynamicData['timeDateArray']['currentLocalTime'] . $tz, "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(date|today.?s date|current date)\b/i', $lowerPrompt) && isset($dynamicData['timeDateArray']['currentDate'])) {
+        sendJsonResponse($dynamicData['timeDateArray']['currentDate'], "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(weather|forecast)\b/i', $lowerPrompt) && isset($dynamicData['weather']['current']['description'])) {
+        $temp = isset($dynamicData['weather']['current']['temp']) ? $dynamicData['weather']['current']['temp'] . "°F, " : "";
+        $desc = $dynamicData['weather']['current']['description'];
+        sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(kpis?|orders?|approvals?)\b/i', $lowerPrompt) && isset($dynamicData['KPIs'])) {
+        $kpiResponse = json_encode($dynamicData['KPIs'], JSON_PRETTY_PRINT);
+        sendJsonResponse($kpiResponse, "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(announcements?)\b/i', $lowerPrompt) && isset($dynamicData['announcements'])) {
+        $announcementResponse = json_encode($dynamicData['announcements'], JSON_PRETTY_PRINT);
+        sendJsonResponse($announcementResponse, "none", ["sessionId" => session_id()]);
+    } else {
+        sendJsonResponse("No relevant stream data found.", "none", ["sessionId" => session_id()]);
+    }
+}
+
+/**
+ * Handle codex commands (glossary, modules, etc.)
+ * @param string $prompt
+ * @param array $dynamicData
+ * @param string $codexGlossaryBlock
+ * @param string $codexOtherBlock
+ */
+function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock) {
+    $lowerPrompt = strtolower($prompt);
+    
+    if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
+        $displayed = [];
+        $uniqueGlossary = "";
+        foreach (explode("\n", $codexGlossaryBlock) as $line) {
+            $key = strtolower(trim(strtok($line, ":")));
+            if ($key && !isset($displayed[$key])) {
+                $uniqueGlossary .= $line . "\n\n";
+                $displayed[$key] = true;
+            }
+        }
+        $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
+        sendJsonResponse($formattedGlossary, "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
+        $modulesArr = [];
+        if (isset($dynamicData['readme']['modules']) && is_array($dynamicData['readme']['modules'])) {
+            foreach ($dynamicData['readme']['modules'] as $mod) {
+                if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
+                    $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
+                }
+            }
+        }
+        $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
+        sendJsonResponse($modulesDisplay, "none", ["sessionId" => session_id()]);
+    } elseif (preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
+        $term = preg_match('/\bwhat is\s+([a-z0-9\-]+)\??/i', $lowerPrompt, $matches) ? strtoupper($matches[1]) : null;
+        if ($term) {
+            $filteredGlossary = [];
+            foreach (explode("\n", $codexGlossaryBlock) as $line) {
+                if (stripos($line, $term) === 0) {
+                    $filteredGlossary[] = $line;
+                }
+            }
+            $response = !empty($filteredGlossary) ? implode("\n", $filteredGlossary) : "$term: No information available";
+            sendJsonResponse($response, "none", ["sessionId" => session_id()]);
+        } else {
+            $response = $codexOtherBlock !== "" ? trim($codexOtherBlock) : "No Codex information available.";
+            sendJsonResponse($response, "none", ["sessionId" => session_id()]);
+        }
+    }
+}
+
+/**
  * Send JSON response with proper HTTP status code
  * @param string $response
  * @param string $action
@@ -589,6 +352,7 @@ function sendJsonResponse($response, $action = "none", $extra = [], $status = 20
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit;
 }
+
 /**
  * Authenticate a user (placeholder)
  * @param string $username
@@ -599,6 +363,7 @@ function authenticateUser($username, $password) {
     $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
+
 /**
  * Create a new entity (placeholder)
  * @param string $entity
@@ -609,6 +374,7 @@ function createCrudEntity($entity, $details) {
     file_put_contents(__DIR__ . "/create_$entity.log", json_encode($details) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
  * Read an entity based on criteria (placeholder)
  * @param string $entity
@@ -618,6 +384,7 @@ function createCrudEntity($entity, $details) {
 function readCrudEntity($entity, $criteria) {
     return "Sample $entity details for: " . json_encode($criteria);
 }
+
 /**
  * Update an entity (placeholder)
  * @param string $entity
@@ -628,6 +395,7 @@ function updateCrudEntity($entity, $updates) {
     file_put_contents(__DIR__ . "/update_$entity.log", json_encode($updates) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
  * Delete an entity (placeholder)
  * @param string $entity
@@ -638,19 +406,16 @@ function deleteCrudEntity($entity, $target) {
     file_put_contents(__DIR__ . "/delete_$entity.log", json_encode($target) . "\n", FILE_APPEND);
     return true;
 }
+
 /**
- * Perform logout (shared between quick action and CRUD)
+ * Perform logout
  */
 function performLogout() {
     session_unset();
     session_destroy();
     session_write_close();
-
-    // Start a new clean session ID for response
     session_start();
     $newSessionId = session_id();
-
-    // Cookie cleanup
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
         setcookie(
@@ -664,7 +429,6 @@ function performLogout() {
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-
     sendJsonResponse("You have been logged out", "none", [
         "actionType" => "Create",
         "actionName" => "Logout",
@@ -672,163 +436,80 @@ function performLogout() {
         "loggedIn" => false
     ]);
 }
+
 /**
- * Handle quick actions (AI JSON or raw text)
+ * Handle quick actions (login, logout)
+ * @param string $input
  */
 function handleQuickAction($input) {
-    $action = is_array($input) && isset($input['actionName'])
-        ? strtolower($input['actionName'])
-        : strtolower(trim($input));
-
+    $action = strtolower(trim($input));
     if (in_array($action, ['logout', 'sign out', 'signout', 'exit', 'quit'])) {
         performLogout();
         return;
     }
-    if (in_array($action, ['login', 'sign in'])) {
-        // login handler...
+    if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $action, $matches)) {
+        $username = $matches[1];
+        $password = $matches[2];
+        if (authenticateUser($username, $password)) {
+            $_SESSION['user'] = $username;
+            sendJsonResponse("Logged in as $username", "none", [
+                "actionType" => "Create",
+                "actionName" => "Login",
+                "sessionId" => session_id(),
+                "loggedIn" => true
+            ]);
+        } else {
+            sendJsonResponse("Invalid credentials", "none", ["sessionId" => session_id()]);
+        }
         return;
     }
-
     sendJsonResponse("Unknown quick action: $action", "none");
 }
+
 /**
- * Handle SSE shortcut responses (time, date, weather)
- * @param string $prompt
- * @param array $sseSnapshot
- */
-function handleSseShortcut($prompt, $sseSnapshot) {
-    $lowerPrompt = strtolower($prompt);
-    if (
-        preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) &&
-        strlen($lowerPrompt) < 40 &&
-        isset($sseSnapshot['timeDateArray']['currentLocalTime'])
-    ) {
-        $tz = (isset($sseSnapshot['timeDateArray']['timeZone']) && $sseSnapshot['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
-        sendJsonResponse($sseSnapshot['timeDateArray']['currentLocalTime'] . $tz, "none", ["sessionId" => session_id()]);
-    } elseif (
-        preg_match('/\b(date|today.?s date|current date)\b/i', $lowerPrompt) &&
-        strlen($lowerPrompt) < 40 &&
-        isset($sseSnapshot['timeDateArray']['currentDate'])
-    ) {
-        sendJsonResponse($sseSnapshot['timeDateArray']['currentDate'], "none", ["sessionId" => session_id()]);
-    } elseif (
-        preg_match('/\b(weather|forecast)\b/i', $lowerPrompt) &&
-        strlen($lowerPrompt) < 40 &&
-        isset($sseSnapshot['weatherData']['description'])
-    ) {
-        $temp = isset($sseSnapshot['weatherData']['temp']) ? $sseSnapshot['weatherData']['temp'] . "°F, " : "";
-        $desc = $sseSnapshot['weatherData']['description'];
-        sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
-    }
-}
-/**
- * Handle codex commands (glossary, modules, etc.)
- * @param string $prompt
- * @param array $codexData
- * @param string $codexGlossaryBlock
- * @param string $codexOtherBlock
- * @param array $codexTerms
- * @param array $codexOtherTerms
- */
-function handleCodexCommand($prompt, $codexData, $codexGlossaryBlock, $codexOtherBlock, $codexTerms, $codexOtherTerms) {
-    $lowerPrompt = strtolower($prompt);
-    if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
-        $displayed = [];
-        $uniqueGlossary = "";
-        foreach (explode("\n", $codexGlossaryBlock) as $line) {
-            $key = strtolower(trim(strtok($line, ":")));
-            if ($key && !isset($displayed[$key])) {
-                $uniqueGlossary .= $line . "\n\n";
-                $displayed[$key] = true;
-            }
-        }
-        $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
-        sendJsonResponse($formattedGlossary, "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
-        $modulesArr = [];
-        if (isset($codexData['readme']['modules']) && is_array($codexData['readme']['modules'])) {
-            foreach ($codexData['readme']['modules'] as $mod) {
-                if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
-                    $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
-                }
-            }
-        }
-        $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
-        sendJsonResponse($modulesDisplay, "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
-        $allValid = array_merge($codexTerms, $codexOtherTerms);
-        $isValid = false;
-        $aiResponse = "";
-        foreach ($allValid as $entry) {
-            if (stripos($lowerPrompt, strtolower(trim($entry))) !== false) {
-                $aiResponse = trim($entry);
-                $isValid = true;
-                break;
-            }
-        }
-        if (!$isValid) {
-            if (preg_match('/\b(mtco|lgbas|codex|constitution|glossary)\b/i', $lowerPrompt)) {
-                $aiResponse = $codexGlossaryBlock !== "" ? trim($codexGlossaryBlock) : "No Codex glossary available.";
-            } elseif (!empty($codexOtherBlock)) {
-                $aiResponse = trim($codexOtherBlock);
-            } else {
-                $aiResponse = "No information available.";
-            }
-        }
-        sendJsonResponse($aiResponse, "none", ["sessionId" => session_id()]);
-    }
-}
-/**
- * Fix Ordinal Suffix (fix ordinal suffixes)
- */
-function fixOrdinalSuffix($matches) {
-    return $matches[1] . strtolower($matches[2]);
-}
-/**
- * Normalize address (fix spacing, casing, suffixes)
+ * Normalize address
+ * @param string $address
+ * @return string
  */
 function normalizeAddress($address) {
     $address = preg_replace('/\s+/', ' ', trim($address));
     $address = strtolower($address);
     $address = ucwords($address);
-
-    // Fix ordinal suffixes (e.g., 21St → 21st)
     $address = preg_replace_callback(
         '/\b(\d+)(St|Nd|Rd|Th)\b/i',
         function($matches) { return $matches[1] . strtolower($matches[2]); },
         $address
     );
-
     return $address;
 }
+
 /**
  * Get Assessor API URL for Arizona counties by FIPS code
+ * @param string $stateFIPS
+ * @param string $countyFIPS
+ * @return string|null
  */
 function getAssessorApi($stateFIPS, $countyFIPS) {
-    if ($stateFIPS !== "04") return null; // Not Arizona
+    if ($stateFIPS !== "04") return null;
     switch ($countyFIPS) {
-        case "013": return "https://mcassessor.maricopa.gov/api";  // Maricopa
-        case "019": return "https://placeholder.pima.az.gov/api";  // Pima
-        // Add other counties here as needed...
-        default:    return null;
+        case "013": return "https://mcassessor.maricopa.gov/api";
+        case "019": return "https://placeholder.pima.az.gov/api";
+        default: return null;
     }
 }
+
 /**
  * Normalize Jurisdiction Names
- * @param string $jurisdiction  Raw jurisdiction string (e.g., "NO CITY/TOWN", "PHOENIX")
- * @param string|null $county   Optional county name (used for unincorporated mapping)
- * @return string|null          Normalized jurisdiction name
+ * @param string $jurisdiction
+ * @param string|null $county
+ * @return string|null
  */
 function normalizeJurisdiction($jurisdiction, $county = null) {
     if (!$jurisdiction) return null;
     $jurisdiction = strtoupper(trim($jurisdiction));
-
-    // Handle explicit "no city" case
     if ($jurisdiction === "NO CITY/TOWN") {
         return $county ? $county : "Unincorporated Area";
     }
-
-    // Load jurisdictions.json (cache it so we don’t re-read every call)
     static $jurisdictions = null;
     if ($jurisdictions === null) {
         $path = __DIR__ . "/../assets/data/jurisdictions.json";
@@ -838,49 +519,44 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
             $jurisdictions = [];
         }
     }
-
-    // Try to match against aliases
     foreach ($jurisdictions as $name => $info) {
         if (!empty($info['aliases'])) {
             foreach ($info['aliases'] as $alias) {
                 if (strtoupper($alias) === $jurisdiction) {
-                    return $name; // normalized key from JSON
+                    return $name;
                 }
             }
         }
     }
-
-    // Fallback: convert to Title Case
     return ucwords(strtolower($jurisdiction));
 }
+
 /**
  * Load and apply disclaimers for a report
+ * @param string $reportType
+ * @param array $context
+ * @return array
  */
-function getApplicableDisclaimers($reportType, $context = array()) {
+function getApplicableDisclaimers($reportType, $context = []) {
     $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
     if (!file_exists($file)) {
-        return array("⚠️ Disclaimer library not found.");
+        return ["⚠️ Disclaimer library not found."];
     }
-
     $json = file_get_contents($file);
     $allDisclaimers = json_decode($json, true);
     if ($allDisclaimers === null) {
-        return array("⚠️ Disclaimer library is invalid JSON.");
+        return ["⚠️ Disclaimer library is invalid JSON."];
     }
-
     if (!isset($allDisclaimers[$reportType])) {
-        return array("⚠️ No disclaimers defined for " . $reportType . ".");
+        return ["⚠️ No disclaimers defined for $reportType."];
     }
-
     $reportDisclaimers = $allDisclaimers[$reportType];
-    $result = array();
-
+    $result = [];
     if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
         foreach ($reportDisclaimers['dataSources'] as $ds) {
             if (is_string($ds) && trim($ds) !== "") $result[] = $ds;
         }
     }
-
     if (is_array($context)) {
         foreach ($context as $key => $value) {
             if ($value && isset($reportDisclaimers[$key]) && is_array($reportDisclaimers[$key])) {
@@ -888,17 +564,19 @@ function getApplicableDisclaimers($reportType, $context = array()) {
             }
         }
     }
-
-    return empty($result) ? array("⚠️ No applicable disclaimers resolved.") : array_values(array_unique($result));
+    return empty($result) ? ["⚠️ No applicable disclaimers resolved."] : array_values(array_unique($result));
 }
+
 /**
  * Handle AI report output
+ * @param string $prompt
+ * @param array $reportTypes
+ * @param array $conversation
  */
 function handleReportRequest($prompt, $reportTypes, &$conversation) {
     $detectedReportType = null;
     $p = strtolower($prompt);
 
-    // Check Codex-defined reportTypes
     foreach ($reportTypes as $key => $type) {
         $candidate = is_array($type) ? $key : $type;
         if (is_string($candidate) && strpos($p, strtolower($candidate)) !== false) {
@@ -907,7 +585,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // Keyword fallback
     if ($detectedReportType === null) {
         if (strpos($p, "zoning") !== false) {
             $detectedReportType = "Zoning Report";
@@ -920,7 +597,6 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
         }
     }
 
-    // Dispatch
     switch ($detectedReportType) {
         case "Zoning Report":
             $report = generateZoningReport($prompt, $conversation);
@@ -935,11 +611,11 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $report = generateCustomReport($prompt, $conversation);
             break;
         default:
-            $report = array(
+            $report = [
                 "error"    => true,
                 "response" => "⚠️ Unknown or unsupported report type.",
-                "inputs"   => array("prompt" => $prompt)
-            );
+                "inputs"   => ["prompt" => $prompt]
+            ];
             break;
     }
 
@@ -947,14 +623,75 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
     echo json_encode($report, JSON_PRETTY_PRINT);
     exit;
 }
-    /**
-     * Filter parcels by address match, with proximity fallback
-     * @param array $parcels Array of parcels from Assessor API
-     * @param string $inputAddress Normalized input address (e.g., "3931 S Gilbert Rd, Gilbert, AZ 85295")
-     * @param float|null $latitude Geocoded latitude
-     * @param float|null $longitude Geocoded longitude
-     * @return array Filtered parcels
-     */
+
+/**
+ * Filter parcels by address match, with proximity fallback
+ * @param array $parcels
+ * @param string $inputAddress
+ * @param float|null $latitude
+ * @param float|null $longitude
+ * @return array
+ */
+function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
+    if (empty($parcels)) return [];
+
+    $inputAddress = normalizeAddress($inputAddress);
+    $m = [];
+    preg_match(
+        '/^([0-9]+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
+        $inputAddress,
+        $m
+    );
+    $num = isset($m[1]) ? $m[1] : null;
+    $name = isset($m[2]) ? trim(strtoupper($m[2])) : null;
+
+    $filtered = [];
+    foreach ($parcels as $p) {
+        $situs = strtoupper(trim(isset($p["situs"]) ? $p["situs"] : ""));
+        $sm = [];
+        if (preg_match('/^([0-9]+)\s+([A-Z\s]+)/', $situs, $sm)) {
+            if ($num && $name && $sm[1] === $num && trim($sm[2]) === $name) {
+                $filtered[] = $p;
+            }
+        }
+    }
+
+    if (empty($filtered) && $latitude && $longitude) {
+        $closest = null;
+        $min = PHP_INT_MAX;
+        foreach ($parcels as $p) {
+            if (isset($p["geometry"]["coordinates"]["rings"][0])) {
+                $coords = $p["geometry"]["coordinates"]["rings"][0];
+                $sumLat = 0;
+                $sumLon = 0;
+                $count = count($coords);
+                foreach ($coords as $pt) {
+                    $sumLon += $pt[0];
+                    $sumLat += $pt[1];
+                }
+                if ($count > 0) {
+                    $cLon = $sumLon / $count;
+                    $cLat = $sumLat / $count;
+                    $dLat = deg2rad($cLat - $latitude);
+                    $dLon = deg2rad($cLon - $longitude);
+                    $a = sin($dLat/2)*sin($dLat/2) +
+                         cos(deg2rad($latitude)) * cos(deg2rad($cLat)) *
+                         sin($dLon/2)*sin($dLon/2);
+                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+                    $dist = 6371000 * $c;
+                    if ($dist < $min && $dist <= 5) {
+                        $min = $dist;
+                        $closest = $p;
+                    }
+                }
+            }
+        }
+        if ($closest) $filtered = [$closest];
+    }
+
+    return $filtered;
+}
+
 /**
  * Call OpenAI API
  * @param array $messages
@@ -1003,6 +740,7 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
+
 /**
  * Prepares and enriches report data
  * @param array $crudData
@@ -1120,12 +858,10 @@ function prepareReportData($crudData, $reportTypes) {
     $result['data'] = $crudData;
     return $result;
 }
+
 /**
- * Fallback report logic handler.
- * Processes AI response for report generation and ensures JSON output.
- * Extend this with real CRUD/report logic as needed.
- * @param string $aiResponse The response from OpenAI or other processing
- * @return void
+ * Fallback report logic handler
+ * @param string $aiResponse
  */
 function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
