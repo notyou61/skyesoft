@@ -24,16 +24,25 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 #endregion
 
-#region 📂 Load Unified Context (DynamicData.json)
-$dynamicPath = __DIR__ . '/../data/dynamicData.json';
+#region 📂 Load Unified Context (DynamicData)
+$dynamicUrl = __DIR__ . '/getDynamicData.php';  // Local endpoint path
 $dynamicData = array();
-if (file_exists($dynamicPath)) {
-    $dynamicRaw = file_get_contents($dynamicPath);
+
+$dynamicRaw = @file_get_contents($dynamicUrl);
+if ($dynamicRaw !== false) {
     $dynamicData = json_decode($dynamicRaw, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        file_put_contents(__DIR__ . '/error.log', "DynamicData JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/error.log',
+            "DynamicData JSON Error: " . json_last_error_msg() . "\nRaw: $dynamicRaw\n",
+            FILE_APPEND
+        );
         $dynamicData = array();
     }
+} else {
+    file_put_contents(__DIR__ . '/error.log',
+        date('Y-m-d H:i:s') . " - Failed to load getDynamicData.php\n",
+        FILE_APPEND
+    );
 }
 #endregion
 
