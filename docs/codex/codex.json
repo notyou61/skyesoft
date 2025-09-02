@@ -466,6 +466,30 @@
       ],
       "status": "🟢 Initial implementation with zoning, sign ordinance, and photo survey live",
       "lastUpdated": "2025-08-31"
+    },
+    "semanticResponder": {
+      "purpose": "Interpret natural language queries against live operational data without relying on hardcoded keyword rules.",
+      "guidelines": [
+        "Leverage dynamicData as a knowledge source to answer user questions in natural, context-aware ways.",
+        "Use codexGlossary, codexOther, and reportTypes for structured responses where required.",
+        "For stream queries (time, date, weather, KPIs, announcements), avoid strict regex or keyword triggers.",
+        "Instead, semantically map the user’s intent to the relevant fields in dynamicData.",
+        "If the requested data does not exist in dynamicData, respond gracefully (do not invent values)."
+      ],
+      "examples": [
+        {
+          "user": "What’s the date and time?",
+          "assistant": "Today is 2025-09-02 and the current time is 02:53:45 PM."
+        },
+        {
+          "user": "How hot is it outside?",
+          "assistant": "The temperature is 107°F with Broken clouds."
+        },
+        {
+          "user": "Any announcements today?",
+          "assistant": "📢 New Hire Orientation this Friday; Reminder to submit timesheets; Team Meeting Agenda: Project Updates, KPI Review, Workflow Improvements…"
+        }
+      ]
     }
   },
   "skyebotCodeAccess": {

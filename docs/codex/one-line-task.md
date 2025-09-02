@@ -8,6 +8,10 @@ To provide a natural language entry point that intelligently interprets user inp
 ## 🎯 Primary Role
 To empower users to interact with the Skyesoft platform using freeform one-liners. These are parsed using lightweight NLP logic and pattern recognition to identify the most likely intention behind the text.
 
+- Stream queries (time, date, weather, KPIs, announcements) should no longer rely on hardcoded keyword matching.
+- Instead, Skyebot leverages the **semanticResponder** module, which uses NLU (natural language understanding) to map user intent directly onto fields in dynamicData.
+- Regex rules are only retained for **critical agentic actions** (login/logout, CRUD triggers).
+
 ---
 
 ## ⚙️ How It Works
