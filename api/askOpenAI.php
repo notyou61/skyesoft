@@ -1,24 +1,65 @@
 <?php
 // 📄 File: api/askOpenAI.php
+// Entry point for Skyebot AI interactions
 
-// --- Report Generators ---
-require_once __DIR__ . "/reports/zoning.php";
-require_once __DIR__ . "/reports/signOrdinance.php";
-require_once __DIR__ . "/reports/photoSurvey.php";
-require_once __DIR__ . "/reports/custom.php";
+#region 🔹 Report Generators (specific report logic)
+require_once __DIR__ . "/reports/zoning.php";         // Zoning Report data + pipeline
+require_once __DIR__ . "/reports/signOrdinance.php";  // Sign Ordinance Report
+require_once __DIR__ . "/reports/photoSurvey.php";    // Photo Survey Report
+require_once __DIR__ . "/reports/custom.php";         // Custom / Freeform Report
+#endregion
 
-// --- Shared Zoning Logic ---
-require_once __DIR__ . "/jurisdictionZoning.php";
+#region 🔹 Shared Zoning Logic
+require_once __DIR__ . "/jurisdictionZoning.php";     // Jurisdiction-specific ArcGIS lookups
+#endregion
 
-// --- Environment & Session Setup ---
-require_once __DIR__ . '/env_boot.php';
+#region 🔹 Environment & Session Setup
+require_once __DIR__ . "/env_boot.php";               // Env vars (API keys, configs)
 header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
 
-// Start session if not active
+// Ensure PHP session is active
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
+#endregion
+
+#region 🔹 Load Codex (Skyesoft Source of Truth)
+// Codex provides glossary terms, report specs, constitution, meta info, etc.
+$codexPath = __DIR__ . "/../docs/codex/codex.json";
+$codex = json_decode(file_get_contents($codexPath), true);
+#endregion
+
+#region 🔹 Build Context Blocks for System Prompt
+
+// Glossary block → internal terms/acronyms for AI definitions
+$codexGlossaryBlock = json_encode(
+    $codex["modules"]["glossaryModule"]["contents"],
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+);
+
+// Other block → meta, constitution, ragExplanation, shared rules
+$codexOtherBlock = json_encode(array(
+    "meta"           => $codex["meta"],
+    "constitution"   => $codex["constitution"],
+    "ragExplanation" => $codex["ragExplanation"],
+    "shared"         => $codex["shared"]
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+// Report types block → zoning, ordinance, survey, custom (used for CRUD + Report JSON)
+$reportTypesBlock = json_encode(
+    $codex["modules"]["reportGenerationSuite"]["reportTypesSpec"],
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+);
+
+// Snapshot block → SSE or runtime context (time, KPIs, weather, etc.)
+// Currently stubbed; replace with dynamic SSE integration later
+$snapshotSummary = json_encode(array(
+    "time"     => date("Y-m-d H:i:s"),
+    "timezone" => date_default_timezone_get()
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+#endregion
 
 #region 📦 Filter Parcels Helper
 /**
