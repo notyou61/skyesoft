@@ -26,13 +26,13 @@ if (session_status() === PHP_SESSION_NONE) {
 
 #region 📂 Load Unified Context (DynamicData.json)
 $dynamicPath = __DIR__ . '/../data/dynamicData.json';
-$dynamicData = [];
+$dynamicData = array();
 if (file_exists($dynamicPath)) {
     $dynamicRaw = file_get_contents($dynamicPath);
     $dynamicData = json_decode($dynamicRaw, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         file_put_contents(__DIR__ . '/error.log', "DynamicData JSON Error: " . json_last_error_msg() . "\n", FILE_APPEND);
-        $dynamicData = [];
+        $dynamicData = array();
     }
 }
 #endregion
@@ -82,11 +82,11 @@ $snapshotSummary = json_encode(array(
 // Read and decode input
 $data = json_decode(file_get_contents("php://input"), true);
 if ($data === null || $data === false) {
-    echo json_encode([
+    echo json_encode(array(
         "response"  => "❌ Invalid or empty JSON payload.",
         "action"    => "none",
         "sessionId" => session_id()
-    ], JSON_PRETTY_PRINT);
+    ), JSON_PRETTY_PRINT);
     exit;
 }
 
@@ -94,11 +94,11 @@ if ($data === null || $data === false) {
 $prompt = isset($data["prompt"]) 
     ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT))) 
     : "";
-$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : [];
+$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
 if (empty($prompt)) {
-    sendJsonResponse("❌ Empty prompt.", "none", ["sessionId" => session_id()]);
+    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => session_id()));
     exit;
 }
 #endregion
@@ -106,7 +106,7 @@ if (empty($prompt)) {
 #region 🛡️ Headers and Setup
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
-    sendJsonResponse("❌ API key not found.", "none", ["sessionId" => session_id()]);
+    sendJsonResponse("❌ API key not found.", "none", array("sessionId" => session_id()));
     exit;
 }
 #endregion
@@ -258,51 +258,75 @@ if (!$handled) {
 #endregion
 
 #region 🛠 Helper Functions
-/**
- * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
- * @param string $prompt
- * @param array $dynamicData
- * @return bool
- */
-function queryMatchesStream($prompt, $dynamicData) {
-    $lowerPrompt = strtolower($prompt);
-    return (
-        preg_match('/\b(time|current time|local time|clock|date|today.?s date|current date|weather|forecast|kpis?|orders?|approvals?|announcements?)\b/i', $lowerPrompt) &&
-        (
-            isset($dynamicData['timeDateArray']['currentLocalTime']) ||
-            isset($dynamicData['timeDateArray']['currentDate']) ||
-            isset($dynamicData['weather']['current']) ||
-            isset($dynamicData['KPIs']) ||
-            isset($dynamicData['announcements'])
-        )
-    );
+// Prevent duplicate function definitions (PHP 5.6 compatible)
+if (!function_exists('queryMatchesStream')) {
+    /**
+     * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
+     * @param string $prompt
+     * @param array $dynamicData
+     * @return bool
+     */
+    function queryMatchesStream($prompt, $dynamicData) {
+        $lowerPrompt = strtolower($prompt);
+        return (
+            preg_match('/\b(time|current time|local time|clock|date|today.?s date|current date|weather|forecast|kpis?|orders?|approvals?|announcements?)\b/i', $lowerPrompt) &&
+            (
+                isset($dynamicData['timeDateArray']['currentLocalTime']) ||
+                isset($dynamicData['timeDateArray']['currentDate']) ||
+                isset($dynamicData['weather']['current']) ||
+                isset($dynamicData['KPIs']) ||
+                isset($dynamicData['announcements'])
+            )
+        );
+    }
 }
 
-/**
- * Handle stream-based queries (time, date, weather, KPIs, announcements)
- * @param string $prompt
- * @param array $dynamicData
- */
-function handleStreamQuery($prompt, $dynamicData) {
-    $lowerPrompt = strtolower($prompt);
-    
-    if (preg_match('/\b(time|current time|local time|clock)\b/i', $lowerPrompt) && isset($dynamicData['timeDateArray']['currentLocalTime'])) {
-        $tz = (isset($dynamicData['timeDateArray']['timeZone']) && $dynamicData['timeDateArray']['timeZone'] === "America/Phoenix") ? " MST" : "";
-        sendJsonResponse($dynamicData['timeDateArray']['currentLocalTime'] . $tz, "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(date|today.?s date|current date)\b/i', $lowerPrompt) && isset($dynamicData['timeDateArray']['currentDate'])) {
-        sendJsonResponse($dynamicData['timeDateArray']['currentDate'], "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(weather|forecast)\b/i', $lowerPrompt) && isset($dynamicData['weather']['current']['description'])) {
-        $temp = isset($dynamicData['weather']['current']['temp']) ? $dynamicData['weather']['current']['temp'] . "°F, " : "";
-        $desc = $dynamicData['weather']['current']['description'];
-        sendJsonResponse($temp . $desc, "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(kpis?|orders?|approvals?)\b/i', $lowerPrompt) && isset($dynamicData['KPIs'])) {
-        $kpiResponse = json_encode($dynamicData['KPIs'], JSON_PRETTY_PRINT);
-        sendJsonResponse($kpiResponse, "none", ["sessionId" => session_id()]);
-    } elseif (preg_match('/\b(announcements?)\b/i', $lowerPrompt) && isset($dynamicData['announcements'])) {
-        $announcementResponse = json_encode($dynamicData['announcements'], JSON_PRETTY_PRINT);
-        sendJsonResponse($announcementResponse, "none", ["sessionId" => session_id()]);
-    } else {
-        sendJsonResponse("No relevant stream data found.", "none", ["sessionId" => session_id()]);
+if (!function_exists('handleStreamQuery')) {
+    /**
+     * Handle stream-based queries (time, date, weather, KPIs, announcements)
+     * @param string $prompt
+     * @param array $dynamicData
+     */
+    function handleStreamQuery($prompt, $dynamicData) {
+        $p = strtolower($prompt);
+        $response = "⚠️ No stream data available.";
+
+        if (isset($dynamicData['weather']['current']) && (
+            strpos($p, 'weather') !== false || strpos($p, 'forecast') !== false || strpos($p, 'temp') !== false
+        )) {
+            $response = "Current weather: " . $dynamicData['weather']['current'];
+        }
+        elseif (isset($dynamicData['timeDateArray']['currentLocalTime']) && strpos($p, 'time') !== false) {
+            $response = "Local time: " . $dynamicData['timeDateArray']['currentLocalTime'];
+        }
+        elseif (isset($dynamicData['timeDateArray']['currentDate']) && strpos($p, 'date') !== false) {
+            $response = "Today’s date: " . $dynamicData['timeDateArray']['currentDate'];
+        }
+        elseif (isset($dynamicData['KPIs']) && (
+            strpos($p, 'order') !== false || strpos($p, 'contact') !== false || strpos($p, 'approval') !== false
+        )) {
+            $kpis = $dynamicData['KPIs'];
+            $response = "KPIs — Orders: " . $kpis['orders'] . ", Contacts: " . $kpis['contacts'] . ", Approvals: " . $kpis['approvals'];
+        }
+        elseif (isset($dynamicData['announcements']) && (
+            strpos($p, 'announcement') !== false || strpos($p, 'bulletin') !== false
+        )) {
+            $titles = array();
+            foreach ($dynamicData['announcements'] as $a) {
+                if (isset($a['title'])) {
+                    $titles[] = $a['title'];
+                }
+            }
+            $response = "Announcements: " . implode("; ", $titles);
+        }
+
+        // Ensure we always pass a string
+        if (!is_string($response)) {
+            $response = json_encode($response);
+        }
+
+        sendJsonResponse($response, "chat", array("sessionId" => session_id()));
+        exit;
     }
 }
 
@@ -317,7 +341,7 @@ function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOt
     $lowerPrompt = strtolower($prompt);
     
     if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
-        $displayed = [];
+        $displayed = array();
         $uniqueGlossary = "";
         foreach (explode("\n", $codexGlossaryBlock) as $line) {
             $key = strtolower(trim(strtok($line, ":")));
@@ -327,9 +351,9 @@ function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOt
             }
         }
         $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
-        sendJsonResponse($formattedGlossary, "none", ["sessionId" => session_id()]);
+        sendJsonResponse($formattedGlossary, "none", array("sessionId" => session_id()));
     } elseif (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
-        $modulesArr = [];
+        $modulesArr = array();
         if (isset($dynamicData['readme']['modules']) && is_array($dynamicData['readme']['modules'])) {
             foreach ($dynamicData['readme']['modules'] as $mod) {
                 if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
@@ -338,39 +362,40 @@ function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOt
             }
         }
         $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
-        sendJsonResponse($modulesDisplay, "none", ["sessionId" => session_id()]);
+        sendJsonResponse($modulesDisplay, "none", array("sessionId" => session_id()));
     } elseif (preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
         $term = preg_match('/\bwhat is\s+([a-z0-9\-]+)\??/i', $lowerPrompt, $matches) ? strtoupper($matches[1]) : null;
         if ($term) {
-            $filteredGlossary = [];
+            $filteredGlossary = array();
             foreach (explode("\n", $codexGlossaryBlock) as $line) {
                 if (stripos($line, $term) === 0) {
                     $filteredGlossary[] = $line;
                 }
             }
             $response = !empty($filteredGlossary) ? implode("\n", $filteredGlossary) : "$term: No information available";
-            sendJsonResponse($response, "none", ["sessionId" => session_id()]);
+            sendJsonResponse($response, "none", array("sessionId" => session_id()));
         } else {
             $response = $codexOtherBlock !== "" ? trim($codexOtherBlock) : "No Codex information available.";
-            sendJsonResponse($response, "none", ["sessionId" => session_id()]);
+            sendJsonResponse($response, "none", array("sessionId" => session_id()));
         }
     }
 }
 
 /**
  * Send JSON response with proper HTTP status code
- * @param string $response
+ * Updated for PHP 5.6 compatibility to handle both string and array responses
+ * @param mixed $response (string or array)
  * @param string $action
  * @param array $extra
  * @param int $status
  */
-function sendJsonResponse($response, $action = "none", $extra = [], $status = 200) {
+function sendJsonResponse($response, $action = "none", $extra = array(), $status = 200) {
     http_response_code($status);
-    $data = array_merge([
-        "response" => $response,
+    $data = array_merge(array(
+        "response" => is_array($response) ? json_encode($response, JSON_PRETTY_PRINT) : $response,
         "action" => $action,
         "sessionId" => session_id()
-    ], $extra);
+    ), $extra);
     echo json_encode($data, JSON_PRETTY_PRINT);
     exit;
 }
@@ -382,7 +407,7 @@ function sendJsonResponse($response, $action = "none", $extra = [], $status = 20
  * @return bool
  */
 function authenticateUser($username, $password) {
-    $validCredentials = ['admin' => password_hash('secret', PASSWORD_DEFAULT)];
+    $validCredentials = array('admin' => password_hash('secret', PASSWORD_DEFAULT));
     return isset($validCredentials[$username]) && password_verify($password, $validCredentials[$username]);
 }
 
@@ -451,12 +476,12 @@ function performLogout() {
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-    sendJsonResponse("You have been logged out", "none", [
+    sendJsonResponse("You have been logged out", "none", array(
         "actionType" => "Create",
         "actionName" => "Logout",
         "sessionId" => $newSessionId,
         "loggedIn" => false
-    ]);
+    ));
 }
 
 /**
@@ -465,7 +490,7 @@ function performLogout() {
  */
 function handleQuickAction($input) {
     $action = strtolower(trim($input));
-    if (in_array($action, ['logout', 'sign out', 'signout', 'exit', 'quit'])) {
+    if (in_array($action, array('logout', 'sign out', 'signout', 'exit', 'quit'))) {
         performLogout();
         return;
     }
@@ -474,14 +499,14 @@ function handleQuickAction($input) {
         $password = $matches[2];
         if (authenticateUser($username, $password)) {
             $_SESSION['user'] = $username;
-            sendJsonResponse("Logged in as $username", "none", [
+            sendJsonResponse("Logged in as $username", "none", array(
                 "actionType" => "Create",
                 "actionName" => "Login",
                 "sessionId" => session_id(),
                 "loggedIn" => true
-            ]);
+            ));
         } else {
-            sendJsonResponse("Invalid credentials", "none", ["sessionId" => session_id()]);
+            sendJsonResponse("Invalid credentials", "none", array("sessionId" => session_id()));
         }
         return;
     }
@@ -538,7 +563,7 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
         if (file_exists($path)) {
             $jurisdictions = json_decode(file_get_contents($path), true);
         } else {
-            $jurisdictions = [];
+            $jurisdictions = array();
         }
     }
     foreach ($jurisdictions as $name => $info) {
@@ -559,21 +584,21 @@ function normalizeJurisdiction($jurisdiction, $county = null) {
  * @param array $context
  * @return array
  */
-function getApplicableDisclaimers($reportType, $context = []) {
+function getApplicableDisclaimers($reportType, $context = array()) {
     $file = __DIR__ . "/../assets/data/reportDisclaimers.json";
     if (!file_exists($file)) {
-        return ["⚠️ Disclaimer library not found."];
+        return array("⚠️ Disclaimer library not found.");
     }
     $json = file_get_contents($file);
     $allDisclaimers = json_decode($json, true);
     if ($allDisclaimers === null) {
-        return ["⚠️ Disclaimer library is invalid JSON."];
+        return array("⚠️ Disclaimer library is invalid JSON.");
     }
     if (!isset($allDisclaimers[$reportType])) {
-        return ["⚠️ No disclaimers defined for $reportType."];
+        return array("⚠️ No disclaimers defined for $reportType.");
     }
     $reportDisclaimers = $allDisclaimers[$reportType];
-    $result = [];
+    $result = array();
     if (isset($reportDisclaimers['dataSources']) && is_array($reportDisclaimers['dataSources'])) {
         foreach ($reportDisclaimers['dataSources'] as $ds) {
             if (is_string($ds) && trim($ds) !== "") $result[] = $ds;
@@ -586,7 +611,7 @@ function getApplicableDisclaimers($reportType, $context = []) {
             }
         }
     }
-    return empty($result) ? ["⚠️ No applicable disclaimers resolved."] : array_values(array_unique($result));
+    return empty($result) ? array("⚠️ No applicable disclaimers resolved.") : array_values(array_unique($result));
 }
 
 /**
@@ -633,11 +658,11 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
             $report = generateCustomReport($prompt, $conversation);
             break;
         default:
-            $report = [
+            $report = array(
                 "error"    => true,
                 "response" => "⚠️ Unknown or unsupported report type.",
-                "inputs"   => ["prompt" => $prompt]
-            ];
+                "inputs"   => array("prompt" => $prompt)
+            );
             break;
     }
 
@@ -655,10 +680,10 @@ function handleReportRequest($prompt, $reportTypes, &$conversation) {
  * @return array
  */
 function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
-    if (empty($parcels)) return [];
+    if (empty($parcels)) return array();
 
     $inputAddress = normalizeAddress($inputAddress);
-    $m = [];
+    $m = array();
     preg_match(
         '/^([0-9]+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
         $inputAddress,
@@ -667,10 +692,10 @@ function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
     $num = isset($m[1]) ? $m[1] : null;
     $name = isset($m[2]) ? trim(strtoupper($m[2])) : null;
 
-    $filtered = [];
+    $filtered = array();
     foreach ($parcels as $p) {
         $situs = strtoupper(trim(isset($p["situs"]) ? $p["situs"] : ""));
-        $sm = [];
+        $sm = array();
         if (preg_match('/^([0-9]+)\s+([A-Z\s]+)/', $situs, $sm)) {
             if ($num && $name && $sm[1] === $num && trim($sm[2]) === $name) {
                 $filtered[] = $p;
@@ -708,7 +733,7 @@ function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
                 }
             }
         }
-        if ($closest) $filtered = [$closest];
+        if ($closest) $filtered = array($closest);
     }
 
     return $filtered;
@@ -721,17 +746,17 @@ function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
  */
 function callOpenAi($messages) {
     $apiKey = getenv("OPENAI_API_KEY");
-    $payload = json_encode([
+    $payload = json_encode(array(
         "model" => "gpt-4",
         "messages" => $messages,
         "temperature" => 0.1,
         "max_tokens" => 200
-    ], JSON_UNESCAPED_SLASHES);
+    ), JSON_UNESCAPED_SLASHES);
     $ch = curl_init("https://api.openai.com/v1/chat/completions");
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
         "Content-Type: application/json",
         "Authorization: Bearer " . $apiKey
-    ]);
+    ));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
@@ -740,23 +765,23 @@ function callOpenAi($messages) {
     if ($response === false) {
         $curlError = curl_error($ch);
         file_put_contents(__DIR__ . '/error.log', "OpenAI API Curl Error: " . $curlError . "\n", FILE_APPEND);
-        sendJsonResponse("❌ Curl error: " . $curlError, "none", ["sessionId" => session_id()]);
+        sendJsonResponse("❌ Curl error: " . $curlError, "none", array("sessionId" => session_id()));
     }
     curl_close($ch);
 
     $result = json_decode($response, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         file_put_contents(__DIR__ . '/error.log', "JSON Decode Error: " . json_last_error_msg() . "\nResponse: $response\n", FILE_APPEND);
-        sendJsonResponse("❌ JSON decode error from AI.", "none", ["sessionId" => session_id()]);
+        sendJsonResponse("❌ JSON decode error from AI.", "none", array("sessionId" => session_id()));
     }
 
     if (!isset($result["choices"][0]["message"]["content"])) {
         if (isset($result["error"]["message"])) {
             file_put_contents(__DIR__ . '/error.log', "OpenAI API Error: " . $result["error"]["message"] . "\nResponse: $response\n", FILE_APPEND);
-            sendJsonResponse("❌ API error: " . $result["error"]["message"], "none", ["sessionId" => session_id()]);
+            sendJsonResponse("❌ API error: " . $result["error"]["message"], "none", array("sessionId" => session_id()));
         } else {
             file_put_contents(__DIR__ . '/error.log', "Invalid OpenAI Response: " . $response . "\n", FILE_APPEND);
-            sendJsonResponse("❌ Invalid response structure from AI.", "none", ["sessionId" => session_id()]);
+            sendJsonResponse("❌ Invalid response structure from AI.", "none", array("sessionId" => session_id()));
         }
     }
 
@@ -770,7 +795,7 @@ function callOpenAi($messages) {
  * @return array
  */
 function prepareReportData($crudData, $reportTypes) {
-    $result = ['valid' => false, 'data' => [], 'errors' => []];
+    $result = array('valid' => false, 'data' => array(), 'errors' => array());
 
     if (
         !is_array($crudData) ||
@@ -799,8 +824,8 @@ function prepareReportData($crudData, $reportTypes) {
         return $result;
     }
 
-    $requiredFields = isset($reportTypeDef['requiredFields']) ? $reportTypeDef['requiredFields'] : [];
-    $missingFields = [];
+    $requiredFields = isset($reportTypeDef['requiredFields']) ? $reportTypeDef['requiredFields'] : array();
+    $missingFields = array();
     foreach ($requiredFields as $field) {
         if (!isset($data[$field]) || $data[$field] === '') {
             $missingFields[] = $field;
@@ -834,7 +859,7 @@ function prepareReportData($crudData, $reportTypes) {
 
         $parcelCh = curl_init('https://www.skyelighting.com/skyesoft/api/getParcel.php');
         curl_setopt($parcelCh, CURLOPT_POST, true);
-        curl_setopt($parcelCh, CURLOPT_POSTFIELDS, http_build_query(['address' => $enrichedData['address']]));
+        curl_setopt($parcelCh, CURLOPT_POSTFIELDS, http_build_query(array('address' => $enrichedData['address'])));
         curl_setopt($parcelCh, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($parcelCh, CURLOPT_TIMEOUT, 10);
         $parcelResult = curl_exec($parcelCh);
@@ -863,7 +888,7 @@ function prepareReportData($crudData, $reportTypes) {
         }
     }
 
-    $missingFields = [];
+    $missingFields = array();
     foreach ($requiredFields as $field) {
         if (!isset($enrichedData[$field]) || $enrichedData[$field] === '') {
             $missingFields[] = $field;
@@ -871,7 +896,7 @@ function prepareReportData($crudData, $reportTypes) {
     }
 
     if (!empty($missingFields)) {
-        $result['errors'] = array_merge($result['errors'], ["Missing required fields after enrichment: " . implode(', ', $missingFields)]);
+        $result['errors'] = array_merge($result['errors'], array("Missing required fields after enrichment: " . implode(', ', $missingFields)));
         return $result;
     }
 
@@ -886,6 +911,6 @@ function prepareReportData($crudData, $reportTypes) {
  * @param string $aiResponse
  */
 function runReportLogic($aiResponse) {
-    sendJsonResponse($aiResponse, "report", ["sessionId" => session_id()]);
+    sendJsonResponse($aiResponse, "report", array("sessionId" => session_id()));
 }
 #endregion
