@@ -25,10 +25,12 @@ if (session_status() === PHP_SESSION_NONE) {
 #endregion
 
 #region 📂 Load Unified Context (DynamicData)
-$dynamicUrl = __DIR__ . '/getDynamicData.php';  // Local endpoint path
 $dynamicData = array();
 
+// Primary: fetch live SSE JSON from public endpoint
+$dynamicUrl = "https://www.skyelighting.com/skyesoft/api/getDynamicData.php";
 $dynamicRaw = @file_get_contents($dynamicUrl);
+
 if ($dynamicRaw !== false) {
     $dynamicData = json_decode($dynamicRaw, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
@@ -39,10 +41,18 @@ if ($dynamicRaw !== false) {
         $dynamicData = array();
     }
 } else {
-    file_put_contents(__DIR__ . '/error.log',
-        date('Y-m-d H:i:s') . " - Failed to load getDynamicData.php\n",
-        FILE_APPEND
-    );
+    // Fallback: local static file
+    $dynamicPath = __DIR__ . '/../data/dynamicData.json';
+    if (file_exists($dynamicPath)) {
+        $dynamicRaw = file_get_contents($dynamicPath);
+        $dynamicData = json_decode($dynamicRaw, true);
+    }
+    if (empty($dynamicData)) {
+        file_put_contents(__DIR__ . '/error.log',
+            date('Y-m-d H:i:s') . " - Failed to load dynamic data from both URL and local file\n",
+            FILE_APPEND
+        );
+    }
 }
 #endregion
 
