@@ -96,6 +96,12 @@ $snapshotSummary = json_encode(array(
     "kpiData"       => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : null,
     "announcements" => isset($dynamicData['announcements']) ? $dynamicData['announcements'] : null
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+// Debug: Log snapshotSummary to verify contents
+file_put_contents(__DIR__ . '/debug.log',
+    date('Y-m-d H:i:s') . " - snapshotSummary: " . $snapshotSummary . "\n",
+    FILE_APPEND
+);
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
@@ -138,9 +144,10 @@ You are Skyebot™, an assistant for a signage company.
 ⚠️ CRITICAL RULES:
 - For CRUD and Report actions → reply in valid JSON only.
 - For glossary lookups, codex questions, and stream data (time, date, weather, KPIs, announcements) → reply in plain text.
-- For logout → always return JSON.
+- For logout → always return JSON: {"actionType":"Create","actionName":"Logout"}.
 - For general queries (outside codex/stream) → reply in plain text using general AI knowledge.
 - Never return markdown, code fences, or mixed formats.
+- Never claim to lack real-time data access; always check sseSnapshot first.
 
 You have four sources of truth:
 - codexGlossary: internal company terms/definitions
@@ -150,9 +157,23 @@ You have four sources of truth:
 
 ---
 ## Stream Queries
-- If the user asks about info in sseSnapshot (e.g. time, date, weather, KPIs, announcements):
-  → Extract directly from that JSON and answer naturally.
-  → Do not invent values.
+- For queries about time, date, weather, KPIs, or announcements:
+  → Prioritize extracting answers directly from sseSnapshot JSON.
+  → Use these specific fields:
+    - Time: sseSnapshot.timeDateArray.currentLocalTime (e.g., "05:55:16 AM")
+    - Date: sseSnapshot.timeDateArray.currentDate (e.g., "2025-09-03")
+    - Weather: sseSnapshot.weatherData.description (e.g., "Broken clouds")
+    - Temperature: sseSnapshot.weatherData.temp (e.g., "82°F")
+    - Sunrise: sseSnapshot.weatherData.sunrise (e.g., "1:04 PM")
+    - Sunset: sseSnapshot.weatherData.sunset (e.g., "1:51 AM")
+    - Forecast: sseSnapshot.weatherData.forecast (array of daily forecasts)
+    - KPIs: sseSnapshot.kpiData (e.g., contacts, orders, approvals)
+    - Announcements: sseSnapshot.announcements (array of titles and descriptions)
+  → Format responses naturally, e.g.:
+    - "What's the date and time?" → "Today is 2025-09-03 at 05:55:16 AM."
+    - "What's the weather today?" → "The weather is Broken clouds with a temperature of 82°F."
+    - "When is sunrise?" → "Sunrise is at 1:04 PM."
+  → If a field is missing or null in sseSnapshot, respond with: "Sorry, that information is temporarily unavailable."
 
 ## Reports
 - If all required fields are present → generate the report JSON.
@@ -234,6 +255,13 @@ if (!$handled) {
         }
     }
     $messages[] = array("role" => "user", "content" => $prompt);
+
+    // Debug: Log the full prompt payload sent to OpenAI
+    file_put_contents(__DIR__ . '/debug.log',
+        date('Y-m-d H:i:s') . " - OpenAI Payload: " . json_encode($messages, JSON_PRETTY_PRINT) . "\n",
+        FILE_APPEND
+    );
+
     $aiResponse = callOpenAi($messages);
     if (is_string($aiResponse) && trim($aiResponse) !== '') {
         $aiResponse .= " ⁂";
@@ -804,7 +832,7 @@ function prepareReportData($crudData, $reportTypes) {
 
     $missingFields = array();
     foreach ($requiredFields as $field) {
-        if (!isset($enrichedData[$field]) || $enrichedData[$field] === '') {
+        if (!isset($enrichedData[$field]) || $enrichedData['field'] === '') {
             $missingFields[] = $field;
         }
     }
