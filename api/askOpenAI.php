@@ -25,12 +25,10 @@ if (session_status() === PHP_SESSION_NONE) {
 #endregion
 
 #region 📂 Load Unified Context (DynamicData)
+$dynamicUrl = __DIR__ . '/getDynamicData.php';
 $dynamicData = array();
 
-// Primary: fetch live SSE JSON from public endpoint
-$dynamicUrl = "https://www.skyelighting.com/skyesoft/api/getDynamicData.php";
 $dynamicRaw = @file_get_contents($dynamicUrl);
-
 if ($dynamicRaw !== false) {
     $dynamicData = json_decode($dynamicRaw, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
@@ -41,34 +39,18 @@ if ($dynamicRaw !== false) {
         $dynamicData = array();
     }
 } else {
-    // Fallback: local static file
-    $dynamicPath = __DIR__ . '/../data/dynamicData.json';
-    if (file_exists($dynamicPath)) {
-        $dynamicRaw = file_get_contents($dynamicPath);
-        $dynamicData = json_decode($dynamicRaw, true);
-    }
-    if (empty($dynamicData)) {
-        file_put_contents(__DIR__ . '/error.log',
-            date('Y-m-d H:i:s') . " - Failed to load dynamic data from both URL and local file\n",
-            FILE_APPEND
-        );
-    }
+    file_put_contents(__DIR__ . '/error.log',
+        date('Y-m-d H:i:s') . " - Failed to load getDynamicData.php\n",
+        FILE_APPEND
+    );
 }
 #endregion
 
 #region 📚 Build Context Blocks
+$codexGlossaryBlock = !empty($dynamicData['modules']['glossaryModule']['contents'])
+    ? json_encode($dynamicData['modules']['glossaryModule']['contents'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    : "No glossary data available.\n";
 
-// Glossary block
-if (!empty($dynamicData['modules']['glossaryModule']['contents'])) {
-    $codexGlossaryBlock = json_encode(
-        $dynamicData['modules']['glossaryModule']['contents'],
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    );
-} else {
-    $codexGlossaryBlock = "No glossary data available.\n";
-}
-
-// Other block (meta, constitution, ragExplanation, shared)
 $codexOtherBlock = json_encode(array(
     "meta"           => isset($dynamicData['meta']) ? $dynamicData['meta'] : array(),
     "constitution"   => isset($dynamicData['constitution']) ? $dynamicData['constitution'] : array(),
@@ -76,25 +58,44 @@ $codexOtherBlock = json_encode(array(
     "shared"         => isset($dynamicData['shared']) ? $dynamicData['shared'] : array()
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-// Report types block
-if (!empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])) {
-    $reportTypesBlock = json_encode(
-        $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'],
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    );
-} else {
-    $reportTypesBlock = "No report types data available.\n";
-}
+// Fallback report types if dynamic data is unavailable
+$reportTypesFallback = array(
+    "Zoning Report" => array(
+        "reportType" => "Zoning Report",
+        "titleTemplate" => "{reportType} for {projectName} at {address}",
+        "requiredFields" => array("address", "projectName", "parcel", "jurisdiction"),
+        "optionalFields" => array("latitude", "longitude", "zoningCode")
+    ),
+    "Sign Ordinance Report" => array(
+        "reportType" => "Sign Ordinance Report",
+        "titleTemplate" => "{reportType} for {projectName} at {address}",
+        "requiredFields" => array("address", "projectName", "jurisdiction"),
+        "optionalFields" => array("signType", "dimensions")
+    ),
+    "Photo Survey Report" => array(
+        "reportType" => "Photo Survey Report",
+        "titleTemplate" => "{reportType} for {projectName} at {address}",
+        "requiredFields" => array("address", "projectName"),
+        "optionalFields" => array("photoCount", "surveyDate")
+    ),
+    "Custom Report" => array(
+        "reportType" => "Custom Report",
+        "titleTemplate" => "{reportType} for {projectName}",
+        "requiredFields" => array("projectName"),
+        "optionalFields" => array("description", "address")
+    )
+);
 
-// Snapshot block (time, date, weather, KPIs, announcements)
+$reportTypesBlock = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+    ? json_encode($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    : json_encode($reportTypesFallback, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
 $snapshotSummary = json_encode(array(
-    "time"          => isset($dynamicData['timeDateArray']['currentLocalTime']) ? $dynamicData['timeDateArray']['currentLocalTime'] : null,
-    "date"          => isset($dynamicData['timeDateArray']['currentDate']) ? $dynamicData['timeDateArray']['currentDate'] : null,
-    "weather"       => isset($dynamicData['weather']['current']) ? $dynamicData['weather']['current'] : null,
-    "KPIs"          => isset($dynamicData['KPIs']) ? $dynamicData['KPIs'] : null,
+    "timeDateArray" => isset($dynamicData['timeDateArray']) ? $dynamicData['timeDateArray'] : null,
+    "weatherData"   => isset($dynamicData['weatherData']) ? $dynamicData['weatherData'] : null,
+    "kpiData"       => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : null,
     "announcements" => isset($dynamicData['announcements']) ? $dynamicData['announcements'] : null
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
@@ -136,53 +137,30 @@ You are Skyebot™, an assistant for a signage company.
 
 ⚠️ CRITICAL RULES:
 - For CRUD and Report actions → reply in valid JSON only.
-- For glossary lookups, date/time, KPIs, weather, announcements → reply in plain text.
-- For logout → always return JSON (never plain text).
-- For general queries (outside stream/codex) → reply in natural plain text.
+- For glossary lookups, codex questions, and stream data (time, date, weather, KPIs, announcements) → reply in plain text.
+- For logout → always return JSON.
+- For general queries (outside codex/stream) → reply in plain text using general AI knowledge.
 - Never return markdown, code fences, or mixed formats.
 
 You have four sources of truth:
 - codexGlossary: internal company terms/definitions
 - codexOther: company knowledge (meta, constitution, etc.)
-- sseSnapshot: live operational data (time, KPIs, weather, announcements)
+- sseSnapshot: live operational data (raw JSON provided below)
 - reportTypes: standardized report templates
 
 ---
-## Stream vs General Queries
-- If the user asks about **time, date, weather, KPIs, announcements, glossary, or codex**:
-  → Answer ONLY using data from sseSnapshot, codexGlossary, codexOther, or reportTypes.
+## Stream Queries
+- If the user asks about info in sseSnapshot (e.g. time, date, weather, KPIs, announcements):
+  → Extract directly from that JSON and answer naturally.
   → Do not invent values.
-- If the user asks about **reports**:
-  → If all required fields are present → generate the actual report JSON.
-  → If required fields are missing → return a Codex Report JSON (explanation from reportTypes).
-- If the user asks about **anything else** (not in stream or codex):
-  → Answer naturally in plain text using general AI knowledge.
 
----
-## Logout Rules
+## Reports
+- If all required fields are present → generate the report JSON.
+- If fields are missing → return a Codex Report JSON (explanation only).
+
+## Logout
 - If the user says quit, exit, logout, log out, sign out, or end session:
-  → Return JSON: {"actionType": "Create", "actionName": "Logout"}
-
----
-## CRUD + Report Rules
-- Report format:
-{
-  "actionType": "Create",
-  "actionName": "Report",
-  "details": {
-    "reportType": "<one of reportTypes>",
-    "title": "<use titleTemplate + identifying field(s)>",
-    "data": {
-      // requiredFields from reportTypes
-      // optionalFields if provided
-      // extra user-provided fields
-    }
-  }
-}
-- RequiredFields come from reportTypes.
-- Project-based reports need projectName + address.
-- If projectName is missing, use "Untitled Project – <address>".
-- Titles follow titleTemplate from reportTypes.
+  → Always return JSON: {"actionType":"Create","actionName":"Logout"}
 
 ---
 codexGlossary:
@@ -199,124 +177,10 @@ $reportTypesBlock
 PROMPT;
 #endregion
 
-#region 🛠 Stream Query Helpers (must come before Routing Layer)
-
-// Define stream mapping (centralized for DRY and scalability)
-$streamMap = array(
-    'time'          => 'timeDateArray.currentLocalTime',
-    'date'          => 'timeDateArray.currentDate',
-    'weather'       => 'weatherData.description',
-    'temp'          => 'weatherData.temp',
-    'forecast'      => 'weatherData.forecast',   // special handling for array
-    'kpis'          => 'kpiData',
-    'orders'        => 'kpiData.orders',
-    'contacts'      => 'kpiData.contacts',
-    'approvals'     => 'kpiData.approvals',
-    'announcements' => 'announcements',
-    'announcement'  => 'announcements',
-    'bulletin'      => 'announcements'
-);
-
-/**
- * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
- * @param string $prompt
- * @param array $dynamicData
- * @return bool
- */
-function queryMatchesStream($prompt, $dynamicData) {
-    global $streamMap;
-    $lowerPrompt = strtolower($prompt);
-
-    foreach ($streamMap as $keyword => $path) {
-        if (strpos($lowerPrompt, $keyword) !== false) {
-            $pathParts = explode('.', $path);
-            $current = $dynamicData;
-            foreach ($pathParts as $part) {
-                if (!isset($current[$part])) continue 2;
-                $current = $current[$part];
-            }
-            if ($current !== null) return true;
-        }
-    }
-    return false;
-}
-
-/**
- * Handle stream-based queries (time, date, weather, KPIs, announcements)
- * Returns true if handled (and exits), false otherwise for fallback to general AI
- */
-function handleStreamQuery($prompt, $dynamicData) {
-    global $streamMap;
-    $p = strtolower($prompt);
-
-    foreach ($streamMap as $keyword => $path) {
-        if (strpos($p, $keyword) !== false) {
-            $pathParts = explode('.', $path);
-            $current = $dynamicData;
-            foreach ($pathParts as $part) {
-                if (!isset($current[$part])) {
-                    $current = null;
-                    break;
-                }
-                $current = $current[$part];
-            }
-
-            if ($current !== null) {
-                // --- Special handlers ---
-                if (in_array($keyword, array('announcements','announcement','bulletin'))) {
-                    if (is_array($current)) {
-                        $titles = array();
-                        foreach ($current as $a) {
-                            if (isset($a['title'])) {
-                                $line = $a['title'];
-                                if (!empty($a['description'])) {
-                                    $line .= " – " . $a['description'];
-                                }
-                                $titles[] = $line;
-                            }
-                        }
-                        $response = "Announcements: " . implode("; ", $titles);
-                    } else {
-                        $response = "⚠️ No announcements available.";
-                    }
-                }
-                elseif ($keyword === 'forecast' && is_array($current)) {
-                    $days = array();
-                    foreach ($current as $f) {
-                        $days[] = $f['date'] . " (" . $f['description'] .
-                                  ", High " . $f['high'] . "°F / Low " . $f['low'] . "°F)";
-                    }
-                    $response = "Forecast: " . implode("; ", $days);
-                }
-                elseif ($keyword === 'temp') {
-                    $response = "Temperature: " . $current . "°F";
-                }
-                elseif ($keyword === 'kpis' && is_array($current)) {
-                    $response = "KPIs — Orders: " . (isset($current['orders']) ? $current['orders'] : 'N/A') .
-                                ", Contacts: " . (isset($current['contacts']) ? $current['contacts'] : 'N/A') .
-                                ", Approvals: " . (isset($current['approvals']) ? $current['approvals'] : 'N/A');
-                }
-                elseif (in_array($keyword, array('orders','contacts','approvals'))) {
-                    $response = ucfirst($keyword) . ": " . $current;
-                }
-                else {
-                    $response = ucfirst($keyword) . ": " . (is_array($current) ? json_encode($current) : $current);
-                }
-
-                sendJsonResponse($response, "chat", array("sessionId" => session_id()));
-                exit;
-            }
-        }
-    }
-    return false; // fallback to AI
-}
-
-#endregion
-
 #region 🎯 Routing Layer
 $handled = false;
 
-// --- Quick Agentic Actions (logout, login) ---
+// Quick Agentic Actions
 if (!$handled && (
     preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit)\b/i', $lowerPrompt) ||
     preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)
@@ -325,12 +189,7 @@ if (!$handled && (
     $handled = true;
 }
 
-// --- Stream Queries (time, date, weather, KPIs, announcements) ---
-if (!$handled && queryMatchesStream($lowerPrompt, $dynamicData)) {
-    $handled = handleStreamQuery($lowerPrompt, $dynamicData);
-}
-
-// --- Codex Commands (glossary, modules, constitution, etc.) ---
+// Codex Commands (glossary, modules, etc.)
 if (!$handled && (
     preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt) ||
     preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt) ||
@@ -340,22 +199,18 @@ if (!$handled && (
     $handled = true;
 }
 
-// --- Report Requests ---
+// Report Requests
 if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
     $reportTypesDecoded = json_decode($reportTypesBlock, true);
-
     if (is_array($reportTypesDecoded)) {
-        // Check if prompt contains both street number and 5-digit ZIP
         if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            // Run actual report pipeline
             handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
         } else {
-            // Return Codex Report explanation instead of failing
             $response = array(
                 "actionType" => "Create",
                 "actionName" => "Report",
                 "reportType" => "Codex Report",
-                "response"   => "ℹ️ Codex information about requested report type.",
+                "response"   => "ℹ️ Codex info about requested report type.",
                 "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
             );
             sendJsonResponse($response, "report", array("sessionId" => session_id()));
@@ -364,86 +219,10 @@ if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
     } else {
         sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
     }
-
     $handled = true;
 }
 
-// --- Default: General AI ---
-if (!$handled) {
-    $messages = array(array("role" => "system", "content" => $systemPrompt));
-    if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
-            }
-        }
-    }
-    $messages[] = array("role" => "user", "content" => $prompt);
-    $aiResponse = callOpenAi($messages);
-    if (is_string($aiResponse) && trim($aiResponse) !== '') {
-        $aiResponse .= " ⁂";
-    }
-    sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
-    exit;
-}
-
-$handled = false;
-
-// --- Quick Agentic Actions (logout, login) ---
-if (!$handled && (
-    preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit)\b/i', $lowerPrompt) ||
-    preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)
-)) {
-    handleQuickAction($lowerPrompt);
-    $handled = true;
-}
-
-// --- Stream Queries (time, date, weather, KPIs, announcements) ---
-if (!$handled && queryMatchesStream($lowerPrompt, $dynamicData)) {
-    handleStreamQuery($lowerPrompt, $dynamicData);
-    $handled = true;
-}
-
-// --- Codex Commands (glossary, modules, constitution, etc.) ---
-if (!$handled && (
-    preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt) ||
-    preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt) ||
-    preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)
-)) {
-    handleCodexCommand($lowerPrompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock);
-    $handled = true;
-}
-
-// --- Report Requests ---
-if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
-    $reportTypesDecoded = json_decode($reportTypesBlock, true);
-
-    if (is_array($reportTypesDecoded)) {
-        // Check if prompt contains both street number and 5-digit ZIP
-        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            // Run actual report pipeline
-            handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
-        } else {
-            // Return Codex Report explanation instead of failing
-            $response = array(
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => "Codex Report",
-                "response"   => "ℹ️ Codex information about requested report type.",
-                "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
-            );
-            sendJsonResponse($response, "report", array("sessionId" => session_id()));
-            exit;
-        }
-    } else {
-        sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
-    }
-
-    $handled = true;
-}
-
-// --- Default: General AI ---
+// Default: General AI
 if (!$handled) {
     $messages = array(array("role" => "system", "content" => $systemPrompt));
     if (!empty($conversation)) {
@@ -465,78 +244,6 @@ if (!$handled) {
 #endregion
 
 #region 🛠 Helper Functions
-// Prevent duplicate function definitions (PHP 5.6 compatible)
-if (!function_exists('queryMatchesStream')) {
-    /**
-     * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
-     * @param string $prompt
-     * @param array $dynamicData
-     * @return bool
-     */
-    function queryMatchesStream($prompt, $dynamicData) {
-        $lowerPrompt = strtolower($prompt);
-        return (
-            preg_match('/\b(time|current time|local time|clock|date|today.?s date|current date|weather|forecast|kpis?|orders?|approvals?|announcements?)\b/i', $lowerPrompt) &&
-            (
-                isset($dynamicData['timeDateArray']['currentLocalTime']) ||
-                isset($dynamicData['timeDateArray']['currentDate']) ||
-                isset($dynamicData['weather']['current']) ||
-                isset($dynamicData['KPIs']) ||
-                isset($dynamicData['announcements'])
-            )
-        );
-    }
-}
-
-if (!function_exists('handleStreamQuery')) {
-    /**
-     * Handle stream-based queries (time, date, weather, KPIs, announcements)
-     * @param string $prompt
-     * @param array $dynamicData
-     */
-    function handleStreamQuery($prompt, $dynamicData) {
-        $p = strtolower($prompt);
-        $response = "⚠️ No stream data available.";
-
-        if (isset($dynamicData['weather']['current']) && (
-            strpos($p, 'weather') !== false || strpos($p, 'forecast') !== false || strpos($p, 'temp') !== false
-        )) {
-            $response = "Current weather: " . $dynamicData['weather']['current'];
-        }
-        elseif (isset($dynamicData['timeDateArray']['currentLocalTime']) && strpos($p, 'time') !== false) {
-            $response = "Local time: " . $dynamicData['timeDateArray']['currentLocalTime'];
-        }
-        elseif (isset($dynamicData['timeDateArray']['currentDate']) && strpos($p, 'date') !== false) {
-            $response = "Today’s date: " . $dynamicData['timeDateArray']['currentDate'];
-        }
-        elseif (isset($dynamicData['KPIs']) && (
-            strpos($p, 'order') !== false || strpos($p, 'contact') !== false || strpos($p, 'approval') !== false
-        )) {
-            $kpis = $dynamicData['KPIs'];
-            $response = "KPIs — Orders: " . $kpis['orders'] . ", Contacts: " . $kpis['contacts'] . ", Approvals: " . $kpis['approvals'];
-        }
-        elseif (isset($dynamicData['announcements']) && (
-            strpos($p, 'announcement') !== false || strpos($p, 'bulletin') !== false
-        )) {
-            $titles = array();
-            foreach ($dynamicData['announcements'] as $a) {
-                if (isset($a['title'])) {
-                    $titles[] = $a['title'];
-                }
-            }
-            $response = "Announcements: " . implode("; ", $titles);
-        }
-
-        // Ensure we always pass a string
-        if (!is_string($response)) {
-            $response = json_encode($response);
-        }
-
-        sendJsonResponse($response, "chat", array("sessionId" => session_id()));
-        exit;
-    }
-}
-
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
