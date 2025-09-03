@@ -675,7 +675,7 @@ function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
 }
 
 /**
- * Call OpenAI API
+ * Call OpenAI API with Google Search fallback
  * @param array $messages
  * @return string
  */
@@ -687,6 +687,7 @@ function callOpenAi($messages) {
         "temperature" => 0.1,
         "max_tokens" => 200
     ), JSON_UNESCAPED_SLASHES);
+
     $ch = curl_init("https://api.openai.com/v1/chat/completions");
     curl_setopt($ch, CURLOPT_HTTPHEADER, array(
         "Content-Type: application/json",
@@ -720,14 +721,66 @@ function callOpenAi($messages) {
         }
     }
 
-    return trim($result["choices"][0]["message"]["content"]);
+    $aiResponse = trim($result["choices"][0]["message"]["content"]);
+
+    // 🔎 Google Search fallback if AI says it "doesn't know"
+    if (preg_match('/don\'t have|can\'t provide|please provide|not sure/i', $aiResponse)) {
+        $lastUserMessage = end($messages);
+        if (isset($lastUserMessage['content'])) {
+            $searchResult = googleSearch($lastUserMessage['content']);
+            if (!isset($searchResult['error']) && isset($searchResult['items'][0])) {
+                $first = $searchResult['items'][0];
+                $aiResponse = "🔎 I looked this up: " . $first['title'] . " — " .
+                              $first['snippet'] . " (" . $first['link'] . ")";
+            } else {
+                $aiResponse .= " (No useful Google results found)";
+            }
+        }
+    }
+
+    return $aiResponse;
 }
 
 /**
- * Fallback report logic handler
- * @param string $aiResponse
+ * Perform a Google Custom Search API query.
+ *
+ * Uses GOOGLE_SEARCH_KEY and GOOGLE_SEARCH_CX from environment variables.
+ * Returns decoded JSON results from Google or an error array on failure.
+ *
+ * @param string $query  The search term(s).
+ * @return array         The decoded JSON response or error info.
  */
+function googleSearch($query) {
+    $apiKey = getenv("GOOGLE_SEARCH_KEY");
+    $cx = getenv("GOOGLE_SEARCH_CX");
+
+    if (!$apiKey || !$cx) {
+        return ["error" => "Google Search API not configured."];
+    }
+
+    $url = "https://www.googleapis.com/customsearch/v1?q=" . urlencode($query) .
+           "&key=" . $apiKey . "&cx=" . $cx;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($res === false || $err) {
+        return ["error" => "Curl error: $err"];
+    }
+
+    $json = json_decode($res, true);
+    if (!$json || isset($json['error'])) {
+        return ["error" => isset($json['error']['message']) ? $json['error']['message'] : "Invalid response"];
+    }
+
+    return $json;
+}
 function runReportLogic($aiResponse) {
     sendJsonResponse($aiResponse, "report", array("sessionId" => session_id()));
 }
+
 #endregion
