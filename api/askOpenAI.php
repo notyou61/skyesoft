@@ -24,24 +24,60 @@ if (session_status() === PHP_SESSION_NONE) {
 #endregion
 
 #region 📂 Load Unified Context (DynamicData)
-$dynamicUrl = __DIR__ . '/getDynamicData.php';
-$dynamicData = array();
+$dynamicUrl = 'https://www.skyelighting.com/skyesoft/api/getDynamicData.php';
+$dynamicData = [];
+$snapshotSummary = '{}';
 
-$dynamicRaw = @file_get_contents($dynamicUrl);
-if ($dynamicRaw !== false) {
-    $dynamicData = json_decode($dynamicRaw, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
+// Fetch JSON via curl
+$ch = curl_init($dynamicUrl);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 5,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_USERAGENT => 'Skyebot/1.0 (+skyelighting.com)'
+]);
+$dynamicRaw = curl_exec($ch);
+$err = curl_error($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+// Decode if successful
+if ($dynamicRaw !== false && empty($err) && $httpCode === 200) {
+    $decoded = json_decode($dynamicRaw, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $dynamicData = $decoded;
+    } else {
         file_put_contents(__DIR__ . '/error.log',
-            "DynamicData JSON Error: " . json_last_error_msg() . "\nRaw: $dynamicRaw\n",
+            date('Y-m-d H:i:s') . " - JSON decode error: " . json_last_error_msg() . "\nRaw: $dynamicRaw\n",
             FILE_APPEND
         );
-        $dynamicData = array();
     }
 } else {
     file_put_contents(__DIR__ . '/error.log',
-        date('Y-m-d H:i:s') . " - Failed to load getDynamicData.php\n",
+        date('Y-m-d H:i:s') . " - Failed to fetch $dynamicUrl (err=$err, code=$httpCode)\n",
         FILE_APPEND
     );
+}
+
+// Always build a snapshot, even if minimal
+if (!empty($dynamicData)) {
+    $snapshotSummary = json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+} else {
+    // Safe fallback if nothing loaded
+    $snapshotSummary = json_encode([
+        "timeDateArray" => [
+            "currentLocalTime" => date('h:i:s A'),
+            "currentDate" => date('Y-m-d'),
+            "timeZone" => date_default_timezone_get()
+        ],
+        "weatherData" => [
+            "description" => "Unavailable",
+            "temp" => null
+        ],
+        "announcements" => [],
+        "kpiData" => []
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 #endregion
 
@@ -127,7 +163,6 @@ $codexOtherBlock
 reportTypes:
 $reportTypesBlock
 PROMPT;
-
 #endregion
 
 #region 🎯 Routing Layer
