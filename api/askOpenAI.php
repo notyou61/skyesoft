@@ -228,6 +228,60 @@ if (!$handled) {
 }
 #endregion
 
+#region 🛠 Stream Query Helpers (must come before Routing Layer)
+function queryMatchesStream($prompt, $dynamicData) {
+    global $streamMap;
+    $lowerPrompt = strtolower($prompt);
+
+    foreach ($streamMap as $keyword => $path) {
+        if (strpos($lowerPrompt, $keyword) !== false) {
+            $pathParts = explode('.', $path);
+            $current = $dynamicData;
+            foreach ($pathParts as $part) {
+                if (!isset($current[$part])) continue 2;
+                $current = $current[$part];
+            }
+            if ($current !== null) return true;
+        }
+    }
+    return false;
+}
+
+function handleStreamQuery($prompt, $dynamicData) {
+    global $streamMap;
+    $p = strtolower($prompt);
+
+    foreach ($streamMap as $keyword => $path) {
+        if (strpos($p, $keyword) !== false) {
+            $pathParts = explode('.', $path);
+            $current = $dynamicData;
+            foreach ($pathParts as $part) {
+                if (!isset($current[$part])) {
+                    $current = null;
+                    break;
+                }
+                $current = $current[$part];
+            }
+
+            if ($current !== null) {
+                if ($keyword === 'forecast' && is_array($current)) {
+                    $days = array();
+                    foreach ($current as $f) {
+                        $days[] = $f['date'] . " (" . $f['description'] . ", High " . $f['high'] . " / Low " . $f['low'] . ")";
+                    }
+                    $response = "Forecast: " . implode("; ", $days);
+                } else {
+                    $response = ucfirst($keyword) . ": " . (is_array($current) ? json_encode($current) : $current);
+                }
+                sendJsonResponse($response, "chat", array("sessionId" => session_id()));
+                exit;
+            }
+        }
+    }
+    return false;
+}
+#endregion
+
 #region 🛠 Helper Functions
 // Prevent duplicate function definitions (PHP 5.6 compatible)
 if (!function_exists('queryMatchesStream')) {
