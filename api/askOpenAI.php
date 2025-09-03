@@ -3,22 +3,21 @@
 // Entry point for Skyebot AI interactions
 
 #region 🔹 Report Generators (specific report logic)
-require_once __DIR__ . "/reports/zoning.php";         // Zoning Report data + pipeline
-require_once __DIR__ . "/reports/signOrdinance.php";  // Sign Ordinance Report
-require_once __DIR__ . "/reports/photoSurvey.php";    // Photo Survey Report
-require_once __DIR__ . "/reports/custom.php";         // Custom / Freeform Report
+require_once __DIR__ . "/reports/zoning.php";
+require_once __DIR__ . "/reports/signOrdinance.php";
+require_once __DIR__ . "/reports/photoSurvey.php";
+require_once __DIR__ . "/reports/custom.php";
 #endregion
 
 #region 🔹 Shared Zoning Logic
-require_once __DIR__ . "/jurisdictionZoning.php";     // Jurisdiction-specific ArcGIS lookups
+require_once __DIR__ . "/jurisdictionZoning.php";
 #endregion
 
 #region 🔹 Environment & Session Setup
-require_once __DIR__ . "/env_boot.php";               // Env vars (API keys, configs)
+require_once __DIR__ . "/env_boot.php";
 header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
 
-// Ensure PHP session is active
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -58,54 +57,27 @@ $codexOtherBlock = json_encode(array(
     "shared"         => isset($dynamicData['shared']) ? $dynamicData['shared'] : array()
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-// Fallback report types if dynamic data is unavailable
-$reportTypesFallback = array(
-    "Zoning Report" => array(
-        "reportType" => "Zoning Report",
-        "titleTemplate" => "{reportType} for {projectName} at {address}",
-        "requiredFields" => array("address", "projectName", "parcel", "jurisdiction"),
-        "optionalFields" => array("latitude", "longitude", "zoningCode")
-    ),
-    "Sign Ordinance Report" => array(
-        "reportType" => "Sign Ordinance Report",
-        "titleTemplate" => "{reportType} for {projectName} at {address}",
-        "requiredFields" => array("address", "projectName", "jurisdiction"),
-        "optionalFields" => array("signType", "dimensions")
-    ),
-    "Photo Survey Report" => array(
-        "reportType" => "Photo Survey Report",
-        "titleTemplate" => "{reportType} for {projectName} at {address}",
-        "requiredFields" => array("address", "projectName"),
-        "optionalFields" => array("photoCount", "surveyDate")
-    ),
-    "Custom Report" => array(
-        "reportType" => "Custom Report",
-        "titleTemplate" => "{reportType} for {projectName}",
-        "requiredFields" => array("projectName"),
-        "optionalFields" => array("description", "address")
-    )
-);
-
 $reportTypesBlock = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
     ? json_encode($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    : json_encode($reportTypesFallback, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    : "No report types data available.\n";
 
+// 🔹 Flattened snapshot for easier AI interpretation
 $snapshotSummary = json_encode(array(
-    "timeDateArray" => isset($dynamicData['timeDateArray']) ? $dynamicData['timeDateArray'] : null,
-    "weatherData"   => isset($dynamicData['weatherData']) ? $dynamicData['weatherData'] : null,
-    "kpiData"       => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : null,
+    "time"          => isset($dynamicData['timeDateArray']['currentLocalTime']) ? $dynamicData['timeDateArray']['currentLocalTime'] : null,
+    "date"          => isset($dynamicData['timeDateArray']['currentDate']) ? $dynamicData['timeDateArray']['currentDate'] : null,
+    "timezone"      => isset($dynamicData['timeDateArray']['timeZone']) ? $dynamicData['timeDateArray']['timeZone'] : null,
+    "weather"       => isset($dynamicData['weatherData']['description']) ? $dynamicData['weatherData']['description'] : null,
+    "temperature"   => isset($dynamicData['weatherData']['temp']) ? $dynamicData['weatherData']['temp'] : null,
+    "forecast"      => isset($dynamicData['weatherData']['forecast']) ? $dynamicData['weatherData']['forecast'] : null,
+    "kpis"          => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : null,
+    "orders"        => isset($dynamicData['kpiData']['orders']) ? $dynamicData['kpiData']['orders'] : null,
+    "contacts"      => isset($dynamicData['kpiData']['contacts']) ? $dynamicData['kpiData']['contacts'] : null,
+    "approvals"     => isset($dynamicData['kpiData']['approvals']) ? $dynamicData['kpiData']['approvals'] : null,
     "announcements" => isset($dynamicData['announcements']) ? $dynamicData['announcements'] : null
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-// Debug: Log snapshotSummary to verify contents
-file_put_contents(__DIR__ . '/debug.log',
-    date('Y-m-d H:i:s') . " - snapshotSummary: " . $snapshotSummary . "\n",
-    FILE_APPEND
-);
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
-// Read and decode input
 $data = json_decode(file_get_contents("php://input"), true);
 if ($data === null || $data === false) {
     echo json_encode(array(
@@ -116,9 +88,8 @@ if ($data === null || $data === false) {
     exit;
 }
 
-// Extract input fields
-$prompt = isset($data["prompt"]) 
-    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT))) 
+$prompt = isset($data["prompt"])
+    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT)))
     : "";
 $conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
@@ -143,45 +114,30 @@ You are Skyebot™, an assistant for a signage company.
 
 ⚠️ CRITICAL RULES:
 - For CRUD and Report actions → reply in valid JSON only.
-- For glossary lookups, codex questions, and stream data (time, date, weather, KPIs, announcements) → reply in plain text.
-- For logout → always return JSON: {"actionType":"Create","actionName":"Logout"}.
+- For glossary lookups, codex questions, and stream data (time, date, weather, KPIs, announcements) → reply in plain text using sseSnapshot.
+- For logout → always return JSON.
 - For general queries (outside codex/stream) → reply in plain text using general AI knowledge.
 - Never return markdown, code fences, or mixed formats.
-- Never claim to lack real-time data access; always check sseSnapshot first.
 
 You have four sources of truth:
 - codexGlossary: internal company terms/definitions
 - codexOther: company knowledge (meta, constitution, etc.)
-- sseSnapshot: live operational data (raw JSON provided below)
+- sseSnapshot: live operational data (raw JSON below)
 - reportTypes: standardized report templates
 
 ---
 ## Stream Queries
-- For queries about time, date, weather, KPIs, or announcements:
-  → Prioritize extracting answers directly from sseSnapshot JSON.
-  → Use these specific fields:
-    - Time: sseSnapshot.timeDateArray.currentLocalTime (e.g., "05:55:16 AM")
-    - Date: sseSnapshot.timeDateArray.currentDate (e.g., "2025-09-03")
-    - Weather: sseSnapshot.weatherData.description (e.g., "Broken clouds")
-    - Temperature: sseSnapshot.weatherData.temp (e.g., "82°F")
-    - Sunrise: sseSnapshot.weatherData.sunrise (e.g., "1:04 PM")
-    - Sunset: sseSnapshot.weatherData.sunset (e.g., "1:51 AM")
-    - Forecast: sseSnapshot.weatherData.forecast (array of daily forecasts)
-    - KPIs: sseSnapshot.kpiData (e.g., contacts, orders, approvals)
-    - Announcements: sseSnapshot.announcements (array of titles and descriptions)
-  → Format responses naturally, e.g.:
-    - "What's the date and time?" → "Today is 2025-09-03 at 05:55:16 AM."
-    - "What's the weather today?" → "The weather is Broken clouds with a temperature of 82°F."
-    - "When is sunrise?" → "Sunrise is at 1:04 PM."
-  → If a field is missing or null in sseSnapshot, respond with: "Sorry, that information is temporarily unavailable."
+If the user asks about time, date, weather, KPIs, announcements:
+→ Use sseSnapshot, interpret naturally (combine fields if needed).
+→ Do not invent values.
 
 ## Reports
-- If all required fields are present → generate the report JSON.
-- If fields are missing → return a Codex Report JSON (explanation only).
+If all required fields are present → generate report JSON.
+If fields are missing → return a Codex Report JSON (explanation only).
 
 ## Logout
-- If the user says quit, exit, logout, log out, sign out, or end session:
-  → Always return JSON: {"actionType":"Create","actionName":"Logout"}
+If user says quit, exit, logout, log out, sign out, or end session:
+→ Always return JSON: {"actionType":"Create","actionName":"Logout"}
 
 ---
 codexGlossary:
@@ -201,12 +157,18 @@ PROMPT;
 #region 🎯 Routing Layer
 $handled = false;
 
-// Quick Agentic Actions
+// Quick Agentic Actions (logout, login)
 if (!$handled && (
     preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit)\b/i', $lowerPrompt) ||
     preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)
 )) {
     handleQuickAction($lowerPrompt);
+    $handled = true;
+}
+
+// Stream Queries (time, date, weather, KPIs, announcements)
+if (!$handled && queryMatchesStream($lowerPrompt, $dynamicData)) {
+    handleStreamQuery($lowerPrompt, $dynamicData);
     $handled = true;
 }
 
@@ -223,6 +185,7 @@ if (!$handled && (
 // Report Requests
 if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
     $reportTypesDecoded = json_decode($reportTypesBlock, true);
+
     if (is_array($reportTypesDecoded)) {
         if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
             handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
@@ -231,7 +194,7 @@ if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
                 "actionType" => "Create",
                 "actionName" => "Report",
                 "reportType" => "Codex Report",
-                "response"   => "ℹ️ Codex info about requested report type.",
+                "response"   => "ℹ️ Codex information about requested report type.",
                 "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
             );
             sendJsonResponse($response, "report", array("sessionId" => session_id()));
@@ -240,6 +203,7 @@ if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
     } else {
         sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
     }
+
     $handled = true;
 }
 
@@ -255,13 +219,6 @@ if (!$handled) {
         }
     }
     $messages[] = array("role" => "user", "content" => $prompt);
-
-    // Debug: Log the full prompt payload sent to OpenAI
-    file_put_contents(__DIR__ . '/debug.log',
-        date('Y-m-d H:i:s') . " - OpenAI Payload: " . json_encode($messages, JSON_PRETTY_PRINT) . "\n",
-        FILE_APPEND
-    );
-
     $aiResponse = callOpenAi($messages);
     if (is_string($aiResponse) && trim($aiResponse) !== '') {
         $aiResponse .= " ⁂";
@@ -272,6 +229,78 @@ if (!$handled) {
 #endregion
 
 #region 🛠 Helper Functions
+// Prevent duplicate function definitions (PHP 5.6 compatible)
+if (!function_exists('queryMatchesStream')) {
+    /**
+     * Check if prompt matches stream data (time, date, weather, KPIs, announcements)
+     * @param string $prompt
+     * @param array $dynamicData
+     * @return bool
+     */
+    function queryMatchesStream($prompt, $dynamicData) {
+        $lowerPrompt = strtolower($prompt);
+        return (
+            preg_match('/\b(time|current time|local time|clock|date|today.?s date|current date|weather|forecast|kpis?|orders?|approvals?|announcements?)\b/i', $lowerPrompt) &&
+            (
+                isset($dynamicData['timeDateArray']['currentLocalTime']) ||
+                isset($dynamicData['timeDateArray']['currentDate']) ||
+                isset($dynamicData['weather']['current']) ||
+                isset($dynamicData['KPIs']) ||
+                isset($dynamicData['announcements'])
+            )
+        );
+    }
+}
+
+if (!function_exists('handleStreamQuery')) {
+    /**
+     * Handle stream-based queries (time, date, weather, KPIs, announcements)
+     * @param string $prompt
+     * @param array $dynamicData
+     */
+    function handleStreamQuery($prompt, $dynamicData) {
+        $p = strtolower($prompt);
+        $response = "⚠️ No stream data available.";
+
+        if (isset($dynamicData['weather']['current']) && (
+            strpos($p, 'weather') !== false || strpos($p, 'forecast') !== false || strpos($p, 'temp') !== false
+        )) {
+            $response = "Current weather: " . $dynamicData['weather']['current'];
+        }
+        elseif (isset($dynamicData['timeDateArray']['currentLocalTime']) && strpos($p, 'time') !== false) {
+            $response = "Local time: " . $dynamicData['timeDateArray']['currentLocalTime'];
+        }
+        elseif (isset($dynamicData['timeDateArray']['currentDate']) && strpos($p, 'date') !== false) {
+            $response = "Today’s date: " . $dynamicData['timeDateArray']['currentDate'];
+        }
+        elseif (isset($dynamicData['KPIs']) && (
+            strpos($p, 'order') !== false || strpos($p, 'contact') !== false || strpos($p, 'approval') !== false
+        )) {
+            $kpis = $dynamicData['KPIs'];
+            $response = "KPIs — Orders: " . $kpis['orders'] . ", Contacts: " . $kpis['contacts'] . ", Approvals: " . $kpis['approvals'];
+        }
+        elseif (isset($dynamicData['announcements']) && (
+            strpos($p, 'announcement') !== false || strpos($p, 'bulletin') !== false
+        )) {
+            $titles = array();
+            foreach ($dynamicData['announcements'] as $a) {
+                if (isset($a['title'])) {
+                    $titles[] = $a['title'];
+                }
+            }
+            $response = "Announcements: " . implode("; ", $titles);
+        }
+
+        // Ensure we always pass a string
+        if (!is_string($response)) {
+            $response = json_encode($response);
+        }
+
+        sendJsonResponse($response, "chat", array("sessionId" => session_id()));
+        exit;
+    }
+}
+
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
@@ -832,7 +861,7 @@ function prepareReportData($crudData, $reportTypes) {
 
     $missingFields = array();
     foreach ($requiredFields as $field) {
-        if (!isset($enrichedData[$field]) || $enrichedData['field'] === '') {
+        if (!isset($enrichedData[$field]) || $enrichedData[$field] === '') {
             $missingFields[] = $field;
         }
     }
