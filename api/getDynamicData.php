@@ -427,6 +427,7 @@ $response = [
     'announcements' => $announcements,
     'uiEvent' => $uiEvent,
     'siteMeta' => $siteMeta,
+    'deploymentCheck' => '✅ Deployed successfully from Git at ' . date('Y-m-d H:i:s'),
     'codex' => $codex
 ];
 #endregion
