@@ -190,21 +190,13 @@ Never claim you lack real-time access — always ground answers in this snapshot
 - Use Codex knowledge (e.g., glossary terms, Semantic Responder module) to handle indirect or obscure phrasings.  
 - Never say “I don’t know” if the information exists in sseSnapshot or Codex — instead, interpret and return it.
 
-📊 SSE SNAPSHOT:
-$snapshotSummary
-
-📘 CODEX KNOWLEDGE:
-Glossary:
-$codexGlossaryBlock
-
-Constitution:
-$codexConstitutionBlock
-
-📑 REPORT TYPES:
-Use only the report type names by default.
-For full details, load on demand when a report creation is explicitly requested.
-
 PROMPT;
+
+// Append injected blocks dynamically
+foreach ($injectBlocks as $section => $block) {
+    $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n";
+    $systemPrompt .= json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+}
 #endregion
 
 #region 🎯 Routing Layer
