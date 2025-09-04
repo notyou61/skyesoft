@@ -81,28 +81,52 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
-#region 📚 Build Context Blocks
-$codexGlossaryBlock = !empty($dynamicData['modules']['glossaryModule']['contents'])
-    ? json_encode($dynamicData['modules']['glossaryModule']['contents'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    : "No glossary data available.\n";
+#region 📚 Build Context Blocks (Semantic Router)
 
-// Build Codex Constitution Block
-$codexConstitutionBlock = !empty($dynamicData['codex']['constitution'])
-    ? json_encode($dynamicData['codex']['constitution'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    : "No constitution data available.\n";
+// Slim snapshot for universal queries
+$snapshotSlim = array(
+    "timeDateArray" => isset($dynamicData['timeDateArray']) ? $dynamicData['timeDateArray'] : array(),
+    "weatherData"   => isset($dynamicData['weatherData'])
+        ? array(
+            "description" => isset($dynamicData['weatherData']['description']) ? $dynamicData['weatherData']['description'] : "Unavailable",
+            "temp"        => isset($dynamicData['weatherData']['temp']) ? $dynamicData['weatherData']['temp'] : null
+        ) : array(),
+    "announcements" => isset($dynamicData['announcements'])
+        ? array_column($dynamicData['announcements'], 'title')
+        : array(),
+    "kpiData"       => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : array()
+);
 
-$codexOtherBlock = json_encode(array(
-    "meta"           => isset($dynamicData['meta']) ? $dynamicData['meta'] : array(),
-    "constitution"   => isset($dynamicData['constitution']) ? $dynamicData['constitution'] : array(),
-    "ragExplanation" => isset($dynamicData['ragExplanation']) ? $dynamicData['ragExplanation'] : array(),
-    "shared"         => isset($dynamicData['shared']) ? $dynamicData['shared'] : array()
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// Codex categories (keys only, no values yet)
+$codexCategories = array(
+    "glossary"     => !empty($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
+    "constitution" => !empty($dynamicData['codex']['constitution']) ? array_keys($dynamicData['codex']['constitution']) : array(),
+    "modules"      => !empty($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array()
+);
 
-$reportTypesBlock = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-    ? json_encode($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    : "No report types data available.\n";
+// Router: inject blocks if user prompt matches a codex key
+$injectBlocks = array();
+$injectBlocks['snapshot'] = $snapshotSlim; // always include slim snapshot
+$lowerPrompt = strtolower($prompt);
 
-$snapshotSummary = json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+foreach ($codexCategories as $section => $keys) {
+    foreach ($keys as $key) {
+        if (strpos($lowerPrompt, strtolower($key)) !== false) {
+            if (!isset($injectBlocks[$section])) {
+                $injectBlocks[$section] = array();
+            }
+            $injectBlocks[$section][$key] = $dynamicData['codex'][$section][$key];
+        }
+    }
+}
+
+// Report types (only inject if prompt mentions report)
+if (stripos($prompt, 'report') !== false) {
+    $injectBlocks['reportTypes'] = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+        ? array_keys($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+        : array();
+}
+
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
@@ -694,13 +718,38 @@ function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
 
 /**
  * Call OpenAI API with Google Search fallback
+ * Uses gpt-4o-mini by default, escalates to gpt-4o for report-type queries.
  * @param array $messages
  * @return string
  */
 function callOpenAi($messages) {
     $apiKey = getenv("OPENAI_API_KEY");
+
+    // 🔎 Load dynamicData.json (only categories, not full content)
+    $dynamicPath = __DIR__ . "/dynamicData.json";
+    $reportKeys = array();
+    if (file_exists($dynamicPath)) {
+        $dynamicData = json_decode(file_get_contents($dynamicPath), true);
+        if (!empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])) {
+            $reportKeys = array_keys($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']);
+        }
+    }
+
+    // 🔎 Model selection (cheap default, escalate if prompt matches a report type)
+    $model = "gpt-4o-mini"; // cheapest default
+    $lastUserMessage = end($messages);
+    $promptText = isset($lastUserMessage['content']) ? strtolower($lastUserMessage['content']) : "";
+
+    foreach ($reportKeys as $reportKey) {
+        if (strpos($promptText, strtolower($reportKey)) !== false ||
+            strpos($promptText, 'report') !== false) {
+            $model = "gpt-4o"; // heavier model for long reports
+            break;
+        }
+    }
+
     $payload = json_encode(array(
-        "model" => "gpt-4",
+        "model" => $model,
         "messages" => $messages,
         "temperature" => 0.1,
         "max_tokens" => 200
