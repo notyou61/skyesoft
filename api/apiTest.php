@@ -1,6 +1,16 @@
 <?php
 // apiTest.php - Quick test for OpenAI API connectivity
 
+// Load .env file
+if (file_exists(__DIR__ . "/.env")) {
+    $lines = file(__DIR__ . "/.env", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false) {
+            list($name, $value) = explode('=', $line, 2);
+            putenv(trim($name) . "=" . trim($value));
+        }
+    }
+}
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
     die("❌ API key not found in environment.\n");
