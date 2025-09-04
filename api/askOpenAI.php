@@ -165,21 +165,15 @@ Never claim you lack real-time access — always ground answers in this snapshot
 $snapshotSummary
 
 📘 CODEX KNOWLEDGE:
-Use the following Codex entries as reference text to explain terms, modules, or rules when asked.
-Always explain Codex concepts in natural language sentences, not JSON, unless JSON is explicitly requested.
-
-Glossary Entries:
-Use codex.glossary to define acronyms, principles, and internal terms (e.g., MTCO, LGBAS, SSE, KPI).
-Always provide the full definition and a short explanation in plain sentences.
-
-Module References:
+Glossary:
 $codexGlossaryBlock
 
-Other Codex References:
-$codexOtherBlock
+Constitution:
+$codexConstitutionBlock
 
 📑 REPORT TYPES:
-Use these definitions when creating reports:
+Use only the report type names by default.
+For full details, load on demand when a report creation is explicitly requested.
 $reportTypesBlock
 PROMPT;
 #endregion
