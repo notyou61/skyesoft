@@ -86,6 +86,11 @@ $codexGlossaryBlock = !empty($dynamicData['modules']['glossaryModule']['contents
     ? json_encode($dynamicData['modules']['glossaryModule']['contents'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     : "No glossary data available.\n";
 
+// Build Codex Constitution Block
+$codexConstitutionBlock = !empty($dynamicData['codex']['constitution'])
+    ? json_encode($dynamicData['codex']['constitution'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    : "No constitution data available.\n";
+
 $codexOtherBlock = json_encode(array(
     "meta"           => isset($dynamicData['meta']) ? $dynamicData['meta'] : array(),
     "constitution"   => isset($dynamicData['constitution']) ? $dynamicData['constitution'] : array(),
