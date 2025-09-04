@@ -174,7 +174,7 @@ $codexConstitutionBlock
 📑 REPORT TYPES:
 Use only the report type names by default.
 For full details, load on demand when a report creation is explicitly requested.
-$reportTypesBlock
+
 PROMPT;
 #endregion
 
