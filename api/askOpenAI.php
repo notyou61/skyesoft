@@ -163,9 +163,14 @@ Never claim you lack real-time access — always ground answers in this snapshot
 $snapshotSummary
 
 📘 CODEX KNOWLEDGE:
-Use the following company Codex entries to explain terms, modules, or rules when asked.
-- Glossary: $codexGlossaryBlock
-- Other Codex Content: $codexOtherBlock
+Use the following company Codex entries as reference text to explain terms, modules, or rules when asked.
+Always explain Codex concepts in natural language sentences, not JSON, unless JSON is explicitly requested.
+
+Glossary Entries:
+$codexGlossaryBlock
+
+Other Codex Content:
+$codexOtherBlock
 
 📑 REPORT TYPES:
 Use these definitions when creating reports:
