@@ -306,7 +306,7 @@ function callOpenAi($messages) {
 }
 
 /**
- * Perform a Google Custom Search API query.
+ * Perform a Google Custom Search API query with cleaned results.
  * @param string $query
  * @return array
  */
@@ -335,6 +335,22 @@ function googleSearch($query) {
     $json = json_decode($res, true);
     if (!$json || isset($json['error'])) {
         return array("error" => isset($json['error']['message']) ? $json['error']['message'] : "Invalid response");
+    }
+
+    // 🔹 Post-process results: trim messy snippets
+    if (!empty($json['items']) && is_array($json['items'])) {
+        foreach ($json['items'] as &$item) {
+            if (isset($item['snippet'])) {
+                $snippet = trim($item['snippet']);
+                // Remove leading/trailing ellipses
+                $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
+                // Keep only the first full sentence if possible
+                if (preg_match('/^.*?[.?!]/', $snippet, $m)) {
+                    $snippet = $m[0];
+                }
+                $item['snippet'] = $snippet;
+            }
+        }
     }
 
     return $json;
