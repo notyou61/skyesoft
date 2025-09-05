@@ -208,6 +208,7 @@ if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|do
     $responsePayload = array(
         "actionType" => "Logout",
         "status"     => "success",
+        "response"   => "👋 You have been logged out.",
         "sessionId"  => $sessionId
     );
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
