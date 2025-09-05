@@ -178,18 +178,30 @@ if (!isset($current['main']['temp'], $current['weather'][0]['icon'], $current['s
     error_log('❌ Current weather failed: ' . json_encode($current));
 } else {
     $sunriseUnix = (int)$current['sys']['sunrise'];
-    $sunsetUnix = (int)$current['sys']['sunset'];
-    $daySecs = max(0, $sunsetUnix - $sunriseUnix);
+    $sunsetUnix  = (int)$current['sys']['sunset'];
+
+    // Convert API UTC → Phoenix local time
+    $tz = new DateTimeZone("America/Phoenix");
+
+    $dtSunrise = new DateTime("@$sunriseUnix");
+    $dtSunrise->setTimezone($tz);
+    $sunriseLocal = $dtSunrise->format("g:i A");
+
+    $dtSunset = new DateTime("@$sunsetUnix");
+    $dtSunset->setTimezone($tz);
+    $sunsetLocal = $dtSunset->format("g:i A");
+
+    $daySecs   = max(0, $sunsetUnix - $sunriseUnix);
     $nightSecs = max(0, 86400 - $daySecs);
 
-    $weatherData['temp'] = (int)round($current['main']['temp']);
-    $weatherData['icon'] = (string)$current['weather'][0]['icon'];
-    $weatherData['description'] = ucfirst((string)$current['weather'][0]['description']);
+    $weatherData['temp']            = (int)round($current['main']['temp']);
+    $weatherData['icon']            = (string)$current['weather'][0]['icon'];
+    $weatherData['description']     = ucfirst((string)$current['weather'][0]['description']);
     $weatherData['lastUpdatedUnix'] = time();
-    $weatherData['sunrise'] = date('g:i A', $sunriseUnix);
-    $weatherData['sunset'] = date('g:i A', $sunsetUnix);
-    $weatherData['daytimeHours'] = gmdate('G\h i\m', $daySecs);
-    $weatherData['nighttimeHours'] = gmdate('G\h i\m', $nightSecs);
+    $weatherData['sunrise']         = $sunriseLocal;
+    $weatherData['sunset']          = $sunsetLocal;
+    $weatherData['daytimeHours']    = gmdate('G\h i\m', $daySecs);
+    $weatherData['nighttimeHours']  = gmdate('G\h i\m', $nightSecs);
 }
 
 $forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast'
@@ -238,7 +250,8 @@ if (isset($forecast['list']) && is_array($forecast['list'])) {
 }
 // #endregion
 
-// #region 📅 Time and Date Calculations
+#region 📅 Time and Date Calculations
+
 date_default_timezone_set('America/Phoenix');
 $now = time();
 $yearTotalDays = (date('L', $now) ? 366 : 365);
@@ -282,6 +295,7 @@ if ($intervalLabel === '1') {
 } else {
     $secondsRemaining = $workEnd - $currentSeconds;
 }
+
 #endregion
 
 #region 🔧 Utility Functions
