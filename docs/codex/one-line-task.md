@@ -1,16 +1,14 @@
 # 🧠 One-Line Task (OLT) Input Recognition
 
 ## 📌 Purpose
-To provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action—be it database updates, task creation, record lookups, or communication triggers.
+To provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — be it database updates, task creation, record lookups, or communication triggers.
 
 ---
 
 ## 🎯 Primary Role
-To empower users to interact with the Skyesoft platform using freeform one-liners. These are parsed using lightweight NLP logic and pattern recognition to identify the most likely intention behind the text.
-
-- Stream queries (time, date, weather, KPIs, announcements) should no longer rely on hardcoded keyword matching.
-- Instead, Skyebot leverages the **semanticResponder** module, which uses NLU (natural language understanding) to map user intent directly onto fields in dynamicData.
-- Regex rules are only retained for **critical agentic actions** (login/logout, CRUD triggers).
+OLT empowers users to interact with the Skyesoft platform using freeform one-liners.  
+It is tightly integrated with the **semanticResponder** to ensure stream queries (time, date, weather, KPIs, announcements) are handled semantically against `dynamicData.json`, not hardcoded keywords.  
+Regex rules are reserved **only for critical agentic actions** (login/logout, CRUD triggers).
 
 ---
 
@@ -47,21 +45,22 @@ To empower users to interact with the Skyesoft platform using freeform one-liner
 
 ## 🧩 Integration Points
 
-- **Database Modules**: Contact, Quotes, Tasks
-- **Time Interval Standards**: For due date logic
-- **Permit Suite**: Jurisdiction lookup if applicable
-- **Attendance + Escalation Trees**: If SLA rules apply
+- Database Modules  
+- Time Interval Standards  
+- Permit Suite  
+- Attendance + Escalation Trees  
+- Semantic Responder  
 
 ---
 
 ## 🛠️ Future Enhancements
 
-- Auto-tagging entities and locations
-- Suggesting next steps (e.g., _"Would you like to notify the shop?"_)
-- Backfill from prior activity threads to infer intent
+- Auto-tagging entities and locations  
+- Suggesting next steps (e.g., _"Would you like to notify the shop?"_)  
+- Backfill from prior activity threads to infer intent  
 
 ---
 
 ## 🧭 Strategic Importance
 
-This feature removes barriers to entry and allows front office staff and sales reps to initiate actions **without navigating deep menus**—accelerating workflows and boosting adoption across the organization.
+OLT removes barriers to entry by letting staff initiate actions in plain text rather than navigating menus — accelerating adoption and boosting productivity across office and field operations.

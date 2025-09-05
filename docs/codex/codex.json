@@ -37,23 +37,32 @@
     },
     "oneLineTask": {
       "title": "🧠 One-Line Task (OLT) Input",
-      "purpose": "Freeform natural language entry system to initiate tasks, contacts, permits, or communication triggers.",
+      "purpose": "Provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — database updates, task creation, record lookups, or communication triggers.",
       "mechanism": [
-        "Keyword and entity parsing",
-        "Intent detection and smart suggestions",
-        "Prefilled action templates based on NLP"
+        "Leverages the semanticResponder module for stream queries (time, date, weather, KPIs, announcements) instead of hardcoded keyword rules",
+        "Regex rules reserved only for critical agentic actions (login/logout, CRUD triggers)",
+        "Lightweight NLP scans for keywords, named entities, dates/times",
+        "Intent detection maps prompts to known action templates (contact, permit, quote, task)"
       ],
       "examples": [
-        "Add new contact",
-        "Create permit request",
-        "Schedule task for jobsite"
+        "Jim Flanigan at ALC Group, 816-421-8335 → ➕ Add new contact",
+        "Schedule reinstall for Yogurtology next Wednesday at noon → 📅 Create task with date/time",
+        "Sign permit follow-up, call Louie → ☎️ Call task with reference note",
+        "Start quote for 810 S 56th Ave, monument sign repair → 📝 Begin quote form with prefilled fields"
       ],
       "integrations": [
         "Database Modules",
-        "Time Standards",
+        "Time Interval Standards",
         "Permit Suite",
-        "Attendance + Escalation Trees"
-      ]
+        "Attendance + Escalation Trees",
+        "Semantic Responder"
+      ],
+      "futureEnhancements": [
+        "Auto-tagging entities and locations",
+        "Suggesting next steps (e.g., 'Would you like to notify the shop?')",
+        "Backfill from prior activity threads to infer intent"
+      ],
+      "strategicImportance": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
     },
     "permitManagementSuite": {
       "title": "🗂️ Permit Management Suite",
