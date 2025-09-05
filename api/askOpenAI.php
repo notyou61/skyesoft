@@ -201,77 +201,83 @@ $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['repo
     : array();
 
 // 1. 🔑 Quick Agentic Actions (Logout, Login, CRUD)
-if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
+if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b|\bleave\b|\bend\s+session\b|\bdone\s+for\s+now\b|\bclose\b/i', trim($lowerPrompt))) {
     performLogout();
-    $responsePayload = [
+    $responsePayload = array(
         "actionType" => "Logout",
-        "status" => "success",
-        "sessionId" => $sessionId
-    ];
-    $handled = true;
-} elseif (preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt, $matches)) {
+        "status"     => "success",
+        "sessionId"  => $sessionId
+    );
+    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+
+} elseif (preg_match('/log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
+
     $username = $matches[1];
     $password = $matches[2];
+
     if (authenticateUser($username, $password)) {
         $_SESSION['user'] = $username;
-        $responsePayload = [
-            "actionType" => "Create",
-            "actionName" => "Login",
-            "response" => "Logged in as $username",
-            "sessionId" => $sessionId,
-            "loggedIn" => true
-        ];
+        $responsePayload = array(
+            "actionType" => "Login",
+            "status"     => "success",
+            "user"       => $username,
+            "sessionId"  => $sessionId,
+            "loggedIn"   => true
+        );
     } else {
-        $responsePayload = [
-            "response" => "Invalid credentials",
-            "action" => "none",
-            "sessionId" => $sessionId
-        ];
+        $responsePayload = array(
+            "actionType" => "Login",
+            "status"     => "failed",
+            "message"    => "Invalid credentials",
+            "sessionId"  => $sessionId
+        );
     }
-    $handled = true;
+    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+
 } elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
     $actionType = ucfirst(strtolower($matches[1]));
-    $entity = $matches[2];
-    $details = array("entity" => $entity, "prompt" => $prompt);
-    
+    $entity     = $matches[2];
+    $details    = array("entity" => $entity, "prompt" => $prompt);
+
     if ($actionType === "Create") {
         $success = createCrudEntity($entity, $details);
-        $responsePayload = [
-            "response" => $success ? "Created $entity successfully" : "Failed to create $entity",
-            "action" => "crud",
+        $responsePayload = array(
             "actionType" => "Create",
-            "actionName" => $entity,
-            "sessionId" => $sessionId
-        ];
+            "entity"     => $entity,
+            "status"     => $success ? "success" : "failed",
+            "sessionId"  => $sessionId
+        );
     } elseif ($actionType === "Read") {
         $result = readCrudEntity($entity, $details);
-        $responsePayload = [
-            "response" => $result,
-            "action" => "crud",
+        $responsePayload = array(
             "actionType" => "Read",
-            "actionName" => $entity,
-            "sessionId" => $sessionId
-        ];
+            "entity"     => $entity,
+            "result"     => $result,
+            "status"     => "success",
+            "sessionId"  => $sessionId
+        );
     } elseif ($actionType === "Update") {
         $success = updateCrudEntity($entity, $details);
-        $responsePayload = [
-            "response" => $success ? "Updated $entity successfully" : "Failed to update $entity",
-            "action" => "crud",
+        $responsePayload = array(
             "actionType" => "Update",
-            "actionName" => $entity,
-            "sessionId" => $sessionId
-        ];
+            "entity"     => $entity,
+            "status"     => $success ? "success" : "failed",
+            "sessionId"  => $sessionId
+        );
     } elseif ($actionType === "Delete") {
         $success = deleteCrudEntity($entity, $details);
-        $responsePayload = [
-            "response" => $success ? "Deleted $entity successfully" : "Failed to delete $entity",
-            "action" => "crud",
+        $responsePayload = array(
             "actionType" => "Delete",
-            "actionName" => $entity,
-            "sessionId" => $sessionId
-        ];
+            "entity"     => $entity,
+            "status"     => $success ? "success" : "failed",
+            "sessionId"  => $sessionId
+        );
     }
-    $handled = true;
+
+    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 // 2. 📑 Reports (only if intent matches reportTypesSpec)
@@ -310,48 +316,37 @@ if (!$handled) {
     }
 }
 
-// 3. 🧭 SemanticResponder (time, weather, KPIs, announcements, glossary, codex modules)
+// 3. 🧭 SemanticResponder (time, weather, KPIs, announcements, codex)
 if (!$handled) {
-    if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary|show modules|list modules|all modules)\b/i', $lowerPrompt)) {
-        handleCodexCommand(
-            $lowerPrompt,
-            $dynamicData,
-            isset($injectBlocks['glossary']) ? json_encode($injectBlocks['glossary'], JSON_PRETTY_PRINT) : '',
-            isset($injectBlocks['constitution']) ? json_encode($injectBlocks['constitution'], JSON_PRETTY_PRINT) : '',
-            isset($injectBlocks['modules']) ? json_encode($injectBlocks['modules'], JSON_PRETTY_PRINT) : ''
-        );
-        $handled = true;
-    } else {
-        $messages = [
-            [
-                "role" => "system",
-                "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
-            ],
-            [
-                "role" => "system",
-                "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-            ]
-        ];
-        if (!empty($conversation)) {
-            $history = array_slice($conversation, -2);
-            foreach ($history as $entry) {
-                if (isset($entry["role"]) && isset($entry["content"])) {
-                    $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
-                }
+    $messages = [
+        [
+            "role" => "system",
+            "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
+        ],
+        [
+            "role" => "system",
+            "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        ]
+    ];
+    if (!empty($conversation)) {
+        $history = array_slice($conversation, -2);
+        foreach ($history as $entry) {
+            if (isset($entry["role"]) && isset($entry["content"])) {
+                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
             }
         }
-        $messages[] = ["role" => "user", "content" => $prompt];
+    }
+    $messages[] = ["role" => "user", "content" => $prompt];
 
-        $aiResponse = callOpenAi($messages);
+    $aiResponse = callOpenAi($messages);
 
-        if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
-            $responsePayload = [
-                "response" => $aiResponse . " ⁂",
-                "action" => "answer",
-                "sessionId" => $sessionId
-            ];
-            $handled = true;
-        }
+    if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
+        $responsePayload = [
+            "response" => $aiResponse . " ⁂",
+            "action" => "answer",
+            "sessionId" => $sessionId
+        ];
+        $handled = true;
     }
 }
 
@@ -387,54 +382,38 @@ if ($responsePayload) {
 
 #region 🛠 Helper Functions
 /**
- * Handle codex commands (glossary, modules, etc.)
+ * Handle Codex-related commands (glossary, modules, constitution, etc.)
+ * Always scales by using dynamicData Codex as the single source of truth.
+ *
  * @param string $prompt
  * @param array $dynamicData
- * @param string $codexGlossaryBlock
- * @param string $codexConstitutionBlock
- * @param string $codexModulesBlock
  */
-function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexConstitutionBlock, $codexModulesBlock) {
-    $lowerPrompt = strtolower($prompt);
-    
-    if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
-        $displayed = array();
-        $uniqueGlossary = "";
-        foreach (explode("\n", $codexGlossaryBlock) as $line) {
-            $key = strtolower(trim(strtok($line, ":")));
-            if ($key && !isset($displayed[$key])) {
-                $uniqueGlossary .= $line . "\n\n";
-                $displayed[$key] = true;
-            }
-        }
-        $formattedGlossary = nl2br(htmlspecialchars($uniqueGlossary));
-        sendJsonResponse($formattedGlossary, "none", array("sessionId" => session_id()));
-    } elseif (preg_match('/\b(show modules|list modules|all modules)\b/i', $lowerPrompt)) {
-        $modulesArr = array();
-        if (isset($dynamicData['readme']['modules']) && is_array($dynamicData['readme']['modules'])) {
-            foreach ($dynamicData['readme']['modules'] as $mod) {
-                if (isset($mod['name'], $mod['purpose']) && is_string($mod['name']) && is_string($mod['purpose'])) {
-                    $modulesArr[] = $mod['name'] . ": " . $mod['purpose'];
-                }
-            }
-        }
-        $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
-        sendJsonResponse($modulesDisplay, "none", array("sessionId" => session_id()));
-    } else {
-        // Fallback to AI for semantic Codex queries
-        $messages = [
-            [
-                "role" => "system",
-                "content" => "Use the provided Codex data to answer semantically:\n\n" . json_encode(isset($dynamicData['codex']) ? $dynamicData['codex'] : array(), JSON_PRETTY_PRINT)
-            ],
-            [
-                "role" => "user",
-                "content" => $prompt
-            ]
-        ];
-        $response = callOpenAi($messages);
-        sendJsonResponse($response, "none", array("sessionId" => session_id()));
-    }
+function handleCodexCommand($prompt, $dynamicData) {
+    $codex = isset($dynamicData['codex']) ? $dynamicData['codex'] : array();
+
+    // Always hand Codex to AI to interpret semantically
+    $messages = array(
+        array(
+            "role" => "system",
+            "content" => "You are Skyebot™. Use the provided Codex to answer semantically. " .
+                         "Codex contains glossary, modules, and constitution. " .
+                         "Interpret user intent naturally — if they ask for glossary terms, modules, or constitution, pull from the relevant section. " .
+                         "If user asks for 'show' or 'list', provide a clean readable list. " .
+                         "Never invent content outside the Codex."
+        ),
+        array(
+            "role" => "system",
+            "content" => json_encode($codex, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        ),
+        array(
+            "role" => "user",
+            "content" => $prompt
+        )
+    );
+
+    $response = callOpenAi($messages);
+
+    sendJsonResponse($response, "codex", array("sessionId" => session_id()));
 }
 
 /**
