@@ -201,7 +201,9 @@ $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['repo
     : array();
 
 // 1. 🔑 Quick Agentic Actions (Logout, Login, CRUD)
-if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b|\bleave\b|\bend\s+session\b|\bdone\s+for\s+now\b|\bclose\b/i', trim($lowerPrompt))) {
+
+// --- Logout ---
+if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
     performLogout();
     $responsePayload = array(
         "actionType" => "Logout",
@@ -210,9 +212,10 @@ if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b|\blea
     );
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
+}
 
-} elseif (preg_match('/log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $lowerPrompt, $matches)) {
-
+// --- Login ---
+elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b/i', $lowerPrompt, $matches)) {
     $username = $matches[1];
     $password = $matches[2];
 
@@ -233,10 +236,13 @@ if (preg_match('/\blog\s*out\b|\blogout\b|\bexit\b|\bsign\s*out\b|\bquit\b|\blea
             "sessionId"  => $sessionId
         );
     }
+
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
+}
 
-} elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
+// --- CRUD ---
+elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
     $actionType = ucfirst(strtolower($matches[1]));
     $entity     = $matches[2];
     $details    = array("entity" => $entity, "prompt" => $prompt);
