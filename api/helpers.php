@@ -304,7 +304,6 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
-
 /**
  * Perform a Google Custom Search API query and summarize results with AI.
  * @param string $query
@@ -337,7 +336,7 @@ function googleSearch($query) {
         return array("error" => isset($json['error']['message']) ? $json['error']['message'] : "Invalid response");
     }
 
-    // 🔹 Clean snippets
+    // Collect snippets
     $summaries = array();
     if (!empty($json['items']) && is_array($json['items'])) {
         $count = 0;
@@ -345,11 +344,8 @@ function googleSearch($query) {
             if (!isset($item['title'], $item['snippet'])) continue;
             $snippet = trim($item['snippet']);
             $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
-            if (preg_match('/^.*?[.?!]/', $snippet, $m)) {
-                $snippet = $m[0];
-            }
-            $summaries[] = "- " . $item['title'] . ": " . $snippet;
-            if (++$count >= 5) break; // take top 5 results
+            $summaries[] = $item['title'] . ": " . $snippet;
+            if (++$count >= 5) break; // limit to 5
         }
     }
 
@@ -357,9 +353,16 @@ function googleSearch($query) {
         return array("error" => "No useful search results.");
     }
 
-    // 🔹 Summarize with AI
+    // Ask AI to summarize cleanly (generic rules, not hardcoded cases)
     $messages = array(
-        array("role" => "system", "content" => "You are Skyebot™, summarize the most relevant answer in one clear sentence. If it's a place, give the address. If it's a number, give the number. Keep it factual."),
+        array(
+            "role" => "system",
+            "content" =>
+                "You are Skyebot™, given Google search snippets.\n" .
+                "Summarize the best factual answer in one clear, concise sentence.\n" .
+                "Prefer numbers, dates, addresses, or definitions when present.\n" .
+                "Do not include filler text, ads, or unrelated content."
+        ),
         array("role" => "system", "content" => implode("\n", $summaries)),
         array("role" => "user", "content" => $query)
     );
