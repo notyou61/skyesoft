@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/askOpenAI.php
-// Entry point for Skyebot AI interactions (Jazz-style refactor)
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 
 #region 🔹 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
@@ -26,18 +26,18 @@ $sessionId = session_id();
 
 #region 📂 Load Unified Context (DynamicData)
 $dynamicUrl = 'https://www.skyelighting.com/skyesoft/api/getDynamicData.php';
-$dynamicData = [];
+$dynamicData = array();
 $snapshotSummary = '{}';
 
 // Fetch JSON via curl
 $ch = curl_init($dynamicUrl);
-curl_setopt_array($ch, [
+curl_setopt_array($ch, array(
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 5,
     CURLOPT_FOLLOWLOCATION => true,
     CURLOPT_SSL_VERIFYPEER => false,
     CURLOPT_USERAGENT => 'Skyebot/1.0 (+skyelighting.com)'
-]);
+));
 $dynamicRaw = curl_exec($ch);
 $err = curl_error($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -66,19 +66,19 @@ if (!empty($dynamicData)) {
     $snapshotSummary = json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 } else {
     // Safe fallback if nothing loaded
-    $snapshotSummary = json_encode([
-        "timeDateArray" => [
+    $snapshotSummary = json_encode(array(
+        "timeDateArray" => array(
             "currentLocalTime" => date('h:i:s A'),
             "currentDate" => date('Y-m-d'),
             "timeZone" => date_default_timezone_get()
-        ],
-        "weatherData" => [
+        ),
+        "weatherData" => array(
             "description" => "Unavailable",
             "temp" => null
-        ],
-        "announcements" => [],
-        "kpiData" => []
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        ),
+        "announcements" => array(),
+        "kpiData" => array()
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 #endregion
 
@@ -96,7 +96,7 @@ if ($data === null || $data === false) {
 $prompt = isset($data["prompt"])
     ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT)))
     : "";
-$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : array();
+$conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
 if (empty($prompt)) {
@@ -128,8 +128,8 @@ $codexCategories = array(
 // Always inject slim Codex sections (keys only) for broader context
 $injectBlocks = array(
     "snapshot" => $snapshotSlim,
-    "glossary" => array_keys($dynamicData['codex']['glossary'] ?? []),
-    "modules" => array_keys($dynamicData['codex']['modules'] ?? []),
+    "glossary" => isset($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
+    "modules"  => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
 );
 
 // Selectively expand specific Codex entries if keywords match
@@ -425,7 +425,7 @@ function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexCo
         $messages = [
             [
                 "role" => "system",
-                "content" => "Use the provided Codex data to answer semantically:\n\n" . json_encode($dynamicData['codex'] ?? [], JSON_PRETTY_PRINT)
+                "content" => "Use the provided Codex data to answer semantically:\n\n" . json_encode(isset($dynamicData['codex']) ? $dynamicData['codex'] : array(), JSON_PRETTY_PRINT)
             ],
             [
                 "role" => "user",
