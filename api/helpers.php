@@ -306,7 +306,7 @@ function callOpenAi($messages) {
 }
 
 /**
- * Perform a Google Custom Search API query with cleaned results.
+ * Perform a Google Custom Search API query and summarize results with AI.
  * @param string $query
  * @return array
  */
@@ -337,21 +337,37 @@ function googleSearch($query) {
         return array("error" => isset($json['error']['message']) ? $json['error']['message'] : "Invalid response");
     }
 
-    // 🔹 Post-process results: trim messy snippets
+    // 🔹 Clean snippets
+    $summaries = array();
     if (!empty($json['items']) && is_array($json['items'])) {
-        foreach ($json['items'] as &$item) {
-            if (isset($item['snippet'])) {
-                $snippet = trim($item['snippet']);
-                // Remove leading/trailing ellipses
-                $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
-                // Keep only the first full sentence if possible
-                if (preg_match('/^.*?[.?!]/', $snippet, $m)) {
-                    $snippet = $m[0];
-                }
-                $item['snippet'] = $snippet;
+        $count = 0;
+        foreach ($json['items'] as $item) {
+            if (!isset($item['title'], $item['snippet'])) continue;
+            $snippet = trim($item['snippet']);
+            $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
+            if (preg_match('/^.*?[.?!]/', $snippet, $m)) {
+                $snippet = $m[0];
             }
+            $summaries[] = "- " . $item['title'] . ": " . $snippet;
+            if (++$count >= 5) break; // take top 5 results
         }
     }
 
-    return $json;
+    if (empty($summaries)) {
+        return array("error" => "No useful search results.");
+    }
+
+    // 🔹 Summarize with AI
+    $messages = array(
+        array("role" => "system", "content" => "You are Skyebot™, summarize the most relevant answer in one clear sentence. If it's a place, give the address. If it's a number, give the number. Keep it factual."),
+        array("role" => "system", "content" => implode("\n", $summaries)),
+        array("role" => "user", "content" => $query)
+    );
+
+    $summary = callOpenAi($messages);
+
+    return array(
+        "summary" => $summary,
+        "raw" => $summaries
+    );
 }
