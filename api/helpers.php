@@ -304,6 +304,7 @@ function callOpenAi($messages) {
 
     return trim($result["choices"][0]["message"]["content"]);
 }
+
 /**
  * Perform a Google Custom Search API query and summarize results with AI.
  * @param string $query
@@ -311,7 +312,7 @@ function callOpenAi($messages) {
  */
 function googleSearch($query) {
     $apiKey = getenv("GOOGLE_SEARCH_KEY");
-    $cx = getenv("GOOGLE_SEARCH_CX");
+    $cx     = getenv("GOOGLE_SEARCH_CX");
 
     if (!$apiKey || !$cx) {
         return array("error" => "Google Search API not configured.");
@@ -320,32 +321,37 @@ function googleSearch($query) {
     $url = "https://www.googleapis.com/customsearch/v1?q=" . urlencode($query) .
            "&key=" . $apiKey . "&cx=" . $cx;
 
+    // Fetch results
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $res = curl_exec($ch);
     $err = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     if ($res === false || $err) {
+        error_log("GoogleSearch curl error ($httpCode): $err");
         return array("error" => "Curl error: " . $err);
     }
 
     $json = json_decode($res, true);
     if (!$json || isset($json['error'])) {
-        return array("error" => isset($json['error']['message']) ? $json['error']['message'] : "Invalid response");
+        $msg = isset($json['error']['message']) ? $json['error']['message'] : "Invalid API response";
+        error_log("GoogleSearch API error ($httpCode): " . $msg);
+        return array("error" => $msg);
     }
 
     // Collect snippets
     $summaries = array();
     if (!empty($json['items']) && is_array($json['items'])) {
-        $count = 0;
         foreach ($json['items'] as $item) {
-            if (!isset($item['title'], $item['snippet'])) continue;
+            if (!isset($item['title']) || !isset($item['snippet'])) continue;
             $snippet = trim($item['snippet']);
             $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
-            $summaries[] = $item['title'] . ": " . $snippet;
-            if (++$count >= 5) break; // limit to 5
+            if ($snippet !== "") {
+                $summaries[] = $item['title'] . ": " . $snippet;
+            }
         }
     }
 
@@ -353,24 +359,34 @@ function googleSearch($query) {
         return array("error" => "No useful search results.");
     }
 
-    // Ask AI to summarize cleanly (generic rules, not hardcoded cases)
+    // If only one decent snippet, return it directly
+    if (count($summaries) === 1) {
+        return array(
+            "summary" => $summaries[0],
+            "raw"     => $summaries
+        );
+    }
+
+    // Otherwise summarize with AI
     $messages = array(
-        array(
-            "role" => "system",
-            "content" =>
-                "You are Skyebot™, given Google search snippets.\n" .
-                "Summarize the best factual answer in one clear, concise sentence.\n" .
-                "Prefer numbers, dates, addresses, or definitions when present.\n" .
-                "Do not include filler text, ads, or unrelated content."
-        ),
+        array("role" => "system",
+              "content" => "You are Skyebot™, given Google search snippets. " .
+                           "Return the most factual, concise answer to the user query. " .
+                           "Prefer numbers, dates, or addresses when they appear. " .
+                           "Do not add commentary — just answer clearly."),
         array("role" => "system", "content" => implode("\n", $summaries)),
         array("role" => "user", "content" => $query)
     );
 
     $summary = callOpenAi($messages);
 
+    if (!$summary) {
+        // Fallback to the first snippet if AI fails
+        $summary = $summaries[0];
+    }
+
     return array(
-        "summary" => $summary,
-        "raw" => $summaries
+        "summary" => trim($summary),
+        "raw"     => $summaries
     );
 }
