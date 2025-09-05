@@ -21,6 +21,7 @@ date_default_timezone_set("America/Phoenix");
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
+$sessionId = session_id();
 #endregion
 
 #region 📂 Load Unified Context (DynamicData)
@@ -87,7 +88,7 @@ if ($data === null || $data === false) {
     echo json_encode(array(
         "response"  => "❌ Invalid or empty JSON payload.",
         "action"    => "none",
-        "sessionId" => session_id()
+        "sessionId" => $sessionId
     ), JSON_PRETTY_PRINT);
     exit;
 }
@@ -99,14 +100,12 @@ $conversation = isset($data["conversation"]) && is_array($data["conversation"]) 
 $lowerPrompt = strtolower($prompt);
 
 if (empty($prompt)) {
-    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => session_id()));
+    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
     exit;
 }
 #endregion
 
 #region 📚 Build Context Blocks (Semantic Router)
-
-// Slim snapshot for universal queries
 $snapshotSlim = array(
     "timeDateArray" => isset($dynamicData['timeDateArray']) ? $dynamicData['timeDateArray'] : array(),
     "weatherData"   => isset($dynamicData['weatherData'])
@@ -120,42 +119,39 @@ $snapshotSlim = array(
     "kpiData"       => isset($dynamicData['kpiData']) ? $dynamicData['kpiData'] : array()
 );
 
-// Codex categories (keys only, no values yet)
 $codexCategories = array(
     "glossary"     => !empty($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
     "constitution" => !empty($dynamicData['codex']['constitution']) ? array_keys($dynamicData['codex']['constitution']) : array(),
     "modules"      => !empty($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array()
 );
 
-// Router: inject blocks if user prompt matches a codex key
-$injectBlocks = array();
-$injectBlocks['snapshot'] = $snapshotSlim; // always include slim snapshot
-$lowerPrompt = strtolower($prompt);
+// Always inject slim Codex sections (keys only) for broader context
+$injectBlocks = array(
+    "snapshot" => $snapshotSlim,
+    "glossary" => array_keys($dynamicData['codex']['glossary'] ?? []),
+    "modules" => array_keys($dynamicData['codex']['modules'] ?? []),
+);
 
+// Selectively expand specific Codex entries if keywords match
 foreach ($codexCategories as $section => $keys) {
     foreach ($keys as $key) {
         if (strpos($lowerPrompt, strtolower($key)) !== false) {
-            if (!isset($injectBlocks[$section])) {
-                $injectBlocks[$section] = array();
-            }
             $injectBlocks[$section][$key] = $dynamicData['codex'][$section][$key];
         }
     }
 }
 
-// Report types (only inject if prompt mentions report)
 if (stripos($prompt, 'report') !== false) {
     $injectBlocks['reportTypes'] = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
         ? array_keys($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
         : array();
 }
-
 #endregion
 
 #region 🛡️ Headers and Setup
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
-    sendJsonResponse("❌ API key not found.", "none", array("sessionId" => session_id()));
+    sendJsonResponse("❌ API key not found.", "none", array("sessionId" => $sessionId));
     exit;
 }
 #endregion
@@ -178,158 +174,227 @@ Never claim you lack real-time access — always ground answers in this snapshot
 - For glossary questions (e.g., “What is LGBAS?”, “Define MTCO.”) → answer using codex.glossary entries. Always explain in plain sentences, not JSON.
 - For Codex-related module questions (e.g., “Explain the Semantic Responder module,” “What is the Skyesoft Constitution?”) → provide a natural language explanation using Codex entries. Always explain in plain sentences, not JSON, unless JSON is explicitly requested.
 - For CRUD and report creation → return JSON in the defined format.
-- For logout → return JSON only: {"actionType":"Create","actionName":"Logout"}.
+- For logout → return JSON only: {"actionType":"Logout","status":"success"}.
+- If uncertain or lacking information in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" to trigger a search fallback.
 - Otherwise → answer in plain text using Codex or general knowledge.
 - Always respond naturally in plain text sentences.
 
-
 🧭 SEMANTIC RESPONDER PRINCIPLE:
-- Interpret user intent semantically, not just syntactically.  
-- Map natural language (e.g., “quitting time,” “how much daylight is left,” “what’s the vibe today”) to the correct sseSnapshot fields, even if wording is unusual.  
-- Prefer semantic interpretation of live data (time, weather, KPIs, work intervals) over strict keyword matching.  
-- Use Codex knowledge (e.g., glossary terms, Semantic Responder module) to handle indirect or obscure phrasings.  
-- Never say “I don’t know” if the information exists in sseSnapshot or Codex — instead, interpret and return it.
-
+- Interpret user intent semantically, not just syntactically.
+- Map natural language (e.g., “quitting time,” “how much daylight is left,” “what’s the vibe today”) to the correct sseSnapshot fields, even if wording is unusual.
+- Prefer semantic interpretation of live data (time, weather, KPIs, work intervals) over strict keyword matching.
+- Use Codex knowledge (e.g., glossary terms, Semantic Responder module) to handle indirect or obscure phrasings.
+- If information is unavailable in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" instead of "I don’t know".
 PROMPT;
 
-// Append injected blocks dynamically
 foreach ($injectBlocks as $section => $block) {
     $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n";
     $systemPrompt .= json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 #endregion
 
-#region 🎯 Routing Layer
+#region 🚦 Dispatch Handler
 $handled = false;
+$responsePayload = null;
+$reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+    ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
+    : array();
 
-// Quick Agentic Actions (logout, login, CRUD)
-if (!$handled && preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
-    handleQuickAction($lowerPrompt);
+// 1. 🔑 Quick Agentic Actions (Logout, Login, CRUD)
+if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
+    performLogout();
+    $responsePayload = [
+        "actionType" => "Logout",
+        "status" => "success",
+        "sessionId" => $sessionId
+    ];
     $handled = true;
-}
-
-if (!$handled && preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt)) {
-    handleQuickAction($lowerPrompt);
+} elseif (preg_match('/\b(log\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+))\b/i', $lowerPrompt, $matches)) {
+    $username = $matches[1];
+    $password = $matches[2];
+    if (authenticateUser($username, $password)) {
+        $_SESSION['user'] = $username;
+        $responsePayload = [
+            "actionType" => "Create",
+            "actionName" => "Login",
+            "response" => "Logged in as $username",
+            "sessionId" => $sessionId,
+            "loggedIn" => true
+        ];
+    } else {
+        $responsePayload = [
+            "response" => "Invalid credentials",
+            "action" => "none",
+            "sessionId" => $sessionId
+        ];
+    }
     $handled = true;
-}
-
-if (!$handled && preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
+} elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
     $actionType = ucfirst(strtolower($matches[1]));
     $entity = $matches[2];
     $details = array("entity" => $entity, "prompt" => $prompt);
     
     if ($actionType === "Create") {
         $success = createCrudEntity($entity, $details);
-        sendJsonResponse($success ? "Created $entity successfully" : "Failed to create $entity", "crud", array(
+        $responsePayload = [
+            "response" => $success ? "Created $entity successfully" : "Failed to create $entity",
+            "action" => "crud",
             "actionType" => "Create",
-            "actionName" => $entity
-        ));
+            "actionName" => $entity,
+            "sessionId" => $sessionId
+        ];
     } elseif ($actionType === "Read") {
         $result = readCrudEntity($entity, $details);
-        sendJsonResponse($result, "crud", array(
+        $responsePayload = [
+            "response" => $result,
+            "action" => "crud",
             "actionType" => "Read",
-            "actionName" => $entity
-        ));
+            "actionName" => $entity,
+            "sessionId" => $sessionId
+        ];
     } elseif ($actionType === "Update") {
         $success = updateCrudEntity($entity, $details);
-        sendJsonResponse($success ? "Updated $entity successfully" : "Failed to update $entity", "crud", array(
+        $responsePayload = [
+            "response" => $success ? "Updated $entity successfully" : "Failed to update $entity",
+            "action" => "crud",
             "actionType" => "Update",
-            "actionName" => $entity
-        ));
+            "actionName" => $entity,
+            "sessionId" => $sessionId
+        ];
     } elseif ($actionType === "Delete") {
         $success = deleteCrudEntity($entity, $details);
-        sendJsonResponse($success ? "Deleted $entity successfully" : "Failed to delete $entity", "crud", array(
+        $responsePayload = [
+            "response" => $success ? "Deleted $entity successfully" : "Failed to delete $entity",
+            "action" => "crud",
             "actionType" => "Delete",
-            "actionName" => $entity
-        ));
+            "actionName" => $entity,
+            "sessionId" => $sessionId
+        ];
     }
     $handled = true;
 }
 
-// Report Requests
+// 2. 📑 Reports (only if intent matches reportTypesSpec)
 if (!$handled) {
-    $reportTypesDecoded = isset($injectBlocks['reportTypes']) ? $injectBlocks['reportTypes'] : array();
-
-    if (!empty($reportTypesDecoded)) {
-        $matchedReport = false;
-
-        // Check if prompt mentions any known report type
-        foreach ($reportTypesDecoded as $type) {
-            if (stripos($prompt, $type) !== false) {
-                $matchedReport = $type;
-                break;
-            }
+    $detectedReport = null;
+    foreach ($reportTypesSpec as $reportName => $reportDef) {
+        if (stripos($prompt, $reportName) !== false) {
+            $detectedReport = $reportName;
+            break;
         }
+    }
 
-        if ($matchedReport) {
-            // If we found a specific report type mentioned
-            if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-                handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
-            } else {
-                $response = array(
-                    "actionType" => "Create",
-                    "actionName" => "Report",
-                    "reportType" => $matchedReport,
-                    "response"   => "ℹ️ Codex information about requested report type.",
-                    "details"    => isset($reportTypesDecoded[$matchedReport]) ? $reportTypesDecoded[$matchedReport] : array()
-                );
-                sendJsonResponse($response, "report", array("sessionId" => session_id()));
-                exit;
-            }
+    if ($detectedReport && isset($reportTypesSpec[$detectedReport])) {
+        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
+            $responsePayload = [
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => $detectedReport,
+                "response" => "ℹ️ Report definition for $detectedReport.",
+                "spec" => $reportTypesSpec[$detectedReport],
+                "inputs" => ["rawPrompt" => $prompt],
+                "sessionId" => $sessionId
+            ];
+            $handled = true;
+        } else {
+            $responsePayload = [
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => $detectedReport,
+                "response" => "ℹ️ Codex information about requested report type.",
+                "details" => isset($reportTypesSpec[$detectedReport]) ? $reportTypesSpec[$detectedReport] : [],
+                "sessionId" => $sessionId
+            ];
             $handled = true;
         }
-    } else {
-        sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
-        $handled = true;
     }
 }
 
-// Codex Commands
-if (
-    !$handled &&
-    preg_match('/\b(show glossary|all glossary|list all terms|full glossary|show modules|list modules|all modules|mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)
-) {
-    handleCodexCommand(
-        $lowerPrompt,
-        $dynamicData,
-        isset($injectBlocks['glossary']) ? $injectBlocks['glossary'] : array(),
-        isset($injectBlocks['constitution']) ? $injectBlocks['constitution'] : array(),
-        isset($injectBlocks['modules']) ? $injectBlocks['modules'] : array()
-    );
-    $handled = true;
-}
-
-// Default: General AI (jazz style)
+// 3. 🧭 SemanticResponder (time, weather, KPIs, announcements, glossary, codex modules)
 if (!$handled) {
-    $messages = array(array("role" => "system", "content" => $systemPrompt));
-    if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
+    if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary|show modules|list modules|all modules)\b/i', $lowerPrompt)) {
+        handleCodexCommand(
+            $lowerPrompt,
+            $dynamicData,
+            isset($injectBlocks['glossary']) ? json_encode($injectBlocks['glossary'], JSON_PRETTY_PRINT) : '',
+            isset($injectBlocks['constitution']) ? json_encode($injectBlocks['constitution'], JSON_PRETTY_PRINT) : '',
+            isset($injectBlocks['modules']) ? json_encode($injectBlocks['modules'], JSON_PRETTY_PRINT) : ''
+        );
+        $handled = true;
+    } else {
+        $messages = [
+            [
+                "role" => "system",
+                "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
+            ],
+            [
+                "role" => "system",
+                "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            ]
+        ];
+        if (!empty($conversation)) {
+            $history = array_slice($conversation, -2);
+            foreach ($history as $entry) {
+                if (isset($entry["role"]) && isset($entry["content"])) {
+                    $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
+                }
             }
         }
+        $messages[] = ["role" => "user", "content" => $prompt];
+
+        $aiResponse = callOpenAi($messages);
+
+        if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
+            $responsePayload = [
+                "response" => $aiResponse . " ⁂",
+                "action" => "answer",
+                "sessionId" => $sessionId
+            ];
+            $handled = true;
+        }
     }
-    $messages[] = array("role" => "user", "content" => $prompt);
-    $aiResponse = callOpenAi($messages);
-    if (is_string($aiResponse) && trim($aiResponse) !== '') {
-        $aiResponse .= " ⁂";
+}
+
+// 4. 🌐 Google Search Fallback (if AI requests it or answer missing)
+if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
+    $searchResults = googleSearch($prompt);
+
+    if (!empty($searchResults['items'][0]['snippet'])) {
+        $best = $searchResults['items'][0];
+        $responsePayload = [
+            "response" => $best['snippet'] . " (via Google Search)",
+            "link" => $best['link'],
+            "action" => "answer",
+            "sessionId" => $sessionId
+        ];
+    } else {
+        $responsePayload = [
+            "response" => "⚠️ Unable to resolve your query. Please try again.",
+            "action" => "error",
+            "sessionId" => $sessionId
+        ];
     }
-    sendJsonResponse($aiResponse, "chat", array("sessionId" => session_id()));
+}
+
+// 5. ✅ Final Output
+if ($responsePayload) {
+    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
+} else {
+    sendJsonResponse("❌ Unable to process request.", "error", ["sessionId" => $sessionId]);
 }
 #endregion
 
 #region 🛠 Helper Functions
-
 /**
  * Handle codex commands (glossary, modules, etc.)
  * @param string $prompt
  * @param array $dynamicData
  * @param string $codexGlossaryBlock
- * @param string $codexOtherBlock
+ * @param string $codexConstitutionBlock
+ * @param string $codexModulesBlock
  */
-function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock) {
+function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexConstitutionBlock, $codexModulesBlock) {
     $lowerPrompt = strtolower($prompt);
     
     if (preg_match('/\b(show glossary|all glossary|list all terms|full glossary)\b/i', $lowerPrompt)) {
@@ -355,28 +420,26 @@ function handleCodexCommand($prompt, $dynamicData, $codexGlossaryBlock, $codexOt
         }
         $modulesDisplay = empty($modulesArr) ? "No modules found in Codex." : nl2br(htmlspecialchars(implode("\n\n", $modulesArr)));
         sendJsonResponse($modulesDisplay, "none", array("sessionId" => session_id()));
-    } elseif (preg_match('/\b(mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
-        $term = preg_match('/\bwhat is\s+([a-z0-9\-]+)\??/i', $lowerPrompt, $matches) ? strtoupper($matches[1]) : null;
-        if ($term) {
-            $filteredGlossary = array();
-            foreach (explode("\n", $codexGlossaryBlock) as $line) {
-                if (stripos($line, $term) === 0) {
-                    $filteredGlossary[] = $line;
-                }
-            }
-            $response = !empty($filteredGlossary) ? implode("\n", $filteredGlossary) : "$term: No information available";
-            sendJsonResponse($response, "none", array("sessionId" => session_id()));
-        } else {
-            $response = $codexOtherBlock !== "" ? trim($codexOtherBlock) : "No Codex information available.";
-            sendJsonResponse($response, "none", array("sessionId" => session_id()));
-        }
+    } else {
+        // Fallback to AI for semantic Codex queries
+        $messages = [
+            [
+                "role" => "system",
+                "content" => "Use the provided Codex data to answer semantically:\n\n" . json_encode($dynamicData['codex'] ?? [], JSON_PRETTY_PRINT)
+            ],
+            [
+                "role" => "user",
+                "content" => $prompt
+            ]
+        ];
+        $response = callOpenAi($messages);
+        sendJsonResponse($response, "none", array("sessionId" => session_id()));
     }
 }
 
 /**
  * Send JSON response with proper HTTP status code
- * Updated for PHP 5.6 compatibility to handle both string and array responses
- * @param mixed $response (string or array)
+ * @param mixed $response
  * @param string $action
  * @param array $extra
  * @param int $status
@@ -468,41 +531,6 @@ function performLogout() {
         );
     }
     setcookie('skyelogin_user', '', time() - 3600, '/', 'www.skyelighting.com');
-    sendJsonResponse("You have been logged out", "none", array(
-        "actionType" => "Create",
-        "actionName" => "Logout",
-        "sessionId" => $newSessionId,
-        "loggedIn" => false
-    ));
-}
-
-/**
- * Handle quick actions (login, logout)
- * @param string $input
- */
-function handleQuickAction($input) {
-    $action = strtolower(trim($input));
-    if (in_array($action, array('logout', 'sign out', 'signout', 'exit', 'quit'))) {
-        performLogout();
-        return;
-    }
-    if (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)/i', $action, $matches)) {
-        $username = $matches[1];
-        $password = $matches[2];
-        if (authenticateUser($username, $password)) {
-            $_SESSION['user'] = $username;
-            sendJsonResponse("Logged in as $username", "none", array(
-                "actionType" => "Create",
-                "actionName" => "Login",
-                "sessionId" => session_id(),
-                "loggedIn" => true
-            ));
-        } else {
-            sendJsonResponse("Invalid credentials", "none", array("sessionId" => session_id()));
-        }
-        return;
-    }
-    sendJsonResponse("Unknown quick action: $action", "none");
 }
 
 /**
@@ -607,133 +635,13 @@ function getApplicableDisclaimers($reportType, $context = array()) {
 }
 
 /**
- * Handle AI report output
- * @param string $prompt
- * @param array $reportTypes
- * @param array $conversation
- */
-function handleReportRequest($prompt, $reportTypesSpec, &$conversation) {
-    $detectedReportType = null;
-    $p = strtolower($prompt);
-
-    // Try to detect report type from prompt against available types
-    foreach ($reportTypesSpec as $typeName => $spec) {
-        if (strpos($p, strtolower($typeName)) !== false) {
-            $detectedReportType = $typeName;
-            break;
-        }
-    }
-
-    // Fallback detection (keywords)
-    if ($detectedReportType === null) {
-        if (strpos($p, "zoning") !== false) $detectedReportType = "Zoning Report";
-        elseif (strpos($p, "sign") !== false) $detectedReportType = "Sign Ordinance Report";
-        elseif (strpos($p, "photo") !== false) $detectedReportType = "Photo Survey Report";
-        elseif (strpos($p, "custom") !== false) $detectedReportType = "Custom Report";
-    }
-
-    if ($detectedReportType && isset($reportTypesSpec[$detectedReportType])) {
-        $spec = $reportTypesSpec[$detectedReportType];
-
-        $report = array(
-            "error"    => false,
-            "response" => "ℹ️ Report definition for $detectedReportType.",
-            "reportType" => $detectedReportType,
-            "spec"     => $spec,
-            "inputs"   => array("prompt" => $prompt)
-        );
-    } else {
-        $report = array(
-            "error"    => true,
-            "response" => "⚠️ Unknown or unsupported report type.",
-            "inputs"   => array("prompt" => $prompt)
-        );
-    }
-
-    header('Content-Type: application/json');
-    echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-
-/**
- * Filter parcels by address match, with proximity fallback
- * @param array $parcels
- * @param string $inputAddress
- * @param float|null $latitude
- * @param float|null $longitude
- * @return array
- */
-function filterParcels($parcels, $inputAddress, $latitude, $longitude) {
-    if (empty($parcels)) return array();
-
-    $inputAddress = normalizeAddress($inputAddress);
-    $m = array();
-    preg_match(
-        '/^([0-9]+)\s+([A-Z\s]+)\s+(RD|ROAD|AVE|AVENUE|BLVD|BOULEVARD|ST|STREET|DR|DRIVE|LN|LANE|PL|PLACE|WAY|CT|COURT)\b/i',
-        $inputAddress,
-        $m
-    );
-    $num = isset($m[1]) ? $m[1] : null;
-    $name = isset($m[2]) ? trim(strtoupper($m[2])) : null;
-
-    $filtered = array();
-    foreach ($parcels as $p) {
-        $situs = strtoupper(trim(isset($p["situs"]) ? $p["situs"] : ""));
-        $sm = array();
-        if (preg_match('/^([0-9]+)\s+([A-Z\s]+)/', $situs, $sm)) {
-            if ($num && $name && $sm[1] === $num && trim($sm[2]) === $name) {
-                $filtered[] = $p;
-            }
-        }
-    }
-
-    if (empty($filtered) && $latitude && $longitude) {
-        $closest = null;
-        $min = PHP_INT_MAX;
-        foreach ($parcels as $p) {
-            if (isset($p["geometry"]["coordinates"]["rings"][0])) {
-                $coords = $p["geometry"]["coordinates"]["rings"][0];
-                $sumLat = 0;
-                $sumLon = 0;
-                $count = count($coords);
-                foreach ($coords as $pt) {
-                    $sumLon += $pt[0];
-                    $sumLat += $pt[1];
-                }
-                if ($count > 0) {
-                    $cLon = $sumLon / $count;
-                    $cLat = $sumLat / $count;
-                    $dLat = deg2rad($cLat - $latitude);
-                    $dLon = deg2rad($cLon - $longitude);
-                    $a = sin($dLat/2)*sin($dLat/2) +
-                         cos(deg2rad($latitude)) * cos(deg2rad($cLat)) *
-                         sin($dLon/2)*sin($dLon/2);
-                    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-                    $dist = 6371000 * $c;
-                    if ($dist < $min && $dist <= 5) {
-                        $min = $dist;
-                        $closest = $p;
-                    }
-                }
-            }
-        }
-        if ($closest) $filtered = array($closest);
-    }
-
-    return $filtered;
-}
-
-/**
  * Call OpenAI API with Google Search fallback
- * Uses gpt-4o-mini by default, escalates to gpt-4o for report-type queries.
  * @param array $messages
  * @return string
  */
 function callOpenAi($messages) {
     $apiKey = getenv("OPENAI_API_KEY");
 
-    // 🔎 Load dynamicData.json (only categories, not full content)
     $dynamicPath = __DIR__ . "/dynamicData.json";
     $reportKeys = array();
     if (file_exists($dynamicPath)) {
@@ -743,15 +651,14 @@ function callOpenAi($messages) {
         }
     }
 
-    // 🔎 Model selection (cheap default, escalate if prompt matches a report type)
-    $model = "gpt-4o-mini"; // cheapest default
+    $model = "gpt-4o-mini";
     $lastUserMessage = end($messages);
     $promptText = isset($lastUserMessage['content']) ? strtolower($lastUserMessage['content']) : "";
 
     foreach ($reportKeys as $reportKey) {
         if (strpos($promptText, strtolower($reportKey)) !== false ||
             strpos($promptText, 'report') !== false) {
-            $model = "gpt-4o"; // heavier model for long reports
+            $model = "gpt-4o";
             break;
         }
     }
@@ -796,34 +703,13 @@ function callOpenAi($messages) {
         }
     }
 
-    $aiResponse = trim($result["choices"][0]["message"]["content"]);
-
-    // 🔎 Google Search fallback if AI says it "doesn't know"
-    if (preg_match('/don\'t have|can\'t provide|please provide|not sure/i', $aiResponse)) {
-        $lastUserMessage = end($messages);
-        if (isset($lastUserMessage['content'])) {
-            $searchResult = googleSearch($lastUserMessage['content']);
-            if (!isset($searchResult['error']) && isset($searchResult['items'][0])) {
-                $first = $searchResult['items'][0];
-                $aiResponse = "🔎 I looked this up: " . $first['title'] . " — " .
-                              $first['snippet'] . " (" . $first['link'] . ")";
-            } else {
-                $aiResponse .= " (No useful Google results found)";
-            }
-        }
-    }
-
-    return $aiResponse;
+    return trim($result["choices"][0]["message"]["content"]);
 }
 
 /**
  * Perform a Google Custom Search API query.
- *
- * Uses GOOGLE_SEARCH_KEY and GOOGLE_SEARCH_CX from environment variables.
- * Returns decoded JSON results from Google or an error array on failure.
- *
- * @param string $query  The search term(s).
- * @return array         The decoded JSON response or error info.
+ * @param string $query
+ * @return array
  */
 function googleSearch($query) {
     $apiKey = getenv("GOOGLE_SEARCH_KEY");
@@ -854,8 +740,4 @@ function googleSearch($query) {
 
     return $json;
 }
-function runReportLogic($aiResponse) {
-    sendJsonResponse($aiResponse, "report", array("sessionId" => session_id()));
-}
-
 #endregion
