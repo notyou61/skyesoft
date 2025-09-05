@@ -81,6 +81,29 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
+#region 🛡️ Input & Session Bootstrap
+$data = json_decode(file_get_contents("php://input"), true);
+if ($data === null || $data === false) {
+    echo json_encode(array(
+        "response"  => "❌ Invalid or empty JSON payload.",
+        "action"    => "none",
+        "sessionId" => session_id()
+    ), JSON_PRETTY_PRINT);
+    exit;
+}
+
+$prompt = isset($data["prompt"])
+    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT)))
+    : "";
+$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : array();
+$lowerPrompt = strtolower($prompt);
+
+if (empty($prompt)) {
+    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => session_id()));
+    exit;
+}
+#endregion
+
 #region 📚 Build Context Blocks (Semantic Router)
 
 // Slim snapshot for universal queries
@@ -127,29 +150,6 @@ if (stripos($prompt, 'report') !== false) {
         : array();
 }
 
-#endregion
-
-#region 🛡️ Input & Session Bootstrap
-$data = json_decode(file_get_contents("php://input"), true);
-if ($data === null || $data === false) {
-    echo json_encode(array(
-        "response"  => "❌ Invalid or empty JSON payload.",
-        "action"    => "none",
-        "sessionId" => session_id()
-    ), JSON_PRETTY_PRINT);
-    exit;
-}
-
-$prompt = isset($data["prompt"])
-    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT)))
-    : "";
-$conversation = isset($data["conversation"]) && is_array($data["conversation"]) ? $data["conversation"] : array();
-$lowerPrompt = strtolower($prompt);
-
-if (empty($prompt)) {
-    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => session_id()));
-    exit;
-}
 #endregion
 
 #region 🛡️ Headers and Setup
@@ -247,32 +247,55 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i
 }
 
 // Report Requests
-if (!$handled && preg_match('/\b(zoning|report)\b/i', $lowerPrompt)) {
-    $reportTypesDecoded = json_decode($reportTypesBlock, true);
+if (!$handled) {
+    $reportTypesDecoded = isset($injectBlocks['reportTypes']) ? $injectBlocks['reportTypes'] : array();
 
-    if (is_array($reportTypesDecoded)) {
-        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
-        } else {
-            $response = array(
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => "Codex Report",
-                "response"   => "ℹ️ Codex information about requested report type.",
-                "details"    => isset($reportTypesDecoded['Zoning Report']) ? $reportTypesDecoded['Zoning Report'] : array()
-            );
-            sendJsonResponse($response, "report", array("sessionId" => session_id()));
-            exit;
+    if (!empty($reportTypesDecoded)) {
+        $matchedReport = false;
+
+        // Check if prompt mentions any known report type
+        foreach ($reportTypesDecoded as $type) {
+            if (stripos($prompt, $type) !== false) {
+                $matchedReport = $type;
+                break;
+            }
+        }
+
+        if ($matchedReport) {
+            // If we found a specific report type mentioned
+            if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
+                handleReportRequest($lowerPrompt, $reportTypesDecoded, $conversation);
+            } else {
+                $response = array(
+                    "actionType" => "Create",
+                    "actionName" => "Report",
+                    "reportType" => $matchedReport,
+                    "response"   => "ℹ️ Codex information about requested report type.",
+                    "details"    => isset($reportTypesDecoded[$matchedReport]) ? $reportTypesDecoded[$matchedReport] : array()
+                );
+                sendJsonResponse($response, "report", array("sessionId" => session_id()));
+                exit;
+            }
+            $handled = true;
         }
     } else {
         sendJsonResponse("❌ Report types not available.", "error", array("sessionId" => session_id()));
+        $handled = true;
     }
-    $handled = true;
 }
 
 // Codex Commands
-if (!$handled && preg_match('/\b(show glossary|all glossary|list all terms|full glossary|show modules|list modules|all modules|mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)) {
-    handleCodexCommand($lowerPrompt, $dynamicData, $codexGlossaryBlock, $codexOtherBlock);
+if (
+    !$handled &&
+    preg_match('/\b(show glossary|all glossary|list all terms|full glossary|show modules|list modules|all modules|mtco|lgbas|codex|constitution|version|vision|rag|documents|sources of truth|ai behavior)\b/i', $lowerPrompt)
+) {
+    handleCodexCommand(
+        $lowerPrompt,
+        $dynamicData,
+        isset($injectBlocks['glossary']) ? $injectBlocks['glossary'] : array(),
+        isset($injectBlocks['constitution']) ? $injectBlocks['constitution'] : array(),
+        isset($injectBlocks['modules']) ? $injectBlocks['modules'] : array()
+    );
     $handled = true;
 }
 
