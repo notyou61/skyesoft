@@ -410,18 +410,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
       addMessage("bot", reply);
       conversationHistory.push({ role: "assistant", content: reply });
-
+      // 
       const action      = data.action ? data.action.toLowerCase().trim() : "";
       const actionType  = data.actionType ? data.actionType.toLowerCase().trim() : "";
       const actionName  = data.actionName ? data.actionName.toLowerCase().trim() : "";
-
+      // Debug: log action info
       if (
-        (action === "logout") ||
+        actionType === "logout" ||              // ✅ matches backend "Logout"
+        action === "logout" ||
         (actionType === "create" && actionName === "logout")
       ) {
         console.log("🚪 Logout triggered by backend. Redirecting...");
         window.logoutUser();
       }
+
     } catch (err) {
       console.error("Client fetch error:", err.message);
       removeThinking();
