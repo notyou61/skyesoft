@@ -346,15 +346,19 @@ function googleSearch($query) {
     $summaries = array();
     if (!empty($json['items']) && is_array($json['items'])) {
         foreach ($json['items'] as $item) {
-            if (!isset($item['title']) || !isset($item['snippet'])) continue;
-            $snippet = trim($item['snippet']);
-            $snippet = preg_replace('/^(\.\.\.)+|(\.\.\.)+$/', '', $snippet);
-            if ($snippet !== "") {
-                $summaries[] = $item['title'] . ": " . $snippet;
+            $title   = isset($item['title'])   ? trim($item['title'])   : "";
+            $snippet = isset($item['snippet']) ? trim($item['snippet']) : "";
+
+            // Clean ellipses
+            $snippet = preg_replace('/\s*\.\.\.\s*/', ' ', $snippet);
+
+            if ($title !== "" || $snippet !== "") {
+                $summaries[] = ($title !== "" ? $title . ": " : "") . $snippet;
             }
         }
     }
 
+    // If no useful snippets
     if (empty($summaries)) {
         return array("error" => "No useful search results.");
     }
