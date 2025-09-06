@@ -566,8 +566,8 @@
   },
   "meta": {
     "title": "Skyesoft Codex",
-    "version": "2025.07",
-    "lastUpdated": "2025-08-21",
+    "version": "2025.09",
+    "lastUpdated": "2025-09-06",
     "description": "All-in-one source of truth for Skyebot and the Skyesoft platform."
   },
   "constitution": {
@@ -586,7 +586,84 @@
         "Use codex tags and glossary to answer specialized questions.",
         "Infer user meaning from context (not hardcoded logic)."
       ]
+    },
+    "documentation": {
+      "informationSheets": "Information Sheets are constitutional documents used for development and transparency. They allow Skyebot to generate structured summaries of the Codex itself, ensuring that both developers and users can understand the system’s mission, standards, and modules."
     }
+  },
+  "informationSheetSuite": {
+  "title": "📘 Information Sheet Suite",
+  "purpose": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users.",
+  "useCases": [
+    "Developer references for module specifications",
+    "AI explanations of Codex content to users",
+    "Validation of workflows against constitutional standards"
+  ],
+  "types": {
+    "Codex Documents": {
+      "purpose": "Summarize the integrated legacy markdown documents that form part of the Constitution.",
+      "requiredFields": {
+        "mandatory": ["topic"],
+        "optional": []
+      },
+      "pipeline": [
+        "Lookup section in codex.json",
+        "Format title + summary",
+        "Render list of included items",
+        "Attach disclaimers (e.g., static snapshot, not dynamic SSE)"
+      ],
+      "outputs": [
+        "title",
+        "summary",
+        "documentList",
+        "disclaimers"
+      ],
+      "status": "🟢 live"
+    },
+    "Module Overview": {
+      "purpose": "Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards).",
+      "requiredFields": {
+        "mandatory": ["module"],
+        "optional": []
+      },
+      "pipeline": [
+        "Fetch module entry from codex.json",
+        "Render title, purpose, features, integrations",
+        "Attach disclaimers (e.g., simplified summary, check full spec)"
+      ],
+      "outputs": [
+        "moduleName",
+        "purpose",
+        "features",
+        "integrations",
+        "disclaimers"
+      ],
+      "status": "🟡 in progress"
+    }
+  }
+  },
+"documentFormatting": {
+  "pageStructure": ["Header", "Body", "Footer"],
+  "headers": [
+    "Must include document title",
+    "Must include Christy Signs logo and Skyesoft identifier",
+    "May also include project name, module name, or date"
+  ],
+  "footers": [
+    "Must include page numbering (Page X of Y)",
+    "Must include Christy Signs footer with contact information",
+    "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
+    "Must display disclaimers where provided"
+  ],
+  "styling": [
+    "Use consistent fonts, margins, and spacing across all documents",
+    "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
+  ],
+  "metadata": [
+    "Must include document timestamp (UTC + local)",
+    "Must include author or system identifier (Skyebot)",
+    "Must include document version number"
+  ]
   },
   "ragExplanation": {
     "title": "Retrieval-Augmented Generation (RAG)",
@@ -623,25 +700,27 @@
       "report-generation-suite.md"
     ]
   },
-  "shared": {
-    "sourcesOfTruth": [
-      "SSE Stream (dynamic operational context)",
-      "skyesoft-data.json (structured history + contact/entity DB)",
-      "codex.json (static knowledge + specs)",
-      "saveChatLog.php (chat memory archive)"
-    ],
-    "aiBehaviorRules": [
-      "Do not claim to lack real-time access — refer to SSE.",
-      "Always normalize names and phone formats before inserting contacts.",
-      "Use codex tags and glossary to answer specialized questions.",
-      "Infer user meaning from context (not hardcoded logic)."
-    ]
+"shared": {
+  "sourcesOfTruth": [
+    "SSE Stream (dynamic operational context)",
+    "skyesoft-data.json (structured history + contact/entity DB)",
+    "codex.json (static knowledge + specs)",
+    "saveChatLog.php (chat memory archive)"
+  ],
+  "note": "This list mirrors constitution.sourcesOfTruth for quick reference; the Constitution remains the authoritative version.",
+  "aiBehaviorRules": [
+    "Do not claim to lack real-time access — refer to SSE.",
+    "Always normalize names and phone formats before inserting contacts.",
+    "Use codex tags and glossary to answer specialized questions.",
+    "Infer user meaning from context (not hardcoded logic)."
+  ]
   },
-  "glossary": {
-    "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
-    "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
-    "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
-    "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
-    "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
+"glossary": {
+  "note": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers.",
+  "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+  "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
+  "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
+  "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
+  "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
   }
 }
