@@ -203,7 +203,7 @@ $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['repo
     ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
     : array();
 
-// 1. 🔑 Quick Agentic Actions (Logout, Login, CRUD)
+// 1. 🔑 Quick Agentic Actions (Logout, Login)
 
 // --- Logout ---
 if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
@@ -245,8 +245,43 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// --- CRUD ---
-elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lowerPrompt, $matches)) {
+// 2. 📑 Reports (run this BEFORE CRUD)
+if (!$handled) {
+    $detectedReport = null;
+    foreach ($reportTypesSpec as $reportName => $reportDef) {
+        if (stripos($prompt, $reportName) !== false) {
+            $detectedReport = $reportName;
+            break;
+        }
+    }
+
+    if ($detectedReport && isset($reportTypesSpec[$detectedReport])) {
+        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
+            $responsePayload = [
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => $detectedReport,
+                "response"   => "ℹ️ Report definition for $detectedReport.",
+                "spec"       => $reportTypesSpec[$detectedReport],
+                "inputs"     => ["rawPrompt" => $prompt],
+                "sessionId"  => $sessionId
+            ];
+        } else {
+            $responsePayload = [
+                "actionType" => "Create",
+                "actionName" => "Report",
+                "reportType" => $detectedReport,
+                "response"   => "ℹ️ Codex information about requested report type.",
+                "details"    => $reportTypesSpec[$detectedReport],
+                "sessionId"  => $sessionId
+            ];
+        }
+        $handled = true;
+    }
+}
+
+// 3. --- CRUD (only if no report was matched) ---
+if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-zA-Z0-9]+)/i', $lowerPrompt, $matches)) {
     $actionType = ucfirst(strtolower($matches[1]));
     $entity     = $matches[2];
     $details    = array("entity" => $entity, "prompt" => $prompt);
@@ -290,43 +325,7 @@ elseif (preg_match('/\b(create|read|update|delete)\s+([a-zA-Z0-9]+)\b/i', $lower
     exit;
 }
 
-// 2. 📑 Reports (only if intent matches reportTypesSpec)
-if (!$handled) {
-    $detectedReport = null;
-    foreach ($reportTypesSpec as $reportName => $reportDef) {
-        if (stripos($prompt, $reportName) !== false) {
-            $detectedReport = $reportName;
-            break;
-        }
-    }
-
-    if ($detectedReport && isset($reportTypesSpec[$detectedReport])) {
-        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            $responsePayload = [
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => $detectedReport,
-                "response" => "ℹ️ Report definition for $detectedReport.",
-                "spec" => $reportTypesSpec[$detectedReport],
-                "inputs" => ["rawPrompt" => $prompt],
-                "sessionId" => $sessionId
-            ];
-            $handled = true;
-        } else {
-            $responsePayload = [
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => $detectedReport,
-                "response" => "ℹ️ Codex information about requested report type.",
-                "details" => isset($reportTypesSpec[$detectedReport]) ? $reportTypesSpec[$detectedReport] : [],
-                "sessionId" => $sessionId
-            ];
-            $handled = true;
-        }
-    }
-}
-
-// 3. 🧭 SemanticResponder (time, weather, KPIs, announcements, codex)
+// 4. 🧭 SemanticResponder
 if (!$handled) {
     $messages = [
         [
@@ -360,7 +359,7 @@ if (!$handled) {
     }
 }
 
-// 4. 🌐 Google Search Fallback (if AI requests it or answer missing)
+// 5. 🌐 Google Search Fallback
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
     $searchResults = googleSearch($prompt);
 
@@ -403,7 +402,7 @@ if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARC
     }
 }
 
-// 5. ✅ Final Output
+// 6. ✅ Final Output
 if ($responsePayload) {
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
