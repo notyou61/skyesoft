@@ -356,16 +356,25 @@ if (!$handled) {
         // Default response text
         $responseText = $aiResponse . " ⁂";
 
+        // Ensure codex is loaded
+        if (!isset($codex) || !isset($codex['modules'])) {
+            $codex = json_decode(file_get_contents(__DIR__ . "/codex.json"), true);
+        }
+
         // If the response looks like a Codex/Information Sheet style answer, append CTA link
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
                 $moduleTitle = isset($moduleDef['title']) ? normalizeTitle($moduleDef['title']) : '';
+                
                 if (
                     (!empty($moduleTitle) && stripos($aiResponse, $moduleTitle) !== false) ||
                     stripos($aiResponse, $key) !== false
                 ) {
+                    error_log("✅ CTA Match: Found module match for '$moduleTitle' (key: $key) in AI response.");
                     $responseText .= "\n\n👉 Would you like to know more?\n[View in Codex](#)";
                     break;
+                } else {
+                    error_log("❌ No match for module '$moduleTitle' (key: $key).");
                 }
             }
         }
