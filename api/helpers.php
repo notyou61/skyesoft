@@ -359,7 +359,7 @@ function googleSearch($query) {
         return array("error" => "No useful search results.");
     }
 
-    // If only one decent snippet, return it directly
+    // If only one snippet, return it directly
     if (count($summaries) === 1) {
         return array(
             "summary" => $summaries[0],
@@ -371,18 +371,18 @@ function googleSearch($query) {
     $messages = array(
         array("role" => "system",
               "content" => "You are Skyebot™, given Google search snippets. " .
-                           "Return the most factual, concise answer to the user query. " .
-                           "Prefer numbers, dates, or addresses when they appear. " .
-                           "Do not add commentary — just answer clearly."),
+                           "Summarize what the search results are mainly about, " .
+                           "in one or two factual sentences. " .
+                           "Do not add commentary — just summarize the topic."),
         array("role" => "system", "content" => implode("\n", $summaries)),
-        array("role" => "user", "content" => $query)
+        array("role" => "user", "content" => "Summarize the search results for: " . $query)
     );
 
     $summary = callOpenAi($messages);
 
     if (!$summary) {
-        // Fallback to the first snippet if AI fails
-        $summary = $summaries[0];
+        // Fallback: join the top 2 snippets
+        $summary = $summaries[0] . " " . (isset($summaries[1]) ? $summaries[1] : "");
     }
 
     return array(
