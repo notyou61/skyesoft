@@ -364,17 +364,39 @@ if (!$handled) {
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
     $searchResults = googleSearch($prompt);
 
-    if (!empty($searchResults['items'][0]['snippet'])) {
-        $best = $searchResults['items'][0];
+    // Log for debugging
+    file_put_contents(__DIR__ . '/error.log',
+        date('Y-m-d H:i:s') . " - Google Search called for prompt: $prompt\n" .
+        "Results keys: " . implode(', ', array_keys($searchResults)) . "\n",
+        FILE_APPEND
+    );
+
+    if (isset($searchResults['error'])) {
+        // Handle API errors (e.g., keys not set, curl failure)
         $responsePayload = [
-            "response" => $best['snippet'] . " (via Google Search)",
-            "link" => $best['link'],
+            "response" => "⚠️ Search service unavailable: " . $searchResults['error'] . ". Please try again.",
+            "action" => "error",
+            "sessionId" => $sessionId
+        ];
+    } elseif (!empty($searchResults['summary'])) {
+        // Use the summary (handles both single and AI-summarized cases)
+        $responsePayload = [
+            "response" => $searchResults['summary'] . " (via Google Search)",
             "action" => "answer",
             "sessionId" => $sessionId
         ];
+        // Optionally add raw snippets or link if available (e.g., from first raw item)
+        if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
+            // If raw contains full items (adjust if your function returns links)
+            $firstLink = isset($searchResults['raw'][0]['link']) ? $searchResults['raw'][0]['link'] : null;
+            if ($firstLink) {
+                $responsePayload['link'] = $firstLink;
+            }
+        }
     } else {
+        // No useful results
         $responsePayload = [
-            "response" => "⚠️ Unable to resolve your query. Please try again.",
+            "response" => "⚠️ No relevant search results found. Please try rephrasing your query.",
             "action" => "error",
             "sessionId" => $sessionId
         ];

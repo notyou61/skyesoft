@@ -321,7 +321,6 @@ function googleSearch($query) {
     $url = "https://www.googleapis.com/customsearch/v1?q=" . urlencode($query) .
            "&key=" . $apiKey . "&cx=" . $cx;
 
-    // Fetch results
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
@@ -342,15 +341,19 @@ function googleSearch($query) {
         return array("error" => $msg);
     }
 
-    // Collect summaries (title + snippet, fallback to title if snippet missing)
+    // Build snippets
     $summaries = array();
+    $firstLink = null;
     if (!empty($json['items']) && is_array($json['items'])) {
-        foreach ($json['items'] as $item) {
+        foreach ($json['items'] as $idx => $item) {
             $title   = isset($item['title'])   ? trim($item['title'])   : "";
             $snippet = isset($item['snippet']) ? trim($item['snippet']) : "";
 
-            // Clean ellipses
             $snippet = preg_replace('/\s*\.\.\.\s*/', ' ', $snippet);
+
+            if ($idx === 0 && isset($item['link'])) {
+                $firstLink = $item['link']; // capture top result link
+            }
 
             if ($title !== "" || $snippet !== "") {
                 $entry = $title;
@@ -362,46 +365,37 @@ function googleSearch($query) {
         }
     }
 
-    // Fallback if still empty but items exist → use first title/link
-    if (empty($summaries) && !empty($json['items'][0]['title'])) {
-        $first = $json['items'][0];
-        return array(
-            "summary" => $first['title'] . " (" . $first['link'] . ")",
-            "raw"     => array($first['title'])
-        );
-    }
-
     if (empty($summaries)) {
         return array("error" => "No useful search results.");
     }
 
-    // If only one snippet, return it directly
+    // Single result
     if (count($summaries) === 1) {
         return array(
             "summary" => $summaries[0],
-            "raw"     => $summaries
+            "raw"     => $summaries,
+            "link"    => $firstLink
         );
     }
 
-    // Otherwise summarize with AI
+    // Summarize multiple
     $messages = array(
         array("role" => "system",
               "content" => "You are Skyebot™, given Google search snippets. " .
-                           "Summarize what the search results are mainly about " .
+                           "Summarize what the search results are mainly about, " .
                            "in one or two factual sentences. Keep it concise and factual."),
         array("role" => "system", "content" => implode("\n", $summaries)),
         array("role" => "user", "content" => "Summarize the search results for: " . $query)
     );
 
     $summary = callOpenAi($messages);
-
     if (!$summary) {
-        // Fallback: join the top 2 snippets
         $summary = $summaries[0] . " " . (isset($summaries[1]) ? $summaries[1] : "");
     }
 
     return array(
         "summary" => trim($summary),
-        "raw"     => $summaries
+        "raw"     => $summaries,
+        "link"    => $firstLink
     );
 }
