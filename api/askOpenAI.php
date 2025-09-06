@@ -364,17 +364,27 @@ if (!$handled) {
         // If the response looks like a Codex/Information Sheet style answer, append CTA link
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
-                $moduleTitle = isset($moduleDef['title']) ? normalizeTitle($moduleDef['title']) : '';
-                // Check for title or key match in AI response
+                $rawTitle   = isset($moduleDef['title']) ? $moduleDef['title'] : '';
+                $cleanTitle = normalizeTitle($rawTitle);
+
+                // Try to extract acronym inside parentheses, e.g. "(TIS)"
+                $acronym = null;
+                if (preg_match('/\(([A-Z0-9]+)\)/', $rawTitle, $matches)) {
+                    $acronym = $matches[1];
+                }
+
+                // Check for raw title, cleaned title, acronym, or module key
                 if (
-                    (!empty($moduleTitle) && stripos($aiResponse, $moduleTitle) !== false) ||
+                    (!empty($rawTitle)   && stripos($aiResponse, $rawTitle)   !== false) ||
+                    (!empty($cleanTitle) && stripos($aiResponse, $cleanTitle) !== false) ||
+                    (!empty($acronym)    && stripos($aiResponse, $acronym)    !== false) ||
                     stripos($aiResponse, $key) !== false
                 ) {
-                    error_log("✅ CTA Match: Found module match for '$moduleTitle' (key: $key) in AI response.");
+                    error_log("✅ CTA Match: '$rawTitle' (key: $key, clean: $cleanTitle, acronym: $acronym) matched in AI response.");
                     $responseText .= "\n\n👉 Would you like to know more?\n[View in Codex](#)";
                     break;
                 } else {
-                    error_log("❌ No match for module '$moduleTitle' (key: $key).");
+                    error_log("❌ No match for '$rawTitle' (key: $key). Cleaned: '$cleanTitle', Acronym: '$acronym'.");
                 }
             }
         }
