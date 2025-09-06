@@ -359,7 +359,7 @@ if (!$handled) {
         // If the response looks like a Codex/Information Sheet style answer, append CTA link
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
-                $moduleTitle = isset($moduleDef['title']) ? $moduleDef['title'] : '';
+                $moduleTitle = isset($moduleDef['title']) ? normalizeTitle($moduleDef['title']) : '';
                 if (
                     (!empty($moduleTitle) && stripos($aiResponse, $moduleTitle) !== false) ||
                     stripos($aiResponse, $key) !== false

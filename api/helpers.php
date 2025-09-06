@@ -399,3 +399,17 @@ function googleSearch($query) {
         "link"    => $firstLink
     );
 }
+
+/**
+ * Normalize a Codex module title for comparison.
+ * - Removes leading emoji
+ * - Strips parenthetical acronyms (e.g., "(TIS)")
+ * - Trims whitespace
+ */
+function normalizeTitle($title) {
+    // Remove leading emoji/symbols
+    $title = preg_replace('/^[\p{So}\p{Cn}\p{Sk}\p{Sm}]+/u', '', $title);
+    // Remove (acronym) style parentheticals
+    $title = preg_replace('/\([^)]*\)/', '', $title);
+    return trim($title);
+}
