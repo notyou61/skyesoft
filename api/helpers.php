@@ -342,7 +342,7 @@ function googleSearch($query) {
         return array("error" => $msg);
     }
 
-    // Collect snippets
+    // Collect summaries (title + snippet, fallback to title if snippet missing)
     $summaries = array();
     if (!empty($json['items']) && is_array($json['items'])) {
         foreach ($json['items'] as $item) {
@@ -353,12 +353,24 @@ function googleSearch($query) {
             $snippet = preg_replace('/\s*\.\.\.\s*/', ' ', $snippet);
 
             if ($title !== "" || $snippet !== "") {
-                $summaries[] = ($title !== "" ? $title . ": " : "") . $snippet;
+                $entry = $title;
+                if ($snippet !== "") {
+                    $entry .= ($title !== "" ? ": " : "") . $snippet;
+                }
+                $summaries[] = $entry;
             }
         }
     }
 
-    // If no useful snippets
+    // Fallback if still empty but items exist → use first title/link
+    if (empty($summaries) && !empty($json['items'][0]['title'])) {
+        $first = $json['items'][0];
+        return array(
+            "summary" => $first['title'] . " (" . $first['link'] . ")",
+            "raw"     => array($first['title'])
+        );
+    }
+
     if (empty($summaries)) {
         return array("error" => "No useful search results.");
     }
@@ -375,9 +387,8 @@ function googleSearch($query) {
     $messages = array(
         array("role" => "system",
               "content" => "You are Skyebot™, given Google search snippets. " .
-                           "Summarize what the search results are mainly about, " .
-                           "in one or two factual sentences. " .
-                           "Do not add commentary — just summarize the topic."),
+                           "Summarize what the search results are mainly about " .
+                           "in one or two factual sentences. Keep it concise and factual."),
         array("role" => "system", "content" => implode("\n", $summaries)),
         array("role" => "user", "content" => "Summarize the search results for: " . $query)
     );
