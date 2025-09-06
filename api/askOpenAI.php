@@ -341,7 +341,10 @@ if (!$handled) {
         $history = array_slice($conversation, -2);
         foreach ($history as $entry) {
             if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = array("role" => $entry["role"], "content" => $entry["content"]);
+                $messages[] = [
+                    "role"    => $entry["role"],
+                    "content" => $entry["content"]
+                ];
             }
         }
     }
@@ -350,9 +353,26 @@ if (!$handled) {
     $aiResponse = callOpenAi($messages);
 
     if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
+        // Default response text
+        $responseText = $aiResponse . " ⁂";
+
+        // If the response looks like a Codex/Information Sheet style answer, append CTA link
+        if (isset($codex['modules']) && is_array($codex['modules'])) {
+            foreach ($codex['modules'] as $key => $moduleDef) {
+                $moduleTitle = isset($moduleDef['title']) ? $moduleDef['title'] : '';
+                if (
+                    (!empty($moduleTitle) && stripos($aiResponse, $moduleTitle) !== false) ||
+                    stripos($aiResponse, $key) !== false
+                ) {
+                    $responseText .= "\n\n👉 Would you like to know more?\n[View in Codex](#)";
+                    break;
+                }
+            }
+        }
+
         $responsePayload = [
-            "response" => $aiResponse . " ⁂",
-            "action" => "answer",
+            "response"  => $responseText,
+            "action"    => "answer",
             "sessionId" => $sessionId
         ];
         $handled = true;
