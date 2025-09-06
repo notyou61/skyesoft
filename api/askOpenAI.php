@@ -358,14 +358,14 @@ if (!$handled) {
 
         // Ensure codex is loaded
         if (!isset($codex) || !isset($codex['modules'])) {
-            $codex = json_decode(file_get_contents(__DIR__ . "/codex.json"), true);
+            $codex = isset($dynamicData['modules']) ? ['modules' => $dynamicData['modules']] : [];
         }
 
         // If the response looks like a Codex/Information Sheet style answer, append CTA link
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
                 $moduleTitle = isset($moduleDef['title']) ? normalizeTitle($moduleDef['title']) : '';
-                
+                // Check for title or key match in AI response
                 if (
                     (!empty($moduleTitle) && stripos($aiResponse, $moduleTitle) !== false) ||
                     stripos($aiResponse, $key) !== false
