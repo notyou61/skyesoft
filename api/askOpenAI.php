@@ -204,7 +204,6 @@ $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['repo
     : array();
 
 // 1. 🔑 Quick Agentic Actions (Logout, Login)
-
 // --- Logout ---
 if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
     performLogout();
@@ -366,9 +365,13 @@ if (!$handled) {
             $codex = isset($dynamicData['modules']) ? ['modules' => $dynamicData['modules']] : [];
         }
 
+        $ctaAdded = false; // ✅ safeguard against multiple links
+
         // If the response looks like a Codex/Information Sheet style answer, append CTA link
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
+                if ($ctaAdded) break; // stop once CTA added
+
                 $rawTitle   = isset($moduleDef['title']) ? $moduleDef['title'] : '';
                 $cleanTitle = normalizeTitle($rawTitle);
 
@@ -378,22 +381,58 @@ if (!$handled) {
                     $acronym = $matches[1];
                 }
 
-                // Check for raw title, cleaned title, acronym, or module key
                 if (
                     (!empty($rawTitle)   && stripos($aiResponse, $rawTitle)   !== false) ||
                     (!empty($cleanTitle) && stripos($aiResponse, $cleanTitle) !== false) ||
                     (!empty($acronym)    && stripos($aiResponse, $acronym)    !== false) ||
                     stripos($aiResponse, $key) !== false
                 ) {
-                    error_log("✅ CTA Match: '$rawTitle' (key: $key, clean: $cleanTitle, acronym: $acronym) matched in AI response.");
-                    $responseText .= "\n\n👉 Would you like to know more?\n[View in Codex](#)";
+                    error_log("✅ CTA Match: Module '$rawTitle' (key: $key) matched in AI response.");
+                    $responseText .= getTrooperLink($key);
+                    $ctaAdded = true;
                     break;
-                } else {
-                    error_log("❌ No match for '$rawTitle' (key: $key). Cleaned: '$cleanTitle', Acronym: '$acronym'.");
                 }
             }
         }
 
+        // Also check Information Sheets
+        if (!$ctaAdded && isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
+            foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
+                $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
+                $sheetTitle   = isset($sheetDef['title']) ? normalizeTitle($sheetDef['title']) : '';
+
+                if (
+                    (!empty($sheetPurpose) && stripos($aiResponse, $sheetPurpose) !== false) ||
+                    (!empty($sheetTitle)   && stripos($aiResponse, $sheetTitle)   !== false) ||
+                    stripos($aiResponse, $sheetKey) !== false
+                ) {
+                    error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
+                    $responseText .= getTrooperLink($sheetKey);
+                    $ctaAdded = true;
+                    break;
+                } else {
+                    error_log("❌ No Information Sheet match for '$sheetKey' (purpose: '$sheetPurpose').");
+                }
+            }
+        }
+
+        // Also check Information Sheets (Codex Documents, Module Overview, etc.)
+        if (isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
+            foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
+                $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
+                if (
+                    (!empty($sheetPurpose) && stripos($aiResponse, $sheetPurpose) !== false) ||
+                    stripos($aiResponse, $sheetKey) !== false
+                ) {
+                    error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
+                    $responseText .= getTrooperLink($sheetKey);
+                    break;
+                } else {
+                    error_log("❌ No Information Sheet match for '$sheetKey' (purpose: '$sheetPurpose').");
+                }
+            }
+        }
+        // Prepare final payload
         $responsePayload = [
             "response"  => $responseText,
             "action"    => "answer",

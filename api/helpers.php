@@ -402,14 +402,31 @@ function googleSearch($query) {
 
 /**
  * Normalize a Codex module title for comparison.
- * - Removes leading emoji
- * - Strips parenthetical acronyms (e.g., "(TIS)")
+ * - Removes leading emoji or symbol characters
+ * - Removes all parenthetical phrases (e.g., "(TIS)", "(beta)")
+ * - Collapses multiple spaces
  * - Trims whitespace
  */
+//  Normalize Codex module titles for comparison
 function normalizeTitle($title) {
+    if (empty($title)) {
+        return '';
+    }
+
     // Remove leading emoji/symbols
-    $title = preg_replace('/^[\p{So}\p{Cn}\p{Sk}\p{Sm}]+/u', '', $title);
-    // Remove (acronym) style parentheticals
+    $title = preg_replace('/^[\p{So}\p{Sk}\p{Sm}\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]+/u', '', $title);
+
+    // Remove *all* parentheticals
     $title = preg_replace('/\([^)]*\)/', '', $title);
+
+    // Collapse multiple spaces
+    $title = preg_replace('/\s+/', ' ', $title);
+
     return trim($title);
+}
+
+//  Get Starship Troopers–style CTA link
+function getTrooperLink($slug) {
+    $safeSlug = urlencode($slug);
+    return "\n\n👉 Would you like to know more?\n[View in Codex](/codex.php?view={$safeSlug})";
 }
