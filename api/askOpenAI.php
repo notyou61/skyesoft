@@ -381,6 +381,10 @@ if (!$handled) {
                     $acronym = $matches[1];
                 }
 
+                // Debug logs
+                error_log("🔎 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
+                error_log("🔎 AI Response snippet: " . substr($aiResponse, 0, 200));
+
                 if (
                     (!empty($rawTitle)   && stripos($aiResponse, $rawTitle)   !== false) ||
                     (!empty($cleanTitle) && stripos($aiResponse, $cleanTitle) !== false) ||
@@ -416,22 +420,6 @@ if (!$handled) {
             }
         }
 
-        // Also check Information Sheets (Codex Documents, Module Overview, etc.)
-        if (isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
-            foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
-                $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
-                if (
-                    (!empty($sheetPurpose) && stripos($aiResponse, $sheetPurpose) !== false) ||
-                    stripos($aiResponse, $sheetKey) !== false
-                ) {
-                    error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
-                    $responseText .= getTrooperLink($sheetKey);
-                    break;
-                } else {
-                    error_log("❌ No Information Sheet match for '$sheetKey' (purpose: '$sheetPurpose').");
-                }
-            }
-        }
         // Prepare final payload
         $responsePayload = [
             "response"  => $responseText,
