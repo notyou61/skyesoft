@@ -419,6 +419,27 @@ if (!$handled) {
                 }
             }
         }
+        // Also check Glossary terms
+        if (!$ctaAdded && isset($codex['glossary']) && is_array($codex['glossary'])) {
+            foreach ($codex['glossary'] as $key => $entry) {
+                if ($ctaAdded) break;
+
+                $cleanKey = normalizeTitle($key);
+
+                if (
+                    stripos($aiResponse, $key) !== false ||
+                    stripos($aiResponse, $cleanKey) !== false
+                ) {
+                    error_log("✅ CTA Match: Glossary term '$key' matched in AI response.");
+                    $responseText .= getTrooperLink($key);
+                    $ctaAdded = true;
+                    break;
+                } else {
+                    error_log("❌ No Glossary match for '$key'. Cleaned: '$cleanKey'.");
+                }
+            }
+        }
+
 
         // Prepare final payload
         $responsePayload = [
