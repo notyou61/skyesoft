@@ -362,34 +362,40 @@ if (!$handled) {
 
         // Ensure codex is loaded
         if (!isset($codex) || !isset($codex['modules'])) {
-            $codex = isset($dynamicData['modules']) ? ['modules' => $dynamicData['modules']] : [];
+            if (isset($dynamicData['codex'])) {
+                $codex = $dynamicData['codex'];
+            } else {
+                $codex = [];
+            }
         }
 
         $ctaAdded = false; // ✅ safeguard against multiple links
 
-        // If the response looks like a Codex/Information Sheet style answer, append CTA link
+        // 🔹 Normalize AI response for safer matching
+        $normalizedResponse = normalizeTitle($aiResponse);
+
+        // Check Codex modules
         if (isset($codex['modules']) && is_array($codex['modules'])) {
             foreach ($codex['modules'] as $key => $moduleDef) {
-                if ($ctaAdded) break; // stop once CTA added
+                if ($ctaAdded) break;
 
                 $rawTitle   = isset($moduleDef['title']) ? $moduleDef['title'] : '';
                 $cleanTitle = normalizeTitle($rawTitle);
 
-                // Try to extract acronym inside parentheses, e.g. "(TIS)"
+                // Extract acronym, e.g. (TIS)
                 $acronym = null;
                 if (preg_match('/\(([A-Z0-9]+)\)/', $rawTitle, $matches)) {
                     $acronym = $matches[1];
                 }
 
-                // Debug logs
                 error_log("🔎 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
-                error_log("🔎 AI Response snippet: " . substr($aiResponse, 0, 200));
+                error_log("🔎 AI Response snippet: " . substr($normalizedResponse, 0, 200));
 
                 if (
-                    (!empty($rawTitle)   && stripos($aiResponse, $rawTitle)   !== false) ||
-                    (!empty($cleanTitle) && stripos($aiResponse, $cleanTitle) !== false) ||
-                    (!empty($acronym)    && stripos($aiResponse, $acronym)    !== false) ||
-                    stripos($aiResponse, $key) !== false
+                    (!empty($rawTitle)   && stripos($normalizedResponse, $rawTitle)   !== false) ||
+                    (!empty($cleanTitle) && stripos($normalizedResponse, $cleanTitle) !== false) ||
+                    (!empty($acronym)    && stripos($normalizedResponse, $acronym)    !== false) ||
+                    stripos($normalizedResponse, $key) !== false
                 ) {
                     error_log("✅ CTA Match: Module '$rawTitle' (key: $key) matched in AI response.");
                     $responseText .= getTrooperLink($key);
@@ -399,47 +405,68 @@ if (!$handled) {
             }
         }
 
-        // Also check Information Sheets
+        // Check Information Sheets
         if (!$ctaAdded && isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
             foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
                 $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
                 $sheetTitle   = isset($sheetDef['title']) ? normalizeTitle($sheetDef['title']) : '';
 
+                error_log("🔎 Checking information sheet: sheetKey='$sheetKey', sheetTitle='$sheetTitle', sheetPurpose='$sheetPurpose'");
+
                 if (
-                    (!empty($sheetPurpose) && stripos($aiResponse, $sheetPurpose) !== false) ||
-                    (!empty($sheetTitle)   && stripos($aiResponse, $sheetTitle)   !== false) ||
-                    stripos($aiResponse, $sheetKey) !== false
+                    (!empty($sheetPurpose) && stripos($normalizedResponse, $sheetPurpose) !== false) ||
+                    (!empty($sheetTitle)   && stripos($normalizedResponse, $sheetTitle)   !== false) ||
+                    stripos($normalizedResponse, $sheetKey) !== false
                 ) {
                     error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
                     $responseText .= getTrooperLink($sheetKey);
                     $ctaAdded = true;
                     break;
-                } else {
-                    error_log("❌ No Information Sheet match for '$sheetKey' (purpose: '$sheetPurpose').");
                 }
             }
         }
-        // Also check Glossary terms
+
+        // Check Glossary terms
         if (!$ctaAdded && isset($codex['glossary']) && is_array($codex['glossary'])) {
             foreach ($codex['glossary'] as $key => $entry) {
                 if ($ctaAdded) break;
 
                 $cleanKey = normalizeTitle($key);
 
+                error_log("🔎 Checking glossary: key='$key', cleanKey='$cleanKey'");
+
                 if (
-                    stripos($aiResponse, $key) !== false ||
-                    stripos($aiResponse, $cleanKey) !== false
+                    stripos($normalizedResponse, $key) !== false ||
+                    stripos($normalizedResponse, $cleanKey) !== false
                 ) {
                     error_log("✅ CTA Match: Glossary term '$key' matched in AI response.");
                     $responseText .= getTrooperLink($key);
                     $ctaAdded = true;
                     break;
-                } else {
-                    error_log("❌ No Glossary match for '$key'. Cleaned: '$cleanKey'.");
                 }
             }
         }
 
+        // (Optional) Check Included Documents list
+        if (!$ctaAdded && isset($codex['includedDocuments']['documents']) && is_array($codex['includedDocuments']['documents'])) {
+            foreach ($codex['includedDocuments']['documents'] as $doc) {
+                if ($ctaAdded) break;
+
+                $cleanDoc = normalizeTitle($doc);
+
+                error_log("🔎 Checking included document: doc='$doc', cleanDoc='$cleanDoc'");
+
+                if (
+                    stripos($normalizedResponse, $doc) !== false ||
+                    stripos($normalizedResponse, $cleanDoc) !== false
+                ) {
+                    error_log("✅ CTA Match: Included document '$doc' matched in AI response.");
+                    $responseText .= getTrooperLink($doc);
+                    $ctaAdded = true;
+                    break;
+                }
+            }
+        }
 
         // Prepare final payload
         $responsePayload = [
