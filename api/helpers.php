@@ -266,7 +266,7 @@ function callOpenAi($messages) {
         "model" => $model,
         "messages" => $messages,
         "temperature" => 0.1,
-        "max_tokens" => 200
+        "max_tokens" => 800
     ), JSON_UNESCAPED_SLASHES);
 
     $ch = curl_init("https://api.openai.com/v1/chat/completions");

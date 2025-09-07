@@ -352,6 +352,11 @@ if (!$handled) {
 
     $aiResponse = callOpenAi($messages);
 
+    // 🔍 Safeguard: detect likely truncation
+    if ($aiResponse && !preg_match('/[.!?…]$/', trim($aiResponse))) {
+        error_log("⚠️ AI response may be truncated: " . substr($aiResponse, -50));
+    }    
+
     if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
         // Default response text
         $responseText = $aiResponse . " ⁂";
