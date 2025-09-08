@@ -16,10 +16,11 @@
     "markdown-it": "^14.1.0",
     "markdown-it-container": "^4.0.0",
     "marked": "^15.0.12",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "puppeteer": "^24.7.1",
     "remarkable": "^2.0.1",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "twemoji-parser": "^14.0.0"
   },
   "keywords": [],
   "author": "Steve Skye",
