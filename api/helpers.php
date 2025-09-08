@@ -427,6 +427,6 @@ function normalizeTitle($title) {
 
 //  Get Starship Troopers–style CTA link
 function getTrooperLink($slug) {
-    $safeSlug = urlencode($slug);
-    return "\n\n👉 Would you like to know more?\n[View in Codex](/codex.php?view={$safeSlug})";
+    $safeSlug = strtolower(preg_replace('/[^a-zA-Z0-9]/', '-', $slug));
+    return "\n\n👉 Would you like to know more?\n[View Report](/docs/reports/{$safeSlug}.pdf)";
 }

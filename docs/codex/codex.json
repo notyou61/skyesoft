@@ -642,7 +642,7 @@
     }
   }
   },
-"documentFormatting": {
+  "documentFormatting": {
   "pageStructure": ["Header", "Body", "Footer"],
   "headers": [
     "Must include document title",
