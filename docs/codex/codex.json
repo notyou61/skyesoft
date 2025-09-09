@@ -65,29 +65,42 @@
       "strategicImportance": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
     },
     "permitManagementSuite": {
-      "title": "🗂️ Permit Management Suite",
-      "purpose": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates.",
-      "features": [
-        "Submission logs and timestamps",
-        "SLA timers with Time Standards",
-        "Live SSE status changes",
-        "Escalation logic if delayed",
-        "AI-parsed jurisdiction assignment"
-      ],
-      "workflow": [
-        "Created",
-        "Received",
-        "Submitted",
-        "Response Pending",
-        "Approved/Denied"
-      ],
-      "integrations": [
-        "Core Database",
-        "File Management",
-        "Mobile-First Modals",
-        "Attendance Suite",
-        "Management Escalation Trees"
-      ]
+      "title": "Permit Management Suite",
+      "icon": "🗂️",
+      "purpose": {
+        "icon": "🎯",
+        "text": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates."
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Submission logs and timestamps",
+          "SLA timers with Time Standards",
+          "Live SSE status changes",
+          "Escalation logic if delayed",
+          "AI-parsed jurisdiction assignment"
+        ]
+      },
+      "workflow": {
+        "icon": "📋",
+        "items": [
+          "Created",
+          "Received",
+          "Submitted",
+          "Response Pending",
+          "Approved/Denied"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Core Database",
+          "File Management",
+          "Mobile-First Modals",
+          "Attendance Suite",
+          "Management Escalation Trees"
+        ]
+      }
     },
     "realTimeSSE": {
       "title": "🔄 Real-Time SSE",
@@ -103,7 +116,7 @@
         "Orders, Permits, Contacts"
       ]
     },
-    "skyebotContactParser": {
+    "skyebotConctParsetar": {
       "title": "🤖 Skyebot Contact Parser",
       "purpose": "Parses email signatures to detect structured contact data and prevent duplicates in entity/location/contact logic.",
       "logic": [
