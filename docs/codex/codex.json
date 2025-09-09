@@ -477,6 +477,7 @@
       "lastUpdated": "2025-08-31"
     },
     "semanticResponder": {
+      "title": "🧩 Semantic Responder",
       "purpose": "Interpret natural language queries against live operational data without relying on hardcoded keyword rules.",
       "guidelines": [
         "Leverage dynamicData as a knowledge source to answer user questions in natural, context-aware ways.",
@@ -502,6 +503,7 @@
     }
   },
   "skyebotCodeAccess": {
+    "title": "🗂️ Skyebot Code Access",
     "purpose": "Allows Skyebot to describe and reference its own implementation files for transparency, debugging, and context.",
     "files": [
       {
@@ -568,10 +570,17 @@
     "title": "Skyesoft Codex",
     "version": "2025.09",
     "lastUpdated": "2025-09-06",
-    "description": "All-in-one source of truth for Skyebot and the Skyesoft platform."
+    "description": "All-in-one source of truth for Skyebot and the Skyesoft platform.",
+    "schema": {
+      "title": "Each entry must include a 'title' (human-readable name).",
+      "description/purpose": "Each entry should provide either 'description' or 'purpose' as a short summary.",
+      "order": "Optional array to control section rendering order in Information Sheets.",
+      "sections": "Other keys (arrays, objects, strings) are rendered as report sections in order.",
+      "metadata": "Optional fields like 'note', 'status', or 'lastUpdated' can be included."
+    }
   },
   "constitution": {
-    "name": "Skyesoft Constitution",
+    "title": "Skyesoft Constitution",
     "description": "Defines the logical order of truth and behavioral rules Skyebot uses to interact with humans and data.",
     "sourcesOfTruth": [
       "SSE Stream (dynamic operational context)",
@@ -592,82 +601,84 @@
     }
   },
   "informationSheetSuite": {
-  "title": "📘 Information Sheet Suite",
-  "purpose": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users.",
-  "useCases": [
-    "Developer references for module specifications",
-    "AI explanations of Codex content to users",
-    "Validation of workflows against constitutional standards"
-  ],
-  "types": {
-    "Codex Documents": {
-      "purpose": "Summarize the integrated legacy markdown documents that form part of the Constitution.",
-      "requiredFields": {
-        "mandatory": ["topic"],
-        "optional": []
+    "title": "📘 Information Sheet Suite",
+    "purpose": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users.",
+    "useCases": [
+      "Developer references for module specifications",
+      "AI explanations of Codex content to users",
+      "Validation of workflows against constitutional standards"
+    ],
+    "types": {
+      "Codex Documents": {
+        "purpose": "Summarize the integrated legacy markdown documents that form part of the Constitution.",
+        "requiredFields": {
+          "mandatory": ["topic"],
+          "optional": []
+        },
+        "pipeline": [
+          "Lookup section in codex.json",
+          "Format title + summary",
+          "Render list of included items",
+          "Attach disclaimers (e.g., static snapshot, not dynamic SSE)"
+        ],
+        "outputs": [
+          "title",
+          "summary",
+          "documentList",
+          "disclaimers"
+        ],
+        "status": "🟢 live"
       },
-      "pipeline": [
-        "Lookup section in codex.json",
-        "Format title + summary",
-        "Render list of included items",
-        "Attach disclaimers (e.g., static snapshot, not dynamic SSE)"
-      ],
-      "outputs": [
-        "title",
-        "summary",
-        "documentList",
-        "disclaimers"
-      ],
-      "status": "🟢 live"
-    },
-    "Module Overview": {
-      "purpose": "Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards).",
-      "requiredFields": {
-        "mandatory": ["module"],
-        "optional": []
-      },
-      "pipeline": [
-        "Fetch module entry from codex.json",
-        "Render title, purpose, features, integrations",
-        "Attach disclaimers (e.g., simplified summary, check full spec)"
-      ],
-      "outputs": [
-        "moduleName",
-        "purpose",
-        "features",
-        "integrations",
-        "disclaimers"
-      ],
-      "status": "🟡 in progress"
+      "Module Overview": {
+        "purpose": "Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards).",
+        "requiredFields": {
+          "mandatory": ["module"],
+          "optional": []
+        },
+        "pipeline": [
+          "Fetch module entry from codex.json",
+          "Render title, purpose, features, integrations",
+          "Attach disclaimers (e.g., simplified summary, check full spec)"
+        ],
+        "outputs": [
+          "moduleName",
+          "purpose",
+          "features",
+          "integrations",
+          "disclaimers"
+        ],
+        "status": "🟡 in progress"
+      }
     }
-  }
   },
   "documentFormatting": {
-  "pageStructure": ["Header", "Body", "Footer"],
-  "headers": [
-    "Must include document title",
-    "Must include Christy Signs logo and Skyesoft identifier",
-    "May also include project name, module name, or date"
-  ],
-  "footers": [
-    "Must include page numbering (Page X of Y)",
-    "Must include Christy Signs footer with contact information",
-    "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
-    "Must display disclaimers where provided"
-  ],
-  "styling": [
-    "Use consistent fonts, margins, and spacing across all documents",
-    "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
-  ],
-  "metadata": [
-    "Must include document timestamp (UTC + local)",
-    "Must include author or system identifier (Skyebot)",
-    "Must include document version number"
-  ]
+    "title": "📝 Document Formatting Standards",
+    "purpose": "Define page structure, styling, and metadata rules for all generated Information Sheets and reports.",
+    "pageStructure": ["Header", "Body", "Footer"],
+    "headers": [
+      "Must include document title",
+      "Must include Christy Signs logo and Skyesoft identifier",
+      "May also include project name, module name, or date"
+    ],
+    "footers": [
+      "Must include page numbering (Page X of Y)",
+      "Must include Christy Signs footer with contact information",
+      "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
+      "Must display disclaimers where provided"
+    ],
+    "styling": [
+      "Use consistent fonts, margins, and spacing across all documents",
+      "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
+    ],
+    "metadata": [
+      "Must include document timestamp (UTC + local)",
+      "Must include author or system identifier (Skyebot)",
+      "Must include document version number"
+    ]
   },
   "ragExplanation": {
     "title": "Retrieval-Augmented Generation (RAG)",
-    "summary": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware.",
+    "purpose": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware.",
     "sources": [
       "SSE Stream (dynamic operational context)",
       "skyesoft-data.json (structured history + contact/entity DB)",
@@ -682,7 +693,8 @@
     ]
   },
   "includedDocuments": {
-    "summary": "The following 14 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
+    "title": "📂 Included Legacy Documents",
+    "purpose": "The following 14 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
     "documents": [
       "glossary.md",
       "attendance-suite.md",
@@ -700,27 +712,31 @@
       "report-generation-suite.md"
     ]
   },
-"shared": {
-  "sourcesOfTruth": [
-    "SSE Stream (dynamic operational context)",
-    "skyesoft-data.json (structured history + contact/entity DB)",
-    "codex.json (static knowledge + specs)",
-    "saveChatLog.php (chat memory archive)"
-  ],
-  "note": "This list mirrors constitution.sourcesOfTruth for quick reference; the Constitution remains the authoritative version.",
-  "aiBehaviorRules": [
-    "Do not claim to lack real-time access — refer to SSE.",
-    "Always normalize names and phone formats before inserting contacts.",
-    "Use codex tags and glossary to answer specialized questions.",
-    "Infer user meaning from context (not hardcoded logic)."
-  ]
+  "shared": {
+    "title": "🔗 Shared References",
+    "description": "This list mirrors constitution.sourcesOfTruth for quick reference; the Constitution remains the authoritative version.",
+    "sourcesOfTruth": [
+      "SSE Stream (dynamic operational context)",
+      "skyesoft-data.json (structured history + contact/entity DB)",
+      "codex.json (static knowledge + specs)",
+      "saveChatLog.php (chat memory archive)"
+    ],
+    "aiBehaviorRules": [
+      "Do not claim to lack real-time access — refer to SSE.",
+      "Always normalize names and phone formats before inserting contacts.",
+      "Use codex tags and glossary to answer specialized questions.",
+      "Infer user meaning from context (not hardcoded logic)."
+    ]
   },
-"glossary": {
-  "note": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers.",
-  "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
-  "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
-  "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
-  "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
-  "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
+  "glossary": {
+    "title": "📘 Skyesoft Glossary",
+    "description": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers.",
+    "entries": {
+      "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+      "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
+      "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
+      "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
+      "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
+    }
   }
 }
