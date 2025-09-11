@@ -90,19 +90,23 @@ function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sect
     $pdf->startTransaction();
     $startY = $pdf->GetY();
 
-    // 1. Find emoji for this section
+    // --- Resolve emoji and icon file ---
     $emoji = isset($sectionIcons[$sectionKey]) ? $sectionIcons[$sectionKey] : '';
-    // 2. See if there’s a PNG mapping for that emoji
     $iconFile = ($emoji && isset($iconMap[$emoji])) ? $iconMap[$emoji] : null;
+    $iconUsed = false;
+
+    // CLI debug logging
+    if (php_sapi_name() === 'cli') {
+        echo "Section: $sectionKey | Emoji: " . ($emoji ?: 'none') . " | IconFile: " . ($iconFile ?: 'none') . "\n";
+    }
 
     // --- Section header row ---
     $pdf->SetFont('dejavusans', 'B', 12);
-    $iconUsed = false;
 
     if ($iconFile) {
         $iconPath = __DIR__ . '/../assets/images/icons/' . $iconFile;
         if (file_exists($iconPath)) {
-            $pdf->Image($iconPath, $pdf->GetX(), $pdf->GetY(), 6);
+            $pdf->Image($iconPath, $pdf->GetX(), $pdf->GetY(), 6); // 6mm wide icon
             $pdf->SetX($pdf->GetX() + 8);
             $pdf->Cell(0, 8, $title, 0, 1, 'L');
             $pdf->Ln(1);
@@ -111,7 +115,7 @@ function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sect
     }
 
     if (!$iconUsed) {
-        // fallback: emoji text (if font supports) or plain title
+        // fallback: emoji text (if font supports) or just plain title
         $pdf->Cell(0, 8, ($emoji ? $emoji . " " : "") . $title, 0, 1, 'L');
     }
     $pdf->Ln(2);
@@ -121,10 +125,11 @@ function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sect
     $pdf->MultiCell(0, 6, $body, 0, 'L', false, 1);
     $pdf->Ln(4);
 
-    // --- Rollback if section spills onto next page ---
-    $pageHeight = $pdf->getPageHeight();
+    // --- Keep section together (rollback if it spills) ---
+    $pageHeight   = $pdf->getPageHeight();
     $bottomMargin = $pdf->getBreakMargin();
-    $pageEnd = $pageHeight - $bottomMargin;
+    $pageEnd      = $pageHeight - $bottomMargin;
+
     if ($pdf->GetY() > $pageEnd) {
         $pdf->rollbackTransaction(true);
         $pdf->AddPage();
@@ -133,6 +138,7 @@ function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sect
         $pdf->commitTransaction();
     }
 }
+
 
 // Parse JSON input
 $rawInput = file_get_contents('php://input');
