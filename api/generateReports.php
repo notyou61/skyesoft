@@ -60,6 +60,16 @@ class ChristyPDF extends TCPDF {
     }
 }
 
+// Normalize unsupported characters
+function normalizeText($text) {
+    // Replace arrows and other unsupported chars with ASCII
+    $map = array(
+        "→" => "->",
+        "•" => "-"  // optional: replace bullet with dash
+    );
+    return strtr($text, $map);
+}
+
 // Central section-to-icon mapping (fallback to emojis; override via iconMap.json)
 $sectionIcons = array(
     'purpose' => '🎯',
@@ -77,21 +87,15 @@ $iconMapFile = __DIR__ . '/../assets/data/iconMap.json';
 $iconMap = file_exists($iconMapFile) ? json_decode(file_get_contents($iconMapFile), true) : array();
 
 /**
- * Get icon for a section (prioritize iconMap, fallback to sectionIcons)
- */
-function getSectionIcon($sectionKey, $iconMap, $sectionIcons) {
-    return isset($iconMap[$sectionKey]) ? $iconMap[$sectionKey] : (isset($sectionIcons[$sectionKey]) ? $sectionIcons[$sectionKey] : '');
-}
-
-/**
  * Render a section with an icon + title + body, keeping the section together.
  */
 function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sectionIcons) {
-    $pdf->startTransaction();
-    $startY = $pdf->GetY();
+    // Normalize the body and title text
+    $body = normalizeText($body);
+    $title = normalizeText($title);
 
     // --- Resolve emoji and icon file ---
-    $emoji = isset($sectionIcons[$sectionKey]) ? $sectionIcons[$sectionKey] : '';
+    $emoji    = isset($sectionIcons[$sectionKey]) ? $sectionIcons[$sectionKey] : '';
     $iconFile = ($emoji && isset($iconMap[$emoji])) ? $iconMap[$emoji] : null;
     $iconUsed = false;
 
@@ -100,45 +104,75 @@ function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sect
         echo "Section: $sectionKey | Emoji: " . ($emoji ?: 'none') . " | IconFile: " . ($iconFile ?: 'none') . "\n";
     }
 
-    // --- Section header row ---
-    $pdf->SetFont('dejavusans', 'B', 12);
+    // --- Pre-check height ---
+    $leftMargin  = $pdf->GetMargins()['left'];
+    $rightMargin = $pdf->GetMargins()['right'];
+    $bodyWidth   = $pdf->getPageWidth() - $leftMargin - $rightMargin;
 
+    // Header height: 8mm for Cell + 3mm line gap
+    $headerHeight = 8 + 3;
+
+    $pdf->SetFont('helvetica', '', 11);
+    $numLines   = $pdf->getNumLines($body, $bodyWidth);
+    $bodyHeight = $numLines * 6; // match MultiCell row height
+
+    $sectionHeight = $headerHeight + $bodyHeight + 4; // +4 for Ln after body
+    $available     = $pdf->getPageHeight() - $pdf->GetY() - $pdf->getBreakMargin();
+
+    if (php_sapi_name() === 'cli') {
+        echo "Section height: {$sectionHeight}mm | Available: {$available}mm\n";
+    }
+
+    if ($sectionHeight > $available) {
+        $pdf->AddPage(); // move whole section to next page
+    }
+
+    // --- Render header ---
+    $pdf->SetFont('helvetica', 'B', 12);
     if ($iconFile) {
         $iconPath = __DIR__ . '/../assets/images/icons/' . $iconFile;
         if (file_exists($iconPath)) {
-            $pdf->Image($iconPath, $pdf->GetX(), $pdf->GetY(), 6); // 6mm wide icon
+            $pdf->Image($iconPath, $pdf->GetX(), $pdf->GetY(), 6);
             $pdf->SetX($pdf->GetX() + 8);
             $pdf->Cell(0, 8, $title, 0, 1, 'L');
-            $pdf->Ln(1);
             $iconUsed = true;
         }
     }
-
     if (!$iconUsed) {
-        // fallback: emoji text (if font supports) or just plain title
         $pdf->Cell(0, 8, ($emoji ? $emoji . " " : "") . $title, 0, 1, 'L');
     }
-    $pdf->Ln(2);
 
-    // --- Section body ---
-    $pdf->SetFont('dejavusans', '', 11);
-    $pdf->MultiCell(0, 6, $body, 0, 'L', false, 1);
-    $pdf->Ln(4);
+    // Horizontal line
+    $lineY = $pdf->GetY();
+    $pdf->SetDrawColor(150, 150, 150);
+    $pdf->SetLineWidth(0.1);
+    $pdf->Line($leftMargin, $lineY, $pdf->getPageWidth() - $rightMargin, $lineY);
 
-    // --- Keep section together (rollback if it spills) ---
-    $pageHeight   = $pdf->getPageHeight();
-    $bottomMargin = $pdf->getBreakMargin();
-    $pageEnd      = $pageHeight - $bottomMargin;
+    $pdf->Ln(3);
 
-    if ($pdf->GetY() > $pageEnd) {
-        $pdf->rollbackTransaction(true);
-        $pdf->AddPage();
-        renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sectionIcons);
+    // --- Body ---
+    $pdf->SetFont('helvetica', '', 11);
+
+    // Special handling for workflow sections
+    if ($sectionKey === 'workflow') {
+        $lines = explode("\n", $body);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') continue;
+
+            // Replace -> with => for clarity
+            $line = str_replace('->', '=>', $line);
+
+            // Render each step as a bullet
+            $pdf->Cell(0, 6, "• " . $line, 0, 1, 'L');
+        }
+        $pdf->Ln(2);
     } else {
-        $pdf->commitTransaction();
+        // Default handling for all other sections
+        $pdf->MultiCell(0, 6, $body, 0, 'L', false, 1);
+        $pdf->Ln(4);
     }
 }
-
 
 // Parse JSON input
 $rawInput = file_get_contents('php://input');
@@ -211,20 +245,27 @@ if ($type === 'information_sheet') {
 
     $codex = json_decode(file_get_contents($codex_file), true);
 
-    $foundSection = null;
+    $section = null;
+
+    // First check top-level
     foreach ($codex as $key => $value) {
-        if (strcasecmp($key, $slug) === 0) { // case-insensitive compare
-            $foundSection = $value;
-            $slug = $key; // preserve original casing for later
+        if (strcasecmp($key, $slug) === 0 && is_array($value)) {
+            $section = $value;
+            $slug = $key; // preserve original casing
             break;
         }
     }
 
-    if (!$foundSection || !is_array($foundSection)) {
+    // Then check under "modules"
+    if (!$section && isset($codex['modules'][$slug]) && is_array($codex['modules'][$slug])) {
+        $section = $codex['modules'][$slug];
+    }
+
+    // If still not found, error out
+    if (!$section) {
         die("❌ Invalid slug or Codex data (slug: $slug)\n");
     }
 
-    $section = $foundSection;
     $title   = !empty($section['title']) ? $section['title'] : 'Information Sheet';
 
     $pdf->SetTitle($title);
@@ -254,7 +295,7 @@ if ($type === 'information_sheet') {
     // Workflow
     if (!empty($section['workflow'])) {
         $items = isset($section['workflow']['items']) ? $section['workflow']['items'] : (array)$section['workflow'];
-        $body = implode("\n", array_map(function($w){ return "• " . $w; }, $items));
+        $body = implode("\n", $items);  // No bullet addition for workflow to match output
         renderSectionWithIcon($pdf, 'workflow', "Workflow Steps", $body, $iconMap, $sectionIcons);
     }
 
@@ -313,7 +354,7 @@ if ($type === 'information_sheet') {
     $pdf->SetTitle($title);
     $pdf->setReportTitle($title);
     $pdf->AddPage();
-    $pdf->SetFont('dejavusans', '', 11);
+    $pdf->SetFont('helvetica', '', 11);
     $pdf->Write(0, "Report generation coming soon.\n\nThis is a placeholder for the report type: " . $slug . ".");
 }
 
