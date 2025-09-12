@@ -307,11 +307,6 @@ if ($type === 'information_sheet') {
         renderSectionWithIcon($pdf, 'lastUpdated', "Last Updated", (string)$section['lastUpdated'], $iconMap, $sectionIcons);
     }
 
-    // Footer line
-    $pdf->Ln(10);
-    $pdf->SetFont('dejavusans', 'I', 9);
-    $pdf->Cell(0, 6, "Skyesoft™ Internal Documentation – Info Sheet | Updated: " . date('Y-m-d'), 0, 1, 'C');
-
 } else {
     // Reports branch (placeholder)
     $title = "Report Placeholder";
