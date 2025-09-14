@@ -5,6 +5,7 @@ require_once __DIR__ . '/../libs/tcpdf/tcpdf.php';
 // ChristyPDF class definition
 class ChristyPDF extends TCPDF {
     private $reportTitle;
+    public $disclaimer = '';
 
     public function setReportTitle($title) {
         $this->reportTitle = preg_replace('/[^\x20-\x7E]/', '', $title);
@@ -45,136 +46,138 @@ class ChristyPDF extends TCPDF {
         $text_bottom = $this->GetY();
         $logo_bottom = 10 + $logo_height;
         $divider_y = max($text_bottom, $logo_bottom) + 2;
+
+        // Blue divider line
+        $this->SetDrawColor(0, 0, 0); // Pantone-like Christy Signs blue
+        $this->SetLineWidth(0.5);
         $this->Line(15, $divider_y, 195, $divider_y);
+    }
+
+    // Override AddPage to ensure consistent body start on all pages
+    public function AddPage($orientation='', $format='', $keepmargins=false, $tocpage=false) {
+        parent::AddPage($orientation, $format, $keepmargins, $tocpage);
+        $this->SetY(27); // lock body start across all pages
     }
 
     // Custom Footer
     public function Footer() {
         $this->SetY(-20);
+        $this->SetDrawColor(0, 0, 0);
         $this->Line(15, $this->GetY(), 195, $this->GetY());
 
         $this->SetFont('helvetica', '', 8);
-        $footerText = "© Christy Signs | 3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com"
-                    . " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
-        $this->Cell(0, 10, $footerText, 0, 0, 'C');
+        $footerText = "© Christy Signs / Skyesoft, All Rights Reserved | " .
+                      "3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com" .
+                      " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
+        $this->Cell(0, 6, $footerText, 0, 1, 'C');
+
+        if (!empty($this->disclaimer)) {
+            $this->MultiCell(0, 6, "Disclaimer: " . $this->disclaimer, 0, 'C');
+        }
     }
 }
 
-// Normalize unsupported characters
-function normalizeText($text) {
-    // Replace arrows and other unsupported chars with ASCII
-    $map = array(
-        "→" => "->",
-        "•" => "-"  // optional: replace bullet with dash
-    );
-    return strtr($text, $map);
+// Render a section with styled header, icon, and dynamic content
+function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = []) {
+    // --- Transaction preview ---
+    $pdf->startTransaction();
+    $startPage = $pdf->getPage();
+    $startY    = $pdf->GetY();
+
+    // --- Draw section once (for measurement) ---
+    $drawSection = function($pdf, $key, $title, $content, $iconMap) {
+        // Section header
+        $pdf->Ln(8);
+        $pdf->SetFillColor(0, 0, 0); // Christy Signs Blue
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 12);
+
+        $icon = isset($iconMap[$key]) ? $iconMap[$key] : '';
+        $pdf->Cell(0, 8, " $icon $title", 0, 1, 'L', true);
+
+        // Body reset
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->Ln(2);
+
+        // Recursive render
+        $renderContent = function($data, $level = 0) use (&$renderContent, $pdf, $key) {
+            if (is_string($data) || is_numeric($data)) {
+                $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $data, 0, 'L');
+            } elseif (is_array($data)) {
+                if (array_keys($data) === range(0, count($data) - 1)) {
+                    // Bullet list
+                    foreach ($data as $item) {
+                        $bullet = $level === 0 ? "• " : "– ";
+                        $text = is_array($item) ? "" : $item;
+                        $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $bullet . $text, 0, 'L');
+                        if (is_array($item)) {
+                            $renderContent($item, $level + 1);
+                        }
+                    }
+                } else {
+                    // Assoc array
+                    if ($key === 'metadata') {
+                        foreach ($data as $k => $v) {
+                            $pdf->SetFont('helvetica', 'B', 10);
+                            $pdf->Cell(60, 6, ucfirst($k) . ":", 0, 0, 'L');
+                            $pdf->SetFont('helvetica', '', 10);
+                            $pdf->Cell(0, 6, (string)$v, 0, 1, 'L');
+                        }
+                    } else {
+                        foreach ($data as $k => $v) {
+                            $label = ucfirst($k) . ": ";
+                            if (is_array($v)) {
+                                $pdf->SetFont('helvetica', 'B', 10);
+                                $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label, 0, 'L');
+                                $pdf->SetFont('helvetica', '', 10);
+                                $renderContent($v, $level + 1);
+                            } else {
+                                $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label . $v, 0, 'L');
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        $renderContent($content);
+        $pdf->Ln(4);
+    };
+
+    // Render invisibly first
+    $drawSection($pdf, $key, $title, $content, $iconMap);
+
+    // Check overflow
+    if ($pdf->getPage() > $startPage) {
+        // Overflow → rollback and add page
+        $pdf->rollbackTransaction(true); // discard preview
+        $pdf->AddPage();
+        $pdf->SetY(27); // ensure same start position as page 1
+        $drawSection($pdf, $key, $title, $content, $iconMap);
+    } else {
+        // No overflow → just accept
+        $pdf->commitTransaction();
+    }
 }
-
-// Central section-to-icon mapping (fallback to emojis; override via iconMap.json)
-$sectionIcons = array(
-    'purpose' => '🎯',
-    'useCases' => '💡',
-    'features' => '⚙️',
-    'workflow' => '📋',
-    'integrations' => '🔌',
-    'types' => '📂',
-    'status' => '✅',
-    'lastUpdated' => '📅'
-);
-
-// Load icon map
-$iconMapFile = __DIR__ . '/../assets/data/iconMap.json';
-$iconMap = file_exists($iconMapFile) ? json_decode(file_get_contents($iconMapFile), true) : array();
 
 /**
- * Render a section with an icon + title + body, keeping the section together.
+ * Recursive search in Codex for a slug.
  */
-function renderSectionWithIcon($pdf, $sectionKey, $title, $body, $iconMap, $sectionIcons) {
-    // Normalize the body and title text
-    $body = normalizeText($body);
-    $title = normalizeText($title);
-
-    // --- Resolve emoji and icon file ---
-    $emoji    = isset($sectionIcons[$sectionKey]) ? $sectionIcons[$sectionKey] : '';
-    $iconFile = ($emoji && isset($iconMap[$emoji])) ? $iconMap[$emoji] : null;
-    $iconUsed = false;
-
-    // CLI debug logging
-    if (php_sapi_name() === 'cli') {
-        echo "Section: $sectionKey | Emoji: " . ($emoji ?: 'none') . " | IconFile: " . ($iconFile ?: 'none') . "\n";
-    }
-
-    // --- Pre-check height ---
-    $leftMargin  = $pdf->GetMargins()['left'];
-    $rightMargin = $pdf->GetMargins()['right'];
-    $bodyWidth   = $pdf->getPageWidth() - $leftMargin - $rightMargin;
-
-    // Header height: 8mm for Cell + 3mm line gap
-    $headerHeight = 8 + 3;
-
-    $pdf->SetFont('helvetica', '', 11);
-    $numLines   = $pdf->getNumLines($body, $bodyWidth);
-    $bodyHeight = $numLines * 6; // match MultiCell row height
-
-    $sectionHeight = $headerHeight + $bodyHeight + 4; // +4 for Ln after body
-    $available     = $pdf->getPageHeight() - $pdf->GetY() - $pdf->getBreakMargin();
-
-    if (php_sapi_name() === 'cli') {
-        echo "Section height: {$sectionHeight}mm | Available: {$available}mm\n";
-    }
-
-    if ($sectionHeight > $available) {
-        $pdf->AddPage(); // move whole section to next page
-    }
-
-    // --- Render header ---
-    $pdf->SetFont('helvetica', 'B', 12);
-    if ($iconFile) {
-        $iconPath = __DIR__ . '/../assets/images/icons/' . $iconFile;
-        if (file_exists($iconPath)) {
-            $pdf->Image($iconPath, $pdf->GetX(), $pdf->GetY(), 6);
-            $pdf->SetX($pdf->GetX() + 8);
-            $pdf->Cell(0, 8, $title, 0, 1, 'L');
-            $iconUsed = true;
+function findSectionRecursive($array, $slug) {
+    foreach ($array as $key => $value) {
+        if (strcasecmp($key, $slug) === 0) {
+            return $value;
+        }
+        if (is_array($value)) {
+            $found = findSectionRecursive($value, $slug);
+            if ($found) return $found;
         }
     }
-    if (!$iconUsed) {
-        $pdf->Cell(0, 8, ($emoji ? $emoji . " " : "") . $title, 0, 1, 'L');
-    }
-
-    // Horizontal line
-    $lineY = $pdf->GetY();
-    $pdf->SetDrawColor(150, 150, 150);
-    $pdf->SetLineWidth(0.1);
-    $pdf->Line($leftMargin, $lineY, $pdf->getPageWidth() - $rightMargin, $lineY);
-
-    $pdf->Ln(3);
-
-    // --- Body ---
-    $pdf->SetFont('helvetica', '', 11);
-
-    // Special handling for workflow sections
-    if ($sectionKey === 'workflow') {
-        $lines = explode("\n", $body);
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ($line === '') continue;
-
-            // Replace -> with => for clarity
-            $line = str_replace('->', '=>', $line);
-
-            // Render each step as a bullet
-            $pdf->Cell(0, 6, "• " . $line, 0, 1, 'L');
-        }
-        $pdf->Ln(2);
-    } else {
-        // Default handling for all other sections
-        $pdf->MultiCell(0, 6, $body, 0, 'L', false, 1);
-        $pdf->Ln(4);
-    }
+    return null;
 }
 
-// Parse JSON input
+// --- Parse JSON input ---
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
 
@@ -194,16 +197,14 @@ if (!is_array($input)) {
 $type = isset($input['type']) ? (string)$input['type'] : 'information_sheet';
 if ($type === '0') $type = 'information_sheet';
 if ($type === '1') $type = 'report';
-if (!in_array($type, array('information_sheet', 'report'))) {
-    die("❌ Invalid type: $type\n");
-}
 
 $requestor = 'Skyesoft';
 if (isset($input['requestor']) && $input['requestor'] !== '0' && $input['requestor'] !== 0) {
     $requestor = (string)$input['requestor'];
 }
-
+// Sanitize slug to allow only alphanumerics, dashes, underscores
 $slug = isset($input['slug']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$input['slug']) : '';
+// Default slug if missing
 $data = isset($input['data']) && is_array($input['data']) ? $input['data'] : array();
 
 // Initialize PDF
@@ -212,29 +213,14 @@ $pdf = new ChristyPDF();
 $pdf->SetCreator('Skyesoft PDF Generator');
 $pdf->SetAuthor($requestor);
 
-// Layout calculations for margins
-$logo = __DIR__ . '/../assets/images/christyLogo.png';
-$logo_height = 0;
-$logo_width = 35;
-if (file_exists($logo)) {
-    list($pix_w, $pix_h) = getimagesize($logo);
-    if ($pix_w > 0) {
-        $logo_height = $logo_width * ($pix_h / $pix_w);
-    }
-}
-$text_height   = 20;
-$logo_center_y = 10 + ($logo_height / 2);
-$startY        = $logo_center_y - ($text_height / 2);
-$text_bottom   = $startY + $text_height;
-$logo_bottom   = 10 + $logo_height;
-$max_bottom    = max($text_bottom, $logo_bottom);
-$divider_y     = $max_bottom + 2;
-$body_start_y  = $divider_y + 3;
-$footer_start  = 20;
-$body_end_margin = $footer_start + 5;
+// Consistent margins: left/right 20, top 35 to give space for header
+$pdf->SetMargins(20, 35, 20);     // Left, Top, Right
+$pdf->SetAutoPageBreak(true, 25); // Bottom margin = 25mm
+$pdf->SetHeaderMargin(0);
 
-$pdf->SetMargins(15, $body_start_y, 15);
-$pdf->SetAutoPageBreak(true, $body_end_margin);
+// Icon map (placeholder, as icons not implemented in TCPDF)
+$iconMap = [];
+$sectionIcons = [];
 
 // Branch: Information Sheet
 if ($type === 'information_sheet') {
@@ -245,109 +231,41 @@ if ($type === 'information_sheet') {
 
     $codex = json_decode(file_get_contents($codex_file), true);
 
-    $section = null;
+    $foundSection = findSectionRecursive($codex, $slug);
 
-    // First check top-level
-    foreach ($codex as $key => $value) {
-        if (strcasecmp($key, $slug) === 0 && is_array($value)) {
-            $section = $value;
-            $slug = $key; // preserve original casing
-            break;
-        }
-    }
-
-    // Then check under "modules"
-    if (!$section && isset($codex['modules'][$slug]) && is_array($codex['modules'][$slug])) {
-        $section = $codex['modules'][$slug];
-    }
-
-    // If still not found, error out
-    if (!$section) {
+    if (!$foundSection || !is_array($foundSection)) {
         die("❌ Invalid slug or Codex data (slug: $slug)\n");
     }
 
+    $section = $foundSection;
     $title   = !empty($section['title']) ? $section['title'] : 'Information Sheet';
 
     $pdf->SetTitle($title);
     $pdf->setReportTitle($title);
     $pdf->AddPage();
 
-    // Purpose
-    if (!empty($section['purpose'])) {
-        $purposeText = is_array($section['purpose']) && isset($section['purpose']['text'])
-            ? $section['purpose']['text'] : (string)$section['purpose'];
-        renderSectionWithIcon($pdf, 'purpose', "Purpose", $purposeText, $iconMap, $sectionIcons);
-    }
+    // Dynamically render all fields except title
+    foreach ($section as $key => $value) {
+        if ($key === 'title') continue;
 
-    // Use Cases
-    if (!empty($section['useCases']) && is_array($section['useCases'])) {
-        $body = implode("\n", array_map(function($uc){ return "• " . $uc; }, $section['useCases']));
-        renderSectionWithIcon($pdf, 'useCases', "Use Cases", $body, $iconMap, $sectionIcons);
-    }
-
-    // Features
-    if (!empty($section['features'])) {
-        $items = is_array($section['features']) ? $section['features'] : array((string)$section['features']);
-        $body = implode("\n", array_map(function($f){ return "• " . $f; }, $items));
-        renderSectionWithIcon($pdf, 'features', "Features", $body, $iconMap, $sectionIcons);
-    }
-
-    // Workflow
-    if (!empty($section['workflow'])) {
-        $items = isset($section['workflow']['items']) ? $section['workflow']['items'] : (array)$section['workflow'];
-        $body = implode("\n", $items);  // No bullet addition for workflow to match output
-        renderSectionWithIcon($pdf, 'workflow', "Workflow Steps", $body, $iconMap, $sectionIcons);
-    }
-
-    // Integrations
-    if (!empty($section['integrations'])) {
-        $items = isset($section['integrations']['items']) ? $section['integrations']['items'] : (array)$section['integrations'];
-        $body = implode("\n", array_map(function($i){ return "• " . $i; }, $items));
-        renderSectionWithIcon($pdf, 'integrations', "System Integrations", $body, $iconMap, $sectionIcons);
-    }
-
-    // Types (special for informationSheetSuite)
-    if (!empty($section['types']) && is_array($section['types'])) {
-        foreach ($section['types'] as $typeName => $typeDef) {
-            $body = "Purpose: " . $typeDef['purpose'] . "\n\n";
-            if (!empty($typeDef['requiredFields'])) {
-                $body .= "Required Fields:\n";
-                foreach ($typeDef['requiredFields'] as $k => $fields) {
-                    $body .= "- " . ucfirst($k) . ": " . implode(", ", $fields) . "\n";
-                }
-                $body .= "\n";
-            }
-            if (!empty($typeDef['pipeline'])) {
-                $body .= "Pipeline:\n";
-                foreach ($typeDef['pipeline'] as $step) {
-                    $body .= "- " . $step . "\n";
-                }
-                $body .= "\n";
-            }
-            if (!empty($typeDef['outputs'])) {
-                $body .= "Outputs:\n";
-                foreach ($typeDef['outputs'] as $o) {
-                    $body .= "- " . $o . "\n";
-                }
-                $body .= "\n";
-            }
-            if (!empty($typeDef['status'])) {
-                $body .= "Status: " . $typeDef['status'] . "\n";
-            }
-            renderSectionWithIcon($pdf, 'types', "Type: " . $typeName, $body, $iconMap, $sectionIcons);
+        // Normalize value
+        $content = $value;
+        if (is_array($value) && isset($value['text'])) {
+            $content = $value['text']; // handle objects with 'text'
         }
+
+        $label = ucwords(str_replace('_', ' ', $key));
+        renderSectionWithIcon($pdf, $key, $label, $content, $iconMap, $sectionIcons);
     }
 
-    // Status
-    if (!empty($section['status'])) {
-        renderSectionWithIcon($pdf, 'status', "Status", (string)$section['status'], $iconMap, $sectionIcons);
-    }
-
-    // Last Updated
-    if (!empty($section['lastUpdated'])) {
-        renderSectionWithIcon($pdf, 'lastUpdated', "Last Updated", (string)$section['lastUpdated'], $iconMap, $sectionIcons);
-    }
-
+    // Metadata section
+    $meta = array(
+        "Generated (UTC)"   => gmdate("Y-m-d H:i:s"),
+        "Generated (Local)" => date("Y-m-d H:i:s"),
+        "Author"            => $requestor,
+        "Version"           => "1.0"
+    );
+    renderSectionWithIcon($pdf, 'metadata', "Document Metadata", $meta, $iconMap, $sectionIcons);
 } else {
     // Reports branch (placeholder)
     $title = "Report Placeholder";
@@ -358,20 +276,16 @@ if ($type === 'information_sheet') {
     $pdf->Write(0, "Report generation coming soon.\n\nThis is a placeholder for the report type: " . $slug . ".");
 }
 
-// Pick a filename-friendly title
-$fileTitle = !empty($section['title']) 
-    ? preg_replace('/[^A-Za-z0-9 _-]/', '', $section['title']) 
-    : $slug;
-$fileTitle = trim($fileTitle);
-
 // Save output
 $saveDir = realpath(__DIR__ . "/../docs/reports") ?: __DIR__ . "/../docs/reports";
-// Directory traversal protection
 if (!is_dir($saveDir)) {
     mkdir($saveDir, 0755, true);
 }
-// Path format: "Information Sheet - [Title].pdf"
-$savePath = $saveDir . DIRECTORY_SEPARATOR . "Information Sheet - " . $fileTitle . ".pdf";
+//
+// Convert slug to Title Case with spaces
+$prettySlug = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $slug));
+// Fallback if slug is empty
+$savePath = $saveDir . DIRECTORY_SEPARATOR . "Information Sheet - " . $prettySlug . ".pdf";
 try {
     $pdf->Output($savePath, 'F');
     echo "✅ PDF created successfully at: $savePath\n";
