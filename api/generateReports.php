@@ -1,6 +1,10 @@
 <?php
 // PHP 5.6-compatible
 require_once __DIR__ . '/../libs/tcpdf/tcpdf.php';
+// Icon map (for section icons)
+$iconMapFile = __DIR__ . '/../assets/images/icons/iconMap.json';
+$iconMap = file_exists($iconMapFile) ? json_decode(file_get_contents($iconMapFile), true) : [];
+$iconBasePath = __DIR__ . '/../assets/images/icons/';
 
 // ChristyPDF class definition
 class ChristyPDF extends TCPDF {
@@ -28,18 +32,33 @@ class ChristyPDF extends TCPDF {
         $logo_center_y = 10 + ($logo_height / 2);
         $startY = $logo_center_y - ($text_height / 2);
 
-        // Main Title
-        $this->SetFont('helvetica', 'B', 14);
-        $this->SetXY(55, $startY);
+        // Main Title + optional icon
+        $this->SetFont('dejavusans', 'B', 14);
+
+        // Try to load an icon for the sheet header (fallback = clipboard.png)
+        global $iconMap, $iconBasePath;
+        $headerIcon = isset($iconMap['informationSheet'])
+            ? $iconMap['informationSheet']
+            : 'clipboard.png';
+        $headerIconPath = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $headerIcon;
+
+        if (file_exists($headerIconPath)) {
+            // Draw the icon just before the title text
+            $this->Image($headerIconPath, 52, $startY + 1, 6); // 6mm wide
+            $this->SetXY(60, $startY); // shift text to the right
+        } else {
+            $this->SetXY(55, $startY); // fallback no icon
+        }
+
         $this->Cell(0, 8, $this->reportTitle ?: 'Project Report Title', 0, 1, 'L');
 
         // Title Tag
-        $this->SetFont('helvetica', 'I', 10);
+        $this->SetFont('dejavusans', 'I', 10);
         $this->SetX(55);
         $this->Cell(0, 6, 'Skyesoft™ Information Sheet', 0, 1, 'L');
 
         // Metadata
-        $this->SetFont('helvetica', '', 9);
+        $this->SetFont('dejavusans', '', 9);
         $this->SetX(55);
         $this->Cell(0, 6, date('F j, Y') . ' – Created by Skyesoft™', 0, 1, 'L');
 
@@ -47,8 +66,8 @@ class ChristyPDF extends TCPDF {
         $logo_bottom = 10 + $logo_height;
         $divider_y = max($text_bottom, $logo_bottom) + 2;
 
-        // Blue divider line
-        $this->SetDrawColor(0, 0, 0); // Pantone-like Christy Signs blue
+        // Divider line (black)
+        $this->SetDrawColor(0, 0, 0);
         $this->SetLineWidth(0.5);
         $this->Line(15, $divider_y, 195, $divider_y);
     }
@@ -65,7 +84,7 @@ class ChristyPDF extends TCPDF {
         $this->SetDrawColor(0, 0, 0);
         $this->Line(15, $this->GetY(), 195, $this->GetY());
 
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $footerText = "© Christy Signs / Skyesoft, All Rights Reserved | " .
                       "3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com" .
                       " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
@@ -78,35 +97,79 @@ class ChristyPDF extends TCPDF {
 }
 
 // Render a section with styled header, icon, and dynamic content
-function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = []) {
-    // --- Transaction preview ---
+function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $iconBasePath = '') {
+    // Debugging
+    error_log("🔍 renderSectionWithIcon() called with key: $key");
+
+    // --- Resolve inline icon (from codex.json) ---
+    $inlineIcon = '';
+    if (is_array($content) && isset($content['icon'])) {
+        $inlineIcon = $content['icon'];
+        // Reduce body to "text" or "items" if present
+        if (isset($content['text'])) {
+            $content = $content['text'];
+        } elseif (isset($content['items'])) {
+            $content = $content['items'];
+        }
+        error_log("✅ Found inline icon for $key → $inlineIcon");
+    }
+
+    // --- Fallback to external iconMap.json ---
+    $iconPath = '';
+    if (isset($iconMap[$key])) {
+        $candidate = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $iconMap[$key];
+        if (file_exists($candidate)) {
+            $iconPath = $candidate;
+            error_log("✅ Found icon file for $key → $iconPath");
+        }
+    }
+    if (!$inlineIcon && !$iconPath) {
+        error_log("⚠️ No icon found for $key");
+    }
+
+    // --- Transaction preview (page overflow detection) ---
     $pdf->startTransaction();
     $startPage = $pdf->getPage();
-    $startY    = $pdf->GetY();
 
-    // --- Draw section once (for measurement) ---
-    $drawSection = function($pdf, $key, $title, $content, $iconMap) {
-        // Section header
+    // --- Draw section ---
+    $drawSection = function($pdf, $key, $title, $content, $inlineIcon, $iconPath) {
+        // Header bar
         $pdf->Ln(8);
-        $pdf->SetFillColor(0, 0, 0); // Christy Signs Blue
+        $pdf->SetFillColor(0, 0, 0); // black header background
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('helvetica', 'B', 12);
+        $pdf->SetFont('dejavusans', 'B', 12); // switch to DejaVuSans for emoji support
 
-        $icon = isset($iconMap[$key]) ? $iconMap[$key] : '';
-        $pdf->Cell(0, 8, " $icon $title", 0, 1, 'L', true);
+        $y = $pdf->GetY();
+        $pdf->Cell(0, 8, '', 0, 1, 'L', true);
 
-        // Body reset
+        // Place emoji or image icon
+        if ($inlineIcon) {
+            // Inline emoji
+            $pdf->SetXY(22, $y);
+            $pdf->Cell(0, 8, $inlineIcon . ' ' . $title, 0, 1, 'L');
+        } elseif ($iconPath) {
+            // Image-based icon
+            $pdf->Image($iconPath, 22, $y + 1, 5); // 5mm wide icon
+            $pdf->SetXY(30, $y);
+            $pdf->Cell(0, 8, $title, 0, 1, 'L');
+        } else {
+            // No icon, just title
+            $pdf->SetXY(22, $y);
+            $pdf->Cell(0, 8, $title, 0, 1, 'L');
+        }
+
+        // Reset text for body
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetFont('dejavusans', '', 10);
         $pdf->Ln(2);
 
-        // Recursive render
+        // Recursive content renderer
         $renderContent = function($data, $level = 0) use (&$renderContent, $pdf, $key) {
             if (is_string($data) || is_numeric($data)) {
                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $data, 0, 'L');
             } elseif (is_array($data)) {
                 if (array_keys($data) === range(0, count($data) - 1)) {
-                    // Bullet list
+                    // Indexed array (bullet list)
                     foreach ($data as $item) {
                         $bullet = $level === 0 ? "• " : "– ";
                         $text = is_array($item) ? "" : $item;
@@ -116,21 +179,21 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = []) {
                         }
                     }
                 } else {
-                    // Assoc array
+                    // Associative array
                     if ($key === 'metadata') {
                         foreach ($data as $k => $v) {
-                            $pdf->SetFont('helvetica', 'B', 10);
+                            $pdf->SetFont('dejavusans', 'B', 10);
                             $pdf->Cell(60, 6, ucfirst($k) . ":", 0, 0, 'L');
-                            $pdf->SetFont('helvetica', '', 10);
+                            $pdf->SetFont('dejavusans', '', 10);
                             $pdf->Cell(0, 6, (string)$v, 0, 1, 'L');
                         }
                     } else {
                         foreach ($data as $k => $v) {
                             $label = ucfirst($k) . ": ";
                             if (is_array($v)) {
-                                $pdf->SetFont('helvetica', 'B', 10);
+                                $pdf->SetFont('dejavusans', 'B', 10);
                                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label, 0, 'L');
-                                $pdf->SetFont('helvetica', '', 10);
+                                $pdf->SetFont('dejavusans', '', 10);
                                 $renderContent($v, $level + 1);
                             } else {
                                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label . $v, 0, 'L');
@@ -145,18 +208,14 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = []) {
         $pdf->Ln(4);
     };
 
-    // Render invisibly first
-    $drawSection($pdf, $key, $title, $content, $iconMap);
-
-    // Check overflow
+    // Render and handle overflow
+    $drawSection($pdf, $key, $title, $content, $inlineIcon, $iconPath);
     if ($pdf->getPage() > $startPage) {
-        // Overflow → rollback and add page
-        $pdf->rollbackTransaction(true); // discard preview
+        $pdf->rollbackTransaction(true);
         $pdf->AddPage();
-        $pdf->SetY(27); // ensure same start position as page 1
-        $drawSection($pdf, $key, $title, $content, $iconMap);
+        $pdf->SetY(27);
+        $drawSection($pdf, $key, $title, $content, $inlineIcon, $iconPath);
     } else {
-        // No overflow → just accept
         $pdf->commitTransaction();
     }
 }
@@ -248,15 +307,13 @@ if ($type === 'information_sheet') {
     foreach ($section as $key => $value) {
         if ($key === 'title') continue;
 
-        // Normalize value
+        // Don’t flatten objects here — pass them as-is
         $content = $value;
-        if (is_array($value) && isset($value['text'])) {
-            $content = $value['text']; // handle objects with 'text'
-        }
 
         $label = ucwords(str_replace('_', ' ', $key));
-        renderSectionWithIcon($pdf, $key, $label, $content, $iconMap, $sectionIcons);
+        renderSectionWithIcon($pdf, $key, $label, $content, $iconMap, $iconBasePath);
     }
+
 
     // Metadata section
     $meta = array(
@@ -272,7 +329,7 @@ if ($type === 'information_sheet') {
     $pdf->SetTitle($title);
     $pdf->setReportTitle($title);
     $pdf->AddPage();
-    $pdf->SetFont('helvetica', '', 11);
+    $pdf->SetFont('dejavusans', '', 11);
     $pdf->Write(0, "Report generation coming soon.\n\nThis is a placeholder for the report type: " . $slug . ".");
 }
 

@@ -2,67 +2,106 @@
   "modules": {
     "mobileFirstModals": {
       "title": "📱 Mobile-First Modals",
-      "purpose": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop — consistent across shop, office, and field.",
-      "features": [
-        "Adaptive modal forms that adjust per device and role",
-        "AI-linked context insertion for prefilled fields",
-        "Real-time triggers via SSE or One-Line Task",
-        "Inline validation and AJAX/SSE submissions"
-      ],
-      "integrations": [
-        "One-Line Task Engine",
-        "Real-Time SSE",
-        "Core Database"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop — consistent across shop, office, and field."
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Adaptive modal forms that adjust per device and role",
+          "AI-linked context insertion for prefilled fields",
+          "Real-time triggers via SSE or One-Line Task",
+          "Inline validation and AJAX/SSE submissions"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "One-Line Task Engine",
+          "Real-Time SSE",
+          "Core Database"
+        ]
+      }
     },
     "officeBulletins": {
       "title": "📢 Office Bulletins",
-      "purpose": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic.",
-      "bulletinTypes": [
-        "Global",
-        "Departmental",
-        "Urgent",
-        "Event-Based"
-      ],
-      "features": [
-        "Markdown formatting support",
-        "Role/department filtering",
-        "Read receipts and pinning",
-        "Bulletin archive/history per user"
-      ],
-      "integrations": [
-        "Mobile-First Modals",
-        "Time Interval Standards"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic."
+      },
+      "bulletinTypes": {
+        "icon": "•",
+        "items": [
+          "Global",
+          "Departmental",
+          "Urgent",
+          "Event-Based"
+        ]
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Markdown formatting support",
+          "Role/department filtering",
+          "Read receipts and pinning",
+          "Bulletin archive/history per user"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Mobile-First Modals",
+          "Time Interval Standards"
+        ]
+      }
     },
     "oneLineTask": {
       "title": "🧠 One-Line Task (OLT) Input",
-      "purpose": "Provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — database updates, task creation, record lookups, or communication triggers.",
-      "mechanism": [
-        "Leverages the semanticResponder module for stream queries (time, date, weather, KPIs, announcements) instead of hardcoded keyword rules",
-        "Regex rules reserved only for critical agentic actions (login/logout, CRUD triggers)",
-        "Lightweight NLP scans for keywords, named entities, dates/times",
-        "Intent detection maps prompts to known action templates (contact, permit, quote, task)"
-      ],
-      "examples": [
-        "Jim Flanigan at ALC Group, 816-421-8335 → ➕ Add new contact",
-        "Schedule reinstall for Yogurtology next Wednesday at noon → 📅 Create task with date/time",
-        "Sign permit follow-up, call Louie → ☎️ Call task with reference note",
-        "Start quote for 810 S 56th Ave, monument sign repair → 📝 Begin quote form with prefilled fields"
-      ],
-      "integrations": [
-        "Database Modules",
-        "Time Interval Standards",
-        "Permit Suite",
-        "Attendance + Escalation Trees",
-        "Semantic Responder"
-      ],
-      "futureEnhancements": [
-        "Auto-tagging entities and locations",
-        "Suggesting next steps (e.g., 'Would you like to notify the shop?')",
-        "Backfill from prior activity threads to infer intent"
-      ],
-      "strategicImportance": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
+      "purpose": {
+        "icon": "🎯",
+        "text": "Provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — database updates, task creation, record lookups, or communication triggers."
+      },
+      "mechanism": {
+        "icon": "⚡",
+        "items": [
+          "Leverages the semanticResponder module for stream queries (time, date, weather, KPIs, announcements) instead of hardcoded keyword rules",
+          "Regex rules reserved only for critical agentic actions (login/logout, CRUD triggers)",
+          "Lightweight NLP scans for keywords, named entities, dates/times",
+          "Intent detection maps prompts to known action templates (contact, permit, quote, task)"
+        ]
+      },
+      "examples": {
+        "icon": "💡",
+        "items": [
+          "Jim Flanigan at ALC Group, 816-421-8335 → ➕ Add new contact",
+          "Schedule reinstall for Yogurtology next Wednesday at noon → 📅 Create task with date/time",
+          "Sign permit follow-up, call Louie → ☎️ Call task with reference note",
+          "Start quote for 810 S 56th Ave, monument sign repair → 📝 Begin quote form with prefilled fields"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Database Modules",
+          "Time Interval Standards",
+          "Permit Suite",
+          "Attendance + Escalation Trees",
+          "Semantic Responder"
+        ]
+      },
+      "futureEnhancements": {
+        "icon": "🚀",
+        "items": [
+          "Auto-tagging entities and locations",
+          "Suggesting next steps (e.g., 'Would you like to notify the shop?')",
+          "Backfill from prior activity threads to infer intent"
+        ]
+      },
+      "strategicImportance": {
+        "icon": "🏆",
+        "text": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
+      }
     },
     "permitManagementSuite": {
       "title": "Permit Management Suite",
@@ -73,318 +112,475 @@
       },
       "features": {
         "icon": "⚙",
-        "items": [
-          "Submission logs and timestamps",
-          "SLA timers with Time Standards",
-          "Live SSE status changes",
-          "Escalation logic if delayed",
-          "AI-parsed jurisdiction assignment"
-        ]
+        "items": {
+          "icon": "•",
+          "items": [
+            "Submission logs and timestamps",
+            "SLA timers with Time Standards",
+            "Live SSE status changes",
+            "Escalation logic if delayed",
+            "AI-parsed jurisdiction assignment"
+          ]
+        }
       },
       "workflow": {
         "icon": "📋",
+        "items": {
+          "icon": "•",
+          "items": [
+            "Created",
+            "Received",
+            "Submitted",
+            "Response Pending",
+            "Approved/Denied"
+          ]
+        }
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": {
+          "icon": "•",
+          "items": [
+            "Core Database",
+            "File Management",
+            "Mobile-First Modals",
+            "Attendance Suite",
+            "Management Escalation Trees"
+          ]
+        }
+      }
+    },
+    "realtimesse": {
+      "title": "🔄 Real-Time SSE",
+      "purpose": {
+        "icon": "🎯",
+        "text": "Server-Sent Events push real-time updates for orders, permits, attendance, and alerts across interfaces."
+      },
+      "functions": {
+        "icon": "🛠",
         "items": [
-          "Created",
-          "Received",
-          "Submitted",
-          "Response Pending",
-          "Approved/Denied"
+          "Permit and task updates live-streamed",
+          "Auto-refresh dashboards without polling",
+          "Used for bulletins, alerts, contact updates"
         ]
       },
       "integrations": {
         "icon": "🔌",
         "items": [
-          "Core Database",
-          "File Management",
-          "Mobile-First Modals",
-          "Attendance Suite",
-          "Management Escalation Trees"
+          "Time Interval Standards",
+          "Management Escalation Trees",
+          "Orders, Permits, Contacts"
         ]
       }
     },
-    "realTimeSSE": {
-      "title": "🔄 Real-Time SSE",
-      "purpose": "Server-Sent Events push real-time updates for orders, permits, attendance, and alerts across interfaces.",
-      "functions": [
-        "Permit and task updates live-streamed",
-        "Auto-refresh dashboards without polling",
-        "Used for bulletins, alerts, contact updates"
-      ],
-      "integrations": [
-        "Time Interval Standards",
-        "Management Escalation Trees",
-        "Orders, Permits, Contacts"
-      ]
-    },
     "skyebotConctParsetar": {
       "title": "🤖 Skyebot Contact Parser",
-      "purpose": "Parses email signatures to detect structured contact data and prevent duplicates in entity/location/contact logic.",
-      "logic": [
-        "Detect name, title, phones, company, address",
-        "Check for existing records",
-        "Add only new entity/location/contact as needed",
-        "Fetch Google Maps data"
-      ],
+      "purpose": {
+        "icon": "🎯",
+        "text": "Parses email signatures to detect structured contact data and prevent duplicates in entity/location/contact logic."
+      },
+      "logic": {
+        "icon": "🔎",
+        "items": [
+          "Detect name, title, phones, company, address",
+          "Check for existing records",
+          "Add only new entity/location/contact as needed",
+          "Fetch Google Maps data"
+        ]
+      },
       "outputs": "Structured contact block added to `skyesoft-data.json`"
     },
     "timeIntervalStandards": {
       "title": "⏰ Time Interval Standards (TIS)",
-      "purpose": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations.",
-      "dayTypes": [
-        "Workday",
-        "Weekend",
-        "Holiday"
-      ],
+      "purpose": {
+        "icon": "🎯",
+        "text": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations."
+      },
+      "dayTypes": {
+        "icon": "•",
+        "items": [
+          "Workday",
+          "Weekend",
+          "Holiday"
+        ]
+      },
       "segments": {
-        "Office": {
+        "office": {
           "before": "12:00 AM – 7:29 AM",
           "worktime": "7:30 AM – 3:30 PM",
           "after": "3:31 PM – 11:59 PM"
         },
-        "Shop": {
+        "shop": {
           "before": "12:00 AM – 5:59 AM",
           "worktime": "6:00 AM – 2:00 PM",
           "after": "2:01 PM – 11:59 PM"
         }
       },
       "exclusions": "Weekends and Holidays are excluded from time-sensitive calculations",
-      "integrations": [
-        "Permit Suite",
-        "Orders",
-        "Attendance",
-        "SSE Monitoring",
-        "Escalation Rules"
-      ]
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Permit Suite",
+          "Orders",
+          "Attendance",
+          "SSE Monitoring",
+          "Escalation Rules"
+        ]
+      }
     },
     "financialControlSuite": {
       "title": "💼 Financial Control Suite",
-      "purpose": "Track, validate, and approve all financial activities related to sign projects — enforce budget integrity, reduce waste, and ensure traceability.",
-      "components": [
-        "Job Costing Tracker (labor, materials, subs)",
-        "PO System with thresholds and approvals",
-        "Client Billing Module (deposits, payments, credit memos)",
-        "Reimbursement Log synced with attendance"
-      ],
-      "workflow": [
-        "Project initiated",
-        "Budget auto-generated based on order type",
-        "Expenses logged via PO or reimbursement",
-        "Client billed according to progress",
-        "Flag overages and escalate via MET"
-      ],
-      "dashboards": [
-        "Budget vs Actual per project",
-        "Cash flow forecast vs actual",
-        "Reimbursable vs absorbed expenses",
-        "Monthly financial summaries"
-      ],
-      "controls": [
-        "Role-based approvals",
-        "Spending hard stops unless overridden",
-        "Alerts for late billing or PO"
-      ],
-      "integrations": [
-        "Core Database",
-        "Attendance Suite",
-        "Service Suite",
-        "Time Interval Standards"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Track, validate, and approve all financial activities related to sign projects — enforce budget integrity, reduce waste, and ensure traceability."
+      },
+      "components": {
+        "icon": "🧩",
+        "items": [
+          "Job Costing Tracker (labor, materials, subs)",
+          "PO System with thresholds and approvals",
+          "Client Billing Module (deposits, payments, credit memos)",
+          "Reimbursement Log synced with attendance"
+        ]
+      },
+      "workflow": {
+        "icon": "📋",
+        "items": [
+          "Project initiated",
+          "Budget auto-generated based on order type",
+          "Expenses logged via PO or reimbursement",
+          "Client billed according to progress",
+          "Flag overages and escalate via MET"
+        ]
+      },
+      "dashboards": {
+        "icon": "📊",
+        "items": [
+          "Budget vs Actual per project",
+          "Cash flow forecast vs actual",
+          "Reimbursable vs absorbed expenses",
+          "Monthly financial summaries"
+        ]
+      },
+      "controls": {
+        "icon": "🛡️",
+        "items": [
+          "Role-based approvals",
+          "Spending hard stops unless overridden",
+          "Alerts for late billing or PO"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Core Database",
+          "Attendance Suite",
+          "Service Suite",
+          "Time Interval Standards"
+        ]
+      }
     },
     "serviceManagementSuite": {
       "title": "🛠️ Service Management Suite",
-      "purpose": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces.",
-      "features": [
-        "Track service requests by type (repair, install, warranty)",
-        "Assign and schedule field teams",
-        "Log outcomes, photos, and signatures",
-        "Integrate with order history and permit status"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces."
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Track service requests by type (repair, install, warranty)",
+          "Assign and schedule field teams",
+          "Log outcomes, photos, and signatures",
+          "Integrate with order history and permit status"
+        ]
+      }
     },
     "glossaryModule": {
       "title": "📘 Skyesoft Codex Glossary",
-      "purpose": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows.",
-      "contents": [
-        "LGBAS — Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow.",
-        "MTCO — Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
-        "Codex Context: Memory schema loaded by the AI to operate with Skyesoft-specific logic.",
-        "Codex App: Modular UI tool for managing and accessing structured documentation."
-      ],
-      "integration": [
-        "AI Prompt Normalization",
-        "Structured Chat Interpretation",
-        "Codex-based Response Justification"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows."
+      },
+      "contents": {
+        "icon": "📖",
+        "items": [
+          "LGBAS — Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow.",
+          "MTCO — Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+          "Codex Context: Memory schema loaded by the AI to operate with Skyesoft-specific logic.",
+          "Codex App: Modular UI tool for managing and accessing structured documentation."
+        ]
+      },
+      "integration": {
+        "icon": "•",
+        "items": [
+          "AI Prompt Normalization",
+          "Structured Chat Interpretation",
+          "Codex-based Response Justification"
+        ]
+      }
     },
     "attendanceSuite": {
       "title": "🕒 Attendance Suite",
-      "purpose": "Manages employee time tracking, absences, and shift accountability across office, shop, and field roles.",
-      "features": [
-        "Clock-in/out with location tracking",
-        "Real-time absence alerts",
-        "SLA impact calculations based on attendance",
-        "Auto-logging to financial and service modules"
-      ],
-      "workflows": [
-        "Shift Scheduled → Present or Absent → Auto-reconciliation",
-        "Flag anomalies → Route to Escalation Tree",
-        "Sync with Financial and Permit modules for SLA impact"
-      ],
-      "integrations": [
-        "Time Interval Standards",
-        "Escalation Trees",
-        "Financial Control Suite",
-        "Permit Management Suite"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Manages employee time tracking, absences, and shift accountability across office, shop, and field roles."
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Clock-in/out with location tracking",
+          "Real-time absence alerts",
+          "SLA impact calculations based on attendance",
+          "Auto-logging to financial and service modules"
+        ]
+      },
+      "workflows": {
+        "icon": "•",
+        "items": [
+          "Shift Scheduled → Present or Absent → Auto-reconciliation",
+          "Flag anomalies → Route to Escalation Tree",
+          "Sync with Financial and Permit modules for SLA impact"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Time Interval Standards",
+          "Escalation Trees",
+          "Financial Control Suite",
+          "Permit Management Suite"
+        ]
+      }
     },
     "managementEscalationTrees": {
       "title": "📈 Management Escalation Trees (MET)",
-      "purpose": "Defines escalation logic for overdue tasks, permit delays, and automation exceptions — ensuring issues are addressed quickly and with accountability.",
-      "triggers": [
-        "Time threshold breaches",
-        "Unacknowledged task statuses",
-        "Permit or attendance anomalies",
-        "Validation failures"
-      ],
-      "alertTypes": [
-        "Direct message",
-        "Tiered escalation messages",
-        "Broadcast alerts"
-      ],
+      "purpose": {
+        "icon": "🎯",
+        "text": "Defines escalation logic for overdue tasks, permit delays, and automation exceptions — ensuring issues are addressed quickly and with accountability."
+      },
+      "triggers": {
+        "icon": "⏰",
+        "items": [
+          "Time threshold breaches",
+          "Unacknowledged task statuses",
+          "Permit or attendance anomalies",
+          "Validation failures"
+        ]
+      },
+      "alertTypes": {
+        "icon": "📢",
+        "items": [
+          "Direct message",
+          "Tiered escalation messages",
+          "Broadcast alerts"
+        ]
+      },
       "rules": {
-        "priorityLevels": [
-          "Low",
-          "Normal",
-          "High",
-          "Critical"
-        ],
+        "priorityLevels": {
+          "icon": "•",
+          "items": [
+            "Low",
+            "Normal",
+            "High",
+            "Critical"
+          ]
+        },
         "repeatInterval": "Customizable per rule",
         "sensitivityControl": "Optional encryption and override logs"
       },
-      "logging": [
-        "Full SLA compliance trail",
-        "Escalation timestamps and acknowledgments",
-        "Audit resolution path"
-      ],
-      "integrations": [
-        "Real-Time SSE",
-        "Core Database (roles/responsibilities)",
-        "Attendance Suite",
-        "Permit System",
-        "Order Tracker"
-      ]
+      "logging": {
+        "icon": "📝",
+        "items": [
+          "Full SLA compliance trail",
+          "Escalation timestamps and acknowledgments",
+          "Audit resolution path"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Real-Time SSE",
+          "Core Database (roles/responsibilities)",
+          "Attendance Suite",
+          "Permit System",
+          "Order Tracker"
+        ]
+      }
     },
     "coreDatabaseStructure": {
       "title": "🧬 Core Database Structure",
-      "purpose": "Serves as the centralized schema for all Skyesoft operations, enforcing consistency across CRUD operations, AI logic, and system automations.",
+      "purpose": {
+        "icon": "🎯",
+        "text": "Serves as the centralized schema for all Skyesoft operations, enforcing consistency across CRUD operations, AI logic, and system automations."
+      },
       "architecture": {
-        "staticTables": [
-          "actionTypesArray",
-          "applicationCorrectionTypes",
-          "applicationFeeTypes",
-          "applicationStatus"
-        ],
-        "updatableTables": [
-          "entities",
-          "locations",
-          "contacts",
-          "orders",
-          "orderNotes",
-          "applications",
-          "applicationNotes",
-          "applicationFees"
-        ],
+        "staticTables": {
+          "icon": "•",
+          "items": [
+            "actionTypesArray",
+            "applicationCorrectionTypes",
+            "applicationFeeTypes",
+            "applicationStatus"
+          ]
+        },
+        "updatableTables": {
+          "icon": "•",
+          "items": [
+            "entities",
+            "locations",
+            "contacts",
+            "orders",
+            "orderNotes",
+            "applications",
+            "applicationNotes",
+            "applicationFees"
+          ]
+        },
         "relationships": {
-          "Entity ➝ Location": "One-to-many",
-          "Location ➝ Contact": "One-to-many",
-          "Contact ➝ Order": "One-to-many",
-          "Order ➝ Application": "One-to-many",
-          "Application ➝ ApplicationFee": "One-to-many",
-          "Application ➝ ApplicationNote": "One-to-many"
+          "entityLocation": "One-to-many",
+          "locationContact": "One-to-many",
+          "contactOrder": "One-to-many",
+          "orderApplication": "One-to-many",
+          "applicationApplicationfee": "One-to-many",
+          "applicationApplicationnote": "One-to-many"
         }
       },
-      "keyFunctions": [
-        "Supports dynamic AI parsing and auto-matching to prevent duplicates",
-        "All changes routed through `actionTypesArray` for auditability",
-        "Enables cascading logic (e.g., if an Entity is deleted, all child records are flagged or archived)",
-        "Accessible via modal forms and One-Line Task engine"
-      ],
-      "integrations": [
-        "Permit Management Suite",
-        "Financial Control Suite",
-        "Attendance Suite",
-        "Skyebot Contact Parser",
-        "Mobile-First Modals"
-      ]
+      "keyFunctions": {
+        "icon": "🔑",
+        "items": [
+          "Supports dynamic AI parsing and auto-matching to prevent duplicates",
+          "All changes routed through `actionTypesArray` for auditability",
+          "Enables cascading logic (e.g., if an Entity is deleted, all child records are flagged or archived)",
+          "Accessible via modal forms and One-Line Task engine"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Permit Management Suite",
+          "Financial Control Suite",
+          "Attendance Suite",
+          "Skyebot Contact Parser",
+          "Mobile-First Modals"
+        ]
+      }
     },
     "loginSessionSuite": {
       "title": "🔐 Login/Logout & Chat Session Suite",
-      "purpose": "Defines authentication, session, and chat logging protocols for Skyebot, requiring valid user login and tracking chat sessions with user ID, session ID, agentic actions, and full audit trail. Integrated with contacts and action types.",
-      "features": [
-        "Bot visibility only after login with valid session cookie",
-        "Each chat session has a unique session ID",
-        "Chat logs include timestamp, sessionId, userId, role, actionPk, prompt, and botResponse",
-        "Logout handled via agentic action or user request",
-        "Links to contacts table for user ID",
-        "Persistent, queryable chat log (e.g., chatlog.json) for all sessions"
-      ],
-      "workflow": [
-        "User logs in, system creates sessionId and sets cookie",
-        "Each message logs all context",
-        "Logout clears cookie and ends session"
-      ],
-      "integrations": [
-        "contacts",
-        "actionTypesArray",
-        "session management",
-        "Skyebot agentic actions"
-      ]
+      "purpose": {
+        "icon": "🎯",
+        "text": "Defines authentication, session, and chat logging protocols for Skyebot, requiring valid user login and tracking chat sessions with user ID, session ID, agentic actions, and full audit trail. Integrated with contacts and action types."
+      },
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Bot visibility only after login with valid session cookie",
+          "Each chat session has a unique session ID",
+          "Chat logs include timestamp, sessionId, userId, role, actionPk, prompt, and botResponse",
+          "Logout handled via agentic action or user request",
+          "Links to contacts table for user ID",
+          "Persistent, queryable chat log (e.g., chatlog.json) for all sessions"
+        ]
+      },
+      "workflow": {
+        "icon": "📋",
+        "items": [
+          "User logs in, system creates sessionId and sets cookie",
+          "Each message logs all context",
+          "Logout clears cookie and ends session"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "contacts",
+          "actionTypesArray",
+          "session management",
+          "Skyebot agentic actions"
+        ]
+      }
     },
     "reportGenerationSuite": {
       "title": "📑 Report Generation Suite",
-      "purpose": "Standardized framework for creating, validating, and rendering reports using CRUD JSON, templates, and Skyebot automation.",
-      "workflow": [
-        "Prompt → Skyebot determines reportType via CRUD JSON",
-        "Validation → check requiredFields in report_types.json",
-        "Auto-fill → pull missing data from APIs or SSE stream",
-        "Template merge → apply header, body, footer per reportType",
-        "Render → output HTML/PDF with Christy Signs branding"
-      ],
+      "purpose": {
+        "icon": "🎯",
+        "text": "Standardized framework for creating, validating, and rendering reports using CRUD JSON, templates, and Skyebot automation."
+      },
+      "workflow": {
+        "icon": "📋",
+        "items": [
+          "Prompt → Skyebot determines reportType via CRUD JSON",
+          "Validation → check requiredFields in report_types.json",
+          "Auto-fill → pull missing data from APIs or SSE stream",
+          "Template merge → apply header, body, footer per reportType",
+          "Render → output HTML/PDF with Christy Signs branding"
+        ]
+      },
       "conventions": {
         "outputs": "Use singular names unless multiple values are expected, then use plural (e.g., zoningCodes)."
       },
-      "disclaimers": "Each report type may include disclaimers generated dynamically based on context (e.g., multiple parcels, unsupported jurisdiction).",
+      "disclaimers": {
+        "icon": "⚠️",
+        "text": "Each report type may include disclaimers generated dynamically based on context (e.g., multiple parcels, unsupported jurisdiction)."
+      },
       "reportTypesSpec": {
-        "Zoning Report": {
-          "purpose": "Verify zoning status for a project site.",
-          "requiredFields": {
-            "mandatory": ["streetNumber", "zip"],
-            "optional": ["city", "county", "parcelId"]
+        "zoningReport": {
+          "purpose": {
+            "icon": "🎯",
+            "text": "Verify zoning status for a project site."
           },
-          "pipeline": [
-            "Geocode via Census (authoritative address normalization, returns FIPS + WGS84 lat/lon; fallback Google if Census fails)",
-            "Lookup parcel via Assessor API (normalized address/ZIP; relaxed + fuzzy match logic when exact fails)",
-            "Retrieve jurisdiction + geometry (jurisdiction determines zoning endpoint; geometry supplies polygon/centroid for spatial queries)",
-            "Perform zoning lookup (jurisdiction-specific ArcGIS endpoint; reproject coordinates if required, e.g., EPSG:4326 → Web Mercator)",
-            "Return zoning code + attributes (attach disclaimers: multipleParcels, noGeometry, unsupportedJurisdiction)"
-          ],
-          "outputs": [
-            "address",
-            "matchedAddress",
-            "county",
-            "fips",
-            "apn",
-            "situs",
-            "jurisdiction",
-            "zoningCodes",
-            "disclaimers"
-          ],
-          "edgeCases": [
-            "Multiple parcels → flag as multipleParcels",
-            "No geometry → fallback to geocode centroid",
-            "Jurisdiction code unavailable → return unsupportedJurisdiction",
-            "multiParcelSite → group APNs into one site if zoning is identical",
-            "mixedParcelZoning → show parcels separately + disclaimer if zoning differs"
-          ],
+          "requiredFields": {
+            "mandatory": {
+              "icon": "•",
+              "items": [
+                "streetNumber",
+                "zip"
+              ]
+            },
+            "optional": {
+              "icon": "•",
+              "items": [
+                "city",
+                "county",
+                "parcelId"
+              ]
+            }
+          },
+          "pipeline": {
+            "icon": "•",
+            "items": [
+              "Geocode via Census (authoritative address normalization, returns FIPS + WGS84 lat/lon; fallback Google if Census fails)",
+              "Lookup parcel via Assessor API (normalized address/ZIP; relaxed + fuzzy match logic when exact fails)",
+              "Retrieve jurisdiction + geometry (jurisdiction determines zoning endpoint; geometry supplies polygon/centroid for spatial queries)",
+              "Perform zoning lookup (jurisdiction-specific ArcGIS endpoint; reproject coordinates if required, e.g., EPSG:4326 → Web Mercator)",
+              "Return zoning code + attributes (attach disclaimers: multipleParcels, noGeometry, unsupportedJurisdiction)"
+            ]
+          },
+          "outputs": {
+            "icon": "📤",
+            "items": [
+              "address",
+              "matchedAddress",
+              "county",
+              "fips",
+              "apn",
+              "situs",
+              "jurisdiction",
+              "zoningCodes",
+              "disclaimers"
+            ]
+          },
+          "edgeCases": {
+            "icon": "•",
+            "items": [
+              "Multiple parcels → flag as multipleParcels",
+              "No geometry → fallback to geocode centroid",
+              "Jurisdiction code unavailable → return unsupportedJurisdiction",
+              "multiParcelSite → group APNs into one site if zoning is identical",
+              "mixedParcelZoning → show parcels separately + disclaimer if zoning differs"
+            ]
+          },
           "knownIssues": {
             "mailingVsSitusMismatch": {
               "example": "50 E Civic Center Dr, Gilbert, AZ 85296",
@@ -399,98 +595,182 @@
               "disclaimer": "⚠️ Scottsdale zoning service unavailable — verify directly with jurisdiction."
             }
           },
-          "lifecycle": [
-            "askOpenAI.php parses user intent and classifies request as Zoning Report",
-            "zoning.php orchestrates: geocode address, lookup parcels, prepare inputs",
-            "jurisdictionZoning.php performs ArcGIS/Assessor zoning lookup",
-            "zoning.php merges address-level and parcel-level zoningCodes, applies disclaimers",
-            "Final JSON returned to user via askOpenAI.php"
-          ]
+          "lifecycle": {
+            "icon": "🔄",
+            "items": [
+              "askOpenAI.php parses user intent and classifies request as Zoning Report",
+              "zoning.php orchestrates: geocode address, lookup parcels, prepare inputs",
+              "jurisdictionZoning.php performs ArcGIS/Assessor zoning lookup",
+              "zoning.php merges address-level and parcel-level zoningCodes, applies disclaimers",
+              "Final JSON returned to user via askOpenAI.php"
+            ]
+          }
         },
-        "Sign Ordinance Report": {
-          "purpose": "Summarize applicable sign regulations for a site.",
-          "requiredFields": {
-            "mandatory": ["address"],
-            "optional": ["jurisdiction", "parcelId"]
+        "signOrdinanceReport": {
+          "purpose": {
+            "icon": "🎯",
+            "text": "Summarize applicable sign regulations for a site."
           },
-          "pipeline": [
-            "Geocode + jurisdiction detection (normalize address, detect governing body; fallback to provided jurisdiction if unavailable)",
-            "Query local sign code references (municipal code DB, PDFs, or jurisdiction API)",
-            "Return sign regulations summary (include size, height, lighting, and material rules; add source citations where possible)"
-          ],
-          "outputs": [
-            "jurisdiction",
-            "signCodeSummary",
-            "linksToMunicipalCode"
-          ],
-          "edgeCases": [
-            "Jurisdiction code unavailable → return unsupportedJurisdiction"
-          ]
+          "requiredFields": {
+            "mandatory": {
+              "icon": "•",
+              "items": [
+                "address"
+              ]
+            },
+            "optional": {
+              "icon": "•",
+              "items": [
+                "jurisdiction",
+                "parcelId"
+              ]
+            }
+          },
+          "pipeline": {
+            "icon": "•",
+            "items": [
+              "Geocode + jurisdiction detection (normalize address, detect governing body; fallback to provided jurisdiction if unavailable)",
+              "Query local sign code references (municipal code DB, PDFs, or jurisdiction API)",
+              "Return sign regulations summary (include size, height, lighting, and material rules; add source citations where possible)"
+            ]
+          },
+          "outputs": {
+            "icon": "📤",
+            "items": [
+              "jurisdiction",
+              "signCodeSummary",
+              "linksToMunicipalCode"
+            ]
+          },
+          "edgeCases": {
+            "icon": "•",
+            "items": [
+              "Jurisdiction code unavailable → return unsupportedJurisdiction"
+            ]
+          }
         },
-        "Photo Survey Report": {
-          "purpose": "Collect and display site survey photos with context.",
-          "requiredFields": {
-            "mandatory": ["address", "photos"],
-            "optional": ["notes"]
+        "photoSurveyReport": {
+          "purpose": {
+            "icon": "🎯",
+            "text": "Collect and display site survey photos with context."
           },
-          "pipeline": [
-            "Validate uploaded images (check file type, size, metadata)",
-            "Tag photos with GPS/time (ensure chain of custody; preserve EXIF metadata or system timestamp)",
-            "Generate structured report with captions (organize photos + annotations)"
-          ],
-          "outputs": [
-            "photoArray",
-            "captions",
-            "surveyNotes"
-          ],
-          "edgeCases": [
-            "No photos provided → return missingPhotos"
-          ]
+          "requiredFields": {
+            "mandatory": {
+              "icon": "•",
+              "items": [
+                "address",
+                "photos"
+              ]
+            },
+            "optional": {
+              "icon": "•",
+              "items": [
+                "notes"
+              ]
+            }
+          },
+          "pipeline": {
+            "icon": "•",
+            "items": [
+              "Validate uploaded images (check file type, size, metadata)",
+              "Tag photos with GPS/time (ensure chain of custody; preserve EXIF metadata or system timestamp)",
+              "Generate structured report with captions (organize photos + annotations)"
+            ]
+          },
+          "outputs": {
+            "icon": "📤",
+            "items": [
+              "photoArray",
+              "captions",
+              "surveyNotes"
+            ]
+          },
+          "edgeCases": {
+            "icon": "•",
+            "items": [
+              "No photos provided → return missingPhotos"
+            ]
+          }
         },
-        "Custom Report": {
-          "purpose": "Freeform narrative or ad-hoc report generated by AI.",
-          "requiredFields": {
-            "mandatory": ["details"],
-            "optional": ["title", "context"]
+        "customReport": {
+          "purpose": {
+            "icon": "🎯",
+            "text": "Freeform narrative or ad-hoc report generated by AI."
           },
-          "pipeline": [
-            "Parse freeform details from prompt (clean and normalize user text, drop filler keywords)",
-            "Generate structured narrative (compose header, body, footer using AI template)",
-            "Return JSON + HTML/PDF with disclaimers (flag as AI-generated; requires human verification)"
-          ],
-          "outputs": [
-            "reportBody",
-            "disclaimers"
-          ],
-          "edgeCases": [
-            "Empty details → request clarification"
-          ]
+          "requiredFields": {
+            "mandatory": {
+              "icon": "•",
+              "items": [
+                "details"
+              ]
+            },
+            "optional": {
+              "icon": "•",
+              "items": [
+                "title",
+                "context"
+              ]
+            }
+          },
+          "pipeline": {
+            "icon": "•",
+            "items": [
+              "Parse freeform details from prompt (clean and normalize user text, drop filler keywords)",
+              "Generate structured narrative (compose header, body, footer using AI template)",
+              "Return JSON + HTML/PDF with disclaimers (flag as AI-generated; requires human verification)"
+            ]
+          },
+          "outputs": {
+            "icon": "📤",
+            "items": [
+              "reportBody",
+              "disclaimers"
+            ]
+          },
+          "edgeCases": {
+            "icon": "•",
+            "items": [
+              "Empty details → request clarification"
+            ]
+          }
         }
       },
-      "features": [
-        "Dynamic CRUD JSON creation",
-        "Validation against report_types.json",
-        "Conditional auto-fill from APIs (parcel, jurisdiction, etc.)",
-        "Report template codex for standardized header/body/footer",
-        "Custom report type for freeform/jazz cases"
-      ],
-      "integrations": [
-        "Core Database",
-        "Permit Management Suite",
-        "Mobile-First Modals",
-        "Skyebot AI Engine"
-      ]
+      "features": {
+        "icon": "⚙",
+        "items": [
+          "Dynamic CRUD JSON creation",
+          "Validation against report_types.json",
+          "Conditional auto-fill from APIs (parcel, jurisdiction, etc.)",
+          "Report template codex for standardized header/body/footer",
+          "Custom report type for freeform/jazz cases"
+        ]
+      },
+      "integrations": {
+        "icon": "🔌",
+        "items": [
+          "Core Database",
+          "Permit Management Suite",
+          "Mobile-First Modals",
+          "Skyebot AI Engine"
+        ]
+      }
     },
     "semanticResponder": {
       "title": "🧩 Semantic Responder",
-      "purpose": "Interpret natural language queries against live operational data without relying on hardcoded keyword rules.",
-      "guidelines": [
-        "Leverage dynamicData as a knowledge source to answer user questions in natural, context-aware ways.",
-        "Use codexGlossary, codexOther, and reportTypes for structured responses where required.",
-        "For stream queries (time, date, weather, KPIs, announcements), avoid strict regex or keyword triggers.",
-        "Instead, semantically map the user’s intent to the relevant fields in dynamicData.",
-        "If the requested data does not exist in dynamicData, respond gracefully (do not invent values)."
-      ],
+      "purpose": {
+        "icon": "🎯",
+        "text": "Interpret natural language queries against live operational data without relying on hardcoded keyword rules."
+      },
+      "guidelines": {
+        "icon": "📘",
+        "items": [
+          "Leverage dynamicData as a knowledge source to answer user questions in natural, context-aware ways.",
+          "Use codexGlossary, codexOther, and reportTypes for structured responses where required.",
+          "For stream queries (time, date, weather, KPIs, announcements), avoid strict regex or keyword triggers.",
+          "Instead, semantically map the user’s intent to the relevant fields in dynamicData.",
+          "If the requested data does not exist in dynamicData, respond gracefully (do not invent values)."
+        ]
+      },
       "examples": [
         {
           "user": "What’s the date and time?",
@@ -509,7 +789,10 @@
   },
   "skyebotCodeAccess": {
     "title": "🗂️ Skyebot Code Access",
-    "purpose": "Allows Skyebot to describe and reference its own implementation files for transparency, debugging, and context.",
+    "purpose": {
+      "icon": "🎯",
+      "text": "Allows Skyebot to describe and reference its own implementation files for transparency, debugging, and context."
+    },
     "files": [
       {
         "name": "askOpenAI.php",
@@ -536,18 +819,24 @@
         "role": "Stores full chat history, including user prompts, responses, session IDs, and timestamps."
       }
     ],
-    "rules": [
-      "Skyebot may summarize the purpose of its files when asked.",
-      "Skyebot should not output raw code unless explicitly requested and available as a codified source.",
-      "Skyebot uses this module to explain its architecture when asked how it works."
-    ],
-    "integrations": [
-      "Skyebot AI Engine",
-      "Login/Logout & Chat Session Suite",
-      "Codex Glossary",
-      "Report Generation Suite",
-      "Permit Management Suite"
-    ],
+    "rules": {
+      "icon": "📏",
+      "items": [
+        "Skyebot may summarize the purpose of its files when asked.",
+        "Skyebot should not output raw code unless explicitly requested and available as a codified source.",
+        "Skyebot uses this module to explain its architecture when asked how it works."
+      ]
+    },
+    "integrations": {
+      "icon": "🔌",
+      "items": [
+        "Skyebot AI Engine",
+        "Login/Logout & Chat Session Suite",
+        "Codex Glossary",
+        "Report Generation Suite",
+        "Permit Management Suite"
+      ]
+    },
     "mappings": [
       {
         "module": "Permit Management Suite",
@@ -575,10 +864,13 @@
     "title": "Skyesoft Codex",
     "version": "2025.09",
     "lastUpdated": "2025-09-06",
-    "description": "All-in-one source of truth for Skyebot and the Skyesoft platform.",
+    "description": {
+      "icon": "•",
+      "text": "All-in-one source of truth for Skyebot and the Skyesoft platform."
+    },
     "schema": {
       "title": "Each entry must include a 'title' (human-readable name).",
-      "description/purpose": "Each entry should provide either 'description' or 'purpose' as a short summary.",
+      "descriptionPurpose": "Each entry should provide either 'description' or 'purpose' as a short summary.",
       "order": "Optional array to control section rendering order in Information Sheets.",
       "sections": "Other keys (arrays, objects, strings) are rendered as report sections in order.",
       "metadata": "Optional fields like 'note', 'status', or 'lastUpdated' can be included."
@@ -586,20 +878,29 @@
   },
   "constitution": {
     "title": "Skyesoft Constitution",
-    "description": "Defines the logical order of truth and behavioral rules Skyebot uses to interact with humans and data.",
-    "sourcesOfTruth": [
-      "SSE Stream (dynamic operational context)",
-      "skyesoft-data.json (structured history + contact/entity DB)",
-      "codex.json (static knowledge + specs)",
-      "saveChatLog.php (chat memory archive)"
-    ],
-    "aiBehavior": {
-      "rules": [
-        "Do not claim to lack real-time access — refer to SSE.",
-        "Always normalize names and phone formats before inserting contacts.",
-        "Use codex tags and glossary to answer specialized questions.",
-        "Infer user meaning from context (not hardcoded logic)."
+    "description": {
+      "icon": "•",
+      "text": "Defines the logical order of truth and behavioral rules Skyebot uses to interact with humans and data."
+    },
+    "sourcesOfTruth": {
+      "icon": "📚",
+      "items": [
+        "SSE Stream (dynamic operational context)",
+        "skyesoft-data.json (structured history + contact/entity DB)",
+        "codex.json (static knowledge + specs)",
+        "saveChatLog.php (chat memory archive)"
       ]
+    },
+    "aiBehavior": {
+      "rules": {
+        "icon": "📏",
+        "items": [
+          "Do not claim to lack real-time access — refer to SSE.",
+          "Always normalize names and phone formats before inserting contacts.",
+          "Use codex tags and glossary to answer specialized questions.",
+          "Infer user meaning from context (not hardcoded logic)."
+        ]
+      }
     },
     "documentation": {
       "informationSheets": "Information Sheets are constitutional documents used for development and transparency. They allow Skyebot to generate structured summaries of the Codex itself, ensuring that both developers and users can understand the system’s mission, standards, and modules."
@@ -607,139 +908,233 @@
   },
   "informationSheetSuite": {
     "title": "📘 Information Sheet Suite",
-    "purpose": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users.",
-    "useCases": [
-      "Developer references for module specifications",
-      "AI explanations of Codex content to users",
-      "Validation of workflows against constitutional standards"
-    ],
+    "purpose": {
+      "icon": "🎯",
+      "text": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users."
+    },
+    "useCases": {
+      "icon": "💡",
+      "items": [
+        "Developer references for module specifications",
+        "AI explanations of Codex content to users",
+        "Validation of workflows against constitutional standards"
+      ]
+    },
     "types": {
-      "Codex Documents": {
-        "purpose": "Summarize the integrated legacy markdown documents that form part of the Constitution.",
-        "requiredFields": {
-          "mandatory": ["topic"],
-          "optional": []
+      "icon": "📂",
+      "codexDocuments": {
+        "purpose": {
+          "icon": "🎯",
+          "text": "Summarize the integrated legacy markdown documents that form part of the Constitution."
         },
-        "pipeline": [
-          "Lookup section in codex.json",
-          "Format title + summary",
-          "Render list of included items",
-          "Attach disclaimers (e.g., static snapshot, not dynamic SSE)"
-        ],
-        "outputs": [
-          "title",
-          "summary",
-          "documentList",
-          "disclaimers"
-        ]
+        "requiredFields": {
+          "mandatory": {
+            "icon": "•",
+            "items": ["topic"]
+          },
+          "optional": {
+            "icon": "•",
+            "items": []
+          }
+        },
+        "pipeline": {
+          "icon": "⚙️",
+          "items": [
+            "Lookup section in codex.json",
+            "Format title + summary",
+            "Render list of included items",
+            "Attach disclaimers (e.g., static snapshot, not dynamic SSE)"
+          ]
+        },
+        "outputs": {
+          "icon": "📤",
+          "items": [
+            "title",
+            "summary",
+            "documentList",
+            "disclaimers"
+          ]
+        }
       },
-      "Module Overview": {
-        "purpose": "Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards).",
-        "requiredFields": {
-          "mandatory": ["module"],
-          "optional": []
+      "moduleOverview": {
+        "purpose": {
+          "icon": "🎯",
+          "text": "Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards)."
         },
-        "pipeline": [
-          "Fetch module entry from codex.json",
-          "Render title, purpose, features, integrations",
-          "Attach disclaimers (e.g., simplified summary, check full spec)"
-        ],
-        "outputs": [
-          "moduleName",
-          "purpose",
-          "features",
-          "integrations",
-          "disclaimers"
-        ]
+        "requiredFields": {
+          "mandatory": {
+            "icon": "•",
+            "items": ["module"]
+          },
+          "optional": {
+            "icon": "•",
+            "items": []
+          }
+        },
+        "pipeline": {
+          "icon": "⚙️",
+          "items": [
+            "Fetch module entry from codex.json",
+            "Render title, purpose, features, integrations",
+            "Attach disclaimers (e.g., simplified summary, check full spec)"
+          ]
+        },
+        "outputs": {
+          "icon": "📤",
+          "items": [
+            "moduleName",
+            "purpose",
+            "features",
+            "integrations",
+            "disclaimers"
+          ]
+        }
       }
+    },
+    "metadata": {
+      "icon": "🧾",
+      "items": [
+        "Version number",
+        "Date generated",
+        "Author/system identifier"
+      ]
     }
   },
   "documentFormatting": {
     "title": "📝 Document Formatting Standards",
-    "purpose": "Define page structure, styling, and metadata rules for all generated Information Sheets and reports.",
-    "pageStructure": ["Header", "Body", "Footer"],
-    "headers": [
-      "Must include document title",
-      "Must include Christy Signs logo and Skyesoft identifier",
-      "May also include project name, module name, or date"
-    ],
-    "footers": [
-      "Must include page numbering (Page X of Y)",
-      "Must include Christy Signs footer with contact information",
-      "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
-      "Must display disclaimers where provided"
-    ],
-    "styling": [
-      "Use consistent fonts, margins, and spacing across all documents",
-      "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
-    ],
-    "metadata": [
-      "Must include document timestamp (UTC + local)",
-      "Must include author or system identifier (Skyebot)",
-      "Must include document version number"
-    ]
+    "purpose": {
+      "icon": "🎯",
+      "text": "Define page structure, styling, and metadata rules for all generated Information Sheets and reports."
+    },
+    "pageStructure": {
+      "icon": "📄",
+      "items": [
+        "Header",
+        "Body",
+        "Footer"
+      ]
+    },
+    "headers": {
+      "icon": "🔝",
+      "items": [
+        "Must include document title",
+        "Must include Christy Signs logo and Skyesoft identifier",
+        "May also include project name, module name, or date"
+      ]
+    },
+    "footers": {
+      "icon": "🔻",
+      "items": [
+        "Must include page numbering (Page X of Y)",
+        "Must include Christy Signs footer with contact information",
+        "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
+        "Must display disclaimers where provided"
+      ]
+    },
+    "styling": {
+      "icon": "🎨",
+      "items": [
+        "Use consistent fonts, margins, and spacing across all documents",
+        "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
+      ]
+    },
+    "metadata": {
+      "icon": "🧾",
+      "items": [
+        "Must include document timestamp (UTC + local)",
+        "Must include author or system identifier (Skyebot)",
+        "Must include document version number"
+      ]
+    }
   },
   "ragExplanation": {
     "title": "Retrieval-Augmented Generation (RAG)",
-    "purpose": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware.",
-    "sources": [
-      "SSE Stream (dynamic operational context)",
-      "skyesoft-data.json (structured history + contact/entity DB)",
-      "codex.json (static knowledge + specs)",
-      "saveChatLog.php (chat memory archive)"
-    ],
-    "guidelines": [
-      "Do not claim to lack real-time access — refer to SSE.",
-      "Always normalize names and phone formats before inserting contacts.",
-      "Use codex tags and glossary to answer specialized questions.",
-      "Infer user meaning from context (not hardcoded logic)."
-    ]
+    "purpose": {
+      "icon": "🎯",
+      "text": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware."
+    },
+    "sources": {
+      "icon": "•",
+      "items": [
+        "SSE Stream (dynamic operational context)",
+        "skyesoft-data.json (structured history + contact/entity DB)",
+        "codex.json (static knowledge + specs)",
+        "saveChatLog.php (chat memory archive)"
+      ]
+    },
+    "guidelines": {
+      "icon": "📘",
+      "items": [
+        "Do not claim to lack real-time access — refer to SSE.",
+        "Always normalize names and phone formats before inserting contacts.",
+        "Use codex tags and glossary to answer specialized questions.",
+        "Infer user meaning from context (not hardcoded logic)."
+      ]
+    }
   },
   "includedDocuments": {
     "title": "📂 Included Legacy Documents",
-    "purpose": "The following 14 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution.",
-    "documents": [
-      "glossary.md",
-      "attendance-suite.md",
-      "core-database-structure.md",
-      "file-management.md",
-      "financial-control-suite.md",
-      "management-escalation-trees.md",
-      "mobile-first-modals.md",
-      "office-bulletins.md",
-      "one-line-task.md",
-      "permit-management-suite.md",
-      "real-time-sse.md",
-      "skyebot-contact-parser.md",
-      "time-interval-standards.md",
-      "report-generation-suite.md"
-    ]
+    "purpose": {
+      "icon": "🎯",
+      "text": "The following 14 legacy markdown documents have been integrated into this Codex and are considered part of the Skyesoft Constitution."
+    },
+    "documents": {
+      "icon": "📂",
+      "items": [
+        "glossary.md",
+        "attendance-suite.md",
+        "core-database-structure.md",
+        "file-management.md",
+        "financial-control-suite.md",
+        "management-escalation-trees.md",
+        "mobile-first-modals.md",
+        "office-bulletins.md",
+        "one-line-task.md",
+        "permit-management-suite.md",
+        "real-time-sse.md",
+        "skyebot-contact-parser.md",
+        "time-interval-standards.md",
+        "report-generation-suite.md"
+      ]
+    }
   },
   "shared": {
     "title": "🔗 Shared References",
-    "description": "This list mirrors constitution.sourcesOfTruth for quick reference; the Constitution remains the authoritative version.",
-    "sourcesOfTruth": [
-      "SSE Stream (dynamic operational context)",
-      "skyesoft-data.json (structured history + contact/entity DB)",
-      "codex.json (static knowledge + specs)",
-      "saveChatLog.php (chat memory archive)"
-    ],
-    "aiBehaviorRules": [
-      "Do not claim to lack real-time access — refer to SSE.",
-      "Always normalize names and phone formats before inserting contacts.",
-      "Use codex tags and glossary to answer specialized questions.",
-      "Infer user meaning from context (not hardcoded logic)."
-    ]
+    "description": {
+      "icon": "•",
+      "text": "This list mirrors constitution.sourcesOfTruth for quick reference; the Constitution remains the authoritative version."
+    },
+    "sourcesOfTruth": {
+      "icon": "📚",
+      "items": [
+        "SSE Stream (dynamic operational context)",
+        "skyesoft-data.json (structured history + contact/entity DB)",
+        "codex.json (static knowledge + specs)",
+        "saveChatLog.php (chat memory archive)"
+      ]
+    },
+    "aiBehaviorRules": {
+      "icon": "•",
+      "items": [
+        "Do not claim to lack real-time access — refer to SSE.",
+        "Always normalize names and phone formats before inserting contacts.",
+        "Use codex tags and glossary to answer specialized questions.",
+        "Infer user meaning from context (not hardcoded logic)."
+      ]
+    }
   },
   "glossary": {
     "title": "📘 Skyesoft Glossary",
-    "description": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers.",
+    "description": {
+      "icon": "•",
+      "text": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers."
+    },
     "entries": {
-      "MTCO": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
-      "LGBAS": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
-      "SSE": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
-      "KPI": "Key Performance Indicator: A metric for tracking progress against goals.",
-      "Codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
+      "mtco": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation.",
+      "lgbas": "Let’s Go Back A Step: Tool to pause and reassess logic or flow.",
+      "sse": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context).",
+      "kpi": "Key Performance Indicator: A metric for tracking progress against goals.",
+      "codex": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows."
     }
   }
 }
