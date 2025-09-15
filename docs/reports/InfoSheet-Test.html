@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📘 Information Sheet Suite</title>
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; margin: 40px; }
+    h1 { text-align: center; }
+    .section {
+      margin-top: 24px;
+      border-top: 2px solid #000;
+      padding-top: 10px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      background: #000;
+      color: #fff;
+      padding: 6px;
+      font-size: 1.1em;
+    }
+    .section-header img {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+    }
+    ul { margin: 8px 0 8px 24px; }
+    li { margin: 4px 0; }
+    .meta label { font-weight: bold; display: inline-block; width: 120px; }
+  </style>
+</head>
+<body>
+  <h1>📘 Information Sheet Suite</h1>
+
+        <div class="section">
+        <div class="section-header">
+                      🎯                    Purpose        </div>
+        <div class="section-body">
+                      <p>Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users.</p>
+                  </div>
+      </div>
+            <div class="section">
+        <div class="section-header">
+                      💡                    UseCases        </div>
+        <div class="section-body">
+                      <ul>
+                              <li>Developer references for module specifications</li>
+                              <li>AI explanations of Codex content to users</li>
+                              <li>Validation of workflows against constitutional standards</li>
+                          </ul>
+                  </div>
+      </div>
+            <div class="section">
+        <div class="section-header">
+                      📂                    Types        </div>
+        <div class="section-body">
+                      <ul>
+                              <li>📂</li>
+                              <li>{&quot;purpose&quot;:{&quot;icon&quot;:&quot;\ud83c\udfaf&quot;,&quot;text&quot;:&quot;Summarize the integrated legacy markdown documents that form part of the Constitution.&quot;},&quot;requiredFields&quot;:{&quot;mandatory&quot;:{&quot;icon&quot;:&quot;\u2022&quot;,&quot;items&quot;:[&quot;topic&quot;]},&quot;optional&quot;:{&quot;icon&quot;:&quot;\u2022&quot;,&quot;items&quot;:[]}},&quot;pipeline&quot;:{&quot;icon&quot;:&quot;\u2699\ufe0f&quot;,&quot;items&quot;:[&quot;Lookup section in codex.json&quot;,&quot;Format title + summary&quot;,&quot;Render list of included items&quot;,&quot;Attach disclaimers (e.g., static snapshot, not dynamic SSE)&quot;]},&quot;outputs&quot;:{&quot;icon&quot;:&quot;\ud83d\udce4&quot;,&quot;items&quot;:[&quot;title&quot;,&quot;summary&quot;,&quot;documentList&quot;,&quot;disclaimers&quot;]}}</li>
+                              <li>{&quot;purpose&quot;:{&quot;icon&quot;:&quot;\ud83c\udfaf&quot;,&quot;text&quot;:&quot;Generate a structured summary of a Codex module (e.g., Permit Suite, Time Interval Standards).&quot;},&quot;requiredFields&quot;:{&quot;mandatory&quot;:{&quot;icon&quot;:&quot;\u2022&quot;,&quot;items&quot;:[&quot;module&quot;]},&quot;optional&quot;:{&quot;icon&quot;:&quot;\u2022&quot;,&quot;items&quot;:[]}},&quot;pipeline&quot;:{&quot;icon&quot;:&quot;\u2699\ufe0f&quot;,&quot;items&quot;:[&quot;Fetch module entry from codex.json&quot;,&quot;Render title, purpose, features, integrations&quot;,&quot;Attach disclaimers (e.g., simplified summary, check full spec)&quot;]},&quot;outputs&quot;:{&quot;icon&quot;:&quot;\ud83d\udce4&quot;,&quot;items&quot;:[&quot;moduleName&quot;,&quot;purpose&quot;,&quot;features&quot;,&quot;integrations&quot;,&quot;disclaimers&quot;]}}</li>
+                          </ul>
+                  </div>
+      </div>
+            <div class="section">
+        <div class="section-header">
+                      🧾                    Metadata        </div>
+        <div class="section-body">
+                      <div class="meta">
+                              <p><label>0:</label> Version number</p>
+                              <p><label>1:</label> Date generated</p>
+                              <p><label>2:</label> Author/system identifier</p>
+                          </div>
+                  </div>
+      </div>
+      </body>
+</html>

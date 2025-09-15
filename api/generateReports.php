@@ -1,6 +1,16 @@
 <?php
 // PHP 5.6-compatible
 require_once __DIR__ . '/../libs/tcpdf/tcpdf.php';
+// Load icon map
+$iconMapPath = __DIR__ . '/../assets/data/iconMap.json';
+$iconMap = [];
+if (file_exists($iconMapPath)) {
+    $iconMap = json_decode(file_get_contents($iconMapPath), true);
+    error_log("✅ iconMap loaded with " . count($iconMap) . " entries");
+} else {
+    error_log("⚠️ iconMap.json not found at $iconMapPath");
+}
+
 
 // ChristyPDF class definition
 class ChristyPDF extends TCPDF {
@@ -42,6 +52,17 @@ class ChristyPDF extends TCPDF {
             // Draw image-based icon
             $this->Image($headerIconPath, 52, $startY + 1, 6); // 6mm wide
             $this->SetXY(60, $startY); // Shift text to the right
+        } else {
+            // Check for inline emoji icon in iconMap (if defined as emoji)
+            $inlineIcon = isset($iconMap['informationSheet']) && !file_exists($headerIconPath) ? $iconMap['informationSheet'] : '';
+            if ($inlineIcon) {
+                // Switch to DejaVu Sans for emoji rendering
+                $this->SetFont('dejavusans', '', 12);
+                $this->Cell(6, 8, $inlineIcon, 0, 0, 'L');
+                // Switch back to Helvetica for title
+                $this->SetFont('helvetica', 'B', 14);
+                $this->SetXY(60, $startY); // Shift text to the right
+            }
         }
 
         // Use Helvetica for the title
@@ -92,71 +113,76 @@ class ChristyPDF extends TCPDF {
     }
 }
 
-// Render a section with styled header, icon, and dynamic content
-function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $iconBasePath = '') {
-    // Debugging
+// --- Normalize emojis (remove variation selectors, invisible chars) ---
+function normalizeEmoji($str) {
+    return preg_replace('/\x{FE0F}|\x{200D}/u', '', $str);
+}
+
+// --- Icon resolver helper (PNG only, no emoji fallback) ---
+function resolveIcon($value, $iconMap, $iconBasePath) {
+    $result = ['file' => false];
+    if (empty($value)) return $result;
+
+    $normalized = normalizeEmoji($value);
+
+    // Normalize iconMap keys once
+    static $normalizedMap = null;
+    if ($normalizedMap === null) {
+        $normalizedMap = [];
+        foreach ($iconMap as $k => $v) {
+            $normalizedMap[normalizeEmoji($k)] = $v;
+        }
+    }
+
+    if (isset($normalizedMap[$normalized])) {
+        $candidate = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $normalizedMap[$normalized];
+        if (file_exists($candidate)) {
+            $result['file'] = $candidate;
+            return $result;
+        } else {
+            error_log("❌ File not found on disk for [$normalized]: $candidate");
+        }
+    } else {
+        error_log("⚠️ No mapping for [$normalized] in iconMap");
+    }
+
+    return $result;
+}
+
+// --- Main function ---
+function renderSectionWithIcon($pdf, $key, $title, $content) {
     error_log("🔍 renderSectionWithIcon() called with key: $key");
 
-    // --- Resolve inline icon (from codex.json) ---
-    $inlineIcon = '';
+    // --- Prepend icon from codex if available ---
     if (is_array($content) && isset($content['icon'])) {
-        $inlineIcon = $content['icon'];
-        // Reduce body to "text" or "items" if present
+        $emojiValue = $content['icon'];  // 🎯, 💡, 📂, 🧾 etc.
+        $title = $emojiValue . " " . $title;
+
+        // Simplify body
         if (isset($content['text'])) {
             $content = $content['text'];
         } elseif (isset($content['items'])) {
             $content = $content['items'];
         }
-        error_log("✅ Found inline icon for $key → $inlineIcon");
     }
 
-    // --- Fallback to external iconMap.json ---
-    $iconPath = '';
-    if (isset($iconMap[$key])) {
-        $candidate = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $iconMap[$key];
-        if (file_exists($candidate)) {
-            $iconPath = $candidate;
-            error_log("✅ Found icon file for $key → $iconPath");
-        }
-    }
-    if (!$inlineIcon && !$iconPath) {
-        error_log("⚠️ No icon found for $key");
-    }
-
-    // --- Transaction preview (page overflow detection) ---
+    // --- Transaction preview ---
     $pdf->startTransaction();
     $startPage = $pdf->getPage();
 
-    // --- Draw section ---
-    $drawSection = function($pdf, $key, $title, $content, $inlineIcon, $iconPath) {
+    $drawSection = function($pdf, $key, $title, $content) {
         // Header bar
         $pdf->Ln(8);
-        $pdf->SetFillColor(0, 0, 0); // black header background
+        $pdf->SetFillColor(0, 0, 0);
         $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetFont('helvetica', 'B', 12);
+
         $y = $pdf->GetY();
         $pdf->Cell(0, 8, '', 0, 1, 'L', true);
 
-        // Place emoji or image icon
-        if ($inlineIcon) {
-            $pdf->SetXY(22, $y);
-            // Switch to NotoEmoji for emoji rendering
-            $pdf->SetFont('notoemoji', '', 12);
-            $pdf->Cell(8, 8, $inlineIcon, 0, 0, 'L');
-            // Switch to Helvetica for title
-            $pdf->SetFont('helvetica', 'B', 12);
-            $pdf->Cell(0, 8, ' ' . $title, 0, 1, 'L');
-        } elseif ($iconPath) {
-            // Image-based icon
-            $pdf->Image($iconPath, 22, $y + 1, 5); // 5mm wide icon
-            $pdf->SetXY(30, $y);
-            $pdf->SetFont('helvetica', 'B', 12);
-            $pdf->Cell(0, 8, $title, 0, 1, 'L');
-        } else {
-            // No icon, just title
-            $pdf->SetXY(22, $y);
-            $pdf->SetFont('helvetica', 'B', 12);
-            $pdf->Cell(0, 8, $title, 0, 1, 'L');
-        }
+        // Header with inline emoji + title
+        $pdf->SetXY(22, $y);
+        $pdf->Cell(0, 8, $title, 0, 1, 'L');
 
         // Reset text for body
         $pdf->SetTextColor(0, 0, 0);
@@ -169,10 +195,10 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $ico
                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $data, 0, 'L');
             } elseif (is_array($data)) {
                 if (array_keys($data) === range(0, count($data) - 1)) {
-                    // Indexed array (bullet list)
+                    // Sequential list
                     foreach ($data as $item) {
                         $bullet = $level === 0 ? "• " : "– ";
-                        $text = is_array($item) ? "" : $item;
+                        $text   = is_array($item) ? "" : $item;
                         $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $bullet . $text, 0, 'L');
                         if (is_array($item)) {
                             $renderContent($item, $level + 1);
@@ -180,15 +206,13 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $ico
                     }
                 } else {
                     // Associative array
-                    if ($key === 'metadata') {
-                        foreach ($data as $k => $v) {
+                    foreach ($data as $k => $v) {
+                        if ($key === 'metadata') {
                             $pdf->SetFont('helvetica', 'B', 10);
                             $pdf->Cell(60, 6, ucfirst($k) . ":", 0, 0, 'L');
                             $pdf->SetFont('helvetica', '', 10);
                             $pdf->Cell(0, 6, (string)$v, 0, 1, 'L');
-                        }
-                    } else {
-                        foreach ($data as $k => $v) {
+                        } else {
                             $label = ucfirst($k) . ": ";
                             if (is_array($v)) {
                                 $pdf->SetFont('helvetica', 'B', 10);
@@ -208,13 +232,14 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $ico
         $pdf->Ln(4);
     };
 
-    // Render and handle overflow
-    $drawSection($pdf, $key, $title, $content, $inlineIcon, $iconPath);
+    $drawSection($pdf, $key, $title, $content);
+
+    // --- Handle overflow ---
     if ($pdf->getPage() > $startPage) {
         $pdf->rollbackTransaction(true);
         $pdf->AddPage();
         $pdf->SetY(27);
-        $drawSection($pdf, $key, $title, $content, $inlineIcon, $iconPath);
+        $drawSection($pdf, $key, $title, $content);
     } else {
         $pdf->commitTransaction();
     }
