@@ -1,10 +1,6 @@
 <?php
 // PHP 5.6-compatible
 require_once __DIR__ . '/../libs/tcpdf/tcpdf.php';
-// Icon map (for section icons)
-$iconMapFile = __DIR__ . '/../assets/images/icons/iconMap.json';
-$iconMap = file_exists($iconMapFile) ? json_decode(file_get_contents($iconMapFile), true) : [];
-$iconBasePath = __DIR__ . '/../assets/images/icons/';
 
 // ChristyPDF class definition
 class ChristyPDF extends TCPDF {
@@ -33,34 +29,34 @@ class ChristyPDF extends TCPDF {
         $startY = $logo_center_y - ($text_height / 2);
 
         // Main Title + optional icon
-        $this->SetFont('dejavusans', 'B', 14);
-
-        // Try to load an icon for the sheet header (fallback = clipboard.png)
         global $iconMap, $iconBasePath;
         $headerIcon = isset($iconMap['informationSheet'])
             ? $iconMap['informationSheet']
             : 'clipboard.png';
         $headerIconPath = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $headerIcon;
 
+        // Set initial position
+        $this->SetXY(55, $startY);
+
         if (file_exists($headerIconPath)) {
-            // Draw the icon just before the title text
+            // Draw image-based icon
             $this->Image($headerIconPath, 52, $startY + 1, 6); // 6mm wide
-            $this->SetXY(60, $startY); // shift text to the right
-        } else {
-            $this->SetXY(55, $startY); // fallback no icon
+            $this->SetXY(60, $startY); // Shift text to the right
         }
 
+        // Use Helvetica for the title
+        $this->SetFont('helvetica', 'B', 14);
         $this->Cell(0, 8, $this->reportTitle ?: 'Project Report Title', 0, 1, 'L');
 
         // Title Tag
-        $this->SetFont('dejavusans', 'I', 10);
+        $this->SetFont('helvetica', 'I', 10);
         $this->SetX(55);
         $this->Cell(0, 6, 'Skyesoft™ Information Sheet', 0, 1, 'L');
 
         // Metadata
-        $this->SetFont('dejavusans', '', 9);
+        $this->SetFont('helvetica', '', 9);
         $this->SetX(55);
-        $this->Cell(0, 6, date('F j, Y') . ' – Created by Skyesoft™', 0, 1, 'L');
+        $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by Skyesoft™', 0, 1, 'L');
 
         $text_bottom = $this->GetY();
         $logo_bottom = 10 + $logo_height;
@@ -84,10 +80,10 @@ class ChristyPDF extends TCPDF {
         $this->SetDrawColor(0, 0, 0);
         $this->Line(15, $this->GetY(), 195, $this->GetY());
 
-        $this->SetFont('dejavusans', '', 8);
+        $this->SetFont('helvetica', '', 8);
         $footerText = "© Christy Signs / Skyesoft, All Rights Reserved | " .
-                      "3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com" .
-                      " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
+                    "3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com" .
+                    " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
         $this->Cell(0, 6, $footerText, 0, 1, 'C');
 
         if (!empty($this->disclaimer)) {
@@ -137,30 +133,34 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $ico
         $pdf->Ln(8);
         $pdf->SetFillColor(0, 0, 0); // black header background
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('dejavusans', 'B', 12); // switch to DejaVuSans for emoji support
-
         $y = $pdf->GetY();
         $pdf->Cell(0, 8, '', 0, 1, 'L', true);
 
         // Place emoji or image icon
         if ($inlineIcon) {
-            // Inline emoji
             $pdf->SetXY(22, $y);
-            $pdf->Cell(0, 8, $inlineIcon . ' ' . $title, 0, 1, 'L');
+            // Switch to NotoEmoji for emoji rendering
+            $pdf->SetFont('notoemoji', '', 12);
+            $pdf->Cell(8, 8, $inlineIcon, 0, 0, 'L');
+            // Switch to Helvetica for title
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->Cell(0, 8, ' ' . $title, 0, 1, 'L');
         } elseif ($iconPath) {
             // Image-based icon
             $pdf->Image($iconPath, 22, $y + 1, 5); // 5mm wide icon
             $pdf->SetXY(30, $y);
+            $pdf->SetFont('helvetica', 'B', 12);
             $pdf->Cell(0, 8, $title, 0, 1, 'L');
         } else {
             // No icon, just title
             $pdf->SetXY(22, $y);
+            $pdf->SetFont('helvetica', 'B', 12);
             $pdf->Cell(0, 8, $title, 0, 1, 'L');
         }
 
         // Reset text for body
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('dejavusans', '', 10);
+        $pdf->SetFont('helvetica', '', 10);
         $pdf->Ln(2);
 
         // Recursive content renderer
@@ -182,18 +182,18 @@ function renderSectionWithIcon($pdf, $key, $title, $content, $iconMap = [], $ico
                     // Associative array
                     if ($key === 'metadata') {
                         foreach ($data as $k => $v) {
-                            $pdf->SetFont('dejavusans', 'B', 10);
+                            $pdf->SetFont('helvetica', 'B', 10);
                             $pdf->Cell(60, 6, ucfirst($k) . ":", 0, 0, 'L');
-                            $pdf->SetFont('dejavusans', '', 10);
+                            $pdf->SetFont('helvetica', '', 10);
                             $pdf->Cell(0, 6, (string)$v, 0, 1, 'L');
                         }
                     } else {
                         foreach ($data as $k => $v) {
                             $label = ucfirst($k) . ": ";
                             if (is_array($v)) {
-                                $pdf->SetFont('dejavusans', 'B', 10);
+                                $pdf->SetFont('helvetica', 'B', 10);
                                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label, 0, 'L');
-                                $pdf->SetFont('dejavusans', '', 10);
+                                $pdf->SetFont('helvetica', '', 10);
                                 $renderContent($v, $level + 1);
                             } else {
                                 $pdf->MultiCell(0, 6, str_repeat("   ", $level) . $label . $v, 0, 'L');
@@ -236,6 +236,31 @@ function findSectionRecursive($array, $slug) {
     return null;
 }
 
+// --- Main Logic ---
+/** @var ChristyPDF $pdf */
+$pdf = new ChristyPDF();
+$pdf->SetCreator('Skyesoft PDF Generator');
+$pdf->SetAuthor('Skyesoft');
+
+// Set timezone to MST
+date_default_timezone_set('America/Phoenix');
+
+// Add Noto Emoji font statically (run once to generate definition if missing, then comment out)
+// $emojiFontName = TCPDF_FONTS::addTTFfont(__DIR__ . '/fonts/Noto_Emoji/NotoEmoji-Regular.ttf', 'TrueTypeUnicode', '', 32);
+// After running once, uncomment the next line and use the returned font name (e.g., 'notoemoji')
+$emojiFontName = 'notoemoji'; // Adjust based on addTTFfont() output
+$pdf->SetFont('helvetica', '', 12); // Default font until changed
+
+// Consistent margins: left/right 20, top 35 to give space for header
+$pdf->SetMargins(20, 35, 20); // Left, Top, Right
+$pdf->SetAutoPageBreak(true, 25); // Bottom margin = 25mm
+$pdf->SetHeaderMargin(0);
+
+// Icon map (for section icons)
+$iconMapFile = __DIR__ . '/../assets/images/icons/iconMap.json';
+$iconMap = file_exists($iconMapFile) ? json_decode(file_get_contents($iconMapFile), true) : [];
+$iconBasePath = __DIR__ . '/../assets/images/icons/';
+
 // --- Parse JSON input ---
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
@@ -265,21 +290,6 @@ if (isset($input['requestor']) && $input['requestor'] !== '0' && $input['request
 $slug = isset($input['slug']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$input['slug']) : '';
 // Default slug if missing
 $data = isset($input['data']) && is_array($input['data']) ? $input['data'] : array();
-
-// Initialize PDF
-/** @var ChristyPDF $pdf */
-$pdf = new ChristyPDF();
-$pdf->SetCreator('Skyesoft PDF Generator');
-$pdf->SetAuthor($requestor);
-
-// Consistent margins: left/right 20, top 35 to give space for header
-$pdf->SetMargins(20, 35, 20);     // Left, Top, Right
-$pdf->SetAutoPageBreak(true, 25); // Bottom margin = 25mm
-$pdf->SetHeaderMargin(0);
-
-// Icon map (placeholder, as icons not implemented in TCPDF)
-$iconMap = [];
-$sectionIcons = [];
 
 // Branch: Information Sheet
 if ($type === 'information_sheet') {
@@ -314,22 +324,21 @@ if ($type === 'information_sheet') {
         renderSectionWithIcon($pdf, $key, $label, $content, $iconMap, $iconBasePath);
     }
 
-
     // Metadata section
     $meta = array(
-        "Generated (UTC)"   => gmdate("Y-m-d H:i:s"),
-        "Generated (Local)" => date("Y-m-d H:i:s"),
+        "Generated (UTC)"   => gmdate("F j, Y, g:i A T"),
+        "Generated (Local)" => date("F j, Y, g:i A T"),
         "Author"            => $requestor,
         "Version"           => "1.0"
     );
-    renderSectionWithIcon($pdf, 'metadata', "Document Metadata", $meta, $iconMap, $sectionIcons);
+    renderSectionWithIcon($pdf, 'metadata', "Document Metadata", $meta, $iconMap, $iconBasePath);
 } else {
     // Reports branch (placeholder)
     $title = "Report Placeholder";
     $pdf->SetTitle($title);
     $pdf->setReportTitle($title);
     $pdf->AddPage();
-    $pdf->SetFont('dejavusans', '', 11);
+    $pdf->SetFont('helvetica', '', 11); // Changed to Helvetica for consistency
     $pdf->Write(0, "Report generation coming soon.\n\nThis is a placeholder for the report type: " . $slug . ".");
 }
 
