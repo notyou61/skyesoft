@@ -25,6 +25,8 @@ class ChristyPDF extends TCPDF {
     public function Header() {
         $logo = __DIR__ . '/../assets/images/christyLogo.png';
         $logo_height = 0;
+
+        // Draw company logo
         if (file_exists($logo)) {
             list($pix_w, $pix_h) = getimagesize($logo);
             $logo_width = 35;
@@ -38,38 +40,26 @@ class ChristyPDF extends TCPDF {
         $logo_center_y = 10 + ($logo_height / 2);
         $startY = $logo_center_y - ($text_height / 2);
 
-        // Main Title + optional icon
-        global $iconMap, $iconBasePath;
-        $headerIcon = isset($iconMap['informationSheet'])
-            ? $iconMap['informationSheet']
-            : 'clipboard.png';
-        $headerIconPath = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $headerIcon;
+        // --- Extract emoji + title text from reportTitle ---
+        $fullTitle = $this->reportTitle ?: '📘 Project Report';
+        $icon = mb_substr($fullTitle, 0, 1, 'UTF-8');            // First char (emoji)
+        $titleText = trim(mb_substr($fullTitle, 1, null, 'UTF-8')); // Rest of the string
 
-        // Set initial position
+        // Cursor position
         $this->SetXY(55, $startY);
 
-        if (file_exists($headerIconPath)) {
-            // Draw image-based icon
-            $this->Image($headerIconPath, 52, $startY + 1, 6); // 6mm wide
-            $this->SetXY(60, $startY); // Shift text to the right
-        } else {
-            // Check for inline emoji icon in iconMap (if defined as emoji)
-            $inlineIcon = isset($iconMap['informationSheet']) && !file_exists($headerIconPath) ? $iconMap['informationSheet'] : '';
-            if ($inlineIcon) {
-                // Switch to DejaVu Sans for emoji rendering
-                $this->SetFont('dejavusans', '', 12);
-                $this->Cell(6, 8, $inlineIcon, 0, 0, 'L');
-                // Switch back to Helvetica for title
-                $this->SetFont('helvetica', 'B', 14);
-                $this->SetXY(60, $startY); // Shift text to the right
-            }
+        // --- Draw emoji ---
+        if ($icon) {
+            $this->SetFont('dejavusans', '', 12);   // Use font with emoji support
+            $this->Cell(6, 8, $icon, 0, 0, 'L');
+            $this->SetXY(62, $startY);              // Shift text to the right
         }
 
-        // Use Helvetica for the title
+        // --- Main Title ---
         $this->SetFont('helvetica', 'B', 14);
-        $this->Cell(0, 8, $this->reportTitle ?: 'Project Report Title', 0, 1, 'L');
+        $this->Cell(0, 8, $titleText, 0, 1, 'L');
 
-        // Title Tag
+        // Subtitle / Tagline
         $this->SetFont('helvetica', 'I', 10);
         $this->SetX(55);
         $this->Cell(0, 6, 'Skyesoft™ Information Sheet', 0, 1, 'L');
@@ -79,15 +69,15 @@ class ChristyPDF extends TCPDF {
         $this->SetX(55);
         $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by Skyesoft™', 0, 1, 'L');
 
+        // Divider line
         $text_bottom = $this->GetY();
         $logo_bottom = 10 + $logo_height;
         $divider_y = max($text_bottom, $logo_bottom) + 2;
-
-        // Divider line (black)
         $this->SetDrawColor(0, 0, 0);
         $this->SetLineWidth(0.5);
         $this->Line(15, $divider_y, 195, $divider_y);
     }
+
 
     // Override AddPage to ensure consistent body start on all pages
     public function AddPage($orientation='', $format='', $keepmargins=false, $tocpage=false) {
