@@ -104,19 +104,56 @@ function drawIcon($pdf, $emoji, $iconMap, $iconBasePath, $x, $y, $w = 6) {
 
 function headerWithMappedIcon($pdf, $title, $emoji, $iconMap, $iconBasePath, $level = 1) {
     $y = $pdf->GetY();
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Cell(0, 8, '', 0, 1, 'L');
-    $pdf->SetXY(18, $y);
-    $pdf->SetDrawColor(0, 0, 0);
-    $pdf->SetLineWidth(0.5);
-    $pdf->Line(15, $pdf->GetY() + 7, 195, $pdf->GetY() + 7);
-    if ($emoji) {
-        drawIcon($pdf, $emoji, $iconMap, $iconBasePath, 18, $y + 1, 7);
-        $pdf->SetX(28);
+
+    if ($level === 1) {
+        // === Top-level header: black bar with white text ===
+        $pdf->Ln(4);
+        $pdf->SetFont('helvetica', 'B', 13);
+        $pdf->SetFillColor(0, 0, 0);      // black background
+        $pdf->SetTextColor(255, 255, 255); // white text
+
+        // Draw icon if available
+        $startX = 18;
+        if ($emoji) {
+            $iconFile = resolveIconFile($emoji, $iconMap, $iconBasePath);
+            if ($iconFile) {
+                $pdf->Image($iconFile, $startX, $y + 1, 8);
+                $startX += 10;
+            }
+        }
+
+        // Draw header cell with fill
+        $pdf->SetXY($startX, $y);
+        $pdf->Cell(0, 10, "  " . $title, 0, 1, 'L', true);
+        $pdf->Ln(2);
+    } else {
+        // === Sub-header: bold text with gray underline ===
+        $pdf->Ln(3);
+        $pdf->SetFont('helvetica', 'B', 11);
+        $pdf->SetTextColor(0, 0, 0); // black text
+
+        // Draw icon if available
+        $startX = 18;
+        if ($emoji) {
+            $iconFile = resolveIconFile($emoji, $iconMap, $iconBasePath);
+            if ($iconFile) {
+                $pdf->Image($iconFile, $startX, $y + 1, 7);
+                $startX += 10;
+            }
+        }
+
+        $pdf->SetXY($startX, $y);
+        $pdf->Cell(0, 8, $title, 0, 1, 'L');
+
+        // Gray underline
+        $pdf->SetDrawColor(200, 200, 200);
+        $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
+        $pdf->Ln(2);
     }
-    $pdf->Cell(0, 8, $title, 0, 1, 'L');
-    $pdf->Ln(2);
+
+    // Reset font/colors for body text
+    $pdf->SetFont('helvetica', '', 11);
+    $pdf->SetTextColor(0, 0, 0);
 }
 
 function renderTable($pdf, $data) {
