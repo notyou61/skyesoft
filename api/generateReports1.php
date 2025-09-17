@@ -2,16 +2,16 @@
 // PHP 5.6-compatible
 require_once __DIR__ . '/../libs/tcpdf/tcpdf.php';
 
-// --- Load icon map ---
+// Load icon map
 $iconMapPath = __DIR__ . "/../assets/data/iconMap.json";
 $iconMap = json_decode(file_get_contents($iconMapPath), true);
 $iconBasePath = realpath(__DIR__ . "/../assets/images/icons/") . DIRECTORY_SEPARATOR;
 
-// --- Load Codex data ---
+// Load Codex data
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 $codex = json_decode(file_get_contents($codexPath), true);
 
-// --- ChristyPDF class ---
+// ChristyPDF class definition
 class ChristyPDF extends TCPDF {
     private $reportTitle;
     private $reportIcon;
@@ -22,6 +22,7 @@ class ChristyPDF extends TCPDF {
         $this->reportIcon = $emoji;
     }
 
+    // Custom Header
     public function Header() {
         global $iconMap, $iconBasePath;
         $logo = __DIR__ . '/../assets/images/christyLogo.png';
@@ -34,55 +35,62 @@ class ChristyPDF extends TCPDF {
             }
             $this->Image($logo, 15, 10, $logo_width);
         }
-
+        $text_height = 8 + 6 + 6;
         $logo_center_y = 10 + ($logo_height / 2);
-        $startY = $logo_center_y - (20 / 2); // approx vertical alignment
+        $startY = $logo_center_y - ($text_height / 2);
 
-        // Title + icon
-        if (!empty($this->reportIcon) && isset($iconMap[$this->reportIcon])) {
+        // Main Title + dynamic icon from Codex
+        if (!empty($this->reportIcon)) {
             $iconFile = $this->getIconFile($this->reportIcon, $iconMap, $iconBasePath);
             if ($iconFile) {
-                $this->Image($iconFile, 52, $startY + 1, 6);
-                $this->SetXY(60, $startY);
+                $this->Image($iconFile, 52, $startY + 1, 6); // draw at left of title
+                $this->SetXY(60, $startY); // shift text to right of icon
                 if (is_file($iconFile) && strpos($iconFile, sys_get_temp_dir()) === 0) {
                     unlink($iconFile); // Clean up temp file
                 }
             }
         }
 
+        // Use Helvetica for the title
         $this->SetFont('helvetica', 'B', 14);
         $this->Cell(0, 8, $this->reportTitle ?: 'Project Report Title', 0, 1, 'L');
 
+        // Title Tag
         $this->SetFont('helvetica', 'I', 10);
         $this->SetX(55);
         $this->Cell(0, 6, 'Skyesoft™ Information Sheet', 0, 1, 'L');
 
+        // Metadata
         $this->SetFont('helvetica', '', 9);
         $this->SetX(55);
         $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by Skyesoft™', 0, 1, 'L');
 
-        $divider_y = max($this->GetY(), 10 + $logo_height) + 2;
+        $text_bottom = $this->GetY();
+        $logo_bottom = 10 + $logo_height;
+        $divider_y = max($text_bottom, $logo_bottom) + 2;
+
+        // Divider line (black)
         $this->SetDrawColor(0, 0, 0);
         $this->SetLineWidth(0.5);
         $this->Line(15, $divider_y, 195, $divider_y);
     }
 
+    // Override AddPage to ensure consistent body start on all pages
     public function AddPage($orientation='', $format='', $keepmargins=false, $tocpage=false) {
         parent::AddPage($orientation, $format, $keepmargins, $tocpage);
-        $this->SetY(27);
+        $this->SetY(27); // lock body start across all pages
     }
 
+    // Custom Footer
     public function Footer() {
         $this->SetY(-20);
         $this->SetDrawColor(0, 0, 0);
         $this->Line(15, $this->GetY(), 195, $this->GetY());
-
         $this->SetFont('helvetica', '', 8);
         $footerText = "© Christy Signs / Skyesoft, All Rights Reserved | " .
                       "3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com" .
                       " | Page " . $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
         $this->Cell(0, 6, $footerText, 0, 1, 'C');
-
         if (!empty($this->disclaimer)) {
             $this->MultiCell(0, 6, "Disclaimer: " . $this->disclaimer, 0, 'C');
         }
@@ -94,7 +102,7 @@ class ChristyPDF extends TCPDF {
 
         $data = $iconMap[$normalized];
         if (is_string($data)) {
-            $file = $iconBasePath . $data;
+            $file = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $data;
             return file_exists($file) ? $file : false;
         } elseif (is_array($data) && isset($data['file'], $data['x'], $data['y'], $data['w'], $data['h'])) {
             return extractIconFromSprite($normalized, $iconMap, $iconBasePath);
@@ -103,16 +111,17 @@ class ChristyPDF extends TCPDF {
     }
 }
 
-// --- Helpers ---
+// Normalize emojis (remove variation selectors, invisible chars)
 function normalizeEmoji($str) {
     return preg_replace('/\x{FE0F}|\x{200D}/u', '', $str);
 }
 
+// Extract icon from sprite
 function extractIconFromSprite($emoji, $iconMap, $iconBasePath) {
     if (!isset($iconMap[$emoji])) return false;
 
     $data = $iconMap[$emoji];
-    $spritePath = $iconBasePath . $data['file'];
+    $spritePath = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $data['file'];
     if (!file_exists($spritePath)) return false;
 
     $sprite = imagecreatefrompng($spritePath);
@@ -136,22 +145,27 @@ function extractIconFromSprite($emoji, $iconMap, $iconBasePath) {
     return $tempFile;
 }
 
+// Draw icon helper
 function drawIcon($pdf, $emoji, $iconMap, $iconBasePath, $x = null, $y = null, $w = 6) {
-    // Skip if emoji is a bullet point
-    if ($emoji === "\xE2\x80\xA2" || $emoji === "•") return false;
+    $normalized = normalizeEmoji($emoji);
+    if (!isset($iconMap[$normalized])) return false;
 
-    $iconFile = $pdf->getIconFile($emoji, $iconMap, $iconBasePath);
-    if (!$iconFile) return false;
+    $iconEntry = $iconMap[$normalized];
+    if (!is_string($iconEntry)) return false; // skip sprite objects
 
-    $pdf->Image($iconFile, $x ?: $pdf->GetX(), $y ?: $pdf->GetY(), $w);
-    if ($x === null && $y === null) $pdf->SetX($pdf->GetX() + $w + 2);
+    $file = rtrim($iconBasePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $iconEntry;
+    if (!file_exists($file)) return false;
 
-    if (is_file($iconFile) && strpos($iconFile, sys_get_temp_dir()) === 0) {
-        unlink($iconFile); // Clean up temp file
+    if ($x !== null && $y !== null) {
+        $pdf->Image($file, $x, $y, $w);
+    } else {
+        $pdf->Image($file, $pdf->GetX(), $pdf->GetY(), $w);
+        $pdf->SetX($pdf->GetX() + $w + 2);
     }
     return true;
 }
 
+// Header with mapped icon
 function headerWithMappedIcon($pdf, $title, $emoji, $iconMap, $iconBasePath) {
     $pdf->Ln(8);
     $pdf->SetFillColor(0, 0, 0);
@@ -159,29 +173,20 @@ function headerWithMappedIcon($pdf, $title, $emoji, $iconMap, $iconBasePath) {
     $pdf->SetFont('helvetica', 'B', 12);
     $y = $pdf->GetY();
     $pdf->Cell(0, 8, '', 0, 1, 'L', true);
-
     $pdf->SetXY(22, $y);
-    drawIcon($pdf, $emoji, $iconMap, $iconBasePath, 22, $y + 1);
-    $pdf->SetX($pdf->GetX() + 8);
+    if ($emoji) {
+        drawIcon($pdf, $emoji, $iconMap, $iconBasePath, 22, $y + 1);
+        $pdf->SetX($pdf->GetX() + 8);
+    }
     $pdf->Cell(0, 8, $title, 0, 1, 'L');
-
     $pdf->SetTextColor(0, 0, 0);
     $pdf->SetFont('helvetica', '', 10);
     $pdf->Ln(2);
 }
 
-function renderSection($pdf, $label, $section, $iconMap, $iconBasePath, $isDescription = false) {
-    if ($isDescription) {
-        // Render description inline (icon + text)
-        $pdf->SetFont('helvetica', '', 11);
-        if (isset($section['icon'])) {
-            drawIcon($pdf, $section['icon'], $iconMap, $iconBasePath);
-        }
-        $pdf->MultiCell(0, 6, $section['text'], 0, 'L');
-        $pdf->Ln(2);
-        return;
-    }
-
+// Generic section renderer
+function renderSection($pdf, $label, $section, $iconMap, $iconBasePath) {
+    // Draw section header with icon
     if (isset($section['icon'])) {
         headerWithMappedIcon($pdf, $label, $section['icon'], $iconMap, $iconBasePath);
     } else {
@@ -190,12 +195,14 @@ function renderSection($pdf, $label, $section, $iconMap, $iconBasePath, $isDescr
         $pdf->Ln(2);
     }
 
+    // If this section has text
     if (isset($section['text'])) {
         $pdf->SetFont('helvetica', '', 11);
         $pdf->MultiCell(0, 6, $section['text'], 0, 'L');
         $pdf->Ln(2);
     }
 
+    // If this section has items (list)
     if (isset($section['items']) && is_array($section['items'])) {
         $pdf->SetFont('helvetica', '', 11);
         foreach ($section['items'] as $item) {
@@ -204,18 +211,29 @@ function renderSection($pdf, $label, $section, $iconMap, $iconBasePath, $isDescr
         $pdf->Ln(2);
     }
 
+    // If this section has nested objects
     foreach ($section as $key => $subsection) {
         if (is_array($subsection) && isset($subsection['icon'])) {
-            renderSection($pdf, ucfirst($key), $subsection, $iconMap, $iconBasePath);
+            // Capitalize the key for display
+            $subLabel = ucfirst($key);
+            renderSection($pdf, $subLabel, $subsection, $iconMap, $iconBasePath);
         }
     }
 }
 
-// --- Main ---
+// Main Logic
 $pdf = new ChristyPDF();
 $pdf->SetCreator('Skyesoft PDF Generator');
 $pdf->SetAuthor('Skyesoft');
+
+// Set timezone to MST
 date_default_timezone_set('America/Phoenix');
+
+// Add Noto Emoji font (if needed; run once then comment the addTTFfont line)
+$emojiFontName = 'notoemoji'; // Adjust if different
+// TCPDF_FONTS::addTTFfont(__DIR__ . '/fonts/Noto_Emoji/NotoEmoji-Regular.ttf', 'TrueTypeUnicode', '', 32); // Run once
+
+// Consistent margins
 $pdf->SetMargins(20, 35, 20);
 $pdf->SetAutoPageBreak(true, 25);
 $pdf->SetHeaderMargin(0);
@@ -223,39 +241,48 @@ $pdf->SetHeaderMargin(0);
 // Parse JSON input
 $rawInput = file_get_contents('php://input');
 $input = json_decode($rawInput, true);
+
+// CLI fallback
 if (php_sapi_name() === 'cli' && isset($argv[1])) {
     $input = json_decode($argv[1], true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        die("❌ Invalid CLI JSON input: " . json_last_error_msg() . "\n");
+    }
 }
-if (!is_array($input)) die("❌ Invalid JSON input\n");
+if (!is_array($input)) {
+    die("❌ Invalid JSON input\n");
+}
 
+// Normalize input
 $type = isset($input['type']) ? (string)$input['type'] : 'information_sheet';
-$slug = isset($input['slug']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$input['slug']) : '';
-$requestor = isset($input['requestor']) ? $input['requestor'] : 'Skyesoft';
+if ($type === '0') $type = 'information_sheet';
+if ($type === '1') $type = 'report';
+$requestor = 'Skyesoft';
+if (isset($input['requestor']) && $input['requestor'] !== '0' && $input['requestor'] !== 0) {
+    $requestor = (string)$input['requestor'];
+}
 
-if ($type === 'information_sheet' && $slug && isset($codex[$slug])) {
+// Sanitize slug to allow only alphanumerics, dashes, underscores
+$slug = isset($input['slug']) ? preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$input['slug']) : '';
+
+// Branch: Information Sheet
+if ($type === 'information_sheet') {
+    if (!$slug || !isset($codex[$slug])) {
+        die("❌ Invalid slug or Codex data (slug: $slug)\n");
+    }
     $sheet = $codex[$slug];
     $title = $sheet['title'];
-    $titleEmoji = mb_substr($title, 0, 1);
-    $titleText = trim(mb_substr($title, 2));
-
+    $titleEmoji = normalizeEmoji(mb_substr($title, 0, 1));
+    $titleText  = trim(preg_replace('/^\X\s*/u', '', $title));
     $pdf->SetTitle($titleText);
     $pdf->setReportTitle($titleText, $titleEmoji);
     $pdf->AddPage();
-
-    // First body section = description only
-    if (isset($sheet['description'])) {
-        renderSection($pdf, 'Description', $sheet['description'], $iconMap, $iconBasePath, true);
-    }
-
-    // Render rest
     foreach ($sheet as $key => $section) {
-        if ($key === 'title' || $key === 'description') continue;
         if (is_array($section) && isset($section['icon'])) {
             renderSection($pdf, ucfirst($key), $section, $iconMap, $iconBasePath);
         }
     }
-
-    // Metadata
+    // Metadata section
     $meta = array(
         "Generated (UTC)" => gmdate("F j, Y, g:i A T"),
         "Generated (Local)" => date("F j, Y, g:i A T"),
@@ -263,17 +290,30 @@ if ($type === 'information_sheet' && $slug && isset($codex[$slug])) {
         "Version" => "1.0"
     );
     renderSection($pdf, 'Document Metadata', ['icon' => '🧾', 'items' => $meta], $iconMap, $iconBasePath);
-
 } else {
+    // Reports branch (placeholder)
+    $title = "Report Placeholder";
+    $pdf->SetTitle($title);
+    $pdf->setReportTitle($title);
     $pdf->AddPage();
-    $pdf->Write(0, "Invalid request or Codex slug not found.");
+    $pdf->SetFont('helvetica', '', 11); // Changed to Helvetica for consistency
+    $pdf->Write(0, "Report generation coming soon.\n\nThis is a placeholder for the report type: " . $slug . ".");
 }
 
 // Save output
 $saveDir = realpath(__DIR__ . "/../docs/reports") ?: __DIR__ . "/../docs/reports";
-if (!is_dir($saveDir)) mkdir($saveDir, 0755, true);
-$prettySlug = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $slug));
-$savePath = $saveDir . DIRECTORY_SEPARATOR . "Information Sheet - " . $prettySlug . ".pdf";
-$pdf->Output($savePath, 'F');
+if (!is_dir($saveDir)) {
+    mkdir($saveDir, 0755, true);
+}
 
-echo "✅ PDF created successfully at: $savePath\n";
+// Convert slug to Title Case with spaces
+$prettySlug = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $slug));
+
+// Fallback if slug is empty
+$savePath = $saveDir . DIRECTORY_SEPARATOR . "Information Sheet - " . $prettySlug . ".pdf";
+try {
+    $pdf->Output($savePath, 'F');
+    echo "✅ PDF created successfully at: $savePath\n";
+} catch (Exception $e) {
+    die("❌ Failed to create PDF: " . $e->getMessage() . "\n");
+}
