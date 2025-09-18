@@ -194,9 +194,6 @@ if ($type === 'information_sheet') {
 
     // Purpose now always shown as its own section header
     if (isset($sheet['purpose']) && is_array($sheet['purpose'])) {
-        //
-        $pdf->Ln(3); // add 10pt whitespace buffer before Purpose section
-        // renderSection($pdf, 'Purpose', $sheet['purpose'], $iconMap, $iconBasePath, 1);
         renderSection($pdf, 'Purpose', $sheet['purpose'], $iconMap, $iconBasePath, 1);
     }
 

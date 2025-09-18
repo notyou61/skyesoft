@@ -326,23 +326,19 @@
       ]
     },
     "aiBehavior": {
-      "rules": {
-        "icon": "📏",
-        "format": "list",
-        "items": [
-          "Do not claim to lack real-time access — refer to SSE.",
-          "Always normalize names and phone formats before inserting contacts.",
-          "Use codex tags and glossary to answer specialized questions.",
-          "Infer user meaning from context (not hardcoded logic)."
-        ]
-      }
+      "icon": "📏",
+      "format": "list",
+      "items": [
+        "Do not claim to lack real-time access — refer to SSE.",
+        "Always normalize names and phone formats before inserting contacts.",
+        "Use codex tags and glossary to answer specialized questions.",
+        "Infer user meaning from context (not hardcoded logic)."
+      ]
     },
     "documentation": {
-      "informationSheets": {
-        "icon": "📘",
-        "format": "text",
-        "text": "Information Sheets are constitutional documents used for development and transparency. They allow Skyebot to generate structured summaries of the Codex itself, ensuring that both developers and users can understand the system’s mission, standards, and modules."
-      }
+      "icon": "📘",
+      "format": "text",
+      "text": "Information Sheets are constitutional documents used for development and transparency. They allow Skyebot to generate structured summaries of the Codex itself, ensuring that both developers and users can understand the system’s mission, standards, and modules."
     }
   },
   "informationSheets": {
@@ -359,6 +355,14 @@
         "Developer references for module specifications",
         "AI explanations of Codex content to users",
         "Validation of workflows against constitutional standards"
+      ]
+    },
+    "rules": {
+      "icon": "📏",
+      "format": "list",
+      "items": [
+        "Each page body must begin with a section header.",
+        "If content continues onto a new page, the section header is repeated with '– Continued' appended."
       ]
     }
   },
