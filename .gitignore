@@ -36,6 +36,7 @@ public_html/*/data/
 assets/data/*.json
 !assets/data/reportDisclaimers.json
 !assets/data/jurisdictions.json
+!assets/data/iconMap.json
 
 ##############################
 # Build / deps / artifacts
