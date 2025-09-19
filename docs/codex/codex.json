@@ -3,12 +3,12 @@
     "mobileFirstModals": {
       "title": "📱 Mobile-First Modals",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop — consistent across shop, office, and field."
       },
       "features": {
-        "icon": "⚙️",
+        "icon": "gear",
         "format": "list",
         "items": [
           "Adaptive modal forms that adjust per device and role",
@@ -18,7 +18,7 @@
         ]
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "One-Line Task Engine",
@@ -28,14 +28,14 @@
       }
     },
     "officeBulletins": {
-      "title": "📢 Office Bulletins",
+      "title": "megaphone Office Bulletins",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic."
       },
       "bulletinTypes": {
-        "icon": "📋",
+        "icon": "clipboard",
         "format": "list",
         "items": [
           "Global",
@@ -45,7 +45,7 @@
         ]
       },
       "features": {
-        "icon": "⚙️",
+        "icon": "gear",
         "format": "list",
         "items": [
           "Markdown formatting support",
@@ -55,7 +55,7 @@
         ]
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "Mobile-First Modals",
@@ -64,14 +64,14 @@
       }
     },
     "oneLineTask": {
-      "title": "🧠 One-Line Task (OLT) Input",
+      "title": "brain One-Line Task (OLT) Input",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — database updates, task creation, record lookups, or communication triggers."
       },
       "mechanism": {
-        "icon": "⚡",
+        "icon": "bolt",
         "format": "list",
         "items": [
           "Leverages the semanticResponder module for stream queries (time, date, weather, KPIs, announcements) instead of hardcoded keyword rules",
@@ -81,7 +81,7 @@
         ]
       },
       "examples": {
-        "icon": "💡",
+        "icon": "lightbulb",
         "format": "list",
         "items": [
           "Jim Flanigan at ALC Group, 816-421-8335 → ➕ Add new contact",
@@ -91,7 +91,7 @@
         ]
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "Database Modules",
@@ -102,7 +102,7 @@
         ]
       },
       "futureEnhancements": {
-        "icon": "🚀",
+        "icon": "rocket",
         "format": "list",
         "items": [
           "Auto-tagging entities and locations",
@@ -111,20 +111,20 @@
         ]
       },
       "strategicImportance": {
-        "icon": "🏆",
+        "icon": "trophy",
         "format": "text",
         "text": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
       }
     },
     "permitManagementSuite": {
-      "title": "🗂️ Permit Management Suite",
+      "title": "folder Permit Management Suite",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates."
       },
       "features": {
-        "icon": "⚙️",
+        "icon": "gear",
         "format": "list",
         "items": [
           "Submission logs and timestamps",
@@ -135,7 +135,7 @@
         ]
       },
       "workflow": {
-        "icon": "📋",
+        "icon": "clipboard",
         "format": "list",
         "items": [
           "Created",
@@ -146,7 +146,7 @@
         ]
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "Core Database",
@@ -158,14 +158,14 @@
       }
     },
     "timeIntervalStandards": {
-      "title": "⏰ Time Interval Standards (TIS)",
+      "title": "clock Time Interval Standards (TIS)",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations."
       },
       "dayTypes": {
-        "icon": "📋",
+        "icon": "clipboard",
         "format": "list",
         "items": [
           "Workday",
@@ -174,7 +174,7 @@
         ]
       },
       "segments": {
-        "icon": "📋",
+        "icon": "clipboard",
         "format": "table",
         "office": {
           "before": "12:00 AM – 7:29 AM",
@@ -188,12 +188,12 @@
         }
       },
       "exclusions": {
-        "icon": "⚠️",
+        "icon": "warning",
         "format": "text",
         "text": "Weekends and Holidays are excluded from time-sensitive calculations"
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "Permit Suite",
@@ -205,14 +205,14 @@
       }
     },
     "financialControlSuite": {
-      "title": "💼 Financial Control Suite",
+      "title": "briefcase Financial Control Suite",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Track, validate, and approve all financial activities related to sign projects — enforce budget integrity, reduce waste, and ensure traceability."
       },
       "components": {
-        "icon": "🧩",
+        "icon": "puzzle",
         "format": "list",
         "items": [
           "Job Costing Tracker (labor, materials, subs)",
@@ -222,7 +222,7 @@
         ]
       },
       "workflow": {
-        "icon": "📋",
+        "icon": "clipboard",
         "format": "list",
         "items": [
           "Project initiated",
@@ -233,7 +233,7 @@
         ]
       },
       "dashboards": {
-        "icon": "📊",
+        "icon": "barChart",
         "format": "list",
         "items": [
           "Budget vs Actual per project",
@@ -243,7 +243,7 @@
         ]
       },
       "controls": {
-        "icon": "🛡️",
+        "icon": "shield",
         "format": "list",
         "items": [
           "Role-based approvals",
@@ -252,7 +252,7 @@
         ]
       },
       "integrations": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "Core Database",
@@ -263,14 +263,14 @@
       }
     },
     "serviceManagementSuite": {
-      "title": "🛠️ Service Management Suite",
+      "title": "tools Service Management Suite",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces."
       },
       "features": {
-        "icon": "⚙️",
+        "icon": "gear",
         "format": "list",
         "items": [
           "Track service requests by type (repair, install, warranty)",
@@ -281,14 +281,14 @@
       }
     },
     "glossaryModule": {
-      "title": "📘 Skyesoft Codex Glossary",
+      "title": "bookBlue Skyesoft Codex Glossary",
       "purpose": {
-        "icon": "🎯",
+        "icon": "target",
         "format": "text",
         "text": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows."
       },
       "contents": {
-        "icon": "📖",
+        "icon": "bookOpen",
         "format": "table",
         "items": [
           { "term": "LGBAS", "definition": "Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow." },
@@ -298,7 +298,7 @@
         ]
       },
       "integration": {
-        "icon": "🔌",
+        "icon": "plug",
         "format": "list",
         "items": [
           "AI Prompt Normalization",
@@ -309,14 +309,14 @@
     }
   },
   "skyesoftConstitution": {
-    "title": "📜 Skyesoft Constitution",
+    "title": "scroll Skyesoft Constitution",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "Defines Skyebot’s constitutional framework and behavioral rules for interacting with humans and data."
     },
     "sourcesOfTruth": {
-      "icon": "📚",
+      "icon": "books",
       "format": "list",
       "items": [
         "SSE Stream (dynamic operational context)",
@@ -326,7 +326,7 @@
       ]
     },
     "aiBehavior": {
-      "icon": "📏",
+      "icon": "ruler",
       "format": "list",
       "items": [
         "Do not claim to lack real-time access — refer to SSE.",
@@ -336,20 +336,20 @@
       ]
     },
     "documentation": {
-      "icon": "📘",
+      "icon": "bookBlue",
       "format": "text",
       "text": "Information Sheets are constitutional documents used for development and transparency. They allow Skyebot to generate structured summaries of the Codex itself, ensuring that both developers and users can understand the system’s mission, standards, and modules."
     }
   },
   "informationSheets": {
-    "title": "📘 Information Sheet Suite",
+    "title": "bookBlue Information Sheet Suite",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users."
     },
     "useCases": {
-      "icon": "💡",
+      "icon": "lightbulb",
       "format": "list",
       "items": [
         "Developer references for module specifications",
@@ -358,7 +358,7 @@
       ]
     },
     "rules": {
-      "icon": "📏",
+      "icon": "ruler",
       "format": "list",
       "items": [
         "Each page body must begin with a section header.",
@@ -367,14 +367,14 @@
     }
   },
   "documentStandards": {
-    "title": "📝 Document Formatting Standards",
+    "title": "pencil Document Formatting Standards",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "Define page structure, styling, and metadata rules for all generated Information Sheets and reports."
     },
     "pageStructure": {
-      "icon": "📄",
+      "icon": "document",
       "format": "list",
       "items": [
         "Header",
@@ -383,7 +383,7 @@
       ]
     },
     "headers": {
-      "icon": "🔝",
+      "icon": "arrowUp",
       "format": "list",
       "items": [
         "Must include document title",
@@ -392,7 +392,7 @@
       ]
     },
     "footers": {
-      "icon": "🔻",
+      "icon": "arrowDown",
       "format": "list",
       "items": [
         "Must include page numbering (Page X of Y)",
@@ -402,7 +402,7 @@
       ]
     },
     "styling": {
-      "icon": "🎨",
+      "icon": "palette",
       "format": "list",
       "items": [
         "Use consistent fonts, margins, and spacing across all documents",
@@ -410,7 +410,7 @@
       ]
     },
     "metadata": {
-      "icon": "🧾",
+      "icon": "receipt",
       "format": "list",
       "items": [
         "Must include document timestamp (UTC + local)",
@@ -422,12 +422,12 @@
   "ragFramework": {
     "title": "Retrieval-Augmented Generation (RAG)",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware."
     },
     "sources": {
-      "icon": "📋",
+      "icon": "clipboard",
       "format": "list",
       "items": [
         "SSE Stream (dynamic operational context)",
@@ -438,22 +438,22 @@
     }
   },
   "sharedReferences": {
-    "title": "🔗 Shared References",
+    "title": "link Shared References",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "Reference pointer to constitution.sourcesOfTruth and constitution.aiBehavior.rules. The Constitution remains the authoritative SOT."
     }
   },
   "skyesoftGlossary": {
-    "title": "📘 Skyesoft Glossary",
+    "title": "bookBlue Skyesoft Glossary",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers."
     },
     "entries": {
-      "icon": "📖",
+      "icon": "bookOpen",
       "format": "table",
       "items": [
         { "term": "MTCO", "definition": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation." },
@@ -469,7 +469,7 @@
     "version": "2025.09",
     "lastUpdated": "2025-09-17",
     "purpose": {
-      "icon": "🎯",
+      "icon": "target",
       "format": "text",
       "text": "All-in-one source of truth for Skyebot and the Skyesoft platform."
     },

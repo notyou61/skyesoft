@@ -1,36 +1,263 @@
 {
-  "📜": "scroll.png",
-  "🎯": "target.png",
-  "📚": "books.png",
-  "📏": "ruler.png",
-  "📘": "blue_book.png",
-  "📄": "document.png",
-  "🔝": "arrow_up.png",
-  "🔻": "arrow_down.png",
-  "🎨": "palette.png",
-  "🧾": "receipt.png",
-  "📢": "megaphone.png",
-  "📋": "clipboard.png",
-  "⚙️": "gear.png",
-  "🔌": "plug.png",
-  "🧠": "brain.png",
-  "⚡": "bolt.png",
-  "💡": "lightbulb.png",
-  "🚀": "rocket.png",
-  "🏆": "trophy.png",
-  "🗂️": "file_folder.png",
-  "⚠️": "warning.png",
-  "💼": "briefcase.png",
-  "🧩": "puzzle.png",
-  "📊": "bar_chart.png",
-  "🛡️": "shield.png",
-  "🛠️": "tools.png",
-  "📖": "book.png",
-  "🔗": "link.png",
-  "📝": "pencil.png",
-  "💡alt": "idea.png",
-  "☀️": "daylight.png",
-  "🌙": "day_end.png",
-  "🌅": "day_start.png",
-  "📅": "calendar.png"
+  "target": { 
+    "file": "target.png",
+    "icon": "🎯",
+    "alt": "Target icon for purpose or goal",
+    "sampleUsage": {
+      "codexSection": "purpose",
+      "exampleContext": "Used in Purpose sections to indicate goals or objectives."
+    }
+  },
+  "gear": {
+    "file": "gear.png",
+    "icon": "⚙️",
+    "alt": "Gear icon for features or configuration",
+    "sampleUsage": {
+      "codexSection": "features",
+      "exampleContext": "Highlights module features or system configurations."
+    }
+  },
+  "plug": {
+    "file": "plug.png",
+    "icon": "🔌",
+    "alt": "Plug icon for integrations or connections",
+    "sampleUsage": {
+      "codexSection": "integrations",
+      "exampleContext": "Shows which systems or data streams are connected to a module."
+    }
+  },
+  "megaphone": {
+    "file": "megaphone.png",
+    "icon": "📢",
+    "alt": "Megaphone icon for announcements or bulletins",
+    "sampleUsage": {
+      "codexSection": "officeBulletins",
+      "exampleContext": "Used for internal bulletins or urgent messages."
+    }
+  },
+  "clipboard": {
+    "file": "clipboard.png",
+    "icon": "📋",
+    "alt": "Clipboard icon for workflows or lists",
+    "sampleUsage": {
+      "codexSection": "workflow",
+      "exampleContext": "Represents steps or bullet point lists in module workflows."
+    }
+  },
+  "brain": {
+    "file": "brain.png",
+    "icon": "🧠",
+    "alt": "Brain icon for intelligence or AI-related tasks",
+    "sampleUsage": {
+      "codexSection": "oneLineTask",
+      "exampleContext": "Marks smart task input powered by AI."
+    }
+  },
+  "bolt": {
+    "file": "bolt.png",
+    "icon": "⚡",
+    "alt": "Bolt icon for rapid or powerful actions",
+    "sampleUsage": {
+      "codexSection": "mechanism",
+      "exampleContext": "Represents powerful or immediate actions like triggers."
+    }
+  },
+  "lightbulb": {
+    "file": "lightbulb.png",
+    "icon": "💡",
+    "alt": "Lightbulb icon for ideas or examples",
+    "sampleUsage": {
+      "codexSection": "examples",
+      "exampleContext": "Used for tips, ideas, or learning examples in reports."
+    }
+  },
+  "rocket": {
+    "file": "rocket.png",
+    "icon": "🚀",
+    "alt": "Rocket icon for improvements or enhancements",
+    "sampleUsage": {
+      "codexSection": "futureEnhancements",
+      "exampleContext": "Highlights planned upgrades or future features."
+    }
+  },
+  "trophy": {
+    "file": "trophy.png",
+    "icon": "🏆",
+    "alt": "Trophy icon for achievements or importance",
+    "sampleUsage": {
+      "codexSection": "strategicImportance",
+      "exampleContext": "Indicates high-value or strategic initiatives."
+    }
+  },
+  "folder": {
+    "file": "file_folder.png",
+    "icon": "🗂️",
+    "alt": "Folder icon for management or organization",
+    "sampleUsage": {
+      "codexSection": "permitManagementSuite",
+      "exampleContext": "Represents organized tracking of permit documents."
+    }
+  },
+  "clock": {
+    "file": "clock.png",
+    "icon": "⏰",
+    "alt": "Clock icon for timing or scheduling",
+    "sampleUsage": {
+      "codexSection": "timeIntervalStandards",
+      "exampleContext": "Represents time-based calculations and schedules."
+    }
+  },
+  "warning": {
+    "file": "warning.png",
+    "icon": "⚠️",
+    "alt": "Warning icon for exclusions or alerts",
+    "sampleUsage": {
+      "codexSection": "exclusions",
+      "exampleContext": "Used to warn about excluded dates like holidays."
+    }
+  },
+  "briefcase": {
+    "file": "briefcase.png",
+    "icon": "💼",
+    "alt": "Briefcase icon for financial matters",
+    "sampleUsage": {
+      "codexSection": "financialControlSuite",
+      "exampleContext": "Represents finance-related modules like billing and POs."
+    }
+  },
+  "puzzle": {
+    "file": "puzzle.png",
+    "icon": "🧩",
+    "alt": "Puzzle piece icon for modular components",
+    "sampleUsage": {
+      "codexSection": "components",
+      "exampleContext": "Indicates different system parts or modules."
+    }
+  },
+  "barChart": {
+    "file": "bar_chart.png",
+    "icon": "📊",
+    "alt": "Bar chart icon for analytics or dashboards",
+    "sampleUsage": {
+      "codexSection": "dashboards",
+      "exampleContext": "Represents data visualization or performance metrics."
+    }
+  },
+  "shield": {
+    "file": "shield.png",
+    "icon": "🛡️",
+    "alt": "Shield icon for security or controls",
+    "sampleUsage": {
+      "codexSection": "controls",
+      "exampleContext": "Highlights security or approval gate features."
+    }
+  },
+  "tools": {
+    "file": "tools.png",
+    "icon": "🛠️",
+    "alt": "Tools icon for service or maintenance",
+    "sampleUsage": {
+      "codexSection": "serviceManagementSuite",
+      "exampleContext": "Used for modules related to field service and repairs."
+    }
+  },
+  "bookBlue": {
+    "file": "blue_book.png",
+    "icon": "📘",
+    "alt": "Blue book icon for glossaries or structured knowledge",
+    "sampleUsage": {
+      "codexSection": "glossary",
+      "exampleContext": "Represents glossary and reference documents."
+    }
+  },
+  "bookOpen": {
+    "file": "book.png",
+    "icon": "📖",
+    "alt": "Open book icon for content tables or references",
+    "sampleUsage": {
+      "codexSection": "contents",
+      "exampleContext": "Indicates lists of defined terms or reference material."
+    }
+  },
+  "link": {
+    "file": "link.png",
+    "icon": "🔗",
+    "alt": "Link icon for shared references or connections",
+    "sampleUsage": {
+      "codexSection": "sharedReferences",
+      "exampleContext": "Indicates pointer relationships or connected data."
+    }
+  },
+  "scroll": {
+    "file": "scroll.png",
+    "icon": "📜",
+    "alt": "Scroll icon for constitutional documents",
+    "sampleUsage": {
+      "codexSection": "skyesoftConstitution",
+      "exampleContext": "Used for governance and constitutional rules."
+    }
+  },
+  "ruler": {
+    "file": "ruler.png",
+    "icon": "📏",
+    "alt": "Ruler icon for rules or standards",
+    "sampleUsage": {
+      "codexSection": "aiBehavior",
+      "exampleContext": "Represents strict rule sets or behavior standards."
+    }
+  },
+  "document": {
+    "file": "document.png",
+    "icon": "📄",
+    "alt": "Document icon for pages or structure",
+    "sampleUsage": {
+      "codexSection": "pageStructure",
+      "exampleContext": "Represents sections like headers, body, and footers."
+    }
+  },
+  "arrowUp": {
+    "file": "arrow_up.png",
+    "icon": "🔝",
+    "alt": "Arrow up icon for headers or top sections",
+    "sampleUsage": {
+      "codexSection": "headers",
+      "exampleContext": "Indicates header rules or top-of-page content."
+    }
+  },
+  "arrowDown": {
+    "file": "arrow_down.png",
+    "icon": "🔻",
+    "alt": "Arrow down icon for footers or bottom sections",
+    "sampleUsage": {
+      "codexSection": "footers",
+      "exampleContext": "Indicates footer rules or bottom-of-page content."
+    }
+  },
+  "palette": {
+    "file": "palette.png",
+    "icon": "🎨",
+    "alt": "Palette icon for styling or visual themes",
+    "sampleUsage": {
+      "codexSection": "styling",
+      "exampleContext": "Represents design, color, or visual rules."
+    }
+  },
+  "receipt": {
+    "file": "receipt.png",
+    "icon": "🧾",
+    "alt": "Receipt icon for metadata or tracking",
+    "sampleUsage": {
+      "codexSection": "metadata",
+      "exampleContext": "Indicates logging or data-tracking fields."
+    }
+  },
+  "calendar": {
+    "file": "calendar.png",
+    "icon": "📅",
+    "alt": "Calendar icon for scheduling or date/time",
+    "sampleUsage": {
+      "codexSection": "examples",
+      "exampleContext": "Used to highlight dates and scheduling actions."
+    }
+  }
 }
