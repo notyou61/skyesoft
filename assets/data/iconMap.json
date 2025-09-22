@@ -259,5 +259,86 @@
       "codexSection": "examples",
       "exampleContext": "Used to highlight dates and scheduling actions."
     }
+  },
+  "scales": {
+    "file": "scales.png",
+    "icon": "⚖️",
+    "alt": "Scales icon representing balance, fairness, or guiding principles",
+    "sampleUsage": {
+      "codexSection": "principles",
+      "exampleContext": "Used to visually represent the core guiding principles of the Skyesoft Constitution."
+    }
+  },
+  "compass": {
+    "file": "compass.png",
+    "icon": "🧭",
+    "alt": "Compass icon for guidance or direction",
+    "sampleUsage": {
+      "codexSection": "guidingFramework",
+      "exampleContext": "Represents guiding principles like those in the 7 Habits framework."
+    }
+  },
+  "database": {
+  "file": "database.png",
+  "icon": "🗄️",
+  "alt": "Database icon representing structured data and storage",
+  "sampleUsage": {
+    "codexSection": "coreDataObjects",
+    "exampleContext": "Used to indicate foundational data objects like entities, locations, contacts, and orders."
+  }
+  },
+  "table": {
+    "file": "table.png",
+    "icon": "📊",
+    "alt": "Table icon for displaying structured data in rows and columns",
+    "sampleUsage": {
+      "codexSection": "principles",
+      "exampleContext": "Used to visually indicate sections that render tabular data like principles, core data objects, or glossary terms."
+    }
+  },
+  "user": {
+  "file": "user.png",
+  "icon": "👤",
+  "alt": "User icon representing a person, profile, or system participant",
+  "sampleUsage": {
+    "codexSection": "rolesAndResponsibilities",
+    "exampleContext": "Used to visually indicate human roles such as users, managers, developers, or administrators."
+  }
+  },
+  "users": {
+    "file": "users.png",
+    "icon": "👥",
+    "alt": "Users icon representing groups of people, teams, or collaborative roles",
+    "sampleUsage": {
+      "codexSection": "rolesAndResponsibilities",
+      "exampleContext": "Used to indicate sections that describe multiple human roles such as users, managers, developers, and administrators working together in the Skyesoft system."
+    }
+  },
+  "shieldBlue": {
+    "file": "shield.png",
+    "icon": "🛡️",
+    "alt": "Shield icon representing protection, security, and compliance",
+    "sampleUsage": {
+      "codexSection": "compliance",
+      "exampleContext": "Used to indicate sections dealing with data security, privacy policies, or user protection rules."
+    }
+  },
+  "pen": {
+    "file": "pen.png",
+    "icon": "✒️",
+    "alt": "Pen icon representing writing, editing, or amendments",
+    "sampleUsage": {
+      "codexSection": "amendmentProcess",
+      "exampleContext": "Used to visually indicate processes related to constitutional or document amendments within Skyesoft."
+    }
+  },
+  "information": {
+    "file": "information.png",
+    "icon": "ℹ️",
+    "alt": "Information icon representing glossary and help sections",
+    "sampleUsage": {
+      "codexSection": "glossary",
+      "exampleContext": "Used for glossary sections or informational content."
+    }
   }
 }

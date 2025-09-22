@@ -1,3 +1,4 @@
+This was a proposed code:
 <?php
 // Enable full error reporting for debugging in PHP 5.6
 error_reporting(E_ALL);
@@ -22,18 +23,82 @@ $consistent_spacing = 10;
 // --------------------------
 // Load API key securely
 // --------------------------
-// Place Code Here !!!
+$envPath = __DIR__ . '/../.env';
+if (file_exists($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue; // skip comments
+        list($name, $value) = array_map('trim', explode('=', $line, 2));
+        putenv("$name=$value");
+        $_ENV[$name] = $value;
+        $_SERVER[$name] = $value;
+    }
+}
+
+$OPENAI_API_KEY = getenv('OPENAI_API_KEY');
+if (!$OPENAI_API_KEY) {
+    echo "❌ ERROR: Missing OpenAI API Key. Set in .env file.\n";
+    exit(1);
+}
 
 // --------------------------
 // Load codex.json dynamically
 // --------------------------
 $codexPath = __DIR__ . '/../docs/codex/codex.json';
 if (!file_exists($codexPath)) {
-    die("❌ ERROR: Codex file not found at $codexPath\n");
+    logError("❌ ERROR: Codex file not found at $codexPath");
+    die();
 }
+
 $codex = json_decode(file_get_contents($codexPath), true);
 if ($codex === null) {
-    die("❌ ERROR: Failed to decode codex.json\nJSON Error: " . json_last_error_msg() . "\n");
+    logError("❌ ERROR: Failed to decode codex.json\nJSON Error: " . json_last_error_msg());
+    die();
+}
+
+// Initialize modules array to include valid modules only
+$modules = [];
+foreach ($codex as $key => $value) {
+    if ($key === 'codexModules' && is_array($value)) {
+        $modules = array_merge($modules, $value);
+    } elseif (is_array($value) && isset($value['title'])) {
+        // Check if the entry has at least one valid section with format
+        $hasValidSection = false;
+        foreach ($value as $sectionKey => $section) {
+            if ($sectionKey !== 'title' && is_array($section) && isset($section['format']) && in_array($section['format'], ['text', 'list', 'table'])) {
+                $hasValidSection = true;
+                break;
+            }
+        }
+        if ($hasValidSection) {
+            $modules[$key] = $value;
+        }
+    }
+}
+logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup.");
+
+// Validate codex structure
+foreach ($modules as $slug => $module) {
+    if (!is_array($module) || !isset($module['title'])) {
+        logError("❌ ERROR: Invalid codex structure for slug '$slug'. Missing 'title' or invalid module.");
+        die();
+    }
+
+    foreach ($module as $key => $section) {
+        if ($key === 'title') continue; // Always allowed
+
+        // Skip scalar metadata (strings, numbers, bools)
+        if (!is_array($section)) continue;
+
+        // Some objects (like codexMeta.schema) are metadata, not renderable sections → skip if they lack 'format'
+        if (!isset($section['format'])) continue;
+
+        // Enforce format only for renderable sections
+        if (!in_array($section['format'], ['text', 'list', 'table'])) {
+            logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', or 'table'.");
+            die();
+        }
+    }
 }
 
 // --------------------------
@@ -45,43 +110,102 @@ if (file_exists($iconMapPath)) {
     $iconMap = json_decode(file_get_contents($iconMapPath), true);
     if (!is_array($iconMap)) {
         $iconMap = [];
-        echo "⚠️ WARNING: Failed to decode iconMap.json. Using empty icon map.\n";
+        logMessage("⚠️ WARNING: Failed to decode iconMap.json. Using empty icon map.");
     }
 }
 
 // --------------------------
 // Handle CLI or HTTP Input
 // --------------------------
-$rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true);
-
+$input = null;
 if (php_sapi_name() === 'cli' && isset($argv[1])) {
-    $input = json_decode($argv[1], true);
+    $rawInput = $argv[1];
+    logMessage("ℹ️ CLI raw input: $rawInput");
+    $input = json_decode($rawInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logError("❌ ERROR: Failed to parse CLI JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
+        die();
+    }
+} else {
+    $rawInput = file_get_contents('php://input');
+    logMessage("ℹ️ HTTP raw input: $rawInput");
+    $input = json_decode($rawInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logError("❌ ERROR: Failed to parse HTTP JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
+        die();
+    }
 }
 
 if (!is_array($input) || !isset($input['slug'])) {
-    die("❌ ERROR: Invalid input JSON. Must include 'slug'.\n");
+    logError("❌ ERROR: Invalid input JSON. Must include 'slug'.\nParsed input: " . print_r($input, true));
+    die();
 }
 
-$slug      = $input['slug'];
-$type      = isset($input['type']) ? $input['type'] : 'information_sheet';
-$requestor = isset($input['requestor']) ? $input['requestor'] : 'Skyesoft';
+// Sanitize input
+$slug = preg_replace('/[^A-Za-z0-9_-]/', '', $input['slug']);
+$type = isset($input['type']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['type']) : 'information_sheet';
+$requestor = isset($input['requestor']) ? preg_replace('/[^A-Za-z0-9\s]/', '', $input['requestor']) : 'Skyesoft';
+$outputMode = isset($input['outputMode']) ? strtoupper($input['outputMode']) : 'F';
+
+if (!in_array($outputMode, ['I', 'D', 'F'])) {
+    logError("❌ ERROR: Invalid outputMode '$outputMode'. Must be 'I', 'D', or 'F'.");
+    die();
+}
+
+// Convert slug to header-friendly format
+$headerTitle = ucwords(str_replace(['_', '-'], ' ', $slug));
+
+// Final PDF filename
+$filename = 'Information Sheet - ' . $headerTitle . '.pdf';
 
 // --------------------------
 // Validate slug exists
 // --------------------------
-if (!isset($codex[$slug])) {
-    die("❌ ERROR: Slug '$slug' not found in Codex.\n");
+if (!isset($modules[$slug])) {
+    logError("❌ ERROR: Slug '$slug' not found in Codex.");
+    die();
 }
 
-$module = $codex[$slug];
+$module = $modules[$slug];
 $moduleForAI = $module;
 unset($moduleForAI['title']); // Clean for AI enrichment
+
+// =====================================================================
+// Logging Helper
+// =====================================================================
+function logMessage($message) {
+    $logDir = __DIR__ . '/../logs/';
+    if (!is_dir($logDir)) {
+        $oldUmask = umask(0);
+        mkdir($logDir, 0777, true);
+        umask($oldUmask);
+    }
+    $logFile = $logDir . 'report_generator.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+}
+
+function logError($message) {
+    logMessage($message);
+    echo $message . "\n";
+}
 
 // =====================================================================
 // AI Helper: Generate narrative sections dynamically
 // =====================================================================
 function getAIEnrichedBody($slug, $key, $moduleData, $apiKey, $format = 'text') {
+    $cacheDir = __DIR__ . '/../cache/';
+    $cacheFile = $cacheDir . "{$slug}_{$key}.json";
+    
+    // Check cache
+    if (file_exists($cacheFile)) {
+        $cachedContent = json_decode(file_get_contents($cacheFile), true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            logMessage("✅ Loaded cached content for $slug/$key");
+            return $cachedContent;
+        }
+    }
+
     $basePrompt = "You are generating content for the '{$key}' section of an information sheet for the '{$slug}' module. 
 DO NOT create section headers or icons. 
 The display formatting (headers, icons, tables, lists) will be applied dynamically by the system.
@@ -96,14 +220,17 @@ Module Data:
     } elseif ($format === 'table') {
         $prompt = $basePrompt . "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
     } else {
+        logError("⚠️ Unsupported format for AI enrichment: $format");
         return "⚠️ Unsupported format for AI enrichment.";
     }
 
     $ch = curl_init("https://api.openai.com/v1/chat/completions");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Dev only
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Dev only
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        "Content-Type: application/json",
+        "Authorization: Bearer " . $apiKey
+    ));
 
     $payload = json_encode(array(
         "model" => "gpt-4o-mini",
@@ -114,15 +241,13 @@ Module Data:
         "max_tokens" => 1500
     ));
 
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        "Content-Type: application/json",
-        "Authorization: Bearer " . $apiKey
-    ));
     curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 
     $response = curl_exec($ch);
     if ($response === false) {
-        return "⚠️ OpenAI API request failed: " . curl_error($ch);
+        $error = "⚠️ OpenAI API request failed: " . curl_error($ch);
+        logError($error);
+        return $error;
     }
     curl_close($ch);
 
@@ -132,14 +257,34 @@ Module Data:
         if ($format !== 'text') {
             $jsonContent = json_decode($content, true);
             if (json_last_error() === JSON_ERROR_NONE) {
+                // Cache the content
+                if (!is_dir($cacheDir)) {
+                    $oldUmask = umask(0);
+                    mkdir($cacheDir, 0777, true);
+                    umask($oldUmask);
+                }
+                file_put_contents($cacheFile, json_encode($jsonContent));
+                logMessage("✅ Cached AI content for $slug/$key");
                 return $jsonContent;
             } else {
-                return "⚠️ Failed to parse AI JSON response: " . json_last_error_msg();
+                $error = "⚠️ Failed to parse AI JSON response: " . json_last_error_msg();
+                logError($error);
+                return $error;
             }
         }
+        // Cache text content
+        if (!is_dir($cacheDir)) {
+            $oldUmask = umask(0);
+            mkdir($cacheDir, 0777, true);
+            umask($oldUmask);
+        }
+        file_put_contents($cacheFile, json_encode($content));
+        logMessage("✅ Cached AI content for $slug/$key");
         return $content;
     } else {
-        return "⚠️ AI enrichment failed. Response: " . $response;
+        $error = "⚠️ AI enrichment failed. Response: " . $response;
+        logError($error);
+        return $error;
     }
 }
 
@@ -156,7 +301,7 @@ function resolveHeaderIcon($iconKey, $iconMap) {
         if (file_exists($iconPath)) {
             return $iconPath;
         } else {
-            echo "⚠️ Icon file not found: $iconPath\n";
+            logMessage("⚠️ Icon file not found: $iconPath");
             return null;
         }
     }
@@ -165,7 +310,7 @@ function resolveHeaderIcon($iconKey, $iconMap) {
     if (file_exists($fallback)) {
         return $fallback;
     } else {
-        echo "⚠️ Fallback icon not found: $fallback\n";
+        logMessage("⚠️ Fallback icon not found: $fallback");
         return null;
     }
 }
@@ -196,7 +341,7 @@ class ChristyPDF extends TCPDF {
     }
 
     public function Header() {
-        global $iconMap;
+        global $iconMap, $requestor;
         $logo = __DIR__ . '/../assets/images/christyLogo.png';
         if (file_exists($logo)) {
             $this->Image($logo, 15, 13, 38);
@@ -218,7 +363,7 @@ class ChristyPDF extends TCPDF {
         date_default_timezone_set('America/Phoenix');
         $this->SetFont('helvetica', '', 9);
         $this->SetX(55);
-        $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by Skyesoft™', 0, 1, 'L');
+        $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by ' . $requestor, 0, 1, 'L');
 
         $this->Ln(2);
         $this->SetDrawColor(0, 0, 0);
@@ -282,16 +427,18 @@ class ChristyPDF extends TCPDF {
         }
         $this->Ln($maxh);
     }
-
+    // Render a section based on its format
     public function renderSection($key, $section, $iconMap) {
         if (!isset($section['format'])) return;
 
         $this->currentSectionTitle = formatHeaderTitle($key);
 
-        if ($this->GetY() + 20 > $this->PageBreakTrigger) { // Check if section header would fit
+        // Ensure section header fits
+        if ($this->GetY() + 20 > $this->PageBreakTrigger) {
             $this->AddPage();
         }
 
+        // Section icon
         $iconKey = isset($section['icon']) ? $section['icon'] : null;
         $iconFile = resolveHeaderIcon($iconKey, $iconMap);
 
@@ -304,6 +451,7 @@ class ChristyPDF extends TCPDF {
             $startX += 10;
         }
 
+        // Section title
         $this->SetXY($startX, $startY);
         $this->SetFont('helvetica', 'B', 14);
         $this->Cell(0, 8, $this->currentSectionTitle, 0, 1, 'L');
@@ -315,6 +463,7 @@ class ChristyPDF extends TCPDF {
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('helvetica', '', 11);
 
+        // Handle section content
         if ($section['format'] === 'text' && isset($section['text'])) {
             $this->MultiCell(0, 6, $section['text']);
         } elseif ($section['format'] === 'list' && isset($section['items'])) {
@@ -324,18 +473,27 @@ class ChristyPDF extends TCPDF {
         } elseif ($section['format'] === 'table' && !empty($section['items']) && isset($section['items'][0])) {
             $this->isTableSection = true;
             $this->SetCellPadding(1);
+
             $headers = array_keys($section['items'][0]);
             $numColumns = count($headers);
             $pageWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
-            if ($numColumns == 2 && $key === 'glossary') {
-                $colWidths = [$pageWidth * 0.25, $pageWidth * 0.75]; // Adjusted for glossary
+
+            // Dynamic widths: prefer schema colWidths if defined
+            if (isset($section['colWidths']) && is_array($section['colWidths'])) {
+                $colWidths = [];
+                foreach ($section['colWidths'] as $w) {
+                    $colWidths[] = $pageWidth * $w; // treat as fractional percentages
+                }
+            } elseif ($numColumns === 2) {
+                // Smart default for 2-column tables (glossary, roles, etc.)
+                $colWidths = [$pageWidth * 0.3, $pageWidth * 0.7];
             } else {
+                // Evenly distribute by default
                 $colWidth = $pageWidth / $numColumns;
                 $colWidths = array_fill(0, $numColumns, $colWidth);
             }
 
             $this->drawTableHeader($headers, $colWidths);
-
             foreach ($section['items'] as $row) {
                 $this->drawTableRow($row, $headers, $colWidths);
             }
@@ -377,20 +535,35 @@ uasort($sections, function($a, $b) {
     return (isset($a['priority']) ? $a['priority'] : 999) - (isset($b['priority']) ? $b['priority'] : 999);
 });
 
-// Enrich blank sections with AI
+// Enrich blank sections with AI (dynamic, no hardcoding)
 foreach ($sections as $key => &$section) {
-    $format = $section['format'];
-    if ($key === 'glossary') {
-        $section['format'] = 'table'; // Force table for glossary
-    }
+    // Skip if section doesn't declare a format
+    if (!isset($section['format'])) continue;
 
-    if ($format === 'text' && !isset($section['text'])) {
-        $section['text'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'text');
-    } elseif ($format === 'list' && empty($section['items'])) {
-        $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'list');
-    } elseif ($format === 'table' && empty($section['items'])) {
-        $promptType = ($key === 'glossary') ? 'table' : 'table'; // Same, but for glossary specific prompt if needed
-        $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'table');
+    $format = $section['format'];
+
+    switch ($format) {
+        case 'text':
+            if (empty($section['text'])) {
+                $section['text'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'text');
+            }
+            break;
+
+        case 'list':
+            if (empty($section['items'])) {
+                $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'list');
+            }
+            break;
+
+        case 'table':
+            if (empty($section['items'])) {
+                $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'table');
+            }
+            break;
+
+        default:
+            logMessage("⚠️ Skipping unsupported format '$format' in section '$key'.");
+            break;
     }
 }
 
@@ -414,17 +587,20 @@ if (!is_dir($outputDir)) {
     $result = mkdir($outputDir, 0777, true);
     umask($oldUmask);
     if (!$result) {
-        die("❌ ERROR: Failed to create directory $outputDir\n");
+        logError("❌ ERROR: Failed to create directory $outputDir");
+        die();
     }
 }
 
-$titleSanitized = preg_replace('/[^A-Za-z0-9_\-]/', '_', $titleText);
+$titleSanitized = preg_replace('/[^A-Za-z0-9_-]/', '_', $titleText);
 $outputFile = $outputDir . "Information_Sheet_" . $titleSanitized . ".pdf";
 
-$pdf->Output($outputFile, "F");
+$pdf->Output($outputFile, $outputMode);
 
-if (file_exists($outputFile)) {
+if ($outputMode === 'F' && file_exists($outputFile)) {
+    logMessage("✅ PDF created: " . $outputFile);
     echo "✅ PDF created: " . $outputFile . "\n";
-} else {
+} elseif ($outputMode === 'F') {
+    logError("❌ ERROR: PDF generation failed. File not found after output.");
     echo "❌ ERROR: PDF generation failed. File not found after output.\n";
 }
