@@ -61,3 +61,4 @@ composer.lock
 # Debug logs exception
 assets/logs/*
 \!assets/logs/.gitkeep
+.netlify/
