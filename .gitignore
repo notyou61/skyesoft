@@ -63,3 +63,4 @@ assets/logs/*
 \!assets/logs/.gitkeep
 .netlify/
 .netlify/
+scripts/autoComment.js
