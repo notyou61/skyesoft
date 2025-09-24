@@ -1,4 +1,3 @@
-This was a proposed code:
 <?php
 // Enable full error reporting for debugging in PHP 5.6
 error_reporting(E_ALL);
@@ -401,48 +400,114 @@ class ChristyPDF extends TCPDF {
         return false; // Prevent default page break behavior
     }
 
-    protected function drawTableHeader($headers, $colWidths) {
-        $this->SetFillColor(99, 124, 192); // Pantone 637C blue
+    // =====================================================================
+    // Draw a table header (codex-driven styling)
+    // =====================================================================
+    protected function drawTableHeader($headers, $colWidths, $styling = []) {
+        // Always enforce black background + white text for table headers
+        $this->SetFillColor(0, 0, 0);
+        $this->SetTextColor(255, 255, 255);
+        $this->SetFont('helvetica', 'B', 11);
+
         foreach ($headers as $i => $header) {
             $this->Cell($colWidths[$i], 8, ucfirst($header), 1, 0, 'C', true);
         }
         $this->Ln();
+
+        // Reset back to body styling
+        $this->SetTextColor(0, 0, 0);
+        $this->SetFont('helvetica', '', 11);
     }
+
 
     protected function drawTableRow($row, $headers, $colWidths) {
         $maxh = 0;
-        foreach ($headers as $i => $header) {
-            $h = $this->getStringHeight($colWidths[$i], $row[$header], true, true, '', 1);
-            if ($h > $maxh) $maxh = $h;
-        }
-        if ($maxh < 8) $maxh = 8;
 
+        // Calculate maximum row height
+        foreach ($headers as $i => $header) {
+            $cellText = isset($row[$header]) ? $row[$header] : '';
+            // FIX: use null instead of false for $cell param
+            $h = $this->getStringHeight($colWidths[$i], $cellText, true, true, null, 'L');
+            if ($h > $maxh) {
+                $maxh = $h;
+            }
+        }
+
+        if ($maxh < 8) {
+            $maxh = 8; // minimum row height
+        }
+
+        // Handle page break if row would overflow
         if ($this->GetY() + $maxh > $this->PageBreakTrigger) {
             $this->AcceptPageBreak();
             $this->drawTableHeader($headers, $colWidths);
         }
 
+        // Render each cell in the row
         foreach ($headers as $i => $header) {
-            $this->MultiCell($colWidths[$i], $maxh, $row[$header], 1, 'L', false, 0, '', '', true, 0, false, true, 0, 'M');
+            $cellText = isset($row[$header]) ? $row[$header] : '';
+            $this->MultiCell(
+                $colWidths[$i],   // width
+                $maxh,            // height
+                $cellText,        // text
+                1,                // border
+                'L',              // align
+                false,            // fill
+                0,                // ln (continue on same line)
+                null,             // x
+                null,             // y
+                true,             // reseth
+                0,                // stretch
+                false,            // ishtml
+                true,             // autopadding
+                0,                // maxh
+                'M'               // valign
+            );
         }
+
         $this->Ln($maxh);
     }
-    // Render a section based on its format
+    // =====================================================================
+    // Render a section based on its format (codex-driven styling)
+    // =====================================================================
+    protected $isFirstSection = true;
+
     public function renderSection($key, $section, $iconMap) {
         if (!isset($section['format'])) return;
 
+        global $codex;
+        $styling = $codex['documentStandards']['styling']['items'] ?? [];
+
+        // Store/restore icon state across continued sections
+        static $lastIcons = [];
+
         $this->currentSectionTitle = formatHeaderTitle($key);
+
+        // Only add spacing if not the very first section
+        if ($this->isFirstSection) {
+            $this->isFirstSection = false;
+        } else {
+            $this->Ln($GLOBALS['consistent_spacing']);
+        }
 
         // Ensure section header fits
         if ($this->GetY() + 20 > $this->PageBreakTrigger) {
             $this->AddPage();
+
+            // If continued, append and reuse icon
+            $this->currentSectionTitle .= " – Continued";
+            if (isset($lastIcons[$key])) {
+                $section['icon'] = $lastIcons[$key];
+            }
         }
 
         // Section icon
         $iconKey = isset($section['icon']) ? $section['icon'] : null;
         $iconFile = resolveHeaderIcon($iconKey, $iconMap);
+        if ($iconKey) {
+            $lastIcons[$key] = $iconKey; // Save for reuse
+        }
 
-        $this->Ln($GLOBALS['consistent_spacing']);
         $startY = $this->GetY();
         $startX = 20;
 
@@ -451,15 +516,18 @@ class ChristyPDF extends TCPDF {
             $startX += 10;
         }
 
-        // Section title
+        // Section title (plain text, no background fill)
         $this->SetXY($startX, $startY);
         $this->SetFont('helvetica', 'B', 14);
-        $this->Cell(0, 8, $this->currentSectionTitle, 0, 1, 'L');
+        $this->SetTextColor(0, 0, 0);
+        $this->Cell(0, 8, $this->currentSectionTitle, 0, 1, 'L', false);
 
+        // Divider line under section header
         $this->SetDrawColor(200, 200, 200);
         $this->Line(20, $this->GetY(), 190, $this->GetY());
         $this->Ln(4);
 
+        // Reset to body styling
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('helvetica', '', 11);
 
@@ -485,7 +553,7 @@ class ChristyPDF extends TCPDF {
                     $colWidths[] = $pageWidth * $w; // treat as fractional percentages
                 }
             } elseif ($numColumns === 2) {
-                // Smart default for 2-column tables (glossary, roles, etc.)
+                // Smart default for 2-column tables
                 $colWidths = [$pageWidth * 0.3, $pageWidth * 0.7];
             } else {
                 // Evenly distribute by default
@@ -493,7 +561,7 @@ class ChristyPDF extends TCPDF {
                 $colWidths = array_fill(0, $numColumns, $colWidth);
             }
 
-            $this->drawTableHeader($headers, $colWidths);
+            $this->drawTableHeader($headers, $colWidths, $styling);
             foreach ($section['items'] as $row) {
                 $this->drawTableRow($row, $headers, $colWidths);
             }
@@ -503,6 +571,7 @@ class ChristyPDF extends TCPDF {
 
         $this->Ln($GLOBALS['consistent_spacing']);
     }
+
 }
 
 // =====================================================================
@@ -518,14 +587,21 @@ $pdf->SetAutoPageBreak(true, 25);
 
 $iconKey = null;
 $titleText = $slug;
-if (isset($module['title']) && strpos($module['title'], ' ') !== false) {
+
+if (isset($module['title'])) {
     $parts = explode(' ', $module['title'], 2);
-    $iconKey = $parts[0];
-    $titleText = $parts[1];
-} elseif (isset($module['title'])) {
-    $titleText = $module['title'];
+    if (count($parts) === 2) {
+        $iconKey = $parts[0];
+        $titleText = $parts[1];
+    } else {
+        $titleText = $module['title'];
+    }
 }
-$pdf->setReportTitle($titleText, $iconKey);
+
+// Normalize header/title text → “Skyesoft Constitution”
+$cleanTitle = ucwords(trim(str_replace(['_', '-'], ' ', $titleText)));
+
+$pdf->setReportTitle($cleanTitle, $iconKey);
 
 $pdf->AddPage();
 
@@ -581,25 +657,40 @@ if ($pdf->GetY() < 45) {
 // =====================================================================
 // Save and Output
 // =====================================================================
-$outputDir = __DIR__ . '/../docs/reports/';
-if (!is_dir($outputDir)) {
+$baseDir = ($type === 'information_sheet')
+    ? __DIR__ . '/../docs/sheets/'
+    : __DIR__ . '/../docs/reports/';
+
+// Ensure directory exists
+if (!is_dir($baseDir)) {
     $oldUmask = umask(0);
-    $result = mkdir($outputDir, 0777, true);
+    $result = mkdir($baseDir, 0777, true);
     umask($oldUmask);
     if (!$result) {
-        logError("❌ ERROR: Failed to create directory $outputDir");
+        logError("❌ ERROR: Failed to create directory $baseDir");
         die();
     }
 }
 
-$titleSanitized = preg_replace('/[^A-Za-z0-9_-]/', '_', $titleText);
-$outputFile = $outputDir . "Information_Sheet_" . $titleSanitized . ".pdf";
+// Set proper file name
+if ($type === 'information_sheet') {
+    $outputFile = $baseDir . "Information Sheet - " . $titleText . ".pdf";
+} else {
+    $outputFile = $baseDir . ucfirst($type) . " - " . $titleText . ".pdf";
+}
 
+// Generate PDF
 $pdf->Output($outputFile, $outputMode);
 
+// Confirmation remark
 if ($outputMode === 'F' && file_exists($outputFile)) {
-    logMessage("✅ PDF created: " . $outputFile);
-    echo "✅ PDF created: " . $outputFile . "\n";
+    if ($type === 'information_sheet') {
+        logMessage("✅ Information Sheet created: " . $outputFile);
+        echo "✅ Information Sheet created: " . $outputFile . "\n";
+    } else {
+        logMessage("✅ Report created: " . $outputFile);
+        echo "✅ Report created: " . $outputFile . "\n";
+    }
 } elseif ($outputMode === 'F') {
     logError("❌ ERROR: PDF generation failed. File not found after output.");
     echo "❌ ERROR: PDF generation failed. File not found after output.\n";

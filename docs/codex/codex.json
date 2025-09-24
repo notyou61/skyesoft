@@ -343,207 +343,231 @@
       }
     }
   },
-"skyesoftConstitution": {
-  "title": "scroll Skyesoft Constitution",
-  "introduction": {
-    "icon": "document",
-    "format": "text",
-    "priority": 1,
-    "text": "The Skyesoft Constitution defines the foundational rules for managing business operations through structured data and guided workflows. It ensures that entities, locations, contacts, and orders are managed consistently, aligning people and processes under a unified governance framework."
-  },
-  "principles": {
-    "icon": "scales",
-    "format": "table",
-    "priority": 2,
-    "items": [
-      {
-        "Principle": "Transparency",
-        "Description": "Decisions and processes must be open and explainable to all stakeholders.",
-        "Example": "Audit logs display decision trails for all permit approvals."
-      },
-      {
-        "Principle": "Consistency",
-        "Description": "Data and workflows behave the same way across all modules and departments.",
-        "Example": "Standardized forms are used across both Service and Financial Control modules."
-      },
-      {
-        "Principle": "Accountability",
-        "Description": "Actions by humans or AI must be traceable, with clear ownership.",
-        "Example": "Each order update is tagged with the user or AI responsible."
-      },
-      {
-        "Principle": "Adaptability",
-        "Description": "Continuous learning and improvement are built into every process.",
-        "Example": "Workflows auto-adjust based on performance metrics and user feedback."
-      }
-    ]
-  },
-  "guidingFramework": {
-    "icon": "compass",
-    "format": "table",
-    "priority": 3,
-    "items": [
-      {
-        "Principle": "Be Proactive",
-        "Application": "Skyesoft surfaces real-time alerts and empowers teams to address potential issues before they escalate."
-      },
-      {
-        "Principle": "Begin with the End in Mind",
-        "Application": "Workflows are designed with a clear goal, ensuring every task contributes to meaningful outcomes."
-      },
-      {
-        "Principle": "Put First Things First",
-        "Application": "Prioritization rules guide queues and dashboards, ensuring the most important tasks come first."
-      },
-      {
-        "Principle": "Think Win-Win",
-        "Application": "Processes foster balanced value for clients, vendors, and internal teams through mutual benefit."
-      },
-      {
-        "Principle": "Seek First to Understand",
-        "Application": "Forms and AI-driven prompts collect context before taking action, reducing errors and misunderstandings."
-      },
-      {
-        "Principle": "Synergize",
-        "Application": "Modules like Permit Management, Service, and Financial Control work together seamlessly without silos."
-      },
-      {
-        "Principle": "Sharpen the Saw",
-        "Application": "Continuous updates and training keep the platform and its users aligned and improving over time."
-      }
-    ]
-  },
-  "coreDataObjects": {
-    "icon": "database",
-    "format": "table",
-    "priority": 4,
-    "items": [
-      {
-        "Object": "Entity",
-        "Description": "Companies, jurisdictions, clients, or vendors represented within Skyesoft.",
-        "Example": "Christy Signs, City of Phoenix, Habit Burger."
-      },
-      {
-        "Object": "Location",
-        "Description": "Physical or virtual places linked to entities where operations occur.",
-        "Example": "Christy Signs main office at 3145 N 33rd Ave."
-      },
-      {
-        "Object": "Contact",
-        "Description": "Individuals associated with entities and locations, stored with normalized details.",
-        "Example": "Jim Flanigan, Plant Manager at ALC Group."
-      },
-      {
-        "Object": "Order",
-        "Description": "Tracked jobs, projects, or service tickets representing deliverables and workflows.",
-        "Example": "Work order #26216 for Bank of America signage."
-      }
-    ]
-  },
-  "sourcesOfTruth": {
-    "icon": "book",
-    "format": "table",
-    "priority": 5,
-    "items": [
-      {
-        "Source": "Operational Stream",
-        "Description": "Provides real-time context such as time, events, and active tasks.",
-        "Example": "Live feed of active installations and permit reviews."
-      },
-      {
-        "Source": "Knowledge Base",
-        "Description": "Stores workflows, schemas, and rules that define how modules behave.",
-        "Example": "Permit Management rules for submission deadlines and SLA tracking."
-      },
-      {
-        "Source": "History Archive",
-        "Description": "Maintains a chronological log of actions, decisions, and updates.",
-        "Example": "Historical records of order changes and approvals."
-      },
-      {
-        "Source": "Identity Registry",
-        "Description": "Tracks roles, permissions, and relationships between entities and locations.",
-        "Example": "Mapping of Christy Signs managers to their assigned projects."
-      }
-    ]
-  },
-  "rolesAndResponsibilities": {
-    "icon": "users",
-    "format": "table",
-    "priority": 6,
-    "items": [
-      {
-        "Role": "User",
-        "Responsibility": "Accurately input and manage data while following defined workflows."
-      },
-      {
-        "Role": "Manager",
-        "Responsibility": "Oversee operations, resolve exceptions, and optimize team performance."
-      },
-      {
-        "Role": "Developer",
-        "Responsibility": "Maintain modules and integrations in alignment with constitutional rules."
-      },
-      {
-        "Role": "Administrator",
-        "Responsibility": "Govern platform access and steward constitutional amendments."
-      }
-    ]
-  },
-  "compliance": {
-    "icon": "shield",
-    "format": "list",
-    "priority": 7,
-    "items": [
-      "All data must meet privacy and security standards such as GDPR or SOC 2.",
-      "AI actions must be explainable, traceable, and overrideable by human users.",
-      "Changes to workflows require documented approval and version history."
-    ]
-  },
-  "amendmentProcess": {
-    "icon": "pen",
-    "format": "list",
-    "priority": 8,
-    "items": [
-      "Propose amendments through formal submissions within Skyesoft.",
-      "Review collaboratively with stakeholders within 30 days of submission.",
-      "Escalate unresolved proposals to a governance board for a final decision.",
-      "Approved updates are versioned and communicated via system bulletins."
-    ]
-  },
-  "glossary": {
-    "icon": "information",
-    "format": "table",
-    "priority": 9,
-    "items": [
-      { "Term": "Entity", "Definition": "A company, jurisdiction, client, or vendor represented within the Skyesoft system." },
-      { "Term": "Operational Stream", "Definition": "A live feed of current activity, enabling real-time decisions." },
-      { "Term": "Identity Registry", "Definition": "System component managing user roles, permissions, and relationships." }
-    ]
-  }
-},
-  "informationSheets": {
-    "title": "bookBlue Information Sheet Suite",
+  "codexSheets": {
+    "title": "📑 Skyesoft Sheet Families",
     "purpose": {
       "icon": "target",
       "format": "text",
-      "text": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users."
+      "text": "Defines structured document types used across Skyesoft — including information sheets, safety data sheets, training sheets, and others. Each sheet family has its own purpose, rules, and scaling model."
     },
-    "useCases": {
-      "icon": "lightbulb",
-      "format": "list",
+    "informationSheets": {
+      "title": "bookBlue Information Sheet Suite",
+      "purpose": {
+        "icon": "target",
+        "format": "text",
+        "text": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users."
+      },
+      "useCases": {
+        "icon": "lightbulb",
+        "format": "list",
+        "items": [
+          "Developer references for module specifications",
+          "AI explanations of Codex content to users",
+          "Validation of workflows against constitutional standards"
+        ]
+      },
+      "rules": {
+        "icon": "ruler",
+        "format": "list",
+        "items": [
+          "Each page body must begin with a section header.",
+          "If content continues onto a new page, the section header is repeated with '– Continued' appended."
+        ]
+      }
+    },
+    "safetyDataSheets": {
+      "title": "shield Safety Data Sheets",
+      "purpose": {
+        "icon": "target",
+        "format": "text",
+        "text": "Document material safety and compliance information for chemicals, electrical components, and signage materials used in operations."
+      }
+    },
+    "trainingSheets": {
+      "title": "graduationCap Training Sheets",
+      "purpose": {
+        "icon": "target",
+        "format": "text",
+        "text": "Provide role-based training guides that outline step-by-step instructions and best practices."
+      }
+    }
+  },
+  "skyesoftConstitution": {
+    "title": "scroll Skyesoft Constitution",
+    "introduction": {
+      "icon": "document",
+      "format": "text",
+      "priority": 1,
+      "text": "The Skyesoft Constitution defines the foundational rules for managing business operations through structured data and guided workflows. It ensures that entities, locations, contacts, and orders are managed consistently, aligning people and processes under a unified governance framework."
+    },
+    "principles": {
+      "icon": "scales",
+      "format": "table",
+      "priority": 2,
       "items": [
-        "Developer references for module specifications",
-        "AI explanations of Codex content to users",
-        "Validation of workflows against constitutional standards"
+        {
+          "Principle": "Transparency",
+          "Description": "Decisions and processes must be open and explainable to all stakeholders.",
+          "Example": "Audit logs display decision trails for all permit approvals."
+        },
+        {
+          "Principle": "Consistency",
+          "Description": "Data and workflows behave the same way across all modules and departments.",
+          "Example": "Standardized forms are used across both Service and Financial Control modules."
+        },
+        {
+          "Principle": "Accountability",
+          "Description": "Actions by humans or AI must be traceable, with clear ownership.",
+          "Example": "Each order update is tagged with the user or AI responsible."
+        },
+        {
+          "Principle": "Adaptability",
+          "Description": "Continuous learning and improvement are built into every process.",
+          "Example": "Workflows auto-adjust based on performance metrics and user feedback."
+        }
       ]
     },
-    "rules": {
-      "icon": "ruler",
-      "format": "list",
+    "guidingFramework": {
+      "icon": "compass",
+      "format": "table",
+      "priority": 3,
       "items": [
-        "Each page body must begin with a section header.",
-        "If content continues onto a new page, the section header is repeated with '– Continued' appended."
+        {
+          "Principle": "Be Proactive",
+          "Application": "Skyesoft surfaces real-time alerts and empowers teams to address potential issues before they escalate."
+        },
+        {
+          "Principle": "Begin with the End in Mind",
+          "Application": "Workflows are designed with a clear goal, ensuring every task contributes to meaningful outcomes."
+        },
+        {
+          "Principle": "Put First Things First",
+          "Application": "Prioritization rules guide queues and dashboards, ensuring the most important tasks come first."
+        },
+        {
+          "Principle": "Think Win-Win",
+          "Application": "Processes foster balanced value for clients, vendors, and internal teams through mutual benefit."
+        },
+        {
+          "Principle": "Seek First to Understand",
+          "Application": "Forms and AI-driven prompts collect context before taking action, reducing errors and misunderstandings."
+        },
+        {
+          "Principle": "Synergize",
+          "Application": "Modules like Permit Management, Service, and Financial Control work together seamlessly without silos."
+        },
+        {
+          "Principle": "Sharpen the Saw",
+          "Application": "Continuous updates and training keep the platform and its users aligned and improving over time."
+        }
+      ]
+    },
+    "coreDataObjects": {
+      "icon": "database",
+      "format": "table",
+      "priority": 4,
+      "items": [
+        {
+          "Object": "Entity",
+          "Description": "Companies, jurisdictions, clients, or vendors represented within Skyesoft.",
+          "Example": "Christy Signs, City of Phoenix, Habit Burger."
+        },
+        {
+          "Object": "Location",
+          "Description": "Physical or virtual places linked to entities where operations occur.",
+          "Example": "Christy Signs main office at 3145 N 33rd Ave."
+        },
+        {
+          "Object": "Contact",
+          "Description": "Individuals associated with entities and locations, stored with normalized details.",
+          "Example": "Jim Flanigan, Plant Manager at ALC Group."
+        },
+        {
+          "Object": "Order",
+          "Description": "Tracked jobs, projects, or service tickets representing deliverables and workflows.",
+          "Example": "Work order #26216 for Bank of America signage."
+        }
+      ]
+    },
+    "sourcesOfTruth": {
+      "icon": "book",
+      "format": "table",
+      "priority": 5,
+      "items": [
+        {
+          "Source": "Operational Stream",
+          "Description": "Provides real-time context such as time, events, and active tasks.",
+          "Example": "Live feed of active installations and permit reviews."
+        },
+        {
+          "Source": "Knowledge Base",
+          "Description": "Stores workflows, schemas, and rules that define how modules behave.",
+          "Example": "Permit Management rules for submission deadlines and SLA tracking."
+        },
+        {
+          "Source": "History Archive",
+          "Description": "Maintains a chronological log of actions, decisions, and updates.",
+          "Example": "Historical records of order changes and approvals."
+        },
+        {
+          "Source": "Identity Registry",
+          "Description": "Tracks roles, permissions, and relationships between entities and locations.",
+          "Example": "Mapping of Christy Signs managers to their assigned projects."
+        }
+      ]
+    },
+    "rolesAndResponsibilities": {
+      "icon": "users",
+      "format": "table",
+      "priority": 6,
+      "items": [
+        {
+          "Role": "User",
+          "Responsibility": "Accurately input and manage data while following defined workflows."
+        },
+        {
+          "Role": "Manager",
+          "Responsibility": "Oversee operations, resolve exceptions, and optimize team performance."
+        },
+        {
+          "Role": "Developer",
+          "Responsibility": "Maintain modules and integrations in alignment with constitutional rules."
+        },
+        {
+          "Role": "Administrator",
+          "Responsibility": "Govern platform access and steward constitutional amendments."
+        }
+      ]
+    },
+    "compliance": {
+      "icon": "shield",
+      "format": "list",
+      "priority": 7,
+      "items": [
+        "All data must meet privacy and security standards such as GDPR or SOC 2.",
+        "AI actions must be explainable, traceable, and overrideable by human users.",
+        "Changes to workflows require documented approval and version history."
+      ]
+    },
+    "amendmentProcess": {
+      "icon": "pen",
+      "format": "list",
+      "priority": 8,
+      "items": [
+        "Propose amendments through formal submissions within Skyesoft.",
+        "Review collaboratively with stakeholders within 30 days of submission.",
+        "Escalate unresolved proposals to a governance board for a final decision.",
+        "Approved updates are versioned and communicated via system bulletins."
+      ]
+    },
+    "glossary": {
+      "icon": "information",
+      "format": "table",
+      "priority": 9,
+      "items": [
+        { "Term": "Entity", "Definition": "A company, jurisdiction, client, or vendor represented within the Skyesoft system." },
+        { "Term": "Operational Stream", "Definition": "A live feed of current activity, enabling real-time decisions." },
+        { "Term": "Identity Registry", "Definition": "System component managing user roles, permissions, and relationships." }
       ]
     }
   },
@@ -586,8 +610,10 @@
       "icon": "palette",
       "format": "list",
       "items": [
-        "Use consistent fonts, margins, and spacing across all documents",
-        "Apply Christy Signs branding colors (e.g., Pantone #637C blue)"
+        "Use Helvetica font across all documents",
+        "Section headers: black background with white text",
+        "Body text: black on white background",
+        "Margins and spacing must remain consistent"
       ]
     },
     "metadata": {
