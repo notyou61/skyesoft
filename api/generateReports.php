@@ -492,32 +492,40 @@ class ChristyPDF extends TCPDF {
     // =====================================================================
     // Render a section based on its format (codex-driven styling)
     // =====================================================================
-    public function renderSection($key, $section, $iconMap) {
+    public function renderSection($key, $section, $iconMap, &$sections) {
         if (!isset($section['format'])) return;
 
         global $codex;
-        $styling = $codex['documentStandards']['styling']['items'] ?? [];
+        $styling = isset($codex['documentStandards']['styling']['items']) ? $codex['documentStandards']['styling']['items'] : [];
 
         $this->currentSectionTitle = formatHeaderTitle($key);
         $this->currentSectionKey   = $key;
         $this->currentSectionIcon  = isset($section['icon']) ? $section['icon'] : null;
 
-        // Only add spacing if not the very first section
-        if ($this->isFirstSection) {
-            $this->isFirstSection = false;
+        // Unified spacing value (used everywhere)
+        $sectionSpacing = 4;
+
+        // Add spacing only if not the first section and more sections remain
+        $sectionKeys = array_keys($sections);
+        $currentIndex = array_search($key, $sectionKeys);
+        if ($currentIndex !== false && $currentIndex > 0) { // Not first section
+            $sectionsRemaining = array_slice($sectionKeys, $currentIndex + 1);
+            if (!empty($sectionsRemaining)) {
+                $this->Ln($sectionSpacing);
+            }
         } else {
-            $this->Ln($GLOBALS['consistent_spacing']);
+            $this->isFirstSection = false; // Reset if first section
         }
 
-        // If the header wouldn’t fit at page bottom, move to next page—BUT do NOT mark as "Continued" here.
+        // If the header wouldn’t fit at page bottom, move to next page
         if ($this->GetY() + 20 > $this->PageBreakTrigger) {
             $this->AddPage();
         }
 
         // Section icon + title (plain, no background)
         $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
-        $startY = $this->GetY();
-        $startX = 20;
+        $startY   = $this->GetY();
+        $startX   = 20;
 
         if ($iconFile) {
             $this->Image($iconFile, $startX, $startY, 8);
@@ -532,7 +540,6 @@ class ChristyPDF extends TCPDF {
         // Divider line under section header
         $this->SetDrawColor(200, 200, 200);
         $this->Line(20, $this->GetY(), 190, $this->GetY());
-        $this->Ln(4);
 
         // Reset to body styling
         $this->SetTextColor(0, 0, 0);
@@ -549,9 +556,9 @@ class ChristyPDF extends TCPDF {
             $this->isTableSection = true;
             $this->SetCellPadding(1);
 
-            $headers = array_keys($section['items'][0]);
+            $headers    = array_keys($section['items'][0]);
             $numColumns = count($headers);
-            $pageWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $pageWidth  = $this->getPageWidth() - $this->lMargin - $this->rMargin;
 
             // Prefer codex colWidths (fractions); else smart defaults
             if (isset($section['colWidths']) && is_array($section['colWidths'])) {
@@ -574,7 +581,7 @@ class ChristyPDF extends TCPDF {
             $this->isTableSection = false;
         }
 
-        $this->Ln($GLOBALS['consistent_spacing']);
+        // No extra spacing at end to prevent double gaps or extra pages
     }
 
 }
@@ -588,7 +595,8 @@ $pdf->SetAuthor('Skyesoft');
 $pdf->SetMargins(20, 45, 20);
 $pdf->SetHeaderMargin(10);
 $pdf->SetFooterMargin(20);
-$pdf->SetAutoPageBreak(true, 25);
+// Use auto page break with a tighter threshold
+$pdf->SetAutoPageBreak(true, 10);
 
 $iconKey = null;
 $titleText = $slug;
@@ -604,12 +612,13 @@ if (isset($module['title'])) {
 }
 
 // Normalize header/title text → “Skyesoft Constitution”
-$cleanTitle = ucwords(trim(str_replace(['_', '-'], ' ', $titleText)));
+$cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
 
 $pdf->setReportTitle($cleanTitle, $iconKey);
 
 $pdf->AddPage();
 
+// Prepare sections for rendering
 $sections = $module;
 unset($sections['title']);
 uasort($sections, function($a, $b) {
@@ -618,7 +627,6 @@ uasort($sections, function($a, $b) {
 
 // Enrich blank sections with AI (dynamic, no hardcoding)
 foreach ($sections as $key => &$section) {
-    // Skip if section doesn't declare a format
     if (!isset($section['format'])) continue;
 
     $format = $section['format'];
@@ -650,14 +658,16 @@ foreach ($sections as $key => &$section) {
 
 // Render all sections
 foreach ($sections as $key => $section) {
-    $pdf->renderSection($key, $section, $iconMap);
+    $pdf->renderSection($key, $section, $iconMap, $sections);
 }
 
-// Trim trailing blank pages (no content beyond header band)
-// Keep at least one page.
-while ($pdf->getNumPages() > 1) {
+// Trim trailing blank pages with stricter check
+while ($pdf->getNumPages() > 3) {
     $pdf->setPage($pdf->getNumPages());
-    if ($pdf->GetY() <= ($pdf->headerHeight + 6)) {
+    $margins = $pdf->getMargins();
+    $pageHeight = $pdf->getPageHeight() - $margins['top'] - $margins['bottom'] - $pdf->getFooterMargin();
+    $contentHeight = $pdf->GetY() - $margins['top'];
+    if ($contentHeight < 5 && $pdf->getNumPages() > 3) { // Tighter threshold
         $pdf->deletePage($pdf->getNumPages());
     } else {
         break;
