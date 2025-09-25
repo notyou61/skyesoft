@@ -151,12 +151,6 @@ if (!in_array($outputMode, ['I', 'D', 'F'])) {
     die();
 }
 
-// Convert slug to header-friendly format
-$headerTitle = ucwords(str_replace(['_', '-'], ' ', $slug));
-
-// Final PDF filename
-$filename = 'Information Sheet - ' . $headerTitle . '.pdf';
-
 // --------------------------
 // Validate slug exists
 // --------------------------
@@ -325,6 +319,9 @@ class ChristyPDF extends TCPDF {
     public $reportTitle;
     public $reportIcon;
     public $currentSectionTitle = '';
+    public $currentSectionKey = '';
+    protected $currentSectionIcon = null; // store active icon
+    protected $lastIcons = [];
     private $config;
     public $isTableSection = false;
     public $headerHeight = 35; // Approximate height of header
@@ -388,16 +385,36 @@ class ChristyPDF extends TCPDF {
 
     public function AcceptPageBreak() {
         $this->AddPage();
+
         if (!empty($this->currentSectionTitle) && $this->isTableSection) {
-            $continuedTitle = $this->currentSectionTitle . " – Continued";
+            $startY = $this->GetY();
+            $startX = 20;
+
+            // Draw the section icon on continued pages
+            if ($this->currentSectionIcon) {
+                $iconFile = resolveHeaderIcon($this->currentSectionIcon, $GLOBALS['iconMap']);
+                if ($iconFile) {
+                    $this->Image($iconFile, $startX, $startY, 8);
+                    $startX += 10;
+                }
+            }
+
+            // Inline: bold title + " – " + italic "Continued" (no extra spacing)
+            $this->SetXY($startX, $startY);
             $this->SetFont('helvetica', 'B', 14);
-            $this->Cell(0, 8, $continuedTitle, 0, 1, 'L');
+            $this->Write(8, $this->currentSectionTitle . ' – ');
+            $this->SetFont('helvetica', 'I', 14);
+            $this->Write(8, 'Continued');
+            $this->Ln(8);
+
+            // Divider line and reset for body
             $this->SetDrawColor(200, 200, 200);
             $this->Line(20, $this->GetY(), 190, $this->GetY());
             $this->Ln(4);
             $this->SetFont('helvetica', '', 11);
         }
-        return false; // Prevent default page break behavior
+
+        return false; // prevent default break
     }
 
     // =====================================================================
@@ -472,16 +489,18 @@ class ChristyPDF extends TCPDF {
     // =====================================================================
     protected $isFirstSection = true;
 
+    // =====================================================================
+    // Render a section based on its format (codex-driven styling)
+    // =====================================================================
     public function renderSection($key, $section, $iconMap) {
         if (!isset($section['format'])) return;
 
         global $codex;
         $styling = $codex['documentStandards']['styling']['items'] ?? [];
 
-        // Store/restore icon state across continued sections
-        static $lastIcons = [];
-
         $this->currentSectionTitle = formatHeaderTitle($key);
+        $this->currentSectionKey   = $key;
+        $this->currentSectionIcon  = isset($section['icon']) ? $section['icon'] : null;
 
         // Only add spacing if not the very first section
         if ($this->isFirstSection) {
@@ -490,24 +509,13 @@ class ChristyPDF extends TCPDF {
             $this->Ln($GLOBALS['consistent_spacing']);
         }
 
-        // Ensure section header fits
+        // If the header wouldn’t fit at page bottom, move to next page—BUT do NOT mark as "Continued" here.
         if ($this->GetY() + 20 > $this->PageBreakTrigger) {
             $this->AddPage();
-
-            // If continued, append and reuse icon
-            $this->currentSectionTitle .= " – Continued";
-            if (isset($lastIcons[$key])) {
-                $section['icon'] = $lastIcons[$key];
-            }
         }
 
-        // Section icon
-        $iconKey = isset($section['icon']) ? $section['icon'] : null;
-        $iconFile = resolveHeaderIcon($iconKey, $iconMap);
-        if ($iconKey) {
-            $lastIcons[$key] = $iconKey; // Save for reuse
-        }
-
+        // Section icon + title (plain, no background)
+        $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
         $startY = $this->GetY();
         $startX = 20;
 
@@ -516,7 +524,6 @@ class ChristyPDF extends TCPDF {
             $startX += 10;
         }
 
-        // Section title (plain text, no background fill)
         $this->SetXY($startX, $startY);
         $this->SetFont('helvetica', 'B', 14);
         $this->SetTextColor(0, 0, 0);
@@ -531,7 +538,7 @@ class ChristyPDF extends TCPDF {
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('helvetica', '', 11);
 
-        // Handle section content
+        // Render body by format
         if ($section['format'] === 'text' && isset($section['text'])) {
             $this->MultiCell(0, 6, $section['text']);
         } elseif ($section['format'] === 'list' && isset($section['items'])) {
@@ -546,18 +553,16 @@ class ChristyPDF extends TCPDF {
             $numColumns = count($headers);
             $pageWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
 
-            // Dynamic widths: prefer schema colWidths if defined
+            // Prefer codex colWidths (fractions); else smart defaults
             if (isset($section['colWidths']) && is_array($section['colWidths'])) {
                 $colWidths = [];
                 foreach ($section['colWidths'] as $w) {
-                    $colWidths[] = $pageWidth * $w; // treat as fractional percentages
+                    $colWidths[] = $pageWidth * $w;
                 }
             } elseif ($numColumns === 2) {
-                // Smart default for 2-column tables
                 $colWidths = [$pageWidth * 0.3, $pageWidth * 0.7];
             } else {
-                // Evenly distribute by default
-                $colWidth = $pageWidth / $numColumns;
+                $colWidth  = $pageWidth / $numColumns;
                 $colWidths = array_fill(0, $numColumns, $colWidth);
             }
 
@@ -648,10 +653,15 @@ foreach ($sections as $key => $section) {
     $pdf->renderSection($key, $section, $iconMap);
 }
 
-// Remove last page if blank
-$pdf->setPage($pdf->getNumPages());
-if ($pdf->GetY() < 45) {
-    $pdf->deletePage($pdf->getNumPages());
+// Trim trailing blank pages (no content beyond header band)
+// Keep at least one page.
+while ($pdf->getNumPages() > 1) {
+    $pdf->setPage($pdf->getNumPages());
+    if ($pdf->GetY() <= ($pdf->headerHeight + 6)) {
+        $pdf->deletePage($pdf->getNumPages());
+    } else {
+        break;
+    }
 }
 
 // =====================================================================
@@ -674,9 +684,9 @@ if (!is_dir($baseDir)) {
 
 // Set proper file name
 if ($type === 'information_sheet') {
-    $outputFile = $baseDir . "Information Sheet - " . $titleText . ".pdf";
+    $outputFile = $baseDir . "Information Sheet - " . $cleanTitle . ".pdf";
 } else {
-    $outputFile = $baseDir . ucfirst($type) . " - " . $titleText . ".pdf";
+    $outputFile = $baseDir . ucfirst($type) . " - " . $cleanTitle . ".pdf";
 }
 
 // Generate PDF
@@ -685,11 +695,11 @@ $pdf->Output($outputFile, $outputMode);
 // Confirmation remark
 if ($outputMode === 'F' && file_exists($outputFile)) {
     if ($type === 'information_sheet') {
-        logMessage("✅ Information Sheet created: " . $outputFile);
-        echo "✅ Information Sheet created: " . $outputFile . "\n";
+        logMessage("✅ Information Sheet created for slug '$slug': " . $outputFile);
+        echo "✅ Information Sheet created for slug '$slug': " . $outputFile . "\n";
     } else {
-        logMessage("✅ Report created: " . $outputFile);
-        echo "✅ Report created: " . $outputFile . "\n";
+        logMessage("✅ Report created for slug '$slug': " . $outputFile);
+        echo "✅ Report created for slug '$slug': " . $outputFile . "\n";
     }
 } elseif ($outputMode === 'F') {
     logError("❌ ERROR: PDF generation failed. File not found after output.");
