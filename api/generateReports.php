@@ -3,6 +3,15 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Polyfill for PHP 8.1+ array_is_list() function (PHP 5.6 compatible)
+if (!function_exists('array_is_list')) {
+    function array_is_list($array) {
+        if (!is_array($array)) return false;
+        $keys = array_keys($array);
+        return $keys === array_keys($keys);
+    }
+}
+
 // =====================================================================
 // Skyesoft Dynamic Report Generator v2
 // =====================================================================
@@ -11,10 +20,10 @@ ini_set('display_errors', 1);
 require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
 
 // Configuration
-$config = [
+$config = array(
     'report_subtitle' => 'Skyesoft™ Information Sheet',
     'company_info' => '© Christy Signs / Skyesoft, All Rights Reserved | 3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com'
-];
+);
 
 // Consistent spacing value (in points)
 $consistent_spacing = 10;
@@ -56,7 +65,7 @@ if ($codex === null) {
 }
 
 // Initialize modules array to include valid modules only
-$modules = [];
+$modules = array();
 foreach ($codex as $key => $value) {
     if ($key === 'codexModules' && is_array($value)) {
         $modules = array_merge($modules, $value);
@@ -64,7 +73,7 @@ foreach ($codex as $key => $value) {
         // Check if the entry has at least one valid section with format
         $hasValidSection = false;
         foreach ($value as $sectionKey => $section) {
-            if ($sectionKey !== 'title' && is_array($section) && isset($section['format']) && in_array($section['format'], ['text', 'list', 'table'])) {
+            if ($sectionKey !== 'title' && is_array($section) && isset($section['format']) && in_array($section['format'], array('text', 'list', 'table'))) {
                 $hasValidSection = true;
                 break;
             }
@@ -93,7 +102,7 @@ foreach ($modules as $slug => $module) {
         if (!isset($section['format'])) continue;
 
         // Enforce format only for renderable sections
-        if (!in_array($section['format'], ['text', 'list', 'table'])) {
+        if (!in_array($section['format'], array('text', 'list', 'table'))) {
             logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', or 'table'.");
             die();
         }
@@ -104,11 +113,11 @@ foreach ($modules as $slug => $module) {
 // Load iconMap.json dynamically
 // --------------------------
 $iconMapPath = __DIR__ . '/../assets/data/iconMap.json';
-$iconMap = [];
+$iconMap = array();
 if (file_exists($iconMapPath)) {
     $iconMap = json_decode(file_get_contents($iconMapPath), true);
     if (!is_array($iconMap)) {
-        $iconMap = [];
+        $iconMap = array();
         logMessage("⚠️ WARNING: Failed to decode iconMap.json. Using empty icon map.");
     }
 }
@@ -146,7 +155,7 @@ $type = isset($input['type']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['typ
 $requestor = isset($input['requestor']) ? preg_replace('/[^A-Za-z0-9\s]/', '', $input['requestor']) : 'Skyesoft';
 $outputMode = isset($input['outputMode']) ? strtoupper($input['outputMode']) : 'F';
 
-if (!in_array($outputMode, ['I', 'D', 'F'])) {
+if (!in_array($outputMode, array('I', 'D', 'F'))) {
     logError("❌ ERROR: Invalid outputMode '$outputMode'. Must be 'I', 'D', or 'F'.");
     die();
 }
@@ -190,12 +199,19 @@ function getAIEnrichedBody($slug, $key, $moduleData, $apiKey, $format = 'text') 
     $cacheDir = __DIR__ . '/../cache/';
     $cacheFile = $cacheDir . "{$slug}_{$key}.json";
     
-    // Check cache
+    // Check cache with stricter validation
     if (file_exists($cacheFile)) {
         $cachedContent = json_decode(file_get_contents($cacheFile), true);
         if (json_last_error() === JSON_ERROR_NONE) {
-            logMessage("✅ Loaded cached content for $slug/$key");
-            return $cachedContent;
+            if (($format === 'text' && is_string($cachedContent) && !empty($cachedContent)) ||
+                ($format === 'list' && is_array($cachedContent) && array_is_list($cachedContent) && !empty($cachedContent)) ||
+                ($format === 'table' && is_array($cachedContent) && !empty($cachedContent) && is_array($cachedContent[0]))) {
+                logMessage("✅ Loaded valid cached content for $slug/$key");
+                return $cachedContent;
+            } else {
+                logMessage("⚠️ Invalid or empty cached content for $slug/$key, regenerating");
+                unlink($cacheFile); // Remove invalid cache
+            }
         }
     }
 
@@ -281,255 +297,170 @@ Module Data:
     }
 }
 
-// --------------------------
-// Helper functions
-// --------------------------
-function resolveHeaderIcon($iconKey, $iconMap) {
-    $iconBasePath = __DIR__ . '/../assets/images/icons/';
-    if (!$iconKey) return null;
-
-    if (isset($iconMap[$iconKey])) {
-        $iconName = isset($iconMap[$iconKey]['file']) ? $iconMap[$iconKey]['file'] : $iconMap[$iconKey];
-        $iconPath = $iconBasePath . $iconName;
-        if (file_exists($iconPath)) {
-            return $iconPath;
-        } else {
-            logMessage("⚠️ Icon file not found: $iconPath");
-            return null;
-        }
-    }
-
-    $fallback = $iconBasePath . $iconKey . '.png';
-    if (file_exists($fallback)) {
-        return $fallback;
-    } else {
-        logMessage("⚠️ Fallback icon not found: $fallback");
-        return null;
-    }
-}
-
-function formatHeaderTitle($key) {
-    return ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $key));
-}
-
 // =====================================================================
-// PDF Class
+// PDF Class Extension (ChristyPDF) — header-aligned with generateReports.php
 // =====================================================================
 class ChristyPDF extends TCPDF {
+    // Public so we can adjust from outside if ever needed; 35 matches the working layout
+    public $headerHeight = 35;
+
+    // Report-level state
     public $reportTitle;
-    public $reportIcon;
-    public $currentSectionTitle = '';
-    public $currentSectionKey = '';
-    protected $currentSectionIcon = null; // store active icon
-    protected $lastIcons = [];
-    private $config;
-    public $isTableSection = false;
-    public $headerHeight = 35; // Approximate height of header
+    public $reportIcon; // Use 'reportIcon' (NOT reportIconKey)
+    private $reportIconKey;   // <-- add this line
+
+    // Section-level state
+    public $currentSectionTitle;
+    public $currentSectionKey;
+    public $currentSectionIcon;
+
+    // Other state
+    private $config = array();
+    private $isTableSection = false;
 
     public function __construct($config) {
-        parent::__construct();
+        parent::__construct('P', 'pt', 'A4', true, 'UTF-8', false);
         $this->config = $config;
     }
 
     public function setReportTitle($title, $icon = null) {
-        $this->reportTitle = preg_replace('/[^\x20-\x7E]/', '', (string)$title);
+        // Match the header code that reads $this->reportIcon
+        $this->reportTitle = $title;
         $this->reportIcon  = $icon;
+        $this->reportIconKey = $icon;  // Ensure key is set for resolveHeaderIcon
     }
 
     public function Header() {
         global $iconMap, $requestor;
+
+        // --- Logo on left ---
         $logo = __DIR__ . '/../assets/images/christyLogo.png';
         if (file_exists($logo)) {
-            $this->Image($logo, 15, 13, 38);
+            // Larger proportional logo (25% larger, height auto for proportion)
+            $this->Image($logo, 15, 12, 93.75, 0);
         }
 
+        // --- Title & metadata (right column) ---
         $this->SetFont('helvetica', 'B', 14);
-        $this->SetXY(55, 12);
-        $iconFile = resolveHeaderIcon($this->reportIcon, $iconMap);
+
+        // Move text block further right to avoid logo overlap (adjusted from 100 to 120)
+        $this->SetXY(120, 15);
+
+        // Header icon (larger size)
+        $iconFile = resolveHeaderIcon($this->reportIconKey, $iconMap);
         if ($iconFile) {
-            $this->Image($iconFile, 55, 12, 7);
-            $this->SetX(65);
+            $this->Image($iconFile, $this->GetX(), $this->GetY() - 2, 20); 
+            $this->SetX($this->GetX() + 24); // leave room for the icon
         }
+
+        // Report Title
         $this->Cell(0, 8, $this->reportTitle ?: 'Project Report', 0, 1, 'L');
 
+        // Subtitle
         $this->SetFont('helvetica', 'I', 10);
-        $this->SetX(55);
+        $this->SetX(120);
         $this->Cell(0, 6, $this->config['report_subtitle'], 0, 1, 'L');
 
+        // Date + requestor
         date_default_timezone_set('America/Phoenix');
         $this->SetFont('helvetica', '', 9);
-        $this->SetX(55);
-        $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by ' . $requestor, 0, 1, 'L');
+        $this->SetX(120);
+        $this->Cell(
+            0,
+            6,
+            date('F j, Y, g:i A T') . ' – Created by ' . $requestor,
+            0,
+            1,
+            'L'
+        );
 
+        // Divider line
         $this->Ln(2);
         $this->SetDrawColor(0, 0, 0);
-        $this->Line(15, $this->GetY(), 195, $this->GetY());
-        $this->SetY($this->headerHeight); // Set Y to start body consistently
+        $this->Line(15, $this->GetY(), $this->getPageWidth() - 15, $this->GetY());
+
+        // Ensure consistent body start
+        $this->SetY(80); 
+        $this->headerHeight = $this->GetY();
     }
 
     public function Footer() {
-        $this->SetY(-20);
+        // Draw divider line above footer text (same style as header)
+        $this->SetY(-25); // Position for the line (5pt above text)
         $this->SetDrawColor(0, 0, 0);
-        $this->Line(15, $this->GetY(), 195, $this->GetY());
+        $this->Line(15, $this->GetY(), $this->getPageWidth() - 15, $this->GetY());
 
-        $this->SetFont('helvetica', '', 8);
-        $footerText = $this->config['company_info'] . " | Page " .
-                      $this->getAliasNumPage() . "/" . $this->getAliasNbPages();
-        $this->Cell(0, 6, $footerText, 0, 1, 'C');
+        // Now draw the footer text
+        $this->SetY(-20);
+        $this->SetFont('helvetica', 'I', 8);
+        $this->SetTextColor(128, 128, 128);
+        $this->Cell(
+            0,
+            10,
+            $this->config['company_info'] . ' | Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(),
+            0,
+            false,
+            'C',
+            0,
+            '',
+            0,
+            false,
+            'T',
+            'M'
+        );
     }
 
+    // Custom AddPage to enforce consistent body start
     public function AddPage($orientation = '', $format = '', $keepmargins = false, $tocpage = false) {
         parent::AddPage($orientation, $format, $keepmargins, $tocpage);
-        $this->SetY($this->headerHeight); // Ensure body starts at fixed position
+        $this->SetY($this->headerHeight);
     }
 
-    public function AcceptPageBreak() {
-        $this->AddPage();
-
-        if (!empty($this->currentSectionTitle) && $this->isTableSection) {
-            $startY = $this->GetY();
-            $startX = 20;
-
-            // Draw the section icon on continued pages
-            if ($this->currentSectionIcon) {
-                $iconFile = resolveHeaderIcon($this->currentSectionIcon, $GLOBALS['iconMap']);
-                if ($iconFile) {
-                    $this->Image($iconFile, $startX, $startY, 8);
-                    $startX += 10;
-                }
-            }
-
-            // Inline: bold title + " – " + italic "Continued" (no extra spacing)
-            $this->SetXY($startX, $startY);
-            $this->SetFont('helvetica', 'B', 14);
-            $this->Write(8, $this->currentSectionTitle . ' – ');
-            $this->SetFont('helvetica', 'I', 14);
-            $this->Write(8, 'Continued');
-            $this->Ln(8);
-
-            // Divider line and reset for body
-            $this->SetDrawColor(200, 200, 200);
-            $this->Line(20, $this->GetY(), 190, $this->GetY());
-            $this->Ln(4);
-            $this->SetFont('helvetica', '', 11);
-        }
-
-        return false; // prevent default break
-    }
-
-    // =====================================================================
-    // Draw a table header (codex-driven styling)
-    // =====================================================================
-    protected function drawTableHeader($headers, $colWidths, $styling = []) {
-        // Always enforce black background + white text for table headers
-        $this->SetFillColor(0, 0, 0);
-        $this->SetTextColor(255, 255, 255);
-        $this->SetFont('helvetica', 'B', 11);
-
-        foreach ($headers as $i => $header) {
-            $this->Cell($colWidths[$i], 8, ucfirst($header), 1, 0, 'C', true);
-        }
-        $this->Ln();
-
-        // Reset back to body styling
-        $this->SetTextColor(0, 0, 0);
-        $this->SetFont('helvetica', '', 11);
-    }
-
-
-    protected function drawTableRow($row, $headers, $colWidths) {
-        $maxh = 0;
-
-        // Calculate maximum row height
-        foreach ($headers as $i => $header) {
-            $cellText = isset($row[$header]) ? $row[$header] : '';
-            // FIX: use null instead of false for $cell param
-            $h = $this->getStringHeight($colWidths[$i], $cellText, true, true, null, 'L');
-            if ($h > $maxh) {
-                $maxh = $h;
-            }
-        }
-
-        if ($maxh < 8) {
-            $maxh = 8; // minimum row height
-        }
-
-        // Handle page break if row would overflow
-        if ($this->GetY() + $maxh > $this->PageBreakTrigger) {
-            $this->AcceptPageBreak();
-            $this->drawTableHeader($headers, $colWidths);
-        }
-
-        // Render each cell in the row
-        foreach ($headers as $i => $header) {
-            $cellText = isset($row[$header]) ? $row[$header] : '';
-            $this->MultiCell(
-                $colWidths[$i],   // width
-                $maxh,            // height
-                $cellText,        // text
-                1,                // border
-                'L',              // align
-                false,            // fill
-                0,                // ln (continue on same line)
-                null,             // x
-                null,             // y
-                true,             // reseth
-                0,                // stretch
-                false,            // ishtml
-                true,             // autopadding
-                0,                // maxh
-                'M'               // valign
-            );
-        }
-
-        $this->Ln($maxh);
-    }
-    // =====================================================================
-    // Render a section based on its format (codex-driven styling)
-    // =====================================================================
-    protected $isFirstSection = true;
-
-    // =====================================================================
-    // Render a section based on its format (codex-driven styling)
-    // =====================================================================
+    // Render a section with icon, header, divider, and body
     public function renderSection($key, $section, $iconMap, &$sections) {
-        if (!isset($section['format'])) return;
+        logMessage("DEBUG Entering renderSection for key: $key");
+
+        if (!isset($section['format'])) {
+            logMessage("⚠️ Skipping section '$key' due to missing format.");
+            return;
+        }
+
+        logMessage("ℹ️ Rendering section '$key' with format '{$section['format']}'.");
+
+        // Guard against malformed table
+        if ($section['format'] === 'table'
+            && (!is_array($section['items']) || empty($section['items']) || !is_array($section['items'][0]))) {
+            logError("❌ Invalid table data for section '$key'.");
+            return;
+        }
 
         global $codex;
-        $styling = isset($codex['documentStandards']['styling']['items']) ? $codex['documentStandards']['styling']['items'] : [];
+        $styling = isset($codex['documentStandards']['styling']['items'])
+            ? $codex['documentStandards']['styling']['items']
+            : array();
 
         $this->currentSectionTitle = formatHeaderTitle($key);
         $this->currentSectionKey   = $key;
         $this->currentSectionIcon  = isset($section['icon']) ? $section['icon'] : null;
 
-        // Unified spacing value (used everywhere)
-        $sectionSpacing = 4;
-
-        // Add spacing only if not the first section and more sections remain
-        $sectionKeys = array_keys($sections);
-        $currentIndex = array_search($key, $sectionKeys);
-        if ($currentIndex !== false && $currentIndex > 0) { // Not first section
-            $sectionsRemaining = array_slice($sectionKeys, $currentIndex + 1);
-            if (!empty($sectionsRemaining)) {
-                $this->Ln($sectionSpacing);
-            }
-        } else {
-            $this->isFirstSection = false; // Reset if first section
+        // Add vertical spacing before the section (except top of first page)
+        if ($this->GetY() > $this->headerHeight + 15) {
+            $this->Ln(10);
         }
 
-        // If the header wouldn’t fit at page bottom, move to next page
-        if ($this->GetY() + 20 > $this->PageBreakTrigger) {
+        // Page break check before rendering header
+        if ($this->GetY() + 30 > $this->PageBreakTrigger) {
             $this->AddPage();
         }
 
-        // Section icon + title (plain, no background)
+        // ---- Section Header ----
         $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
         $startY   = $this->GetY();
         $startX   = 20;
 
         if ($iconFile) {
-            $this->Image($iconFile, $startX, $startY, 8);
-            $startX += 10;
+            $this->Image($iconFile, $startX, $startY - 2, 20); // larger size
+            $startX += 24;
         }
 
         $this->SetXY($startX, $startY);
@@ -537,58 +468,140 @@ class ChristyPDF extends TCPDF {
         $this->SetTextColor(0, 0, 0);
         $this->Cell(0, 8, $this->currentSectionTitle, 0, 1, 'L', false);
 
-        // Divider line under section header
+        // Divider under section header
         $this->SetDrawColor(200, 200, 200);
-        $this->Line(20, $this->GetY(), 190, $this->GetY());
+        $this->Line(20, $this->GetY(), $this->getPageWidth() - 20, $this->GetY());
 
-        // Reset to body styling
+        // Reset body styling
+        $this->Ln(4);
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('helvetica', '', 11);
 
-        // Render body by format
+        // ---- Render Body ----
         if ($section['format'] === 'text' && isset($section['text'])) {
-            $this->MultiCell(0, 6, $section['text']);
-        } elseif ($section['format'] === 'list' && isset($section['items'])) {
+            $this->MultiCell(0, 6, $section['text'], 0, 'L', false);
+        } elseif ($section['format'] === 'list' && isset($section['items']) && is_array($section['items'])) {
             foreach ($section['items'] as $item) {
+                $this->Cell(10); // indent bullets
                 $this->Cell(0, 6, '• ' . $item, 0, 1);
             }
-        } elseif ($section['format'] === 'table' && !empty($section['items']) && isset($section['items'][0])) {
+        } elseif ($section['format'] === 'table'
+            && isset($section['items'])
+            && is_array($section['items'])
+            && count($section['items']) > 0
+            && is_array($section['items'][0])) {
+
             $this->isTableSection = true;
-            $this->SetCellPadding(1);
+            $this->SetCellPadding(2);
 
             $headers    = array_keys($section['items'][0]);
             $numColumns = count($headers);
             $pageWidth  = $this->getPageWidth() - $this->lMargin - $this->rMargin;
 
-            // Prefer codex colWidths (fractions); else smart defaults
-            if (isset($section['colWidths']) && is_array($section['colWidths'])) {
-                $colWidths = [];
-                foreach ($section['colWidths'] as $w) {
-                    $colWidths[] = $pageWidth * $w;
-                }
+            if (isset($section['colWidths']) && is_array($section['colWidths']) && count($section['colWidths']) === $numColumns) {
+                $colWidths = array_map(function($w) use ($pageWidth) { return $pageWidth * $w; }, $section['colWidths']);
             } elseif ($numColumns === 2) {
-                $colWidths = [$pageWidth * 0.3, $pageWidth * 0.7];
+                $colWidths = array($pageWidth * 0.3, $pageWidth * 0.7);
             } else {
                 $colWidth  = $pageWidth / $numColumns;
                 $colWidths = array_fill(0, $numColumns, $colWidth);
             }
 
             $this->drawTableHeader($headers, $colWidths, $styling);
+
             foreach ($section['items'] as $row) {
-                $this->drawTableRow($row, $headers, $colWidths);
+                $this->drawTableRow($row, $headers, $colWidths, 14); // enforce taller row height
             }
+
             $this->SetCellPadding(0);
             $this->isTableSection = false;
         }
 
-        // No extra spacing at end to prevent double gaps or extra pages
+        // Add vertical spacing after section body
+        $this->Ln(10);
+
+        // Reset icon for next section
+        $this->currentSectionIcon = null;
     }
 
+    // Draw table header with consistent styling
+    private function drawTableHeader($headers, $colWidths, $styling) {
+        $this->SetFillColor(230, 230, 230);
+        $this->SetTextColor(0, 0, 0);
+        $this->SetFont('', 'B');
+        $x = $this->GetX();
+        foreach ($headers as $i => $header) {
+            $this->Cell($colWidths[$i], 10, $header, 1, 0, 'C', true);
+            $this->SetXY($x += $colWidths[$i], $this->GetY());
+        }
+        $this->Ln();
+        $this->SetFont('');
+    }
+
+    // Draw table row with dynamic height
+    private function drawTableRow($row, $headers, $colWidths) {
+        $x = $this->GetX();
+        $y = $this->GetY();
+        $maxHeight = 0;
+        $cellHeights = array();
+
+        // First pass: measure each cell's height
+        foreach ($headers as $i => $header) {
+            $value = isset($row[$header]) ? $row[$header] : '';
+            $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, '', 'L');
+            if ($cellHeight < 10) {
+                $cellHeight = 10; // minimum row height
+            }
+            $cellHeights[$i] = $cellHeight;
+            if ($cellHeight > $maxHeight) {
+                $maxHeight = $cellHeight;
+            }
+        }
+
+        // Handle page break if row won't fit
+        if ($this->GetY() + $maxHeight > $this->PageBreakTrigger) {
+            $this->AddPage();
+            $x = $this->GetX();
+            $y = $this->GetY();
+        }
+
+        // Second pass: render each cell with uniform height
+        foreach ($headers as $i => $header) {
+            $value = isset($row[$header]) ? $row[$header] : '';
+            $this->MultiCell(
+                $colWidths[$i],
+                $maxHeight,  // use maxHeight so all cells in row are equal
+                $value,
+                1,
+                'L',
+                false,
+                0,
+                $x,
+                $y,
+                true,
+                0,
+                false,
+                true,
+                $maxHeight,
+                'M'
+            );
+            $x += $colWidths[$i];
+        }
+
+        // Move cursor to next row
+        $this->SetXY($this->lMargin, $y + $maxHeight);
+    }
+
+    // Reset section icon for next section
+    public function resetSectionIcon() {
+        $this->currentSectionIcon = null;
+    }
 }
 
 // =====================================================================
 // Build PDF
 // =====================================================================
+logMessage("DEBUG Script started at " . date('Y-m-d H:i:s')); // Confirm script execution
 $pdf = new ChristyPDF($config);
 $pdf->SetCreator('Skyesoft Report Generator');
 $pdf->SetAuthor('Skyesoft');
@@ -625,40 +638,123 @@ uasort($sections, function($a, $b) {
     return (isset($a['priority']) ? $a['priority'] : 999) - (isset($b['priority']) ? $b['priority'] : 999);
 });
 
+// ================================================================
 // Enrich blank sections with AI (dynamic, no hardcoding)
+// ================================================================
 foreach ($sections as $key => &$section) {
-    if (!isset($section['format'])) continue;
+    if (!isset($section['format'])) {
+        continue;
+    }
 
-    $format = $section['format'];
+    // Normalize section format
+    $format = strtolower(trim($section['format']));
+    if (!in_array($format, array('text', 'list', 'table'))) {
+        logError("❌ Invalid format for '$key', defaulting to text.");
+        $format = 'text';
+    }
+    $section['format'] = $format;
 
+    // Force safe fallbacks based on items structure
+    if (isset($section['items']) && is_array($section['items'])) {
+        if (is_array(reset($section['items']))) {
+            $format = 'table';
+        } elseif (is_string(reset($section['items']))) {
+            $format = 'list';
+        }
+        $section['format'] = $format;
+    }
+
+    // --- Scalable skip logic (text / list / table) ---
+    if ($format === 'text'
+        && isset($section['text'])
+        && trim($section['text']) !== '') {
+        logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
+        continue;
+    }
+
+    if ($format === 'list'
+        && isset($section['items'])
+        && is_array($section['items'])
+        && count($section['items']) > 0
+        && is_string(current($section['items']))) {
+        logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
+        continue;
+    }
+
+    if ($format === 'table'
+        && isset($section['items'])
+        && is_array($section['items'])
+        && count($section['items']) > 0) {
+        $firstRow = current($section['items']); // safer than reset()
+        if (is_array($firstRow)) {
+            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
+            continue;
+        }
+    }
+
+    logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
+
+    // Enrich based on format
     switch ($format) {
         case 'text':
-            if (empty($section['text'])) {
-                $section['text'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'text');
-            }
+            $section['text'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'text');
             break;
 
         case 'list':
-            if (empty($section['items'])) {
-                $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'list');
-            }
+            $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'list');
             break;
 
         case 'table':
-            if (empty($section['items'])) {
-                $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'table');
-            }
+            $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'table');
             break;
+    }
 
-        default:
-            logMessage("⚠️ Skipping unsupported format '$format' in section '$key'.");
-            break;
+    // Validate structure after enrichment
+    if ($format === 'text' && empty($section['text'])) {
+        logError("❌ Invalid text data for '$key'. Expected non-empty string.");
+        $section['text'] = '';
+    } elseif ($format === 'list' && (!is_array($section['items']) || empty($section['items']))) {
+        logError("❌ Invalid list data for '$key'. Expected array of strings.");
+        $section['items'] = array();
+    } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
+        logError("❌ Invalid table data for '$key'. Expected array of objects.");
+        $section['items'] = array();
+    }
+}
+// ✅ Break the lingering reference so last element doesn’t leak
+unset($section);
+
+// ================================================================
+// Sanity check: log Glossary section before rendering
+// ================================================================
+if (isset($sections['glossary'])) {
+    $gloss = $sections['glossary'];
+    $fmt   = isset($gloss['format']) ? $gloss['format'] : 'MISSING';
+    $cnt   = (isset($gloss['items']) && is_array($gloss['items'])) ? count($gloss['items']) : 0;
+    logMessage("DEBUG sanity Glossary → format={$fmt}, items={$cnt}");
+
+    if ($cnt > 0) {
+        logMessage("DEBUG sanity Glossary first row: " . print_r($gloss['items'][0], true));
     }
 }
 
 // Render all sections
-foreach ($sections as $key => $section) {
+$sectionKeys = array_keys($sections);
+$totalSections = count($sectionKeys);
+
+foreach ($sectionKeys as $i => $key) {
+    $section = $sections[$key];
+
+    // Reset icon at the start of each section
+    $pdf->resetSectionIcon();
+
+    // Render the section
     $pdf->renderSection($key, $section, $iconMap, $sections);
+
+    // Add spacing only if not the last section
+    if ($i < $totalSections - 1) {
+        $pdf->Ln($consistent_spacing);
+    }
 }
 
 // Trim trailing blank pages with stricter check
@@ -714,4 +810,16 @@ if ($outputMode === 'F' && file_exists($outputFile)) {
 } elseif ($outputMode === 'F') {
     logError("❌ ERROR: PDF generation failed. File not found after output.");
     echo "❌ ERROR: PDF generation failed. File not found after output.\n";
+}
+
+function formatHeaderTitle($key) {
+    return ucwords(str_replace(array('_', '-'), ' ', $key));
+}
+
+function resolveHeaderIcon($iconKey, $iconMap) {
+    if (!$iconKey || !isset($iconMap[$iconKey]) || !isset($iconMap[$iconKey]['file'])) {
+        return null;
+    }
+    $iconFile = __DIR__ . '/../assets/images/icons/' . $iconMap[$iconKey]['file'];
+    return file_exists($iconFile) ? $iconFile : null;
 }
