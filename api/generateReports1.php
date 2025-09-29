@@ -290,11 +290,12 @@ Module Data:
 // PDF Class Extension (SkyesoftPDF)
 // =====================================================================
 class SkyesoftPDF extends TCPDF {
-    // Public so we can adjust from outside if needed
-    public $headerHeight = 40; // Reduced to 40 points to move body start up by 10
-    public $footerHeight = 25; // Kept at 25 points
-    public $bodyMargin = 10; // Reduced to 10 points to match the upward shift
-    public $bodyEndOffset; // <-- 25 (footer) + 20 extra to balance
+    // Class Properties (top of SkyesoftPDF)
+    public $headerHeight = 80;      // fixed header band height (pick what matches page 1)
+    public $bodyMargin   = 0;      // gap under header
+    public $bodyStartY   = 50;      // 90 will be set from headerHeight + bodyMargin
+    public $footerHeight = 25;      // fixed footer block height
+    public $bodyEndOffset;          // bottom margin used for page break (see #3)
 
     // Report-level state
     public $reportTitle;
@@ -314,9 +315,13 @@ class SkyesoftPDF extends TCPDF {
         parent::__construct('P', 'pt', 'A4', true, 'UTF-8', false);
         $this->config = $config;
 
-        // Symmetric body margins (top gap = bottom gap)
-        $this->bodyEndOffset = $this->headerHeight + $this->bodyMargin;
+        // Fixed starting Y for body: header + margin
+        $this->bodyStartY = $this->headerHeight + $this->bodyMargin;
+
+        // Symmetric body end offset (same gap above footer as below header)
+        $this->bodyEndOffset = $this->bodyStartY;
     }
+
 
     public function setReportTitle($title, $icon = null) {
         $this->reportTitle = $title;
@@ -327,39 +332,41 @@ class SkyesoftPDF extends TCPDF {
     public function Header() {
         global $iconMap, $requestor;
 
-        // Logo on left
+        // Legacy logo (left)
         $logo = __DIR__ . '/../assets/images/christyLogo.png';
         if (file_exists($logo)) {
-            $this->Image($logo, 15, 10, 50, 0); // Reduced logo size to 50 points for tighter layout
+            // 93.75 wide at (15,12) as before
+            $this->Image($logo, 15, 12, 93.75, 0);
         }
 
+        // Title block (right), legacy XY and sizes
         $this->SetFont('helvetica', 'B', 14);
-        $this->SetXY(80, 10); // Adjusted X/Y for tighter layout
+        $this->SetXY(120, 15);
 
         $iconFile = resolveHeaderIcon($this->reportIconKey, $iconMap);
         if ($iconFile) {
-            $this->Image($iconFile, $this->GetX(), $this->GetY() - 2, 15); // Smaller icon
-            $this->SetX($this->GetX() + 20);
+            $this->Image($iconFile, $this->GetX(), $this->GetY() - 2, 20);
+            $this->SetX($this->GetX() + 24);
         }
 
         $this->Cell(0, 8, $this->reportTitle ?: 'Project Report', 0, 1, 'L');
 
         $this->SetFont('helvetica', 'I', 10);
-        $this->SetX(80);
+        $this->SetX(120);
         $this->Cell(0, 6, $this->config['report_subtitle'], 0, 1, 'L');
 
         date_default_timezone_set('America/Phoenix');
         $this->SetFont('helvetica', '', 9);
-        $this->SetX(80);
+        $this->SetX(120);
         $this->Cell(0, 6, date('F j, Y, g:i A T') . ' – Created by ' . $requestor, 0, 1, 'L');
 
+        // Divider
         $this->Ln(2);
         $this->SetDrawColor(0, 0, 0);
         $this->Line(15, $this->GetY(), $this->getPageWidth() - 15, $this->GetY());
 
-        // Set header height and body start
-        $this->headerHeight = $this->GetY() + $this->bodyMargin;
-        $this->SetY($this->headerHeight);
+        // >>> Do NOT recompute headerHeight here. Just move to the fixed anchor:
+        $this->SetY($this->bodyStartY);
     }
 
     public function Footer() {
@@ -375,7 +382,9 @@ class SkyesoftPDF extends TCPDF {
 
     public function AddPage($orientation = '', $format = '', $keepmargins = false, $tocpage = false) {
         parent::AddPage($orientation, $format, $keepmargins, $tocpage);
-        $this->SetY($this->headerHeight); // Start body at fixed height after header
+
+        // Force the cursor to start just below the header, same as page 1
+        $this->SetY($this->headerHeight);
     }
 
     // ----------------------
@@ -485,24 +494,27 @@ class SkyesoftPDF extends TCPDF {
         $this->currentSectionKey   = $key;
         $this->currentSectionIcon  = isset($section['icon']) ? $section['icon'] : null;
 
-        if ($this->GetY() > $this->headerHeight + 10) {
+        // --- START TRANSACTION ---
+        $this->startTransaction();
+        $startPage = $this->getPage();
+        $startY    = $this->GetY();
+
+        // Add spacing before section (except at top of page body)
+        if ($this->GetY() > $this->bodyStartY) {
             $this->Ln(10);
         }
 
-        if ($this->GetY() + 30 > $this->PageBreakTrigger - $this->footerHeight) {
-            $this->AddPage();
-        }
 
+        // ---- Section Header ----
         $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
-        $startY   = $this->GetY();
         $startX   = 20;
 
         if ($iconFile) {
-            $this->Image($iconFile, $startX, $startY - 2, 20);
+            $this->Image($iconFile, $startX, $this->GetY() - 2, 20);
             $startX += 24;
         }
 
-        $this->SetXY($startX, $startY);
+        $this->SetXY($startX, $this->GetY());
         $this->SetFont('helvetica', 'B', 14);
         $this->SetTextColor(0, 0, 0);
         $this->Cell(0, 8, $this->currentSectionTitle, 0, 1, 'L', false);
@@ -514,6 +526,7 @@ class SkyesoftPDF extends TCPDF {
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('helvetica', '', 11);
 
+        // ---- Render Body ----
         if ($section['format'] === 'text' && isset($section['text'])) {
             $this->MultiCell(0, 6, $section['text'], 0, 'L', false);
         } elseif ($section['format'] === 'list' && isset($section['items']) && is_array($section['items'])) {
@@ -531,6 +544,18 @@ class SkyesoftPDF extends TCPDF {
 
         $this->Ln(10);
         $this->currentSectionIcon = null;
+
+        // --- END TRANSACTION ---
+        if ($this->getPage() !== $startPage || $this->GetY() > $this->PageBreakTrigger) {
+            // rollback and move section to new page
+            $this->rollbackTransaction(true);
+            $this->AddPage();
+            $this->SetY($this->headerHeight + $this->bodyMargin); // consistent start
+            // re-render the section cleanly on the new page
+            $this->renderSection($key, $section, $iconMap, $sections);
+        } else {
+            $this->commitTransaction();
+        }
     }
 
     private function drawTableHeader($headers, $colWidths, $styling) {
@@ -591,8 +616,9 @@ logMessage("DEBUG Script started at " . date('Y-m-d H:i:s'));
 $pdf = new SkyesoftPDF($config);
 $pdf->SetCreator('Skyesoft Report Generator');
 $pdf->SetAuthor('Skyesoft');
-$pdf->SetMargins(20, $pdf->headerHeight + $pdf->bodyMargin, 20);
-$pdf->SetAutoPageBreak(true, $pdf->bodyEndOffset);
+// Build section (replace the two lines you have now)
+$pdf->SetMargins(20, $pdf->bodyStartY, 20); // keep top margin neutral; we control start with SetY
+$pdf->SetAutoPageBreak(true, $pdf->bodyEndOffset); // use symmetric bottom gap
 $pdf->SetHeaderMargin(0); // No additional header margin
 $pdf->SetFooterMargin(0); // No additional footer margin
 
