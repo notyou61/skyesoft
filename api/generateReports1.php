@@ -430,7 +430,7 @@ class SkyesoftPDF extends TCPDF {
 
             foreach ($headers as $i => $header) {
                 $value = isset($row[$header]) ? $row[$header] : '';
-                $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, '', 'L');
+                $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
                 if ($cellHeight < 10) {
                     $cellHeight = 10;
                 }
@@ -501,7 +501,7 @@ class SkyesoftPDF extends TCPDF {
 
         // Add spacing before section (except at top of page body)
         if ($this->GetY() > $this->bodyStartY) {
-            $this->Ln(10);
+            $this->Ln(4);
         }
 
 
@@ -542,7 +542,7 @@ class SkyesoftPDF extends TCPDF {
             $this->addTable($section['items']);
         }
 
-        $this->Ln(10);
+        $this->Ln(4);
         $this->currentSectionIcon = null;
 
         // --- END TRANSACTION ---
@@ -579,7 +579,7 @@ class SkyesoftPDF extends TCPDF {
 
         foreach ($headers as $i => $header) {
             $value = isset($row[$header]) ? $row[$header] : '';
-            $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, '', 'L');
+            $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
             if ($cellHeight < 10) {
                 $cellHeight = 10;
             }
@@ -784,7 +784,19 @@ if ($outputMode === 'F' && file_exists($outputFile)) {
 }
 
 function formatHeaderTitle($key) {
-    return ucwords(str_replace(array('_', '-'), ' ', $key));
+    global $codex;
+
+    // 1. Prefer explicit title in codex.json if it exists
+    if (isset($codex['skyesoftConstitution'][$key]['title'])) {
+        return $codex['skyesoftConstitution'][$key]['title'];
+    }
+
+    // 2. Otherwise, split camelCase, snake_case, and kebab-case
+    $key = preg_replace('/([a-z])([A-Z])/', '$1 $2', $key); // split camelCase
+    $key = str_replace(['_', '-'], ' ', $key);              // handle snake/kebab
+
+    // 3. Normalize spaces and capitalize
+    return ucwords(trim($key));
 }
 
 function resolveHeaderIcon($iconKey, $iconMap) {

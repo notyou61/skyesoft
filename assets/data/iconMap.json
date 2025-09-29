@@ -340,5 +340,23 @@
       "codexSection": "glossary",
       "exampleContext": "Used for glossary sections or informational content."
     }
+  },
+    "book": {
+    "file": "book.png",
+    "icon": "📖",
+    "alt": "Book icon for sources of truth",
+    "sampleUsage": {
+      "codexSection": "sourcesOfTruth",
+      "exampleContext": "Represents foundational sources of truth such as operational streams, knowledge bases, and archives."
+    }
+  },
+  "robot": {
+    "file": "robot.png",
+    "icon": "🤖",
+    "alt": "Robot icon for AI modules",
+    "sampleUsage": {
+      "codexSection": "skyebotModule",
+      "exampleContext": "Represents AI assistant functions like Skyebot."
+    }
   }
 }
