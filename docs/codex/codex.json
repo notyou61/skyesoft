@@ -341,6 +341,59 @@
           "Codex-based Response Justification"
         ]
       }
+    },
+    "attendanceSuite": {
+      "title": "clock Attendance Suite",
+      "purpose": {
+        "icon": "target",
+        "format": "text",
+        "text": "Tracks attendance behaviors, time in/out, overtime, and absences using segmented workday rules. Designed for field techs, office staff, and shop workers."
+      },
+      "features": {
+        "icon": "clipboard",
+        "format": "list",
+        "items": [
+          "Auto-classification by day type (Workday, Weekend, Holiday)",
+          "Segmented time blocks: Before Worktime, Worktime, After Worktime",
+          "Shift-specific logic for shop (6:00–2:00) and office (7:30–3:30)",
+          "Manual and automatic entries via device punches or server logs",
+          "Integration with Time Interval Standards (TIS)"
+        ]
+      },
+      "dataPoints": {
+        "icon": "table",
+        "format": "list",
+        "items": [
+          "Clock-in/out time per user",
+          "Location/device of punch (optional)",
+          "Duration within each segment (e.g., Worktime)",
+          "Missed punches / late entries",
+          "PTO, sick time, holidays"
+        ]
+      },
+      "smartBehaviors": {
+        "icon": "brain",
+        "format": "list",
+        "items": [
+          "Automatically resolves entry overlaps",
+          "Flags outliers and missed punches",
+          "Can trigger Management Escalation Tree rules if attendance is habitual concern"
+        ]
+      },
+      "integrations": {
+        "icon": "plug",
+        "format": "list",
+        "items": [
+          "Links with Order System for assignment-based tracking",
+          "Works with Mobile Modals for on-field punch-in",
+          "Real-time updates via SSE (Server-Sent Events)"
+        ]
+      },
+      "exampleEntry": {
+        "icon": "code",
+        "format": "text",
+        "text": "{ \"user\": \"msmith\", \"date\": \"2025-06-13\", \"in\": \"07:35\", \"out\": \"15:45\", \"worktime_minutes\": 480, \"early_minutes\": 0, \"late_minutes\": 5, \"location\": \"Shop Tablet\" }"
+      }
     }
   },
   "codexSheets": {

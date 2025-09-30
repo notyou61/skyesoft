@@ -135,7 +135,7 @@
     }
   },
   "barChart": {
-    "file": "bar_chart.png",
+    "file": "barChart.png",
     "icon": "📊",
     "alt": "Bar chart icon for analytics or dashboards",
     "sampleUsage": {
@@ -215,8 +215,8 @@
       "exampleContext": "Represents sections like headers, body, and footers."
     }
   },
-  "arrowUp": {
-    "file": "arrow_up.png",
+  "upArrow": {
+    "file": "upArrow.png",
     "icon": "🔝",
     "alt": "Arrow up icon for headers or top sections",
     "sampleUsage": {
@@ -224,8 +224,8 @@
       "exampleContext": "Indicates header rules or top-of-page content."
     }
   },
-  "arrowDown": {
-    "file": "arrow_down.png",
+  "downArrow": {
+    "file": "downArrow.png",
     "icon": "🔻",
     "alt": "Arrow down icon for footers or bottom sections",
     "sampleUsage": {
@@ -357,6 +357,15 @@
     "sampleUsage": {
       "codexSection": "skyebotModule",
       "exampleContext": "Represents AI assistant functions like Skyebot."
+    }
+  },
+  "code": {
+    "file": "code.png",
+    "icon": "</>",
+    "alt": "Code icon for technical snippets or structured examples",
+    "sampleUsage": {
+      "codexSection": "exampleEntry",
+      "exampleContext": "Represents JSON, API calls, or structured code examples in documentation."
     }
   }
 }
