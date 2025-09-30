@@ -268,7 +268,7 @@
         ]
       },
       "dashboards": {
-        "icon": "barChart",
+        "icon": "table",
         "format": "list",
         "items": [
           "Budget vs Actual per project",

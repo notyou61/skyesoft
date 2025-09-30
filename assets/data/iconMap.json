@@ -90,7 +90,7 @@
     }
   },
   "folder": {
-    "file": "file_folder.png",
+    "file": "folder.png",
     "icon": "🗂️",
     "alt": "Folder icon for management or organization",
     "sampleUsage": {
@@ -341,7 +341,7 @@
       "exampleContext": "Used for glossary sections or informational content."
     }
   },
-    "book": {
+  "book": {
     "file": "book.png",
     "icon": "📖",
     "alt": "Book icon for sources of truth",
