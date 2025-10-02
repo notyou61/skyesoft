@@ -367,5 +367,14 @@
       "codexSection": "exampleEntry",
       "exampleContext": "Represents JSON, API calls, or structured code examples in documentation."
     }
+  },
+  "mobilePhone": {
+    "file": "mobilePhone.png",
+    "icon": "📱",
+    "alt": "Mobile phone icon for smartphone or device interactions",
+    "sampleUsage": {
+      "codexSection": "integrations",
+      "exampleContext": "Represents mobile device interactions, mobile modals, or smartphone-based inputs like punch-in/out."
+    }
   }
 }
