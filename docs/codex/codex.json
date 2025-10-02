@@ -211,16 +211,10 @@
       "segments": {
         "icon": "clipboard",
         "format": "table",
-        "office": {
-          "before": "12:00 AM – 7:29 AM",
-          "worktime": "7:30 AM – 3:30 PM",
-          "after": "3:31 PM – 11:59 PM"
-        },
-        "shop": {
-          "before": "12:00 AM – 5:59 AM",
-          "worktime": "6:00 AM – 2:00 PM",
-          "after": "2:01 PM – 11:59 PM"
-        }
+        "items": [
+          { "role": "Office", "before": "12:00 AM – 7:29 AM", "worktime": "7:30 AM – 3:30 PM", "after": "3:31 PM – 11:59 PM" },
+          { "role": "Shop", "before": "12:00 AM – 5:59 AM", "worktime": "6:00 AM – 2:00 PM", "after": "2:01 PM – 11:59 PM" }
+        ]
       },
       "exclusions": {
         "icon": "warning",
