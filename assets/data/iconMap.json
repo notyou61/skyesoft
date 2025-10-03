@@ -113,7 +113,7 @@
     "alt": "Warning icon for exclusions or alerts",
     "sampleUsage": {
       "codexSection": "exclusions",
-      "exampleContext": "Used to warn about excluded dates like holidays."
+      "exampleContext": "Used to warn about excluded dates like holidays or critical notices."
     }
   },
   "briefcase": {
@@ -146,10 +146,10 @@
   "shield": {
     "file": "shield.png",
     "icon": "🛡️",
-    "alt": "Shield icon for security or controls",
+    "alt": "Shield icon representing protection, controls, and compliance",
     "sampleUsage": {
-      "codexSection": "controls",
-      "exampleContext": "Highlights security or approval gate features."
+      "codexSection": "controls, compliance",
+      "exampleContext": "Highlights approval gate features, security controls, and compliance rules such as privacy policies."
     }
   },
   "tools": {
@@ -162,7 +162,7 @@
     }
   },
   "bookBlue": {
-    "file": "blue_book.png",
+    "file": "blueBook.png",
     "icon": "📘",
     "alt": "Blue book icon for glossaries or structured knowledge",
     "sampleUsage": {
@@ -170,13 +170,13 @@
       "exampleContext": "Represents glossary and reference documents."
     }
   },
-  "bookOpen": {
+  "book": {
     "file": "book.png",
     "icon": "📖",
-    "alt": "Open book icon for content tables or references",
+    "alt": "Book icon representing sources of truth and references",
     "sampleUsage": {
-      "codexSection": "contents",
-      "exampleContext": "Indicates lists of defined terms or reference material."
+      "codexSection": "sourcesOfTruth, contents",
+      "exampleContext": "Represents sources of truth such as operational streams, knowledge bases, and reference lists."
     }
   },
   "link": {
@@ -239,7 +239,7 @@
     "alt": "Palette icon for styling or visual themes",
     "sampleUsage": {
       "codexSection": "styling",
-      "exampleContext": "Represents design, color, or visual rules."
+      "exampleContext": "Represents design, color, or visual rules for modules and reports."
     }
   },
   "receipt": {
@@ -341,15 +341,6 @@
       "exampleContext": "Used for glossary sections or informational content."
     }
   },
-  "book": {
-    "file": "book.png",
-    "icon": "📖",
-    "alt": "Book icon for sources of truth",
-    "sampleUsage": {
-      "codexSection": "sourcesOfTruth",
-      "exampleContext": "Represents foundational sources of truth such as operational streams, knowledge bases, and archives."
-    }
-  },
   "robot": {
     "file": "robot.png",
     "icon": "🤖",
@@ -375,6 +366,15 @@
     "sampleUsage": {
       "codexSection": "integrations",
       "exampleContext": "Represents mobile device interactions, mobile modals, or smartphone-based inputs like punch-in/out."
+    }
+  },
+  "graduationCap": {
+    "file": "graduationCap.png",
+    "icon": "🎓",
+    "alt": "Graduation cap icon representing training, education, or achievement",
+    "sampleUsage": {
+      "codexSection": "training",
+      "exampleContext": "Used for modules or documents related to employee training, certifications, or knowledge development."
     }
   }
 }
