@@ -317,7 +317,7 @@
         "text": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows."
       },
       "contents": {
-        "icon": "bookOpen",
+        "icon": "book",
         "format": "table",
         "items": [
           { "term": "LGBAS", "definition": "Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow." },
@@ -635,7 +635,7 @@
       ]
     },
     "headers": {
-      "icon": "arrowUp",
+      "icon": "upArrow",
       "format": "list",
       "items": [
         "Must include document title",
@@ -644,7 +644,7 @@
       ]
     },
     "footers": {
-      "icon": "arrowDown",
+      "icon": "downArrow",
       "format": "list",
       "items": [
         "Must include page numbering (Page X of Y)",
@@ -707,7 +707,7 @@
       "text": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers."
     },
     "entries": {
-      "icon": "bookOpen",
+      "icon": "book",
       "format": "table",
       "items": [
         { "term": "MTCO", "definition": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation." },

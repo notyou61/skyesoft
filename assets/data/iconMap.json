@@ -1,344 +1,380 @@
 {
-  "target": { 
-    "file": "target.png",
-    "icon": "🎯",
-    "alt": "Target icon for purpose or goal",
-    "sampleUsage": {
-      "codexSection": "purpose",
-      "exampleContext": "Used in Purpose sections to indicate goals or objectives."
-    }
-  },
-  "gear": {
-    "file": "gear.png",
-    "icon": "⚙️",
-    "alt": "Gear icon for features or configuration",
-    "sampleUsage": {
-      "codexSection": "features",
-      "exampleContext": "Highlights module features or system configurations."
-    }
-  },
-  "plug": {
-    "file": "plug.png",
-    "icon": "🔌",
-    "alt": "Plug icon for integrations or connections",
-    "sampleUsage": {
-      "codexSection": "integrations",
-      "exampleContext": "Shows which systems or data streams are connected to a module."
-    }
-  },
-  "megaphone": {
-    "file": "megaphone.png",
-    "icon": "📢",
-    "alt": "Megaphone icon for announcements or bulletins",
-    "sampleUsage": {
-      "codexSection": "officeBulletins",
-      "exampleContext": "Used for internal bulletins or urgent messages."
-    }
-  },
-  "clipboard": {
-    "file": "clipboard.png",
-    "icon": "📋",
-    "alt": "Clipboard icon for workflows or lists",
-    "sampleUsage": {
-      "codexSection": "workflow",
-      "exampleContext": "Represents steps or bullet point lists in module workflows."
-    }
-  },
-  "brain": {
-    "file": "brain.png",
-    "icon": "🧠",
-    "alt": "Brain icon for intelligence or AI-related tasks",
-    "sampleUsage": {
-      "codexSection": "oneLineTask",
-      "exampleContext": "Marks smart task input powered by AI."
-    }
-  },
-  "bolt": {
-    "file": "bolt.png",
-    "icon": "⚡",
-    "alt": "Bolt icon for rapid or powerful actions",
-    "sampleUsage": {
-      "codexSection": "mechanism",
-      "exampleContext": "Represents powerful or immediate actions like triggers."
-    }
-  },
-  "lightbulb": {
-    "file": "lightbulb.png",
-    "icon": "💡",
-    "alt": "Lightbulb icon for ideas or examples",
-    "sampleUsage": {
-      "codexSection": "examples",
-      "exampleContext": "Used for tips, ideas, or learning examples in reports."
-    }
-  },
-  "rocket": {
-    "file": "rocket.png",
-    "icon": "🚀",
-    "alt": "Rocket icon for improvements or enhancements",
-    "sampleUsage": {
-      "codexSection": "futureEnhancements",
-      "exampleContext": "Highlights planned upgrades or future features."
-    }
-  },
-  "trophy": {
-    "file": "trophy.png",
-    "icon": "🏆",
-    "alt": "Trophy icon for achievements or importance",
-    "sampleUsage": {
-      "codexSection": "strategicImportance",
-      "exampleContext": "Indicates high-value or strategic initiatives."
-    }
-  },
-  "folder": {
-    "file": "folder.png",
-    "icon": "🗂️",
-    "alt": "Folder icon for management or organization",
-    "sampleUsage": {
-      "codexSection": "permitManagementSuite",
-      "exampleContext": "Represents organized tracking of permit documents."
-    }
-  },
-  "clock": {
-    "file": "clock.png",
-    "icon": "⏰",
-    "alt": "Clock icon for timing or scheduling",
-    "sampleUsage": {
-      "codexSection": "timeIntervalStandards",
-      "exampleContext": "Represents time-based calculations and schedules."
-    }
-  },
-  "warning": {
-    "file": "warning.png",
-    "icon": "⚠️",
-    "alt": "Warning icon for exclusions or alerts",
-    "sampleUsage": {
-      "codexSection": "exclusions",
-      "exampleContext": "Used to warn about excluded dates like holidays or critical notices."
-    }
-  },
-  "briefcase": {
-    "file": "briefcase.png",
-    "icon": "💼",
-    "alt": "Briefcase icon for financial matters",
-    "sampleUsage": {
-      "codexSection": "financialControlSuite",
-      "exampleContext": "Represents finance-related modules like billing and POs."
-    }
-  },
-  "puzzle": {
-    "file": "puzzle.png",
-    "icon": "🧩",
-    "alt": "Puzzle piece icon for modular components",
-    "sampleUsage": {
-      "codexSection": "components",
-      "exampleContext": "Indicates different system parts or modules."
-    }
-  },
   "barChart": {
     "file": "barChart.png",
     "icon": "📊",
     "alt": "Bar chart icon for analytics or dashboards",
     "sampleUsage": {
-      "codexSection": "dashboards",
-      "exampleContext": "Represents data visualization or performance metrics."
+      "codexSection": "general",
+      "exampleContext": "Represents charts, metrics, or performance dashboards."
     }
   },
-  "shield": {
-    "file": "shield.png",
-    "icon": "🛡️",
-    "alt": "Shield icon representing protection, controls, and compliance",
-    "sampleUsage": {
-      "codexSection": "controls, compliance",
-      "exampleContext": "Highlights approval gate features, security controls, and compliance rules such as privacy policies."
-    }
-  },
-  "tools": {
-    "file": "tools.png",
-    "icon": "🛠️",
-    "alt": "Tools icon for service or maintenance",
-    "sampleUsage": {
-      "codexSection": "serviceManagementSuite",
-      "exampleContext": "Used for modules related to field service and repairs."
-    }
-  },
-  "bookBlue": {
+  "blueBook": {
     "file": "blueBook.png",
     "icon": "📘",
     "alt": "Blue book icon for glossaries or structured knowledge",
     "sampleUsage": {
-      "codexSection": "glossary",
-      "exampleContext": "Represents glossary and reference documents."
+      "codexSection": "general",
+      "exampleContext": "Represents structured knowledge or glossary entries."
+    }
+  },
+  "bolt": {
+    "file": "bolt.png",
+    "icon": "⚡",
+    "alt": "Bolt icon for power or quick action",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Indicates fast processes or strong actions."
     }
   },
   "book": {
     "file": "book.png",
     "icon": "📖",
-    "alt": "Book icon representing sources of truth and references",
+    "alt": "Book icon for references or knowledge sources",
     "sampleUsage": {
-      "codexSection": "sourcesOfTruth, contents",
-      "exampleContext": "Represents sources of truth such as operational streams, knowledge bases, and reference lists."
+      "codexSection": "general",
+      "exampleContext": "Represents reading material or structured sources."
     }
   },
-  "link": {
-    "file": "link.png",
-    "icon": "🔗",
-    "alt": "Link icon for shared references or connections",
+  "books": {
+    "file": "books.png",
+    "icon": "📚",
+    "alt": "Books icon for grouped references or learning",
     "sampleUsage": {
-      "codexSection": "sharedReferences",
-      "exampleContext": "Indicates pointer relationships or connected data."
+      "codexSection": "general",
+      "exampleContext": "Indicates multiple reference sources or knowledge bases."
     }
   },
-  "scroll": {
-    "file": "scroll.png",
-    "icon": "📜",
-    "alt": "Scroll icon for constitutional documents",
+  "brain": {
+    "file": "brain.png",
+    "icon": "🧠",
+    "alt": "Brain icon for intelligence or AI",
     "sampleUsage": {
-      "codexSection": "skyesoftConstitution",
-      "exampleContext": "Used for governance and constitutional rules."
+      "codexSection": "general",
+      "exampleContext": "Represents AI, thinking, or intelligence features."
     }
   },
-  "ruler": {
-    "file": "ruler.png",
-    "icon": "📏",
-    "alt": "Ruler icon for rules or standards",
+  "briefcase": {
+    "file": "briefcase.png",
+    "icon": "💼",
+    "alt": "Briefcase icon for financial or business matters",
     "sampleUsage": {
-      "codexSection": "aiBehavior",
-      "exampleContext": "Represents strict rule sets or behavior standards."
-    }
-  },
-  "document": {
-    "file": "document.png",
-    "icon": "📄",
-    "alt": "Document icon for pages or structure",
-    "sampleUsage": {
-      "codexSection": "pageStructure",
-      "exampleContext": "Represents sections like headers, body, and footers."
-    }
-  },
-  "upArrow": {
-    "file": "upArrow.png",
-    "icon": "🔝",
-    "alt": "Arrow up icon for headers or top sections",
-    "sampleUsage": {
-      "codexSection": "headers",
-      "exampleContext": "Indicates header rules or top-of-page content."
-    }
-  },
-  "downArrow": {
-    "file": "downArrow.png",
-    "icon": "🔻",
-    "alt": "Arrow down icon for footers or bottom sections",
-    "sampleUsage": {
-      "codexSection": "footers",
-      "exampleContext": "Indicates footer rules or bottom-of-page content."
-    }
-  },
-  "palette": {
-    "file": "palette.png",
-    "icon": "🎨",
-    "alt": "Palette icon for styling or visual themes",
-    "sampleUsage": {
-      "codexSection": "styling",
-      "exampleContext": "Represents design, color, or visual rules for modules and reports."
-    }
-  },
-  "receipt": {
-    "file": "receipt.png",
-    "icon": "🧾",
-    "alt": "Receipt icon for metadata or tracking",
-    "sampleUsage": {
-      "codexSection": "metadata",
-      "exampleContext": "Indicates logging or data-tracking fields."
+      "codexSection": "general",
+      "exampleContext": "Represents work, finance, or management."
     }
   },
   "calendar": {
     "file": "calendar.png",
     "icon": "📅",
-    "alt": "Calendar icon for scheduling or date/time",
+    "alt": "Calendar icon for scheduling",
     "sampleUsage": {
-      "codexSection": "examples",
-      "exampleContext": "Used to highlight dates and scheduling actions."
+      "codexSection": "general",
+      "exampleContext": "Represents schedules or timelines."
     }
   },
-  "scales": {
-    "file": "scales.png",
-    "icon": "⚖️",
-    "alt": "Scales icon representing balance, fairness, or guiding principles",
+  "clipboard": {
+    "file": "clipboard.png",
+    "icon": "📋",
+    "alt": "Clipboard icon for workflows or tasks",
     "sampleUsage": {
-      "codexSection": "principles",
-      "exampleContext": "Used to visually represent the core guiding principles of the Skyesoft Constitution."
+      "codexSection": "general",
+      "exampleContext": "Used for task lists or workflows."
+    }
+  },
+  "clock": {
+    "file": "clock.png",
+    "icon": "⏰",
+    "alt": "Clock icon for time and scheduling",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Indicates time, deadlines, or schedules."
+    }
+  },
+  "code": {
+    "file": "code.png",
+    "icon": "💻",
+    "alt": "Code icon for programming or snippets",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents code snippets or technical examples."
     }
   },
   "compass": {
     "file": "compass.png",
     "icon": "🧭",
-    "alt": "Compass icon for guidance or direction",
+    "alt": "Compass icon for guidance",
     "sampleUsage": {
-      "codexSection": "guidingFramework",
-      "exampleContext": "Represents guiding principles like those in the 7 Habits framework."
+      "codexSection": "general",
+      "exampleContext": "Represents direction, navigation, or orientation."
     }
   },
   "database": {
-  "file": "database.png",
-  "icon": "🗄️",
-  "alt": "Database icon representing structured data and storage",
-  "sampleUsage": {
-    "codexSection": "coreDataObjects",
-    "exampleContext": "Used to indicate foundational data objects like entities, locations, contacts, and orders."
-  }
-  },
-  "table": {
-    "file": "table.png",
-    "icon": "📊",
-    "alt": "Table icon for displaying structured data in rows and columns",
+    "file": "database.png",
+    "icon": "🗄️",
+    "alt": "Database icon for structured data",
     "sampleUsage": {
-      "codexSection": "principles",
-      "exampleContext": "Used to visually indicate sections that render tabular data like principles, core data objects, or glossary terms."
+      "codexSection": "general",
+      "exampleContext": "Represents data storage or structured info."
     }
   },
-  "user": {
-  "file": "user.png",
-  "icon": "👤",
-  "alt": "User icon representing a person, profile, or system participant",
-  "sampleUsage": {
-    "codexSection": "rolesAndResponsibilities",
-    "exampleContext": "Used to visually indicate human roles such as users, managers, developers, or administrators."
-  }
-  },
-  "users": {
-    "file": "users.png",
-    "icon": "👥",
-    "alt": "Users icon representing groups of people, teams, or collaborative roles",
+  "dayEnd": {
+    "file": "dayEnd.png",
+    "icon": "🌇",
+    "alt": "Sunset icon for end of workday",
     "sampleUsage": {
-      "codexSection": "rolesAndResponsibilities",
-      "exampleContext": "Used to indicate sections that describe multiple human roles such as users, managers, developers, and administrators working together in the Skyesoft system."
+      "codexSection": "general",
+      "exampleContext": "Represents day end, evening, or closure."
     }
   },
-  "shieldBlue": {
-    "file": "shield.png",
-    "icon": "🛡️",
-    "alt": "Shield icon representing protection, security, and compliance",
+  "dayStart": {
+    "file": "dayStart.png",
+    "icon": "🌅",
+    "alt": "Sunrise icon for start of workday",
     "sampleUsage": {
-      "codexSection": "compliance",
-      "exampleContext": "Used to indicate sections dealing with data security, privacy policies, or user protection rules."
+      "codexSection": "general",
+      "exampleContext": "Represents morning, start, or new beginning."
     }
   },
-  "pen": {
-    "file": "pen.png",
-    "icon": "✒️",
-    "alt": "Pen icon representing writing, editing, or amendments",
+  "daylight": {
+    "file": "daylight.png",
+    "icon": "🌞",
+    "alt": "Daylight icon",
     "sampleUsage": {
-      "codexSection": "amendmentProcess",
-      "exampleContext": "Used to visually indicate processes related to constitutional or document amendments within Skyesoft."
+      "codexSection": "general",
+      "exampleContext": "Represents daytime or brightness."
+    }
+  },
+  "document": {
+    "file": "document.png",
+    "icon": "📄",
+    "alt": "Document icon for content",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents written content or reports."
+    }
+  },
+  "downArrow": {
+    "file": "downArrow.png",
+    "icon": "🔻",
+    "alt": "Down arrow icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents footers or downward movement."
+    }
+  },
+  "flashingLight": {
+    "file": "flashingLight.png",
+    "icon": "🚨",
+    "alt": "Flashing light for urgent alerts",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents alerts or urgent issues."
+    }
+  },
+  "folder": {
+    "file": "folder.png",
+    "icon": "🗂️",
+    "alt": "Folder icon for organization",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents storage or organization."
+    }
+  },
+  "gear": {
+    "file": "gear.png",
+    "icon": "⚙️",
+    "alt": "Gear icon for configuration",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents system configuration or settings."
+    }
+  },
+  "graduationCap": {
+    "file": "graduationCap.png",
+    "icon": "🎓",
+    "alt": "Graduation cap icon for learning",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents training, education, or learning."
+    }
+  },
+  "hourglass": {
+    "file": "hourglass.png",
+    "icon": "⏳",
+    "alt": "Hourglass icon for time passing",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents waiting, loading, or passage of time."
+    }
+  },
+  "inProgress": {
+    "file": "inProgress.png",
+    "icon": "🔄",
+    "alt": "In-progress icon for ongoing tasks",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents work in progress."
     }
   },
   "information": {
     "file": "information.png",
     "icon": "ℹ️",
-    "alt": "Information icon representing glossary and help sections",
+    "alt": "Information icon",
     "sampleUsage": {
-      "codexSection": "glossary",
-      "exampleContext": "Used for glossary sections or informational content."
+      "codexSection": "general",
+      "exampleContext": "Represents information or glossary sections."
+    }
+  },
+  "integration": {
+    "file": "integration.png",
+    "icon": "🔌",
+    "alt": "Integration icon for connections",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents integrations or system connections."
+    }
+  },
+  "lightbulb": {
+    "file": "lightbulb.png",
+    "icon": "💡",
+    "alt": "Lightbulb icon for ideas",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents insights or ideas."
+    }
+  },
+  "link": {
+    "file": "link.png",
+    "icon": "🔗",
+    "alt": "Link icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents references or connections."
+    }
+  },
+  "live": {
+    "file": "live.png",
+    "icon": "📡",
+    "alt": "Live icon for streaming or active status",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents live data or broadcasts."
+    }
+  },
+  "megaphone": {
+    "file": "megaphone.png",
+    "icon": "📢",
+    "alt": "Megaphone icon for announcements",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Used for bulletins or public announcements."
+    }
+  },
+  "memo": {
+    "file": "memo.png",
+    "icon": "📝",
+    "alt": "Memo icon for notes or text",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents notes, memos, or text entries."
+    }
+  },
+  "mobilePhone": {
+    "file": "mobilePhone.png",
+    "icon": "📱",
+    "alt": "Mobile phone icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents smartphone interactions."
+    }
+  },
+  "notes": {
+    "file": "notes.png",
+    "icon": "🗒️",
+    "alt": "Notes icon for documentation",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents notes or written records."
+    }
+  },
+  "openFolder": {
+    "file": "openFolder.png",
+    "icon": "📂",
+    "alt": "Open folder icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents folders, storage, or organization."
+    }
+  },
+  "owner": {
+    "file": "owner.png",
+    "icon": "👤",
+    "alt": "Owner icon for responsibility",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents owner or responsible party."
+    }
+  },
+  "palette": {
+    "file": "palette.png",
+    "icon": "🎨",
+    "alt": "Palette icon for design",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents styling, color, or themes."
+    }
+  },
+  "pencil": {
+    "file": "pencil.png",
+    "icon": "✏️",
+    "alt": "Pencil icon for writing or editing",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents drafting, writing, or editing."
+    }
+  },
+  "pen": {
+    "file": "pen.png",
+    "icon": "✒️",
+    "alt": "Pen icon for signatures or editing",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents signatures or finalized writing."
+    }
+  },
+  "pin": {
+    "file": "pin.png",
+    "icon": "📍",
+    "alt": "Pin icon for location or highlights",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents pinned items or locations."
+    }
+  },
+  "property": {
+    "file": "property.png",
+    "icon": "🏠",
+    "alt": "Property icon for buildings or sites",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents physical property or sites."
+    }
+  },
+  "puzzle": {
+    "file": "puzzle.png",
+    "icon": "🧩",
+    "alt": "Puzzle icon for components",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents system modules or components."
+    }
+  },
+  "receipt": {
+    "file": "receipt.png",
+    "icon": "🧾",
+    "alt": "Receipt icon for records",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents receipts or data records."
     }
   },
   "robot": {
@@ -346,35 +382,179 @@
     "icon": "🤖",
     "alt": "Robot icon for AI modules",
     "sampleUsage": {
-      "codexSection": "skyebotModule",
-      "exampleContext": "Represents AI assistant functions like Skyebot."
+      "codexSection": "general",
+      "exampleContext": "Represents AI assistants like Skyebot."
     }
   },
-  "code": {
-    "file": "code.png",
-    "icon": "</>",
-    "alt": "Code icon for technical snippets or structured examples",
+  "rocket": {
+    "file": "rocket.png",
+    "icon": "🚀",
+    "alt": "Rocket icon for launches or improvements",
     "sampleUsage": {
-      "codexSection": "exampleEntry",
-      "exampleContext": "Represents JSON, API calls, or structured code examples in documentation."
+      "codexSection": "general",
+      "exampleContext": "Represents progress, upgrades, or new launches."
     }
   },
-  "mobilePhone": {
-    "file": "mobilePhone.png",
-    "icon": "📱",
-    "alt": "Mobile phone icon for smartphone or device interactions",
+  "ruler": {
+    "file": "ruler.png",
+    "icon": "📏",
+    "alt": "Ruler icon for standards",
     "sampleUsage": {
-      "codexSection": "integrations",
-      "exampleContext": "Represents mobile device interactions, mobile modals, or smartphone-based inputs like punch-in/out."
+      "codexSection": "general",
+      "exampleContext": "Represents measurements or rules."
     }
   },
-  "graduationCap": {
-    "file": "graduationCap.png",
-    "icon": "🎓",
-    "alt": "Graduation cap icon representing training, education, or achievement",
+  "scales": {
+    "file": "scales.png",
+    "icon": "⚖️",
+    "alt": "Scales icon for fairness or balance",
     "sampleUsage": {
-      "codexSection": "training",
-      "exampleContext": "Used for modules or documents related to employee training, certifications, or knowledge development."
+      "codexSection": "general",
+      "exampleContext": "Represents principles, balance, or judgment."
+    }
+  },
+  "scroll": {
+    "file": "scroll.png",
+    "icon": "📜",
+    "alt": "Scroll icon for documents",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents legal or constitutional docs."
+    }
+  },
+  "shield": {
+    "file": "shield.png",
+    "icon": "🛡️",
+    "alt": "Shield icon for security",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents protection, compliance, or security."
+    }
+  },
+  "sunrise": {
+    "file": "sunrise.png",
+    "icon": "🌅",
+    "alt": "Sunrise icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents early morning or fresh start."
+    }
+  },
+  "sunset": {
+    "file": "sunset.png",
+    "icon": "🌇",
+    "alt": "Sunset icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents day end or conclusion."
+    }
+  },
+  "table": {
+    "file": "table.png",
+    "icon": "📊",
+    "alt": "Table icon for data",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents data tables or structured content."
+    }
+  },
+  "target": {
+    "file": "target.png",
+    "icon": "🎯",
+    "alt": "Target icon for goals",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents objectives or goals."
+    }
+  },
+  "tools": {
+    "file": "tools.png",
+    "icon": "🛠️",
+    "alt": "Tools icon for maintenance",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents service tools or management."
+    }
+  },
+  "trophy": {
+    "file": "trophy.png",
+    "icon": "🏆",
+    "alt": "Trophy icon for achievements",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents recognition or important goals."
+    }
+  },
+  "upArrow": {
+    "file": "upArrow.png",
+    "icon": "🔺",
+    "alt": "Up arrow icon",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents headers or upward movement."
+    }
+  },
+  "user": {
+    "file": "user.png",
+    "icon": "👤",
+    "alt": "User icon for people",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents an individual user or participant."
+    }
+  },
+  "users": {
+    "file": "users.png",
+    "icon": "👥",
+    "alt": "Users icon for groups",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents teams, groups, or communities."
+    }
+  },
+  "warning": {
+    "file": "warning.png",
+    "icon": "⚠️",
+    "alt": "Warning icon for alerts",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents alerts, risks, or exclusions."
+    }
+  },
+  "weather": {
+    "file": "weather.png",
+    "icon": "☁️",
+    "alt": "Weather icon for conditions",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents weather data or conditions."
+    }
+  },
+  "workman": {
+    "file": "workman.png",
+    "icon": "👷",
+    "alt": "Workman icon for labor",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents construction or labor staff."
+    }
+  },
+  "workmanVest": {
+    "file": "workmanVest.png",
+    "icon": "🦺",
+    "alt": "Safety vest icon for workers",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents safety gear or site rules."
+    }
+  },
+  "wrench": {
+    "file": "wrench.png",
+    "icon": "🔧",
+    "alt": "Wrench icon for fixing or tools",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents fixes, adjustments, or tools."
     }
   }
 }
