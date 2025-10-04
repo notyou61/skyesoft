@@ -321,8 +321,6 @@ class SkyesoftPDF extends TCPDF {
         // Symmetric body end offset (same gap above footer as below header)
         $this->bodyEndOffset = $this->bodyStartY;
     }
-
-
     public function setReportTitle($title, $icon = null) {
         $this->reportTitle = $title;
         $this->reportIcon  = $icon;

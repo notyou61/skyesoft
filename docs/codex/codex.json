@@ -209,7 +209,7 @@
         ]
       },
       "segments": {
-        "icon": "clipboard",
+        "icon": "table",
         "format": "table",
         "items": [
           { "role": "Office", "before": "12:00 AM – 7:29 AM", "worktime": "7:30 AM – 3:30 PM", "after": "3:31 PM – 11:59 PM" },

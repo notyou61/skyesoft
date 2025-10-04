@@ -350,6 +350,15 @@
       "exampleContext": "Represents pinned items or locations."
     }
   },
+  "plug": {
+    "file": "plug.png",
+    "icon": "🔌",
+    "alt": "Plug icon for integrations",
+    "sampleUsage": {
+      "codexSection": "integrations",
+      "exampleContext": "Represents system or third-party integrations connecting Skyesoft modules."
+    }
+  },
   "property": {
     "file": "property.png",
     "icon": "🏠",
