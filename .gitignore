@@ -17,12 +17,13 @@ assets/logs/*
 !assets/logs/.gitkeep
 
 ##############################
-# Environment & secrets
+# Environment & secrets (PROTECTED)
 ##############################
 config.php
 .env
 .env.*
 *.env
+!.env.backup           # allow local backup if needed
 public_html/.data/.env
 
 ##############################
@@ -32,11 +33,12 @@ public_html/data/
 public_html/*/data/
 **/skyesoft-data.json
 
-# Ignore JSON in assets/data except for whitelisted ones
+# Ignore JSON in assets/data except whitelisted
 assets/data/*.json
 !assets/data/reportDisclaimers.json
 !assets/data/jurisdictions.json
 !assets/data/iconMap.json
+!assets/data/codex.json
 
 ##############################
 # Build / deps / artifacts
@@ -56,11 +58,15 @@ composer.lock
 ##############################
 # Platform-specific
 ##############################
-.netlify
+.netlify/
 
+##############################
 # Debug logs exception
+##############################
 assets/logs/*
-\!assets/logs/.gitkeep
-.netlify/
-.netlify/
+!assets/logs/.gitkeep
+
+##############################
+# Scripts
+##############################
 scripts/autoComment.js

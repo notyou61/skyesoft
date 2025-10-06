@@ -1,0 +1,411 @@
+{
+  "codexMeta": {
+    "title": "🎯 Skyesoft Codex Meta",
+    "version": "2025.10",
+    "lastUpdated": "2025-10-06",
+    "category": "System Layer",
+    "enrichment": "light",
+    "description": {
+      "icon": "book",
+      "format": "text",
+      "text": "The Codex Meta governs the format, validation, and enrichment logic for every Skyesoft module. It ensures consistency between how data is structured, interpreted, and visually rendered through the Skyesoft Report Kernel and Skyebot AI."
+    },
+    "schema": {
+      "requiredKeys": ["title", "purpose"],
+      "optionalKeys": [
+        "description",
+        "features",
+        "workflow",
+        "integrations",
+        "rules",
+        "examples",
+        "format",
+        "category",
+        "version",
+        "enrichment"
+      ],
+      "fieldTypes": {
+        "title": "String with emoji prefix",
+        "purpose": "Object {icon, text}",
+        "description": "Object {icon, text}",
+        "features": "Object {icon, items[]}",
+        "workflow": "Object {icon, items[]}",
+        "integrations": "Object {icon, items[]}",
+        "rules": "Object {icon, items[]}",
+        "examples": "Object {icon, items[]}",
+        "format": "String: 'text', 'list', or 'table'",
+        "enrichment": "String: 'none', 'light', 'medium', or 'heavy'"
+      },
+      "notes": "Every module must include 'title' and 'purpose'. The 'enrichment' property determines how aggressively AI expands the text. This schema defines the governance rules that allow Skyesoft to self-document."
+    },
+    "implementationNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "The Codex Meta itself is parsed but excluded from standard report output. It is used to validate module structure, apply enrichment rules, and maintain interoperability between AI components."
+    }
+  },
+  "skyesoftOverview": {
+    "title": "📘 Skyesoft Overview",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the mission, structure, and interconnectivity of all Skyesoft modules. It presents the big picture: how Skyesoft unifies project management, AI reasoning, and operational data into one continuous system."
+    },
+    "architectureLayers": {
+      "icon": "puzzle",
+      "format": "table",
+      "items": [
+        { "Layer": "Foundational", "Modules": "Time Interval Standards, Document Standards", "Purpose": "Establish temporal and visual consistency" },
+        { "Layer": "Operational", "Modules": "Attendance, Permit Management", "Purpose": "Support daily workflows" },
+        { "Layer": "Adaptive", "Modules": "AI Integration, SSE Stream", "Purpose": "Provide real-time context and reasoning" }
+      ]
+    },
+    "systemVision": {
+      "icon": "rocket",
+      "format": "list",
+      "items": [
+        "Unify project and administrative data in a single schema",
+        "Enable automation without loss of human oversight",
+        "Make reports self-generating and audit-friendly",
+        "Allow modular AI enrichment for context awareness"
+      ]
+    }
+  },
+  "skyesoftConstitution": {
+    "title": "🧭 Skyesoft Constitution",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the principles and logical framework that guide all Skyesoft operations. The Constitution ensures that time, structure, and intelligence are always aligned with Christy Signs’ business goals."
+    },
+    "corePrinciples": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Transparency in logic and output",
+        "Consistency in structure and formatting",
+        "Scalability and modularity across components",
+        "Resilience via validation and auditability"
+      ]
+    },
+    "governingFramework": {
+      "icon": "puzzle",
+      "format": "table",
+      "items": [
+        { "Layer": "Foundation", "Scope": "TIS, Document Standards", "Purpose": "Define time and design consistency" },
+        { "Layer": "Core", "Scope": "Permit Management, Attendance", "Purpose": "Ensure workflow alignment" },
+        { "Layer": "Adaptive", "Scope": "AI and SSE Streams", "Purpose": "Enable learning and context adaptation" }
+      ]
+    }
+  },
+  "documentStandards": {
+    "title": "📄 Document Standards",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the formatting, layout, and branding policies that govern all Skyesoft-generated documents including reports, sheets, and correspondence."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Uniform header/footer structure with metadata",
+        "Automatic pagination and timestamp alignment",
+        "Integrated iconography from iconMap.json",
+        "Configurable spacing and typography standards"
+      ]
+    }
+  },
+  "timeIntervalStandards": {
+    "title": "⏱️ Time Interval Standards (TIS)",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines workday types and time segments used across scheduling, SLA validation, and AI contextual reasoning. Each day is classified as Workday, Weekend, or Holiday. Time intervals are further divided for Office and Shop environments."
+    },
+    "dayTypes": {
+      "icon": "calendar",
+      "format": "list",
+      "items": ["Workday", "Weekend", "Holiday"]
+    },
+    "segmentsOffice": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Interval": "Before Worktime", "Hours": "12:00 AM – 7:29 AM" },
+        { "Interval": "Worktime", "Hours": "7:30 AM – 3:30 PM" },
+        { "Interval": "After Worktime", "Hours": "3:31 PM – 11:59 PM" }
+      ]
+    },
+    "segmentsShop": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Interval": "Before Worktime", "Hours": "12:00 AM – 5:59 AM" },
+        { "Interval": "Worktime", "Hours": "6:00 AM – 2:00 PM" },
+        { "Interval": "After Worktime", "Hours": "2:01 PM – 11:59 PM" }
+      ]
+    },
+    "holidays": {
+      "icon": "calendar",
+      "format": "table",
+      "items": [
+        { "Date": "2025-01-01", "Holiday": "New Year's Day" },
+        { "Date": "2025-01-20", "Holiday": "Martin Luther King Jr. Day" },
+        { "Date": "2025-02-17", "Holiday": "Presidents' Day" },
+        { "Date": "2025-05-26", "Holiday": "Memorial Day" },
+        { "Date": "2025-07-04", "Holiday": "Independence Day" },
+        { "Date": "2025-09-01", "Holiday": "Labor Day" },
+        { "Date": "2025-10-13", "Holiday": "Columbus Day" },
+        { "Date": "2025-11-11", "Holiday": "Veterans Day" },
+        { "Date": "2025-11-27", "Holiday": "Thanksgiving Day" },
+        { "Date": "2025-12-25", "Holiday": "Christmas Day" }
+      ]
+    },
+    "exclusions": {
+      "icon": "shield",
+      "format": "text",
+      "text": "Weekends and Holidays are automatically excluded from all time-sensitive calculations and scheduling routines. Live data for holidays is dynamically retrieved via the Skyesoft SSE stream and federalHolidays.php."
+    }
+  },
+  "fileManagement": {
+    "title": "🗂️ File Management",
+    "category": "System Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "folder",
+      "format": "text",
+      "text": "Establishes unified file handling, naming conventions, and versioning logic for all Skyesoft data structures."
+    },
+    "rules": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Use consistent lowercase filenames with hyphens",
+        "Store active data under /assets/data/",
+        "Archive obsolete or legacy materials under /docs/legacy/",
+        "Avoid redundancy between sheets and reports"
+      ]
+    }
+  },
+  "coreDatabaseStructure": {
+    "title": "🧱 Core Database Structure",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "puzzle",
+      "format": "text",
+      "text": "Defines how Skyesoft stores entities, locations, contacts, and relationships in JSON and database form."
+    },
+    "features": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Entity": "companies", "Description": "Corporate records (clients, vendors, jurisdictions)" },
+        { "Entity": "contacts", "Description": "Linked individuals associated with entities" },
+        { "Entity": "locations", "Description": "Physical or project addresses linked to entities" },
+        { "Entity": "jobs", "Description": "Active work orders and projects" }
+      ]
+    }
+  },
+  "mobileFirstModals": {
+    "title": "📱 Mobile-First Modals",
+    "category": "System Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Describes Skyesoft’s modal-based interface logic, optimized for mobile and tablet screens. Enables quick contextual interactions without full-page reloads."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Dynamic modal injection with user prompts",
+        "Keyboard-friendly entry for quick tasks",
+        "Adaptive width scaling for mobile browsers"
+      ]
+    }
+  },
+  "attendanceSuite": {
+    "title": "🕒 Attendance Suite",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Tracks employee attendance, scheduling, and time logs integrated with Time Interval Standards and Skyebot awareness."
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Step": "Clock In/Out", "Description": "User action triggers TIS validation and record update" },
+        { "Step": "Review", "Description": "Managers can review daily activity summaries" },
+        { "Step": "Sync", "Description": "Data syncs automatically to skyesoft-data.json" }
+      ]
+    }
+  },
+  "permitManagementSuite": {
+    "title": "📋 Permit Management Suite",
+    "category": "Operational Layer",
+    "enrichment": "heavy",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Automates the sign permit application, payment, and tracking process across multiple jurisdictions."
+    },
+    "workflow": {
+      "icon": "list",
+      "format": "list",
+      "items": [
+        "Initiate permit request with job reference and client details",
+        "Submit application through jurisdictional portal",
+        "Track status, expiration, and fee receipts",
+        "Auto-generate permit summary report with attached receipts"
+      ]
+    }
+  },
+  "financialControlSuite": {
+    "title": "💰 Financial Control Suite",
+    "category": "Operational Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Handles internal reimbursements, petty cash tracking, and AR/AP reporting workflows."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Reimbursement reports auto-populate from receipt uploads",
+        "Mileage, petty cash, and permit fee integration",
+        "PDF export aligned with Document Standards"
+      ]
+    }
+  },
+  "serviceManagementSuite": {
+    "title": "🔧 Service Management Suite",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Manages field service requests, maintenance calls, and status reporting for illuminated signage and installations."
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Step": "Request Logged", "Detail": "Client or internal user submits a service ticket" },
+        { "Step": "Dispatch", "Detail": "Technician assigned and notified automatically" },
+        { "Step": "Completion", "Detail": "Work order updated and archived to project history" }
+      ]
+    }
+  },
+  "managementEscalationTrees": {
+    "title": "🌳 Management Escalation Trees",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines decision and communication chains within Skyesoft, ensuring accountability and continuity of response."
+    },
+    "rules": {
+      "icon": "list",
+      "format": "list",
+      "items": [
+        "Each suite must define its own escalation logic",
+        "Escalations always follow the role hierarchy first",
+        "Emergency overrides are logged and timestamped"
+      ]
+    }
+  },
+  "skyebotModule": {
+    "title": "🤖 Skyebot Module",
+    "category": "Adaptive Layer",
+    "enrichment": "heavy",
+    "purpose": {
+      "icon": "robot",
+      "format": "text",
+      "text": "Serves as the conversational interface of Skyesoft, interpreting user queries and triggering backend logic, reports, or document creation."
+    },
+    "integrations": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "OpenAI API (askOpenAI.php)",
+        "Dynamic SSE Stream for context awareness",
+        "Codex-driven intent recognition"
+      ]
+    }
+  },
+  "aiIntegration": {
+    "title": "🧠 AI Integration",
+    "category": "Adaptive Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines how Skyesoft integrates external AI APIs to enhance context reasoning, enrichment, and decision automation."
+    },
+    "workflow": {
+      "icon": "list",
+      "format": "list",
+      "items": [
+        "Collect structured module context",
+        "Assemble enrichment prompts with codex metadata",
+        "Call OpenAI API for enhancement",
+        "Render output dynamically via Report Kernel"
+      ]
+    }
+  },
+  "sseStream": {
+    "title": "🌐 SSE Stream",
+    "category": "Adaptive Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Provides real-time state data including time, weather, and system status. Acts as the live operational pulse of the Skyesoft system."
+    },
+    "examples": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Stream": "timeDateArray", "Purpose": "Real-time work interval tracking" },
+        { "Stream": "weatherData", "Purpose": "Dynamic weather injection for context" },
+        { "Stream": "siteMeta", "Purpose": "Deployment and Netlify sync data" }
+      ]
+    }
+  },
+  "ragFramework": {
+    "title": "📚 RAG Framework",
+    "category": "Adaptive Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "book",
+      "format": "text",
+      "text": "Defines Skyesoft’s Retrieval-Augmented Generation layer, connecting Codex content, archived reports, and live data into a reasoning network."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Codex-aware retrieval queries",
+        "Cross-reference between modules and SSE streams",
+        "Context summarization for AI agents"
+      ]
+    }
+  }
+}
