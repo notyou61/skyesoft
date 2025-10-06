@@ -52,7 +52,8 @@ if (!$OPENAI_API_KEY) {
 // --------------------------
 // Load codex.json dynamically
 // --------------------------
-$codexPath = __DIR__ . '/../docs/codex/codex.json';
+$codexPath = __DIR__ . '/../assets/data/codex.json';
+// Check if the codex file exists
 if (!file_exists($codexPath)) {
     logError("❌ ERROR: Codex file not found at $codexPath");
     die();
@@ -136,33 +137,34 @@ if (php_sapi_name() === 'cli' && isset($argv[1])) {
     }
 }
 
-if (!is_array($input) || !isset($input['slug'])) {
-    logError("❌ ERROR: Invalid input JSON. Must include 'slug'.\nParsed input: " . print_r($input, true));
+if (!is_array($input)) {
+    logError("❌ ERROR: Invalid input JSON.\nParsed input: " . print_r($input, true));
     die();
 }
 
 // Sanitize input
-$slug = preg_replace('/[^A-Za-z0-9_-]/', '', $input['slug']);
+$slug = isset($input['slug']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['slug']) : '';
 $type = isset($input['type']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['type']) : 'information_sheet';
 $requestor = isset($input['requestor']) ? preg_replace('/[^A-Za-z0-9\s]/', '', $input['requestor']) : 'Skyesoft';
 $outputMode = isset($input['outputMode']) ? strtoupper($input['outputMode']) : 'F';
+$mode = isset($input['mode']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['mode']) : 'single';
 
 if (!in_array($outputMode, array('I', 'D', 'F'))) {
     logError("❌ ERROR: Invalid outputMode '$outputMode'. Must be 'I', 'D', or 'F'.");
     die();
 }
 
-// --------------------------
-// Validate slug exists
-// --------------------------
-if (!isset($modules[$slug])) {
-    logError("❌ ERROR: Slug '$slug' not found in Codex.");
-    die();
-}
+$isFull = ($mode === 'full');
 
-$module = $modules[$slug];
-$moduleForAI = $module;
-unset($moduleForAI['title']); // Clean for AI enrichment
+if (!$isFull) {
+    if (empty($slug) || !isset($modules[$slug])) {
+        logError("❌ ERROR: Slug '$slug' not found in Codex.");
+        die();
+    }
+    $currentModules = array($slug => $modules[$slug]);
+} else {
+    $currentModules = $modules;
+}
 
 // =====================================================================
 // Logging Helper
@@ -182,6 +184,32 @@ function logMessage($message) {
 function logError($message) {
     logMessage($message);
     echo $message . "\n";
+}
+
+// =====================================================================
+// Enrichment Control Helper
+// =====================================================================
+function getEnrichmentPrompt($slug, $key, $enrichment, $moduleData) {
+    switch (strtolower($enrichment)) {
+        case 'none':
+            $desc = "No AI enrichment is permitted. Use codex content exactly as written.";
+            break;
+        case 'light':
+            $desc = "Use light enrichment. You may correct tone, grammar, and minor phrasing only.";
+            break;
+        case 'medium':
+            $desc = "Use medium enrichment. You may expand lightly, add short examples or clarifying context, but avoid major rewrites.";
+            break;
+        case 'heavy':
+            $desc = "Use heavy enrichment. You may elaborate with detailed explanations, analogies, or workflow expansions.";
+            break;
+        default:
+            $desc = "Default light enrichment applies. Perform minimal improvement for clarity and readability.";
+    }
+
+    logMessage("💡 Enrichment mode for $slug/$key: " . strtoupper($enrichment));
+    return "Enrichment Policy: " . strtoupper($enrichment) . " — " . $desc .
+        "\n\nModule Context:\n" . json_encode($moduleData, JSON_PRETTY_PRINT);
 }
 
 // =====================================================================
@@ -213,12 +241,15 @@ The display formatting (headers, icons, tables, lists) will be applied dynamical
 Module Data:
 " . json_encode($moduleData, JSON_PRETTY_PRINT);
 
+    $enrichmentPrompt = getEnrichmentPrompt($slug, $key, isset($moduleData['enrichment']) ? $moduleData['enrichment'] : 'none', $moduleData);
+    $prompt = $enrichmentPrompt . "\n\n" . $basePrompt;
+
     if ($format === 'text') {
-        $prompt = $basePrompt . "\n\nOnly generate narrative text for this section.";
+        $prompt .= "\n\nOnly generate narrative text for this section.";
     } elseif ($format === 'list') {
-        $prompt = $basePrompt . "\n\nGenerate the list items for this section as a JSON array of strings.";
+        $prompt .= "\n\nGenerate the list items for this section as a JSON array of strings.";
     } elseif ($format === 'table') {
-        $prompt = $basePrompt . "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
+        $prompt .= "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
     } else {
         logError("⚠️ Unsupported format for AI enrichment: $format");
         return "⚠️ Unsupported format for AI enrichment.";
@@ -386,6 +417,66 @@ class SkyesoftPDF extends TCPDF {
     }
 
     // ----------------------
+    // Helper: Estimate number of lines (renamed to avoid conflict with TCPDF::getNumLines)
+    // ----------------------
+    private function estimateNumLines($text, $width) {
+        if (empty($text)) return 0;
+        $height = $this->getStringHeight($width, $text);
+        return ceil($height / 6);
+    }
+
+    // ----------------------
+    // Estimate section body height
+    // ----------------------
+    private function estimateSectionBodyHeight($section) {
+        $format = $section['format'];
+        $fullWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+        $lineHeight = 6;
+        $totalHeight = 0;
+
+        if ($format === 'text' && isset($section['text'])) {
+            $totalHeight = $this->getStringHeight($fullWidth, $section['text']);
+        } elseif ($format === 'list' && isset($section['items']) && is_array($section['items'])) {
+            $indent = 10;
+            $bulletWidth = 5;
+            $spaceAfterBullet = 5;
+            $textWidth = $fullWidth - $indent - $bulletWidth - $spaceAfterBullet;
+            foreach ($section['items'] as $item) {
+                $totalHeight += $this->getStringHeight($textWidth, $item);
+            }
+        } elseif ($format === 'table' && isset($section['items']) && is_array($section['items'])) {
+            if (empty($section['items'])) return 0;
+            $headers = array_keys($section['items'][0]);
+            $numColumns = count($headers);
+            $pageWidth = $fullWidth;
+            if ($numColumns === 2) {
+                $colWidths = array($pageWidth * 0.3, $pageWidth * 0.7);
+            } else {
+                $colWidth = $pageWidth / $numColumns;
+                $colWidths = array_fill(0, $numColumns, $colWidth);
+            }
+            $headerHeight = 10;
+            $totalHeight += $headerHeight;
+            foreach ($section['items'] as $row) {
+                $maxHeight = 0;
+                foreach ($headers as $i => $header) {
+                    $value = isset($row[$header]) ? $row[$header] : '';
+                    $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
+                    if ($cellHeight < 10) {
+                        $cellHeight = 10;
+                    }
+                    if ($cellHeight > $maxHeight) {
+                        $maxHeight = $cellHeight;
+                    }
+                }
+                $totalHeight += $maxHeight;
+            }
+        }
+
+        return $totalHeight;
+    }
+
+    // ----------------------
     // Dynamic Table Rendering
     // ----------------------
     public function addTable(array $data) {
@@ -409,6 +500,30 @@ class SkyesoftPDF extends TCPDF {
             $colWidths = array_fill(0, $numColumns, $colWidth);
         }
 
+        // Pre-check for entire table fit
+        $estimatedTableHeight = 10; // header
+        foreach ($data as $row) {
+            $maxHeight = 0;
+            foreach ($headers as $i => $header) {
+                $value = isset($row[$header]) ? $row[$header] : '';
+                $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
+                if ($cellHeight < 10) {
+                    $cellHeight = 10;
+                }
+                if ($cellHeight > $maxHeight) {
+                    $maxHeight = $cellHeight;
+                }
+            }
+            $estimatedTableHeight += $maxHeight;
+        }
+        $availableSpace = $this->PageBreakTrigger - $this->GetY() - $this->footerHeight;
+        if ($estimatedTableHeight > $availableSpace) {
+            $sectionTitle = isset($this->currentSectionTitle) ? $this->currentSectionTitle : 'Unknown Section';
+            logMessage("⚙️ Entire table moved to next page for better fit (section: " . $sectionTitle . ")");
+            $this->AddPage();
+        }
+
+        // Draw header row
         $this->SetFillColor(230, 230, 230);
         $this->SetTextColor(0, 0, 0);
         $this->SetFont('', 'B');
@@ -420,6 +535,7 @@ class SkyesoftPDF extends TCPDF {
         $this->Ln();
         $this->SetFont('');
 
+        // Draw data rows
         foreach ($data as $row) {
             $x = $this->GetX();
             $y = $this->GetY();
@@ -438,10 +554,29 @@ class SkyesoftPDF extends TCPDF {
                 }
             }
 
+            // If the next row won't fit, break to a new page first and reprint section header if needed
             if ($this->GetY() + $maxHeight > $this->PageBreakTrigger - $this->footerHeight) {
                 $this->AddPage();
+                $this->SetY($this->bodyStartY);
+                // Render continued header
+                $contTitle = $this->currentSectionTitle . ' – Continued';
+                $startX = 20;
+                $iconFile = resolveHeaderIcon($this->currentSectionIcon, $this->iconMap ?? array());
+                if ($iconFile) {
+                    $this->Image($iconFile, $startX, $this->GetY() - 2, 20);
+                    $startX += 24;
+                }
+                $this->SetXY($startX, $this->GetY());
+                $this->SetFont('helvetica', 'B', 14);
+                $this->SetTextColor(0, 0, 0);
+                $this->Cell(0, 8, $contTitle, 0, 1, 'L', false);
+                $this->SetDrawColor(200, 200, 200);
+                $this->Line(20, $this->GetY(), $this->getPageWidth() - 20, $this->GetY());
+                $this->Ln(4);
+                $this->SetTextColor(0, 0, 0);
+                $this->SetFont('helvetica', '', 11);
+                // Reprint table header
                 $x = $this->GetX();
-                $y = $this->GetY();
                 $this->SetFillColor(230, 230, 230);
                 $this->SetFont('', 'B');
                 foreach ($headers as $i => $header) {
@@ -467,7 +602,124 @@ class SkyesoftPDF extends TCPDF {
         $this->isTableSection = false;
     }
 
-    public function renderSection($key, $section, $iconMap, &$sections) {
+    // ----------------------
+    // Render Text with Continuation
+    // ----------------------
+    private function renderTextWithContinuation($text, $iconMap) {
+        if (empty($text)) return;
+
+        $fullWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+        $lineHeight = 6;
+        $minHeight = $lineHeight * 4; // Minimum 4 lines before starting a chunk
+
+        // Pre-check for entire text fit
+        $estimatedTextHeight = $this->getStringHeight($fullWidth, $text);
+        $availableSpace = $this->PageBreakTrigger - $this->GetY() - $this->footerHeight;
+        if ($estimatedTextHeight > $availableSpace) {
+            $sectionTitle = isset($this->currentSectionTitle) ? $this->currentSectionTitle : 'Unknown Section';
+            logMessage("⚙️ Entire text section moved to next page for better fit (section: " . $sectionTitle . ")");
+            $this->AddPage();
+            $this->SetY($this->bodyStartY);
+        }
+
+        while (trim($text) !== '') {
+            $currentY = $this->GetY();
+            $availableHeight = $this->PageBreakTrigger - $currentY - $this->footerHeight;
+
+            // If not enough space for min chunk, add page with continued header
+            if ($availableHeight < $minHeight) {
+                $this->AddPage();
+                $this->SetY($this->bodyStartY);
+
+                // Render continued header
+                $contTitle = $this->currentSectionTitle . ' – Continued';
+                $startX = 20;
+                $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
+                if ($iconFile) {
+                    $this->Image($iconFile, $startX, $this->GetY() - 2, 20);
+                    $startX += 24;
+                }
+                $this->SetXY($startX, $this->GetY());
+                $this->SetFont('helvetica', 'B', 14);
+                $this->SetTextColor(0, 0, 0);
+                $this->Cell(0, 8, $contTitle, 0, 1, 'L', false);
+                $this->SetDrawColor(200, 200, 200);
+                $this->Line(20, $this->GetY(), $this->getPageWidth() - 20, $this->GetY());
+                $this->Ln(4);
+                $this->SetTextColor(0, 0, 0);
+                $this->SetFont('helvetica', '', 11);
+
+                // Recalculate available after header
+                $currentY = $this->GetY();
+                $availableHeight = $this->PageBreakTrigger - $currentY - $this->footerHeight;
+            }
+
+            // Calculate max lines that fit
+            $maxLines = floor(($availableHeight - $lineHeight) / $lineHeight);
+            if ($maxLines <= 0) $maxLines = 1;
+
+            // Binary search for the maximum character position that fits in maxLines
+            $low = 0;
+            $high = strlen($text);
+            while ($low < $high) {
+                $mid = (int)(($low + $high + 1) / 2);
+                $chunk = substr($text, 0, $mid);
+                $numLinesChunk = $this->estimateNumLines($chunk, $fullWidth);
+                if ($numLinesChunk <= $maxLines) {
+                    $low = $mid;
+                } else {
+                    $high = $mid - 1;
+                }
+            }
+            $splitPos = $low;
+
+            if ($splitPos == 0) {
+                // Fallback if nothing fits
+                $splitPos = min(200, strlen($text)); // Arbitrary small chunk
+            }
+
+            // Prefer splitting at sentence end, comma, or space (prioritized)
+            $chunkPrefix = substr($text, 0, $splitPos);
+            $splitAt = $splitPos;
+
+            $dotPos = strrpos($chunkPrefix, '.');
+            if ($dotPos !== false) {
+                $candidate = $dotPos + 2; // ". "
+                $testChunk = substr($text, 0, $candidate);
+                if ($this->estimateNumLines($testChunk, $fullWidth) <= $maxLines) {
+                    $splitAt = $candidate;
+                }
+            } elseif (($commaPos = strrpos($chunkPrefix, ',')) !== false) {
+                $candidate = $commaPos + 2; // ", "
+                $testChunk = substr($text, 0, $candidate);
+                if ($this->estimateNumLines($testChunk, $fullWidth) <= $maxLines) {
+                    $splitAt = $candidate;
+                } else {
+                    $spacePos = strrpos($chunkPrefix, ' ');
+                    if ($spacePos !== false) {
+                        $splitAt = $spacePos + 1;
+                    }
+                }
+            } else {
+                $spacePos = strrpos($chunkPrefix, ' ');
+                if ($spacePos !== false) {
+                    $splitAt = $spacePos + 1;
+                }
+            }
+
+            if ($splitAt < $splitPos * 0.5) {
+                $splitAt = $splitPos; // Avoid too early splits
+            }
+
+            $chunk = substr($text, 0, $splitAt);
+            $text = ltrim(substr($text, $splitAt));
+
+            // Render the chunk
+            $this->MultiCell($fullWidth, $lineHeight, $chunk, 0, 'L', false);
+        }
+    }
+
+    public function renderSection($key, $section, $iconMap, $sections) {
         logMessage("DEBUG Entering renderSection for key: $key");
 
         if (!isset($section['format'])) {
@@ -492,16 +744,22 @@ class SkyesoftPDF extends TCPDF {
         $this->currentSectionKey   = $key;
         $this->currentSectionIcon  = isset($section['icon']) ? $section['icon'] : null;
 
-        // --- START TRANSACTION ---
-        $this->startTransaction();
-        $startPage = $this->getPage();
-        $startY    = $this->GetY();
-
         // Add spacing before section (except at top of page body)
         if ($this->GetY() > $this->bodyStartY) {
             $this->Ln(4);
         }
 
+        // Estimate total section height and pre-check if it fits
+        $approxHeaderHeight = 30; // icon + title + line + ln
+        $bodyHeight = $this->estimateSectionBodyHeight($section);
+        $totalSectionHeight = $approxHeaderHeight + $bodyHeight + 4; // + bottom spacing
+        $remainingSpace = $this->PageBreakTrigger - $this->GetY() - $this->footerHeight;
+        if ($remainingSpace < $totalSectionHeight) {
+            $sectionTitle = $this->currentSectionTitle;
+            logMessage("⚙️ Entire section moved to next page for better fit (section: " . $sectionTitle . ")");
+            $this->AddPage();
+            $this->SetY($this->bodyStartY);
+        }
 
         // ---- Section Header ----
         $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
@@ -526,11 +784,51 @@ class SkyesoftPDF extends TCPDF {
 
         // ---- Render Body ----
         if ($section['format'] === 'text' && isset($section['text'])) {
-            $this->MultiCell(0, 6, $section['text'], 0, 'L', false);
+            $this->renderTextWithContinuation($section['text'], $iconMap);
         } elseif ($section['format'] === 'list' && isset($section['items']) && is_array($section['items'])) {
+            $itemsRenderedOnPage = 0;
+            $indent = 10;
+            $bulletWidth = 5;
+            $spaceAfterBullet = 5;
+            $textIndent = $indent + $bulletWidth + $spaceAfterBullet;
+            $fullWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
+            $textWidth = $fullWidth - $textIndent;
+            $lineHeight = 6;
             foreach ($section['items'] as $item) {
-                $this->Cell(10);
-                $this->Cell(0, 6, '• ' . $item, 0, 1);
+                $approxHeight = $this->getStringHeight($textWidth, $item);
+                if ($approxHeight < $lineHeight) $approxHeight = $lineHeight;
+
+                if ($this->GetY() + $approxHeight > $this->PageBreakTrigger - $this->footerHeight - 10) {
+                    if ($itemsRenderedOnPage > 0) {
+                        $this->AddPage();
+                        $this->SetY($this->bodyStartY);
+                        // Render continued header
+                        $contTitle = $this->currentSectionTitle . ' – Continued';
+                        $startX = 20;
+                        if ($this->currentSectionIcon) {
+                            $iconFile = resolveHeaderIcon($this->currentSectionIcon, $iconMap);
+                            if ($iconFile) {
+                                $this->Image($iconFile, $startX, $this->GetY() - 2, 20);
+                                $startX += 24;
+                            }
+                        }
+                        $this->SetXY($startX, $this->GetY());
+                        $this->SetFont('helvetica', 'B', 14);
+                        $this->Cell(0, 8, $contTitle, 0, 1, 'L', false);
+                        $this->SetDrawColor(200, 200, 200);
+                        $this->Line(20, $this->GetY(), $this->getPageWidth() - 20, $this->GetY());
+                        $this->Ln(4);
+                        $this->SetFont('helvetica', '', 11);
+                        $itemsRenderedOnPage = 0;
+                    }
+                }
+
+                // Render item with wrapping
+                $this->SetX($this->lMargin + $indent);
+                $this->Cell($bulletWidth, $lineHeight, '•', 0, 0, 'L');
+                $this->SetX($this->GetX() + $spaceAfterBullet);
+                $this->MultiCell($textWidth, $lineHeight, $item, 0, 'L', false);
+                $itemsRenderedOnPage++;
             }
         } elseif ($section['format'] === 'table'
             && isset($section['items'])
@@ -542,70 +840,102 @@ class SkyesoftPDF extends TCPDF {
 
         $this->Ln(4);
         $this->currentSectionIcon = null;
-
-        // --- END TRANSACTION ---
-        if ($this->getPage() !== $startPage || $this->GetY() > $this->PageBreakTrigger) {
-            // rollback and move section to new page
-            $this->rollbackTransaction(true);
-            $this->AddPage();
-            $this->SetY($this->headerHeight + $this->bodyMargin); // consistent start
-            // re-render the section cleanly on the new page
-            $this->renderSection($key, $section, $iconMap, $sections);
-        } else {
-            $this->commitTransaction();
-        }
-    }
-
-    private function drawTableHeader($headers, $colWidths, $styling) {
-        $this->SetFillColor(230, 230, 230);
-        $this->SetTextColor(0, 0, 0);
-        $this->SetFont('', 'B');
-        $x = $this->GetX();
-        foreach ($headers as $i => $header) {
-            $this->Cell($colWidths[$i], 10, $header, 1, 0, 'C', true);
-            $this->SetXY($x += $colWidths[$i], $this->GetY());
-        }
-        $this->Ln();
-        $this->SetFont('');
-    }
-
-    private function drawTableRow($row, $headers, $colWidths) {
-        $x = $this->GetX();
-        $y = $this->GetY();
-        $maxHeight = 0;
-        $cellHeights = array();
-
-        foreach ($headers as $i => $header) {
-            $value = isset($row[$header]) ? $row[$header] : '';
-            $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
-            if ($cellHeight < 10) {
-                $cellHeight = 10;
-            }
-            $cellHeights[$i] = $cellHeight;
-            if ($cellHeight > $maxHeight) {
-                $maxHeight = $cellHeight;
-            }
-        }
-
-        if ($this->GetY() + $maxHeight > $this->PageBreakTrigger - $this->footerHeight) {
-            $this->AddPage();
-            $x = $this->GetX();
-            $y = $this->GetY();
-        }
-
-        foreach ($headers as $i => $header) {
-            $value = isset($row[$header]) ? $row[$header] : '';
-            $this->MultiCell($colWidths[$i], $maxHeight, $value, 1, 'L', false, 0, $x, $y, true, 0, false, true, $maxHeight, 'M');
-            $x += $colWidths[$i];
-        }
-
-        $this->SetXY($this->lMargin, $y + $maxHeight);
     }
 
     public function resetSectionIcon() {
         $this->currentSectionIcon = null;
     }
 }
+
+// =====================================================================
+// Enrich Content
+// =====================================================================
+foreach ($currentModules as $modSlug => &$mod) {
+    $modForAI = $mod;
+    unset($modForAI['title']);
+
+    $enrichment = isset($mod['enrichment']) ? strtolower($mod['enrichment']) : 'none';
+    if ($enrichment === 'none') {
+        logMessage("🚫 Skipping AI enrichment for module '$modSlug' due to enrichment=none");
+        continue;
+    }
+
+    $sectionKeys = array();
+    foreach ($mod as $skey => $sval) {
+        if ($skey !== 'title' && isset($sval['format'])) {
+            $sectionKeys[$skey] = isset($sval['priority']) ? intval($sval['priority']) : 999;
+        }
+    }
+    asort($sectionKeys);
+
+    foreach ($sectionKeys as $key => $pri) {
+        $section =& $mod[$key];
+        if (!isset($section['format'])) {
+            continue;
+        }
+
+        $format = strtolower(trim($section['format']));
+        if (!in_array($format, array('text', 'list', 'table'))) {
+            logError("❌ Invalid format for '$key', defaulting to text.");
+            $format = 'text';
+        }
+        $section['format'] = $format;
+
+        if (isset($section['items']) && is_array($section['items'])) {
+            if (is_array(reset($section['items']))) {
+                $format = 'table';
+            } elseif (is_string(reset($section['items']))) {
+                $format = 'list';
+            }
+            $section['format'] = $format;
+        }
+
+        if ($format === 'text' && isset($section['text']) && trim($section['text']) !== '') {
+            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
+            continue;
+        }
+
+        if ($format === 'list' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0 && is_string(current($section['items']))) {
+            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
+            continue;
+        }
+
+        if ($format === 'table' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0) {
+            $firstRow = current($section['items']);
+            if (is_array($firstRow)) {
+                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
+                continue;
+            }
+        }
+
+        logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
+
+        switch ($format) {
+            case 'text':
+                $section['text'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'text');
+                break;
+            case 'list':
+                $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'list');
+                break;
+            case 'table':
+                $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'table');
+                break;
+        }
+
+        if ($format === 'text' && empty($section['text'])) {
+            logError("❌ Invalid text data for '$key'. Expected non-empty string.");
+            $section['text'] = '';
+        } elseif ($format === 'list' && (!is_array($section['items']) || empty($section['items']))) {
+            logError("❌ Invalid list data for '$key'. Expected array of strings.");
+            $section['items'] = array();
+        } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
+            logError("❌ Invalid table data for '$key'. Expected array of objects.");
+            $section['items'] = array();
+        }
+    }
+    unset($section);
+}
+unset($mod);
 
 // =====================================================================
 // Build PDF
@@ -620,117 +950,76 @@ $pdf->SetAutoPageBreak(true, $pdf->bodyEndOffset); // use symmetric bottom gap
 $pdf->SetHeaderMargin(0); // No additional header margin
 $pdf->SetFooterMargin(0); // No additional footer margin
 
-$iconKey = null;
-$titleText = $slug;
-
-if (isset($module['title'])) {
-    $parts = explode(' ', $module['title'], 2);
-    if (count($parts) === 2) {
-        $iconKey = $parts[0];
-        $titleText = $parts[1];
-    } else {
-        $titleText = $module['title'];
-    }
-}
-
-$cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
-
-$pdf->setReportTitle($cleanTitle, $iconKey);
-
-$pdf->AddPage();
-
-$sections = $module;
-unset($sections['title']);
-uasort($sections, function($a, $b) {
-    return (isset($a['priority']) ? $a['priority'] : 999) - (isset($b['priority']) ? $b['priority'] : 999);
-});
-
-foreach ($sections as $key => &$section) {
-    if (!isset($section['format'])) {
-        continue;
-    }
-
-    $format = strtolower(trim($section['format']));
-    if (!in_array($format, array('text', 'list', 'table'))) {
-        logError("❌ Invalid format for '$key', defaulting to text.");
-        $format = 'text';
-    }
-    $section['format'] = $format;
-
-    if (isset($section['items']) && is_array($section['items'])) {
-        if (is_array(reset($section['items']))) {
-            $format = 'table';
-        } elseif (is_string(reset($section['items']))) {
-            $format = 'list';
-        }
-        $section['format'] = $format;
-    }
-
-    if ($format === 'text' && isset($section['text']) && trim($section['text']) !== '') {
-        logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
-        continue;
-    }
-
-    if ($format === 'list' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0 && is_string(current($section['items']))) {
-        logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
-        continue;
-    }
-
-    if ($format === 'table' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0) {
-        $firstRow = current($section['items']);
-        if (is_array($firstRow)) {
-            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
-            continue;
+$modulesToRender = $currentModules;
+if ($isFull) {
+    $pdf->setReportTitle('Skyesoft Codex', null);
+} else {
+    $slug = key($modulesToRender);
+    $module = $modulesToRender[$slug];
+    $iconKey = null;
+    $titleText = $slug;
+    if (isset($module['title'])) {
+        $parts = explode(' ', $module['title'], 2);
+        if (count($parts) === 2) {
+            $iconKey = $parts[0];
+            $titleText = $parts[1];
+        } else {
+            $titleText = $module['title'];
         }
     }
-
-    logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
-
-    switch ($format) {
-        case 'text':
-            $section['text'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'text');
-            break;
-        case 'list':
-            $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'list');
-            break;
-        case 'table':
-            $section['items'] = getAIEnrichedBody($slug, $key, $moduleForAI, $OPENAI_API_KEY, 'table');
-            break;
-    }
-
-    if ($format === 'text' && empty($section['text'])) {
-        logError("❌ Invalid text data for '$key'. Expected non-empty string.");
-        $section['text'] = '';
-    } elseif ($format === 'list' && (!is_array($section['items']) || empty($section['items']))) {
-        logError("❌ Invalid list data for '$key'. Expected array of strings.");
-        $section['items'] = array();
-    } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
-        logError("❌ Invalid table data for '$key'. Expected array of objects.");
-        $section['items'] = array();
-    }
-}
-unset($section);
-
-if (isset($sections['glossary'])) {
-    $gloss = $sections['glossary'];
-    $fmt   = isset($gloss['format']) ? $gloss['format'] : 'MISSING';
-    $cnt   = (isset($gloss['items']) && is_array($gloss['items'])) ? count($gloss['items']) : 0;
-    logMessage("DEBUG sanity Glossary → format={$fmt}, items={$cnt}");
-    if ($cnt > 0) {
-        logMessage("DEBUG sanity Glossary first row: " . print_r($gloss['items'][0], true));
-    }
+    $cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
+    $pdf->setReportTitle($cleanTitle, $iconKey);
 }
 
-$sectionKeys = array_keys($sections);
-$totalSections = count($sectionKeys);
+foreach ($modulesToRender as $modSlug => $module) {
+    $pdf->AddPage();
+    $pdf->SetY($pdf->bodyStartY);
 
-foreach ($sectionKeys as $i => $key) {
-    $section = $sections[$key];
-    $pdf->resetSectionIcon();
-    $pdf->renderSection($key, $section, $iconMap, $sections);
+    if ($isFull) {
+        // Render module title header
+        $parts = explode(' ', $module['title'], 2);
+        $modIconKey = (count($parts) === 2) ? $parts[0] : null;
+        $modTitleText = (count($parts) === 2) ? $parts[1] : $module['title'];
+        $modCleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $modTitleText)));
 
-    if ($i < $totalSections - 1) {
-        $pdf->Ln($consistent_spacing);
+        $iconFile = resolveHeaderIcon($modIconKey, $iconMap);
+        $startX = 20;
+        $currentY = $pdf->GetY();
+        if ($iconFile) {
+            $pdf->Image($iconFile, $startX, $currentY - 2, 20);
+            $startX += 24;
+        }
+        $pdf->SetXY($startX, $currentY);
+        $pdf->SetFont('helvetica', 'B', 16);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->Cell(0, 10, $modCleanTitle, 0, 1, 'L', false);
+        $pdf->Ln(8);
+        $pdf->SetFont('helvetica', '', 11);
+    }
+
+    // Get sorted section keys
+    $modSectionKeys = array();
+    foreach ($module as $skey => $sval) {
+        if ($skey !== 'title' && isset($sval['format'])) {
+            $modSectionKeys[$skey] = isset($sval['priority']) ? intval($sval['priority']) : 999;
+        }
+    }
+    asort($modSectionKeys);
+    $sortedSectionKeys = array_keys($modSectionKeys);
+    $totalModSections = count($sortedSectionKeys);
+
+    foreach ($sortedSectionKeys as $i => $key) {
+        $section = $module[$key];
+        $pdf->resetSectionIcon();
+        $pdf->renderSection($key, $section, $iconMap, array());
+
+        if ($i < $totalModSections - 1) {
+            $pdf->Ln($consistent_spacing);
+        }
+    }
+
+    if ($isFull) {
+        $pdf->Ln(10);
     }
 }
 
@@ -760,7 +1049,9 @@ if (!is_dir($baseDir)) {
     }
 }
 
-if ($type === 'information_sheet') {
+if ($isFull) {
+    $outputFile = $baseDir . "Information Sheet - Skyesoft Codex.pdf";
+} elseif ($type === 'information_sheet') {
     $outputFile = $baseDir . "Information Sheet - " . $cleanTitle . ".pdf";
 } else {
     $outputFile = $baseDir . ucfirst($type) . " - " . $cleanTitle . ".pdf";
@@ -769,7 +1060,10 @@ if ($type === 'information_sheet') {
 $pdf->Output($outputFile, $outputMode);
 
 if ($outputMode === 'F' && file_exists($outputFile)) {
-    if ($type === 'information_sheet') {
+    if ($isFull) {
+        logMessage("✅ Full Codex Information Sheet created: " . $outputFile);
+        echo "✅ Full Codex Information Sheet created: " . $outputFile . "\n";
+    } elseif ($type === 'information_sheet') {
         logMessage("✅ Information Sheet created for slug '$slug': " . $outputFile);
         echo "✅ Information Sheet created for slug '$slug': " . $outputFile . "\n";
     } else {

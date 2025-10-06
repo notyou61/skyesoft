@@ -248,7 +248,7 @@ if (isset($forecast['list']) && is_array($forecast['list'])) {
 } else {
     error_log('❌ Forecast fetch failed: ' . json_encode($forecast));
 }
-// #endregion
+#endregion
 
 #region 📅 Time and Date Calculations
 

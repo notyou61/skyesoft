@@ -52,7 +52,8 @@ if (!$OPENAI_API_KEY) {
 // --------------------------
 // Load codex.json dynamically
 // --------------------------
-$codexPath = __DIR__ . '/../docs/codex/codex.json';
+$codexPath = __DIR__ . '/../assets/data/codex.json';
+// Check if the codex file exists
 if (!file_exists($codexPath)) {
     logError("❌ ERROR: Codex file not found at $codexPath");
     die();
@@ -186,6 +187,32 @@ function logError($message) {
 }
 
 // =====================================================================
+// Enrichment Control Helper
+// =====================================================================
+function getEnrichmentPrompt($slug, $key, $enrichment, $moduleData) {
+    switch (strtolower($enrichment)) {
+        case 'none':
+            $desc = "No AI enrichment is permitted. Use codex content exactly as written.";
+            break;
+        case 'light':
+            $desc = "Use light enrichment. You may correct tone, grammar, and minor phrasing only.";
+            break;
+        case 'medium':
+            $desc = "Use medium enrichment. You may expand lightly, add short examples or clarifying context, but avoid major rewrites.";
+            break;
+        case 'heavy':
+            $desc = "Use heavy enrichment. You may elaborate with detailed explanations, analogies, or workflow expansions.";
+            break;
+        default:
+            $desc = "Default light enrichment applies. Perform minimal improvement for clarity and readability.";
+    }
+
+    logMessage("💡 Enrichment mode for $slug/$key: " . strtoupper($enrichment));
+    return "Enrichment Policy: " . strtoupper($enrichment) . " — " . $desc .
+        "\n\nModule Context:\n" . json_encode($moduleData, JSON_PRETTY_PRINT);
+}
+
+// =====================================================================
 // AI Helper: Generate narrative sections dynamically
 // =====================================================================
 function getAIEnrichedBody($slug, $key, $moduleData, $apiKey, $format = 'text') {
@@ -214,12 +241,15 @@ The display formatting (headers, icons, tables, lists) will be applied dynamical
 Module Data:
 " . json_encode($moduleData, JSON_PRETTY_PRINT);
 
+    $enrichmentPrompt = getEnrichmentPrompt($slug, $key, isset($moduleData['enrichment']) ? $moduleData['enrichment'] : 'none', $moduleData);
+    $prompt = $enrichmentPrompt . "\n\n" . $basePrompt;
+
     if ($format === 'text') {
-        $prompt = $basePrompt . "\n\nOnly generate narrative text for this section.";
+        $prompt .= "\n\nOnly generate narrative text for this section.";
     } elseif ($format === 'list') {
-        $prompt = $basePrompt . "\n\nGenerate the list items for this section as a JSON array of strings.";
+        $prompt .= "\n\nGenerate the list items for this section as a JSON array of strings.";
     } elseif ($format === 'table') {
-        $prompt = $basePrompt . "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
+        $prompt .= "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
     } else {
         logError("⚠️ Unsupported format for AI enrichment: $format");
         return "⚠️ Unsupported format for AI enrichment.";
@@ -817,12 +847,144 @@ class SkyesoftPDF extends TCPDF {
     }
 }
 
+// ===============================================================
+// TIS: Inject live schedules + holidays (Office/Shop + Holidays Table)
+// ===============================================================
+if (isset($modules['timeIntervalStandards'])) {
+    $tis =& $modules['timeIntervalStandards'];
+
+    // (A) Pull live segments from SSE (Office/Shop)
+    $dynUrl = 'https://skyelighting.com/skyesoft/api/getDynamicData.php';
+    $dynRaw = @file_get_contents($dynUrl);
+    if ($dynRaw !== false) {
+        $dyn = json_decode($dynRaw, true);
+
+        // Schedules from SSE payload (timeIntervalStandards.segments)
+        if (isset($dyn['timeIntervalStandards']['segments'])) {
+            $segments = $dyn['timeIntervalStandards']['segments'];
+
+            // Office
+            if (isset($segments['Office'])) {
+                $tis['officeSchedule']['items'] = array(
+                    array('Interval' => 'Before Worktime', 'Hours' => $segments['Office']['before']),
+                    array('Interval' => 'Worktime',        'Hours' => $segments['Office']['worktime']),
+                    array('Interval' => 'After Worktime',  'Hours' => $segments['Office']['after'])
+                );
+            }
+
+            // Shop
+            if (isset($segments['Shop'])) {
+                $tis['shopSchedule']['items'] = array(
+                    array('Interval' => 'Before Worktime', 'Hours' => $segments['Shop']['before']),
+                    array('Interval' => 'Worktime',        'Hours' => $segments['Shop']['worktime']),
+                    array('Interval' => 'After Worktime',  'Hours' => $segments['Shop']['after'])
+                );
+            }
+
+            logMessage('✅ TIS schedules injected from SSE segments.');
+        }
+
+        // (B) Holidays from SSE if present (supports array of {name,date} or strings)
+        $holidayRows = array();
+        if (isset($dyn['holidays']) && is_array($dyn['holidays'])) {
+            foreach ($dyn['holidays'] as $h) {
+                if (is_array($h) && isset($h['name']) && isset($h['date'])) {
+                    $holidayRows[] = array('Holiday' => $h['name'], 'Date' => $h['date']);
+                } elseif (is_string($h)) {
+                    $holidayRows[] = array('Holiday' => $h, 'Date' => '');
+                }
+            }
+        }
+
+        // (C) Fallback: local federalHolidays.php (if SSE does not provide)
+        if (empty($holidayRows)) {
+            $localPath = __DIR__ . '/../api/federalHolidays.php';
+            if (!file_exists($localPath)) {
+                $localPath = __DIR__ . '/../federalHolidays.php'; // alt location
+            }
+
+            if (file_exists($localPath)) {
+                // Try reading file contents (since it may output JSON directly)
+                $fhRaw = @file_get_contents($localPath);
+
+                // If file outputs JSON, decode it
+                $fhData = json_decode($fhRaw, true);
+                if (is_array($fhData) && isset($fhData['holidays']) && is_array($fhData['holidays'])) {
+                    // Case 1: { "holidays": [ { "name": "...", "date": "..." } ] }
+                    foreach ($fhData['holidays'] as $h) {
+                        if (isset($h['name']) && isset($h['date'])) {
+                            $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
+                        }
+                    }
+                    logMessage('✅ Holidays loaded from local JSON (holidays[] array) – ' . count($holidayRows) . ' entries.');
+                } elseif (isset($fhData[0]['name']) && isset($fhData[0]['date'])) {
+                    // Case 2: [ { "name": "...", "date": "..." }, ... ]
+                    foreach ($fhData as $h) {
+                        $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
+                    }
+                    logMessage('✅ Holidays loaded from local JSON array – ' . count($holidayRows) . ' entries.');
+                } elseif (is_array($fhData) && count($fhData) > 0) {
+                    // Case 3: Associative { "2025-01-01": "New Year’s Day", ... }
+                    $assocDetected = false;
+                    foreach ($fhData as $date => $name) {
+                        // Verify YYYY-MM-DD format and string value
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && is_string($name)) {
+                            $holidayRows[] = array('Date' => $date, 'Holiday' => $name);
+                            $assocDetected = true;
+                        }
+                    }
+                    if ($assocDetected) {
+                        logMessage('✅ Holidays loaded from associative JSON map – ' . count($holidayRows) . ' entries.');
+                    } else {
+                        logError('⚠️ JSON found but did not match expected associative date:name format.');
+                    }
+                } else {
+                    // Final fallback: include() and check variables (legacy PHP array format)
+                    include_once($localPath);
+                    if (isset($federalHolidays) && is_array($federalHolidays)) {
+                        foreach ($federalHolidays as $h) {
+                            if (isset($h['name']) && isset($h['date'])) {
+                                $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
+                            }
+                        }
+                        logMessage('✅ Holidays loaded from legacy $federalHolidays array – ' . count($holidayRows) . ' entries.');
+                    } else {
+                        logError('⚠️ No valid holiday data found in local federalHolidays.php');
+                    }
+                }
+            } else {
+                logError('⚠️ Fallback file not found: ' . $localPath);
+            }
+        }
+
+        // Wire into codex section as a proper table
+        if (!empty($holidayRows)) {
+            $tis['holidaysTable'] = array(
+                'icon'   => 'calendar',
+                'format' => 'table',
+                'items'  => $holidayRows
+            );
+            logMessage('✅ Holidays injected into TIS (' . count($holidayRows) . ').');
+        } else {
+            logMessage('⚠️ No holidays available from SSE or federalHolidays.php');
+        }
+    } else {
+        logError('⚠️ Could not reach SSE dynamic data for TIS: ' . $dynUrl);
+    }
+}
+
 // =====================================================================
 // Enrich Content
 // =====================================================================
 foreach ($currentModules as $modSlug => &$mod) {
     $modForAI = $mod;
     unset($modForAI['title']);
+
+    $enrichment = isset($mod['enrichment']) ? strtolower($mod['enrichment']) : 'none';
+    if ($enrichment === 'none') {
+        logMessage("🚫 Skipping AI enrichment for module '$modSlug' due to enrichment=none");
+        continue;
+    }
 
     $sectionKeys = array();
     foreach ($mod as $skey => $sval) {
