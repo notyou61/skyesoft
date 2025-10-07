@@ -535,30 +535,29 @@ class SkyesoftPDF extends TCPDF {
         $this->Ln();
         $this->SetFont('');
 
-        // Draw data rows
-        foreach ($data as $row) {
+        // Draw data rows (improved to prevent final-row loss)
+        foreach (array_values($data) as $rowIndex => $row) {
             $x = $this->GetX();
             $y = $this->GetY();
             $maxHeight = 0;
             $cellHeights = array();
 
+            // Calculate cell heights for this row
             foreach ($headers as $i => $header) {
                 $value = isset($row[$header]) ? $row[$header] : '';
                 $cellHeight = $this->getStringHeight($colWidths[$i], $value, false, true, null);
-                if ($cellHeight < 10) {
-                    $cellHeight = 10;
-                }
+                if ($cellHeight < 10) $cellHeight = 10;
                 $cellHeights[$i] = $cellHeight;
-                if ($cellHeight > $maxHeight) {
-                    $maxHeight = $cellHeight;
-                }
+                if ($cellHeight > $maxHeight) $maxHeight = $cellHeight;
             }
 
-            // If the next row won't fit, break to a new page first and reprint section header if needed
-            if ($this->GetY() + $maxHeight > $this->PageBreakTrigger - $this->footerHeight) {
+            // Check for available space before drawing
+            $available = $this->PageBreakTrigger - $this->GetY() - $this->footerHeight;
+            if ($maxHeight > $available) {
                 $this->AddPage();
                 $this->SetY($this->bodyStartY);
-                // Render continued header
+
+                // Render continued section header
                 $contTitle = $this->currentSectionTitle . ' – Continued';
                 $startX = 20;
                 $iconFile = resolveHeaderIcon($this->currentSectionIcon, $this->iconMap ?? array());
@@ -573,50 +572,52 @@ class SkyesoftPDF extends TCPDF {
                 $this->SetDrawColor(200, 200, 200);
                 $this->Line(20, $this->GetY(), $this->getPageWidth() - 20, $this->GetY());
                 $this->Ln(4);
-                $this->SetTextColor(0, 0, 0);
                 $this->SetFont('helvetica', '', 11);
-                // Reprint table header
+
+                // Reprint table header on new page
                 $x = $this->GetX();
                 $this->SetFillColor(230, 230, 230);
                 $this->SetFont('', 'B');
                 foreach ($headers as $i => $header) {
                     $this->Cell($colWidths[$i], 10, ucwords(str_replace('_', ' ', $header)), 1, 0, 'C', true);
-                    $this->SetXY($x += $colWidths[$i], $this->GetY());
+                    $x += $colWidths[$i];
                 }
                 $this->Ln();
                 $this->SetFont('');
-                $x = $this->GetX();
-                $y = $this->GetY();
             }
 
+            // Draw the row
+            $x = $this->GetX();
+            $y = $this->GetY();
             foreach ($headers as $i => $header) {
                 $value = isset($row[$header]) ? $row[$header] : '';
                 $this->MultiCell($colWidths[$i], $maxHeight, $value, 1, 'L', false, 0, $x, $y, true, 0, false, true, $maxHeight, 'M');
                 $x += $colWidths[$i];
             }
+            $this->Ln($maxHeight);
 
-            $this->SetXY($this->lMargin, $y + $maxHeight);
+            // ✅ After rendering the final row, ensure cursor advancement to trigger new page if needed
+            if ($rowIndex === count($data) - 1 && $this->GetY() > ($this->PageBreakTrigger - $this->footerHeight)) {
+                $this->AddPage();
+                $this->SetY($this->bodyStartY);
+            }
         }
-
-        $this->SetCellPadding(0);
         $this->isTableSection = false;
     }
 
-    // ----------------------
-    // Render Text with Continuation
-    // ----------------------
-    private function renderTextWithContinuation($text, $iconMap) {
+    public function renderTextWithContinuation($text, $iconMap) {
         if (empty($text)) return;
 
         $fullWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
         $lineHeight = 6;
-        $minHeight = $lineHeight * 4; // Minimum 4 lines before starting a chunk
+        $minHeight = $lineHeight * 2; // Minimum chunk height to avoid tiny fragments
 
-        // Pre-check for entire text fit
-        $estimatedTextHeight = $this->getStringHeight($fullWidth, $text);
+        $sectionTitle = isset($this->currentSectionTitle) ? $this->currentSectionTitle : 'Unknown Section';
+
+        // Pre-check if entire text fits; if not, move to next page
+        $estimatedHeight = $this->getStringHeight($fullWidth, $text);
         $availableSpace = $this->PageBreakTrigger - $this->GetY() - $this->footerHeight;
-        if ($estimatedTextHeight > $availableSpace) {
-            $sectionTitle = isset($this->currentSectionTitle) ? $this->currentSectionTitle : 'Unknown Section';
+        if ($estimatedHeight > $availableSpace) {
             logMessage("⚙️ Entire text section moved to next page for better fit (section: " . $sectionTitle . ")");
             $this->AddPage();
             $this->SetY($this->bodyStartY);
@@ -850,8 +851,8 @@ class SkyesoftPDF extends TCPDF {
 // ===============================================================
 // TIS: Inject live schedules + holidays (Office/Shop + Holidays Table)
 // ===============================================================
-if (isset($modules['timeIntervalStandards'])) {
-    $tis =& $modules['timeIntervalStandards'];
+if (isset($currentModules['timeIntervalStandards'])) {
+    $tis =& $currentModules['timeIntervalStandards'];
 
     // (A) Pull live segments from SSE (Office/Shop)
     $dynUrl = 'https://skyelighting.com/skyesoft/api/getDynamicData.php';
@@ -904,69 +905,32 @@ if (isset($modules['timeIntervalStandards'])) {
             }
 
             if (file_exists($localPath)) {
-                // Try reading file contents (since it may output JSON directly)
-                $fhRaw = @file_get_contents($localPath);
+                // Safely include without echo leak
+                define('SKYESOFT_INTERNAL_CALL', true);
+                $fhData = include($localPath);
 
-                // If file outputs JSON, decode it
-                $fhData = json_decode($fhRaw, true);
-                if (is_array($fhData) && isset($fhData['holidays']) && is_array($fhData['holidays'])) {
-                    // Case 1: { "holidays": [ { "name": "...", "date": "..." } ] }
-                    foreach ($fhData['holidays'] as $h) {
-                        if (isset($h['name']) && isset($h['date'])) {
-                            $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
-                        }
-                    }
-                    logMessage('✅ Holidays loaded from local JSON (holidays[] array) – ' . count($holidayRows) . ' entries.');
-                } elseif (isset($fhData[0]['name']) && isset($fhData[0]['date'])) {
-                    // Case 2: [ { "name": "...", "date": "..." }, ... ]
-                    foreach ($fhData as $h) {
-                        $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
-                    }
-                    logMessage('✅ Holidays loaded from local JSON array – ' . count($holidayRows) . ' entries.');
-                } elseif (is_array($fhData) && count($fhData) > 0) {
-                    // Case 3: Associative { "2025-01-01": "New Year’s Day", ... }
-                    $assocDetected = false;
+                if (is_array($fhData) && count($fhData) > 0) {
                     foreach ($fhData as $date => $name) {
-                        // Verify YYYY-MM-DD format and string value
-                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && is_string($name)) {
-                            $holidayRows[] = array('Date' => $date, 'Holiday' => $name);
-                            $assocDetected = true;
+                        if (preg_match('/\d{4}-\d{2}-\d{2}/', $date)) {
+                            $holidayRows[] = array(
+                                'Date' => date('m/d/Y', strtotime($date)),
+                                'Holiday' => $name
+                            );
                         }
                     }
-                    if ($assocDetected) {
-                        logMessage('✅ Holidays loaded from associative JSON map – ' . count($holidayRows) . ' entries.');
-                    } else {
-                        logError('⚠️ JSON found but did not match expected associative date:name format.');
-                    }
+                    logMessage('✅ Holidays loaded internally (' . count($holidayRows) . ' entries).');
                 } else {
-                    // Final fallback: include() and check variables (legacy PHP array format)
-                    include_once($localPath);
-                    if (isset($federalHolidays) && is_array($federalHolidays)) {
-                        foreach ($federalHolidays as $h) {
-                            if (isset($h['name']) && isset($h['date'])) {
-                                $holidayRows[] = array('Date' => $h['date'], 'Holiday' => $h['name']);
-                            }
-                        }
-                        logMessage('✅ Holidays loaded from legacy $federalHolidays array – ' . count($holidayRows) . ' entries.');
-                    } else {
-                        logError('⚠️ No valid holiday data found in local federalHolidays.php');
-                    }
+                    logError('⚠️ No valid holiday data returned by federalHolidays.php include.');
                 }
             } else {
                 logError('⚠️ Fallback file not found: ' . $localPath);
             }
         }
 
-        // Wire into codex section as a proper table
+        // Inject holidays into TIS module
         if (!empty($holidayRows)) {
-            $tis['holidaysTable'] = array(
-                'icon'   => 'calendar',
-                'format' => 'table',
-                'items'  => $holidayRows
-            );
-            logMessage('✅ Holidays injected into TIS (' . count($holidayRows) . ').');
-        } else {
-            logMessage('⚠️ No holidays available from SSE or federalHolidays.php');
+            $tis['holidays']['items'] = $holidayRows;
+            logMessage('✅ Holidays table populated with ' . count($holidayRows) . ' rows.');
         }
     } else {
         logError('⚠️ Could not reach SSE dynamic data for TIS: ' . $dynUrl);
