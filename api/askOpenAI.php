@@ -102,7 +102,7 @@ $prompt = isset($data["prompt"])
 $conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
-// ✅ Handle "generate [module] sheet" pattern for PHP 5.6
+// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
 
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
@@ -113,10 +113,19 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
         $codex = $dynamicData['codex'];
     }
 
-    if (isset($codex[$moduleName])) {
+    // Case-insensitive key match for Codex modules
+    $foundKey = '';
+    foreach ($codex as $key => $val) {
+        if (strtolower($key) === $moduleName) {
+            $foundKey = $key;
+            break;
+        }
+    }
 
-        $title = isset($codex[$moduleName]['title']) ? $codex[$moduleName]['title'] : ucfirst($moduleName);
-        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $moduleName;
+    if (!empty($foundKey)) {
+
+        $title = isset($codex[$foundKey]['title']) ? $codex[$foundKey]['title'] : ucfirst($foundKey);
+        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
 
         $response = array(
             'response' => '📄 <strong>' . $title . '</strong> — <a href="' . $link . '" target="_blank">Generate Sheet</a>'
