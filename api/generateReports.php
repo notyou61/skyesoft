@@ -1139,27 +1139,48 @@ foreach ($modulesToRender as $modSlug => $module) {
         $pdf->SetFont('helvetica', '', 11);
     }
 
-    // Get sorted section keys
-    $modSectionKeys = array();
-    foreach ($module as $skey => $sval) {
-        if ($skey !== 'title' && isset($sval['format'])) {
-            $modSectionKeys[$skey] = isset($sval['priority']) ? intval($sval['priority']) : 999;
+    // ==========================================================
+    // Preserve natural Codex order while respecting priorities
+    // ==========================================================
+
+    // 1️⃣ Capture section keys in the same order as in codex.json
+    $sortedSectionKeys = [];
+    foreach (array_keys($module) as $key) {
+        if ($key === 'title') continue;
+        if (isset($module[$key]['format'])) {
+            $sortedSectionKeys[] = $key;
         }
     }
-    asort($modSectionKeys);
-    $sortedSectionKeys = array_keys($modSectionKeys);
+
+    // 2️⃣ Apply optional priority-based reordering if present
+    $priorityMap = [];
+    foreach ($sortedSectionKeys as $key) {
+        $priorityMap[$key] = isset($module[$key]['priority'])
+            ? intval($module[$key]['priority'])
+            : 999; // default priority if not defined
+    }
+
+    // Only reorder if at least one section defines a priority < 999
+    if (count(array_filter($priorityMap, function($p) { return $p < 999; })) > 0) {
+        asort($priorityMap);
+        $sortedSectionKeys = array_keys($priorityMap);
+    }
+
     $totalModSections = count($sortedSectionKeys);
 
+    // 3️⃣ Render each section in correct order
     foreach ($sortedSectionKeys as $i => $key) {
         $section = $module[$key];
         $pdf->resetSectionIcon();
-        $pdf->renderSection($key, $section, $iconMap, array());
+        $pdf->renderSection($key, $section, $iconMap, []);
 
+        // Consistent vertical spacing between sections
         if ($i < $totalModSections - 1) {
             $pdf->Ln($consistent_spacing);
         }
     }
 
+    // 4️⃣ Final bottom padding for full reports
     if ($isFull) {
         $pdf->Ln(10);
     }
