@@ -102,6 +102,40 @@ $prompt = isset($data["prompt"])
 $conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
+// ✅ Handle "generate [module] sheet" pattern for PHP 5.6
+if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
+
+    $moduleName = strtolower(str_replace(' ', '', $matches[1]));
+
+    // Safely load codex array if available
+    $codex = array();
+    if (isset($dynamicData['codex'])) {
+        $codex = $dynamicData['codex'];
+    }
+
+    if (isset($codex[$moduleName])) {
+
+        $title = isset($codex[$moduleName]['title']) ? $codex[$moduleName]['title'] : ucfirst($moduleName);
+        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $moduleName;
+
+        $response = array(
+            'response' => '📄 <strong>' . $title . '</strong> — <a href="' . $link . '" target="_blank">Generate Sheet</a>'
+        );
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($response);
+        exit;
+
+    } else {
+        $response = array(
+            'response' => '⚠️ The requested module "' . $moduleName . '" was not found in the Codex.'
+        );
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($response);
+        exit;
+    }
+}
+
 if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
     exit;
