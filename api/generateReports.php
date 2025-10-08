@@ -43,9 +43,27 @@ if (file_exists($envPath)) {
     }
 }
 
+// ✅ Load .env manually for GoDaddy PHP 5.6
+$envPath = '/home/notyou64/public_html/skyesoft/.env';
+if (file_exists($envPath)) {
+    $envLines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($envLines as $line) {
+        if (strpos(trim($line), '#') === 0) continue; // skip comments
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $name  = trim($parts[0]);
+            $value = trim($parts[1]);
+            if (!getenv($name)) {
+                putenv($name . '=' . $value);
+            }
+        }
+    }
+}
+
+// 🔐 Retrieve API key after loading .env
 $OPENAI_API_KEY = getenv('OPENAI_API_KEY');
 if (!$OPENAI_API_KEY) {
-    echo "❌ ERROR: Missing OpenAI API Key. Set in .env file.\n";
+    echo "❌ ERROR: Missing OpenAI API Key. Check /home/notyou64/public_html/skyesoft/.env\n";
     exit(1);
 }
 
