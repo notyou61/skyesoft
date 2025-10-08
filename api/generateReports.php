@@ -43,27 +43,32 @@ if (file_exists($envPath)) {
     }
 }
 
-// ✅ Load .env manually for GoDaddy PHP 5.6
-$envPath = '/home/notyou64/.env';
-if (file_exists($envPath)) {
-    $envLines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($envLines as $line) {
-        if (strpos(trim($line), '#') === 0) continue; // skip comments
-        $parts = explode('=', $line, 2);
-        if (count($parts) === 2) {
-            $name  = trim($parts[0]);
-            $value = trim($parts[1]);
-            if (!getenv($name)) {
-                putenv($name . '=' . $value);
+// ✅ Load .env manually for GoDaddy PHP 5.6 (dual-path)
+$envPaths = array(
+    '/home/notyou64/.env',
+    '/home/notyou64/public_html/skyesoft/.env'
+);
+
+foreach ($envPaths as $envPath) {
+    if (file_exists($envPath)) {
+        $envLines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($envLines as $line) {
+            if (strpos(trim($line), '#') === 0) continue; // skip comments
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $name  = trim($parts[0]);
+                $value = trim($parts[1]);
+                if (!getenv($name)) putenv($name . '=' . $value);
             }
         }
+        break; // stop after first valid .env found
     }
 }
 
-// 🔐 Retrieve API key after loading .env
+// 🔐 Retrieve API key after loading
 $OPENAI_API_KEY = getenv('OPENAI_API_KEY');
 if (!$OPENAI_API_KEY) {
-    echo "❌ ERROR: Missing OpenAI API Key. Check /home/notyou64/public_html/skyesoft/.env\n";
+    echo "❌ ERROR: Missing OpenAI API Key. Checked both /home/notyou64/.env and /home/notyou64/public_html/skyesoft/.env\n";
     exit(1);
 }
 
