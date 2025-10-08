@@ -21,7 +21,7 @@ define('DEFAULT_SUNSET', '19:42:00');
 define('HOLIDAYS_PATH', '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
 define('DATA_PATH', '/home/notyou64/public_html/data/skyesoft-data.json');
 define('VERSION_PATH', '/home/notyou64/public_html/data/version.json');
-define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/docs/codex/codex.json');
+define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
 define('ANNOUNCEMENTS_PATH', '/home/notyou64/public_html/data/announcements.json');
 // Note: $chatLogPath and $weatherPath are defined but unused; retained for potential future use
 define('CHAT_LOG_PATH', '../../assets/data/chatLog.json');
