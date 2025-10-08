@@ -31,15 +31,24 @@ $consistent_spacing = 10;
 // --------------------------
 // Load API key securely
 // --------------------------
-$envPath = __DIR__ . '/../.env';
-if (file_exists($envPath)) {
-    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue; // skip comments
-        list($name, $value) = array_map('trim', explode('=', $line, 2));
-        putenv("$name=$value");
-        $_ENV[$name] = $value;
-        $_SERVER[$name] = $value;
+$envPaths = [
+    __DIR__ . '/../.env',                                 // project-level
+    '/home/notyou64/.env'                                 // account-level
+];
+
+$envFound = false;
+foreach ($envPaths as $envPath) {
+    if (file_exists($envPath)) {
+        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '#') === 0) continue; // skip comments
+            list($name, $value) = array_map('trim', explode('=', $line, 2));
+            putenv("$name=$value");
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
+        }
+        $envFound = true;
+        break;
     }
 }
 
@@ -71,6 +80,8 @@ foreach ($envPaths as $envFile) {
 
 // 🔐 Retrieve API key after loading .env
 $OPENAI_API_KEY = getenv('OPENAI_API_KEY');
+
+// Try alternate sources if not yet found
 if (!$OPENAI_API_KEY && isset($_ENV['OPENAI_API_KEY'])) {
     $OPENAI_API_KEY = $_ENV['OPENAI_API_KEY'];
 }
@@ -78,12 +89,13 @@ if (!$OPENAI_API_KEY && isset($_SERVER['OPENAI_API_KEY'])) {
     $OPENAI_API_KEY = $_SERVER['OPENAI_API_KEY'];
 }
 
+// Validate environment and key presence
 if (!$envLoaded) {
     echo "❌ ERROR: .env file not found in expected paths.\n";
     exit(1);
 }
 if (!$OPENAI_API_KEY) {
-    echo "❌ ERROR: API key not found in environment.\n";
+    echo "❌ ERROR: Missing OpenAI API Key. Checked both /home/notyou64/.env and /home/notyou64/public_html/skyesoft/.env\n";
     exit(1);
 }
 #endregion
