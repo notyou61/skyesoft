@@ -560,7 +560,16 @@ class SkyesoftPDF extends TCPDF {
                 // Render continued section header
                 $contTitle = $this->currentSectionTitle . ' – Continued';
                 $startX = 20;
-                $iconFile = resolveHeaderIcon($this->currentSectionIcon, $this->iconMap ?? array());
+                // ✅ Safe procedural version
+                if (!isset($iconMap)) {
+                    $iconMap = array();
+                }
+                $iconFile = resolveHeaderIcon(
+                    isset($currentSectionIcon) ? $currentSectionIcon : '',
+                    $iconMap
+                );
+
+                //  Draw icon if available
                 if ($iconFile) {
                     $this->Image($iconFile, $startX, $this->GetY() - 2, 20);
                     $startX += 24;
