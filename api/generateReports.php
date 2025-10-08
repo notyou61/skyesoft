@@ -43,34 +43,51 @@ if (file_exists($envPath)) {
     }
 }
 
-// ✅ Load .env manually for GoDaddy PHP 5.6 (dual-path)
+#region 🛡️ Headers and Setup
+// ✅ Load .env manually for GoDaddy PHP 5.6
 $envPaths = array(
     '/home/notyou64/.env',
     '/home/notyou64/public_html/skyesoft/.env'
 );
 
-foreach ($envPaths as $envPath) {
-    if (file_exists($envPath)) {
-        $envLines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($envLines as $line) {
-            if (strpos(trim($line), '#') === 0) continue; // skip comments
-            $parts = explode('=', $line, 2);
-            if (count($parts) === 2) {
-                $name  = trim($parts[0]);
-                $value = trim($parts[1]);
-                if (!getenv($name)) putenv($name . '=' . $value);
+$envLoaded = false;
+foreach ($envPaths as $envFile) {
+    if (file_exists($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '=') !== false) {
+                list($name, $value) = explode('=', $line, 2);
+                $name  = trim($name);
+                $value = trim($value);
+                putenv($name . '=' . $value);
+                $_ENV[$name]    = $value;
+                $_SERVER[$name] = $value;
             }
         }
-        break; // stop after first valid .env found
+        $envLoaded = true;
+        break;
     }
 }
 
-// 🔐 Retrieve API key after loading
+// 🔐 Retrieve API key after loading .env
 $OPENAI_API_KEY = getenv('OPENAI_API_KEY');
-if (!$OPENAI_API_KEY) {
-    echo "❌ ERROR: Missing OpenAI API Key. Checked both /home/notyou64/.env and /home/notyou64/public_html/skyesoft/.env\n";
+if (!$OPENAI_API_KEY && isset($_ENV['OPENAI_API_KEY'])) {
+    $OPENAI_API_KEY = $_ENV['OPENAI_API_KEY'];
+}
+if (!$OPENAI_API_KEY && isset($_SERVER['OPENAI_API_KEY'])) {
+    $OPENAI_API_KEY = $_SERVER['OPENAI_API_KEY'];
+}
+
+if (!$envLoaded) {
+    echo "❌ ERROR: .env file not found in expected paths.\n";
     exit(1);
 }
+if (!$OPENAI_API_KEY) {
+    echo "❌ ERROR: API key not found in environment.\n";
+    exit(1);
+}
+#endregion
+
 
 // --------------------------
 // Load codex.json dynamically
