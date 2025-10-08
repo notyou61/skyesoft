@@ -78,28 +78,19 @@ foreach ($envPaths as $envFile) {
     }
 }
 
-// 🔐 Retrieve API key after loading .env
+#region 🛡️ Environment & API Key Loader
+// Use centralized environment loader
+require_once __DIR__ . "/env_boot.php";
+
+// Retrieve the OpenAI API key from loaded environment
 $OPENAI_API_KEY = getenv('OPENAI_API_KEY');
 
-// Try alternate sources if not yet found
-if (!$OPENAI_API_KEY && isset($_ENV['OPENAI_API_KEY'])) {
-    $OPENAI_API_KEY = $_ENV['OPENAI_API_KEY'];
-}
-if (!$OPENAI_API_KEY && isset($_SERVER['OPENAI_API_KEY'])) {
-    $OPENAI_API_KEY = $_SERVER['OPENAI_API_KEY'];
-}
-
-// Validate environment and key presence
-if (!$envLoaded) {
-    echo "❌ ERROR: .env file not found in expected paths.\n";
-    exit(1);
-}
+// Validate presence of key
 if (!$OPENAI_API_KEY) {
-    echo "❌ ERROR: Missing OpenAI API Key. Checked both /home/notyou64/.env and /home/notyou64/public_html/skyesoft/.env\n";
+    echo "❌ ERROR: Missing OpenAI API Key (checked via env_boot.php and /secure/.env)\n";
     exit(1);
 }
 #endregion
-
 
 // --------------------------
 // Load codex.json dynamically
