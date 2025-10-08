@@ -44,7 +44,7 @@ if (file_exists($envPath)) {
 }
 
 // ✅ Load .env manually for GoDaddy PHP 5.6
-$envPath = '/home/notyou64/public_html/skyesoft/.env';
+$envPath = '/home/notyou64/.env';
 if (file_exists($envPath)) {
     $envLines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($envLines as $line) {
