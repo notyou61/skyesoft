@@ -363,46 +363,43 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
 
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
 
-    // 2️⃣ Try to detect a matching Codex module
-    $slug = null;
+    // 2️⃣ Auto-generate aliases dynamically from Codex data (PHP 5.6-safe, DRY)
+    $aliases = array();                       // single source of truth
     $normalizedPrompt = strtolower($prompt);
 
     foreach ($codexData as $key => $entry) {
         if (!is_array($entry)) continue;
+        if (!isset($entry['title'])) continue;
 
-        $title = isset($entry['title']) ? strtolower($entry['title']) : '';
-        $cleanKey = strtolower($key);
+        // Normalize title text: remove emojis, punctuation, and trim
+        $cleanTitle = preg_replace('/[^\w\s()]/u', '', strtolower($entry['title']));
+        $titleWords = preg_split('/\s+/', trim($cleanTitle));
 
-        // Match by key or title
-        if (strpos($normalizedPrompt, $cleanKey) !== false ||
-            strpos($normalizedPrompt, $title) !== false) {
-            $slug = $key;
-            break;
+        if (empty($titleWords)) continue;
+
+        // --- Multi-word alias (e.g., "time interval standards")
+        if (count($titleWords) > 1) {
+            $multi = implode(' ', $titleWords);
+            if (!isset($aliases[$multi])) $aliases[$multi] = $key;
         }
 
-        // Optional: detect acronym like (TIS)
-        if (preg_match('/\(([^)]+)\)/', $title, $matches)) {
-            $acronym = strtolower($matches[1]);
-            if (strpos($normalizedPrompt, $acronym) !== false) {
-                $slug = $key;
-                break;
-            }
+        // --- Single-word alias (e.g., "timeintervalstandards")
+        $single = implode('', $titleWords);
+        if (!isset($aliases[$single])) $aliases[$single] = $key;
+
+        // --- Acronym in parentheses (e.g., "(TIS)")
+        if (preg_match('/\(([A-Z0-9]+)\)/', $entry['title'], $m)) {
+            $acro = strtolower($m[1]);
+            if (!isset($aliases[$acro])) $aliases[$acro] = $key;
         }
     }
 
-    // 3️⃣ Alias fallback map (safe for expansion)
-    if (!$slug) {
-        $aliases = array(
-            'tis' => 'timeIntervalStandards',
-            'time interval standards' => 'timeIntervalStandards',
-            'lgbas' => 'timeIntervalStandards',
-            'constitution' => 'skyesoftConstitution'
-        );
-        foreach ($aliases as $alias => $keyMatch) {
-            if (strpos($normalizedPrompt, $alias) !== false) {
-                $slug = $keyMatch;
-                break;
-            }
+    // 3️⃣ Resolve slug by matching prompt against alias map
+    $slug = null;
+    foreach ($aliases as $alias => $target) {
+        if (strpos($normalizedPrompt, $alias) !== false) {
+            $slug = $target;
+            break;
         }
     }
 
