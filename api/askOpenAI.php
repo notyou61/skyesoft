@@ -353,48 +353,49 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// 🔹 Codex Information Sheet Generator (JSON-safe)
+// 🔹 Codex Information Sheet Generator (self-adapting + JSON-safe)
 if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(information|sheet|report|codex)\b/i', $prompt)) {
 
-    // 1️⃣ Load Codex (prefer dynamicData version)
+    // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
     $codexData = isset($dynamicData['codex'])
         ? $dynamicData['codex']
-        : (file_exists(CODEX_PATH) ? json_decode(file_get_contents(CODEX_PATH), true) : []);
+        : (file_exists(CODEX_PATH) ? json_decode(file_get_contents(CODEX_PATH), true) : array());
 
+    // Normalize Codex structure (handles both wrapped and direct JSON)
+    $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
+        ? $codexData['modules']
+        : $codexData;
+
+    // 2️⃣ Auto-generate aliases dynamically (DRY)
+    $aliases = array();
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
 
-    // 2️⃣ Auto-generate aliases dynamically from Codex data (PHP 5.6-safe, DRY)
-    $aliases = array();                       // single source of truth
-    $normalizedPrompt = strtolower($prompt);
+    foreach ($modules as $key => $entry) {
+        if (!is_array($entry) || !isset($entry['title'])) continue;
 
-    foreach ($codexData as $key => $entry) {
-        if (!is_array($entry)) continue;
-        if (!isset($entry['title'])) continue;
-
-        // Normalize title text: remove emojis, punctuation, and trim
         $cleanTitle = preg_replace('/[^\w\s()]/u', '', strtolower($entry['title']));
         $titleWords = preg_split('/\s+/', trim($cleanTitle));
 
         if (empty($titleWords)) continue;
 
-        // --- Multi-word alias (e.g., "time interval standards")
+        // Multi-word alias ("time interval standards")
         if (count($titleWords) > 1) {
             $multi = implode(' ', $titleWords);
             if (!isset($aliases[$multi])) $aliases[$multi] = $key;
         }
 
-        // --- Single-word alias (e.g., "timeintervalstandards")
+        // Single-word alias ("timeintervalstandards")
         $single = implode('', $titleWords);
         if (!isset($aliases[$single])) $aliases[$single] = $key;
 
-        // --- Acronym in parentheses (e.g., "(TIS)")
+        // Acronym in parentheses ("(TIS)")
         if (preg_match('/\(([A-Z0-9]+)\)/', $entry['title'], $m)) {
             $acro = strtolower($m[1]);
             if (!isset($aliases[$acro])) $aliases[$acro] = $key;
         }
     }
 
-    // 3️⃣ Resolve slug by matching prompt against alias map
+    // 3️⃣ Match prompt → alias
     $slug = null;
     foreach ($aliases as $alias => $target) {
         if (strpos($normalizedPrompt, $alias) !== false) {
@@ -403,60 +404,53 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
         }
     }
 
-    // 4️⃣ Generate via internal API
+    // 4️⃣ Generate via internal API or return not-found
     if ($slug) {
-        $apiUrl = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
-        $payload = json_encode(["slug" => $slug]);
-        $options = [
-            "http" => [
+        $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
+        $payload = json_encode(array("slug" => $slug));
+        $context = stream_context_create(array(
+            "http" => array(
                 "method"  => "POST",
                 "header"  => "Content-Type: application/json\r\n",
                 "content" => $payload,
                 "timeout" => 15
-            ]
-        ];
-        $context = stream_context_create($options);
-        $result = @file_get_contents($apiUrl, false, $context);
-        if ($result === false) {
-            $error = error_get_last();
-            $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-            echo json_encode([
-                "response" => "❌ Network error while contacting generateReports.php: $msg",
-                "action" => "error",
-                "sessionId" => $sessionId
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            exit;
-        }
+            )
+        ));
 
-        // 5️⃣ JSON-safe fallback
+        $result = @file_get_contents($apiUrl, false, $context);
+
         if ($result === false) {
             $error = error_get_last();
             $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-            $responsePayload = [
-                "response" => "❌ Network error: $msg",
-                "action"   => "error",
+            $responsePayload = array(
+                "response"  => "❌ Network error contacting generateReports.php: $msg",
+                "action"    => "error",
                 "sessionId" => $sessionId
-            ];
+            );
         } else {
             $cleanResult = strip_tags($result);
-            $responsePayload = [
-                "response" => "📘 The **{$codexData[$slug]['title']}** sheet is being generated.\n\n{$cleanResult}",
-                "action"   => "sheet_generated",
-                "slug"     => $slug,
+            $responsePayload = array(
+                "response"  => "📘 The **{$modules[$slug]['title']}** sheet is being generated.\n\n{$cleanResult}",
+                "action"    => "sheet_generated",
+                "slug"      => $slug,
                 "sessionId" => $sessionId
-            ];
+            );
         }
+
     } else {
-        $responsePayload = [
-            "response" => "⚠️ The requested module was not found in the Codex.",
-            "action"   => "none",
+        $responsePayload = array(
+            "response"  => "⚠️ The requested module was not found in the Codex.",
+            "action"    => "none",
             "sessionId" => $sessionId
-        ];
+        );
     }
 
+    // 5️⃣ Always output JSON once, safely
+    header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
+
 
 // 2. 📑 Reports (run this BEFORE CRUD)
 if (!$handled) {
