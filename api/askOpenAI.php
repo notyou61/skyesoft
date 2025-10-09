@@ -367,7 +367,9 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
     $slug = null;
     foreach ($codexData as $key => $entry) {
         if (!is_array($entry)) continue;
-        $titleNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $entry['title'] ?? ''));
+        $titleNorm = strtolower(
+            preg_replace('/[^a-z0-9\s]/', '', isset($entry['title']) ? $entry['title'] : '')
+        );
         if (strpos($normalizedPrompt, $titleNorm) !== false || strpos($normalizedPrompt, strtolower($key)) !== false) {
             $slug = $key;
             break;
