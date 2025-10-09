@@ -416,12 +416,14 @@ if (!$handled &&
         error_log("✅ alias-debug.log written successfully to $debugPath");
     }
 
-    // 3️⃣ Resolve slug by flexible token overlap matching (PHP 5.6-safe, DRY)
+    // 3️⃣ Resolve slug by fuzzy token matching (PHP 5.6-safe, DRY)
     $slug = null;
 
-    // Strip punctuation, lowercase, split prompt into tokens
-    $promptTokens = preg_split('/\s+/', trim(preg_replace('/[^a-z0-9\s]/', '', strtolower($prompt))));
-    // Remove filler words that add noise
+    // Normalize & tokenize prompt
+    $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
+    $promptTokens = preg_split('/\s+/', trim($normalizedPrompt));
+
+    // remove filler words that add no meaning
     $filler = array('the','a','an','sheet','report','information','module','file','summary');
     $promptTokens = array_diff($promptTokens, $filler);
 
@@ -431,11 +433,17 @@ if (!$handled &&
 
         if (empty($aliasTokens)) continue;
 
-        // Count overlapping words between alias and prompt
+        // count shared words
         $overlap = count(array_intersect($aliasTokens, $promptTokens));
 
-        // Consider it a match if ≥ ½ of alias words appear in prompt
-        if ($overlap >= ceil(count($aliasTokens) / 2)) {
+        // treat as match if at least half of alias words appear, OR all but one
+        if ($overlap >= ceil(count($aliasTokens) / 2) || $overlap >= (count($aliasTokens) - 1)) {
+            $slug = $target;
+            break;
+        }
+
+        // secondary check: alias fully contained as substring
+        if (strpos($normalizedPrompt, $aliasNorm) !== false) {
             $slug = $target;
             break;
         }
