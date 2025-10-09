@@ -5,30 +5,42 @@
 // Require shared helpers
 require_once __DIR__ . "/helpers.php";
 
-#region 🧩 Output buffering to prevent HTML leaks in JSON API responses
+// ===========================================================
+// 🧩 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
+// ===========================================================
 ob_start();
+
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    $msg = "⚠️ PHP error [$errno]: $errstr in $errfile on line $errline";
-    echo json_encode([
-        "response" => $msg,
-        "action" => "error",
+    $clean = htmlspecialchars(strip_tags($errstr));
+    $msg = "⚠️ PHP error [$errno]: $clean in $errfile:$errline";
+    $response = [
+        "response"  => $msg,
+        "action"    => "error",
         "sessionId" => session_id()
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    ];
+    header('Content-Type: application/json');
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    ob_end_flush();
     exit;
 });
+
 register_shutdown_function(function () {
-    $output = ob_get_clean();
-    if (strlen(trim($output)) > 0 && stripos($output, '{') !== 0) {
-        // Convert any stray HTML to a safe JSON message
-        $clean = strip_tags($output);
-        echo json_encode([
-            "response" => "❌ Internal error: " . substr($clean, 0, 300),
-            "action" => "error",
+    $output = trim(ob_get_clean() ?? '');
+    // If anything unexpected (HTML or blank) leaked, repackage as JSON
+    if ($output && stripos($output, '{') !== 0) {
+        $clean = substr(strip_tags($output), 0, 500);
+        $response = [
+            "response"  => "❌ Internal error: " . $clean,
+            "action"    => "error",
             "sessionId" => session_id()
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        ];
+        header('Content-Type: application/json');
+        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } elseif ($output) {
+        // Normal JSON already produced
+        echo $output;
     }
 });
-#endregion
 
 #region 🔹 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
