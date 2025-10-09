@@ -394,8 +394,12 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
             if (!isset($aliases[$acro])) $aliases[$acro] = $key;
         }
     }
-    // 🧩 TEMP DEBUG: write all generated alias keys to file
-    file_put_contents(__DIR__ . '/alias-debug.log', print_r(array_keys($aliases), true));
+    
+    // 🧩 TEMP DEBUG: attempt to log aliases safely (GoDaddy open_basedir safe)
+    $debugPath = sys_get_temp_dir() . '/alias-debug.log'; // writes to /tmp/
+    $debugData = "Aliases generated at " . date('Y-m-d H:i:s') . "\n" . print_r(array_keys($aliases), true);
+    @file_put_contents($debugPath, $debugData);
+
     // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
     $slug = null;
     foreach ($aliases as $alias => $target) {
@@ -457,7 +461,6 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
-
 
 // 2. 📑 Reports (run this BEFORE CRUD)
 if (!$handled) {
