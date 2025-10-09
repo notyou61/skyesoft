@@ -287,28 +287,34 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// 🔹 Codex Information Sheet Generator (New Section)
-if (!$handled && preg_match('/(generate|create|make|produce|show).*(information|sheet|report|codex)/i', $prompt)) {
+// 🔹 Codex Information Sheet Generator (JSON-safe)
+if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(information|sheet|report|codex)\b/i', $prompt)) {
 
-    // Load codex dynamically
-    $codexData = json_decode(file_get_contents(CODEX_PATH), true);
+    // 1️⃣ Load Codex (prefer dynamicData version)
+    $codexData = isset($dynamicData['codex'])
+        ? $dynamicData['codex']
+        : (file_exists(CODEX_PATH) ? json_decode(file_get_contents(CODEX_PATH), true) : []);
+
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
 
+    // 2️⃣ Try to detect a matching module
     $slug = null;
     foreach ($codexData as $key => $entry) {
-        $titleNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $entry['title']));
+        if (!is_array($entry)) continue;
+        $titleNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $entry['title'] ?? ''));
         if (strpos($normalizedPrompt, $titleNorm) !== false || strpos($normalizedPrompt, strtolower($key)) !== false) {
             $slug = $key;
             break;
         }
     }
 
-    // Alias fallbacks (TIS, LGBAS, etc.)
+    // 3️⃣ Alias fallbacks
     if (!$slug) {
         $aliases = [
             'tis' => 'timeIntervalStandards',
             'time interval standards' => 'timeIntervalStandards',
-            'lgbas' => 'timeIntervalStandards'
+            'lgbas' => 'timeIntervalStandards',
+            'constitution' => 'skyesoftConstitution'
         ];
         foreach ($aliases as $alias => $keyMatch) {
             if (strpos($normalizedPrompt, $alias) !== false) {
@@ -318,7 +324,7 @@ if (!$handled && preg_match('/(generate|create|make|produce|show).*(information|
         }
     }
 
-    // If a valid module found
+    // 4️⃣ Generate via internal API
     if ($slug) {
         $apiUrl = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
         $payload = json_encode(["slug" => $slug]);
@@ -326,30 +332,41 @@ if (!$handled && preg_match('/(generate|create|make|produce|show).*(information|
             "http" => [
                 "method"  => "POST",
                 "header"  => "Content-Type: application/json\r\n",
-                "content" => $payload
+                "content" => $payload,
+                "timeout" => 15
             ]
         ];
         $context = stream_context_create($options);
         $result = @file_get_contents($apiUrl, false, $context);
 
-        $pdfMsg = $result ? trim($result) : "⚠️ Unable to generate the Information Sheet at this time.";
-        $responsePayload = [
-            "response" => "📘 The **{$codexData[$slug]['title']}** sheet is being generated.\n\n{$pdfMsg}",
-            "action"   => "sheet_generated",
-            "slug"     => $slug,
-            "sessionId" => $sessionId
-        ];
-        echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
+        // 5️⃣ JSON-safe fallback
+        if ($result === false) {
+            $error = error_get_last();
+            $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
+            $responsePayload = [
+                "response" => "❌ Network error: $msg",
+                "action"   => "error",
+                "sessionId" => $sessionId
+            ];
+        } else {
+            $cleanResult = strip_tags($result);
+            $responsePayload = [
+                "response" => "📘 The **{$codexData[$slug]['title']}** sheet is being generated.\n\n{$cleanResult}",
+                "action"   => "sheet_generated",
+                "slug"     => $slug,
+                "sessionId" => $sessionId
+            ];
+        }
     } else {
         $responsePayload = [
             "response" => "⚠️ The requested module was not found in the Codex.",
-            "action" => "none",
+            "action"   => "none",
             "sessionId" => $sessionId
         ];
-        echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
     }
+
+    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 // 2. 📑 Reports (run this BEFORE CRUD)
