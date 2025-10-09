@@ -354,12 +354,11 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
 }
 
 // 🔹 Codex Information Sheet Generator (self-adapting + JSON-safe)
-if (
-    !$handled &&
-    preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
-    preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
-) {
-    error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
+if (!$handled &&
+        preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
+        preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
+    ) {
+        error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
 
 
     // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
@@ -417,20 +416,24 @@ if (
         error_log("✅ alias-debug.log written successfully to $debugPath");
     }
 
-    // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
+    // 3️⃣ Resolve slug by token-overlap matching (PHP 5.6-safe, DRY)
     $slug = null;
-    foreach ($aliases as $alias => $target) {
-        // Normalize alias and prompt for fair comparison
-        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
+    $promptTokens = preg_split('/\s+/', $normalizedPrompt);
 
-        if (
-            strpos($normalizedPrompt, $aliasNorm) !== false ||     // alias inside prompt
-            strpos($aliasNorm, $normalizedPrompt) !== false         // prompt inside alias
-        ) {
+    foreach ($aliases as $alias => $target) {
+        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
+        $aliasTokens = preg_split('/\s+/', $aliasNorm);
+
+        // Count overlap between prompt words and alias words
+        $overlap = count(array_intersect($aliasTokens, $promptTokens));
+
+        // Require at least half of alias words to appear in prompt
+        if ($overlap >= ceil(count($aliasTokens) / 2)) {
             $slug = $target;
             break;
         }
     }
+
 
     // 4️⃣ Generate via internal API or return not-found
     if ($slug) {
