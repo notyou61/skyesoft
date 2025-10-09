@@ -419,9 +419,20 @@ if (!$handled &&
     // 3️⃣ Resolve slug by fuzzy token matching (PHP 5.6-safe, DRY)
     $slug = null;
 
-    // Normalize & tokenize prompt
+    // Normalize & tokenize prompt (PHP 5.6-safe + DRY)
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
+
+    // Remove filler words that don’t affect Codex lookup
+    $normalizedPrompt = preg_replace(
+        '/\b(the|a|an|sheet|report|information|module|file|summary|generate|create|make|produce|show|build|prepare)\b/',
+        '',
+        $normalizedPrompt
+    );
+
+    // Tokenize and rebuild into clean, space-separated string
     $promptTokens = preg_split('/\s+/', trim($normalizedPrompt));
+    $normalizedPrompt = implode(' ', $promptTokens);
+
 
     // remove filler words that add no meaning
     $filler = array('the','a','an','sheet','report','information','module','file','summary');
@@ -448,7 +459,6 @@ if (!$handled &&
             break;
         }
     }
-
 
     // 4️⃣ Generate via internal API or return not-found
     if ($slug) {
