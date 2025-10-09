@@ -396,9 +396,9 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
     }
     
     // 🧩 TEMP DEBUG: attempt to log aliases safely (GoDaddy open_basedir safe)
-    $debugPath = __DIR__ . '/alias-debug.log';
+    $debugPath = __DIR__ . '/logs/alias-debug.log';
     $debugData = "Aliases generated at " . date('Y-m-d H:i:s') . "\n" . print_r(array_keys($aliases), true);
-    @file_put_contents($debugPath, $debugData);
+    @file_put_contents($debugPath, $debugData, FILE_APPEND);
 
     // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
     $slug = null;
