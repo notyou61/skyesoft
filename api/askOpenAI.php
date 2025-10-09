@@ -416,18 +416,25 @@ if (!$handled &&
         error_log("✅ alias-debug.log written successfully to $debugPath");
     }
 
-    // 3️⃣ Resolve slug by token-overlap matching (PHP 5.6-safe, DRY)
+    // 3️⃣ Resolve slug by flexible token overlap matching (PHP 5.6-safe, DRY)
     $slug = null;
-    $promptTokens = preg_split('/\s+/', $normalizedPrompt);
+
+    // Strip punctuation, lowercase, split prompt into tokens
+    $promptTokens = preg_split('/\s+/', trim(preg_replace('/[^a-z0-9\s]/', '', strtolower($prompt))));
+    // Remove filler words that add noise
+    $filler = array('the','a','an','sheet','report','information','module','file','summary');
+    $promptTokens = array_diff($promptTokens, $filler);
 
     foreach ($aliases as $alias => $target) {
-        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
-        $aliasTokens = preg_split('/\s+/', $aliasNorm);
+        $aliasNorm   = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
+        $aliasTokens = preg_split('/\s+/', trim($aliasNorm));
 
-        // Count overlap between prompt words and alias words
+        if (empty($aliasTokens)) continue;
+
+        // Count overlapping words between alias and prompt
         $overlap = count(array_intersect($aliasTokens, $promptTokens));
 
-        // Require at least half of alias words to appear in prompt
+        // Consider it a match if ≥ ½ of alias words appear in prompt
         if ($overlap >= ceil(count($aliasTokens) / 2)) {
             $slug = $target;
             break;
