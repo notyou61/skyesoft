@@ -395,10 +395,16 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
         }
     }
 
-    // 3️⃣ Match prompt → alias
+    // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
     $slug = null;
     foreach ($aliases as $alias => $target) {
-        if (strpos($normalizedPrompt, $alias) !== false) {
+        // Normalize alias and prompt for fair comparison
+        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
+
+        if (
+            strpos($normalizedPrompt, $aliasNorm) !== false ||     // alias inside prompt
+            strpos($aliasNorm, $normalizedPrompt) !== false         // prompt inside alias
+        ) {
             $slug = $target;
             break;
         }
