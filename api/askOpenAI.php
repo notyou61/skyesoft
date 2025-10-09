@@ -363,34 +363,43 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
 
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
 
-    // 2️⃣ Try to detect a matching module
+    // 2️⃣ Try to detect a matching Codex module
     $slug = null;
+    $normalizedPrompt = strtolower($prompt);
+
     foreach ($codexData as $key => $entry) {
         if (!is_array($entry)) continue;
 
         $title = isset($entry['title']) ? strtolower($entry['title']) : '';
         $cleanKey = strtolower($key);
-        $normalizedPrompt = strtolower($prompt);
 
-        // Check for direct key, title, or acronym (e.g., TIS)
+        // Match by key or title
         if (strpos($normalizedPrompt, $cleanKey) !== false ||
-            strpos($normalizedPrompt, $title) !== false ||
-            preg_match('/\bTIS\b/i', $prompt)) {
+            strpos($normalizedPrompt, $title) !== false) {
             $slug = $key;
             break;
         }
+
+        // Optional: detect acronym like (TIS)
+        if (preg_match('/\(([^)]+)\)/', $title, $matches)) {
+            $acronym = strtolower($matches[1]);
+            if (strpos($normalizedPrompt, $acronym) !== false) {
+                $slug = $key;
+                break;
+            }
+        }
     }
 
-    // 3️⃣ Alias fallbacks
+    // 3️⃣ Alias fallback map (safe for expansion)
     if (!$slug) {
-        $aliases = [
+        $aliases = array(
             'tis' => 'timeIntervalStandards',
             'time interval standards' => 'timeIntervalStandards',
             'lgbas' => 'timeIntervalStandards',
             'constitution' => 'skyesoftConstitution'
-        ];
+        );
         foreach ($aliases as $alias => $keyMatch) {
-            if (stripos($prompt, $alias) !== false) {
+            if (strpos($normalizedPrompt, $alias) !== false) {
                 $slug = $keyMatch;
                 break;
             }
