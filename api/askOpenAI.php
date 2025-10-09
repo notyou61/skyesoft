@@ -373,14 +373,26 @@ if (!$handled &&
 
     // 2️⃣ Auto-generate aliases dynamically (DRY)
     $aliases = array();
+
+    // --- Normalize & clean the prompt (PHP 5.6-safe)
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
 
+    // Remove filler / connector words that don’t affect matching
+    $normalizedPrompt = preg_replace(
+        '/\b(the|a|an|sheet|report|information|module|file|summary|generate|create|make|produce|show|build|prepare)\b/',
+        '',
+        $normalizedPrompt
+    );
+
+    // Collapse extra spaces
+    $normalizedPrompt = trim(preg_replace('/\s+/', ' ', $normalizedPrompt));
+
+    // --- Build alias map from Codex
     foreach ($modules as $key => $entry) {
         if (!is_array($entry) || !isset($entry['title'])) continue;
 
         $cleanTitle = preg_replace('/[^\w\s()]/u', '', strtolower($entry['title']));
         $titleWords = preg_split('/\s+/', trim($cleanTitle));
-
         if (empty($titleWords)) continue;
 
         // Multi-word alias ("time interval standards")
