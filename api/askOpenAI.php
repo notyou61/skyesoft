@@ -394,7 +394,8 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
             if (!isset($aliases[$acro])) $aliases[$acro] = $key;
         }
     }
-
+    // 🧩 TEMP DEBUG: write all generated alias keys to file
+    file_put_contents(__DIR__ . '/alias-debug.log', print_r(array_keys($aliases), true));
     // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
     $slug = null;
     foreach ($aliases as $alias => $target) {
