@@ -398,8 +398,17 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
     // 🧩 TEMP DEBUG: attempt to log aliases safely (GoDaddy open_basedir safe)
     $debugPath = __DIR__ . '/logs/alias-debug.log';
     $debugData = "Aliases generated at " . date('Y-m-d H:i:s') . "\n" . print_r(array_keys($aliases), true);
-    if (file_put_contents($debugPath, $debugData) === false) {
-        error_log("⚠️ Failed to write alias-debug.log at path: " . $debugPath);
+
+    $writeSuccess = @file_put_contents($debugPath, $debugData);
+
+    // Always log what happened
+    if ($writeSuccess === false) {
+        $altPath = ini_get('upload_tmp_dir') ?: sys_get_temp_dir();
+        $altFile = $altPath . '/alias-debug-' . date('Ymd-His') . '.log';
+        @file_put_contents($altFile, $debugData);
+        error_log("⚠️ Failed to write alias-debug.log at path: $debugPath — wrote to fallback $altFile instead.");
+    } else {
+        error_log("✅ alias-debug.log written successfully to $debugPath");
     }
 
     // 3️⃣ Resolve slug by flexible substring matching (DRY + PHP 5.6-safe)
