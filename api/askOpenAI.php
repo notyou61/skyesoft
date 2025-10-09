@@ -2,45 +2,74 @@
 // 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 
-// Require shared helpers
-require_once __DIR__ . "/helpers.php";
-
 // ===========================================================
 // 🧩 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
 // ===========================================================
+
+// Disable HTML error output and start buffering immediately
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
 ob_start();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    $clean = htmlspecialchars(strip_tags($errstr));
-    $msg = "⚠️ PHP error [$errno]: $clean in $errfile:$errline";
+    // Clean buffer completely
+    while (ob_get_level()) { ob_end_clean(); }
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8', true);
+
+    $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
+    $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
     $response = [
         "response"  => $msg,
         "action"    => "error",
-        "sessionId" => session_id()
+        "sessionId" => session_id() ?: 'N/A'
     ];
-    header('Content-Type: application/json');
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    ob_end_flush();
-    exit;
-});
+
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    exit(1);
+}, E_ALL);
 
 register_shutdown_function(function () {
-    $output = trim(ob_get_clean() ?? '');
-    // If anything unexpected (HTML or blank) leaked, repackage as JSON
-    if ($output && stripos($output, '{') !== 0) {
-        $clean = substr(strip_tags($output), 0, 500);
+    $lastError = error_get_last();
+    $output = ob_get_clean();
+
+    // Catch fatal errors that bypass the handler
+    if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+        while (ob_get_level()) { ob_end_clean(); }
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8', true);
+
+        $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
+        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
         $response = [
+            "response"  => $msg,
+            "action"    => "error",
+            "sessionId" => session_id() ?: 'N/A'
+        ];
+        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        return;
+    }
+
+    // If normal output exists but isn’t JSON, wrap it safely
+    if (!empty($output) && stripos(trim($output), '{') !== 0) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        $clean = substr(strip_tags($output), 0, 500);
+        echo json_encode([
             "response"  => "❌ Internal error: " . $clean,
             "action"    => "error",
-            "sessionId" => session_id()
-        ];
-        header('Content-Type: application/json');
-        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    } elseif ($output) {
-        // Normal JSON already produced
-        echo $output;
+            "sessionId" => session_id() ?: 'N/A'
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } elseif (!empty($output)) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        echo trim($output);
     }
 });
+
+// ===========================================================
+// Require shared helpers *after* shield is active
+// ===========================================================
+require_once __DIR__ . "/helpers.php";
 
 #region 🔹 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
