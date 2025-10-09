@@ -5,6 +5,31 @@
 // Require shared helpers
 require_once __DIR__ . "/helpers.php";
 
+#region 🧩 Output buffering to prevent HTML leaks in JSON API responses
+ob_start();
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    $msg = "⚠️ PHP error [$errno]: $errstr in $errfile on line $errline";
+    echo json_encode([
+        "response" => $msg,
+        "action" => "error",
+        "sessionId" => session_id()
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+});
+register_shutdown_function(function () {
+    $output = ob_get_clean();
+    if (strlen(trim($output)) > 0 && stripos($output, '{') !== 0) {
+        // Convert any stray HTML to a safe JSON message
+        $clean = strip_tags($output);
+        echo json_encode([
+            "response" => "❌ Internal error: " . substr($clean, 0, 300),
+            "action" => "error",
+            "sessionId" => session_id()
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+});
+#endregion
+
 #region 🔹 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
 require_once __DIR__ . "/reports/signOrdinance.php";
@@ -338,6 +363,16 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
         ];
         $context = stream_context_create($options);
         $result = @file_get_contents($apiUrl, false, $context);
+        if ($result === false) {
+            $error = error_get_last();
+            $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
+            echo json_encode([
+                "response" => "❌ Network error while contacting generateReports.php: $msg",
+                "action" => "error",
+                "sessionId" => $sessionId
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
 
         // 5️⃣ JSON-safe fallback
         if ($result === false) {
