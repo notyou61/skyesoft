@@ -367,10 +367,15 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
     $slug = null;
     foreach ($codexData as $key => $entry) {
         if (!is_array($entry)) continue;
-        $titleNorm = strtolower(
-            preg_replace('/[^a-z0-9\s]/', '', isset($entry['title']) ? $entry['title'] : '')
-        );
-        if (strpos($normalizedPrompt, $titleNorm) !== false || strpos($normalizedPrompt, strtolower($key)) !== false) {
+
+        $title = isset($entry['title']) ? strtolower($entry['title']) : '';
+        $cleanKey = strtolower($key);
+        $normalizedPrompt = strtolower($prompt);
+
+        // Check for direct key, title, or acronym (e.g., TIS)
+        if (strpos($normalizedPrompt, $cleanKey) !== false ||
+            strpos($normalizedPrompt, $title) !== false ||
+            preg_match('/\bTIS\b/i', $prompt)) {
             $slug = $key;
             break;
         }
@@ -385,7 +390,7 @@ if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(infor
             'constitution' => 'skyesoftConstitution'
         ];
         foreach ($aliases as $alias => $keyMatch) {
-            if (strpos($normalizedPrompt, $alias) !== false) {
+            if (stripos($prompt, $alias) !== false) {
                 $slug = $keyMatch;
                 break;
             }
