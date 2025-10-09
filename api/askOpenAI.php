@@ -355,6 +355,8 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
 
 // 🔹 Codex Information Sheet Generator (self-adapting + JSON-safe)
 if (!$handled && preg_match('/\b(generate|create|make|produce|show)\b.*?\b(information|sheet|report|codex)\b/i', $prompt)) {
+    //
+    error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
 
     // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
     $codexData = isset($dynamicData['codex'])
