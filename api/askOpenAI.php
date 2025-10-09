@@ -287,6 +287,71 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
+// 🔹 Codex Information Sheet Generator (New Section)
+if (!$handled && preg_match('/(generate|create|make|produce|show).*(information|sheet|report|codex)/i', $prompt)) {
+
+    // Load codex dynamically
+    $codexData = json_decode(file_get_contents(CODEX_PATH), true);
+    $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
+
+    $slug = null;
+    foreach ($codexData as $key => $entry) {
+        $titleNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $entry['title']));
+        if (strpos($normalizedPrompt, $titleNorm) !== false || strpos($normalizedPrompt, strtolower($key)) !== false) {
+            $slug = $key;
+            break;
+        }
+    }
+
+    // Alias fallbacks (TIS, LGBAS, etc.)
+    if (!$slug) {
+        $aliases = [
+            'tis' => 'timeIntervalStandards',
+            'time interval standards' => 'timeIntervalStandards',
+            'lgbas' => 'timeIntervalStandards'
+        ];
+        foreach ($aliases as $alias => $keyMatch) {
+            if (strpos($normalizedPrompt, $alias) !== false) {
+                $slug = $keyMatch;
+                break;
+            }
+        }
+    }
+
+    // If a valid module found
+    if ($slug) {
+        $apiUrl = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
+        $payload = json_encode(["slug" => $slug]);
+        $options = [
+            "http" => [
+                "method"  => "POST",
+                "header"  => "Content-Type: application/json\r\n",
+                "content" => $payload
+            ]
+        ];
+        $context = stream_context_create($options);
+        $result = @file_get_contents($apiUrl, false, $context);
+
+        $pdfMsg = $result ? trim($result) : "⚠️ Unable to generate the Information Sheet at this time.";
+        $responsePayload = [
+            "response" => "📘 The **{$codexData[$slug]['title']}** sheet is being generated.\n\n{$pdfMsg}",
+            "action"   => "sheet_generated",
+            "slug"     => $slug,
+            "sessionId" => $sessionId
+        ];
+        echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    } else {
+        $responsePayload = [
+            "response" => "⚠️ The requested module was not found in the Codex.",
+            "action" => "none",
+            "sessionId" => $sessionId
+        ];
+        echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+}
+
 // 2. 📑 Reports (run this BEFORE CRUD)
 if (!$handled) {
     $detectedReport = null;
