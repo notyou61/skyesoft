@@ -500,11 +500,10 @@ if (
         );
     }
 
-    // 3️⃣ AI Slug Resolution (semantic matching via OpenAI)
+    // 3️⃣ AI Slug Resolution
     $resolutionPrompt = "User request: " . $prompt .
         "\n\nAvailable Codex modules:\n" . json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
         "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
-
     $messages = array(
         array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
         array("role" => "user", "content" => $resolutionPrompt)
@@ -515,7 +514,6 @@ if (
     // 🧠 Parse AI response safely (PHP 5.6-compatible)
     $parsedSlug = array();
     $slug = null;
-
     if (!empty($aiSlugResponse)) {
         $decoded = json_decode($aiSlugResponse, true);
         if (is_array($decoded) && isset($decoded['slug'])) {
@@ -531,64 +529,40 @@ if (
 
     // 4️⃣ Generate via internal API or build dynamic fallback
     if ($slug && isset($modules[$slug])) {
-        $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
-        $payload = json_encode(array("slug" => $slug));
-        $context = stream_context_create(array(
-            "http" => array(
-                "method"  => "POST",
-                "header"  => "Content-Type: application/json\r\n",
-                "content" => $payload,
-                "timeout" => 15
-            )
-        ));
 
-        $result = @file_get_contents($apiUrl, false, $context);
+        // ✅ Normalize & sanitize title
+        $title = isset($modules[$slug]['title'])
+            ? trim($modules[$slug]['title'])
+            : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-        if ($result === false) {
-            $error = error_get_last();
-            $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-            $responsePayload = array(
-                "response"  => "❌ Network error contacting generateReports.php: $msg",
-                "action"    => "error",
-                "sessionId" => $sessionId
-            );
-        } else {
-            // ✅ Dynamic Codex Sheet Response (scales automatically)
-            $title = isset($modules[$slug]['title'])
-                ? trim($modules[$slug]['title'])
-                : ucwords(str_replace(array('-', '_'), ' ', $slug));
+        // Remove emoji / non-ASCII chars and leading spaces
+        $title = preg_replace('/[^\x20-\x7E]/u', '', $title);
+        $title = ltrim($title);
 
-            // Safeguard: Skip if title is empty (prevents zero-byte filenames)
-            if (empty($title)) {
-                $title = ucwords($slug);
-            }
+        if (empty($title)) $title = ucwords($slug);
 
-            // ✅ Normalize filename — prevents double spaces and weird characters
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $title);
-            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
+        // ✅ Normalize filename (no emoji, no double spaces)
+        $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $title);
+        $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
-            // ✅ Always exactly one space after dash (no leading or double spaces)
-            $fileName = 'Information Sheet - ' . trim(preg_replace('/^\s+|\s{2,}/', ' ', $cleanTitle)) . '.pdf';
+        $fileName = sprintf('Information Sheet - %s.pdf', $cleanTitle);
 
-            $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+        // ✅ Paths & public URL
+        $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+        $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
+        $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
 
-            // ✅ Build clean public URL (no %20%20)
-            $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
-            $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
+        error_log("📘 Generated Info Sheet: slug='$slug', title='$title', url='$publicUrl'");
 
-            error_log("📘 Generated Info Sheet: slug='$slug', title='$title', url='$publicUrl'");
+        $responsePayload = array(
+            "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
+            "action"    => "sheet_generated",
+            "slug"      => $slug,
+            "reportUrl" => $publicUrl,
+            "sessionId" => $sessionId
+        );
 
-            // Unified JSON response
-            $responsePayload = array(
-                "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
-                "action"    => "sheet_generated",
-                "slug"      => $slug,
-                "reportUrl" => $publicUrl,
-                "sessionId" => $sessionId
-            );
-        }
     } else {
-        // 🧩 Fallback if no AI match
         $responsePayload = array(
             "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
             "action"    => "none",
@@ -596,13 +570,12 @@ if (
         );
     }
 
-    // 5️⃣ Output unified JSON (always)
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=UTF-8');
-    }
+    // 5️⃣ Output unified JSON
+    if (!headers_sent()) header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
+
 
 // 2. 📑 Reports (run this BEFORE CRUD)
 if (!$handled) {
