@@ -512,9 +512,25 @@ if (
         array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
         array("role" => "user", "content" => $resolutionPrompt)
     );
+
     $aiSlugResponse = callOpenAi($messages);
-    $parsedSlug = json_decode($aiSlugResponse, true);
-    $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
+
+    // 🧠 Parse AI response safely (PHP 5.6-compatible)
+    $parsedSlug = array();
+    if (!empty($aiSlugResponse)) {
+        $decoded = json_decode($aiSlugResponse, true);
+        if (is_array($decoded)) {
+            $parsedSlug = $decoded;
+        } else {
+            error_log("⚠️ AI returned non-JSON slug response: " . substr($aiSlugResponse, 0, 200));
+        }
+    } else {
+        error_log("⚠️ Empty AI slug response.");
+    }
+
+    $slug = (isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null')
+        ? $parsedSlug['slug']
+        : null;
 
     error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
 
@@ -543,7 +559,7 @@ if (
         } else {
             // ✅ Dynamic Codex Sheet Response (scales automatically)
             $title = isset($modules[$slug]['title'])
-                ? $modules[$slug]['title']
+                ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
             // Safe, human-readable filename
@@ -562,6 +578,9 @@ if (
                 array('https://www.skyelighting.com', '%20', '%28', '%29'),
                 $pdfPath
             );
+
+            // Log success
+            error_log("📘 Generated Info Sheet: slug='$slug', title='$title', url='$publicUrl'");
 
             // Build final response
             $responseText = "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
@@ -583,7 +602,9 @@ if (
     }
 
     // 5️⃣ Output unified JSON
-    header('Content-Type: application/json; charset=UTF-8');
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=UTF-8');
+    }
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
