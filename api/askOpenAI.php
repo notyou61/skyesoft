@@ -379,7 +379,7 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// 🔹 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + JSON-safe)
+// 🔹 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling)
 if (
     !$handled &&
     preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
@@ -394,7 +394,7 @@ if (
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
-    // Normalize Codex structure (handles both wrapped and direct JSON)
+    // Normalize structure (accepts both wrapped + flat)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
@@ -411,18 +411,20 @@ if (
     }
 
     // 3️⃣ AI Slug Resolution (semantic matching via OpenAI)
-    $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" . json_encode($codexSlim, JSON_UNESCAPED_SLASHES) . "\n\nResolve to the best-matching module slug. Respond with JSON only: {\"slug\": \"exact-slug\" or null}";
+    $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" .
+        json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
+        "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
     $messages = array(
-        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If no strong match, use null."),
+        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
         array("role" => "user", "content" => $resolutionPrompt)
     );
-    $aiSlugResponse = callOpenAi($messages); // Assumes callOpenAi handles plain text; parse JSON
+    $aiSlugResponse = callOpenAi($messages);
     $parsedSlug = json_decode($aiSlugResponse, true);
     $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
 
-    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . (isset($slug) ? $slug : 'null') . "'");
+    error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
 
-    // 4️⃣ Generate via internal API or return not-found
+    // 4️⃣ Generate via internal API or build dynamic fallback
     if ($slug && isset($modules[$slug])) {
         $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
         $payload = json_encode(array("slug" => $slug));
@@ -445,25 +447,48 @@ if (
                 "sessionId" => $sessionId
             );
         } else {
-            $cleanResult = strip_tags($result);
-            $title = $modules[$slug]['title'];
+            // ✅ Dynamic Codex Sheet Response (scales automatically)
+            $title = isset($modules[$slug]['title'])
+                ? $modules[$slug]['title']
+                : ucwords(str_replace(array('-', '_'), ' ', $slug));
+
+            // Safe, human-readable filename
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
+            $shortTag = '';
+            if (preg_match('/\(([A-Z0-9]+)\)/', $cleanTitle, $m)) {
+                $shortTag = trim($m[1]);
+            }
+
+            // Construct file name and URL
+            $fileName = 'Information Sheet - ' . $cleanTitle . ($shortTag ? '' : '') . '.pdf';
+            $baseDir  = '/home/notyou64/public_html/skyesoft/docs/sheets/';
+            $pdfPath  = $baseDir . $fileName;
+            $publicUrl = str_replace(
+                array('/home/notyou64/public_html', ' ', '(', ')'),
+                array('https://www.skyelighting.com', '%20', '%28', '%29'),
+                $pdfPath
+            );
+
+            // Build final response
+            $responseText = "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
             $responsePayload = array(
-                "response"  => "📘 The **{$title}** sheet is being generated via AI-resolved Codex match.\n\n{$cleanResult}",
+                "response"  => $responseText,
                 "action"    => "sheet_generated",
                 "slug"      => $slug,
+                "reportUrl" => $publicUrl,
                 "sessionId" => $sessionId
             );
         }
-
     } else {
+        // Fallback if no AI match
         $responsePayload = array(
-            "response"  => "⚠️ No matching Codex module found via AI resolution. Consider rephrasing your request.",
+            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
             "action"    => "none",
             "sessionId" => $sessionId
         );
     }
 
-    // 5️⃣ Always output JSON once, safely
+    // 5️⃣ Output unified JSON
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
