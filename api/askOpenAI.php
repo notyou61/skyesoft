@@ -168,56 +168,53 @@ $prompt = isset($data["prompt"])
 $conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
-// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe) - DEPRECATED: Now handled via AI in Dispatch
-// Retained for backward compatibility, but will fallback to AI if no exact match
-if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
+// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+// Retained for backward compatibility — now defers to AI semantic resolution
+if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
-
     $aiFallbackStarted = false; // safeguard tracker
 
     // Load codex safely
-    $codex = array();
-    if (isset($dynamicData['codex'])) {
-        $codex = $dynamicData['codex'];
-    }
+    $codexData = isset($dynamicData['codex'])
+        ? $dynamicData['codex']
+        : (file_exists(CODEX_PATH)
+            ? json_decode(file_get_contents(CODEX_PATH), true)
+            : array());
 
-    // Search Codex for direct key match
+    // Normalize structure (accepts both wrapped + flat)
+    $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
+        ? $codexData['modules']
+        : $codexData;
+
+    // Search Codex for direct key match first
     $foundKey = '';
-    foreach ($codex as $key => $val) {
+    foreach ($modules as $key => $val) {
         if (strtolower($key) === $moduleName) {
             $foundKey = $key;
             break;
         }
     }
 
-    // If found, return normal link
+    // If found, return direct link
     if (!empty($foundKey)) {
-        $title = isset($codex[$foundKey]['title']) ? $codex[$foundKey]['title'] : ucfirst($foundKey);
+        $title = isset($modules[$foundKey]['title']) ? $modules[$foundKey]['title'] : ucfirst($foundKey);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
+
+        header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
-            'response' => '📄 <strong>' . $title . '</strong> — <a href="' . $link . '" target="_blank">Generate Sheet</a>'
-        ));
+            "response"  => "📄 <strong>" . $title . "</strong> — <a href=\"" . $link . "\" target=\"_blank\">Generate Sheet</a>",
+            "action"    => "sheet_generated",
+            "slug"      => $foundKey,
+            "reportUrl" => $link,
+            "sessionId" => $sessionId
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    // Otherwise → run AI fallback only once
-    if (empty($aiFallbackStarted)) {
-        $aiFallbackStarted = true; // mark AI stage active
-
-        // optional: write log
+    // Otherwise → AI fallback
+    if (!$aiFallbackStarted) {
+        $aiFallbackStarted = true;
         error_log("⚙️ [Skyebot] Falling back to AI Codex resolver for prompt: $prompt");
-
-        // AI Slug Resolution (extracted reusable logic from newer handler)
-        $codexData = isset($dynamicData['codex'])
-            ? $dynamicData['codex']
-            : (file_exists(CODEX_PATH)
-                ? json_decode(file_get_contents(CODEX_PATH), true)
-                : array());
-
-        // Normalize structure (accepts both wrapped + flat)
-        $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
-            ? $codexData['modules']
-            : $codexData;
 
         // Build slim Codex index for AI resolution
         $codexSlim = array();
@@ -230,23 +227,34 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
             );
         }
 
-        // AI Slug Resolution (semantic matching via OpenAI)
+        // 🧠 AI Slug Resolution
         $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" .
             json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
             "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
+
         $messages = array(
             array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
             array("role" => "user", "content" => $resolutionPrompt)
         );
         $aiSlugResponse = callOpenAi($messages);
-        if ($parsedSlug === null || !isset($parsedSlug['slug'])) {
-            $slug = null;
-            error_log("⚠️ AI returned non-JSON slug response: " . substr($aiSlugResponse, 0, 200));
-        } 
-        $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
+
+        // Parse safely (PHP 5.6-safe)
+        $parsedSlug = array();
+        $slug = null;
+        if (!empty($aiSlugResponse)) {
+            $decoded = json_decode($aiSlugResponse, true);
+            if (is_array($decoded) && isset($decoded['slug']) && $decoded['slug'] !== 'null') {
+                $slug = $decoded['slug'];
+            } else {
+                error_log("⚠️ AI returned invalid slug response: " . substr($aiSlugResponse, 0, 200));
+            }
+        } else {
+            error_log("⚠️ Empty AI slug response.");
+        }
+
         error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
 
-        // Generate via internal API or build dynamic fallback
+        // Generate via internal API
         if ($slug && isset($modules[$slug])) {
             $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
             $payload = json_encode(array("slug" => $slug));
@@ -263,58 +271,46 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
             if ($result === false) {
                 $error = error_get_last();
                 $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-                header('Content-Type: application/json; charset=UTF-8');
-                echo json_encode(array(
-                    "response"  => "❌ Network error contacting generateReports.php: $msg",
-                    "action"    => "error",
-                    "sessionId" => $sessionId
-                ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                exit;
+                $response = "❌ Network error contacting generateReports.php: $msg";
+                $action = "error";
+                $publicUrl = null;
             } else {
-                // ✅ Dynamic Codex Sheet Response (scales automatically)
                 $title = isset($modules[$slug]['title'])
                     ? $modules[$slug]['title']
                     : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-                // Safe, human-readable filename
-                $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
-                $shortTag = '';
-                if (preg_match('/\(([A-Z0-9]+)\)/', $cleanTitle, $m)) {
-                    $shortTag = trim($m[1]);
-                }
-
-                // Construct file name and URL
-                $fileName = 'Information Sheet - ' . $cleanTitle . ($shortTag ? '' : '') . '.pdf';
-                $baseDir  = '/home/notyou64/public_html/skyesoft/docs/sheets/';
-                $pdfPath  = $baseDir . $fileName;
+                // File name + URL (scales dynamically)
+                $fileName = 'Information Sheet - ' . preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title) . '.pdf';
+                $pdfPath  = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
                 $publicUrl = str_replace(
                     array('/home/notyou64/public_html', ' ', '(', ')'),
                     array('https://www.skyelighting.com', '%20', '%28', '%29'),
                     $pdfPath
                 );
 
-                // Build final response
-                $responseText = "📘 The **" . $title . "** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug '$slug': $pdfPath\n";
-                header('Content-Type: application/json; charset=UTF-8');
-                echo json_encode(array(
-                    "response"  => $responseText,
-                    "action"    => "sheet_generated",
-                    "slug"      => $slug,
-                    "reportUrl" => $publicUrl, // ✅ Added line — Skyebot now renders clickable link
-                    "sessionId" => $sessionId
-                ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                exit;
+                $response = "📘 The **" . $title . "** sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
+                $action = "sheet_generated";
             }
-        } else {
-            // Fallback if no AI match
+
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array(
-                "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
-                "action"    => "none",
+                "response"  => $response,
+                "action"    => $action,
+                "slug"      => $slug,
+                "reportUrl" => $publicUrl,
                 "sessionId" => $sessionId
             ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
+
+        // Fallback if no match found
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array(
+            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
+            "action"    => "none",
+            "sessionId" => $sessionId
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
 
