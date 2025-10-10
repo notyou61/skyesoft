@@ -354,17 +354,19 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
 }
 
 // 🔹 Codex Information Sheet Generator (self-adapting + JSON-safe)
-if (!$handled &&
-        preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
-        preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
-    ) {
-        error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
-
+if (
+    !$handled &&
+    preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
+    preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
+) {
+    error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
 
     // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
     $codexData = isset($dynamicData['codex'])
         ? $dynamicData['codex']
-        : (file_exists(CODEX_PATH) ? json_decode(file_get_contents(CODEX_PATH), true) : array());
+        : (file_exists(CODEX_PATH)
+            ? json_decode(file_get_contents(CODEX_PATH), true)
+            : array());
 
     // Normalize Codex structure (handles both wrapped and direct JSON)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
@@ -373,26 +375,12 @@ if (!$handled &&
 
     // 2️⃣ Auto-generate aliases dynamically (DRY)
     $aliases = array();
-
-    // --- Normalize & clean the prompt (PHP 5.6-safe)
-    $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
-
-    // Remove filler / connector words that don’t affect matching
-    $normalizedPrompt = preg_replace(
-        '/\b(the|a|an|sheet|report|information|module|file|summary|generate|create|make|produce|show|build|prepare)\b/',
-        '',
-        $normalizedPrompt
-    );
-
-    // Collapse extra spaces
-    $normalizedPrompt = trim(preg_replace('/\s+/', ' ', $normalizedPrompt));
-
-    // --- Build alias map from Codex
     foreach ($modules as $key => $entry) {
         if (!is_array($entry) || !isset($entry['title'])) continue;
 
         $cleanTitle = preg_replace('/[^\w\s()]/u', '', strtolower($entry['title']));
         $titleWords = preg_split('/\s+/', trim($cleanTitle));
+
         if (empty($titleWords)) continue;
 
         // Multi-word alias ("time interval standards")
@@ -411,68 +399,32 @@ if (!$handled &&
             if (!isset($aliases[$acro])) $aliases[$acro] = $key;
         }
     }
-    
-    // 🧩 TEMP DEBUG: attempt to log aliases safely (GoDaddy open_basedir safe)
-    $debugPath = __DIR__ . '/logs/alias-debug.log';
-    $debugData = "Aliases generated at " . date('Y-m-d H:i:s') . "\n" . print_r(array_keys($aliases), true);
 
-    $writeSuccess = @file_put_contents($debugPath, $debugData);
-
-    // Always log what happened
-    if ($writeSuccess === false) {
-        $altPath = ini_get('upload_tmp_dir') ?: sys_get_temp_dir();
-        $altFile = $altPath . '/alias-debug-' . date('Ymd-His') . '.log';
-        @file_put_contents($altFile, $debugData);
-        error_log("⚠️ Failed to write alias-debug.log at path: $debugPath — wrote to fallback $altFile instead.");
-    } else {
-        error_log("✅ alias-debug.log written successfully to $debugPath");
-    }
-
-    // 3️⃣ Resolve slug by fuzzy token matching (PHP 5.6-safe, DRY)
-    $slug = null;
-
-    // Normalize & tokenize prompt (PHP 5.6-safe + DRY)
+    // 3️⃣ Normalize & clean the prompt for reliable matching
     $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
-
-    // Remove filler words that don’t affect Codex lookup
+    // Remove filler words and command verbs
     $normalizedPrompt = preg_replace(
         '/\b(the|a|an|sheet|report|information|module|file|summary|generate|create|make|produce|show|build|prepare)\b/',
         '',
         $normalizedPrompt
     );
+    $normalizedPrompt = trim(preg_replace('/\s+/', ' ', $normalizedPrompt));
+    error_log("🧩 Normalized prompt → " . $normalizedPrompt);
 
-    // Tokenize and rebuild into clean, space-separated string
-    $promptTokens = preg_split('/\s+/', trim($normalizedPrompt));
-    $normalizedPrompt = implode(' ', $promptTokens);
-
-
-    // remove filler words that add no meaning
-    $filler = array('the','a','an','sheet','report','information','module','file','summary');
-    $promptTokens = array_diff($promptTokens, $filler);
-
+    // 4️⃣ Resolve slug by flexible substring matching
+    $slug = null;
     foreach ($aliases as $alias => $target) {
-        $aliasNorm   = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
-        $aliasTokens = preg_split('/\s+/', trim($aliasNorm));
-
-        if (empty($aliasTokens)) continue;
-
-        // count shared words
-        $overlap = count(array_intersect($aliasTokens, $promptTokens));
-
-        // treat as match if at least half of alias words appear, OR all but one
-        if ($overlap >= ceil(count($aliasTokens) / 2) || $overlap >= (count($aliasTokens) - 1)) {
-            $slug = $target;
-            break;
-        }
-
-        // secondary check: alias fully contained as substring
-        if (strpos($normalizedPrompt, $aliasNorm) !== false) {
+        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
+        if (
+            strpos($normalizedPrompt, $aliasNorm) !== false ||
+            strpos($aliasNorm, $normalizedPrompt) !== false
+        ) {
             $slug = $target;
             break;
         }
     }
 
-    // 4️⃣ Generate via internal API or return not-found
+    // 5️⃣ Generate via internal API or return not-found
     if ($slug) {
         $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
         $payload = json_encode(array("slug" => $slug));
@@ -484,7 +436,6 @@ if (!$handled &&
                 "timeout" => 15
             )
         ));
-
         $result = @file_get_contents($apiUrl, false, $context);
 
         if ($result === false) {
@@ -513,7 +464,7 @@ if (!$handled &&
         );
     }
 
-    // 5️⃣ Always output JSON once, safely
+    // 6️⃣ Always output JSON once, safely
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
