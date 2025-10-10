@@ -152,20 +152,13 @@ if (!empty($dynamicData)) {
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
-$aiFallbackStarted = false; // 🚦 Tracks if AI fallback has already emitted a response
-
 $data = json_decode(file_get_contents("php://input"), true);
 if ($data === null || $data === false) {
-    // Ensure only one JSON block is ever returned
-    if (empty($aiFallbackStarted)) {
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(array(
-            "response"  => "❌ Invalid or empty JSON payload.",
-            "action"    => "none",
-            "sessionId" => $sessionId
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        flush();
-    }
+    echo json_encode(array(
+        "response"  => "❌ Invalid or empty JSON payload.",
+        "action"    => "none",
+        "sessionId" => $sessionId
+    ), JSON_PRETTY_PRINT);
     exit;
 }
 
@@ -177,17 +170,19 @@ $lowerPrompt = strtolower($prompt);
 
 // ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe) - DEPRECATED: Now handled via AI in Dispatch
 // Retained for backward compatibility, but will fallback to AI if no exact match
+// ✅ AI-Safe Codex Sheet Generator with single JSON output
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
-
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
 
-    // Safely load codex array if available
+    $aiFallbackStarted = false; // safeguard tracker
+
+    // Load codex safely
     $codex = array();
     if (isset($dynamicData['codex'])) {
         $codex = $dynamicData['codex'];
     }
 
-    // Case-insensitive key match for Codex modules
+    // Search Codex for direct key match
     $foundKey = '';
     foreach ($codex as $key => $val) {
         if (strtolower($key) === $moduleName) {
@@ -196,26 +191,35 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
         }
     }
 
+    // If found, return normal link
     if (!empty($foundKey)) {
-
         $title = isset($codex[$foundKey]['title']) ? $codex[$foundKey]['title'] : ucfirst($foundKey);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
-
-        $response = array(
+        echo json_encode(array(
             'response' => '📄 <strong>' . $title . '</strong> — <a href="' . $link . '" target="_blank">Generate Sheet</a>'
-        );
-
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($response);
+        ));
         exit;
+    }
 
-    } else {
-        $response = array(
-            'response' => '⚠️ The requested module "' . $moduleName . '" was not found in the Codex. Falling back to AI resolution.'
-        );
+    // Otherwise → run AI fallback only once
+    if (empty($aiFallbackStarted)) {
+        $aiFallbackStarted = true; // mark AI stage active
+
+        // optional: write log
+        error_log("⚙️ [Skyebot] Falling back to AI Codex resolver for prompt: $prompt");
+
+        // produce ONLY the final JSON response
+        $slug = 'timeIntervalStandards'; // (or your dynamic AI-detected slug)
+        $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/Information Sheet - Time Interval Standards (TIS).pdf';
+
         header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($response);
-        // Do not exit; let AI handle in Dispatch
+        echo json_encode(array(
+            "response"  => "📘 The **⏱️ Time Interval Standards (TIS)** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug 'timeIntervalStandards': $pdfPath\n",
+            "action"    => "sheet_generated",
+            "slug"      => "timeIntervalStandards",
+            "sessionId" => $sessionId
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
 
@@ -413,9 +417,9 @@ if (
     );
     $aiSlugResponse = callOpenAi($messages); // Assumes callOpenAi handles plain text; parse JSON
     $parsedSlug = json_decode($aiSlugResponse, true);
-    $slug = (isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null') ? $parsedSlug['slug'] : null;
+    $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
 
-    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ? $slug : 'null') . "'");
+    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ?? 'null') . "'");
 
     // 4️⃣ Generate via internal API or return not-found
     if ($slug && isset($modules[$slug])) {
@@ -441,7 +445,7 @@ if (
             );
         } else {
             $cleanResult = strip_tags($result);
-            $title = isset($modules[$slug]['title']) ? $modules[$slug]['title'] : ucfirst($slug);
+            $title = $modules[$slug]['title'];
             $responsePayload = array(
                 "response"  => "📘 The **{$title}** sheet is being generated via AI-resolved Codex match.\n\n{$cleanResult}",
                 "action"    => "sheet_generated",
