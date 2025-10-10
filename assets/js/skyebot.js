@@ -53,16 +53,18 @@ async function handleSkyebotAction(actionType, note, customData = {}) {
       actionNote = note || "Other Skyebot action";
   }
 
-  const actionObj = {
-    actionTypeID,
-    actionContactID: contactID,
-    actionNote,
-    actionLatitude: lat,
-    actionLongitude: lng,
-    actionGooglePlaceId,
-    actionTimestamp: Date.now(),
-    ...customData
-  };
+const actionObj = {
+  actionTypeID,
+  actionType: actionType, // ✅ Add explicit action type
+  actionContactID: contactID,
+  actionNote: actionNote || "Skyebot action recorded",
+  actionLatitude: lat,
+  actionLongitude: lng,
+  actionGooglePlaceId,
+  actionTimestamp: Date.now(),
+  ...customData
+};
+
 
   const result = await logAction(actionObj);
 
@@ -239,7 +241,9 @@ function normalizeReportPath(path) {
   return path
     .replace("/home/notyou64/public_html", "https://www.skyelighting.com")
     .replace(/\\/g, "%20")
-    .replace(/ /g, "%20");
+    .replace(/ /g, "%20")
+    .replace(/\(/g, "%28")
+    .replace(/\)/g, "%29");
 }
 // #endregion
 
