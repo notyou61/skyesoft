@@ -568,29 +568,25 @@ if (
                 error_log("🎯 Codex title normalized: removed space after emoji prefix → '$title'");
             }
 
-            // ✅ Normalize filename — remove emojis, BOM, zero-width spaces, and any invisible residues
+            // ✅ Normalize filename — remove emojis, non-breaking spaces, BOM, zero-width spaces, and invisible residues
             $cleanTitle = $title;
 
-            // 🔧 Pre-sanitization: strip UTF-8 BOM (U+FEFF) and leading invisible Unicode chars
-            $cleanTitle = preg_replace('/^\xEF\xBB\xBF|[\x{200B}-\x{200D}\x{FEFF}]+/u', '', $cleanTitle);
+            // 🔧 Remove UTF-8 BOM, non-breaking, and zero-width spaces (U+00A0, U+FEFF, U+200B–U+200D)
+            $cleanTitle = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200D}]+/u', ' ', $cleanTitle);
             $cleanTitle = trim($cleanTitle);
 
-            // 🧠 Remove emoji and symbolic characters
+            // 🧠 Remove emoji and symbolic characters (if emoji not wanted in filenames)
             $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $cleanTitle);
 
-            // 🧩 Remove zero-width and invisible Unicode spaces (U+2000–U+206F, U+FEFF)
-            $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}\x{FEFF}]+/u', '', $cleanTitle);
+            // 🧩 Remove remaining invisible Unicode spacing (U+2000–U+206F and directional marks)
+            $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $cleanTitle);
 
             // 🧱 Strip non-standard printable chars and normalize whitespace
             $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);
             $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
-            // 🚦 Ensure no leading/trailing or double spaces
+            // 🚦 Final cleanup: collapse multiple or leading spaces
             $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
-
-            // 🔨 Final cleanup: remove any leftover leading spaces or double spaces after dash
-            $cleanTitle = preg_replace('/^\s+/', '', $cleanTitle);             // no leading spaces
-            $cleanTitle = preg_replace('/(?<=-)\s{2,}/', ' ', $cleanTitle);    // no double after dash
 
             // ✅ Always exactly one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
