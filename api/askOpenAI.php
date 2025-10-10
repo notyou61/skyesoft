@@ -588,6 +588,10 @@ if (
             // 🚦 Ensure no leading/trailing or double spaces
             $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
 
+            // 🔨 Final cleanup: remove any leftover leading spaces or double spaces after dash
+            $cleanTitle = preg_replace('/^\s+/', '', $cleanTitle);             // no leading spaces
+            $cleanTitle = preg_replace('/(?<=-)\s{2,}/', ' ', $cleanTitle);    // no double after dash
+
             // ✅ Always exactly one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
 
