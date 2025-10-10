@@ -551,7 +551,7 @@ if (
                 "action"    => "error",
                 "sessionId" => $sessionId
             );
-        } else {
+                } else {
             // ✅ Dynamic Codex Sheet Response (scales automatically)
             $title = isset($modules[$slug]['title'])
                 ? trim($modules[$slug]['title'])
@@ -560,6 +560,12 @@ if (
             // Safeguard: Skip if title is empty (prevents zero-byte filenames)
             if (empty($title)) {
                 $title = ucwords($slug);
+            }
+
+            // 🔹 Normalize emoji spacing (remove space after emoji prefix)
+            if (preg_match('/^([\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}])\s+(.*)$/u', $title, $m)) {
+                $title = $m[1] . $m[2];
+                error_log("🎯 Codex title normalized: removed space after emoji prefix → '$title'");
             }
 
             // ✅ Normalize filename — remove emojis, BOM, zero-width spaces, and any invisible residues
@@ -585,12 +591,11 @@ if (
             // ✅ Always exactly one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
 
-
             // Build path + clean public URL
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
             $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
             $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
-            
+
             // Error log for auditing
             error_log("📘 Generated Info Sheet: slug='$slug', title='$title', cleanTitle='$cleanTitle', url='$publicUrl'");
 
