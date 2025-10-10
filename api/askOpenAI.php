@@ -558,14 +558,19 @@ if (
                 ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-            // ✅ Safe, human-readable filename (extra trim for leading/trailing spacing)
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
-            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse repeated spaces
-            $cleanTitle = trim($cleanTitle); // remove leading/trailing spaces again
-            $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-            $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+            // ✅ Safe, human-readable filename (final version — bulletproof normalization)
+            $cleanTitle = isset($title) ? $title : '';
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle); // remove invalid chars
+            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle);               // collapse multiple spaces
+            $cleanTitle = trim($cleanTitle);                                     // remove leading/trailing spaces
 
-            // ✅ Proper public URL (RFC3986-safe)
+            // Ensure no double space after dash
+            $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            $fileName = preg_replace('/\s{2,}/', ' ', $fileName);                // collapse any remaining double spaces
+
+            $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+
+            // ✅ Build correct public URL
             $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
             $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
 
