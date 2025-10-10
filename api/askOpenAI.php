@@ -170,7 +170,6 @@ $lowerPrompt = strtolower($prompt);
 
 // ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe) - DEPRECATED: Now handled via AI in Dispatch
 // Retained for backward compatibility, but will fallback to AI if no exact match
-// ✅ AI-Safe Codex Sheet Generator with single JSON output
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
 
@@ -208,19 +207,114 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
         // optional: write log
         error_log("⚙️ [Skyebot] Falling back to AI Codex resolver for prompt: $prompt");
 
-        // produce ONLY the final JSON response
-        $slug    = 'timeIntervalStandards'; // (AI-resolved slug)
-        $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/Information Sheet - Time Interval Standards (TIS).pdf';
+        // AI Slug Resolution (extracted reusable logic from newer handler)
+        $codexData = isset($dynamicData['codex'])
+            ? $dynamicData['codex']
+            : (file_exists(CODEX_PATH)
+                ? json_decode(file_get_contents(CODEX_PATH), true)
+                : array());
 
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(array(
-            "response"  => "📘 The **⏱️ Time Interval Standards (TIS)** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug '$slug': $pdfPath\n",
-            "action"    => "sheet_generated",
-            "slug"      => $slug,
-            "reportUrl" => $pdfPath, // ✅ Added line — Skyebot now renders clickable link
-            "sessionId" => $sessionId
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
+        // Normalize structure (accepts both wrapped + flat)
+        $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
+            ? $codexData['modules']
+            : $codexData;
+
+        // Build slim Codex index for AI resolution
+        $codexSlim = array();
+        foreach ($modules as $key => $entry) {
+            if (!is_array($entry) || !isset($entry['title'])) continue;
+            $codexSlim[] = array(
+                "slug" => $key,
+                "title" => $entry['title'],
+                "description" => isset($entry['description']) ? $entry['description'] : ''
+            );
+        }
+
+        // AI Slug Resolution (semantic matching via OpenAI)
+        $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" .
+            json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
+            "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
+        $messages = array(
+            array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
+            array("role" => "user", "content" => $resolutionPrompt)
+        );
+        $aiSlugResponse = callOpenAi($messages);
+        if ($parsedSlug === null || !isset($parsedSlug['slug'])) {
+            $slug = null;
+            error_log("⚠️ AI returned non-JSON slug response: " . substr($aiSlugResponse, 0, 200));
+        } 
+        $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
+        error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
+
+        // Generate via internal API or build dynamic fallback
+        if ($slug && isset($modules[$slug])) {
+            $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
+            $payload = json_encode(array("slug" => $slug));
+            $context = stream_context_create(array(
+                "http" => array(
+                    "method"  => "POST",
+                    "header"  => "Content-Type: application/json\r\n",
+                    "content" => $payload,
+                    "timeout" => 15
+                )
+            ));
+            $result = @file_get_contents($apiUrl, false, $context);
+
+            if ($result === false) {
+                $error = error_get_last();
+                $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(array(
+                    "response"  => "❌ Network error contacting generateReports.php: $msg",
+                    "action"    => "error",
+                    "sessionId" => $sessionId
+                ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                exit;
+            } else {
+                // ✅ Dynamic Codex Sheet Response (scales automatically)
+                $title = isset($modules[$slug]['title'])
+                    ? $modules[$slug]['title']
+                    : ucwords(str_replace(array('-', '_'), ' ', $slug));
+
+                // Safe, human-readable filename
+                $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
+                $shortTag = '';
+                if (preg_match('/\(([A-Z0-9]+)\)/', $cleanTitle, $m)) {
+                    $shortTag = trim($m[1]);
+                }
+
+                // Construct file name and URL
+                $fileName = 'Information Sheet - ' . $cleanTitle . ($shortTag ? '' : '') . '.pdf';
+                $baseDir  = '/home/notyou64/public_html/skyesoft/docs/sheets/';
+                $pdfPath  = $baseDir . $fileName;
+                $publicUrl = str_replace(
+                    array('/home/notyou64/public_html', ' ', '(', ')'),
+                    array('https://www.skyelighting.com', '%20', '%28', '%29'),
+                    $pdfPath
+                );
+
+                // Build final response
+                $responseText = "📘 The **" . $title . "** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug '$slug': $pdfPath\n";
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(array(
+                    "response"  => $responseText,
+                    "action"    => "sheet_generated",
+                    "slug"      => $slug,
+                    "reportUrl" => $publicUrl, // ✅ Added line — Skyebot now renders clickable link
+                    "sessionId" => $sessionId
+                ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        } else {
+            // Fallback if no AI match
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(array(
+                "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
+                "action"    => "none",
+                "sessionId" => $sessionId
+            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 }
 
