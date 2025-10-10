@@ -558,12 +558,17 @@ if (
                 ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
+            // Safeguard: Skip if title is empty (prevents zero-byte filenames)
+            if (empty($title)) {
+                $title = ucwords($slug);
+            }
+
             // ✅ Normalize filename — prevents double spaces and weird characters
             $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $title);
             $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
             // ✅ Always exactly one space after dash (no leading or double spaces)
-            $fileName = 'Information Sheet - ' . trim(preg_replace('/\s{2,}/', ' ', $cleanTitle)) . '.pdf'
+            $fileName = 'Information Sheet - ' . trim(preg_replace('/\s{2,}/', ' ', $cleanTitle)) . '.pdf';
 
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
