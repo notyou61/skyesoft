@@ -419,7 +419,7 @@ if (
     $parsedSlug = json_decode($aiSlugResponse, true);
     $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
 
-    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ?? 'null') . "'");
+    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . (isset($slug) ? $slug : 'null') . "'");
 
     // 4️⃣ Generate via internal API or return not-found
     if ($slug && isset($modules[$slug])) {
