@@ -562,8 +562,8 @@ if (
             $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $title);
             $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
-            // ✅ Always exactly one space after dash
-            $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            // ✅ Always exactly one space after dash (no leading or double spaces)
+            $fileName = 'Information Sheet - ' . trim(preg_replace('/\s{2,}/', ' ', $cleanTitle)) . '.pdf'
 
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
