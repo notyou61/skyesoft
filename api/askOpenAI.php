@@ -484,7 +484,7 @@ if (
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
-    // Normalize structure (accepts both wrapped + flat)
+    // Normalize structure (handles both wrapped + flat)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
@@ -494,16 +494,17 @@ if (
     foreach ($modules as $key => $entry) {
         if (!is_array($entry) || !isset($entry['title'])) continue;
         $codexSlim[] = array(
-            "slug" => $key,
-            "title" => $entry['title'],
+            "slug"        => $key,
+            "title"       => $entry['title'],
             "description" => isset($entry['description']) ? $entry['description'] : ''
         );
     }
 
     // 3️⃣ AI Slug Resolution (semantic matching via OpenAI)
-    $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" .
-        json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
+    $resolutionPrompt = "User request: " . $prompt .
+        "\n\nAvailable Codex modules:\n" . json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
         "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
+
     $messages = array(
         array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
         array("role" => "user", "content" => $resolutionPrompt)
@@ -513,22 +514,20 @@ if (
 
     // 🧠 Parse AI response safely (PHP 5.6-compatible)
     $parsedSlug = array();
+    $slug = null;
+
     if (!empty($aiSlugResponse)) {
         $decoded = json_decode($aiSlugResponse, true);
-        if (is_array($decoded)) {
-            $parsedSlug = $decoded;
+        if (is_array($decoded) && isset($decoded['slug'])) {
+            $slug = strtolower(trim($decoded['slug']));
         } else {
-            error_log("⚠️ AI returned non-JSON slug response: " . substr($aiSlugResponse, 0, 200));
+            error_log("⚠️ AI returned non-JSON or malformed slug response: " . substr($aiSlugResponse, 0, 200));
         }
     } else {
         error_log("⚠️ Empty AI slug response.");
     }
 
-    $slug = (isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null')
-        ? $parsedSlug['slug']
-        : null;
-
-    error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
+    error_log("🧠 AI Slug Resolution → slug='" . ($slug ? $slug : 'null') . "' from prompt='" . substr($prompt, 0, 100) . "'");
 
     // 4️⃣ Generate via internal API or build dynamic fallback
     if ($slug && isset($modules[$slug])) {
@@ -542,6 +541,7 @@ if (
                 "timeout" => 15
             )
         ));
+
         $result = @file_get_contents($apiUrl, false, $context);
 
         if ($result === false) {
@@ -558,30 +558,24 @@ if (
                 ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-            // ✅ Safe, human-readable filename (final version — bulletproof normalization)
-            $cleanTitle = isset($title) ? $title : '';
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle); // remove invalid chars
-            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle);               // collapse multiple spaces
-            $cleanTitle = trim($cleanTitle);                                     // remove leading/trailing spaces
+            // ✅ Normalize filename — prevents double spaces and weird characters
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $title);
+            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
-            // Ensure no double space after dash
-            $fileName = 'Information Sheet - ' . preg_replace('/^\s+/', '', $cleanTitle) . '.pdf';
-
-            $fileName = preg_replace('/\s{2,}/', ' ', $fileName);                // collapse any remaining double spaces
+            // ✅ Always exactly one space after dash
+            $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
 
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
-            // ✅ Build correct public URL
+            // ✅ Build clean public URL (no %20%20)
             $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
             $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
 
-            // Log success
             error_log("📘 Generated Info Sheet: slug='$slug', title='$title', url='$publicUrl'");
 
-            // Build final response
-            $responseText = "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
+            // Unified JSON response
             $responsePayload = array(
-                "response"  => $responseText,
+                "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
                 "action"    => "sheet_generated",
                 "slug"      => $slug,
                 "reportUrl" => $publicUrl,
@@ -589,7 +583,7 @@ if (
             );
         }
     } else {
-        // Fallback if no AI match
+        // 🧩 Fallback if no AI match
         $responsePayload = array(
             "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
             "action"    => "none",
@@ -597,7 +591,7 @@ if (
         );
     }
 
-    // 5️⃣ Output unified JSON
+    // 5️⃣ Output unified JSON (always)
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=UTF-8');
     }
