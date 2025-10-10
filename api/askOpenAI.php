@@ -168,7 +168,8 @@ $prompt = isset($data["prompt"])
 $conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
 $lowerPrompt = strtolower($prompt);
 
-// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe) - DEPRECATED: Now handled via AI in Dispatch
+// Retained for backward compatibility, but will fallback to AI if no exact match
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $matches)) {
 
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
@@ -203,11 +204,11 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
 
     } else {
         $response = array(
-            'response' => '⚠️ The requested module "' . $moduleName . '" was not found in the Codex.'
+            'response' => '⚠️ The requested module "' . $moduleName . '" was not found in the Codex. Falling back to AI resolution.'
         );
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode($response);
-        exit;
+        // Do not exit; let AI handle in Dispatch
     }
 }
 
@@ -243,6 +244,19 @@ $injectBlocks = array(
     "glossary" => isset($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
     "modules"  => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
 );
+
+// 🧠 Flatten Codex for RAG (add metadata for AI reasoning)
+$codexMeta = array();
+if (isset($dynamicData['codex']['modules'])) {
+    foreach ($dynamicData['codex']['modules'] as $key => $mod) {
+        $codexMeta[$key] = array(
+            'title' => isset($mod['title']) ? $mod['title'] : $key,
+            'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
+            'tags' => isset($mod['tags']) ? $mod['tags'] : array()
+        );
+    }
+}
+$injectBlocks['codexMeta'] = $codexMeta;
 
 // Selectively expand specific Codex entries if keywords match
 foreach ($codexCategories as $section => $keys) {
@@ -353,13 +367,13 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// 🔹 Codex Information Sheet Generator (self-adapting + JSON-safe)
+// 🔹 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + JSON-safe)
 if (
     !$handled &&
     preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
     preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
 ) {
-    error_log("🧭 Codex Information Sheet Generator triggered — prompt: " . $prompt);
+    error_log("🧭 AI-Enhanced Codex Information Sheet Generator triggered — prompt: " . $prompt);
 
     // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
     $codexData = isset($dynamicData['codex'])
@@ -373,59 +387,31 @@ if (
         ? $codexData['modules']
         : $codexData;
 
-    // 2️⃣ Auto-generate aliases dynamically (DRY)
-    $aliases = array();
+    // 2️⃣ Build slim Codex index for AI resolution
+    $codexSlim = array();
     foreach ($modules as $key => $entry) {
         if (!is_array($entry) || !isset($entry['title'])) continue;
-
-        $cleanTitle = preg_replace('/[^\w\s()]/u', '', strtolower($entry['title']));
-        $titleWords = preg_split('/\s+/', trim($cleanTitle));
-
-        if (empty($titleWords)) continue;
-
-        // Multi-word alias ("time interval standards")
-        if (count($titleWords) > 1) {
-            $multi = implode(' ', $titleWords);
-            if (!isset($aliases[$multi])) $aliases[$multi] = $key;
-        }
-
-        // Single-word alias ("timeintervalstandards")
-        $single = implode('', $titleWords);
-        if (!isset($aliases[$single])) $aliases[$single] = $key;
-
-        // Acronym in parentheses ("(TIS)")
-        if (preg_match('/\(([A-Z0-9]+)\)/', $entry['title'], $m)) {
-            $acro = strtolower($m[1]);
-            if (!isset($aliases[$acro])) $aliases[$acro] = $key;
-        }
+        $codexSlim[] = array(
+            "slug" => $key,
+            "title" => $entry['title'],
+            "description" => isset($entry['description']) ? $entry['description'] : ''
+        );
     }
 
-    // 3️⃣ Normalize & clean the prompt for reliable matching
-    $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9\s]/', '', $prompt));
-    // Remove filler words and command verbs
-    $normalizedPrompt = preg_replace(
-        '/\b(the|a|an|sheet|report|information|module|file|summary|generate|create|make|produce|show|build|prepare)\b/',
-        '',
-        $normalizedPrompt
+    // 3️⃣ AI Slug Resolution (semantic matching via OpenAI)
+    $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" . json_encode($codexSlim, JSON_UNESCAPED_SLASHES) . "\n\nResolve to the best-matching module slug. Respond with JSON only: {\"slug\": \"exact-slug\" or null}";
+    $messages = array(
+        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If no strong match, use null."),
+        array("role" => "user", "content" => $resolutionPrompt)
     );
-    $normalizedPrompt = trim(preg_replace('/\s+/', ' ', $normalizedPrompt));
-    error_log("🧩 Normalized prompt → " . $normalizedPrompt);
+    $aiSlugResponse = callOpenAi($messages); // Assumes callOpenAi handles plain text; parse JSON
+    $parsedSlug = json_decode($aiSlugResponse, true);
+    $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
 
-    // 4️⃣ Resolve slug by flexible substring matching
-    $slug = null;
-    foreach ($aliases as $alias => $target) {
-        $aliasNorm = strtolower(preg_replace('/[^a-z0-9\s]/', '', $alias));
-        if (
-            strpos($normalizedPrompt, $aliasNorm) !== false ||
-            strpos($aliasNorm, $normalizedPrompt) !== false
-        ) {
-            $slug = $target;
-            break;
-        }
-    }
+    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ?? 'null') . "'");
 
-    // 5️⃣ Generate via internal API or return not-found
-    if ($slug) {
+    // 4️⃣ Generate via internal API or return not-found
+    if ($slug && isset($modules[$slug])) {
         $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
         $payload = json_encode(array("slug" => $slug));
         $context = stream_context_create(array(
@@ -448,8 +434,9 @@ if (
             );
         } else {
             $cleanResult = strip_tags($result);
+            $title = $modules[$slug]['title'];
             $responsePayload = array(
-                "response"  => "📘 The **{$modules[$slug]['title']}** sheet is being generated.\n\n{$cleanResult}",
+                "response"  => "📘 The **{$title}** sheet is being generated via AI-resolved Codex match.\n\n{$cleanResult}",
                 "action"    => "sheet_generated",
                 "slug"      => $slug,
                 "sessionId" => $sessionId
@@ -458,13 +445,13 @@ if (
 
     } else {
         $responsePayload = array(
-            "response"  => "⚠️ The requested module was not found in the Codex.",
+            "response"  => "⚠️ No matching Codex module found via AI resolution. Consider rephrasing your request.",
             "action"    => "none",
             "sessionId" => $sessionId
         );
     }
 
-    // 6️⃣ Always output JSON once, safely
+    // 5️⃣ Always output JSON once, safely
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
