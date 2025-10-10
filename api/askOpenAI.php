@@ -565,7 +565,8 @@ if (
             $cleanTitle = trim($cleanTitle);                                     // remove leading/trailing spaces
 
             // Ensure no double space after dash
-            $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            $fileName = 'Information Sheet - ' . preg_replace('/^\s+/', '', $cleanTitle) . '.pdf';
+
             $fileName = preg_replace('/\s{2,}/', ' ', $fileName);                // collapse any remaining double spaces
 
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
