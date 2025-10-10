@@ -152,13 +152,20 @@ if (!empty($dynamicData)) {
 #endregion
 
 #region 🛡️ Input & Session Bootstrap
+$aiFallbackStarted = false; // 🚦 Tracks if AI fallback has already emitted a response
+
 $data = json_decode(file_get_contents("php://input"), true);
 if ($data === null || $data === false) {
-    echo json_encode(array(
-        "response"  => "❌ Invalid or empty JSON payload.",
-        "action"    => "none",
-        "sessionId" => $sessionId
-    ), JSON_PRETTY_PRINT);
+    // Ensure only one JSON block is ever returned
+    if (empty($aiFallbackStarted)) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array(
+            "response"  => "❌ Invalid or empty JSON payload.",
+            "action"    => "none",
+            "sessionId" => $sessionId
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        flush();
+    }
     exit;
 }
 
