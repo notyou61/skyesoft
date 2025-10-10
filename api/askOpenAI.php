@@ -558,22 +558,15 @@ if (
                 ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-            // Safe, human-readable filename
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
-            $shortTag = '';
-            if (preg_match('/\(([A-Z0-9]+)\)/', $cleanTitle, $m)) {
-                $shortTag = trim($m[1]);
-            }
+            // ✅ Safe, human-readable filename
+            $cleanTitle = trim(preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title));
+            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse multiple spaces
+            $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
-            // Construct file name and URL
-            $fileName = 'Information Sheet - ' . $cleanTitle . ($shortTag ? '' : '') . '.pdf';
-            $baseDir  = '/home/notyou64/public_html/skyesoft/docs/sheets/';
-            $pdfPath  = $baseDir . $fileName;
-            $publicUrl = str_replace(
-                array('/home/notyou64/public_html', ' ', '(', ')'),
-                array('https://www.skyelighting.com', '%20', '%28', '%29'),
-                $pdfPath
-            );
+            // ✅ Proper public URL (RFC3986-safe)
+            $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
+            $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
 
             // Log success
             error_log("📘 Generated Info Sheet: slug='$slug', title='$title', url='$publicUrl'");
