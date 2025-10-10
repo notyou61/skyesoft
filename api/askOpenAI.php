@@ -562,23 +562,31 @@ if (
                 $title = ucwords($slug);
             }
 
-            // ✅ Normalize filename — remove emoji, hidden Unicode spaces, and invalid characters
-            $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $title);             // remove emojis/symbols
-            $cleanTitle = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]+/u', '', $cleanTitle); // remove zero-width spaces
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);            // strip any remaining invalid chars
-            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));                     // collapse all whitespace
-            $cleanTitle = preg_replace('/^\s+/', '', $cleanTitle);                           // remove any leftover leading space
+            // ✅ Normalize filename — remove emojis, zero-width spaces, and any invisible residues
+            $cleanTitle = $title;
 
-            // ✅ Always exactly one space after dash
+            // Remove emoji and symbolic characters
+            $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $cleanTitle);
+
+            // Remove zero-width and invisible Unicode spaces (U+200B–U+206F, U+FEFF)
+            $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}\x{FEFF}]+/u', '', $cleanTitle);
+
+            // Strip non-standard printable chars and normalize whitespace
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);
+            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
+
+            // Ensure no leading/trailing or double spaces
+            $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
+
+            // ✅ Always one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
-            $fileName = preg_replace('/\s{2,}/', ' ', $fileName);                            // collapse any double spaces
 
+            // Build path + clean public URL
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-
-            // ✅ Build clean public URL
             $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
             $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
-
+            
+            // Error log for auditing
             error_log("📘 Generated Info Sheet: slug='$slug', title='$title', cleanTitle='$cleanTitle', url='$publicUrl'");
 
             // Unified JSON response
