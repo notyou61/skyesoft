@@ -562,24 +562,29 @@ if (
                 $title = ucwords($slug);
             }
 
-            // ✅ Normalize filename — remove emojis, zero-width spaces, and any invisible residues
+            // ✅ Normalize filename — remove emojis, BOM, zero-width spaces, and any invisible residues
             $cleanTitle = $title;
 
-            // Remove emoji and symbolic characters
+            // 🔧 Pre-sanitization: strip UTF-8 BOM (U+FEFF) and leading invisible Unicode chars
+            $cleanTitle = preg_replace('/^\xEF\xBB\xBF|[\x{200B}-\x{200D}\x{FEFF}]+/u', '', $cleanTitle);
+            $cleanTitle = trim($cleanTitle);
+
+            // 🧠 Remove emoji and symbolic characters
             $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $cleanTitle);
 
-            // Remove zero-width and invisible Unicode spaces (U+200B–U+206F, U+FEFF)
+            // 🧩 Remove zero-width and invisible Unicode spaces (U+2000–U+206F, U+FEFF)
             $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}\x{FEFF}]+/u', '', $cleanTitle);
 
-            // Strip non-standard printable chars and normalize whitespace
+            // 🧱 Strip non-standard printable chars and normalize whitespace
             $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);
             $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
-            // Ensure no leading/trailing or double spaces
+            // 🚦 Ensure no leading/trailing or double spaces
             $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
 
-            // ✅ Always one space after dash
+            // ✅ Always exactly one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+
 
             // Build path + clean public URL
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
