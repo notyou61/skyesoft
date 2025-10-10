@@ -562,22 +562,19 @@ if (
                 $title = ucwords($slug);
             }
 
-            // ✅ Normalize filename — remove emojis, extra spaces, and invalid characters (Unicode-safe)
-            $cleanTitle = preg_replace('/[^\p{L}\p{N} _()\-]+/u', '', $title); // Strips emoji/symbols
-            $cleanTitle = preg_replace('/^\s+|\s{2,}/', ' ', trim($cleanTitle)); // Collapse leading/multi spaces to single
+            // ✅ Normalize filename — fully remove emojis, stray spaces, and invalid characters
+            $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $title);           // remove all symbol/emoji ranges
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);        // strip non-ASCII leftovers
+            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));                 // collapse spaces, trim ends
+            $cleanTitle = ltrim($cleanTitle);                                            // remove any remaining leading space
 
             // ✅ Always exactly one space after dash
             $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            $fileName = preg_replace('/\s{2,}/', ' ', $fileName);                        // collapse any double spaces
 
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
-            // ✅ Runtime check: Log if file doesn't exist post-gen
-            $fullServerPath = $pdfPath;
-            if (!file_exists($fullServerPath)) {
-                error_log("⚠️ Generated file missing on server: $fullServerPath (gen response: " . substr($result, 0, 100) . ")");
-            }
-
-            // ✅ Build clean public URL (encode spaces only, no %20%20)
+            // ✅ Clean public URL
             $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
             $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
 
