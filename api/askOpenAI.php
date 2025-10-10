@@ -558,9 +558,10 @@ if (
                 ? trim($modules[$slug]['title'])
                 : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-            // ✅ Safe, human-readable filename
-            $cleanTitle = trim(preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title));
-            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse multiple spaces
+            // ✅ Safe, human-readable filename (extra trim for leading/trailing spacing)
+            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title);
+            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse repeated spaces
+            $cleanTitle = trim($cleanTitle); // remove leading/trailing spaces again
             $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
             $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
 
