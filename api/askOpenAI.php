@@ -406,9 +406,9 @@ if (
     );
     $aiSlugResponse = callOpenAi($messages); // Assumes callOpenAi handles plain text; parse JSON
     $parsedSlug = json_decode($aiSlugResponse, true);
-    $slug = isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null' ? $parsedSlug['slug'] : null;
+    $slug = (isset($parsedSlug['slug']) && $parsedSlug['slug'] !== 'null') ? $parsedSlug['slug'] : null;
 
-    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ?? 'null') . "'");
+    error_log("🧠 AI Slug Resolution: Prompt snippet='" . substr($prompt, 0, 100) . "', Response='" . $aiSlugResponse . "', Resolved Slug='" . ($slug ? $slug : 'null') . "'");
 
     // 4️⃣ Generate via internal API or return not-found
     if ($slug && isset($modules[$slug])) {
@@ -434,7 +434,7 @@ if (
             );
         } else {
             $cleanResult = strip_tags($result);
-            $title = $modules[$slug]['title'];
+            $title = isset($modules[$slug]['title']) ? $modules[$slug]['title'] : ucfirst($slug);
             $responsePayload = array(
                 "response"  => "📘 The **{$title}** sheet is being generated via AI-resolved Codex match.\n\n{$cleanResult}",
                 "action"    => "sheet_generated",
