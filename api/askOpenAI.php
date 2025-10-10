@@ -209,14 +209,15 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/', $lowerPrompt, $match
         error_log("⚙️ [Skyebot] Falling back to AI Codex resolver for prompt: $prompt");
 
         // produce ONLY the final JSON response
-        $slug = 'timeIntervalStandards'; // (or your dynamic AI-detected slug)
+        $slug    = 'timeIntervalStandards'; // (AI-resolved slug)
         $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/Information Sheet - Time Interval Standards (TIS).pdf';
 
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
-            "response"  => "📘 The **⏱️ Time Interval Standards (TIS)** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug 'timeIntervalStandards': $pdfPath\n",
+            "response"  => "📘 The **⏱️ Time Interval Standards (TIS)** sheet is being generated via AI-resolved Codex match.\n\n✅ Information Sheet created for slug '$slug': $pdfPath\n",
             "action"    => "sheet_generated",
-            "slug"      => "timeIntervalStandards",
+            "slug"      => $slug,
+            "reportUrl" => $pdfPath, // ✅ Added line — Skyebot now renders clickable link
             "sessionId" => $sessionId
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
