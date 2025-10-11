@@ -279,10 +279,29 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                     ? $modules[$slug]['title']
                     : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-                // File name + URL (scales dynamically)
-                $fileName = 'Information Sheet - ' . preg_replace('/[^A-Za-z0-9 _()-]+/', '', $title) . '.pdf';
-                $pdfPath  = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-                $publicUrl = str_replace(
+                // 🧼 Sanitize title for safe file and URL use
+                function sanitizeTitleForUrl($text) {
+                    // 1️⃣ Remove emoji and pictographs (prevents leading space)
+                    $clean = preg_replace('/[\x{1F000}-\x{1FFFF}]/u', '', $text);
+
+                    // 2️⃣ Remove zero-width, non-breaking, and BOM spaces
+                    $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
+
+                    // 3️⃣ Collapse and trim whitespace
+                    $clean = preg_replace('/\s+/', ' ', trim($clean));
+
+                    // 4️⃣ Strip any remaining control or invisible characters
+                    $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
+
+                    return $clean;
+                }
+
+                // ✅ File name + URL (scales dynamically)
+                $cleanTitle = sanitizeTitleForUrl($title);
+                $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
+                $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+
+                $publicUrl  = str_replace(
                     array('/home/notyou64/public_html', ' ', '(', ')'),
                     array('https://www.skyelighting.com', '%20', '%28', '%29'),
                     $pdfPath
