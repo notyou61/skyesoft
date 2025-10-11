@@ -336,14 +336,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const reply = data.response || "🤖 Sorry, I didn’t understand that.";
 
       let fullReply = reply;
-      if (data.reportUrl || data.result) {
+
+      // 🩹 Prevent duplicate “Open Report” link if already present in the server reply
+      const alreadyLinked = /📄\s*\[Open Report\]\(/.test(fullReply);
+
+      if (!alreadyLinked && (data.reportUrl || data.result)) {
         const rawPath = data.reportUrl || data.result;
         const publicUrl = normalizeReportPath(rawPath);
+
         if (publicUrl) {
           fullReply += ` 📄 [Open Report](${publicUrl})`;
-          await handleSkyebotAction("report", `Generated report: ${extractReportType(prompt)}`, {
-            reportUrl: publicUrl
-          });
+          await handleSkyebotAction(
+            "report",
+            `Generated report: ${extractReportType(prompt)}`,
+            { reportUrl: publicUrl }
+          );
         } else {
           fullReply += " ⚠️ Report ready, but link unavailable. Contact support.";
         }
