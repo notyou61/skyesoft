@@ -573,7 +573,9 @@ if (
                 "action"    => "error",
                 "sessionId" => $sessionId
             );
-                } else {
+            // **PATCH: Tag to prevent CTA injection in SemanticResponder**
+            $responsePayload["preventCtaInjection"] = true;
+        } else {
             // ✅ Dynamic Codex Sheet Response (scales automatically)
             $title = isset($modules[$slug]['title'])
                 ? trim($modules[$slug]['title'])
@@ -629,6 +631,8 @@ if (
                 "reportUrl" => $publicUrl,
                 "sessionId" => $sessionId
             );
+            // **PATCH: Tag to prevent CTA injection in SemanticResponder**
+            $responsePayload["preventCtaInjection"] = true;
         }
     } else {
         // 🧩 Fallback if no AI match
@@ -637,6 +641,8 @@ if (
             "action"    => "none",
             "sessionId" => $sessionId
         );
+        // **PATCH: Tag to prevent CTA injection in SemanticResponder**
+        $responsePayload["preventCtaInjection"] = true;
     }
 
     // 5️⃣ Output unified JSON (always)
@@ -760,8 +766,8 @@ if (!$handled) {
     }    
 
     if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
-        // Default response text
-        $responseText = $aiResponse . " ⁂";
+    // Default response text
+    $responseText = $aiResponse . " ⁂";
 
         // Ensure codex is loaded
         if (!isset($codex) || !isset($codex['modules'])) {
@@ -776,6 +782,11 @@ if (!$handled) {
 
         // 🔹 Normalize AI response for safer matching
         $normalizedResponse = normalizeTitle($aiResponse);
+
+        // **PATCH: Guard to skip CTA injection if payload is pre-tagged**
+        if (isset($responsePayload["preventCtaInjection"]) && $responsePayload["preventCtaInjection"] === true) {
+            $ctaAdded = true; // Prevent duplicate Open Report link
+        }
 
         // Check Codex modules
         if (isset($codex['modules']) && is_array($codex['modules'])) {
