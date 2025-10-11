@@ -281,19 +281,22 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
 
                 // 🧼 Sanitize title for safe file and URL use
                 function sanitizeTitleForUrl($text) {
-                    // 1️⃣ Remove emoji and pictographs (prevents leading space)
-                    $clean = preg_replace('/[\x{1F000}-\x{1FFFF}]/u', '', $text);
+                    // 1️⃣ Remove emoji and pictographs (covers surrogate pairs too)
+                    $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
 
                     // 2️⃣ Remove zero-width, non-breaking, and BOM spaces
                     $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
 
-                    // 3️⃣ Collapse and trim whitespace
+                    // 3️⃣ Collapse multiple spaces
                     $clean = preg_replace('/\s+/', ' ', trim($clean));
 
-                    // 4️⃣ Strip any remaining control or invisible characters
+                    // 4️⃣ Strip any remaining invisible or control characters
                     $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
 
-                    return $clean;
+                    // 5️⃣ Remove lingering punctuation that may confuse URLs
+                    $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
+
+                    return trim($clean);
                 }
 
                 // ✅ File name + URL (scales dynamically)
