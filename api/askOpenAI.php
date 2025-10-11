@@ -644,6 +644,31 @@ if (
         // **PATCH: Tag to prevent CTA injection in SemanticResponder**
         $responsePayload["preventCtaInjection"] = true;
     }
+    
+    // 🩹 FINAL CLEANUP PATCH: prevent duplicate "Open Report" links
+    if (isset($responsePayload["response"])) {
+
+        // Remove any repeated Markdown-style links
+        $responsePayload["response"] = preg_replace(
+            '/(📄\s*\[Open Report\][^\n]*){2,}/u',
+            '📄 [Open Report]',
+            $responsePayload["response"]
+        );
+
+        // Remove any repeated plain-text “📄 Open Report” phrases
+        $responsePayload["response"] = preg_replace(
+            '/(📄\s*Open Report\s*){2,}/u',
+            '📄 Open Report',
+            $responsePayload["response"]
+        );
+
+        // Collapse extra blank lines to keep spacing tidy
+        $responsePayload["response"] = preg_replace(
+            "/\n{3,}/",
+            "\n\n",
+            $responsePayload["response"]
+        );
+    }
 
     // 5️⃣ Output unified JSON (always)
     if (!headers_sent()) {
