@@ -565,8 +565,14 @@ if (
     $slug = null;
     $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt)); // strip spaces/symbols
 
+    // 🔍 Combine top-level + nested 'modules' keys for unified search
+    $allModules = array_merge(
+        $codex,
+        isset($codex['modules']) && is_array($codex['modules']) ? $codex['modules'] : []
+    );
+
     // Attempt direct normalized match
-    foreach ($codex as $key => $module) {
+    foreach ($allModules as $key => $module) {
         $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
         if (strpos($normalizedPrompt, $normalizedKey) !== false) {
             $slug = $key;
@@ -574,9 +580,9 @@ if (
         }
     }
 
-    // 🧭 Fallback: try fuzzy match (singular/plural/spacing tolerance)
+    // 🧭 Fallback: try fuzzy match (spacing or plural tolerance)
     if (!$slug) {
-        foreach ($codex as $key => $module) {
+        foreach ($allModules as $key => $module) {
             $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
             if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
                 $slug = $key;
@@ -585,6 +591,7 @@ if (
         }
     }
 
+    // ✅ Log and continue or fail gracefully
     if ($slug) {
         error_log("🧠 Normalized AI Slug Resolution → slug='" . $slug . "' from prompt='" . substr($prompt, 0, 100) . "'");
     } else {
@@ -596,7 +603,6 @@ if (
         ]);
         exit;
     }
-
 
     // 4️⃣ Generate via internal API or build dynamic fallback
     if ($slug && isset($modules[$slug])) {
