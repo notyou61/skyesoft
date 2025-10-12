@@ -559,21 +559,44 @@ if (
 
     $aiSlugResponse = callOpenAi($messages);
 
-    // 🧠 Parse AI response safely (PHP 5.6-compatible)
+    // ================================================
+    // 🧠 AI Slug Resolution (normalized Codex matching)
+    // ================================================
     $slug = null;
+    $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt)); // strip spaces/symbols
 
-    if (!empty($aiSlugResponse)) {
-        $decoded = json_decode($aiSlugResponse, true);
-        if (is_array($decoded) && isset($decoded['slug'])) {
-            $slug = strtolower(trim($decoded['slug']));
-        } else {
-            error_log("⚠️ AI returned non-JSON or malformed slug response: " . substr($aiSlugResponse, 0, 200));
+    // Attempt direct normalized match
+    foreach ($codex as $key => $module) {
+        $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+        if (strpos($normalizedPrompt, $normalizedKey) !== false) {
+            $slug = $key;
+            break;
         }
-    } else {
-        error_log("⚠️ Empty AI slug response.");
     }
 
-    error_log("🧠 AI Slug Resolution → slug='" . ($slug ? $slug : 'null') . "' from prompt='" . substr($prompt, 0, 100) . "'");
+    // 🧭 Fallback: try fuzzy match (singular/plural/spacing tolerance)
+    if (!$slug) {
+        foreach ($codex as $key => $module) {
+            $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+            if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
+                $slug = $key;
+                break;
+            }
+        }
+    }
+
+    if ($slug) {
+        error_log("🧠 Normalized AI Slug Resolution → slug='" . $slug . "' from prompt='" . substr($prompt, 0, 100) . "'");
+    } else {
+        error_log("⚠️ No matching Codex module found for prompt: " . substr($prompt, 0, 100));
+        echo json_encode([
+            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
+            "action"    => "none",
+            "sessionId" => uniqid()
+        ]);
+        exit;
+    }
+
 
     // 4️⃣ Generate via internal API or build dynamic fallback
     if ($slug && isset($modules[$slug])) {
