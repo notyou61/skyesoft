@@ -473,6 +473,27 @@
       ]
     }
   },
+  "semanticResponder": {
+  "title": "🧭 Semantic Responder",
+  "category": "Adaptive Layer",
+  "enrichment": "medium",
+  "description": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence.",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence."
+  },
+  "features": {
+    "icon": "gear",
+    "format": "list",
+    "items": [
+      "Contextual understanding of prompts beyond keyword matching",
+      "Dynamic alignment with live SSE snapshot data",
+      "Automatic intent mapping to Codex modules or report actions",
+      "Fallback to Google Search when information is absent from Codex"
+    ]
+  }
+  },
   "glossary": {
   "MTCO": "Measure Twice, Cut Once — Skyesoft’s foundational principle emphasizing deliberate, context-aware reasoning and validation before execution."
   }
