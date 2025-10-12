@@ -644,7 +644,7 @@ if (
         // **PATCH: Tag to prevent CTA injection in SemanticResponder**
         $responsePayload["preventCtaInjection"] = true;
     }
-    
+
     // 🩹 FINAL CLEANUP PATCH: prevent duplicate "Open Report" links
     if (isset($responsePayload["response"])) {
 
@@ -758,156 +758,66 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-z
     exit;
 }
 
-// 4. 🧭 SemanticResponder
+// 4️⃣ 🧭 Adaptive SemanticResponder (AI + RAG Integration)
 if (!$handled) {
+
+    // --- 1. Build enrichment context (SSE + Codex snapshot) ---
     $messages = [
         [
             "role" => "system",
-            "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
+            "content" =>
+                "You are Skyebot™, the adaptive conversational interface of Skyesoft. " .
+                "Interpret user intent semantically using the SSE snapshot and Codex as your Source of Truth. " .
+                "Return clear, contextual answers in natural language.\n\n" . $systemPrompt
         ],
         [
             "role" => "system",
             "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         ]
     ];
+
     if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = [
-                    "role"    => $entry["role"],
-                    "content" => $entry["content"]
-                ];
+        foreach (array_slice($conversation, -2) as $entry) {
+            if (isset($entry["role"], $entry["content"])) {
+                $messages[] = ["role" => $entry["role"], "content" => $entry["content"]];
             }
         }
     }
     $messages[] = ["role" => "user", "content" => $prompt];
 
+    // --- 2. Call AI for semantic reasoning ---
     $aiResponse = callOpenAi($messages);
 
-    // 🔍 Safeguard: detect likely truncation
+    // Truncation guard
     if ($aiResponse && !preg_match('/[.!?…]$/', trim($aiResponse))) {
-        error_log("⚠️ AI response may be truncated: " . substr($aiResponse, -50));
-    }    
+        error_log("⚠️ Possible truncated AI response: " . substr($aiResponse, -80));
+    }
 
+    // --- 3. Process valid AI output ---
     if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
-    // Default response text
-    $responseText = $aiResponse . " ⁂";
 
-        // Ensure codex is loaded
-        if (!isset($codex) || !isset($codex['modules'])) {
-            if (isset($dynamicData['codex'])) {
-                $codex = $dynamicData['codex'];
-            } else {
-                $codex = [];
-            }
+        $responseText = $aiResponse . " ⁂";
+
+        // Load Codex
+        $codexData = isset($dynamicData['codex']) ? $dynamicData['codex'] : [];
+
+        // Normalize text for matching
+        $normalized = normalizeTitle($aiResponse);
+
+        // Use adaptive Codex matcher (helpers.php)
+        $match = findCodexMatch($normalized, $codexData);
+
+        // Inject contextual link if applicable
+        if (
+            $match &&
+            (!isset($responsePayload["preventCtaInjection"]) ||
+             $responsePayload["preventCtaInjection"] !== true)
+        ) {
+            error_log("✅ Adaptive match → {$match['title']} ({$match['key']}) via {$match['type']}");
+            $responseText .= getTrooperLink($match['key']);
         }
 
-        $ctaAdded = false; // ✅ safeguard against multiple links
-
-        // 🔹 Normalize AI response for safer matching
-        $normalizedResponse = normalizeTitle($aiResponse);
-
-        // **PATCH: Guard to skip CTA injection if payload is pre-tagged**
-        if (isset($responsePayload["preventCtaInjection"]) && $responsePayload["preventCtaInjection"] === true) {
-            $ctaAdded = true; // Prevent duplicate Open Report link
-        }
-
-        // Check Codex modules
-        if (isset($codex['modules']) && is_array($codex['modules'])) {
-            foreach ($codex['modules'] as $key => $moduleDef) {
-                if ($ctaAdded) break;
-
-                $rawTitle   = isset($moduleDef['title']) ? $moduleDef['title'] : '';
-                $cleanTitle = normalizeTitle($rawTitle);
-
-                // Extract acronym, e.g. (TIS)
-                $acronym = null;
-                if (preg_match('/\(([A-Z0-9]+)\)/', $rawTitle, $matches)) {
-                    $acronym = $matches[1];
-                }
-
-                error_log("🔎 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
-                error_log("🔎 AI Response snippet: " . substr($normalizedResponse, 0, 200));
-
-                if (
-                    (!empty($rawTitle)   && stripos($normalizedResponse, $rawTitle)   !== false) ||
-                    (!empty($cleanTitle) && stripos($normalizedResponse, $cleanTitle) !== false) ||
-                    (!empty($acronym)    && stripos($normalizedResponse, $acronym)    !== false) ||
-                    stripos($normalizedResponse, $key) !== false
-                ) {
-                    error_log("✅ CTA Match: Module '$rawTitle' (key: $key) matched in AI response.");
-                    $responseText .= getTrooperLink($key);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Check Information Sheets
-        if (!$ctaAdded && isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
-            foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
-                $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
-                $sheetTitle   = isset($sheetDef['title']) ? normalizeTitle($sheetDef['title']) : '';
-
-                error_log("🔎 Checking information sheet: sheetKey='$sheetKey', sheetTitle='$sheetTitle', sheetPurpose='$sheetPurpose'");
-
-                if (
-                    (!empty($sheetPurpose) && stripos($normalizedResponse, $sheetPurpose) !== false) ||
-                    (!empty($sheetTitle)   && stripos($normalizedResponse, $sheetTitle)   !== false) ||
-                    stripos($normalizedResponse, $sheetKey) !== false
-                ) {
-                    error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
-                    $responseText .= getTrooperLink($sheetKey);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Check Glossary terms
-        if (!$ctaAdded && isset($codex['glossary']) && is_array($codex['glossary'])) {
-            foreach ($codex['glossary'] as $key => $entry) {
-                if ($ctaAdded) break;
-
-                $cleanKey = normalizeTitle($key);
-
-                error_log("🔎 Checking glossary: key='$key', cleanKey='$cleanKey'");
-
-                if (
-                    stripos($normalizedResponse, $key) !== false ||
-                    stripos($normalizedResponse, $cleanKey) !== false
-                ) {
-                    error_log("✅ CTA Match: Glossary term '$key' matched in AI response.");
-                    $responseText .= getTrooperLink($key);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // (Optional) Check Included Documents list
-        if (!$ctaAdded && isset($codex['includedDocuments']['documents']) && is_array($codex['includedDocuments']['documents'])) {
-            foreach ($codex['includedDocuments']['documents'] as $doc) {
-                if ($ctaAdded) break;
-
-                $cleanDoc = normalizeTitle($doc);
-
-                error_log("🔎 Checking included document: doc='$doc', cleanDoc='$cleanDoc'");
-
-                if (
-                    stripos($normalizedResponse, $doc) !== false ||
-                    stripos($normalizedResponse, $cleanDoc) !== false
-                ) {
-                    error_log("✅ CTA Match: Included document '$doc' matched in AI response.");
-                    $responseText .= getTrooperLink($doc);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Prepare final payload
+        // --- 4. Build unified JSON payload ---
         $responsePayload = [
             "response"  => $responseText,
             "action"    => "answer",
@@ -916,6 +826,7 @@ if (!$handled) {
         $handled = true;
     }
 }
+
 
 // 5. 🌐 Google Search Fallback
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {

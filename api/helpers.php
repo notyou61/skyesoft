@@ -430,3 +430,28 @@ function getTrooperLink($slug) {
     $safeSlug = strtolower(preg_replace('/[^a-zA-Z0-9]/', '-', $slug));
     return "\n\n👉 Would you like to know more?\n[View Report](/docs/reports/{$safeSlug}.pdf)";
 }
+// Find Codex match in text
+function findCodexMatch($text, $codex) {
+    $sources = [
+        'modules' => isset($codex['modules']) ? $codex['modules'] : [],
+        'informationSheetSuite' => isset($codex['informationSheetSuite']['types']) ? $codex['informationSheetSuite']['types'] : [],
+        'glossary' => isset($codex['glossary']) ? $codex['glossary'] : [],
+        'includedDocuments' => isset($codex['includedDocuments']['documents']) ? $codex['includedDocuments']['documents'] : []
+    ];
+
+    foreach ($sources as $type => $entries) {
+        foreach ($entries as $key => $entry) {
+            $title = is_array($entry) && isset($entry['title']) ? $entry['title'] : (is_string($entry) ? $entry : $key);
+            $cleanTitle = normalizeTitle($title);
+            if (preg_match('/\(([A-Z0-9]+)\)/', $title, $m)) $acro = $m[1]; else $acro = null;
+
+            if (
+                stripos($text, $title) !== false ||
+                stripos($text, $cleanTitle) !== false ||
+                ($acro && stripos($text, $acro) !== false) ||
+                stripos($text, $key) !== false
+            ) return ['type'=>$type,'key'=>$key,'title'=>$title];
+        }
+    }
+    return null;
+}
