@@ -1168,15 +1168,48 @@ foreach ($modulesToRender as $modSlug => $module) {
 
     $totalModSections = count($sortedSectionKeys);
 
-    // 3️⃣ Render each section in correct order
+    // 3️⃣ Render each section in correct order (with DRY feature derivation)
     foreach ($sortedSectionKeys as $i => $key) {
+        if (!isset($module[$key]) || !is_array($module[$key])) {
+            continue; // skip non-structured or empty sections
+        }
+
         $section = $module[$key];
+
+        // 🧠 Auto-Derive Features from Data (DRY System)
+        if (
+            isset($section['source']) &&
+            $section['source'] === 'data.content' &&
+            isset($module['data']['content']) &&
+            is_array($module['data']['content'])
+        ) {
+            $section['items'] = [];
+            foreach ($module['data']['content'] as $alias => $desc) {
+                // Extract short summary before dash, colon, or em dash
+                if (preg_match('/^(.{0,80}?)\s+[—\-–:]/u', $desc, $m)) {
+                    $short = trim($m[1]);
+                } else {
+                    $short = trim(substr($desc, 0, 80));
+                }
+                $section['items'][] = "{$alias} — {$short}";
+            }
+
+            // Default visual hints if not specified
+            if (!isset($section['format'])) {
+                $section['format'] = 'list';
+            }
+            if (!isset($section['icon'])) {
+                $section['icon'] = 'list';
+            }
+        }
+
+        // 🧾 Render section
         $pdf->resetSectionIcon();
         $pdf->renderSection($key, $section, $iconMap, []);
 
-        // Consistent vertical spacing between sections
+        // Maintain consistent vertical spacing
         if ($i < $totalModSections - 1) {
-            $pdf->Ln($consistent_spacing);
+            $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
         }
     }
 
