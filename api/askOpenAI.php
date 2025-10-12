@@ -781,36 +781,6 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
     }
 }
 
-// 🧩 Direct Information Sheet Resolver (Pre-Semantic)
-if (!$handled && preg_match('/\b(show|view|open|see|display|reveal)\b/i', $prompt) && preg_match('/\b(sheet|report|information|info)\b/i', $prompt)) {
-    error_log("📄 Direct Information Sheet Resolver triggered for prompt: '$prompt'");
-
-    $slug = null;
-    if (preg_match('/timeintervalstandards/i', $prompt)) $slug = 'timeIntervalStandards';
-
-    if ($slug) {
-        $fileName  = 'Information Sheet - Time Interval Standards (TIS).pdf';
-        $filePath  = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-        $publicUrl = 'https://www.skyelighting.com/skyesoft/docs/sheets/' . rawurlencode($fileName);
-
-        if (file_exists($filePath)) {
-            error_log("✅ Sheet found for slug '$slug': $fileName");
-            $responsePayload = array(
-                "response"  => "📘 The **⏱️ Time Interval Standards (TIS)** sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
-                "action"    => "sheet_view",
-                "slug"      => $slug,
-                "reportUrl" => $publicUrl,
-                "sessionId" => $sessionId,
-                "preventCtaInjection" => true
-            );
-            echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            exit;
-        } else {
-            error_log("⚠️ Expected sheet not found at path: $filePath");
-        }
-    }
-}
-
 // 4. 🧭 SemanticResponder
 if (!$handled) {
     $messages = [
