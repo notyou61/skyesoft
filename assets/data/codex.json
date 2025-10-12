@@ -216,6 +216,71 @@
       ]
     }
   },
+  "crudUserInterfaceConvention": {
+    "title": "⚙️ CRUD User Interface Convention",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Establishes the universal design and behavioral standards for all Create, Read, Update, and Delete operations within Skyesoft. Ensures that every data interaction, whether manual or AI-triggered, follows predictable and reversible logic."
+    },
+    "description": {
+      "icon": "book",
+      "format": "text",
+      "text": "The CRUD Convention defines how Skyesoft modules expose editable data to users and AI agents. It governs action prompts, confirmation flows, state visualization, and data persistence across both modal and full-view contexts."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Standardized four-verb model: Create, Read, Update, Delete",
+        "Consistent button color and icon conventions (green = Create, blue = Read, yellow = Update, red = Delete)",
+        "Automatic validation before commit, with reversible undo actions",
+        "Session-linked state control synchronized with SSE Stream",
+        "AI-assisted CRUD reasoning via Skyebot for context-aware edits"
+      ]
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Action": "Create", "Behavior": "Opens modal for data entry; validates required fields before commit" },
+        { "Action": "Read", "Behavior": "Displays record in read-only state with contextual metadata" },
+        { "Action": "Update", "Behavior": "Locks record for edit; version control managed through File Management rules" },
+        { "Action": "Delete", "Behavior": "Triggers confirmation and soft-delete flag; archival handled automatically" }
+      ]
+    },
+    "integrations": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "Dynamic Modal System (Mobile-First Modals)",
+        "Core Database Structure for entity persistence",
+        "Document Standards for visual alignment",
+        "SSE Stream for live synchronization feedback"
+      ]
+    },
+    "rules": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "All CRUD actions must route through Skyebot’s validated API endpoints",
+        "Each operation logs to the System Audit Trail with timestamp and user ID",
+        "Destructive actions require dual confirmation or admin override",
+        "AI-generated modifications must include provenance metadata"
+      ]
+    },
+    "examples": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Module": "Permit Management Suite", "Example": "Create → New Permit Request; Read → Permit Status Viewer" },
+        { "Module": "Attendance Suite", "Example": "Update → Edit Time Log; Delete → Remove Erroneous Entry" },
+        { "Module": "Financial Control Suite", "Example": "Create → New Reimbursement; Read → Ledger Viewer" }
+      ]
+    }
+  },
   "mobileFirstModals": {
     "title": "📱 Mobile-First Modals",
     "category": "System Layer",
