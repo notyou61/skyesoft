@@ -462,41 +462,61 @@ if (!$apiKey) {
     exit;
 }
 #endregion
+#region 🧩 Dynamic System Prompt Builder
+$systemPromptParts = array();
 
-#region 📝 System Prompt
-$systemPrompt = <<<PROMPT
-You are Skyebot™, an assistant for a signage company.
+// 1️⃣  Identity and context
+if (isset($dynamicData['codex']['meta']['assistantName'])) {
+    $name = $dynamicData['codex']['meta']['assistantName'];
+} else {
+    $name = "Skyebot";
+}
+$systemPromptParts[] =
+    "You are {$name}™, the integrated assistant within the Skyesoft environment. " .
+    "You always have access to a live JSON snapshot (sseSnapshot) that contains " .
+    "current date, time, weather, KPIs, announcements, and workday intervals.";
 
-You always have access to a live JSON snapshot called sseSnapshot.
-It contains current date, time, weather, KPIs, announcements, and workday intervals.
-Never claim you lack real-time access — always ground answers in this snapshot.
+// 2️⃣  Constitution / rules from Codex (if present)
+if (isset($dynamicData['codex']['constitution']['rules'])
+    && is_array($dynamicData['codex']['constitution']['rules'])
+) {
+    $systemPromptParts[] = "⚖️  FOUNDATIONAL RULES:";
+    foreach ($dynamicData['codex']['constitution']['rules'] as $rule) {
+        $systemPromptParts[] = "• " . trim($rule);
+    }
+}
 
-⚠️ RULES:
-- For time/date questions (e.g., "What time is it?", "What day is today?") → use timeDateArray.
-- For weather questions (e.g., "What's it like outside?", "How hot is it?") → use weatherData.temp and weatherData.description.
-- For forecast questions (e.g., "What's tomorrow like?") → use weatherData.forecast.
-- For KPIs (e.g., "Orders?", "Any approvals?") → use kpiData.
-- For announcements (e.g., "What's new?", "Any bulletins?") → use announcements.
-- For workday/interval questions (e.g., "When do we finish?", "How long before quitting time?", "How many hours left in the shift?") → compare timeDateArray.currentLocalTime with intervalsArray.workdayIntervals.end, or use intervalsArray.currentDaySecondsRemaining. Calculate hours and minutes.
-- For glossary questions (e.g., “What is LGBAS?”, “Define MTCO.”) → answer using codex.glossary entries. Always explain in plain sentences, not JSON.
-- For Codex-related module questions (e.g., “Explain the Semantic Responder module,” “What is the Skyesoft Constitution?”) → provide a natural language explanation using Codex entries. Always explain in plain sentences, not JSON, unless JSON is explicitly requested.
-- For CRUD and report creation → return JSON in the defined format.
-- For logout → return JSON only: {"actionType":"Logout","status":"success"}.
-- If uncertain or lacking information in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" to trigger a search fallback.
-- Otherwise → answer in plain text using Codex or general knowledge.
-- Always respond naturally in plain text sentences.
+// 3️⃣  Semantic Responder principle
+if (isset($dynamicData['codex']['modules']['semanticResponder']['description'])) {
+    $desc = trim($dynamicData['codex']['modules']['semanticResponder']['description']);
+    $systemPromptParts[] = "🧭  SEMANTIC RESPONDER PRINCIPLE: " . $desc;
+}
 
-🧭 SEMANTIC RESPONDER PRINCIPLE:
-- Interpret user intent semantically, not just syntactically.
-- Map natural language (e.g., “quitting time,” “how much daylight is left,” “what’s the vibe today”) to the correct sseSnapshot fields, even if wording is unusual.
-- Prefer semantic interpretation of live data (time, weather, KPIs, work intervals) over strict keyword matching.
-- Use Codex knowledge (e.g., glossary terms, Semantic Responder module) to handle indirect or obscure phrasings.
-- If information is unavailable in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" instead of "I don’t know".
-PROMPT;
+// 4️⃣  Live data guidance (optional hints)
+if (isset($dynamicData['intervalsArray'])) {
+    $systemPromptParts[] = "Use intervalsArray to determine workday phases and timing logic.";
+}
+if (isset($dynamicData['weatherData'])) {
+    $systemPromptParts[] = "Use weatherData for temperature, description, and forecasts.";
+}
+if (isset($dynamicData['codex']['glossary'])) {
+    $systemPromptParts[] = "Reference codex.glossary for internal terms such as MTCO or LGBAS.";
+}
 
-foreach ($injectBlocks as $section => $block) {
-    $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n";
-    $systemPrompt .= json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// 5️⃣  Fallback / general guidance
+$systemPromptParts[] =
+    "If uncertain or lacking data, respond with 'NEEDS_GOOGLE_SEARCH' to trigger search fallback. " .
+    "Always answer in natural, plain sentences.";
+
+// 🔧 Combine all parts
+$systemPrompt = implode("\n", $systemPromptParts);
+
+// 🔹 Append any injected context blocks (legacy support)
+if (isset($injectBlocks) && is_array($injectBlocks)) {
+    foreach ($injectBlocks as $section => $block) {
+        $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n" .
+            json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
 }
 #endregion
 
