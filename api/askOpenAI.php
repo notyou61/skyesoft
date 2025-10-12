@@ -1,6 +1,21 @@
 <?php
 // 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
+// =======================================================
+// 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
+// =======================================================
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Create a writable log file in /api/logs/
+$logDir = __DIR__ . '/logs';
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0777, true);
+}
+$logFile = $logDir . '/skyebot_debug.log';
+ini_set('error_log', $logFile);
+
+error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
 
 // =========================================================
 //  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
