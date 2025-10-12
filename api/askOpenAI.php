@@ -780,15 +780,13 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
         }
     }
 }
+
 // 🧩 Direct Information Sheet Resolver (Pre-Semantic)
 if (!$handled && preg_match('/\b(show|view|open|see|display|reveal)\b/i', $prompt) && preg_match('/\b(sheet|report|information|info)\b/i', $prompt)) {
     error_log("📄 Direct Information Sheet Resolver triggered for prompt: '$prompt'");
 
-    // Extract possible slug from prompt
     $slug = null;
     if (preg_match('/timeintervalstandards/i', $prompt)) $slug = 'timeIntervalStandards';
-    // Optional: Add future mappings (LGBAS, MTCO, etc.)
-    // if (preg_match('/lgbas/i', $prompt)) $slug = 'timeIntervalStandards'; // example
 
     if ($slug) {
         $fileName  = 'Information Sheet - Time Interval Standards (TIS).pdf';
