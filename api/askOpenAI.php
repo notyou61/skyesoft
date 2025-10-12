@@ -758,6 +758,65 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-z
     exit;
 }
 
+// 🧠 AI Intent Enrichment Layer (RAG Classification)
+if (!$handled && !empty($prompt)) {
+    error_log("🧠 AI Intent Enrichment triggered for: " . $prompt);
+
+    $intentPrompt = "Analyze the following user message and classify what the user wants to do. "
+        . "Match their wording to one of the following intents: "
+        . "['generate', 'view', 'explain', 'update', 'other'] "
+        . "and identify the most relevant Codex module or glossary entry if possible. "
+        . "Return JSON only as {\"intent\":\"intent_type\",\"target\":\"codex_key_or_null\"}.\n\n"
+        . "User message: " . $prompt;
+
+    $intentMessages = array(
+        array("role" => "system", "content" => "You are a Skyesoft AI Intent Router. Use Codex context to map user phrases to system actions."),
+        array("role" => "user", "content" => $intentPrompt)
+    );
+
+    $aiIntentResponse = callOpenAi($intentMessages);
+    $intentData = @json_decode($aiIntentResponse, true);
+
+    if (is_array($intentData) && isset($intentData['intent'])) {
+        $detectedIntent = strtolower(trim($intentData['intent']));
+        $detectedTarget = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+
+        error_log("🎯 AI intent detected: intent=$detectedIntent, target=$detectedTarget");
+
+        // Handle "view" intent (sheet retrieval)
+        if ($detectedIntent === "view" && $detectedTarget) {
+            $fileName = 'Information Sheet - ' . ucwords(str_replace('_', ' ', $detectedTarget)) . '.pdf';
+            $pdfPath  = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+            $publicUrl = 'https://www.skyelighting.com/skyesoft/docs/sheets/' . rawurlencode($fileName);
+
+            if (file_exists($pdfPath)) {
+                $responsePayload = array(
+                    "response"  => "📘 The **" . ucwords(str_replace('_', ' ', $detectedTarget)) . "** information sheet:\n\n📄 [Open Report](" . $publicUrl . ")",
+                    "action"    => "sheet_view",
+                    "slug"      => $detectedTarget,
+                    "reportUrl" => $publicUrl,
+                    "sessionId" => $sessionId,
+                    "preventCtaInjection" => true
+                );
+                echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        }
+
+        // Handle "explain" intent
+        if ($detectedIntent === "explain" && $detectedTarget) {
+            $responsePayload = array(
+                "response"  => "ℹ️ Retrieving Codex context for **" . ucwords(str_replace('_', ' ', $detectedTarget)) . "**...",
+                "action"    => "explain",
+                "slug"      => $detectedTarget,
+                "sessionId" => $sessionId
+            );
+            echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+}
+
 // 4️⃣ 🧭 Adaptive SemanticResponder (AI + RAG Integration)
 if (!$handled) {
 
@@ -826,7 +885,6 @@ if (!$handled) {
         $handled = true;
     }
 }
-
 
 // 5. 🌐 Google Search Fallback
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
