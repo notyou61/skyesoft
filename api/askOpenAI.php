@@ -2,6 +2,49 @@
 // 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 
+// =========================================================
+//  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
+// =========================================================
+
+// 1️⃣  Prefer web POST body
+$rawInput = file_get_contents('php://input');
+
+// 2️⃣  If nothing came in, fall back to CLI argument
+if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
+    if (isset($argv[1]) && trim($argv[1]) !== '') {
+        $rawInput = $argv[1];
+    }
+}
+
+// 3️⃣  Decode JSON
+$rawInput  = trim($rawInput);
+$inputData = json_decode($rawInput, true);
+
+// 4️⃣  Fallback: try to fix common quoting mistakes
+if (!is_array($inputData)) {
+    // Remove surrounding quotes if Bash wrapped them
+    $fixed = trim($rawInput, "\"'");
+    $inputData = json_decode($fixed, true);
+}
+
+// 5️⃣  Guard clause
+if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode(array(
+        'response'  => '❌ Invalid or empty JSON payload.',
+        'action'    => 'none',
+        'sessionId' => uniqid()
+    ));
+    exit;
+}
+
+// 6️⃣  Extract prompt/conversation (PHP 5.6 safe)
+$prompt = isset($inputData['prompt'])
+    ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
+    : '';
+$conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
+    ? $inputData['conversation'] : array();
+$lowerPrompt = strtolower($prompt);
+
 // ===========================================================
 // 🧩 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
 // ===========================================================
@@ -20,11 +63,11 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 
     $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
     $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
-    $response = [
+    $response = array(
         "response"  => $msg,
         "action"    => "error",
         "sessionId" => session_id() ?: 'N/A'
-    ];
+    );
 
     echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit(1);
@@ -42,11 +85,11 @@ register_shutdown_function(function () {
 
         $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
         $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
-        $response = [
+        $response = array(
             "response"  => $msg,
             "action"    => "error",
             "sessionId" => session_id() ?: 'N/A'
-        ];
+        );
         echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
         return;
     }
@@ -55,11 +98,11 @@ register_shutdown_function(function () {
     if (!empty($output) && stripos(trim($output), '{') !== 0) {
         header('Content-Type: application/json; charset=UTF-8', true);
         $clean = substr(strip_tags($output), 0, 500);
-        echo json_encode([
+        echo json_encode(array(
             "response"  => "❌ Internal error: " . $clean,
             "action"    => "error",
             "sessionId" => session_id() ?: 'N/A'
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     } elseif (!empty($output)) {
         header('Content-Type: application/json; charset=UTF-8', true);
         echo trim($output);
@@ -150,23 +193,6 @@ if (!empty($dynamicData)) {
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 #endregion
-
-#region 🛡️ Input & Session Bootstrap
-$data = json_decode(file_get_contents("php://input"), true);
-if ($data === null || $data === false) {
-    echo json_encode(array(
-        "response"  => "❌ Invalid or empty JSON payload.",
-        "action"    => "none",
-        "sessionId" => $sessionId
-    ), JSON_PRETTY_PRINT);
-    exit;
-}
-
-$prompt = isset($data["prompt"])
-    ? trim(strip_tags(filter_var($data["prompt"], FILTER_DEFAULT)))
-    : "";
-$conversation = (isset($data["conversation"]) && is_array($data["conversation"])) ? $data["conversation"] : array();
-$lowerPrompt = strtolower($prompt);
 
 // ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
 // Retained for backward compatibility — now defers to AI semantic resolution
@@ -340,7 +366,6 @@ if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
     exit;
 }
-#endregion
 
 #region 📚 Build Context Blocks (Semantic Router)
 $snapshotSlim = array(
@@ -690,24 +715,24 @@ if (!$handled) {
 
     if ($detectedReport && isset($reportTypesSpec[$detectedReport])) {
         if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            $responsePayload = [
+            $responsePayload = array(
                 "actionType" => "Create",
                 "actionName" => "Report",
                 "reportType" => $detectedReport,
                 "response"   => "ℹ️ Report definition for $detectedReport.",
                 "spec"       => $reportTypesSpec[$detectedReport],
-                "inputs"     => ["rawPrompt" => $prompt],
+                "inputs"     => array("rawPrompt" => $prompt),
                 "sessionId"  => $sessionId
-            ];
+            );
         } else {
-            $responsePayload = [
+            $responsePayload = array(
                 "actionType" => "Create",
                 "actionName" => "Report",
                 "reportType" => $detectedReport,
                 "response"   => "ℹ️ Codex information about requested report type.",
                 "details"    => $reportTypesSpec[$detectedReport],
                 "sessionId"  => $sessionId
-            ];
+            );
         }
         $handled = true;
     }
@@ -783,28 +808,28 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
 
 // 4. 🧭 SemanticResponder
 if (!$handled) {
-    $messages = [
-        [
+    $messages = array(
+        array(
             "role" => "system",
             "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
-        ],
-        [
+        ),
+        array(
             "role" => "system",
             "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        ]
-    ];
+        )
+    );
     if (!empty($conversation)) {
         $history = array_slice($conversation, -2);
         foreach ($history as $entry) {
             if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = [
+                $messages[] = array(
                     "role"    => $entry["role"],
                     "content" => $entry["content"]
-                ];
+                );
             }
         }
     }
-    $messages[] = ["role" => "user", "content" => $prompt];
+    $messages[] = array("role" => "user", "content" => $prompt);
 
     $aiResponse = callOpenAi($messages);
 
@@ -822,7 +847,7 @@ if (!$handled) {
             if (isset($dynamicData['codex'])) {
                 $codex = $dynamicData['codex'];
             } else {
-                $codex = [];
+                $codex = array();
             }
         }
 
@@ -931,11 +956,11 @@ if (!$handled) {
         }
 
         // Prepare final payload
-        $responsePayload = [
+        $responsePayload = array(
             "response"  => $responseText,
             "action"    => "answer",
             "sessionId" => $sessionId
-        ];
+        );
         $handled = true;
     }
 }
@@ -953,18 +978,18 @@ if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARC
 
     if (isset($searchResults['error'])) {
         // Handle API errors (e.g., keys not set, curl failure)
-        $responsePayload = [
+        $responsePayload = array(
             "response" => "⚠️ Search service unavailable: " . $searchResults['error'] . ". Please try again.",
             "action" => "error",
             "sessionId" => $sessionId
-        ];
+        );
     } elseif (!empty($searchResults['summary'])) {
         // Use the summary (handles both single and AI-summarized cases)
-        $responsePayload = [
+        $responsePayload = array(
             "response" => $searchResults['summary'] . " (via Google Search)",
             "action" => "answer",
             "sessionId" => $sessionId
-        ];
+        );
         // Optionally add raw snippets or link if available (e.g., from first raw item)
         if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
             // If raw contains full items (adjust if your function returns links)
@@ -975,11 +1000,11 @@ if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARC
         }
     } else {
         // No useful results
-        $responsePayload = [
+        $responsePayload = array(
             "response" => "⚠️ No relevant search results found. Please try rephrasing your query.",
             "action" => "error",
             "sessionId" => $sessionId
-        ];
+        );
     }
 }
 
@@ -988,6 +1013,6 @@ if ($responsePayload) {
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 } else {
-    sendJsonResponse("❌ Unable to process request.", "error", ["sessionId" => $sessionId]);
+    sendJsonResponse("❌ Unable to process request.", "error", array("sessionId" => $sessionId));
 }
 #endregion
