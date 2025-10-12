@@ -1252,11 +1252,13 @@ if ($isFull) {
 } else {
     $outputFile = $baseDir . ucfirst($type) . " - " . $cleanTitle . ".pdf";
 }
+
 // 🧾 Debug: confirm output target
-error_log("🧾 Writing to: $pdfPath ($outputMode)");
+error_log("🧾 Writing to: $outputFile ($outputMode)");
 
 // ✅ Write PDF to disk
-$pdf->Output($pdfPath, $outputMode);
+$pdf->Output($outputFile, $outputMode);
+
 
 if ($outputMode === 'F' && file_exists($outputFile)) {
     if ($isFull) {
