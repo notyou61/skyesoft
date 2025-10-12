@@ -1268,11 +1268,11 @@ error_log("📄 File write attempt started...");
 try {
     $pdf->Output($outputFile, $outputMode);
     if (file_exists($outputFile)) {
-        error_log("✅ PDF write complete: SUCCESS (" . $outputFile . ")");
-        echo "✅ PDF successfully created at: " . $outputFile . "\n";
+        error_log("✅ PDF write complete: SUCCESS – " . $outputFile);
+        echo "✅ PDF created successfully: " . $outputFile . "\n";
     } else {
-        error_log("❌ PDF write failed: File not found after output.");
-        echo "❌ PDF write failed: File not found after output.\n";
+        error_log("❌ PDF write failed: File not found after save attempt.");
+        echo "❌ PDF write failed: File not found.\n";
     }
 } catch (Exception $e) {
     error_log("❌ TCPDF Exception: " . $e->getMessage());
