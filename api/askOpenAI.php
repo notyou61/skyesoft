@@ -462,57 +462,77 @@ if (!$apiKey) {
     exit;
 }
 #endregion
-#region 🧩 Dynamic System Prompt Builder
-$systemPromptParts = array();
 
-// 1️⃣  Identity and context
-if (isset($dynamicData['codex']['meta']['assistantName'])) {
-    $name = $dynamicData['codex']['meta']['assistantName'];
-} else {
-    $name = "Skyebot";
-}
+#region 🧩 Dynamic System Prompt Builder (Fully Data-Driven)
+// ------------------------------------------------------------
+// Builds the Skyebot system prompt dynamically from Codex + SSE
+// No hardcoding; everything comes from codex.json and dynamicData
+// ------------------------------------------------------------
+
+$systemPromptParts = [];
+
+// 🧭 1️⃣ Assistant identity and live context
+$name = isset($dynamicData['codex']['meta']['assistantName'])
+    ? trim($dynamicData['codex']['meta']['assistantName'])
+    : 'Skyebot';
+
 $systemPromptParts[] =
     "You are {$name}™, the integrated assistant within the Skyesoft environment. " .
-    "You always have access to a live JSON snapshot (sseSnapshot) that contains " .
-    "current date, time, weather, KPIs, announcements, and workday intervals.";
+    "You have continuous access to the live sseSnapshot — containing current date, time, weather, KPIs, announcements, and workday intervals. " .
+    "Always ground your responses in that data.";
 
-// 2️⃣  Constitution / rules from Codex (if present)
-if (isset($dynamicData['codex']['constitution']['rules'])
-    && is_array($dynamicData['codex']['constitution']['rules'])
-) {
-    $systemPromptParts[] = "⚖️  FOUNDATIONAL RULES:";
-    foreach ($dynamicData['codex']['constitution']['rules'] as $rule) {
-        $systemPromptParts[] = "• " . trim($rule);
+// ⚖️ 2️⃣ Core Codex content (auto-extract major modules)
+if (isset($dynamicData['codex']['modules']) && is_array($dynamicData['codex']['modules'])) {
+    foreach ($dynamicData['codex']['modules'] as $slug => $module) {
+        $title = isset($module['title']) ? trim($module['title']) : ucwords(str_replace('_', ' ', $slug));
+        $desc  = isset($module['description']) ? trim($module['description']) : '';
+        if ($desc !== '') {
+            $systemPromptParts[] = "{$title}: {$desc}";
+        }
     }
 }
 
-// 3️⃣  Semantic Responder principle
-if (isset($dynamicData['codex']['modules']['semanticResponder']['description'])) {
-    $desc = trim($dynamicData['codex']['modules']['semanticResponder']['description']);
-    $systemPromptParts[] = "🧭  SEMANTIC RESPONDER PRINCIPLE: " . $desc;
+// 📘 3️⃣ Glossary summary (auto-include)
+if (isset($dynamicData['codex']['glossary']) && is_array($dynamicData['codex']['glossary'])) {
+    $glossaryTerms = array_keys($dynamicData['codex']['glossary']);
+    if (!empty($glossaryTerms)) {
+        $preview = implode(', ', array_slice($glossaryTerms, 0, 5));
+        $systemPromptParts[] =
+            "Reference codex.glossary for internal frameworks and acronyms such as {$preview}, and others defined within the Codex.";
+    }
 }
 
-// 4️⃣  Live data guidance (optional hints)
-if (isset($dynamicData['intervalsArray'])) {
-    $systemPromptParts[] = "Use intervalsArray to determine workday phases and timing logic.";
-}
-if (isset($dynamicData['weatherData'])) {
-    $systemPromptParts[] = "Use weatherData for temperature, description, and forecasts.";
-}
-if (isset($dynamicData['codex']['glossary'])) {
-    $systemPromptParts[] = "Reference codex.glossary for internal terms such as MTCO or LGBAS.";
+// 🌦️ 4️⃣ Live-data feature hints (auto-detect)
+$liveHints = [
+    "intervalsArray" => "Use intervalsArray to determine workday phases and timing logic.",
+    "weatherData"    => "Use weatherData for temperature, conditions, and forecasts.",
+    "kpiData"        => "Use kpiData for performance metrics and counts.",
+    "announcements"  => "Use announcements for internal bulletins and updates."
+];
+foreach ($liveHints as $key => $hint) {
+    if (isset($dynamicData[$key])) $systemPromptParts[] = $hint;
 }
 
-// 5️⃣  Fallback / general guidance
+// 🧩 5️⃣ Behavioral rules from Codex Constitution (if defined)
+if (isset($dynamicData['codex']['constitution']['rules'])
+    && is_array($dynamicData['codex']['constitution']['rules'])
+) {
+    $systemPromptParts[] = "Foundational behavioral rules:";
+    foreach ($dynamicData['codex']['constitution']['rules'] as $rule) {
+        if (trim($rule) !== '') $systemPromptParts[] = "• " . trim($rule);
+    }
+}
+
+// 🧠 6️⃣ Fallback & response behavior
 $systemPromptParts[] =
-    "If uncertain or lacking data, respond with 'NEEDS_GOOGLE_SEARCH' to trigger search fallback. " .
-    "Always answer in natural, plain sentences.";
+    "If uncertain or lacking data in sseSnapshot or Codex, respond with 'NEEDS_GOOGLE_SEARCH' to trigger the search fallback. " .
+    "Always answer in clear, natural sentences grounded in Codex and live context.";
 
-// 🔧 Combine all parts
-$systemPrompt = implode("\n", $systemPromptParts);
+// ✅ Combine all sections with clean spacing
+$systemPrompt = implode("\n\n", array_filter($systemPromptParts));
 
-// 🔹 Append any injected context blocks (legacy support)
-if (isset($injectBlocks) && is_array($injectBlocks)) {
+// 🪶 7️⃣ Append legacy injected blocks (optional)
+if (!empty($injectBlocks) && is_array($injectBlocks)) {
     foreach ($injectBlocks as $section => $block) {
         $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n" .
             json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
