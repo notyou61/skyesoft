@@ -318,7 +318,26 @@ if (php_sapi_name() !== 'cli') {
                 error_log("⚠️ Empty AI slug response.");
             }
 
-            error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
+            error_log("🧠 AI Slug Resolution → slug='" . ($slug ? $slug : 'null') . "' from prompt='" . substr($prompt, 0, 100) . "'");
+
+            // 🧭 Smart Fallback: Try partial or case-insensitive key match in Codex
+            if ($slug && !isset($modules[$slug])) {
+                $normalizedSlug = strtolower(preg_replace('/[\s_]+/', '', $slug)); // semanticresponder
+                foreach ($modules as $key => $entry) {
+                    $normalizedKey = strtolower(preg_replace('/[\s_]+/', '', $key));
+                    if ($normalizedKey === $normalizedSlug) {
+                        $slug = $key; // ✅ Restore the actual Codex key ("semanticResponder")
+                        error_log("🔁 Matched normalized slug '$normalizedSlug' to Codex key '$key'");
+                        break;
+                    }
+                    // Also handle partial inclusion ("semantic" → "semanticResponder")
+                    if (strpos($normalizedKey, $normalizedSlug) !== false || strpos($normalizedSlug, $normalizedKey) !== false) {
+                        $slug = $key;
+                        error_log("🔍 Partial slug match: '$normalizedSlug' → '$key'");
+                        break;
+                    }
+                }
+            }
 
             // --- Generate report via internal API ---
             if ($slug && isset($modules[$slug])) {
