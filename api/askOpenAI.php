@@ -354,7 +354,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                 // ✅ File name + URL
                 $cleanTitle = sanitizeTitleForUrl($title);
                 $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-                $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/' . $fileName;
+                $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
                 $publicUrl  = str_replace(
                     array('/home/notyou64/public_html', ' ', '(', ')'),
                     array('https://www.skyelighting.com', '%20', '%28', '%29'),
