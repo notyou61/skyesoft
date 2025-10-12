@@ -472,5 +472,8 @@
         "Context summarization for AI agents"
       ]
     }
+  },
+  "glossary": {
+  "MTCO": "Measure Twice, Cut Once — Skyesoft’s foundational principle emphasizing deliberate, context-aware reasoning and validation before execution."
   }
 }
