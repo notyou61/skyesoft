@@ -638,11 +638,16 @@ if (
 
     if (!empty($aiSlugResponse)) {
         $decoded = json_decode($aiSlugResponse, true);
+
         if (is_array($decoded) && isset($decoded['slug'])) {
+            // ✅ Normalize slug: lower, trim, and remove spaces or underscores for consistent Codex key lookup
             $slug = strtolower(trim($decoded['slug']));
+            $slug = preg_replace('/[\s_]+/', '', $slug); // e.g., "semantic responder" → "semanticresponder"
+            error_log("🧩 Normalized slug → " . $slug);
         } else {
             error_log("⚠️ AI returned non-JSON or malformed slug response: " . substr($aiSlugResponse, 0, 200));
         }
+
     } else {
         error_log("⚠️ Empty AI slug response.");
     }
