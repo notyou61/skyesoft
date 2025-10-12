@@ -1256,24 +1256,27 @@ if ($isFull) {
 // 🧾 Debug: confirm output target
 error_log("🧾 Writing to: $outputFile ($outputMode)");
 
-// ✅ Write PDF to disk
-$pdf->Output($outputFile, $outputMode);
+// ==========================
+// 🧾 FINAL OUTPUT
+// ==========================
+$outputMode = 'F'; // Force file save
 
+error_log("🧭 PDF target path: " . $outputFile);
+error_log("🧾 Output mode: " . $outputMode);
+error_log("📄 File write attempt started...");
 
-if ($outputMode === 'F' && file_exists($outputFile)) {
-    if ($isFull) {
-        logMessage("✅ Full Codex Information Sheet created: " . $outputFile);
-        echo "✅ Full Codex Information Sheet created: " . $outputFile . "\n";
-    } elseif ($type === 'information_sheet') {
-        logMessage("✅ Information Sheet created for slug '$slug': " . $outputFile);
-        echo "✅ Information Sheet created for slug '$slug': " . $outputFile . "\n";
+try {
+    $pdf->Output($outputFile, $outputMode);
+    if (file_exists($outputFile)) {
+        error_log("✅ PDF write complete: SUCCESS (" . $outputFile . ")");
+        echo "✅ PDF successfully created at: " . $outputFile . "\n";
     } else {
-        logMessage("✅ Report created for slug '$slug': " . $outputFile);
-        echo "✅ Report created for slug '$slug': " . $outputFile . "\n";
+        error_log("❌ PDF write failed: File not found after output.");
+        echo "❌ PDF write failed: File not found after output.\n";
     }
-} elseif ($outputMode === 'F') {
-    logError("❌ ERROR: PDF generation failed. File not found after output.");
-    echo "❌ ERROR: PDF generation failed. File not found after output.\n";
+} catch (Exception $e) {
+    error_log("❌ TCPDF Exception: " . $e->getMessage());
+    echo "❌ TCPDF Exception: " . $e->getMessage() . "\n";
 }
 
 function formatHeaderTitle($key) {
