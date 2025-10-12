@@ -252,14 +252,14 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
         exit;
     }
 
-    // Otherwise → AI fallback
+    // Otherwise → direct Codex resolver (no AI dependency)
     if (!$aiFallbackStarted) {
         $aiFallbackStarted = true;
-        error_log("⚙️ [Skyebot] Falling back to AI Codex resolver for prompt: $prompt");
+        error_log("⚙️ [Skyebot] Falling back to Codex resolver for prompt: $prompt");
 
-        // Build slim Codex index for AI resolution
+        // Build slim Codex index
         $codexSlim = array();
-        foreach ($modules as $key => $entry) {
+        foreach ($codexData as $key => $entry) {
             if (!is_array($entry) || !isset($entry['title'])) continue;
             $codexSlim[] = array(
                 "slug" => $key,
@@ -268,35 +268,56 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             );
         }
 
-        // 🧠 AI Slug Resolution
-        $resolutionPrompt = "User request: " . $prompt . "\n\nAvailable Codex modules:\n" .
-            json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
-            "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
-
-        $messages = array(
-            array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
-            array("role" => "user", "content" => $resolutionPrompt)
-        );
-        $aiSlugResponse = callOpenAi($messages);
-
-        // Parse safely (PHP 5.6-safe)
-        $parsedSlug = array();
+        // ================================================
+        // 🧠 Direct Codex Slug Resolution (no AI dependency)
+        // ================================================
         $slug = null;
-        if (!empty($aiSlugResponse)) {
-            $decoded = json_decode($aiSlugResponse, true);
-            if (is_array($decoded) && isset($decoded['slug']) && $decoded['slug'] !== 'null') {
-                $slug = $decoded['slug'];
-            } else {
-                error_log("⚠️ AI returned invalid slug response: " . substr($aiSlugResponse, 0, 200));
+        $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
+
+        // Load full codex dataset (top-level + nested modules)
+        $allModules = array_merge(
+            $codexData,
+            isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
+        );
+
+        // Log visible keys
+        error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
+
+        // Try normalized substring match
+        foreach ($allModules as $key => $module) {
+            $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+            if (strpos($normalizedPrompt, $normalizedKey) !== false) {
+                $slug = $key;
+                break;
             }
-        } else {
-            error_log("⚠️ Empty AI slug response.");
         }
 
-        error_log("🧠 AI Slug Resolution: prompt='" . substr($prompt, 0, 100) . "' → slug='" . ($slug ? $slug : 'null') . "'");
+        // Fuzzy fallback
+        if (!$slug) {
+            foreach ($allModules as $key => $module) {
+                $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+                if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
+                    $slug = $key;
+                    break;
+                }
+            }
+        }
+
+        // Log result or exit
+        if ($slug) {
+            error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
+        } else {
+            error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
+            echo json_encode([
+                "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
+                "action"    => "none",
+                "sessionId" => uniqid()
+            ]);
+            exit;
+        }
 
         // Generate via internal API
-        if ($slug && isset($modules[$slug])) {
+        if ($slug && isset($allModules[$slug])) {
             $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
             $payload = json_encode(array("slug" => $slug));
             $context = stream_context_create(array(
@@ -316,36 +337,25 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                 $action = "error";
                 $publicUrl = null;
             } else {
-                $title = isset($modules[$slug]['title'])
-                    ? $modules[$slug]['title']
+                $title = isset($allModules[$slug]['title'])
+                    ? $allModules[$slug]['title']
                     : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
                 // 🧼 Sanitize title for safe file and URL use
                 function sanitizeTitleForUrl($text) {
-                    // 1️⃣ Remove emoji and pictographs (covers surrogate pairs too)
                     $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
-
-                    // 2️⃣ Remove zero-width, non-breaking, and BOM spaces
                     $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
-
-                    // 3️⃣ Collapse multiple spaces
                     $clean = preg_replace('/\s+/', ' ', trim($clean));
-
-                    // 4️⃣ Strip any remaining invisible or control characters
                     $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
-
-                    // 5️⃣ Remove lingering punctuation that may confuse URLs
                     $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
-
                     return trim($clean);
                 }
 
-                // ✅ File name + URL (scales dynamically)
+                // ✅ File name + URL
                 $cleanTitle = sanitizeTitleForUrl($title);
                 $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-                $pdfPath = '/home/notyou64/public_html/skyesoft/docs/' . $fileName;
-                // Clean public URL
-                $publicUrl = str_replace(
+                $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/' . $fileName;
+                $publicUrl  = str_replace(
                     array('/home/notyou64/public_html', ' ', '(', ')'),
                     array('https://www.skyelighting.com', '%20', '%28', '%29'),
                     $pdfPath
@@ -365,15 +375,6 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
-
-        // Fallback if no match found
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(array(
-            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
-            "action"    => "none",
-            "sessionId" => $sessionId
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        exit;
     }
 }
 
