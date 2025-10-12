@@ -495,6 +495,15 @@
   }
   },
   "glossary": {
-  "MTCO": "Measure Twice, Cut Once — Skyesoft’s foundational principle emphasizing deliberate, context-aware reasoning and validation before execution."
+  "SNPS": "Salt N' Pepa Style — Save it, commit it, push it — clean and confident. The rhythm of progress. 💾➡️🚀", 
+  "AIW": "All-In-Wonder — a one-cut command that moves, renames, and runs. Fast hands, no hesitation. ⚡",
+  "TC": "Terminal Command — raw execution from the shell. You type, it happens. 🔧",
+  "TCL": "Terminal Command Line — the full chain, from setup to commit, meant to flow as one move. ⛓️",
+  "LGBAS": "Let's Go Back A Step — the tactical rewind. Step back, recalibrate, then hit again. 🔁",
+  "MTCO": "Measure Twice, Cut Once — the precision creed. Think deep, act once. 🎯",
+  "SOT": "Source of Truth — the file of record, the clean state. All flows return here. 📜",
+  "SSE": "Server-Sent Events — the pulse of the system. Time, weather, KPIs, all alive. 🌐",
+  "Codex": "The master playbook — Skyesoft’s internal library of logic, rhythm, and reason. 📚",
+  "Push It": "Execute the cycle — save, commit, push, verify. A clean push is the heartbeat of progress. ❤️"
   }
 }
