@@ -570,6 +570,8 @@ if (
         $codex,
         isset($codex['modules']) && is_array($codex['modules']) ? $codex['modules'] : []
     );
+    //
+    error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
 
     // Attempt direct normalized match
     foreach ($allModules as $key => $module) {
