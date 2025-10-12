@@ -2,14 +2,6 @@
 // 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 
-#region 🌐 SSL Trust Setup
-$caPath = __DIR__ . '/../assets/certs/cacert.pem';
-if (file_exists($caPath)) {
-    @ini_set('curl.cainfo', $caPath);
-    @ini_set('openssl.cafile', $caPath);
-}
-#endregion
-
 #region 🧩 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
 
 ini_set('display_errors', 0);
@@ -104,16 +96,23 @@ if (!is_array($decoded) && strpos($normalizedInput, '{"prompt":') === 0) {
     error_log("🩹 Fallback decode path triggered manually");
 }
 
-// Duplicate validation removed – handled earlier
-// if (!$decoded || empty($decoded['prompt'])) {
-//     header('Content-Type: application/json; charset=UTF-8');
-//     echo json_encode([
-//         "response"  => "❌ Invalid or empty JSON payload.",
-//         "action"    => "none",
-//         "sessionId" => $sessionId
-//     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-//     exit;
-// }
+// NEW: Set prompt/lowerPrompt here if valid (unifies CLI/web; bootstrap can override if needed)
+if (is_array($decoded) && !empty($decoded['prompt'])) {
+    $prompt = trim(strip_tags(filter_var($decoded['prompt'], FILTER_DEFAULT)));
+    $lowerPrompt = strtolower($prompt);
+    error_log("🧩 Set prompt='$prompt' (length=" . strlen($prompt) . ") from decoded");
+} else {
+    // Early exit if no prompt (add this safeguard)
+    while (ob_get_level()) { ob_end_clean(); }
+    http_response_code(400);
+    header('Content-Type: application/json; charset=UTF-8', true);
+    echo json_encode([
+        "response"  => "❌ Invalid or empty JSON payload (no 'prompt' key).",
+        "action"    => "none",
+        "sessionId" => $sessionId
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    exit(1);
+}
 
 #endregion JSON DECODE VALIDATION
 
