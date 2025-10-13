@@ -494,6 +494,61 @@
     ]
   }
   },
+  "chatHistoryArchitecture": {
+    "title": "💾 Chat History Architecture",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines how Skyebot™ records every exchange into an immutable, timestamped ledger. Each message and reply is stored with a unique ID derived from the session's UNIX timestamp and incremental counter."
+    },
+    "structure": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Field": "messageId", "Type": "String", "Description": "Composite of session start time (UNIX) + increment (e.g., 1739432447_4)" },
+        { "Field": "timestamp", "Type": "Integer", "Description": "UNIX time of event for fast sorting and cross-reference" },
+        { "Field": "userId", "Type": "Integer", "Description": "Identifies the actor; 0 = Skyebot™, >0 = Human user, -1 = Anonymous" },
+        { "Field": "message", "Type": "String", "Description": "User input or Skyebot response text" },
+        { "Field": "attachments", "Type": "Array", "Description": "Optional list of attached file objects or paths" },
+        { "Field": "metadata", "Type": "Object", "Description": "Includes IP address, CRUD action key, and system tags" }
+      ]
+    },
+    "metadataModel": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "IP address recorded for traceability and audit",
+        "CRUD action logged from actions.json reference table",
+        "System actions such as login and session start treated as Create-type events"
+      ]
+    },
+    "integrationPoints": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "CRUD User Interface Convention — aligns user actions with audit trail entries",
+        "File Management — manages persistence under /api/data/chat_history/",
+        "Skyebot Module — appends events for each conversation exchange"
+      ]
+    },
+    "principles": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Append-only structure for audit integrity",
+        "Human-readable JSON with atomic writes",
+        "Chronological order preserved via UNIX timestamps",
+        "Session files indexed monthly for scalability"
+      ]
+    },
+    "example": {
+      "icon": "code",
+      "format": "text",
+      "text": "{\n  \"messageId\": \"1739432447_4\",\n  \"timestamp\": 1739432489,\n  \"userId\": 1,\n  \"message\": \"Generate Time Interval Standards sheet.\",\n  \"attachments\": [],\n  \"metadata\": { \"ip\": \"73.10.24.120\", \"action\": \"create_report\", \"crud\": \"C\" }\n}"
+    }
+  },
   "modules": {
     "skyesoftGlossary": {
       "title": "📘 Skyesoft Glossary",
