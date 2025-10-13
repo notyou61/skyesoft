@@ -1,48 +1,39 @@
 <?php
-// 📄 File: api/askOpenAI.php
-// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 // =======================================================
-// 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
+// 📄 FILE: api/askOpenAI.php
+// PURPOSE: Entry point for Skyebot AI interactions
+// COMPAT: PHP 5.6 (GoDaddy-safe)
 // =======================================================
+
+#region 🧾 Logging & Session Initialization
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Create a writable log file in /api/logs/
 $logDir = __DIR__ . '/logs';
-if (!is_dir($logDir)) {
-    mkdir($logDir, 0777, true);
-}
+if (!is_dir($logDir)) mkdir($logDir, 0777, true);
 $logFile = $logDir . '/skyebot_debug.log';
 ini_set('error_log', $logFile);
-
 error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
+#endregion
 
-// =========================================================
-//  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
-// =========================================================
-
-// 1️⃣  Prefer web POST body
+#region 📥 Input Loader (Web + CLI compatible)
 $rawInput = file_get_contents('php://input');
 
-// 2️⃣  If nothing came in, fall back to CLI argument
-if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
-    if (isset($argv[1]) && trim($argv[1]) !== '') {
-        $rawInput = $argv[1];
-    }
+// Allow CLI testing
+if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '') && isset($argv[1])) {
+    $rawInput = $argv[1];
 }
 
-// 3️⃣  Decode JSON
 $rawInput  = trim($rawInput);
 $inputData = json_decode($rawInput, true);
 
-// 4️⃣  Fallback: try to fix common quoting mistakes
+// Attempt light recovery from common quoting issues
 if (!is_array($inputData)) {
-    // Remove surrounding quotes if Bash wrapped them
     $fixed = trim($rawInput, "\"'");
     $inputData = json_decode($fixed, true);
 }
 
-// 5️⃣  Guard clause
+// Guard clause: invalid JSON
 if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
     echo json_encode(array(
         'response'  => '❌ Invalid or empty JSON payload.',
@@ -52,82 +43,68 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-// 6️⃣  Extract prompt/conversation (PHP 5.6 safe)
+// Extract prompt & conversation (PHP 5.6 safe)
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
     ? $inputData['conversation'] : array();
 $lowerPrompt = strtolower($prompt);
+#endregion
 
-// ===========================================================
-// 🧩 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
-// ===========================================================
-
-// Disable HTML error output and start buffering immediately
+#region 🧩 Error & Output Shield
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 ob_start();
 
+// Convert all PHP warnings/errors to JSON
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    // Clean buffer completely
     while (ob_get_level()) { ob_end_clean(); }
-    http_response_code(500);
-    header('Content-Type: application/json; charset=UTF-8', true);
-
-    $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
-    $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
-    $response = array(
-        "response"  => $msg,
-        "action"    => "error",
-        "sessionId" => session_id() ?: 'N/A'
-    );
-
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
-    exit(1);
+    header('Content-Type: application/json; charset=UTF-8');
+    $msg = "⚠️ PHP error [$errno]: " . htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
+    echo json_encode(array(
+        'response'  => $msg,
+        'action'    => 'error',
+        'sessionId' => session_id() ?: 'N/A'
+    ));
+    exit;
 }, E_ALL);
 
+// Final shutdown capture for fatals
 register_shutdown_function(function () {
-    $lastError = error_get_last();
-    $output = ob_get_clean();
-
-    // Catch fatal errors that bypass the handler
-    if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+    $last = error_get_last();
+    $out  = ob_get_clean();
+    if ($last && ($last['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
         while (ob_get_level()) { ob_end_clean(); }
-        http_response_code(500);
-        header('Content-Type: application/json; charset=UTF-8', true);
-
-        $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
-        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
-        $response = array(
-            "response"  => $msg,
-            "action"    => "error",
-            "sessionId" => session_id() ?: 'N/A'
-        );
-        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        header('Content-Type: application/json; charset=UTF-8');
+        $msg = "❌ Fatal error: " . htmlspecialchars(strip_tags($last['message']), ENT_QUOTES, 'UTF-8');
+        echo json_encode(array(
+            'response'  => $msg,
+            'action'    => 'error',
+            'sessionId' => session_id() ?: 'N/A'
+        ));
         return;
     }
 
-    // If normal output exists but isn’t JSON, wrap it safely
-    if (!empty($output) && stripos(trim($output), '{') !== 0) {
-        header('Content-Type: application/json; charset=UTF-8', true);
-        $clean = substr(strip_tags($output), 0, 500);
+    // Wrap stray output
+    if (!empty($out) && stripos(trim($out), '{') !== 0) {
+        header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
-            "response"  => "❌ Internal error: " . $clean,
-            "action"    => "error",
-            "sessionId" => session_id() ?: 'N/A'
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    } elseif (!empty($output)) {
-        header('Content-Type: application/json; charset=UTF-8', true);
-        echo trim($output);
+            'response'  => "❌ Internal error: " . substr(strip_tags($out), 0, 400),
+            'action'    => 'error',
+            'sessionId' => session_id() ?: 'N/A'
+        ));
+    } elseif (!empty($out)) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo trim($out);
     }
 });
+#endregion
 
-// ===========================================================
-// Require shared helpers *after* shield is active
-// ===========================================================
+#region 🧩 Shared Helpers & Report Generators
 require_once __DIR__ . "/helpers.php";
+#endregion
 
 #region 🔹 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
@@ -187,8 +164,8 @@ if ($dynamicRaw !== false && empty($err) && $httpCode === 200) {
         FILE_APPEND
     );
 }
-
-// Always build a snapshot, even if minimal
+ 
+/* Always build a snapshot, even if minimal */
 if (!empty($dynamicData)) {
     $snapshotSummary = json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 } else {
@@ -209,25 +186,23 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
-// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
-// Retained for backward compatibility — now defers to AI semantic resolution
+#region 🧠 Semantic / Legacy Pattern Handler
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
     $aiFallbackStarted = false; // safeguard tracker
 
-    // Load codex safely
+    #region 📦 Load & Normalize Codex
     $codexData = isset($dynamicData['codex'])
         ? $dynamicData['codex']
         : (file_exists(CODEX_PATH)
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
-
-    // Normalize structure (accepts both wrapped + flat)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
+    #endregion
 
-    // Search Codex for direct key match first
+    #region 🔍 Direct Key Match
     $foundKey = '';
     foreach ($modules as $key => $val) {
         if (strtolower($key) === $moduleName) {
@@ -236,14 +211,13 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
         }
     }
 
-    // If found, return direct link
     if (!empty($foundKey)) {
         $title = isset($modules[$foundKey]['title']) ? $modules[$foundKey]['title'] : ucfirst($foundKey);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
 
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
-            "response"  => "📄 <strong>" . $title . "</strong> — <a href=\"" . $link . "\" target=\"_blank\">Generate Sheet</a>",
+            "response"  => "📄 <strong>{$title}</strong> — <a href=\"{$link}\" target=\"_blank\">Generate Sheet</a>",
             "action"    => "sheet_generated",
             "slug"      => $foundKey,
             "reportUrl" => $link,
@@ -251,8 +225,9 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
+    #endregion
 
-    // Otherwise → direct Codex resolver (no AI dependency)
+    #region ⚙️ Fallback: Direct Codex Resolver (no AI dependency)
     if (!$aiFallbackStarted) {
         $aiFallbackStarted = true;
         error_log("⚙️ [Skyebot] Falling back to Codex resolver for prompt: $prompt");
@@ -268,22 +243,17 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             );
         }
 
-        // ================================================
-        // 🧠 Direct Codex Slug Resolution (no AI dependency)
-        // ================================================
+        // 🧭 Direct Codex Slug Resolution
         $slug = null;
         $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
 
-        // Load full codex dataset (top-level + nested modules)
         $allModules = array_merge(
             $codexData,
-            isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
+            isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : array()
         );
 
-        // Log visible keys
         error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
 
-        // Try normalized substring match
         foreach ($allModules as $key => $module) {
             $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
             if (strpos($normalizedPrompt, $normalizedKey) !== false) {
@@ -292,7 +262,6 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             }
         }
 
-        // Fuzzy fallback
         if (!$slug) {
             foreach ($allModules as $key => $module) {
                 $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
@@ -303,20 +272,20 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             }
         }
 
-        // Log result or exit
         if ($slug) {
-            error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
+            error_log("✅ Codex slug resolved to '$slug' from prompt: $prompt");
         } else {
-            error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
-            echo json_encode([
+            error_log("⚠️ No matching Codex module found for prompt: $prompt");
+            echo json_encode(array(
                 "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
                 "action"    => "none",
                 "sessionId" => uniqid()
-            ]);
+            ));
             exit;
         }
+    #endregion
 
-        // Generate via internal API
+        #region 🧩 Generate via internal API
         if ($slug && isset($allModules[$slug])) {
             $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
             $payload = json_encode(array("slug" => $slug));
@@ -341,7 +310,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                     ? $allModules[$slug]['title']
                     : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-                // 🧼 Sanitize title for safe file and URL use
+                // 🧼 Sanitize title for safe file/URL use
                 function sanitizeTitleForUrl($text) {
                     $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
                     $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
@@ -351,7 +320,6 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                     return trim($clean);
                 }
 
-                // ✅ File name + URL
                 $cleanTitle = sanitizeTitleForUrl($title);
                 $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
                 $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
@@ -361,7 +329,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
                     $pdfPath
                 );
 
-                $response = "📘 The **" . $title . "** sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
+                $response = "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})";
                 $action = "sheet_generated";
             }
 
@@ -375,6 +343,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         }
+        #endregion
     }
 }
 
@@ -382,6 +351,7 @@ if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
     exit;
 }
+#endregion
 
 #region 📚 Build Context Blocks (Semantic Router)
 $snapshotSlim = array(
