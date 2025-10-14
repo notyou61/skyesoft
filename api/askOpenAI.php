@@ -202,9 +202,16 @@ if (!empty($prompt)) {
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
+    // Normalize Codex structure (accepts both flat + nested)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
+
+    // 🧩 Legacy Codex Alias (Temporary Compatibility)
+    // Backward support for functions or includes expecting $codex
+    if (isset($codexData) && !isset($codex)) {
+        $codex = $codexData;
+    }
     #endregion
 
     #region 🧩 Build Semantic Index
