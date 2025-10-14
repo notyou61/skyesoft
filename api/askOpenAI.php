@@ -229,10 +229,14 @@ if (!empty($prompt)) {
         }
     }
 
-    // Step 2 — Fuzzy similarity fallback
+    // Step 2 — Fuzzy similarity fallback (Levenshtein distance for precision)
     if (!$slug) {
+        $promptLen = strlen($lowerPrompt);
         foreach ($semanticIndex as $key => $title) {
-            similar_text($lowerPrompt, $title, $percent);
+            $titleLen = strlen($title);
+            $maxLen = max($promptLen, $titleLen);
+            $distance = levenshtein($lowerPrompt, $title);
+            $percent = ((1 - ($distance / $maxLen)) * 100);
             if ($percent > $highest) {
                 $highest = $percent;
                 $slug = $key;
@@ -260,15 +264,15 @@ if (!empty($prompt)) {
     #endregion
 
     #region ⚠️ No Match Fallback
-    if (empty($slug)) {
-        error_log("⚠️ No semantic match found for prompt: {$prompt}");
-        sendJsonResponse(
-            "⚠️ No matching Codex module found. Please rephrase your request.",
-            "none",
-            array("sessionId" => $sessionId)
-        );
-        exit;
-    }
+        if (empty($slug)) {
+            error_log("⚠️ No semantic match found for prompt: {$prompt}");
+            sendJsonResponse(
+                "⚠️ No matching Codex module found. Please rephrase your request.",
+                "none",
+                array("sessionId" => $sessionId)
+            );
+            exit;
+        }
     #endregion
 }
 
