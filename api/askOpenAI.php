@@ -451,43 +451,6 @@ if (!$apiKey) {
 }
 #endregion
 
-#region 📝 System Prompt
-$systemPrompt = <<<PROMPT
-You are Skyebot™, an assistant for a signage company.
-
-You always have access to a live JSON snapshot called sseSnapshot.
-It contains current date, time, weather, KPIs, announcements, and workday intervals.
-Never claim you lack real-time access — always ground answers in this snapshot.
-
-⚠️ RULES:
-- For time/date questions (e.g., "What time is it?", "What day is today?") → use timeDateArray.
-- For weather questions (e.g., "What's it like outside?", "How hot is it?") → use weatherData.temp and weatherData.description.
-- For forecast questions (e.g., "What's tomorrow like?") → use weatherData.forecast.
-- For KPIs (e.g., "Orders?", "Any approvals?") → use kpiData.
-- For announcements (e.g., "What's new?", "Any bulletins?") → use announcements.
-- For workday/interval questions (e.g., "When do we finish?", "How long before quitting time?", "How many hours left in the shift?") → compare timeDateArray.currentLocalTime with intervalsArray.workdayIntervals.end, or use intervalsArray.currentDaySecondsRemaining. Calculate hours and minutes.
-- For glossary questions (e.g., “What is LGBAS?”, “Define MTCO.”) → answer using codex.glossary entries. Always explain in plain sentences, not JSON.
-- For Codex-related module questions (e.g., “Explain the Semantic Responder module,” “What is the Skyesoft Constitution?”) → provide a natural language explanation using Codex entries. Always explain in plain sentences, not JSON, unless JSON is explicitly requested.
-- For CRUD and report creation → return JSON in the defined format.
-- For logout → return JSON only: {"actionType":"Logout","status":"success"}.
-- If uncertain or lacking information in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" to trigger a search fallback.
-- Otherwise → answer in plain text using Codex or general knowledge.
-- Always respond naturally in plain text sentences.
-
-🧭 SEMANTIC RESPONDER PRINCIPLE:
-- Derive meaning from context, not from phrasing — interpret what the user intends, not how they say it.
-- Resolve all intents through the Codex Semantic Index, matching titles, descriptions, or tags that best reflect the user’s request.
-- Fuse SSE context (time, KPIs, weather, work intervals) and recent chat history to maintain temporal and situational awareness.
-- Example: “Workday doc” or “when do we finish?” both map to ⏱️ Time Interval Standards (TIS) automatically.
-- Prefer reasoning grounded in Codex and real-time data; avoid guessing or hallucination.
-- If information is unavailable in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" instead of "I don’t know".
-PROMPT;
-
-foreach ($injectBlocks as $section => $block) {
-    $systemPrompt .= "\n\n📘 " . strtoupper($section) . ":\n";
-    $systemPrompt .= json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-}
-#endregion
 #region 🛣 Dispatch Handler (Semantic Intent Router)
 $handled = false;
 $responsePayload = null;
@@ -578,6 +541,19 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
 
         // 📘 Report / Information Sheet
         case "report":
+            // 🪄 Auto-map Codex modules to reports even if 'generate' was not used
+            if ($intent === 'report' && !$target) {
+                foreach ($codexMeta as $key => $meta) {
+                    $title = strtolower($meta['title']);
+                    if (preg_match('/\b(' . preg_quote($title, '/') . ')\b/i', strtolower($prompt))) {
+                        $target = $key;
+                        error_log("🔗 Auto-mapped Codex title '{$meta['title']}' → slug '$key'");
+                        break;
+                    }
+                }
+            }
+
+            // 🔁 If a Codex module title was found, route directly to report generator
             if ($target && isset($dynamicData['codex']['modules'][$target])) {
                 include __DIR__ . "/dispatchers/intent_report.php";
                 exit;
