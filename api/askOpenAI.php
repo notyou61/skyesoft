@@ -1,9 +1,10 @@
 <?php
-// 📄 File: api/askOpenAI.php
-// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
+// 📄 File: api/askOpenAI_next.php
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.0)
 // =======================================================
-// 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
-// =======================================================
+
+#region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -16,10 +17,11 @@ $logFile = $logDir . '/skyebot_debug.log';
 ini_set('error_log', $logFile);
 
 error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
+#endregion
 
-// =========================================================
-//  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
-// =========================================================
+#region =========================================================
+#  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
+# =========================================================
 
 // 1️⃣  Prefer web POST body
 $rawInput = file_get_contents('php://input');
@@ -59,10 +61,9 @@ $prompt = isset($inputData['prompt'])
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
     ? $inputData['conversation'] : array();
 $lowerPrompt = strtolower($prompt);
+#endregion
 
-// ===========================================================
-// 🔒 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
-// ===========================================================
+#region 🔒 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
 
 // Disable HTML error output and start buffering immediately
 ini_set('display_errors', 0);
@@ -123,11 +124,13 @@ register_shutdown_function(function () {
         echo trim($output);
     }
 });
+#endregion
 
-// ===========================================================
-// Require shared helpers *after* shield is active
-// ===========================================================
+#region ===========================================================
+# Require shared helpers *after* shield is active
+# ===========================================================
 require_once __DIR__ . "/helpers.php";
+#endregion
 
 #region 🔩 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
@@ -209,7 +212,7 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
-// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+#region ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
 // Retained for backward compatibility — now defers to AI semantic resolution
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
@@ -377,6 +380,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
         }
     }
 }
+#endregion
 
 if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
@@ -471,10 +475,11 @@ Never claim you lack real-time access — always ground answers in this snapshot
 - Always respond naturally in plain text sentences.
 
 🧭 SEMANTIC RESPONDER PRINCIPLE:
-- Interpret user intent semantically, not just syntactically.
-- Map natural language (e.g., “quitting time,” “how much daylight is left,” “what’s the vibe today”) to the correct sseSnapshot fields, even if wording is unusual.
-- Prefer semantic interpretation of live data (time, weather, KPIs, work intervals) over strict keyword matching.
-- Use Codex knowledge (e.g., glossary terms, Semantic Responder module) to handle indirect or obscure phrasings.
+- Derive meaning from context, not from phrasing — interpret what the user intends, not how they say it.
+- Resolve all intents through the Codex Semantic Index, matching titles, descriptions, or tags that best reflect the user’s request.
+- Fuse SSE context (time, KPIs, weather, work intervals) and recent chat history to maintain temporal and situational awareness.
+- Example: “Workday doc” or “when do we finish?” both map to ⏱️ Time Interval Standards (TIS) automatically.
+- Prefer reasoning grounded in Codex and real-time data; avoid guessing or hallucination.
 - If information is unavailable in sseSnapshot or Codex, respond with "NEEDS_GOOGLE_SEARCH" instead of "I don’t know".
 PROMPT;
 
@@ -484,55 +489,94 @@ foreach ($injectBlocks as $section => $block) {
 }
 #endregion
 
-#region 🛣 Dispatch Handler
+#region 🛣 Dispatch Handler (Semantic Intent Router)
 $handled = false;
 $responsePayload = null;
-$reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-    ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
-    : array();
 
-// 1. 🔑 Quick Agentic Actions (Logout, Login)
-// --- Logout ---
-if (preg_match('/\b(log\s*out|logout|exit|sign\s*out|quit|leave|end\s+session|done\s+for\s+now|close)\b/i', $lowerPrompt)) {
-    performLogout();
-    $responsePayload = array(
-        "actionType" => "Logout",
-        "status"     => "success",
-        "response"   => "👋 You have been logged out.",
-        "sessionId"  => $sessionId
-    );
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
+// Semantic Intent Router — replaces regex triggers entirely
+$routerPrompt = <<<PROMPT
+You are the Skyebot™ Semantic Intent Router.
+Your role is to classify and route user intent based on meaning, not keywords.
+Use Codex Semantic Index, SSE context, and conversation history.
+
+Return only JSON in this structure:
+{
+  "intent": "logout" | "login" | "report" | "crud" | "general",
+  "target": "codex-slug-or-entity",
+  "confidence": 0.0–1.0
 }
 
-// --- Login ---
-elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b/i', $lowerPrompt, $matches)) {
-    $username = $matches[1];
-    $password = $matches[2];
+User message:
+"$prompt"
 
-    if (authenticateUser($username, $password)) {
-        $_SESSION['user'] = $username;
-        $responsePayload = array(
-            "actionType" => "Login",
-            "status"     => "success",
-            "user"       => $username,
-            "sessionId"  => $sessionId,
-            "loggedIn"   => true
-        );
-    } else {
-        $responsePayload = array(
-            "actionType" => "Login",
-            "status"     => "failed",
-            "message"    => "Invalid credentials",
-            "sessionId"  => $sessionId
-        );
+Codex Semantic Index:
+PROMPT;
+$routerPrompt .= json_encode($codexMeta, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+if (!empty($conversation)) {
+    $recent = array_slice($conversation, -3);
+    $routerPrompt .= "\n\nRecent chat context:\n" . json_encode($recent, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+}
+
+$routerMessages = array(
+    array("role" => "system", "content" => "You are Skyebot’s intent classifier. Respond only with JSON."),
+    array("role" => "user", "content" => $routerPrompt)
+);
+
+$routerResponse = callOpenAi($routerMessages);
+$intentData = json_decode(trim($routerResponse), true);
+error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
+
+if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.5) {
+    $intent = strtolower(trim($intentData['intent']));
+    $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+
+    switch ($intent) {
+        // 🔑 Logout
+        case "logout":
+            performLogout();
+            echo json_encode([
+                "actionType" => "Logout",
+                "status"     => "success",
+                "response"   => "👋 You have been logged out.",
+                "sessionId"  => $sessionId
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+
+        // 🔑 Login
+        case "login":
+            // Router may return "target":"username" or null
+            $_SESSION['user'] = $target ?: 'guest';
+            echo json_encode([
+                "actionType" => "Login",
+                "status"     => "success",
+                "user"       => $_SESSION['user'],
+                "sessionId"  => $sessionId
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+
+        // 📘 Report / Information Sheet
+        case "report":
+            if ($target && isset($dynamicData['codex']['modules'][$target])) {
+                include __DIR__ . "/dispatchers/intent_report.php";
+                exit;
+            }
+            break;
+
+        // 🧾 CRUD Operations
+        case "crud":
+            include __DIR__ . "/dispatchers/intent_crud.php";
+            exit;
+
+        // 💬 General or Unclassified → fallback to SemanticResponder
+        default:
+            // Fall through to existing semantic responder logic below
+            break;
     }
-
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
 }
+#endregion
 
-// 🔩 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling)
+// 🔩 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling) — Preserved as fallback
 if (
     !$handled &&
     preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
@@ -750,7 +794,11 @@ if (
     exit;
 }
 
-// 2. 📑 Reports (run this BEFORE CRUD)
+$reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+    ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
+    : array();
+
+// 2. 📑 Reports (run this BEFORE CRUD) — Preserved as fallback
 if (!$handled) {
     $detectedReport = null;
     foreach ($reportTypesSpec as $reportName => $reportDef) {
@@ -785,7 +833,7 @@ if (!$handled) {
     }
 }
 
-// 3. --- CRUD (only if no report was matched) ---
+// 3. --- CRUD (only if no report was matched) --- Preserved as fallback
 if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-zA-Z0-9]+)/i', $lowerPrompt, $matches)) {
     $actionType = ucfirst(strtolower($matches[1]));
     $entity     = $matches[2];
@@ -830,7 +878,7 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-z
     exit;
 }
 
-// 🔐 Codex Acronym Resolver (Pre-normalization)
+// 🔐 Codex Acronym Resolver (Pre-normalization) — Preserved as fallback
 if (!$handled && isset($dynamicData['codex']['modules'])) {
     $acronymMap = array();
 
@@ -853,7 +901,7 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
     }
 }
 
-// 4. 🧭 SemanticResponder
+// 4. 🧭 SemanticResponder — Preserved as fallback
 if (!$handled) {
     $messages = array(
         array(
@@ -1012,7 +1060,7 @@ if (!$handled) {
     }
 }
 
-// 5. 🌐 Google Search Fallback
+// 5. 🌐 Google Search Fallback — Preserved as fallback
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
     $searchResults = googleSearch($prompt);
 
