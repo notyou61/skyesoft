@@ -202,22 +202,22 @@ if (!empty($prompt)) {
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
-    // Normalize Codex structure (accepts both flat + nested)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
 
-    // 🧩 Legacy Codex Alias (Temporary Compatibility)
+    #region 🧩 Legacy Codex Alias (Temporary Compatibility)
     // Backward support for functions or includes expecting $codex
     if (isset($codexData) && !isset($codex)) {
         $codex = $codexData;
     }
     #endregion
+    #endregion
 
-    #region 🧩 Build Semantic Index
+    #region 🧩 Build Semantic Index (Hybrid – top-level + modules)
     $semanticIndex = array();
 
-    // Combine both top-level and nested modules (if present)
+    // Combine both top-level and nested modules
     $allModules = array_merge(
         is_array($codexData) ? $codexData : array(),
         (isset($codexData['modules']) && is_array($codexData['modules'])) ? $codexData['modules'] : array()
@@ -249,7 +249,7 @@ if (!empty($prompt)) {
         }
     }
 
-    // Step 2 — Fuzzy similarity fallback (Levenshtein distance for precision)
+    // Step 2 — Fuzzy similarity fallback
     if (!$slug) {
         $promptLen = strlen($lowerPrompt);
         foreach ($semanticIndex as $key => $title) {
@@ -267,7 +267,7 @@ if (!empty($prompt)) {
 
     #region ✅ Generate Response if Match Found
     if ($slug && $highest >= 40) {
-        $title = isset($modules[$slug]['title']) ? $modules[$slug]['title'] : ucfirst($slug);
+        $title = isset($allModules[$slug]['title']) ? $allModules[$slug]['title'] : ucfirst($slug);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $slug;
 
         sendJsonResponse(
@@ -284,15 +284,15 @@ if (!empty($prompt)) {
     #endregion
 
     #region ⚠️ No Match Fallback
-        if (empty($slug)) {
-            error_log("⚠️ No semantic match found for prompt: {$prompt}");
-            sendJsonResponse(
-                "⚠️ No matching Codex module found. Please rephrase your request.",
-                "none",
-                array("sessionId" => $sessionId)
-            );
-            exit;
-        }
+    if (empty($slug)) {
+        error_log("⚠️ No semantic match found for prompt: {$prompt}");
+        sendJsonResponse(
+            "⚠️ No matching Codex module found. Please rephrase your request.",
+            "none",
+            array("sessionId" => $sessionId)
+        );
+        exit;
+    }
     #endregion
 }
 
@@ -301,6 +301,7 @@ if (empty($prompt)) {
     exit;
 }
 #endregion
+
 
 #region 📚 Build Context Blocks (Semantic Router)
 $snapshotSlim = array(
