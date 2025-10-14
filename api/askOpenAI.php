@@ -493,11 +493,15 @@ foreach ($injectBlocks as $section => $block) {
 $handled = false;
 $responsePayload = null;
 
-// Semantic Intent Router — replaces regex triggers entirely
+#region Semantic Intent Router — replaces regex triggers entirely
 $routerPrompt = <<<PROMPT
 You are the Skyebot™ Semantic Intent Router.
 Your role is to classify and route user intent based on meaning, not keywords.
 Use Codex Semantic Index, SSE context, and conversation history.
+
+If the user request involves making, creating, or preparing any sheet, report, or codex, classify it as intent = "report".
+If the request involves creating, updating, or deleting an entity, classify it as intent = "crud".
+Prefer "report" over "crud" when both could apply.
 
 Return only JSON in this structure:
 {
@@ -527,7 +531,7 @@ $routerResponse = callOpenAi($routerMessages);
 $intentData = json_decode(trim($routerResponse), true);
 error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 
-if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.5) {
+if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.6) {
     $intent = strtolower(trim($intentData['intent']));
     $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
 
@@ -583,27 +587,24 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
 }
 #endregion
 
-// 🔩 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling) — Preserved as fallback
-if (
-    !$handled &&
-    preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
-    preg_match('/\b(information|sheet|report|codex|module|file|summary)\b/i', $prompt)
-) {
-    error_log("🧭 AI-Enhanced Codex Information Sheet Generator triggered — prompt: " . $prompt);
+// 🔩 Codex Information Sheet Generator (Semantic Fallback)
+// Triggered only if the router did not handle the prompt (ensures graceful continuity)
+if (!$handled && !$intentData && preg_match('/\b(sheet|report|codex|module|summary)\b/i', $prompt)) {
+    error_log("🧭 Semantic Fallback: Codex Information Sheet Generator triggered — prompt: " . $prompt);
 
-    // 1️⃣ Load Codex (prefer dynamicData, fallback to file)
+    // 1️⃣ Load Codex (prefer live dynamicData snapshot, fallback to static file)
     $codexData = isset($dynamicData['codex'])
         ? $dynamicData['codex']
         : (file_exists(CODEX_PATH)
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
-    // Normalize structure (handles both wrapped + flat)
+    // Normalize structure (works for both wrapped and flat schemas)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
 
-    // 2️⃣ Build slim Codex index for AI resolution
+    // 2️⃣ Build lightweight semantic index
     $codexSlim = array();
     foreach ($modules as $key => $entry) {
         if (!is_array($entry) || !isset($entry['title'])) continue;
@@ -614,192 +615,86 @@ if (
         );
     }
 
-    // 3️⃣ AI Slug Resolution (semantic matching via OpenAI)
-    $resolutionPrompt = "User request: " . $prompt .
-        "\n\nAvailable Codex modules:\n" . json_encode($codexSlim, JSON_UNESCAPED_SLASHES) .
-        "\n\nResolve to the best-matching module slug. Respond strictly as JSON: {\"slug\": \"exact-slug\" or null}";
+    // 3️⃣ Ask AI to semantically resolve user request → module slug
+    $resolverPrompt = <<<PROMPT
+atch the following user request to the most relevant Codex module.
+Base your choice on meaning, not exact wording.
+
+User request: "$prompt"
+
+Available modules:
+PROMPT;
+    $resolverPrompt .= json_encode($codexSlim, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $resolverPrompt .= "\n\nRespond strictly as JSON: {\"slug\": \"best-match\" or null}";
 
     $messages = array(
-        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Match the user intent to the closest module based on title, description, or keywords. If uncertain, use null."),
-        array("role" => "user", "content" => $resolutionPrompt)
+        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Select the most relevant slug; use null if no confident match."),
+        array("role" => "user", "content" => $resolverPrompt)
     );
 
     $aiSlugResponse = callOpenAi($messages);
+    $slugResult = json_decode($aiSlugResponse, true);
+    $slug = isset($slugResult['slug']) ? trim($slugResult['slug']) : null;
 
-    // ================================================
-    // 🧭 AI Slug Resolution (normalized Codex matching)
-    // ================================================
-    $slug = null;
-    $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt)); // strip spaces/symbols
-
-    // 🔍 Combine top-level + nested 'modules' keys for unified search
-    $allModules = array_merge(
-        $codexData,
-        isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
-    );
-    //
-    error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
-
-    // Attempt direct normalized match
-    foreach ($allModules as $key => $module) {
-        $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
-        if (strpos($normalizedPrompt, $normalizedKey) !== false) {
-            $slug = $key;
-            break;
-        }
-    }
-
-    // 🧭 Fallback: try fuzzy match (spacing or plural tolerance)
+    // 4️⃣ Fallback: normalized key scanning if AI uncertain
     if (!$slug) {
-        foreach ($allModules as $key => $module) {
+        $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
+        foreach ($modules as $key => $module) {
             $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
-            if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
+            if (strpos($normalizedPrompt, $normalizedKey) !== false || levenshtein($normalizedPrompt, $normalizedKey) < 4) {
                 $slug = $key;
                 break;
             }
         }
     }
 
-    // ✅ Log and continue or fail gracefully
-    if ($slug) {
-        error_log("🧭 Normalized AI Slug Resolution → slug='" . $slug . "' from prompt='" . substr($prompt, 0, 100) . "'");
-    } else {
+    // 5️⃣ Final routing decision
+    if (!$slug || !isset($modules[$slug])) {
         error_log("⚠️ No matching Codex module found for prompt: " . substr($prompt, 0, 100));
-        echo json_encode([
-            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
-            "action"    => "none",
-            "sessionId" => uniqid()
-        ]);
-        exit;
+        sendJsonResponse("⚠️ No matching Codex module found. Please rephrase your request.", "none", array("sessionId" => $sessionId));
     }
 
-    // 4️⃣ Generate via internal API or build dynamic fallback
-    if ($slug && isset($modules[$slug])) {
-        $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
-        $payload = json_encode(array("slug" => $slug));
-        $context = stream_context_create(array(
-            "http" => array(
-                "method"  => "POST",
-                "header"  => "Content-Type: application/json\r\n",
-                "content" => $payload,
-                "timeout" => 15
-            )
-        ));
+    // 6️⃣ Generate report dynamically via internal API
+    $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
+    $payload = json_encode(array("slug" => $slug));
+    $context = stream_context_create(array(
+        "http" => array(
+            "method"  => "POST",
+            "header"  => "Content-Type: application/json\r\n",
+            "content" => $payload,
+            "timeout" => 15
+        )
+    ));
+    $result = @file_get_contents($apiUrl, false, $context);
 
-        $result = @file_get_contents($apiUrl, false, $context);
-
-        if ($result === false) {
-            $error = error_get_last();
-            $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-            $responsePayload = array(
-                "response"  => "❌ Network error contacting generateReports.php: $msg",
-                "action"    => "error",
-                "sessionId" => $sessionId
-            );
-            // **PATCH: Tag to prevent CTA injection in SemanticResponder**
-            $responsePayload["preventCtaInjection"] = true;
-        } else {
-            // ✅ Dynamic Codex Sheet Response (scales automatically)
-            $title = isset($modules[$slug]['title'])
-                ? trim($modules[$slug]['title'])
-                : ucwords(str_replace(array('-', '_'), ' ', $slug));
-
-            // Safeguard: Skip if title is empty (prevents zero-byte filenames)
-            if (empty($title)) {
-                $title = ucwords($slug);
-            }
-
-            // 🎭 Normalize emoji spacing (remove space after emoji prefix)
-            if (preg_match('/^([\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}])\s+(.*)$/u', $title, $m)) {
-                $title = $m[1] . $m[2];
-                error_log("🎭 Codex title normalized: removed space after emoji prefix → '$title'");
-            }
-
-            // ✅ Normalize filename — remove emojis, non-breaking spaces, BOM, zero-width spaces, and invisible residues
-            $cleanTitle = $title;
-
-            // 🔧 Remove UTF-8 BOM, non-breaking, and zero-width spaces (U+00A0, U+FEFF, U+200B–U+200D)
-            $cleanTitle = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200D}]+/u', ' ', $cleanTitle);
-            $cleanTitle = trim($cleanTitle);
-
-            // 🧭 Remove emoji and symbolic characters (if emoji not wanted in filenames)
-            $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $cleanTitle);
-
-            // 🔐 Remove remaining invisible Unicode spacing (U+2000–U+206F and directional marks)
-            $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $cleanTitle);
-
-            // 🛡️ Strip non-standard printable chars and normalize whitespace
-            $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);
-            $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
-
-            // 🚦 Final cleanup: collapse multiple or leading spaces
-            $cleanTitle = trim(preg_replace('/\s{2,}/', ' ', $cleanTitle));
-
-            // ✅ Always exactly one space after dash
-            $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
-
-            // Build path + clean public URL
-            $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-            $relativePath = str_replace('/home/notyou64/public_html', '', $pdfPath);
-            $publicUrl = 'https://www.skyelighting.com' . str_replace(' ', '%20', $relativePath);
-
-            // Error log for auditing
-            error_log("📘 Generated Info Sheet: slug='$slug', title='$title', cleanTitle='$cleanTitle', url='$publicUrl'");
-
-            // Unified JSON response
-            $responsePayload = array(
-                "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
-                "action"    => "sheet_generated",
-                "slug"      => $slug,
-                "reportUrl" => $publicUrl,
-                "sessionId" => $sessionId
-            );
-            // **PATCH: Tag to prevent CTA injection in SemanticResponder**
-            $responsePayload["preventCtaInjection"] = true;
-        }
-    } else {
-        // 🔐 Fallback if no AI match
-        $responsePayload = array(
-            "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
-            "action"    => "none",
-            "sessionId" => $sessionId
-        );
-        // **PATCH: Tag to prevent CTA injection in SemanticResponder**
-        $responsePayload["preventCtaInjection"] = true;
-    }
-    
-    // 🔹 FINAL CLEANUP PATCH: prevent duplicate "Open Report" links
-    if (isset($responsePayload["response"])) {
-
-        // Remove any repeated Markdown-style links
-        $responsePayload["response"] = preg_replace(
-            '/(📄\s*\[Open Report\][^\n]*){2,}/u',
-            '📄 [Open Report]',
-            $responsePayload["response"]
-        );
-
-        // Remove any repeated plain-text “📄 Open Report” phrases
-        $responsePayload["response"] = preg_replace(
-            '/(📄\s*Open Report\s*){2,}/u',
-            '📄 Open Report',
-            $responsePayload["response"]
-        );
-
-        // Collapse extra blank lines to keep spacing tidy
-        $responsePayload["response"] = preg_replace(
-            "/\n{3,}/",
-            "\n\n",
-            $responsePayload["response"]
-        );
+    if ($result === false) {
+        $err = error_get_last();
+        $msg = isset($err['message']) ? $err['message'] : 'Unknown network error';
+        sendJsonResponse("❌ Network error contacting generateReports.php: $msg", "error", array("sessionId" => $sessionId));
     }
 
-    // 5️⃣ Output unified JSON (always)
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=UTF-8');
-    }
+    // 7️⃣ Construct clean public URL + response
+    $title = isset($modules[$slug]['title']) ? trim($modules[$slug]['title']) : ucwords(str_replace(['-', '_'], ' ', $slug));
+    $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}\x{00A0}\x{FEFF}\x{200B}-\x{200D}\x{2000}-\x{206F}]+/u', '', $title);
+    $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', trim($cleanTitle));
+    $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
+    $publicUrl = 'https://www.skyelighting.com/skyesoft/docs/sheets/' . str_replace(' ', '%20', $fileName);
+
+    error_log("📘 Generated Info Sheet (fallback): slug='$slug', url='$publicUrl'");
+
+    $responsePayload = array(
+        "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
+        "action"    => "sheet_generated",
+        "slug"      => $slug,
+        "reportUrl" => $publicUrl,
+        "sessionId" => $sessionId,
+        "preventCtaInjection" => true
+    );
+
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
+
 
 $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
     ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
