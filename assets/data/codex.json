@@ -418,22 +418,70 @@
   "aiIntegration": {
     "title": "🧠 AI Integration",
     "category": "Adaptive Layer",
-    "enrichment": "medium",
+    "enrichment": "high",
     "purpose": {
       "icon": "target",
       "format": "text",
-      "text": "Defines how Skyesoft integrates external AI APIs to enhance context reasoning, enrichment, and decision automation."
+      "text": "Defines how Skyebot™ interprets user intent through semantic analysis, real-time data fusion, and contextual recall. The AI Integration layer enables natural, context-aware interaction without reliance on rigid syntax or keyword triggers."
     },
-    "workflow": {
-      "icon": "list",
+    "architecture": {
+      "icon": "diagram",
       "format": "list",
       "items": [
-        "Collect structured module context",
-        "Assemble enrichment prompts with codex metadata",
-        "Call OpenAI API for enhancement",
-        "Render output dynamically via Report Kernel"
+        "Semantic Intent Router — the central AI engine that interprets meaning from user input, using Codex, SSE data, and Chat History.",
+        "Codex Semantic Index — provides structured metadata (titles, descriptions, tags) to ground understanding in organizational context.",
+        "SSE Context Stream — supplies real-time data (time, KPIs, weather, system state) for situational awareness.",
+        "Chat History Ledger — serves as short- and long-term memory, allowing Skyebot™ to recall prior exchanges and avoid repetition.",
+        "Report Kernel — generates structured deliverables (sheets, reports, summaries) once the user’s intent is resolved."
       ]
-    }
+    },
+    "functionality": {
+      "icon": "workflow",
+      "format": "list",
+      "items": [
+        "Understands user intent based on phrasing, context, and conversation memory rather than keyword patterns.",
+        "Recognizes semantic relationships (e.g., 'workday report' → Time Interval Standards) through Codex indexing.",
+        "Adapts tone and response depth based on task complexity and recent history.",
+        "Prioritizes contextually relevant data from the SSE snapshot to keep replies temporally accurate.",
+        "Automatically attaches actionable CTAs when intent resolves to a valid Codex module or report type."
+      ]
+    },
+    "integrationPoints": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "Codex Knowledge Graph — semantic foundation for structured meaning and inter-module relationships.",
+        "SSE Dynamic Stream — provides continuous real-time data for contextual grounding.",
+        "Chat History Architecture — maintains chronological user interactions as an immutable reference.",
+        "CRUD Engine — executes create, read, update, and delete actions inferred through natural phrasing.",
+        "Report Kernel — materializes structured outputs aligned with Codex module specifications."
+      ]
+    },
+    "principles": {
+      "icon": "compass",
+      "format": "list",
+      "items": [
+        "Interpret meaning over syntax — understand what is said, not just how it’s said.",
+        "Ground all reasoning in Codex and SSE data — Skyebot™ never hallucinates or assumes without a source.",
+        "Use chat history for continuity — avoid repetition and leverage prior actions.",
+        "Preserve auditability — all inferred actions and AI-driven responses remain traceable in the chat ledger.",
+        "Deliver structured output when actionable, natural language when conversational."
+      ]
+    },
+    "outcomes": {
+      "icon": "star",
+      "format": "list",
+      "items": [
+        "Natural conversation replaces command syntax.",
+        "Full contextual reasoning with Codex and SSE awareness.",
+        "Automated, self-grounded decision-making within organizational context.",
+        "Adaptive user experience that learns and evolves per user and system state.",
+        "Reduced need for manual intervention or prompt engineering."
+      ]
+    },
+    "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
+    "version": "2.0",
+    "updated": "2025-10-14"
   },
   "sseStream": {
     "title": "🌐 SSE Stream",
