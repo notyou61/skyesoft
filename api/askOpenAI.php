@@ -1,39 +1,48 @@
 <?php
+// 📄 File: api/askOpenAI.php
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor)
 // =======================================================
-// 📄 FILE: api/askOpenAI.php
-// PURPOSE: Entry point for Skyebot AI interactions
-// COMPAT: PHP 5.6 (GoDaddy-safe)
+// 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
 // =======================================================
-
-#region 🧾 Logging & Session Initialization
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// Create a writable log file in /api/logs/
 $logDir = __DIR__ . '/logs';
-if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0777, true);
+}
 $logFile = $logDir . '/skyebot_debug.log';
 ini_set('error_log', $logFile);
-error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
-#endregion
 
-#region 📥 Input Loader (Web + CLI compatible)
+error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
+
+// =========================================================
+//  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
+// =========================================================
+
+// 1️⃣  Prefer web POST body
 $rawInput = file_get_contents('php://input');
 
-// Allow CLI testing
-if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '') && isset($argv[1])) {
-    $rawInput = $argv[1];
+// 2️⃣  If nothing came in, fall back to CLI argument
+if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
+    if (isset($argv[1]) && trim($argv[1]) !== '') {
+        $rawInput = $argv[1];
+    }
 }
 
+// 3️⃣  Decode JSON
 $rawInput  = trim($rawInput);
 $inputData = json_decode($rawInput, true);
 
-// Attempt light recovery from common quoting issues
+// 4️⃣  Fallback: try to fix common quoting mistakes
 if (!is_array($inputData)) {
+    // Remove surrounding quotes if Bash wrapped them
     $fixed = trim($rawInput, "\"'");
     $inputData = json_decode($fixed, true);
 }
 
-// Guard clause: invalid JSON
+// 5️⃣  Guard clause
 if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
     echo json_encode(array(
         'response'  => '❌ Invalid or empty JSON payload.',
@@ -43,81 +52,95 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-// Extract prompt & conversation (PHP 5.6 safe)
+// 6️⃣  Extract prompt/conversation (PHP 5.6 safe)
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
     ? $inputData['conversation'] : array();
 $lowerPrompt = strtolower($prompt);
-#endregion
 
-#region 🧩 Error & Output Shield
+// ===========================================================
+// 🔒 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
+// ===========================================================
+
+// Disable HTML error output and start buffering immediately
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 ob_start();
 
-// Convert all PHP warnings/errors to JSON
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    // Clean buffer completely
     while (ob_get_level()) { ob_end_clean(); }
-    header('Content-Type: application/json; charset=UTF-8');
-    $msg = "⚠️ PHP error [$errno]: " . htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
-    echo json_encode(array(
-        'response'  => $msg,
-        'action'    => 'error',
-        'sessionId' => session_id() ?: 'N/A'
-    ));
-    exit;
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8', true);
+
+    $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
+    $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
+    $response = array(
+        "response"  => $msg,
+        "action"    => "error",
+        "sessionId" => session_id() ?: 'N/A'
+    );
+
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    exit(1);
 }, E_ALL);
 
-// Final shutdown capture for fatals
 register_shutdown_function(function () {
-    $last = error_get_last();
-    $out  = ob_get_clean();
-    if ($last && ($last['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+    $lastError = error_get_last();
+    $output = ob_get_clean();
+
+    // Catch fatal errors that bypass the handler
+    if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
         while (ob_get_level()) { ob_end_clean(); }
-        header('Content-Type: application/json; charset=UTF-8');
-        $msg = "❌ Fatal error: " . htmlspecialchars(strip_tags($last['message']), ENT_QUOTES, 'UTF-8');
-        echo json_encode(array(
-            'response'  => $msg,
-            'action'    => 'error',
-            'sessionId' => session_id() ?: 'N/A'
-        ));
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8', true);
+
+        $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
+        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
+        $response = array(
+            "response"  => $msg,
+            "action"    => "error",
+            "sessionId" => session_id() ?: 'N/A'
+        );
+        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
         return;
     }
 
-    // Wrap stray output
-    if (!empty($out) && stripos(trim($out), '{') !== 0) {
-        header('Content-Type: application/json; charset=UTF-8');
+    // If normal output exists but isn’t JSON, wrap it safely
+    if (!empty($output) && stripos(trim($output), '{') !== 0) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        $clean = substr(strip_tags($output), 0, 500);
         echo json_encode(array(
-            'response'  => "❌ Internal error: " . substr(strip_tags($out), 0, 400),
-            'action'    => 'error',
-            'sessionId' => session_id() ?: 'N/A'
-        ));
-    } elseif (!empty($out)) {
-        header('Content-Type: application/json; charset=UTF-8');
-        echo trim($out);
+            "response"  => "❌ Internal error: " . $clean,
+            "action"    => "error",
+            "sessionId" => session_id() ?: 'N/A'
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } elseif (!empty($output)) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        echo trim($output);
     }
 });
-#endregion
 
-#region 🧩 Shared Helpers & Report Generators
+// ===========================================================
+// Require shared helpers *after* shield is active
+// ===========================================================
 require_once __DIR__ . "/helpers.php";
-#endregion
 
-#region 🔹 Report Generators (specific report logic)
+#region 🔩 Report Generators (specific report logic)
 require_once __DIR__ . "/reports/zoning.php";
 require_once __DIR__ . "/reports/signOrdinance.php";
 require_once __DIR__ . "/reports/photoSurvey.php";
 require_once __DIR__ . "/reports/custom.php";
 #endregion
 
-#region 🔹 Shared Zoning Logic
+#region 🔩 Shared Zoning Logic
 require_once __DIR__ . "/jurisdictionZoning.php";
 #endregion
 
-#region 🔹 Environment & Session Setup
+#region 🔩 Environment & Session Setup
 require_once __DIR__ . "/env_boot.php";
 header("Content-Type: application/json");
 date_default_timezone_set("America/Phoenix");
@@ -164,8 +187,8 @@ if ($dynamicRaw !== false && empty($err) && $httpCode === 200) {
         FILE_APPEND
     );
 }
- 
-/* Always build a snapshot, even if minimal */
+
+// Always build a snapshot, even if minimal
 if (!empty($dynamicData)) {
     $snapshotSummary = json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 } else {
@@ -186,124 +209,181 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
-#region 🧠 Semantic Intent Router (AI Replacement for Regex)
-// ==========================================================
-// Purpose: Replaces regex pattern logic with semantic Codex-based matching.
-// Detects user intent (sheet/report generation, etc.) using fuzzy and contextual matching.
-// ==========================================================
+// ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+// Retained for backward compatibility — now defers to AI semantic resolution
+if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
+    $moduleName = strtolower(str_replace(' ', '', $matches[1]));
+    $aiFallbackStarted = false; // safeguard tracker
 
-// Guard: skip if prompt is empty
-if (!empty($prompt)) {
-
-    #region 📦 Load & Normalize Codex
+    // Load codex safely
     $codexData = isset($dynamicData['codex'])
         ? $dynamicData['codex']
         : (file_exists(CODEX_PATH)
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
+    // Normalize structure (accepts both wrapped + flat)
     $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
         ? $codexData['modules']
         : $codexData;
 
-    #region 🧩 Legacy Codex Alias (Temporary Compatibility)
-    // Backward support for functions or includes expecting $codex
-    if (isset($codexData) && !isset($codex)) {
-        $codex = $codexData;
-    }
-    #endregion
-    #endregion
-
-    #region 🧩 Build Semantic Index (Hybrid – top-level + modules)
-    $semanticIndex = array();
-
-    // Combine both top-level and nested modules
-    $allModules = array_merge(
-        is_array($codexData) ? $codexData : array(),
-        (isset($codexData['modules']) && is_array($codexData['modules'])) ? $codexData['modules'] : array()
-    );
-
-    foreach ($allModules as $key => $module) {
-        if (!is_array($module)) continue;
-        $title = isset($module['title']) ? strtolower($module['title']) : strtolower($key);
-        $semanticIndex[$key] = $title;
-
-        // include single-word aliases for fuzzy matching
-        foreach (explode(' ', $title) as $word) {
-            if (strlen($word) > 2) $semanticIndex[$word] = $key;
-        }
-    }
-    #endregion
-
-    #region 🔍 Direct and Fuzzy Matching
-    $slug = null;
-    $highest = 0;
-    $lowerPrompt = strtolower($prompt);
-
-    // Step 1 — Direct key or title containment
-    foreach ($semanticIndex as $key => $title) {
-        if (strpos($lowerPrompt, $key) !== false || strpos($lowerPrompt, $title) !== false) {
-            $slug = $key;
-            $highest = 100;
+    // Search Codex for direct key match first
+    $foundKey = '';
+    foreach ($modules as $key => $val) {
+        if (strtolower($key) === $moduleName) {
+            $foundKey = $key;
             break;
         }
     }
 
-    // Step 2 — Fuzzy similarity fallback
-    if (!$slug) {
-        $promptLen = strlen($lowerPrompt);
-        foreach ($semanticIndex as $key => $title) {
-            $titleLen = strlen($title);
-            $maxLen = max($promptLen, $titleLen);
-            $distance = levenshtein($lowerPrompt, $title);
-            $percent = ((1 - ($distance / $maxLen)) * 100);
-            if ($percent > $highest) {
-                $highest = $percent;
+    // If found, return direct link
+    if (!empty($foundKey)) {
+        $title = isset($modules[$foundKey]['title']) ? $modules[$foundKey]['title'] : ucfirst($foundKey);
+        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array(
+            "response"  => "📄 <strong>" . $title . "</strong> — <a href=\"" . $link . "\" target=\"_blank\">Generate Sheet</a>",
+            "action"    => "sheet_generated",
+            "slug"      => $foundKey,
+            "reportUrl" => $link,
+            "sessionId" => $sessionId
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Otherwise → direct Codex resolver (no AI dependency)
+    if (!$aiFallbackStarted) {
+        $aiFallbackStarted = true;
+        error_log("⚙️ [Skyebot] Falling back to Codex resolver for prompt: $prompt");
+
+        // Build slim Codex index
+        $codexSlim = array();
+        foreach ($codexData as $key => $entry) {
+            if (!is_array($entry) || !isset($entry['title'])) continue;
+            $codexSlim[] = array(
+                "slug" => $key,
+                "title" => $entry['title'],
+                "description" => isset($entry['description']) ? $entry['description'] : ''
+            );
+        }
+
+        // ================================================
+        // 🧭 Direct Codex Slug Resolution (no AI dependency)
+        // ================================================
+        $slug = null;
+        $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
+
+        // Load full codex dataset (top-level + nested modules)
+        $allModules = array_merge(
+            $codexData,
+            isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
+        );
+
+        // Log visible keys
+        error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
+
+        // Try normalized substring match
+        foreach ($allModules as $key => $module) {
+            $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+            if (strpos($normalizedPrompt, $normalizedKey) !== false) {
                 $slug = $key;
+                break;
             }
         }
-    }
-    #endregion
 
-    #region ✅ Generate Response if Match Found
-    if ($slug && $highest >= 40) {
-        $title = isset($allModules[$slug]['title']) ? $allModules[$slug]['title'] : ucfirst($slug);
-        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $slug;
+        // Fuzzy fallback
+        if (!$slug) {
+            foreach ($allModules as $key => $module) {
+                $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+                if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
+                    $slug = $key;
+                    break;
+                }
+            }
+        }
 
-        sendJsonResponse(
-            "📄 <strong>{$title}</strong> — <a href=\"{$link}\" target=\"_blank\">Generate Sheet</a>",
-            "sheet_generated",
-            array(
-                "slug"       => $slug,
-                "reportUrl"  => $link,
-                "sessionId"  => $sessionId
-            )
-        );
-        exit;
-    }
-    #endregion
+        // Log result or exit
+        if ($slug) {
+            error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
+        } else {
+            error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
+            echo json_encode([
+                "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
+                "action"    => "none",
+                "sessionId" => uniqid()
+            ]);
+            exit;
+        }
 
-    #region ⚠️ No Match Fallback
-    if (empty($slug)) {
-        error_log("⚠️ No semantic match found for prompt: {$prompt}");
-        sendJsonResponse(
-            "⚠️ No matching Codex module found. Please rephrase your request.",
-            "none",
-            array("sessionId" => $sessionId)
-        );
-        exit;
+        // Generate via internal API
+        if ($slug && isset($allModules[$slug])) {
+            $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
+            $payload = json_encode(array("slug" => $slug));
+            $context = stream_context_create(array(
+                "http" => array(
+                    "method"  => "POST",
+                    "header"  => "Content-Type: application/json\r\n",
+                    "content" => $payload,
+                    "timeout" => 15
+                )
+            ));
+            $result = @file_get_contents($apiUrl, false, $context);
+
+            if ($result === false) {
+                $error = error_get_last();
+                $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
+                $response = "❌ Network error contacting generateReports.php: $msg";
+                $action = "error";
+                $publicUrl = null;
+            } else {
+                $title = isset($allModules[$slug]['title'])
+                    ? $allModules[$slug]['title']
+                    : ucwords(str_replace(array('-', '_'), ' ', $slug));
+
+                // 🛠 Sanitize title for safe file and URL use
+                function sanitizeTitleForUrl($text) {
+                    $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
+                    $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
+                    $clean = preg_replace('/\s+/', ' ', trim($clean));
+                    $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
+                    $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
+                    return trim($clean);
+                }
+
+                // ✅ File name + URL
+                $cleanTitle = sanitizeTitleForUrl($title);
+                $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
+                $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+                $publicUrl  = str_replace(
+                    array('/home/notyou64/public_html', ' ', '(', ')'),
+                    array('https://www.skyelighting.com', '%20', '%28', '%29'),
+                    $pdfPath
+                );
+
+                $response = "📘 The **" . $title . "** sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
+                $action = "sheet_generated";
+            }
+
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(array(
+                "response"  => $response,
+                "action"    => $action,
+                "slug"      => $slug,
+                "reportUrl" => $publicUrl,
+                "sessionId" => $sessionId
+            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
-    #endregion
 }
 
 if (empty($prompt)) {
     sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
     exit;
 }
-#endregion
 
-
-#region 📚 Build Context Blocks (Semantic Router)
+#region 🗜 Build Context Blocks (Semantic Router)
 $snapshotSlim = array(
     "timeDateArray" => isset($dynamicData['timeDateArray']) ? $dynamicData['timeDateArray'] : array(),
     "weatherData"   => isset($dynamicData['weatherData'])
@@ -330,7 +410,7 @@ $injectBlocks = array(
     "modules"  => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
 );
 
-// 🧠 Flatten Codex for RAG (add metadata for AI reasoning)
+// 🧭 Flatten Codex for RAG (add metadata for AI reasoning)
 $codexMeta = array();
 if (isset($dynamicData['codex']['modules'])) {
     foreach ($dynamicData['codex']['modules'] as $key => $mod) {
@@ -359,7 +439,7 @@ if (stripos($prompt, 'report') !== false) {
 }
 #endregion
 
-#region 🛡️ Headers and Setup
+#region 🚛 Headers and Setup
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
     sendJsonResponse("❌ API key not found.", "none", array("sessionId" => $sessionId));
@@ -404,7 +484,7 @@ foreach ($injectBlocks as $section => $block) {
 }
 #endregion
 
-#region 🚦 Dispatch Handler
+#region 🛣 Dispatch Handler
 $handled = false;
 $responsePayload = null;
 $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
@@ -452,7 +532,7 @@ elseif (preg_match('/\blog\s*in\s+as\s+([a-zA-Z0-9]+)\s+with\s+password\s+(.+)\b
     exit;
 }
 
-// 🔹 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling)
+// 🔩 Codex Information Sheet Generator (AI-Enhanced: Semantic Slug Resolution + Dynamic Scaling)
 if (
     !$handled &&
     preg_match('/\b(generate|create|make|produce|show|build|prepare)\b/i', $prompt) &&
@@ -496,15 +576,15 @@ if (
     $aiSlugResponse = callOpenAi($messages);
 
     // ================================================
-    // 🧠 AI Slug Resolution (normalized Codex matching)
+    // 🧭 AI Slug Resolution (normalized Codex matching)
     // ================================================
     $slug = null;
     $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt)); // strip spaces/symbols
 
     // 🔍 Combine top-level + nested 'modules' keys for unified search
     $allModules = array_merge(
-        $codex,
-        isset($codex['modules']) && is_array($codex['modules']) ? $codex['modules'] : []
+        $codexData,
+        isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
     );
     //
     error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
@@ -531,7 +611,7 @@ if (
 
     // ✅ Log and continue or fail gracefully
     if ($slug) {
-        error_log("🧠 Normalized AI Slug Resolution → slug='" . $slug . "' from prompt='" . substr($prompt, 0, 100) . "'");
+        error_log("🧭 Normalized AI Slug Resolution → slug='" . $slug . "' from prompt='" . substr($prompt, 0, 100) . "'");
     } else {
         error_log("⚠️ No matching Codex module found for prompt: " . substr($prompt, 0, 100));
         echo json_encode([
@@ -578,10 +658,10 @@ if (
                 $title = ucwords($slug);
             }
 
-            // 🔹 Normalize emoji spacing (remove space after emoji prefix)
+            // 🎭 Normalize emoji spacing (remove space after emoji prefix)
             if (preg_match('/^([\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}])\s+(.*)$/u', $title, $m)) {
                 $title = $m[1] . $m[2];
-                error_log("🎯 Codex title normalized: removed space after emoji prefix → '$title'");
+                error_log("🎭 Codex title normalized: removed space after emoji prefix → '$title'");
             }
 
             // ✅ Normalize filename — remove emojis, non-breaking spaces, BOM, zero-width spaces, and invisible residues
@@ -591,13 +671,13 @@ if (
             $cleanTitle = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200D}]+/u', ' ', $cleanTitle);
             $cleanTitle = trim($cleanTitle);
 
-            // 🧠 Remove emoji and symbolic characters (if emoji not wanted in filenames)
+            // 🧭 Remove emoji and symbolic characters (if emoji not wanted in filenames)
             $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}]+/u', '', $cleanTitle);
 
-            // 🧩 Remove remaining invisible Unicode spacing (U+2000–U+206F and directional marks)
+            // 🔐 Remove remaining invisible Unicode spacing (U+2000–U+206F and directional marks)
             $cleanTitle = preg_replace('/[\x{2000}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $cleanTitle);
 
-            // 🧱 Strip non-standard printable chars and normalize whitespace
+            // 🛡️ Strip non-standard printable chars and normalize whitespace
             $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', $cleanTitle);
             $cleanTitle = preg_replace('/\s+/', ' ', trim($cleanTitle));
 
@@ -627,7 +707,7 @@ if (
             $responsePayload["preventCtaInjection"] = true;
         }
     } else {
-        // 🧩 Fallback if no AI match
+        // 🔐 Fallback if no AI match
         $responsePayload = array(
             "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
             "action"    => "none",
@@ -637,7 +717,7 @@ if (
         $responsePayload["preventCtaInjection"] = true;
     }
     
-    // 🩹 FINAL CLEANUP PATCH: prevent duplicate "Open Report" links
+    // 🔹 FINAL CLEANUP PATCH: prevent duplicate "Open Report" links
     if (isset($responsePayload["response"])) {
 
         // Remove any repeated Markdown-style links
@@ -750,7 +830,7 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-z
     exit;
 }
 
-// 🧩 Codex Acronym Resolver (Pre-normalization)
+// 🔐 Codex Acronym Resolver (Pre-normalization)
 if (!$handled && isset($dynamicData['codex']['modules'])) {
     $acronymMap = array();
 
@@ -765,7 +845,7 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
 
     foreach ($acronymMap as $acro => $slug) {
         if (stripos($normalizedPrompt, $acro) !== false) {
-            error_log("🔁 Acronym '$acro' matched Codex key '$slug' in prompt.");
+            error_log("🔍 Acronym '$acro' matched Codex key '$slug' in prompt.");
             // Automatically rewrite the prompt to full title for matching
             $prompt = preg_replace('/\b' . preg_quote($acro, '/') . '\b/i', $slug, $prompt);
             break;
@@ -807,7 +887,7 @@ if (!$handled) {
 
     if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
     // Default response text
-    $responseText = $aiResponse . " ⁂";
+    $responseText = $aiResponse . " ‧";
 
         // Ensure codex is loaded
         if (!isset($codex) || !isset($codex['modules'])) {
@@ -820,7 +900,7 @@ if (!$handled) {
 
         $ctaAdded = false; // ✅ safeguard against multiple links
 
-        // 🔹 Normalize AI response for safer matching
+        // 🔩 Normalize AI response for safer matching
         $normalizedResponse = normalizeTitle($aiResponse);
 
         // **PATCH: Guard to skip CTA injection if payload is pre-tagged**
@@ -842,8 +922,8 @@ if (!$handled) {
                     $acronym = $matches[1];
                 }
 
-                error_log("🔎 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
-                error_log("🔎 AI Response snippet: " . substr($normalizedResponse, 0, 200));
+                error_log("📐 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
+                error_log("📐 AI Response snippet: " . substr($normalizedResponse, 0, 200));
 
                 if (
                     (!empty($rawTitle)   && stripos($normalizedResponse, $rawTitle)   !== false) ||
@@ -865,7 +945,7 @@ if (!$handled) {
                 $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
                 $sheetTitle   = isset($sheetDef['title']) ? normalizeTitle($sheetDef['title']) : '';
 
-                error_log("🔎 Checking information sheet: sheetKey='$sheetKey', sheetTitle='$sheetTitle', sheetPurpose='$sheetPurpose'");
+                error_log("📐 Checking information sheet: sheetKey='$sheetKey', sheetTitle='$sheetTitle', sheetPurpose='$sheetPurpose'");
 
                 if (
                     (!empty($sheetPurpose) && stripos($normalizedResponse, $sheetPurpose) !== false) ||
@@ -887,7 +967,7 @@ if (!$handled) {
 
                 $cleanKey = normalizeTitle($key);
 
-                error_log("🔎 Checking glossary: key='$key', cleanKey='$cleanKey'");
+                error_log("📐 Checking glossary: key='$key', cleanKey='$cleanKey'");
 
                 if (
                     stripos($normalizedResponse, $key) !== false ||
@@ -908,7 +988,7 @@ if (!$handled) {
 
                 $cleanDoc = normalizeTitle($doc);
 
-                error_log("🔎 Checking included document: doc='$doc', cleanDoc='$cleanDoc'");
+                error_log("📐 Checking included document: doc='$doc', cleanDoc='$cleanDoc'");
 
                 if (
                     stripos($normalizedResponse, $doc) !== false ||
