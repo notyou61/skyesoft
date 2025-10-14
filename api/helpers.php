@@ -455,3 +455,39 @@ function findCodexMatch($text, $codex) {
     }
     return null;
 }
+// ===============================================================
+// ?? Semantic Intent Helpers
+// ===============================================================
+
+function handleIntentCrud($intentData, $sessionId) {
+    $entity = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : 'unknown';
+    $action = isset($intentData['intent']) ? ucfirst(strtolower($intentData['intent'])) : 'Unknown';
+
+    return [
+        "response" => "🧾 Semantic CRUD request detected.\nAction: **$action**\nEntity: **$entity**\n\n(Handler under construction.)",
+        "action"   => "crud_placeholder",
+        "sessionId"=> $sessionId
+    ];
+}
+
+function handleIntentReport($intentData, $sessionId) {
+    // 🧭 Normalize target (remove spaces and lowercase)
+    $target = isset($intentData['target'])
+        ? preg_replace('/\s+/', '', strtolower(trim($intentData['target'])))
+        : 'unspecified';
+
+    // 🌐 Construct report URL safely
+    $reportUrl = "https://www.skyelighting.com/skyesoft/api/generateReports.php?module=" . urlencode($target);
+
+    // 🧩 Log routing info for debugging
+    error_log("📘 [Semantic Router] Report intent detected → Target: $target | Session: $sessionId");
+
+    // ✅ Return structured JSON response
+    return [
+        "response"  => "📘 The **" . ucfirst($target) . "** sheet is ready.\n\n📄 [Open Report](" . $reportUrl . ")",
+        "action"    => "sheet_generated",
+        "slug"      => $target,
+        "reportUrl" => $reportUrl,
+        "sessionId" => $sessionId
+    ];
+}
