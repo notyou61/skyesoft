@@ -681,7 +681,6 @@ PROMPT;
     exit;
 }
 
-
 $reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
     ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
     : array();
@@ -787,6 +786,11 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
             break;
         }
     }
+}
+
+// 🔧 Ensure $systemPrompt is defined for legacy fallback use
+if (!isset($systemPrompt)) {
+    $systemPrompt = "Skyebot Context: Use SSE live data, Codex modules, and user conversation history to generate an intelligent response.";
 }
 
 // 4. 🧭 SemanticResponder — Preserved as fallback
