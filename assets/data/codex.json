@@ -497,11 +497,11 @@
   "chatHistoryArchitecture": {
     "title": "💾 Chat History Architecture",
     "category": "System Layer",
-    "enrichment": "medium",
+    "enrichment": "high",
     "purpose": {
       "icon": "target",
       "format": "text",
-      "text": "Defines how Skyebot™ records every exchange into an immutable, timestamped ledger. Each message and reply is stored with a unique ID derived from the session's UNIX timestamp and incremental counter."
+      "text": "Defines how Skyebot™ records, recalls, and reasons from prior exchanges. Each message or action is stored as an immutable, timestamped ledger entry, enabling Skyebot to maintain continuity, avoid redundancy, and extrapolate intent based on historical context."
     },
     "structure": {
       "icon": "table",
@@ -512,7 +512,8 @@
         { "Field": "userId", "Type": "Integer", "Description": "Identifies the actor; 0 = Skyebot™, >0 = Human user, -1 = Anonymous" },
         { "Field": "message", "Type": "String", "Description": "User input or Skyebot response text" },
         { "Field": "attachments", "Type": "Array", "Description": "Optional list of attached file objects or paths" },
-        { "Field": "metadata", "Type": "Object", "Description": "Includes IP address, CRUD action key, and system tags" }
+        { "Field": "metadata", "Type": "Object", "Description": "Includes IP address, CRUD action key, project, target, and system tags" },
+        { "Field": "index", "Type": "Object", "Description": "Lightweight subset for fast lookups by action, target, or project" }
       ]
     },
     "metadataModel": {
@@ -521,7 +522,8 @@
       "items": [
         "IP address recorded for traceability and audit",
         "CRUD action logged from actions.json reference table",
-        "System actions such as login and session start treated as Create-type events"
+        "System actions such as login and session start treated as Create-type events",
+        "Indexed metadata enables Skyebot to recall and compare recent actions (e.g., detect if an email or report has already been sent)"
       ]
     },
     "integrationPoints": {
@@ -530,7 +532,8 @@
       "items": [
         "CRUD User Interface Convention — aligns user actions with audit trail entries",
         "File Management — manages persistence under /api/data/chat_history/",
-        "Skyebot Module — appends events for each conversation exchange"
+        "Skyebot Module — appends and analyzes events for recall and continuity",
+        "Action Recall & Extrapolation — prevents redundant execution and allows intelligent inference of follow-up tasks"
       ]
     },
     "principles": {
@@ -540,13 +543,24 @@
         "Append-only structure for audit integrity",
         "Human-readable JSON with atomic writes",
         "Chronological order preserved via UNIX timestamps",
-        "Session files indexed monthly for scalability"
+        "Session files indexed monthly for scalability",
+        "Short-term context used for reasoning; long-term ledger retained for analytics and provenance"
+      ]
+    },
+    "extrapolationLogic": {
+      "icon": "brain",
+      "format": "list",
+      "items": [
+        "Skyebot queries recent history before executing Create actions to prevent duplication (e.g., repeated emails or reports)",
+        "Pattern matching based on metadata.target and metadata.project identifies related prior actions",
+        "Temporal cutoff (default 24 hours) used to define 'recent' actions for recall",
+        "When ambiguity is detected, Skyebot prompts with options instead of acting blindly"
       ]
     },
     "example": {
       "icon": "code",
       "format": "text",
-      "text": "{\n  \"messageId\": \"1739432447_4\",\n  \"timestamp\": 1739432489,\n  \"userId\": 1,\n  \"message\": \"Generate Time Interval Standards sheet.\",\n  \"attachments\": [],\n  \"metadata\": { \"ip\": \"73.10.24.120\", \"action\": \"create_report\", \"crud\": \"C\" }\n}"
+      "text": "{\n  \"messageId\": \"1739432447_4\",\n  \"timestamp\": 1739432489,\n  \"userId\": 1,\n  \"message\": \"Send zoning report to Paula.\",\n  \"attachments\": [],\n  \"metadata\": {\n    \"ip\": \"73.10.24.120\",\n    \"action\": \"create_email\",\n    \"crud\": \"C\",\n    \"target\": \"Paula Leonard\",\n    \"project\": \"Mesa Zoning\"\n  },\n  \"index\": { \"action\": \"create_email\", \"target\": \"Paula Leonard\", \"project\": \"Mesa Zoning\" }\n}"
     }
   },
   "modules": {
