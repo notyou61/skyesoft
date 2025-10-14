@@ -216,9 +216,22 @@ if (!empty($prompt)) {
 
     #region 🧩 Build Semantic Index
     $semanticIndex = array();
-    foreach ($modules as $key => $module) {
+
+    // Combine both top-level and nested modules (if present)
+    $allModules = array_merge(
+        is_array($codexData) ? $codexData : array(),
+        (isset($codexData['modules']) && is_array($codexData['modules'])) ? $codexData['modules'] : array()
+    );
+
+    foreach ($allModules as $key => $module) {
+        if (!is_array($module)) continue;
         $title = isset($module['title']) ? strtolower($module['title']) : strtolower($key);
         $semanticIndex[$key] = $title;
+
+        // include single-word aliases for fuzzy matching
+        foreach (explode(' ', $title) as $word) {
+            if (strlen($word) > 2) $semanticIndex[$word] = $key;
+        }
     }
     #endregion
 
@@ -253,7 +266,7 @@ if (!empty($prompt)) {
     #endregion
 
     #region ✅ Generate Response if Match Found
-    if ($slug && $highest >= 50) {
+    if ($slug && $highest >= 40) {
         $title = isset($modules[$slug]['title']) ? $modules[$slug]['title'] : ucfirst($slug);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $slug;
 
