@@ -488,32 +488,11 @@ foreach ($injectBlocks as $section => $block) {
     $systemPrompt .= json_encode($block, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 #endregion
-
 #region 🛣 Dispatch Handler (Semantic Intent Router)
 $handled = false;
 $responsePayload = null;
 
-#region Semantic Intent Router — replaces regex triggers entirely
-$handled = false;
-$responsePayload = null;
-
-// 🧠 PRE-ROUTER SEMANTIC LAYER — early detection of report intent
-// This runs BEFORE the routerPrompt so we can intercept common phrasing
-if (
-    preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
-    preg_match('/\b(sheet|report|codex|summary|document)\b/i', $prompt)
-) {
-    error_log("⚡ Pre-router override: Detected report-style phrasing → forcing intent = 'report'.");
-    $intentData = [
-        "intent"     => "report",
-        "target"     => "auto",
-        "confidence" => 1.0
-    ];
-}
-
-// ==========================
-// Continue with Router Logic
-// ==========================
+// Semantic Intent Router — replaces regex triggers entirely
 $routerPrompt = <<<PROMPT
 You are the Skyebot™ Semantic Intent Router.
 Your role is to classify and route user intent based on meaning, not keywords.
@@ -548,7 +527,7 @@ $routerMessages = array(
 );
 
 $routerResponse = callOpenAi($routerMessages);
-$intentData = $intentData ?? json_decode(trim($routerResponse), true);
+$intentData = json_decode(trim($routerResponse), true);
 error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 
 if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.6) {
@@ -556,11 +535,14 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
     $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
 
     // 🧠 SEMANTIC CORRECTION LAYER (linguistic override + expanded report bias)
+
+    // If AI classified as CRUD but user said "sheet" or "report", reroute to Report intent.
     if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
         error_log("🔄 Linguistic correction: rerouting CRUD → Report (phrase matched 'sheet' or 'report').");
         $intent = 'report';
     }
 
+    // 🧠 SEMANTIC REPORT BIAS — expand verbs that imply creation of tangible output
     if (
         in_array($intent, ['general', 'crud']) &&
         preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
@@ -570,8 +552,8 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         $intent = 'report';
     }
 
-    // Intent Switch
     switch ($intent) {
+        // 🔑 Logout
         case "logout":
             performLogout();
             echo json_encode([
@@ -582,7 +564,9 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
+        // 🔑 Login
         case "login":
+            // Router may return "target":"username" or null
             $_SESSION['user'] = $target ?: 'guest';
             echo json_encode([
                 "actionType" => "Login",
@@ -592,6 +576,7 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
+        // 📘 Report / Information Sheet
         case "report":
             if ($target && isset($dynamicData['codex']['modules'][$target])) {
                 include __DIR__ . "/dispatchers/intent_report.php";
@@ -599,11 +584,14 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             }
             break;
 
+        // 🧾 CRUD Operations
         case "crud":
             include __DIR__ . "/dispatchers/intent_crud.php";
             exit;
 
+        // 💬 General or Unclassified → fallback to SemanticResponder
         default:
+            // Fall through to existing semantic responder logic below
             break;
     }
 }
