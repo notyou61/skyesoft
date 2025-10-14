@@ -535,13 +535,24 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
     $intent = strtolower(trim($intentData['intent']));
     $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
 
-    // 🧠 SEMANTIC CORRECTION LAYER (linguistic override)
-    // If AI classified as CRUD but user said "sheet" or "report", reroute to Report intent.
-    if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
-        error_log("🔄 Linguistic correction: rerouting CRUD → Report (phrase matched 'sheet' or 'report').");
+// 🧠 SEMANTIC CORRECTION LAYER (linguistic override + expanded report bias)
+
+// If AI classified as CRUD but user said "sheet" or "report", reroute to Report intent.
+if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
+    error_log("🔄 Linguistic correction: rerouting CRUD → Report (phrase matched 'sheet' or 'report').");
+    $intent = 'report';
+}
+
+    // 🧠 SEMANTIC REPORT BIAS — expand verbs that imply creation of tangible output
+    if (
+        in_array($intent, ['general', 'crud']) &&
+        preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
+        preg_match('/\b(sheet|report|codex|summary|document)\b/i', $prompt)
+    ) {
+        error_log("🔁 Semantic override: rerouting {$intent} → report (creation verb + document noun).");
         $intent = 'report';
     }
-
+    // Intent Switch
     switch ($intent) {
         // 🔑 Logout
         case "logout":
