@@ -515,6 +515,25 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         $intent = 'report';
     }
 
+    // 🧩 Codex-Aware Sheet Recognition
+    // Detects “sheet” as a formal Skyesoft document type (per Document Standards)
+    if (
+        $intent !== 'report' &&
+        preg_match('/\bsheet\b/i', $prompt) &&
+        isset($codexMeta)
+    ) {
+        foreach ($codexMeta as $key => $meta) {
+            if (!isset($meta['title'])) continue;
+            $title = strtolower($meta['title']);
+            $category = isset($meta['category']) ? strtolower($meta['category']) : '';
+            if (strpos($title, 'document standards') !== false || strpos($category, 'system layer') !== false) {
+                error_log("📄 Codex-aware override: 'sheet' request matched Document Standards context → intent=report.");
+                $intent = 'report';
+                break;
+            }
+        }
+    }
+
     switch ($intent) {
         // 🔑 Logout
         case "logout":
