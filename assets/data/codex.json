@@ -44,6 +44,54 @@
       "text": "The Codex Meta itself is parsed but excluded from standard report output. It is used to validate module structure, apply enrichment rules, and maintain interoperability between AI components."
     }
   },
+  "ontologySchema": {
+    "title": "🧠 Codex Ontology Schema",
+    "category": "System Layer",
+    "enrichment": "none",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the universal semantic keys that describe how each Codex module relates to others, enabling AI-driven reasoning and context-aware classification without hardcoded logic."
+    },
+    "fields": {
+      "type": {
+        "definition": "Specifies what kind of conceptual object the module represents (e.g., document, process, data-stream, entity, layer).",
+        "example": "document",
+        "reasoningRole": "Allows Skyebot to group modules by their nature for intent routing."
+      },
+      "subtypes": {
+        "definition": "Lists any derivative types under the main type (e.g., sheet, report, summary).",
+        "example": ["sheet", "report", "summary"],
+        "reasoningRole": "Enables recognition that 'sheet' and 'report' are semantically related."
+      },
+      "actions": {
+        "definition": "Verbs or operations the module supports (e.g., generate, create, describe).",
+        "example": ["generate", "create", "review"],
+        "reasoningRole": "Used by the Semantic Intent Router to map user verbs to system functions."
+      },
+      "relationships": {
+        "definition": "Describes how this module connects to others in the Codex Knowledge Graph.",
+        "structure": {
+          "isA": "Parent type or conceptual ancestor.",
+          "partOf": "Layer or suite it belongs to.",
+          "governs": "Modules governed or influenced by this one.",
+          "aliases": "Alternate names or identifiers used in conversation."
+        },
+        "example": {
+          "isA": "documentStandard",
+          "partOf": "System Layer",
+          "governs": ["permitManagementSuite", "financialControlSuite"],
+          "aliases": ["document rules", "sheet standard"]
+        },
+        "reasoningRole": "Creates relational intelligence — allows AI to infer intent even if a term or alias differs."
+      }
+    },
+    "scalabilityNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "By defining these fields, Skyebot can interpret meaning directly from Codex data instead of using rigid conditionals. Future modules automatically inherit semantic awareness through consistent ontology mapping."
+    }
+  },
   "skyesoftOverview": {
     "title": "📘 Skyesoft Overview",
     "category": "System Layer",
@@ -105,6 +153,15 @@
   "documentStandards": {
     "title": "📄 Document Standards",
     "category": "System Layer",
+    "type": "document",
+    "subtypes": ["sheet", "report", "summary"],
+    "actions": ["generate", "create", "review"],
+    "relationships": {
+      "isA": "systemStandard",
+      "partOf": "System Layer",
+      "governs": ["permitReports", "photoSurveyReports"],
+      "aliases": ["document rules", "report format", "sheet layout"]
+    },
     "enrichment": "medium",
     "purpose": {
       "icon": "target",
@@ -125,6 +182,16 @@
   "timeIntervalStandards": {
     "title": "⏱️ Time Interval Standards (TIS)",
     "category": "System Layer",
+    "type": "temporal-standard",
+    "subtypes": ["schedule", "time-interval", "work-segment"],
+    "actions": ["calculate", "evaluate", "generate-sheet"],
+    "relationships": {
+      "isA": "systemStandard",
+      "partOf": "System Layer",
+      "governs": ["attendanceSuite", "permitManagementSuite"],
+      "dependsOn": ["sseStream"],
+      "aliases": ["TIS", "Time Standards", "Workday Schema"]
+    },
     "enrichment": "medium",
     "purpose": {
       "icon": "target",
@@ -156,24 +223,14 @@
     },
     "holidays": {
       "icon": "calendar",
-      "format": "table",
-      "items": [
-        { "Date": "2025-01-01", "Holiday": "New Year's Day" },
-        { "Date": "2025-01-20", "Holiday": "Martin Luther King Jr. Day" },
-        { "Date": "2025-02-17", "Holiday": "Presidents' Day" },
-        { "Date": "2025-05-26", "Holiday": "Memorial Day" },
-        { "Date": "2025-07-04", "Holiday": "Independence Day" },
-        { "Date": "2025-09-01", "Holiday": "Labor Day" },
-        { "Date": "2025-10-13", "Holiday": "Columbus Day" },
-        { "Date": "2025-11-11", "Holiday": "Veterans Day" },
-        { "Date": "2025-11-27", "Holiday": "Thanksgiving Day" },
-        { "Date": "2025-12-25", "Holiday": "Christmas Day" }
-      ]
+      "format": "dynamic",
+      "source": "sseStream.weatherData.federalHolidaysDynamic",
+      "description": "Holiday data is dynamically sourced from the SSE stream (via federalHolidays.php). Updates automatically reflect new or upcoming federal holidays."
     },
     "exclusions": {
       "icon": "shield",
       "format": "text",
-      "text": "Weekends and Holidays are automatically excluded from all time-sensitive calculations and scheduling routines. Live data for holidays is dynamically retrieved via the Skyesoft SSE stream and federalHolidays.php."
+      "text": "Weekends and dynamically sourced Holidays are automatically excluded from all time-sensitive calculations and scheduling routines."
     }
   },
   "fileManagement": {
@@ -486,6 +543,15 @@
   "sseStream": {
     "title": "🌐 SSE Stream",
     "category": "Adaptive Layer",
+    "type": "data-stream",
+    "subtypes": ["live-feed", "system-pulse", "context-stream"],
+    "actions": ["observe", "generate-sheet", "sync", "describe"],
+    "relationships": {
+      "isA": "adaptiveModule",
+      "partOf": "Adaptive Layer",
+      "governs": ["aiIntegration", "chatHistoryArchitecture"],
+      "aliases": ["Server-Sent Events", "Skyesoft Stream", "SSE Feed"]
+    },
     "enrichment": "light",
     "purpose": {
       "icon": "target",
