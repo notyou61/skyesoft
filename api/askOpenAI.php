@@ -244,6 +244,9 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
         $title = isset($modules[$foundKey]['title']) ? $modules[$foundKey]['title'] : ucfirst($foundKey);
         $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
 
+        // 🔧 Immediately trigger report generation server-side
+        @file_get_contents($link);
+
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
             "response"  => "📄 <strong>" . $title . "</strong> — <a href=\"" . $link . "\" target=\"_blank\">Generate Sheet</a>",
