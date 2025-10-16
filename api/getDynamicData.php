@@ -36,6 +36,7 @@ ini_set('display_errors', 1);
 #region 📊 Data Loading
 $mainData = array();
 $uiEvent = null;
+
 if (is_readable(DATA_PATH)) {
     $rawData = file_get_contents(DATA_PATH);
     if ($rawData !== false) {
@@ -87,6 +88,12 @@ if (is_readable(ANNOUNCEMENTS_PATH)) {
         }
     }
 }
+
+$federalHolidays = array();
+if (file_exists(HOLIDAYS_PATH)) {
+    $json = file_get_contents(HOLIDAYS_PATH);
+    $federalHolidays = json_decode($json, true);
+}
 #endregion
 
 #region 🔐 Environment Variables
@@ -130,6 +137,24 @@ function requireEnv($key) {
         exit;
     }
     return $v;
+}
+#endregion
+
+#region 🎯 Federal Holiday Normalization
+// ======================================================================
+// Convert associative holiday array (date => name)
+// into a structured array of objects [{name, date}]
+// Ensures consistency with Codex and SSE schema expectations.
+// ======================================================================
+if (is_array($federalHolidays) && array_keys($federalHolidays) !== range(0, count($federalHolidays) - 1)) {
+    $converted = array();
+    foreach ($federalHolidays as $date => $name) {
+        $converted[] = array(
+            'name' => $name,
+            'date' => $date
+        );
+    }
+    $federalHolidays = $converted;
 }
 #endregion
 
@@ -388,6 +413,8 @@ if ($dirty && is_writable(DATA_PATH)) {
 
 #region 📤 Response Assembly
 $response = array(
+    // ✅ Add dynamic holidays at the top level (proper scope)
+    'federalHolidaysDynamic' => isset($federalHolidays) ? $federalHolidays : array(),
     'timeDateArray' => array(
         'currentUnixTime' => $currentUnixTime,
         'currentLocalTime' => $currentTime,
