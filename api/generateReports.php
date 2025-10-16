@@ -79,11 +79,10 @@ if (!$OPENAI_API_KEY) {
 }
 #endregion
 
-// --------------------------
+/// --------------------------
 // Load codex.json dynamically
 // --------------------------
 $codexPath = __DIR__ . '/../assets/data/codex.json';
-// Check if the codex file exists
 if (!file_exists($codexPath)) {
     logError("❌ ERROR: Codex file not found at $codexPath");
     die();
@@ -101,28 +100,25 @@ if ($codex === null) {
 $modules = array();
 
 foreach ($codex as $key => $value) {
-    if ($key === 'codexModules' && is_array($value)) {
+    // ✅ Accept both 'modules' and 'codexModules' roots
+    if (($key === 'codexModules' || $key === 'modules') && is_array($value)) {
         $modules = array_merge($modules, $value);
         continue;
     }
 
-    if (!is_array($value) || !isset($value['title'])) {
-        continue;
-    }
+    if (!is_array($value) || !isset($value['title'])) continue;
 
     $hasValidSection = false;
-
     foreach ($value as $sectionKey => $section) {
         if ($sectionKey === 'title') continue;
         if (!is_array($section)) continue;
 
-        // ✅ Accept both classic formats and ontology-compatible ones
-        if (isset($section['format']) && in_array($section['format'], array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic'))) {
+        if (isset($section['format']) && in_array($section['format'],
+            array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic'))) {
             $hasValidSection = true;
             break;
         }
 
-        // ✅ Allow ontology-style sections that have list-like data but no explicit format
         if (isset($section['items']) && is_array($section['items'])) {
             $hasValidSection = true;
             break;
@@ -132,13 +128,11 @@ foreach ($codex as $key => $value) {
     if ($hasValidSection) {
         $modules[$key] = $value;
     }
-} // 👈 this closes the foreach loop
+}
 
 // ----------------------------------------------------------------------
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
 // ----------------------------------------------------------------------
-
-// Always define these early to prevent "undefined variable" notices
 $slug  = isset($slug)  ? $slug  : null;
 $input = isset($input) ? $input : null;
 
@@ -184,7 +178,6 @@ $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
 // --- 6️⃣  Validate existence in $modules ---
 if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
 
-    // 🔍 Debug log of available keys
     logMessage("🔍 DEBUG: Searching for slug '$slug' in modules. Keys: " . implode(', ', array_keys($modules)));
 
     // ✅ Case-insensitive fallback search
@@ -211,14 +204,13 @@ if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
     $module = $modules[$slug]; // Normal match
 }
 
-// ✅ Safe to use $module from here on
-$module = $modules[$slug];
-
 logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
 
-// Skip validation for dynamic ontology sections injected later
-$ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
+// ----------------------------------------------------------------------
 // Validate each module's sections
+// ----------------------------------------------------------------------
+$ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
+
 foreach ($module as $key => $section) {
     if (in_array($key, $ontologyWhitelist)) continue;
     if ($key === 'title') continue;
