@@ -533,7 +533,38 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             }
         }
     }
+    // 🧩 NEW — Codex Relationship Resolver (Ontology Integration)
+    if ($target && isset($codexMeta[$target])) {
+        $meta = $codexMeta[$target];
 
+        // 1️⃣ Resolve dependencies
+        if (!empty($meta['dependsOn'])) {
+            error_log("🔗 $target depends on: " . implode(', ', $meta['dependsOn']));
+            foreach ($meta['dependsOn'] as $dep) {
+                if (isset($codexMeta[$dep])) {
+                    $meta['resolvedDependencies'][$dep] = $codexMeta[$dep];
+                }
+            }
+        }
+
+        // 2️⃣ Resolve providers
+        if (!empty($meta['provides'])) {
+            error_log("📡 $target provides: " . implode(', ', $meta['provides']));
+            $meta['resolvedProviders'] = $meta['provides'];
+        }
+
+        // 3️⃣ Match aliases
+        if (!empty($meta['aliases'])) {
+            $aliases = implode('|', array_map('preg_quote', $meta['aliases']));
+            if (preg_match("/\b($aliases)\b/i", $prompt)) {
+                error_log("🪞 Alias matched for $target via " . $aliases);
+                $intent = 'report';
+            }
+        }
+
+        $codexMeta[$target] = $meta;
+    }
+    // Switch routing based on final intent
     switch ($intent) {
         // 🔑 Logout
         case "logout":
