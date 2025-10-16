@@ -176,16 +176,24 @@ logMessage("ℹ️ Codex merge complete: " . count($modules) . " valid modules l
 $slug  = isset($slug)  ? $slug  : null;
 $input = isset($input) ? $input : null;
 
-// --- Read raw JSON input once (if not already parsed) ---
-if (!$input) {
-    $rawInput = @file_get_contents('php://input');
-    if ($rawInput !== false && strlen($rawInput)) {
-        $tmp = @json_decode($rawInput, true);
-        if (is_array($tmp)) {
-            $input = $tmp;
-        }
+// ----------------------------------------------------------------------
+// Safe Input Bootstrap (handles both JSON POST and GET requests)
+// ----------------------------------------------------------------------
+$input = array(); // always start with a valid array
+
+$rawInput = @file_get_contents('php://input');
+if ($rawInput !== false && strlen($rawInput) > 0) {
+    $tmp = @json_decode($rawInput, true);
+    if (is_array($tmp)) {
+        $input = $tmp;
+        logMessage("ℹ️ JSON input detected and parsed successfully.");
+    } else {
+        logMessage("⚠️ Raw input present but not valid JSON.");
     }
+} else {
+    logMessage("ℹ️ No JSON body detected; likely a GET request.");
 }
+
 
 // --- 1️⃣  JSON body (e.g., { "slug": "xyz" }) ---
 if (!$slug && isset($input) && is_array($input) && isset($input['slug'])) {
