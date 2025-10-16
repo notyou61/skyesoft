@@ -137,39 +137,55 @@ foreach ($codex as $key => $value) {
 // ----------------------------------------------------------------------
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
 // ----------------------------------------------------------------------
-if (!isset($slug) || !$slug) {
-    // from previously-decoded JSON, if any
-    if (isset($input) && is_array($input) && isset($input['slug'])) {
-        $slug = trim($input['slug']);
-    }
-    // GET fallback (?module=slug)
-    if (!$slug && isset($_GET['module'])) {
-        $slug = trim($_GET['module']);
-    }
-    // POST fallback (slug=form field)
-    if (!$slug && isset($_POST['slug'])) {
-        $slug = trim($_POST['slug']);
+
+// Always define these early to prevent "undefined variable" notices
+$slug  = isset($slug)  ? $slug  : null;
+$input = isset($input) ? $input : null;
+
+// --- Read raw JSON input once (if not already parsed) ---
+if (!$input) {
+    $rawInput = @file_get_contents('php://input');
+    if ($rawInput !== false && strlen($rawInput)) {
+        $tmp = @json_decode($rawInput, true);
+        if (is_array($tmp)) {
+            $input = $tmp;
+        }
     }
 }
 
-// Hard fail if still empty
+// --- 1️⃣  JSON body (e.g., { "slug": "xyz" }) ---
+if (!$slug && isset($input) && is_array($input) && isset($input['slug'])) {
+    $slug = trim($input['slug']);
+}
+
+// --- 2️⃣  GET query (?module=xyz) ---
+if (!$slug && isset($_GET['module'])) {
+    $slug = trim($_GET['module']);
+}
+
+// --- 3️⃣  POST form (slug=xyz) ---
+if (!$slug && isset($_POST['slug'])) {
+    $slug = trim($_POST['slug']);
+}
+
+// --- 4️⃣  Hard fail if still empty ---
 if (!$slug) {
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(array(
-        'error' => true,
+        'error'   => true,
         'message' => 'Missing slug/module in request.'
     ));
     exit;
 }
 
-// Normalize slug (defensive)
+// --- 5️⃣  Normalize and sanitize ---
 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
 
-// Ensure module exists in $modules
+// --- 6️⃣  Validate existence in $modules ---
 if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(array(
-        'error' => true,
+        'error'   => true,
         'message' => "Module '$slug' not found in Codex."
     ));
     exit;
