@@ -512,7 +512,7 @@ function handleIntentReport($intentData, $sessionId) {
     if (!empty($module['dependsOn'])) {
         foreach ($module['dependsOn'] as $dep) {
             if (isset($codex[$dep])) {
-                $depTitle = $codex[$dep]['title'] ?? ucfirst($dep);
+                $depTitle = (isset($codex[$dep]) && isset($codex[$dep]['title'])) ? $codex[$dep]['title'] : ucfirst($dep);
                 $reportData["sections"][] = [
                     "header"  => "Dependency: " . $depTitle,
                     "content" => $codex[$dep]
