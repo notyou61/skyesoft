@@ -122,7 +122,6 @@ foreach ($codex as $key => $value) {
             break;
         }
 
-
         // ✅ Allow ontology-style sections that have list-like data but no explicit format
         if (isset($section['items']) && is_array($section['items'])) {
             $hasValidSection = true;
@@ -133,10 +132,53 @@ foreach ($codex as $key => $value) {
     if ($hasValidSection) {
         $modules[$key] = $value;
     }
+} // 👈 this closes the foreach loop
+
+// ----------------------------------------------------------------------
+// ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
+// ----------------------------------------------------------------------
+if (!isset($slug) || !$slug) {
+    // from previously-decoded JSON, if any
+    if (isset($input) && is_array($input) && isset($input['slug'])) {
+        $slug = trim($input['slug']);
+    }
+    // GET fallback (?module=slug)
+    if (!$slug && isset($_GET['module'])) {
+        $slug = trim($_GET['module']);
+    }
+    // POST fallback (slug=form field)
+    if (!$slug && isset($_POST['slug'])) {
+        $slug = trim($_POST['slug']);
+    }
 }
 
-logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
+// Hard fail if still empty
+if (!$slug) {
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(array(
+        'error' => true,
+        'message' => 'Missing slug/module in request.'
+    ));
+    exit;
+}
 
+// Normalize slug (defensive)
+$slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
+
+// Ensure module exists in $modules
+if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(array(
+        'error' => true,
+        'message' => "Module '$slug' not found in Codex."
+    ));
+    exit;
+}
+
+// ✅ Safe to use $module from here on
+$module = $modules[$slug];
+
+logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
 
 // Skip validation for dynamic ontology sections injected later
 $ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
@@ -146,12 +188,11 @@ foreach ($module as $key => $section) {
     if ($key === 'title') continue;
     if (!is_array($section)) continue;
     if (!isset($section['format'])) continue;
-    if (!in_array($section['format'], array('text', 'list', 'table'))) {
-        logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', or 'table'.");
+    if (!in_array($section['format'], array('text', 'list', 'table', 'dynamic'))) {
+        logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', 'table', or 'dynamic'.");
         die();
     }
 }
-
 
 // --------------------------
 // Load iconMap.json dynamically
