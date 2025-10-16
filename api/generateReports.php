@@ -183,12 +183,32 @@ $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
 
 // --- 6️⃣  Validate existence in $modules ---
 if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
-    header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode(array(
-        'error'   => true,
-        'message' => "Module '$slug' not found in Codex."
-    ));
-    exit;
+
+    // 🔍 Debug log of available keys
+    logMessage("🔍 DEBUG: Searching for slug '$slug' in modules. Keys: " . implode(', ', array_keys($modules)));
+
+    // ✅ Case-insensitive fallback search
+    $foundKey = null;
+    foreach ($modules as $key => $val) {
+        if (strcasecmp($key, $slug) === 0) {
+            $foundKey = $key;
+            break;
+        }
+    }
+
+    if ($foundKey) {
+        logMessage("✅ Case-insensitive match found: '$foundKey'");
+        $module = $modules[$foundKey];
+    } else {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array(
+            'error'   => true,
+            'message' => "Module '$slug' not found in Codex."
+        ));
+        exit;
+    }
+} else {
+    $module = $modules[$slug]; // Normal match
 }
 
 // ✅ Safe to use $module from here on
