@@ -79,28 +79,49 @@ if (!$OPENAI_API_KEY) {
 }
 #endregion
 
-/// --------------------------
-// Load codex.json dynamically
 // --------------------------
-$codexPath = __DIR__ . '/../assets/data/codex.json';
-if (!file_exists($codexPath)) {
-    logError("❌ ERROR: Codex file not found at $codexPath");
+// Load dynamic Codex from getDynamicData.php (PHP 5.6 compatible)
+// --------------------------
+$dynUrl = "https://www.skyelighting.com/skyesoft/api/getDynamicData.php";
+$context = stream_context_create(array(
+    "http" => array(
+        "method"  => "GET",
+        "timeout" => 10
+    )
+));
+
+$rawDyn = @file_get_contents($dynUrl, false, $context);
+if ($rawDyn === false) {
+    logError("❌ ERROR: Unable to fetch dynamic data from $dynUrl");
     die();
 }
 
-$codex = json_decode(file_get_contents($codexPath), true);
-if ($codex === null) {
-    logError("❌ ERROR: Failed to decode codex.json\nJSON Error: " . json_last_error_msg());
+$dynData = @json_decode($rawDyn, true);
+if ($dynData === null || !is_array($dynData)) {
+    logError("❌ ERROR: Failed to decode JSON from getDynamicData.php — " . json_last_error_msg());
     die();
 }
+
+if (!isset($dynData['codex']) || !is_array($dynData['codex'])) {
+    logError("❌ ERROR: Codex not found in dynamic data payload.");
+    die();
+}
+
+// ✅ Extract Codex
+$codex = $dynData['codex'];
+logMessage("ℹ️ Loaded Codex dynamically from getDynamicData.php");
 
 // ----------------------------------------------------------------------
 // Initialize modules array (valid modules only) — Flexible Validation
 // ----------------------------------------------------------------------
 $modules = array();
 
-foreach ($codex as $key => $value) {
-    // ✅ Accept both 'modules' and 'codexModules' roots
+// ✅ Prefer explicit modules object if present
+$source = isset($codex['modules']) && is_array($codex['modules']) ? $codex['modules'] : $codex;
+
+foreach ($source as $key => $value) {
+
+    // ✅ Accept both 'modules' and 'codexModules' roots if nested
     if (($key === 'codexModules' || $key === 'modules') && is_array($value)) {
         $modules = array_merge($modules, $value);
         continue;
@@ -113,12 +134,14 @@ foreach ($codex as $key => $value) {
         if ($sectionKey === 'title') continue;
         if (!is_array($section)) continue;
 
+        // Accept all standard Codex formats
         if (isset($section['format']) && in_array($section['format'],
             array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic'))) {
             $hasValidSection = true;
             break;
         }
 
+        // Accept ontology-style list sections
         if (isset($section['items']) && is_array($section['items'])) {
             $hasValidSection = true;
             break;
@@ -129,6 +152,9 @@ foreach ($codex as $key => $value) {
         $modules[$key] = $value;
     }
 }
+
+logMessage("ℹ️ Loaded " . count($modules) . " valid modules from dynamic Codex.");
+
 
 // ----------------------------------------------------------------------
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
