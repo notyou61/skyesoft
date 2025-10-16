@@ -414,7 +414,7 @@ if ($dirty && is_writable(DATA_PATH)) {
 #region 📤 Response Assembly
 $response = array(
     // ✅ Add dynamic holidays at the top level (proper scope)
-    'federalHolidaysDynamic' => isset($federalHolidays) ? $federalHolidays : array(),
+    'skyesoftHolidays' => is_array($federalHolidays) ? $federalHolidays : array(),
     'timeDateArray' => array(
         'currentUnixTime' => $currentUnixTime,
         'currentLocalTime' => $currentTime,
