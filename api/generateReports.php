@@ -1112,7 +1112,7 @@ if ($isFull) {
     $cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
     $pdf->setReportTitle($cleanTitle, $iconKey);
 }
-
+// For Each Module
 foreach ($modulesToRender as $modSlug => $module) {
     $pdf->AddPage();
     $pdf->SetY($pdf->bodyStartY);
@@ -1211,6 +1211,96 @@ foreach ($modulesToRender as $modSlug => $module) {
         if ($i < $totalModSections - 1) {
             $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
         }
+    }
+
+    // ======================================================
+    // 🧠 Ontology-Aware Module Rendering (Post-Standard Sections)
+    // ======================================================
+    $ontologySections = [];
+
+    // --- Primary Purpose (if not already rendered as a standard section) ---
+    if (isset($module['purpose']['text']) && !in_array('purpose', $sortedSectionKeys)) {
+        $ontologySections['purpose'] = [
+            'format' => 'text',
+            'text' => $module['purpose']['text'],
+            'icon' => 'info' // Default icon; override in codex if needed
+        ];
+    }
+
+    // --- Dependencies ---
+    if (!empty($module['dependsOn'])) {
+        $depItems = [];
+        foreach ($module['dependsOn'] as $dep) {
+            if (isset($modules[$dep])) { // Use global $modules for lookup
+                $depTitle = $modules[$dep]['title'] ?? ucfirst($dep);
+                $depPurpose = $modules[$dep]['purpose']['text'] ?? 'No description available.';
+                $depItems[] = "<b>{$depTitle}</b> — {$depPurpose}";
+            } else {
+                $depItems[] = "<b>{$dep}</b> (not found in Codex)";
+            }
+        }
+        $ontologySections['dependencies'] = [
+            'format' => 'list',
+            'items' => $depItems,
+            'icon' => 'link' // Or 'chain' if in iconMap
+        ];
+    }
+
+    // --- Provides ---
+    if (!empty($module['provides'])) {
+        $provItems = array_map(function($prov) {
+            return "• {$prov} (data stream/capability)";
+        }, $module['provides']);
+        $ontologySections['provides'] = [
+            'format' => 'list',
+            'items' => $provItems,
+            'icon' => 'output'
+        ];
+    }
+
+    // --- Aliases ---
+    if (!empty($module['aliases'])) {
+        $ontologySections['aliases'] = [
+            'format' => 'text',
+            'text' => 'Synonyms: ' . implode(', ', $module['aliases']),
+            'icon' => 'tag'
+        ];
+    }
+
+    // --- Dynamic Holidays (if module relates to scheduling, e.g., TIS) ---
+    if (isset($dyn['holidays']) && is_array($dyn['holidays']) && !empty($dyn['holidays'])) {
+        $holidayItems = [];
+        foreach ($dyn['holidays'] as $h) {
+            $name = is_array($h) ? ($h['name'] ?? 'Holiday') : $h;
+            $date = is_array($h) ? ($h['date'] ?? '—') : '—';
+            $holidayItems[] = "{$name} – {$date}";
+        }
+        $ontologySections['holidays'] = [
+            'format' => 'list',
+            'items' => $holidayItems,
+            'icon' => 'calendar'
+        ];
+    }
+
+    // Render ontology sections (appended after standard ones)
+    $ontologyPriorityMap = ['purpose' => 1, 'dependencies' => 2, 'provides' => 3, 'aliases' => 4, 'holidays' => 5];
+    uksort($ontologySections, function($a, $b) use ($ontologyPriorityMap) {
+        return ($ontologyPriorityMap[$a] ?? 999) <=> ($ontologyPriorityMap[$b] ?? 999);
+    });
+
+    foreach ($ontologySections as $ontKey => $ontSection) {
+        $pdf->resetSectionIcon();
+        $pdf->renderSection(formatHeaderTitle($ontKey), $ontSection, $iconMap, []);
+        $pdf->Ln($consistent_spacing ?? 8);
+    }
+
+    // --- Timestamp Footer (per-module in full reports) ---
+    if ($isFull) {
+        $pdf->Ln(5);
+        $pdf->SetFont('helvetica', 'I', 9);
+        $pdf->Cell(0, 6, "Generated on " . date('F j, Y, g:i A'), 0, 1, 'R');
+        $pdf->SetFont('helvetica', '', 11);
+        $pdf->Ln(10);
     }
 
     // 4️⃣ Final bottom padding for full reports

@@ -458,7 +458,7 @@ function findCodexMatch($text, $codex) {
 // ===============================================================
 // ?? Semantic Intent Helpers
 // ===============================================================
-
+// Handle Intent CRUD Operations (Create, Read, Update, Delete)
 function handleIntentCrud($intentData, $sessionId) {
     $entity = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : 'unknown';
     $action = isset($intentData['intent']) ? ucfirst(strtolower($intentData['intent'])) : 'Unknown';
@@ -469,25 +469,94 @@ function handleIntentCrud($intentData, $sessionId) {
         "sessionId"=> $sessionId
     ];
 }
-
+// Handle Intent Report Generation
 function handleIntentReport($intentData, $sessionId) {
-    // 🧭 Normalize target (remove spaces and lowercase)
+    // 🧭 Normalize target
     $target = isset($intentData['target'])
         ? preg_replace('/\s+/', '', strtolower(trim($intentData['target'])))
         : 'unspecified';
 
-    // 🌐 Construct report URL safely
+    global $dynamicData;
+    $codex = isset($dynamicData['codex']['modules']) ? $dynamicData['codex']['modules'] : [];
+
+    // 🚨 Validation
+    if (empty($target) || !isset($codex[$target])) {
+        error_log("⚠️ Unknown or missing Codex module: $target");
+        return [
+            "response"  => "⚠️ No valid report target specified.",
+            "action"    => "error",
+            "sessionId" => $sessionId
+        ];
+    }
+
+    // 📘 Primary Module
+    $module = $codex[$target];
+    $title  = isset($module['title']) ? $module['title'] : ucfirst($target);
+    $reportData = [
+        "title"   => $title,
+        "slug"    => $target,
+        "sections" => []
+    ];
+
+    // ----------------------------------------------------
+    // 🔗 1. Primary Section
+    // ----------------------------------------------------
+    $reportData["sections"][] = [
+        "header"  => $title,
+        "content" => $module
+    ];
+
+    // ----------------------------------------------------
+    // 🔗 2. Dependencies
+    // ----------------------------------------------------
+    if (!empty($module['dependsOn'])) {
+        foreach ($module['dependsOn'] as $dep) {
+            if (isset($codex[$dep])) {
+                $depTitle = $codex[$dep]['title'] ?? ucfirst($dep);
+                $reportData["sections"][] = [
+                    "header"  => "Dependency: " . $depTitle,
+                    "content" => $codex[$dep]
+                ];
+                error_log("🔗 [$target] depends on → $depTitle");
+            }
+        }
+    }
+
+    // ----------------------------------------------------
+    // 📡 3. Provides
+    // ----------------------------------------------------
+    if (!empty($module['provides'])) {
+        $reportData["sections"][] = [
+            "header"  => "Provides Data Streams",
+            "content" => $module['provides']
+        ];
+        error_log("📡 [$target] provides → " . implode(', ', $module['provides']));
+    }
+
+    // ----------------------------------------------------
+    // 🪞 4. Aliases (semantic match logging)
+    // ----------------------------------------------------
+    if (!empty($module['aliases'])) {
+        error_log("🪞 [$target] aliases → " . implode(', ', $module['aliases']));
+    }
+
+    // ----------------------------------------------------
+    // 🌐 5. Generate dynamic link
+    // ----------------------------------------------------
     $reportUrl = "https://www.skyelighting.com/skyesoft/api/generateReports.php?module=" . urlencode($target);
 
-    // 🧩 Log routing info for debugging
-    error_log("📘 [Semantic Router] Report intent detected → Target: $target | Session: $sessionId");
-
-    // ✅ Return structured JSON response
-    return [
-        "response"  => "📘 The **" . ucfirst($target) . "** sheet is ready.\n\n📄 [Open Report](" . $reportUrl . ")",
-        "action"    => "sheet_generated",
-        "slug"      => $target,
-        "reportUrl" => $reportUrl,
-        "sessionId" => $sessionId
+    // ----------------------------------------------------
+    // 🧠 6. Unified JSON response
+    // ----------------------------------------------------
+    $response = [
+        "response"    => "📘 The **" . $title . "** sheet has been compiled with ontology relationships.\n\n📄 [Open Report](" . $reportUrl . ")",
+        "action"      => "sheet_generated",
+        "slug"        => $target,
+        "reportUrl"   => $reportUrl,
+        "sessionId"   => $sessionId,
+        "reportData"  => $reportData,
+        "generatedAt" => date('c')
     ];
+
+    return $response;
 }
