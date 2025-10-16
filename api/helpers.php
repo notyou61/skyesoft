@@ -469,55 +469,62 @@ function handleIntentCrud($intentData, $sessionId) {
         "sessionId"=> $sessionId
     ];
 }
-// Handle Intent Report Generation
+// Handle Intent Report Generation (PHP 5.6+ compatible)
 function handleIntentReport($intentData, $sessionId) {
     // 🧭 Normalize target
-    $target = isset($intentData['target'])
-        ? preg_replace('/\s+/', '', strtolower(trim($intentData['target'])))
-        : 'unspecified';
+    $target = '';
+    if (isset($intentData['target']) && is_string($intentData['target'])) {
+        $target = preg_replace('/\s+/', '', strtolower(trim($intentData['target'])));
+    }
+    if ($target === '') {
+        $target = 'unspecified';
+    }
 
     global $dynamicData;
-    $codex = isset($dynamicData['codex']['modules']) ? $dynamicData['codex']['modules'] : [];
+    $codex = array();
+    if (isset($dynamicData['codex']['modules']) && is_array($dynamicData['codex']['modules'])) {
+        $codex = $dynamicData['codex']['modules'];
+    }
 
     // 🚨 Validation
-    if (empty($target) || !isset($codex[$target])) {
-        error_log("⚠️ Unknown or missing Codex module: $target");
-        return [
+    if (!isset($codex[$target])) {
+        error_log("⚠️ Unknown or missing Codex module: " . $target);
+        return array(
             "response"  => "⚠️ No valid report target specified.",
             "action"    => "error",
             "sessionId" => $sessionId
-        ];
+        );
     }
 
     // 📘 Primary Module
     $module = $codex[$target];
     $title  = isset($module['title']) ? $module['title'] : ucfirst($target);
-    $reportData = [
-        "title"   => $title,
-        "slug"    => $target,
-        "sections" => []
-    ];
+    $reportData = array(
+        "title"    => $title,
+        "slug"     => $target,
+        "sections" => array()
+    );
 
     // ----------------------------------------------------
     // 🔗 1. Primary Section
     // ----------------------------------------------------
-    $reportData["sections"][] = [
+    $reportData["sections"][] = array(
         "header"  => $title,
         "content" => $module
-    ];
+    );
 
     // ----------------------------------------------------
     // 🔗 2. Dependencies
     // ----------------------------------------------------
-    if (!empty($module['dependsOn'])) {
+    if (isset($module['dependsOn']) && is_array($module['dependsOn'])) {
         foreach ($module['dependsOn'] as $dep) {
             if (isset($codex[$dep])) {
-                $depTitle = (isset($codex[$dep]) && isset($codex[$dep]['title'])) ? $codex[$dep]['title'] : ucfirst($dep);
-                $reportData["sections"][] = [
+                $depTitle = isset($codex[$dep]['title']) ? $codex[$dep]['title'] : ucfirst($dep);
+                $reportData["sections"][] = array(
                     "header"  => "Dependency: " . $depTitle,
                     "content" => $codex[$dep]
-                ];
-                error_log("🔗 [$target] depends on → $depTitle");
+                );
+                error_log("🔗 [" . $target . "] depends on → " . $depTitle);
             }
         }
     }
@@ -525,19 +532,19 @@ function handleIntentReport($intentData, $sessionId) {
     // ----------------------------------------------------
     // 📡 3. Provides
     // ----------------------------------------------------
-    if (!empty($module['provides'])) {
-        $reportData["sections"][] = [
+    if (isset($module['provides']) && is_array($module['provides']) && count($module['provides']) > 0) {
+        $reportData["sections"][] = array(
             "header"  => "Provides Data Streams",
             "content" => $module['provides']
-        ];
-        error_log("📡 [$target] provides → " . implode(', ', $module['provides']));
+        );
+        error_log("📡 [" . $target . "] provides → " . implode(', ', $module['provides']));
     }
 
     // ----------------------------------------------------
     // 🪞 4. Aliases (semantic match logging)
     // ----------------------------------------------------
-    if (!empty($module['aliases'])) {
-        error_log("🪞 [$target] aliases → " . implode(', ', $module['aliases']));
+    if (isset($module['aliases']) && is_array($module['aliases']) && count($module['aliases']) > 0) {
+        error_log("🪞 [" . $target . "] aliases → " . implode(', ', $module['aliases']));
     }
 
     // ----------------------------------------------------
@@ -548,7 +555,7 @@ function handleIntentReport($intentData, $sessionId) {
     // ----------------------------------------------------
     // 🧠 6. Unified JSON response
     // ----------------------------------------------------
-    $response = [
+    $response = array(
         "response"    => "📘 The **" . $title . "** sheet has been compiled with ontology relationships.\n\n📄 [Open Report](" . $reportUrl . ")",
         "action"      => "sheet_generated",
         "slug"        => $target,
@@ -556,7 +563,8 @@ function handleIntentReport($intentData, $sessionId) {
         "sessionId"   => $sessionId,
         "reportData"  => $reportData,
         "generatedAt" => date('c')
-    ];
+    );
 
     return $response;
 }
+
