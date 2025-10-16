@@ -95,42 +95,62 @@ if ($codex === null) {
     die();
 }
 
-// Initialize modules array to include valid modules only
+// ----------------------------------------------------------------------
+// Initialize modules array (valid modules only) — Flexible Validation
+// ----------------------------------------------------------------------
 $modules = array();
+
 foreach ($codex as $key => $value) {
     if ($key === 'codexModules' && is_array($value)) {
         $modules = array_merge($modules, $value);
-    } elseif (is_array($value) && isset($value['title'])) {
-        $hasValidSection = false;
-        foreach ($value as $sectionKey => $section) {
-            if ($sectionKey !== 'title' && is_array($section) && isset($section['format']) && in_array($section['format'], array('text', 'list', 'table'))) {
-                $hasValidSection = true;
-                break;
-            }
+        continue;
+    }
+
+    if (!is_array($value) || !isset($value['title'])) {
+        continue;
+    }
+
+    $hasValidSection = false;
+
+    foreach ($value as $sectionKey => $section) {
+        if ($sectionKey === 'title') continue;
+        if (!is_array($section)) continue;
+
+        // ✅ Accept both classic formats and ontology-compatible ones
+        if (isset($section['format']) && in_array($section['format'], array('text', 'list', 'table', 'calendar', 'ontology'))) {
+            $hasValidSection = true;
+            break;
         }
-        if ($hasValidSection) {
-            $modules[$key] = $value;
+
+        // ✅ Allow ontology-style sections that have list-like data but no explicit format
+        if (isset($section['items']) && is_array($section['items'])) {
+            $hasValidSection = true;
+            break;
         }
     }
-}
-logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup.");
 
-// Validate codex structure
-foreach ($modules as $slug => $module) {
-    if (!is_array($module) || !isset($module['title'])) {
-        logError("❌ ERROR: Invalid codex structure for slug '$slug'. Missing 'title' or invalid module.");
+    if ($hasValidSection) {
+        $modules[$key] = $value;
+    }
+}
+
+logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
+
+
+// Skip validation for dynamic ontology sections injected later
+$ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
+// Validate each module's sections
+foreach ($module as $key => $section) {
+    if (in_array($key, $ontologyWhitelist)) continue;
+    if ($key === 'title') continue;
+    if (!is_array($section)) continue;
+    if (!isset($section['format'])) continue;
+    if (!in_array($section['format'], array('text', 'list', 'table'))) {
+        logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', or 'table'.");
         die();
     }
-    foreach ($module as $key => $section) {
-        if ($key === 'title') continue;
-        if (!is_array($section)) continue;
-        if (!isset($section['format'])) continue;
-        if (!in_array($section['format'], array('text', 'list', 'table'))) {
-            logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', or 'table'.");
-            die();
-        }
-    }
 }
+
 
 // --------------------------
 // Load iconMap.json dynamically
@@ -294,7 +314,7 @@ Module Data:
     ));
 
     $payload = json_encode(array(
-        "model" => "gpt-4o-mini",
+        "model" => getenv("OPENAI_MODEL") ?: "gpt-4o-mini",
         "messages" => array(
             array("role" => "system", "content" => "You are an assistant that writes clear, structured PDF content."),
             array("role" => "user", "content" => $prompt)
