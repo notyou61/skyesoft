@@ -117,10 +117,11 @@ foreach ($codex as $key => $value) {
         if (!is_array($section)) continue;
 
         // ✅ Accept both classic formats and ontology-compatible ones
-        if (isset($section['format']) && in_array($section['format'], array('text', 'list', 'table', 'calendar', 'ontology'))) {
+        if (isset($section['format']) && in_array($section['format'], array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic'))) {
             $hasValidSection = true;
             break;
         }
+
 
         // ✅ Allow ontology-style sections that have list-like data but no explicit format
         if (isset($section['items']) && is_array($section['items'])) {
