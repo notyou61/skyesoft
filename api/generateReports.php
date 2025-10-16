@@ -1,17 +1,4 @@
 <?php
-// Enable full error reporting for debugging in PHP 5.6
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Polyfill for PHP 8.1+ array_is_list() function (PHP 5.6 compatible)
-if (!function_exists('array_is_list')) {
-    function array_is_list($array) {
-        if (!is_array($array)) return false;
-        $keys = array_keys($array);
-        return $keys === array_keys($keys);
-    }
-}
-
 // =====================================================================
 // Skyesoft Dynamic Report Generator v2
 // =====================================================================
@@ -1229,21 +1216,23 @@ foreach ($modulesToRender as $modSlug => $module) {
 
     // --- Dependencies ---
     if (!empty($module['dependsOn'])) {
-        $depItems = [];
+        $depItems = array();
         foreach ($module['dependsOn'] as $dep) {
             if (isset($modules[$dep])) { // Use global $modules for lookup
-                $depTitle = $modules[$dep]['title'] ?? ucfirst($dep);
-                $depPurpose = $modules[$dep]['purpose']['text'] ?? 'No description available.';
+                $depTitle   = isset($modules[$dep]['title']) ? $modules[$dep]['title'] : ucfirst($dep);
+                $depPurpose = (isset($modules[$dep]['purpose']) && isset($modules[$dep]['purpose']['text']))
+                    ? $modules[$dep]['purpose']['text']
+                    : 'No description available.';
                 $depItems[] = "<b>{$depTitle}</b> — {$depPurpose}";
             } else {
                 $depItems[] = "<b>{$dep}</b> (not found in Codex)";
             }
         }
-        $ontologySections['dependencies'] = [
+        $ontologySections['dependencies'] = array(
             'format' => 'list',
-            'items' => $depItems,
-            'icon' => 'link' // Or 'chain' if in iconMap
-        ];
+            'items'  => $depItems,
+            'icon'   => 'link' // Or 'chain' if in iconMap
+        );
     }
 
     // --- Provides ---
@@ -1269,29 +1258,48 @@ foreach ($modulesToRender as $modSlug => $module) {
 
     // --- Dynamic Holidays (if module relates to scheduling, e.g., TIS) ---
     if (isset($dyn['holidays']) && is_array($dyn['holidays']) && !empty($dyn['holidays'])) {
-        $holidayItems = [];
+        $holidayItems = array();
         foreach ($dyn['holidays'] as $h) {
-            $name = is_array($h) ? ($h['name'] ?? 'Holiday') : $h;
-            $date = is_array($h) ? ($h['date'] ?? '—') : '—';
+            if (is_array($h)) {
+                $name = isset($h['name']) ? $h['name'] : 'Holiday';
+                $date = isset($h['date']) ? $h['date'] : '—';
+            } else {
+                $name = $h;
+                $date = '—';
+            }
             $holidayItems[] = "{$name} – {$date}";
         }
-        $ontologySections['holidays'] = [
+        $ontologySections['holidays'] = array(
             'format' => 'list',
-            'items' => $holidayItems,
-            'icon' => 'calendar'
-        ];
+            'items'  => $holidayItems,
+            'icon'   => 'calendar'
+        );
     }
 
     // Render ontology sections (appended after standard ones)
-    $ontologyPriorityMap = ['purpose' => 1, 'dependencies' => 2, 'provides' => 3, 'aliases' => 4, 'holidays' => 5];
+    $ontologyPriorityMap = array(
+        'purpose'      => 1,
+        'dependencies' => 2,
+        'provides'     => 3,
+        'aliases'      => 4,
+        'holidays'     => 5
+    );
+
     uksort($ontologySections, function($a, $b) use ($ontologyPriorityMap) {
-        return ($ontologyPriorityMap[$a] ?? 999) <=> ($ontologyPriorityMap[$b] ?? 999);
+        $aVal = isset($ontologyPriorityMap[$a]) ? $ontologyPriorityMap[$a] : 999;
+        $bVal = isset($ontologyPriorityMap[$b]) ? $ontologyPriorityMap[$b] : 999;
+
+        if ($aVal == $bVal) {
+            return 0;
+        }
+        return ($aVal < $bVal) ? -1 : 1;
     });
+
 
     foreach ($ontologySections as $ontKey => $ontSection) {
         $pdf->resetSectionIcon();
-        $pdf->renderSection(formatHeaderTitle($ontKey), $ontSection, $iconMap, []);
-        $pdf->Ln($consistent_spacing ?? 8);
+        $pdf->renderSection(formatHeaderTitle($ontKey), $ontSection, $iconMap, array());
+        $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
     }
 
     // --- Timestamp Footer (per-module in full reports) ---
