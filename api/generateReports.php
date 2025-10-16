@@ -116,17 +116,28 @@ logMessage("ℹ️ Loaded Codex dynamically from getDynamicData.php");
 // ----------------------------------------------------------------------
 $modules = array();
 
-// ✅ Prefer explicit modules object if present
-$source = isset($codex['modules']) && is_array($codex['modules']) ? $codex['modules'] : $codex;
-
-foreach ($source as $key => $value) {
-
-    // ✅ Accept both 'modules' and 'codexModules' roots if nested
-    if (($key === 'codexModules' || $key === 'modules') && is_array($value)) {
-        $modules = array_merge($modules, $value);
-        continue;
+// ✅ 1️⃣ Merge all root-level modules that have a "title" (e.g., timeIntervalStandards)
+foreach ($codex as $key => $value) {
+    if (is_array($value) && isset($value['title'])) {
+        $modules[$key] = $value;
     }
+}
 
+// ✅ 2️⃣ Merge any nested "modules" or "codexModules" blocks (e.g., skyesoftGlossary)
+if (isset($codex['modules']) && is_array($codex['modules'])) {
+    foreach ($codex['modules'] as $key => $value) {
+        $modules[$key] = $value;
+    }
+}
+if (isset($codex['codexModules']) && is_array($codex['codexModules'])) {
+    foreach ($codex['codexModules'] as $key => $value) {
+        $modules[$key] = $value;
+    }
+}
+
+// ✅ 3️⃣ Validate each module's internal structure and accepted formats
+$validatedModules = array();
+foreach ($modules as $key => $value) {
     if (!is_array($value) || !isset($value['title'])) continue;
 
     $hasValidSection = false;
@@ -134,9 +145,11 @@ foreach ($source as $key => $value) {
         if ($sectionKey === 'title') continue;
         if (!is_array($section)) continue;
 
-        // Accept all standard Codex formats
-        if (isset($section['format']) && in_array($section['format'],
-            array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic'))) {
+        // Accept standard Codex formats
+        if (isset($section['format']) && in_array(
+            $section['format'],
+            array('text', 'list', 'table', 'calendar', 'ontology', 'dynamic')
+        )) {
             $hasValidSection = true;
             break;
         }
@@ -149,12 +162,13 @@ foreach ($source as $key => $value) {
     }
 
     if ($hasValidSection) {
-        $modules[$key] = $value;
+        $validatedModules[$key] = $value;
     }
 }
 
-logMessage("ℹ️ Loaded " . count($modules) . " valid modules from dynamic Codex.");
-
+// ✅ 4️⃣ Final assignment
+$modules = $validatedModules;
+logMessage("ℹ️ Codex merge complete: " . count($modules) . " valid modules loaded from dynamic Codex.");
 
 // ----------------------------------------------------------------------
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
