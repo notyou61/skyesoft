@@ -4,7 +4,9 @@
 // =====================================================================
 
 // Dependencies
-require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
+//require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
+require_once(__DIR__ . '/../vendor/autoload.php');
+use TCPDF;
 
 // Configuration
 $config = array(

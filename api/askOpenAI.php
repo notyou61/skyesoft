@@ -19,48 +19,59 @@ ini_set('error_log', $logFile);
 error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
 #endregion
 
-#region =========================================================
-#  SKYEBOT UNIVERSAL INPUT LOADER  (CLI  +  WEB  compatible)
-# =========================================================
+#region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
+// ================================================================
+// Purpose:
+//  • Accepts input via HTTP POST (web) or CLI arguments (local testing)
+//  • Repairs malformed JSON payloads and prevents null crashes
+//  • Normalizes `$prompt`, `$conversation`, and `$lowerPrompt` variables
+//  • Fully compatible with PHP 5.6+
+// ================================================================
 
-// 1️⃣  Prefer web POST body
-$rawInput = file_get_contents('php://input');
+// 1️⃣ Read input from HTTP POST body
+$rawInput = @file_get_contents('php://input');
 
-// 2️⃣  If nothing came in, fall back to CLI argument
+// 2️⃣ Fallback: use CLI input when running locally (e.g.)
+//     php askOpenAI.php '{"prompt":"Hello Skyebot"}'
 if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
+    global $argv;
     if (isset($argv[1]) && trim($argv[1]) !== '') {
         $rawInput = $argv[1];
     }
 }
 
-// 3️⃣  Decode JSON
+// 3️⃣ Trim and decode input
 $rawInput  = trim($rawInput);
 $inputData = json_decode($rawInput, true);
 
-// 4️⃣  Fallback: try to fix common quoting mistakes
+// 4️⃣ Repair common JSON wrapping issues (e.g., extra quotes)
 if (!is_array($inputData)) {
-    // Remove surrounding quotes if Bash wrapped them
     $fixed = trim($rawInput, "\"'");
     $inputData = json_decode($fixed, true);
 }
 
-// 5️⃣  Guard clause
+// 5️⃣ Guard clause: invalid or empty JSON
 if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
     echo json_encode(array(
         'response'  => '❌ Invalid or empty JSON payload.',
         'action'    => 'none',
-        'sessionId' => uniqid()
-    ));
+        'sessionId' => uniqid('sess_')
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// 6️⃣  Extract prompt/conversation (PHP 5.6 safe)
+// 6️⃣ Extract primary prompt and conversation context
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
+
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
-    ? $inputData['conversation'] : array();
+    ? $inputData['conversation']
+    : array();
+
+// 7️⃣ Prepare lowercase version for NLP keyword matching
 $lowerPrompt = strtolower($prompt);
+
 #endregion
 
 #region 🔒 UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
@@ -126,10 +137,162 @@ register_shutdown_function(function () {
 });
 #endregion
 
-#region ===========================================================
-# Require shared helpers *after* shield is active
-# ===========================================================
+#region 🔒 SKYEBOT UNIVERSAL JSON OUTPUT SHIELD (GoDaddy Safe)
+// ======================================================================
+// Purpose:
+//   • Catches all PHP runtime and fatal errors, converting them to JSON
+//   • Prevents raw HTML or notices from leaking to the frontend
+//   • Ensures consistent JSON output for Skyebot API responses
+//   • Fully compatible with PHP 5.6 (GoDaddy hosting environment)
+// ======================================================================
+
+// Disable HTML error output and start safe buffering
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+ob_start();
+
+// --------------------------------------------------
+// 🧩 Error Handler — converts PHP warnings/notices to JSON
+// --------------------------------------------------
+set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    while (ob_get_level()) { ob_end_clean(); }
+    http_response_code(500);
+    header('Content-Type: application/json; charset=UTF-8', true);
+
+    $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
+    $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
+
+    echo json_encode(array(
+        "response"  => $msg,
+        "action"    => "error",
+        "sessionId" => session_id() ?: 'N/A'
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    exit(1);
+}, E_ALL);
+
+// --------------------------------------------------
+// 🧱 Shutdown Handler — catches fatal / parse errors
+// --------------------------------------------------
+register_shutdown_function(function () {
+    $lastError = error_get_last();
+    $output = ob_get_clean();
+
+    // 🚨 Catch fatal errors that bypass the handler
+    if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+        while (ob_get_level()) { ob_end_clean(); }
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8', true);
+
+        $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
+        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
+
+        echo json_encode(array(
+            "response"  => $msg,
+            "action"    => "error",
+            "sessionId" => session_id() ?: 'N/A'
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        return;
+    }
+
+    // ✅ Wrap non-JSON output safely
+    if (!empty($output) && stripos(trim($output), '{') !== 0) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        $clean = substr(strip_tags($output), 0, 500);
+        echo json_encode(array(
+            "response"  => "❌ Internal error: " . $clean,
+            "action"    => "error",
+            "sessionId" => session_id() ?: 'N/A'
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } elseif (!empty($output)) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+        echo trim($output);
+    }
+});
+#endregion
+
+#region 🧩 SKYEBOT HELPER SAFEGUARDS (Loaded After Shield)
+// ======================================================================
+// Purpose:
+//   • Ensures required helpers are loaded after the error shield
+//   • Provides a fallback implementation of getCodeFileSafe()
+//     for secure code-reading by Skyebot when helpers.php is missing
+// ======================================================================
+
+// Load shared helper functions (safe inclusion)
 require_once __DIR__ . "/helpers.php";
+
+// --------------------------------------------------
+// 🧰 Safe Fallback: getCodeFileSafe()
+// --------------------------------------------------
+if (!function_exists('getCodeFileSafe')) {
+
+    /**
+     * Safely reads a file from within the Skyesoft project directory.
+     * Prevents directory traversal and returns structured metadata.
+     *
+     * @param string $path  Relative or absolute path to target file
+     * @return array {
+     *   @type bool   $error   True if file could not be read
+     *   @type string $message Description or error
+     *   @type string $content File contents (if available)
+     *   @type string $file    File name only
+     *   @type string $path    Absolute path (sanitized)
+     *   @type int    $size    File size in bytes
+     * }
+     */
+    function getCodeFileSafe($path)
+    {
+        $baseDir = realpath(__DIR__ . '/..');      // project root
+        $target  = realpath($baseDir . '/' . ltrim($path, '/'));
+
+        // 🚫 Directory traversal protection
+        if (!$target || strpos($target, $baseDir) !== 0) {
+            return array(
+                'error'   => true,
+                'message' => 'Unauthorized file access attempt blocked.',
+                'content' => '',
+                'file'    => basename($path),
+                'path'    => $path,
+                'size'    => 0
+            );
+        }
+
+        // 🚫 File missing
+        if (!file_exists($target)) {
+            return array(
+                'error'   => true,
+                'message' => 'File not found: ' . basename($path),
+                'content' => '',
+                'file'    => basename($path),
+                'path'    => $target,
+                'size'    => 0
+            );
+        }
+
+        // ✅ Read file safely
+        $content = @file_get_contents($target);
+        if ($content === false) {
+            return array(
+                'error'   => true,
+                'message' => 'Unable to read file: ' . basename($path),
+                'content' => '',
+                'file'    => basename($path),
+                'path'    => $target,
+                'size'    => filesize($target)
+            );
+        }
+
+        return array(
+            'error'   => false,
+            'message' => 'File read successfully.',
+            'content' => $content,
+            'file'    => basename($target),
+            'path'    => $target,
+            'size'    => filesize($target)
+        );
+    }
+}
 #endregion
 
 #region 🔩 Report Generators (specific report logic)
@@ -385,10 +548,24 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
 }
 #endregion
 
+#region 🚧 SKYEBOT INPUT VALIDATION & GUARD CLAUSE
+// ================================================================
+// Purpose:
+//   • Ensures a valid prompt was received before continuing
+//   • Prevents downstream errors in semantic or Codex parsing
+//   • Returns a structured JSON response for consistent UX
+// ================================================================
+
 if (empty($prompt)) {
-    sendJsonResponse("❌ Empty prompt.", "none", array("sessionId" => $sessionId));
+    sendJsonResponse(
+        "❌ Empty prompt received. Please enter a valid request.",
+        "none",
+        array("sessionId" => $sessionId)
+    );
     exit;
 }
+
+#endregion
 
 #region 🗜 Build Context Blocks (Semantic Router)
 $snapshotSlim = array(
@@ -446,7 +623,12 @@ if (stripos($prompt, 'report') !== false) {
 }
 #endregion
 
-#region 🚛 Headers and Setup
+#region 🚛 SKYEBOT HEADERS & API KEY VALIDATION
+// ================================================================
+// Purpose:
+//   • Load and validate OpenAI API key
+//   • Prevent unauthorized execution if key missing
+// ================================================================
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey) {
     sendJsonResponse("❌ API key not found.", "none", array("sessionId" => $sessionId));
@@ -454,11 +636,20 @@ if (!$apiKey) {
 }
 #endregion
 
-#region 🛣 Dispatch Handler (Semantic Intent Router)
+#region 🧠 SKYEBOT SEMANTIC INTENT ROUTER (Primary Dispatch Layer)
+// ======================================================================
+// Purpose:
+//   • Classifies and routes user input using semantic AI understanding
+//   • Replaces legacy regex-based triggers with contextual reasoning
+//   • Routes to report, CRUD, login/logout, or general AI response
+//   • Includes fallback layers for semantic continuity
+// ======================================================================
+
 $handled = false;
 $responsePayload = null;
 
-// Semantic Intent Router — replaces regex triggers entirely
+
+#region 🧩 Build Router Prompt
 $routerPrompt = <<<PROMPT
 You are the Skyebot™ Semantic Intent Router.
 Your role is to classify and route user intent based on meaning, not keywords.
@@ -486,7 +677,9 @@ if (!empty($conversation)) {
     $recent = array_slice($conversation, -3);
     $routerPrompt .= "\n\nRecent chat context:\n" . json_encode($recent, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }
+#endregion
 
+#region 🚀 Execute Router Classification
 $routerMessages = array(
     array("role" => "system", "content" => "You are Skyebot’s intent classifier. Respond only with JSON."),
     array("role" => "user", "content" => $routerPrompt)
@@ -495,52 +688,51 @@ $routerMessages = array(
 $routerResponse = callOpenAi($routerMessages);
 $intentData = json_decode(trim($routerResponse), true);
 error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
+#endregion
 
+#region 🧭 Intent Resolution Layer
 if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.6) {
     $intent = strtolower(trim($intentData['intent']));
     $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
 
-    // 🧠 SEMANTIC CORRECTION LAYER (linguistic override + expanded report bias)
-
-    // If AI classified as CRUD but user said "sheet" or "report", reroute to Report intent.
+    
+    // #region 🧠 SEMANTIC CORRECTION & REPORT BIAS
+    // Linguistic correction: reroute CRUD → Report when text includes "sheet" or "report"
     if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
-        error_log("🔄 Linguistic correction: rerouting CRUD → Report (phrase matched 'sheet' or 'report').");
+        error_log("🔄 Linguistic correction: CRUD → Report.");
         $intent = 'report';
     }
 
-    // 🧠 SEMANTIC REPORT BIAS — expand verbs that imply creation of tangible output
+    // Detect creation verbs combined with document-type nouns
     if (
         in_array($intent, ['general', 'crud']) &&
         preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
         preg_match('/\b(sheet|report|codex|summary|document)\b/i', $prompt)
     ) {
-        error_log("🔁 Semantic override: rerouting {$intent} → report (creation verb + document noun).");
+        error_log("🔁 Semantic override: {$intent} → report (creation verb + document noun).");
         $intent = 'report';
     }
 
-    // 🧩 Codex-Aware Sheet Recognition
-    // Detects “sheet” as a formal Skyesoft document type (per Document Standards)
-    if (
-        $intent !== 'report' &&
-        preg_match('/\bsheet\b/i', $prompt) &&
-        isset($codexMeta)
-    ) {
+    // Recognize “sheet” in Document Standards context
+    if ($intent !== 'report' && preg_match('/\bsheet\b/i', $prompt) && isset($codexMeta)) {
         foreach ($codexMeta as $key => $meta) {
             if (!isset($meta['title'])) continue;
             $title = strtolower($meta['title']);
             $category = isset($meta['category']) ? strtolower($meta['category']) : '';
             if (strpos($title, 'document standards') !== false || strpos($category, 'system layer') !== false) {
-                error_log("📄 Codex-aware override: 'sheet' request matched Document Standards context → intent=report.");
+                error_log("📄 Codex-aware override: matched Document Standards context → report.");
                 $intent = 'report';
                 break;
             }
         }
     }
-    // 🧩 NEW — Codex Relationship Resolver (Ontology Integration)
+    // #endregion
+
+    #region 🔗 Codex Relationship Resolver (Ontology Integration)
     if ($target && isset($codexMeta[$target])) {
         $meta = $codexMeta[$target];
 
-        // 1️⃣ Resolve dependencies
+        // Dependencies
         if (!empty($meta['dependsOn'])) {
             error_log("🔗 $target depends on: " . implode(', ', $meta['dependsOn']));
             foreach ($meta['dependsOn'] as $dep) {
@@ -550,26 +742,28 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             }
         }
 
-        // 2️⃣ Resolve providers
+        // Providers
         if (!empty($meta['provides'])) {
             error_log("📡 $target provides: " . implode(', ', $meta['provides']));
             $meta['resolvedProviders'] = $meta['provides'];
         }
 
-        // 3️⃣ Match aliases
+        // Aliases
         if (!empty($meta['aliases'])) {
             $aliases = implode('|', array_map('preg_quote', $meta['aliases']));
             if (preg_match("/\b($aliases)\b/i", $prompt)) {
-                error_log("🪞 Alias matched for $target via " . $aliases);
+                error_log("🪞 Alias matched for $target.");
                 $intent = 'report';
             }
         }
 
         $codexMeta[$target] = $meta;
     }
-    // Switch routing based on final intent
+    #endregion
+
+    #region ⚙️ Intent Switch Router (Core Dispatch)
+    // Switch based on resolved intent
     switch ($intent) {
-        // 🔑 Logout
         case "logout":
             performLogout();
             echo json_encode([
@@ -580,9 +774,7 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
-        // 🔑 Login
         case "login":
-            // Router may return "target":"username" or null
             $_SESSION['user'] = $target ?: 'guest';
             echo json_encode([
                 "actionType" => "Login",
@@ -592,10 +784,9 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
-        // 📘 Report / Information Sheet
         case "report":
-            // 🪄 Auto-map Codex modules to reports even if 'generate' was not used
-            if ($intent === 'report' && !$target) {
+            // Auto-map Codex modules when title appears in prompt
+            if (!$target) {
                 foreach ($codexMeta as $key => $meta) {
                     $title = strtolower($meta['title']);
                     if (preg_match('/\b(' . preg_quote($title, '/') . ')\b/i', strtolower($prompt))) {
@@ -605,20 +796,14 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
                     }
                 }
             }
-
-            // 🔁 If a Codex module title was found, route directly to report generator
             if ($target && isset($dynamicData['codex']['modules'][$target])) {
                 include __DIR__ . "/dispatchers/intent_report.php";
                 exit;
             }
             break;
 
-        // 🧾 CRUD Operations
         case "crud":
-            // 🔍 Detect if the CRUD request involves viewing code
             if (isset($target) && preg_match('/\.(php|js|json|html|css)$/i', $target)) {
-                include_once(__DIR__ . '/helpers.php');
-
                 $result = getCodeFileSafe($target);
                 if ($result['error']) {
                     sendJsonResponse("❌ " . $result['message'], "error", array(
@@ -627,18 +812,13 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
                     ));
                     exit;
                 }
-
-                // Log file access
                 if (function_exists('logMessage')) {
-                    logMessage("👁️ CRUD: Skyebot viewed code file '{$target}' (Session: {$sessionId})");
+                    logMessage("👁️ CRUD: Viewed code file '{$target}' (Session: {$sessionId})");
                 }
-
-                // Trim long files for chat display
                 $preview = substr($result['content'], 0, 2000);
                 if (strlen($result['content']) > 2000) {
                     $preview .= "\n\n⚠️ (File truncated for display — full content logged.)";
                 }
-
                 sendJsonResponse(
                     "📄 Here's the code for **" . basename($result['file']) . "**:\n\n```\n" . $preview . "\n```",
                     "crud_read_code",
@@ -653,441 +833,59 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             include __DIR__ . "/dispatchers/intent_crud.php";
             exit;
 
-        // 💬 General or Unclassified → fallback to SemanticResponder
         default:
-            // Fall through to existing semantic responder logic below
-            break;
+            break; // fallthrough → SemanticResponder
     }
+    #endregion
 }
 #endregion
 
-// 🔩 Codex Information Sheet Generator (Semantic Fallback)
-// Triggered only if the router did not handle the prompt (ensures graceful continuity)
+#region 🧩 SKYEBOT SEMANTIC FALLBACK SUITE
+// ======================================================================
+// Purpose:
+//   • Provides continuity when intent router cannot resolve input
+//   • Executes layered fallbacks (report → CRUD → acronym → AI → search)
+// ======================================================================
+
+#region 📘 Report Generator (AI + Codex Fallback)
 if (!$handled && !$intentData && preg_match('/\b(sheet|report|codex|module|summary)\b/i', $prompt)) {
-    error_log("🧭 Semantic Fallback: Codex Information Sheet Generator triggered — prompt: " . $prompt);
-
-    // 1️⃣ Load Codex (prefer live dynamicData snapshot, fallback to static file)
-    $codexData = isset($dynamicData['codex'])
-        ? $dynamicData['codex']
-        : (file_exists(CODEX_PATH)
-            ? json_decode(file_get_contents(CODEX_PATH), true)
-            : array());
-
-    // Normalize structure (works for both wrapped and flat schemas)
-    $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
-        ? $codexData['modules']
-        : $codexData;
-
-    // 2️⃣ Build lightweight semantic index
-    $codexSlim = array();
-    foreach ($modules as $key => $entry) {
-        if (!is_array($entry) || !isset($entry['title'])) continue;
-        $codexSlim[] = array(
-            "slug"        => $key,
-            "title"       => $entry['title'],
-            "description" => isset($entry['description']) ? $entry['description'] : ''
-        );
-    }
-
-    // 3️⃣ Ask AI to semantically resolve user request → module slug
-    $resolverPrompt = <<<PROMPT
-atch the following user request to the most relevant Codex module.
-Base your choice on meaning, not exact wording.
-
-User request: "$prompt"
-
-Available modules:
-PROMPT;
-    $resolverPrompt .= json_encode($codexSlim, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    $resolverPrompt .= "\n\nRespond strictly as JSON: {\"slug\": \"best-match\" or null}";
-
-    $messages = array(
-        array("role" => "system", "content" => "You are a semantic resolver for Codex modules. Select the most relevant slug; use null if no confident match."),
-        array("role" => "user", "content" => $resolverPrompt)
-    );
-
-    $aiSlugResponse = callOpenAi($messages);
-    $slugResult = json_decode($aiSlugResponse, true);
-    $slug = isset($slugResult['slug']) ? trim($slugResult['slug']) : null;
-
-    // 4️⃣ Fallback: normalized key scanning if AI uncertain
-    if (!$slug) {
-        $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
-        foreach ($modules as $key => $module) {
-            $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
-            if (strpos($normalizedPrompt, $normalizedKey) !== false || levenshtein($normalizedPrompt, $normalizedKey) < 4) {
-                $slug = $key;
-                break;
-            }
-        }
-    }
-
-    // 5️⃣ Final routing decision
-    if (!$slug || !isset($modules[$slug])) {
-        error_log("⚠️ No matching Codex module found for prompt: " . substr($prompt, 0, 100));
-        sendJsonResponse("⚠️ No matching Codex module found. Please rephrase your request.", "none", array("sessionId" => $sessionId));
-    }
-
-    // 6️⃣ Generate report dynamically via internal API
-    $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
-    $payload = json_encode(array("slug" => $slug));
-    $context = stream_context_create(array(
-        "http" => array(
-            "method"  => "POST",
-            "header"  => "Content-Type: application/json\r\n",
-            "content" => $payload,
-            "timeout" => 15
-        )
-    ));
-    $result = @file_get_contents($apiUrl, false, $context);
-
-    if ($result === false) {
-        $err = error_get_last();
-        $msg = isset($err['message']) ? $err['message'] : 'Unknown network error';
-        sendJsonResponse("❌ Network error contacting generateReports.php: $msg", "error", array("sessionId" => $sessionId));
-    }
-
-    // 7️⃣ Construct clean public URL + response
-    $title = isset($modules[$slug]['title']) ? trim($modules[$slug]['title']) : ucwords(str_replace(['-', '_'], ' ', $slug));
-    $cleanTitle = preg_replace('/[\p{So}\p{Cn}\p{Cs}\x{00A0}\x{FEFF}\x{200B}-\x{200D}\x{2000}-\x{206F}]+/u', '', $title);
-    $cleanTitle = preg_replace('/[^A-Za-z0-9 _()\-]+/', '', trim($cleanTitle));
-    $fileName = 'Information Sheet - ' . $cleanTitle . '.pdf';
-    $publicUrl = 'https://www.skyelighting.com/skyesoft/docs/sheets/' . str_replace(' ', '%20', $fileName);
-
-    error_log("📘 Generated Info Sheet (fallback): slug='$slug', url='$publicUrl'");
-
-    $responsePayload = array(
-        "response"  => "📘 The **" . $title . "** information sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")",
-        "action"    => "sheet_generated",
-        "slug"      => $slug,
-        "reportUrl" => $publicUrl,
-        "sessionId" => $sessionId,
-        "preventCtaInjection" => true
-    );
-
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    include __DIR__ . "/dispatchers/fallback_report.php";
     exit;
 }
+#endregion
 
-$reportTypesSpec = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-    ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
-    : array();
-
-// 2. 📑 Reports (run this BEFORE CRUD) — Preserved as fallback
-if (!$handled) {
-    $detectedReport = null;
-    foreach ($reportTypesSpec as $reportName => $reportDef) {
-        if (stripos($prompt, $reportName) !== false) {
-            $detectedReport = $reportName;
-            break;
-        }
-    }
-
-    if ($detectedReport && isset($reportTypesSpec[$detectedReport])) {
-        if (preg_match('/\b\d{1,5}\b/', $prompt) && preg_match('/\b\d{5}\b/', $prompt)) {
-            $responsePayload = array(
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => $detectedReport,
-                "response"   => "ℹ️ Report definition for $detectedReport.",
-                "spec"       => $reportTypesSpec[$detectedReport],
-                "inputs"     => array("rawPrompt" => $prompt),
-                "sessionId"  => $sessionId
-            );
-        } else {
-            $responsePayload = array(
-                "actionType" => "Create",
-                "actionName" => "Report",
-                "reportType" => $detectedReport,
-                "response"   => "ℹ️ Codex information about requested report type.",
-                "details"    => $reportTypesSpec[$detectedReport],
-                "sessionId"  => $sessionId
-            );
-        }
-        $handled = true;
-    }
-}
-
-// 3. --- CRUD (only if no report was matched) --- Preserved as fallback
+#region 🧾 CRUD Operations (Regex Fallback)
 if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-zA-Z0-9]+)/i', $lowerPrompt, $matches)) {
-    $actionType = ucfirst(strtolower($matches[1]));
-    $entity     = $matches[2];
-    $details    = array("entity" => $entity, "prompt" => $prompt);
-
-    if ($actionType === "Create") {
-        $success = createCrudEntity($entity, $details);
-        $responsePayload = array(
-            "actionType" => "Create",
-            "entity"     => $entity,
-            "status"     => $success ? "success" : "failed",
-            "sessionId"  => $sessionId
-        );
-    } elseif ($actionType === "Read") {
-        $result = readCrudEntity($entity, $details);
-        $responsePayload = array(
-            "actionType" => "Read",
-            "entity"     => $entity,
-            "result"     => $result,
-            "status"     => "success",
-            "sessionId"  => $sessionId
-        );
-    } elseif ($actionType === "Update") {
-        $success = updateCrudEntity($entity, $details);
-        $responsePayload = array(
-            "actionType" => "Update",
-            "entity"     => $entity,
-            "status"     => $success ? "success" : "failed",
-            "sessionId"  => $sessionId
-        );
-    } elseif ($actionType === "Delete") {
-        $success = deleteCrudEntity($entity, $details);
-        $responsePayload = array(
-            "actionType" => "Delete",
-            "entity"     => $entity,
-            "status"     => $success ? "success" : "failed",
-            "sessionId"  => $sessionId
-        );
-    }
-
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    include __DIR__ . "/dispatchers/fallback_crud.php";
     exit;
 }
+#endregion
 
-// 🔐 Codex Acronym Resolver (Pre-normalization) — Preserved as fallback
+#region 🧩 Codex Acronym Resolver (Normalization Fallback)
 if (!$handled && isset($dynamicData['codex']['modules'])) {
-    $acronymMap = array();
-
-    foreach ($dynamicData['codex']['modules'] as $key => $module) {
-        if (isset($module['title']) && preg_match('/\(([A-Z0-9]+)\)/', $module['title'], $m)) {
-            $acronymMap[$m[1]] = $key;
-        }
-    }
-
-    // Normalize prompt for scanning
-    $normalizedPrompt = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $prompt));
-
-    foreach ($acronymMap as $acro => $slug) {
-        if (stripos($normalizedPrompt, $acro) !== false) {
-            error_log("🔍 Acronym '$acro' matched Codex key '$slug' in prompt.");
-            // Automatically rewrite the prompt to full title for matching
-            $prompt = preg_replace('/\b' . preg_quote($acro, '/') . '\b/i', $slug, $prompt);
-            break;
-        }
-    }
+    include __DIR__ . "/dispatchers/fallback_acronym.php";
 }
+#endregion
 
-// 🔧 Ensure $systemPrompt is defined for legacy fallback use
-if (!isset($systemPrompt)) {
-    $systemPrompt = "Skyebot Context: Use SSE live data, Codex modules, and user conversation history to generate an intelligent response.";
-}
-
-// 4. 🧭 SemanticResponder — Preserved as fallback
+#region 💬 SemanticResponder (AI Fallback)
 if (!$handled) {
-    $messages = array(
-        array(
-            "role" => "system",
-            "content" => "Here is the current Source of Truth snapshot (sseSnapshot + codex). Use this to answer semantically.\n\n" . $systemPrompt
-        ),
-        array(
-            "role" => "system",
-            "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        )
-    );
-    if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry["role"]) && isset($entry["content"])) {
-                $messages[] = array(
-                    "role"    => $entry["role"],
-                    "content" => $entry["content"]
-                );
-            }
-        }
-    }
-    $messages[] = array("role" => "user", "content" => $prompt);
-
-    $aiResponse = callOpenAi($messages);
-
-    // 🔍 Safeguard: detect likely truncation
-    if ($aiResponse && !preg_match('/[.!?…]$/', trim($aiResponse))) {
-        error_log("⚠️ AI response may be truncated: " . substr($aiResponse, -50));
-    }    
-
-    if ($aiResponse && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") === false) {
-    // Default response text
-    $responseText = $aiResponse . " ‧";
-
-        // Ensure codex is loaded
-        if (!isset($codex) || !isset($codex['modules'])) {
-            if (isset($dynamicData['codex'])) {
-                $codex = $dynamicData['codex'];
-            } else {
-                $codex = array();
-            }
-        }
-
-        $ctaAdded = false; // ✅ safeguard against multiple links
-
-        // 🔩 Normalize AI response for safer matching
-        $normalizedResponse = normalizeTitle($aiResponse);
-
-        // **PATCH: Guard to skip CTA injection if payload is pre-tagged**
-        if (isset($responsePayload["preventCtaInjection"]) && $responsePayload["preventCtaInjection"] === true) {
-            $ctaAdded = true; // Prevent duplicate Open Report link
-        }
-
-        // Check Codex modules
-        if (isset($codex['modules']) && is_array($codex['modules'])) {
-            foreach ($codex['modules'] as $key => $moduleDef) {
-                if ($ctaAdded) break;
-
-                $rawTitle   = isset($moduleDef['title']) ? $moduleDef['title'] : '';
-                $cleanTitle = normalizeTitle($rawTitle);
-
-                // Extract acronym, e.g. (TIS)
-                $acronym = null;
-                if (preg_match('/\(([A-Z0-9]+)\)/', $rawTitle, $matches)) {
-                    $acronym = $matches[1];
-                }
-
-                error_log("📐 Checking module: rawTitle='$rawTitle', cleanTitle='$cleanTitle', acronym='$acronym', key='$key'");
-                error_log("📐 AI Response snippet: " . substr($normalizedResponse, 0, 200));
-
-                if (
-                    (!empty($rawTitle)   && stripos($normalizedResponse, $rawTitle)   !== false) ||
-                    (!empty($cleanTitle) && stripos($normalizedResponse, $cleanTitle) !== false) ||
-                    (!empty($acronym)    && stripos($normalizedResponse, $acronym)    !== false) ||
-                    stripos($normalizedResponse, $key) !== false
-                ) {
-                    error_log("✅ CTA Match: Module '$rawTitle' (key: $key) matched in AI response.");
-                    $responseText .= getTrooperLink($key);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Check Information Sheets
-        if (!$ctaAdded && isset($codex['informationSheetSuite']['types']) && is_array($codex['informationSheetSuite']['types'])) {
-            foreach ($codex['informationSheetSuite']['types'] as $sheetKey => $sheetDef) {
-                $sheetPurpose = isset($sheetDef['purpose']) ? normalizeTitle($sheetDef['purpose']) : '';
-                $sheetTitle   = isset($sheetDef['title']) ? normalizeTitle($sheetDef['title']) : '';
-
-                error_log("📐 Checking information sheet: sheetKey='$sheetKey', sheetTitle='$sheetTitle', sheetPurpose='$sheetPurpose'");
-
-                if (
-                    (!empty($sheetPurpose) && stripos($normalizedResponse, $sheetPurpose) !== false) ||
-                    (!empty($sheetTitle)   && stripos($normalizedResponse, $sheetTitle)   !== false) ||
-                    stripos($normalizedResponse, $sheetKey) !== false
-                ) {
-                    error_log("✅ CTA Match: Information Sheet '$sheetKey' matched in AI response.");
-                    $responseText .= getTrooperLink($sheetKey);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Check Glossary terms
-        if (!$ctaAdded && isset($codex['glossary']) && is_array($codex['glossary'])) {
-            foreach ($codex['glossary'] as $key => $entry) {
-                if ($ctaAdded) break;
-
-                $cleanKey = normalizeTitle($key);
-
-                error_log("📐 Checking glossary: key='$key', cleanKey='$cleanKey'");
-
-                if (
-                    stripos($normalizedResponse, $key) !== false ||
-                    stripos($normalizedResponse, $cleanKey) !== false
-                ) {
-                    error_log("✅ CTA Match: Glossary term '$key' matched in AI response.");
-                    $responseText .= getTrooperLink($key);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // (Optional) Check Included Documents list
-        if (!$ctaAdded && isset($codex['includedDocuments']['documents']) && is_array($codex['includedDocuments']['documents'])) {
-            foreach ($codex['includedDocuments']['documents'] as $doc) {
-                if ($ctaAdded) break;
-
-                $cleanDoc = normalizeTitle($doc);
-
-                error_log("📐 Checking included document: doc='$doc', cleanDoc='$cleanDoc'");
-
-                if (
-                    stripos($normalizedResponse, $doc) !== false ||
-                    stripos($normalizedResponse, $cleanDoc) !== false
-                ) {
-                    error_log("✅ CTA Match: Included document '$doc' matched in AI response.");
-                    $responseText .= getTrooperLink($doc);
-                    $ctaAdded = true;
-                    break;
-                }
-            }
-        }
-
-        // Prepare final payload
-        $responsePayload = array(
-            "response"  => $responseText,
-            "action"    => "answer",
-            "sessionId" => $sessionId
-        );
-        $handled = true;
-    }
+    include __DIR__ . "/dispatchers/fallback_semantic.php";
 }
+#endregion
 
-// 5. 🌐 Google Search Fallback — Preserved as fallback
+#region 🌐 Google Search Fallback
 if (!$handled || (isset($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)) {
-    $searchResults = googleSearch($prompt);
-
-    // Log for debugging
-    file_put_contents(__DIR__ . '/error.log',
-        date('Y-m-d H:i:s') . " - Google Search called for prompt: $prompt\n" .
-        "Results keys: " . implode(', ', array_keys($searchResults)) . "\n",
-        FILE_APPEND
-    );
-
-    if (isset($searchResults['error'])) {
-        // Handle API errors (e.g., keys not set, curl failure)
-        $responsePayload = array(
-            "response" => "⚠️ Search service unavailable: " . $searchResults['error'] . ". Please try again.",
-            "action" => "error",
-            "sessionId" => $sessionId
-        );
-    } elseif (!empty($searchResults['summary'])) {
-        // Use the summary (handles both single and AI-summarized cases)
-        $responsePayload = array(
-            "response" => $searchResults['summary'] . " (via Google Search)",
-            "action" => "answer",
-            "sessionId" => $sessionId
-        );
-        // Optionally add raw snippets or link if available (e.g., from first raw item)
-        if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
-            // If raw contains full items (adjust if your function returns links)
-            $firstLink = isset($searchResults['raw'][0]['link']) ? $searchResults['raw'][0]['link'] : null;
-            if ($firstLink) {
-                $responsePayload['link'] = $firstLink;
-            }
-        }
-    } else {
-        // No useful results
-        $responsePayload = array(
-            "response" => "⚠️ No relevant search results found. Please try rephrasing your query.",
-            "action" => "error",
-            "sessionId" => $sessionId
-        );
-    }
+    include __DIR__ . "/dispatchers/fallback_search.php";
 }
+#endregion
 
-// 6. ✅ Final Output
+#region ✅ Final Output (Guaranteed JSON)
 if ($responsePayload) {
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 } else {
     sendJsonResponse("❌ Unable to process request.", "error", array("sessionId" => $sessionId));
 }
+#endregion
+
 #endregion
