@@ -677,6 +677,65 @@
       "text": "{\n  \"messageId\": \"1739432447_4\",\n  \"timestamp\": 1739432489,\n  \"userId\": 1,\n  \"message\": \"Send zoning report to Paula.\",\n  \"attachments\": [],\n  \"metadata\": {\n    \"ip\": \"73.10.24.120\",\n    \"action\": \"create_email\",\n    \"crud\": \"C\",\n    \"target\": \"Paula Leonard\",\n    \"project\": \"Mesa Zoning\"\n  },\n  \"index\": { \"action\": \"create_email\", \"target\": \"Paula Leonard\", \"project\": \"Mesa Zoning\" }\n}"
     }
   },
+  "codeManagement": {
+  "title": "💻 Code Management",
+  "category": "System Layer",
+  "type": "system-standard",
+  "subtypes": ["source", "module", "endpoint"],
+  "actions": ["read", "describe", "suggest-edit", "generate-docs"],
+  "relationships": {
+    "isA": "systemStandard",
+    "partOf": "System Layer",
+    "dependsOn": ["fileManagement"],
+    "governs": ["getCodeFile", "generateReports", "federalHolidays", "getDynamicData"],
+    "aliases": ["code index", "developer layer", "Skyebot coding interface"]
+  },
+  "enrichment": "medium",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Defines how Skyebot™ interacts with Skyesoft’s source files — allowing safe read-only inspection, structured documentation, and controlled modification suggestions. It ensures AI access remains auditable, non-destructive, and version-controlled."
+  },
+  "features": {
+    "icon": "gear",
+    "format": "list",
+    "items": [
+      "Central code manifest with file paths and descriptions",
+      "Read-only inspection by default with diff-based editing proposals",
+      "Integration with version control for commit history awareness",
+      "AI documentation generator aligned with Codex formatting"
+    ]
+  },
+  "integrations": {
+    "icon": "link",
+    "format": "list",
+    "items": [
+      "File Management — ensures path integrity and backup safety",
+      "SSE Stream — provides live deployment sync metadata",
+      "AI Integration — enables semantic file comprehension and code commentary",
+      "Chat History Architecture — logs all code interactions for auditability"
+    ]
+  },
+  "rules": {
+    "icon": "shield",
+    "format": "list",
+    "items": [
+      "Skyebot may read any file under /api, /assets, or /scripts but never /config or private credentials.",
+      "All modifications must be confirmed by a human before commit.",
+      "Changes are stored as diffs under /docs/changes/ for traceability.",
+      "Each access is logged with timestamp, file, and user ID."
+    ]
+  },
+  "examples": {
+    "icon": "table",
+    "format": "table",
+    "items": [
+      { "File": "api/getDynamicData.php", "Purpose": "Generates the Skyesoft SSE stream" },
+      { "File": "api/federalHolidays.php", "Purpose": "Returns normalized holiday data" },
+      { "File": "api/generateReports.php", "Purpose": "Creates PDF/HTML information sheets" }
+    ]
+  }
+  },
   "modules": {
     "skyesoftGlossary": {
       "title": "📘 Skyesoft Glossary",
