@@ -1033,38 +1033,42 @@ if (!$handled) {
 // 5. 🌐 Google Search Fallback
 if (
     !$handled ||
-    (!empty($aiResponse) && is_string($aiResponse) && stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)
+    (!empty($aiResponse) && is_string($aiResponse) &&
+     stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)
 ) {
-
     $searchResults = googleSearch($prompt);
 
     // Log for debugging
     file_put_contents(
         __DIR__ . '/error.log',
-        date('Y-m-d H:i:s') . " - Google Search called for prompt: $prompt\n" .
-        "Results keys: " . (!empty($searchResults) && is_array($searchResults)
+        date('Y-m-d H:i:s') .
+        " - Google Search called for prompt: $prompt\n" .
+        "Results keys: " .
+        (!empty($searchResults) && is_array($searchResults)
             ? implode(', ', array_keys($searchResults))
             : 'none') . "\n",
         FILE_APPEND
     );
 
     if (isset($searchResults['error'])) {
-        // Handle API errors (e.g., keys not set, curl failure)
-        $responsePayload = [
-            "response"  => "⚠️ Search service unavailable: " . $searchResults['error'] . ". Please try again.",
+        // Handle API errors (e.g., key missing, cURL failure)
+        $responsePayload = array(
+            "response"  => "⚠️ Search service unavailable: " .
+                           $searchResults['error'] . ". Please try again.",
             "action"    => "error",
             "sessionId" => $sessionId
-        ];
+        );
     } elseif (!empty($searchResults['summary'])) {
-        // Use the summary (handles both single and AI-summarized cases)
-        $responsePayload = [
+        // Use AI-summarized or plain summary
+        $responsePayload = array(
             "response"  => $searchResults['summary'] . " (via Google Search)",
             "action"    => "answer",
             "sessionId" => $sessionId
-        ];
+        );
 
-        // Optionally add raw snippets or link if available (e.g., from first raw item)
-        if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
+        // Optionally include first link if available
+        if (isset($searchResults['raw'][0]) &&
+            is_array($searchResults['raw'][0])) {
             $firstLink = isset($searchResults['raw'][0]['link'])
                 ? $searchResults['raw'][0]['link']
                 : null;
@@ -1073,12 +1077,13 @@ if (
             }
         }
     } else {
-        // No useful results
-        $responsePayload = [
-            "response"  => "⚠️ No relevant search results found. Please try rephrasing your query.",
+        // No meaningful results
+        $responsePayload = array(
+            "response"  =>
+                "⚠️ No relevant search results found. Please rephrase your query.",
             "action"    => "error",
             "sessionId" => $sessionId
-        ];
+        );
     }
 }
 
