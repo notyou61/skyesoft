@@ -648,7 +648,6 @@ if (!$apiKey) {
 $handled = false;
 $responsePayload = null;
 
-
 #region 🧩 Build Router Prompt
 $routerPrompt = <<<PROMPT
 You are the Skyebot™ Semantic Intent Router.
@@ -675,7 +674,8 @@ $routerPrompt .= json_encode($codexMeta, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PR
 
 if (!empty($conversation)) {
     $recent = array_slice($conversation, -3);
-    $routerPrompt .= "\n\nRecent chat context:\n" . json_encode($recent, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    $routerPrompt .= "\n\nRecent chat context:\n" .
+                     json_encode($recent, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }
 #endregion
 
@@ -695,15 +695,11 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
     $intent = strtolower(trim($intentData['intent']));
     $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
 
-    
-    // #region 🧠 SEMANTIC CORRECTION & REPORT BIAS
-    // Linguistic correction: reroute CRUD → Report when text includes "sheet" or "report"
+    // 🧠 SEMANTIC CORRECTION & REPORT BIAS
     if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
         error_log("🔄 Linguistic correction: CRUD → Report.");
         $intent = 'report';
     }
-
-    // Detect creation verbs combined with document-type nouns
     if (
         in_array($intent, ['general', 'crud']) &&
         preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
@@ -713,85 +709,65 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         $intent = 'report';
     }
 
-    // Recognize “sheet” in Document Standards context
+    // 🧩 Codex-Aware “Sheet” Context Recognition
     if ($intent !== 'report' && preg_match('/\bsheet\b/i', $prompt) && isset($codexMeta)) {
         foreach ($codexMeta as $key => $meta) {
             if (!isset($meta['title'])) continue;
             $title = strtolower($meta['title']);
             $category = isset($meta['category']) ? strtolower($meta['category']) : '';
-            if (strpos($title, 'document standards') !== false || strpos($category, 'system layer') !== false) {
+            if (strpos($title, 'document standards') !== false ||
+                strpos($category, 'system layer') !== false) {
                 error_log("📄 Codex-aware override: matched Document Standards context → report.");
                 $intent = 'report';
                 break;
             }
         }
     }
-    // #endregion
 
-    #region 🔗 Codex Relationship Resolver (Ontology Integration)
+    // 🔗 Relationship Resolver
     if ($target && isset($codexMeta[$target])) {
         $meta = $codexMeta[$target];
-
-        // Dependencies
         if (!empty($meta['dependsOn'])) {
-            error_log("🔗 $target depends on: " . implode(', ', $meta['dependsOn']));
             foreach ($meta['dependsOn'] as $dep) {
                 if (isset($codexMeta[$dep])) {
                     $meta['resolvedDependencies'][$dep] = $codexMeta[$dep];
                 }
             }
         }
-
-        // Providers
         if (!empty($meta['provides'])) {
-            error_log("📡 $target provides: " . implode(', ', $meta['provides']));
             $meta['resolvedProviders'] = $meta['provides'];
         }
-
-        // Aliases
-        if (!empty($meta['aliases'])) {
-            $aliases = implode('|', array_map('preg_quote', $meta['aliases']));
-            if (preg_match("/\b($aliases)\b/i", $prompt)) {
-                error_log("🪞 Alias matched for $target.");
-                $intent = 'report';
-            }
-        }
-
         $codexMeta[$target] = $meta;
     }
-    #endregion
 
-    #region ⚙️ Intent Switch Router (Core Dispatch)
-    // Switch based on resolved intent
+    // ⚙️ Intent Switch
     switch ($intent) {
         case "logout":
             performLogout();
-            echo json_encode([
+            echo json_encode(array(
                 "actionType" => "Logout",
                 "status"     => "success",
                 "response"   => "👋 You have been logged out.",
                 "sessionId"  => $sessionId
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
         case "login":
             $_SESSION['user'] = $target ?: 'guest';
-            echo json_encode([
+            echo json_encode(array(
                 "actionType" => "Login",
                 "status"     => "success",
                 "user"       => $_SESSION['user'],
                 "sessionId"  => $sessionId
-            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
 
         case "report":
-            // Auto-map Codex modules when title appears in prompt
             if (!$target) {
                 foreach ($codexMeta as $key => $meta) {
                     $title = strtolower($meta['title']);
                     if (preg_match('/\b(' . preg_quote($title, '/') . ')\b/i', strtolower($prompt))) {
                         $target = $key;
-                        error_log("🔗 Auto-mapped Codex title '{$meta['title']}' → slug '$key'");
                         break;
                     }
                 }
@@ -803,67 +779,38 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             break;
 
         case "crud":
-            if (isset($target) && preg_match('/\.(php|js|json|html|css)$/i', $target)) {
+            if ($target && preg_match('/\.(php|js|json|html|css)$/i', $target)) {
                 $result = getCodeFileSafe($target);
                 if ($result['error']) {
                     sendJsonResponse("❌ " . $result['message'], "error", array(
-                        "sessionId" => $sessionId,
-                        "requestedFile" => $target
+                        "sessionId" => $sessionId
                     ));
                     exit;
                 }
-                if (function_exists('logMessage')) {
-                    logMessage("👁️ CRUD: Viewed code file '{$target}' (Session: {$sessionId})");
-                }
                 $preview = substr($result['content'], 0, 2000);
-                if (strlen($result['content']) > 2000) {
-                    $preview .= "\n\n⚠️ (File truncated for display — full content logged.)";
-                }
-                sendJsonResponse(
-                    "📄 Here's the code for **" . basename($result['file']) . "**:\n\n```\n" . $preview . "\n```",
+                if (strlen($result['content']) > 2000)
+                    $preview .= "\n\n⚠️ (Truncated for display)";
+                sendJsonResponse("📄 Here's the code for **" . basename($result['file']) . "**:\n\n```\n" . $preview . "\n```",
                     "crud_read_code",
-                    array(
-                        "sessionId" => $sessionId,
-                        "path" => $result['path'],
-                        "fileSize" => $result['size']
-                    )
+                    array("sessionId" => $sessionId)
                 );
                 exit;
             }
             include __DIR__ . "/dispatchers/intent_crud.php";
             exit;
-
         default:
-            break; // fallthrough → SemanticResponder
+            break;
     }
-    #endregion
-}
-#endregion
-
-#region 🧩 SKYEBOT SEMANTIC FALLBACK SUITE
-// ======================================================================
-// Purpose:
-//   • Provides continuity when the router cannot resolve input
-//   • Executes layered fallbacks: Report → SemanticResponder → Search
-// ======================================================================
-
-#region 📘 Report Generator (AI + Codex Fallback)
-if (!$handled && !$intentData && preg_match('/\b(sheet|report|codex|module|summary)\b/i', $prompt)) {
-    include __DIR__ . "/dispatchers/fallback_report.php";
-    exit;
 }
 #endregion
 
 #region 💬 SemanticResponder (AI Fallback)
 if (!$handled) {
     $messages = array(
-        array("role" => "system", "content" =>
-            "You are Skyebot — respond conversationally using Codex and SSE context."),
+        array("role" => "system", "content" => "You are Skyebot — respond using Codex and SSE data."),
         array("role" => "user", "content" => $prompt)
     );
-
     $aiResponse = callOpenAi($messages);
-
     if (!empty($aiResponse)) {
         $responsePayload = array(
             "response"  => trim($aiResponse),
@@ -883,7 +830,6 @@ if (
 ) {
     $searchResults = googleSearch($prompt);
 
-    // Log for diagnostics
     file_put_contents(
         __DIR__ . '/error.log',
         date('Y-m-d H:i:s') .
@@ -908,8 +854,6 @@ if (
             "action"    => "answer",
             "sessionId" => $sessionId
         );
-
-        // Add link from first raw result (if available)
         if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
             $firstLink = isset($searchResults['raw'][0]['link'])
                 ? $searchResults['raw'][0]['link']
@@ -918,7 +862,8 @@ if (
         }
     } else {
         $responsePayload = array(
-            "response"  => "⚠️ No relevant search results found. Please rephrase your query.",
+            "response"  =>
+                "⚠️ No relevant search results found. Please rephrase your query.",
             "action"    => "error",
             "sessionId" => $sessionId
         );
@@ -926,14 +871,11 @@ if (
 }
 #endregion
 
-#region ✅ Final Output (Guaranteed JSON)
+#region ✅ Final Output
 if ($responsePayload) {
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 } else {
-    sendJsonResponse("❌ Unable to process request.", "error",
-        array("sessionId" => $sessionId));
+    sendJsonResponse("❌ Unable to process request.", "error", array("sessionId" => $sessionId));
 }
-#endregion
-
 #endregion
