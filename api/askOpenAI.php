@@ -763,16 +763,24 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             exit;
 
         case "report":
+            // Auto-map Codex modules when title or slug appears in prompt
             if (!$target) {
                 foreach ($codexMeta as $key => $meta) {
                     $title = strtolower($meta['title']);
                     if (preg_match('/\b(' . preg_quote($title, '/') . ')\b/i', strtolower($prompt))) {
                         $target = $key;
+                        error_log("🔗 Auto-mapped Codex title '{$meta['title']}' → slug '$key'");
                         break;
                     }
                 }
             }
-            if ($target && isset($dynamicData['codex']['modules'][$target])) {
+
+            // ✅ Ensure report generation always fires if prompt includes sheet/report keywords
+            if (
+                $target ||
+                preg_match('/\b(sheet|report|codex|information\s+sheet|module)\b/i', $prompt)
+            ) {
+                error_log("🧾 Routing to intent_report.php for target: " . ($target ?: 'none'));
                 include __DIR__ . "/dispatchers/intent_report.php";
                 exit;
             }
