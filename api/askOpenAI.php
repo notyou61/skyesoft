@@ -869,7 +869,7 @@ if (!$handled && isset($dynamicData['codex']['modules'])) {
 
 #region 💬 SemanticResponder (AI Fallback)
 if (!$handled) {
-    include __DIR__ . "/dispatchers/fallback_semantic.php";
+    //include __DIR__ . "/dispatchers/fallback_semantic.php";
 }
 #endregion
 
