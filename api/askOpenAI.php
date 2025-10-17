@@ -863,7 +863,7 @@ if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-z
 
 #region 🧩 Codex Acronym Resolver (Normalization Fallback)
 if (!$handled && isset($dynamicData['codex']['modules'])) {
-    include __DIR__ . "/dispatchers/fallback_acronym.php";
+    //include __DIR__ . "/dispatchers/fallback_acronym.php";
 }
 #endregion
 
