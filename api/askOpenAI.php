@@ -615,6 +615,41 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
 
         // 🧾 CRUD Operations
         case "crud":
+            // 🔍 Detect if the CRUD request involves viewing code
+            if (isset($target) && preg_match('/\.(php|js|json|html|css)$/i', $target)) {
+                include_once(__DIR__ . '/helpers.php');
+
+                $result = getCodeFileSafe($target);
+                if ($result['error']) {
+                    sendJsonResponse("❌ " . $result['message'], "error", array(
+                        "sessionId" => $sessionId,
+                        "requestedFile" => $target
+                    ));
+                    exit;
+                }
+
+                // Log file access
+                if (function_exists('logMessage')) {
+                    logMessage("👁️ CRUD: Skyebot viewed code file '{$target}' (Session: {$sessionId})");
+                }
+
+                // Trim long files for chat display
+                $preview = substr($result['content'], 0, 2000);
+                if (strlen($result['content']) > 2000) {
+                    $preview .= "\n\n⚠️ (File truncated for display — full content logged.)";
+                }
+
+                sendJsonResponse(
+                    "📄 Here's the code for **" . basename($result['file']) . "**:\n\n```\n" . $preview . "\n```",
+                    "crud_read_code",
+                    array(
+                        "sessionId" => $sessionId,
+                        "path" => $result['path'],
+                        "fileSize" => $result['size']
+                    )
+                );
+                exit;
+            }
             include __DIR__ . "/dispatchers/intent_crud.php";
             exit;
 
