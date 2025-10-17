@@ -843,8 +843,8 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
 #region 🧩 SKYEBOT SEMANTIC FALLBACK SUITE
 // ======================================================================
 // Purpose:
-//   • Provides continuity when intent router cannot resolve input
-//   • Executes layered fallbacks (report → CRUD → acronym → AI → search)
+//   • Provides continuity when the router cannot resolve input
+//   • Executes layered fallbacks: Report → SemanticResponder → Search
 // ======================================================================
 
 #region 📘 Report Generator (AI + Codex Fallback)
@@ -854,34 +854,36 @@ if (!$handled && !$intentData && preg_match('/\b(sheet|report|codex|module|summa
 }
 #endregion
 
-#region 🧾 CRUD Operations (Regex Fallback)
-if (!$handled && preg_match('/\b(create|read|update|delete)\s+(?!a\b|the\b)([a-zA-Z0-9]+)/i', $lowerPrompt, $matches)) {
-    include __DIR__ . "/dispatchers/fallback_crud.php";
-    exit;
-}
-#endregion
-
-#region 🧩 Codex Acronym Resolver (Normalization Fallback)
-if (!$handled && isset($dynamicData['codex']['modules'])) {
-    //include __DIR__ . "/dispatchers/fallback_acronym.php";
-}
-#endregion
-
 #region 💬 SemanticResponder (AI Fallback)
 if (!$handled) {
-    //include __DIR__ . "/dispatchers/fallback_semantic.php";
+    $messages = array(
+        array("role" => "system", "content" =>
+            "You are Skyebot — respond conversationally using Codex and SSE context."),
+        array("role" => "user", "content" => $prompt)
+    );
+
+    $aiResponse = callOpenAi($messages);
+
+    if (!empty($aiResponse)) {
+        $responsePayload = array(
+            "response"  => trim($aiResponse),
+            "action"    => "answer",
+            "sessionId" => $sessionId
+        );
+        $handled = true;
+    }
 }
 #endregion
 
 #region 🌐 Google Search Fallback
 if (
-    !$handled &&
+    !$handled ||
     (!empty($aiResponse) && is_string($aiResponse) &&
      stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)
 ) {
     $searchResults = googleSearch($prompt);
 
-    // Log for debugging
+    // Log for diagnostics
     file_put_contents(
         __DIR__ . '/error.log',
         date('Y-m-d H:i:s') .
@@ -894,7 +896,6 @@ if (
     );
 
     if (isset($searchResults['error'])) {
-        // Handle API errors (e.g., key missing, cURL failure)
         $responsePayload = array(
             "response"  => "⚠️ Search service unavailable: " .
                            $searchResults['error'] . ". Please try again.",
@@ -902,40 +903,36 @@ if (
             "sessionId" => $sessionId
         );
     } elseif (!empty($searchResults['summary'])) {
-        // Use AI-summarized or plain summary
         $responsePayload = array(
             "response"  => $searchResults['summary'] . " (via Google Search)",
             "action"    => "answer",
             "sessionId" => $sessionId
         );
 
-        // Optionally include first link if available
-        if (isset($searchResults['raw'][0]) &&
-            is_array($searchResults['raw'][0])) {
+        // Add link from first raw result (if available)
+        if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
             $firstLink = isset($searchResults['raw'][0]['link'])
                 ? $searchResults['raw'][0]['link']
                 : null;
-            if ($firstLink) {
-                $responsePayload['link'] = $firstLink;
-            }
+            if ($firstLink) $responsePayload['link'] = $firstLink;
         }
     } else {
-        // No meaningful results
         $responsePayload = array(
-            "response"  =>
-                "⚠️ No relevant search results found. Please rephrase your query.",
+            "response"  => "⚠️ No relevant search results found. Please rephrase your query.",
             "action"    => "error",
             "sessionId" => $sessionId
         );
     }
 }
+#endregion
 
 #region ✅ Final Output (Guaranteed JSON)
 if ($responsePayload) {
     echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 } else {
-    sendJsonResponse("❌ Unable to process request.", "error", array("sessionId" => $sessionId));
+    sendJsonResponse("❌ Unable to process request.", "error",
+        array("sessionId" => $sessionId));
 }
 #endregion
 
