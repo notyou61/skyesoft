@@ -806,11 +806,40 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
 
 #region 💬 SemanticResponder (AI Fallback)
 if (!$handled) {
+    // 🧩 Build full context-aware message stack
     $messages = array(
-        array("role" => "system", "content" => "You are Skyebot — respond using Codex and SSE data."),
-        array("role" => "user", "content" => $prompt)
+        array(
+            "role" => "system",
+            "content" =>
+                "You are Skyebot — respond conversationally using the current SSE stream and Codex data. " .
+                "Reference timeDateArray, workPhase, weatherData, KPIs, and announcements if relevant. " .
+                "Be concise, friendly, and contextually aware."
+        ),
+        array(
+            "role" => "system",
+            "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        )
     );
+
+    // 🧠 Preserve recent conversation for continuity
+    if (!empty($conversation)) {
+        $history = array_slice($conversation, -2);
+        foreach ($history as $entry) {
+            if (isset($entry['role']) && isset($entry['content'])) {
+                $messages[] = array(
+                    "role"    => $entry['role'],
+                    "content" => $entry['content']
+                );
+            }
+        }
+    }
+
+    // Add user message last
+    $messages[] = array("role" => "user", "content" => $prompt);
+
+    // 🧠 Generate contextual AI response
     $aiResponse = callOpenAi($messages);
+
     if (!empty($aiResponse)) {
         $responsePayload = array(
             "response"  => trim($aiResponse),
