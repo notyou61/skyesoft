@@ -875,7 +875,7 @@ if (!$handled) {
 
 #region 🌐 Google Search Fallback
 if (
-    !$handled ||
+    !$handled &&
     (!empty($aiResponse) && is_string($aiResponse) &&
      stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)
 ) {
