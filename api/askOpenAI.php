@@ -376,6 +376,7 @@ if (!empty($dynamicData)) {
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+$lowerPrompt = strtolower($prompt);
 // Retained for backward compatibility — now defers to AI semantic resolution
 if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
     $moduleName = strtolower(str_replace(' ', '', $matches[1]));
@@ -449,7 +450,6 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
         );
 
-        // Log visible keys
         error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
 
         // Try normalized substring match
@@ -472,7 +472,6 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             }
         }
 
-        // Log result or exit
         if ($slug) {
             error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
         } else {
@@ -485,53 +484,62 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             exit;
         }
 
-        // Generate via internal API
+        // =====================================================
+        // 🧾 Generate via internal include (no remote dependency)
+        // =====================================================
         if ($slug && isset($allModules[$slug])) {
-            $apiUrl  = "https://www.skyelighting.com/skyesoft/api/generateReports.php";
-            $payload = json_encode(array("slug" => $slug));
-            $context = stream_context_create(array(
-                "http" => array(
-                    "method"  => "POST",
-                    "header"  => "Content-Type: application/json\r\n",
-                    "content" => $payload,
-                    "timeout" => 15
-                )
-            ));
-            $result = @file_get_contents($apiUrl, false, $context);
+            $generatorPath = __DIR__ . '/generateReports.php';
 
-            if ($result === false) {
-                $error = error_get_last();
-                $msg = isset($error['message']) ? $error['message'] : 'Unknown network error';
-                $response = "❌ Network error contacting generateReports.php: $msg";
-                $action = "error";
-                $publicUrl = null;
-            } else {
-                $title = isset($allModules[$slug]['title'])
-                    ? $allModules[$slug]['title']
-                    : ucwords(str_replace(array('-', '_'), ' ', $slug));
+            if (file_exists($generatorPath)) {
+                include_once $generatorPath;
 
-                // 🛠 Sanitize title for safe file and URL use
-                function sanitizeTitleForUrl($text) {
-                    $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
-                    $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
-                    $clean = preg_replace('/\s+/', ' ', trim($clean));
-                    $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
-                    $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
-                    return trim($clean);
+                if (function_exists('generateReport')) {
+                    $reportData = array("slug" => $slug);
+                   //$result = @generateReport($reportData);
+                    $result = function_exists('generateReport') ? @generateReport($reportData) : false;
+
+
+                    if (!$result) {
+                        error_log("⚠️ generateReport() returned empty for slug: $slug");
+                    }
+
+                    // Determine title
+                    $title = isset($allModules[$slug]['title'])
+                        ? $allModules[$slug]['title']
+                        : ucwords(str_replace(array('-', '_'), ' ', $slug));
+
+                    // 🛠 Sanitize title for file/URL use
+                    if (!function_exists('sanitizeTitleForUrl')) {
+                        function sanitizeTitleForUrl($text) {
+                            $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
+                            $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
+                            $clean = preg_replace('/\s+/', ' ', trim($clean));
+                            $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
+                            $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
+                            return trim($clean);
+                        }
+                    }
+
+                    $cleanTitle = sanitizeTitleForUrl($title);
+                    $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
+                    $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+                    $publicUrl  = str_replace(
+                        array('/home/notyou64/public_html', ' ', '(', ')'),
+                        array('https://www.skyelighting.com', '%20', '%28', '%29'),
+                        $pdfPath
+                    );
+
+                    $response = "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})";
+                    $action   = "sheet_generated";
+                } else {
+                    $response = "⚠️ generateReport() not found in generateReports.php.";
+                    $action   = "error";
+                    $publicUrl = null;
                 }
-
-                // ✅ File name + URL
-                $cleanTitle = sanitizeTitleForUrl($title);
-                $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-                $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-                $publicUrl  = str_replace(
-                    array('/home/notyou64/public_html', ' ', '(', ')'),
-                    array('https://www.skyelighting.com', '%20', '%28', '%29'),
-                    $pdfPath
-                );
-
-                $response = "📘 The **" . $title . "** sheet is ready.\n\n📄 [Open Report](" . $publicUrl . ")";
-                $action = "sheet_generated";
+            } else {
+                $response = "❌ Missing file: generateReports.php";
+                $action   = "error";
+                $publicUrl = null;
             }
 
             header('Content-Type: application/json; charset=UTF-8');
@@ -545,6 +553,7 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             exit;
         }
     }
+
 }
 #endregion
 
