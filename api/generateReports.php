@@ -4,9 +4,15 @@
 // =====================================================================
 
 // Dependencies
-//require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
-require_once(__DIR__ . '/../vendor/autoload.php');
-use TCPDF;
+// Prefer vendor autoload if TCPDF is installed via Composer
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once(__DIR__ . '/../vendor/autoload.php');
+} elseif (file_exists(__DIR__ . '/../libs/tcpdf/tcpdf.php')) {
+    // Legacy fallback for manual TCPDF install
+    require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
+}
+
+// TCPDF is a global class (no namespace) — no "use TCPDF;" needed
 
 // Configuration
 $config = array(
