@@ -375,11 +375,18 @@ if (!empty($dynamicData)) {
 }
 #endregion
 
-#region ✅ Handle "generate [module] sheet" pattern (case-insensitive, PHP 5.6-safe)
+#region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
 $lowerPrompt = strtolower($prompt);
-// Retained for backward compatibility — now defers to AI semantic resolution
-if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matches)) {
-    $moduleName = strtolower(str_replace(' ', '', $matches[1]));
+
+// More robust capture: "generate (an)? (information)? sheet (for)? <name>"
+if (!empty($prompt) && preg_match(
+    '/\bgenerate\b\s*(?:an?\s+)?(?:information\s+)?sheet(?:\s+for)?\s+(.+?)(?:\s*(?:sheet|report))?(?:[.!?]|\s*$)/i',
+    $prompt,
+    $matches
+)) {
+    // Normalize candidate module name
+    $moduleNameRaw = trim($matches[1]);
+    $moduleName    = strtolower(preg_replace('/[^a-z0-9_-]/i', '', str_replace(' ', '', $moduleNameRaw)));
     $aiFallbackStarted = false; // safeguard tracker
 
     // Load codex safely
@@ -389,173 +396,127 @@ if (!empty($prompt) && preg_match('/generate (.+?) sheet/i', $lowerPrompt, $matc
             ? json_decode(file_get_contents(CODEX_PATH), true)
             : array());
 
-    // Normalize structure (accepts both wrapped + flat)
-    $modules = (isset($codexData['modules']) && is_array($codexData['modules']))
-        ? $codexData['modules']
-        : $codexData;
-
-    // Search Codex for direct key match first
-    $foundKey = '';
-    foreach ($modules as $key => $val) {
-        if (strtolower($key) === $moduleName) {
-            $foundKey = $key;
-            break;
+    // Build full module index (accept both wrapped + flat)
+    $allModules = array();
+    if (is_array($codexData)) {
+        foreach ($codexData as $k => $v) { $allModules[$k] = $v; }
+        if (isset($codexData['modules']) && is_array($codexData['modules'])) {
+            foreach ($codexData['modules'] as $k => $v) { $allModules[$k] = $v; }
+        }
+        if (isset($codexData['codexModules']) && is_array($codexData['codexModules'])) {
+            foreach ($codexData['codexModules'] as $k => $v) { $allModules[$k] = $v; }
         }
     }
 
-    // If found, return direct link
-    if (!empty($foundKey)) {
-        $title = isset($modules[$foundKey]['title']) ? $modules[$foundKey]['title'] : ucfirst($foundKey);
-        $link  = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . $foundKey;
+    // --- Resolve slug from moduleName + prompt
+    $slug = '';
+    $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
+    error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
 
-        // 🔧 Immediately trigger report generation server-side
-        @file_get_contents($link);
+    // 1) Exact normalized key match
+    foreach ($allModules as $key => $_) {
+        $nk = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+        if ($nk === $moduleName) { $slug = $key; break; }
+    }
 
+    // 2) Substring match in prompt
+    if ($slug === '') {
+        foreach ($allModules as $key => $_) {
+            $nk = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+            if ($nk && strpos($normalizedPrompt, $nk) !== false) { $slug = $key; break; }
+        }
+    }
+
+    // 3) Levenshtein fallback
+    if ($slug === '') {
+        $bestKey = ''; $best = 999;
+        foreach ($allModules as $key => $_) {
+            $nk = preg_replace('/[^a-z0-9]/', '', strtolower($key));
+            if ($nk === '') continue;
+            $d = levenshtein($moduleName, $nk);
+            if ($d < $best) { $best = $d; $bestKey = $key; }
+        }
+        if ($best <= 3) { $slug = $bestKey; }
+    }
+
+    if ($slug === '') {
+        error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
-            "response"  => "📄 <strong>" . $title . "</strong> — <a href=\"" . $link . "\" target=\"_blank\">Generate Sheet</a>",
-            "action"    => "sheet_generated",
-            "slug"      => $foundKey,
-            "reportUrl" => $link,
+            "response"  => "⚠️ No matching Codex module found for “{$moduleNameRaw}”. Try a clearer module name.",
+            "action"    => "none",
             "sessionId" => $sessionId
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
-    // Otherwise → direct Codex resolver (no AI dependency)
-    if (!$aiFallbackStarted) {
-        $aiFallbackStarted = true;
-        error_log("⚙️ [Skyebot] Falling back to Codex resolver for prompt: $prompt");
+    error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
 
-        // Build slim Codex index
-        $codexSlim = array();
-        foreach ($codexData as $key => $entry) {
-            if (!is_array($entry) || !isset($entry['title'])) continue;
-            $codexSlim[] = array(
-                "slug" => $key,
-                "title" => $entry['title'],
-                "description" => isset($entry['description']) ? $entry['description'] : ''
+    // =====================================================
+    // 🧾 Generate via internal API POST (not include)
+    // =====================================================
+    if (isset($allModules[$slug])) {
+        $generatorUrl = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . urlencode($slug);
+        $payload = json_encode(array("slug" => $slug));
+
+        $ch = curl_init($generatorUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Skyebot/1.0');
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        error_log("🧾 Report POST -> code=$httpCode err=" . ($curlErr ?: 'none') . " body=" . substr((string)$result, 0, 200));
+
+        // Determine title
+        $title = isset($allModules[$slug]['title'])
+            ? $allModules[$slug]['title']
+            : ucwords(str_replace(array('-', '_'), ' ', $slug));
+
+        // Success heuristic: generator echoes "✅ PDF created successfully: /path..."
+        $ok = ($httpCode === 200) && (strpos((string)$result, '✅ PDF created successfully') !== false);
+
+        if ($ok) {
+            // Expected public URL
+            $cleanTitle = preg_replace('/[^\w\s-]/u', '', trim($title));
+            $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
+            $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
+            $publicUrl  = str_replace(
+                array('/home/notyou64/public_html', ' ', '(', ')'),
+                array('https://www.skyelighting.com', '%20', '%28', '%29'),
+                $pdfPath
             );
-        }
-
-        // ================================================
-        // 🧭 Direct Codex Slug Resolution (no AI dependency)
-        // ================================================
-        $slug = null;
-        $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
-
-        // Load full codex dataset (top-level + nested modules)
-        $allModules = array_merge(
-            $codexData,
-            isset($codexData['modules']) && is_array($codexData['modules']) ? $codexData['modules'] : []
-        );
-
-        error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
-
-        // Try normalized substring match
-        foreach ($allModules as $key => $module) {
-            $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
-            if (strpos($normalizedPrompt, $normalizedKey) !== false) {
-                $slug = $key;
-                break;
-            }
-        }
-
-        // Fuzzy fallback
-        if (!$slug) {
-            foreach ($allModules as $key => $module) {
-                $normalizedKey = preg_replace('/[^a-z0-9]/', '', strtolower($key));
-                if (levenshtein($normalizedPrompt, $normalizedKey) < 4) {
-                    $slug = $key;
-                    break;
-                }
-            }
-        }
-
-        if ($slug) {
-            error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
-        } else {
-            error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
-            echo json_encode([
-                "response"  => "⚠️ No matching Codex module found. Please rephrase your request.",
-                "action"    => "none",
-                "sessionId" => uniqid()
-            ]);
-            exit;
-        }
-
-        // =====================================================
-        // 🧾 Generate via internal include (no remote dependency)
-        // =====================================================
-        if ($slug && isset($allModules[$slug])) {
-            $generatorPath = __DIR__ . '/generateReports.php';
-
-            if (file_exists($generatorPath)) {
-                include_once $generatorPath;
-
-                if (function_exists('generateReport')) {
-                    $reportData = array("slug" => $slug);
-                   //$result = @generateReport($reportData);
-                    $result = function_exists('generateReport') ? @generateReport($reportData) : false;
-
-
-                    if (!$result) {
-                        error_log("⚠️ generateReport() returned empty for slug: $slug");
-                    }
-
-                    // Determine title
-                    $title = isset($allModules[$slug]['title'])
-                        ? $allModules[$slug]['title']
-                        : ucwords(str_replace(array('-', '_'), ' ', $slug));
-
-                    // 🛠 Sanitize title for file/URL use
-                    if (!function_exists('sanitizeTitleForUrl')) {
-                        function sanitizeTitleForUrl($text) {
-                            $clean = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $text);
-                            $clean = preg_replace('/[\x{00A0}\x{FEFF}\x{200B}-\x{200F}\x{202A}-\x{202F}\x{205F}-\x{206F}]+/u', '', $clean);
-                            $clean = preg_replace('/\s+/', ' ', trim($clean));
-                            $clean = preg_replace('/[^\P{C}]+/u', '', $clean);
-                            $clean = preg_replace('/^[^A-Za-z0-9]+|[^A-Za-z0-9)]+$/', '', $clean);
-                            return trim($clean);
-                        }
-                    }
-
-                    $cleanTitle = sanitizeTitleForUrl($title);
-                    $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-                    $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-                    $publicUrl  = str_replace(
-                        array('/home/notyou64/public_html', ' ', '(', ')'),
-                        array('https://www.skyelighting.com', '%20', '%28', '%29'),
-                        $pdfPath
-                    );
-
-                    $response = "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})";
-                    $action   = "sheet_generated";
-                } else {
-                    $response = "⚠️ generateReport() not found in generateReports.php.";
-                    $action   = "error";
-                    $publicUrl = null;
-                }
-            } else {
-                $response = "❌ Missing file: generateReports.php";
-                $action   = "error";
-                $publicUrl = null;
-            }
 
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array(
-                "response"  => $response,
-                "action"    => $action,
+                "response"  => "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})",
+                "action"    => "sheet_generated",
                 "slug"      => $slug,
                 "reportUrl" => $publicUrl,
                 "sessionId" => $sessionId
             ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
+        } else {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(array(
+                "response"  => "⚠️ Report generation failed (HTTP {$httpCode}). " . ($curlErr ? "cURL: {$curlErr}" : "Response: " . substr((string)$result, 0, 160)),
+                "action"    => "error",
+                "slug"      => $slug,
+                "sessionId" => $sessionId
+            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            exit;
         }
     }
-
 }
 #endregion
+
 
 #region 🚧 SKYEBOT INPUT VALIDATION & GUARD CLAUSE
 // ================================================================
