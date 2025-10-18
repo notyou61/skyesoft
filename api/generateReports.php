@@ -215,21 +215,21 @@ if (!$slug && isset($_POST['slug']) && !empty($_POST['slug'])) {
 // 🧭 2️⃣  Then check for JSON body (e.g., { "slug": "xyz" })
 // ----------------------------------------------------------------------
 $rawInput = @file_get_contents('php://input');
-if ($rawInput !== false && strlen($rawInput) > 0) {
+
+// ✅ Ignore empty or null JSON, ensure PHP 5.6-safe behavior
+if ($rawInput !== false && strlen(trim($rawInput)) > 2) {
     $tmp = @json_decode($rawInput, true);
     if (is_array($tmp)) {
         $input = $tmp;
         logMessage("ℹ️ JSON input detected and parsed successfully.");
-        if (!$slug && isset($input['slug'])) {
-            $slug = trim($input['slug']);
-            logMessage("✅ Detected slug via JSON body: $slug");
-        }
     } else {
-        logMessage("⚠️ Raw input present but not valid JSON.");
+        logMessage("⚠️ Raw input present but not valid JSON: " . substr($rawInput, 0, 80));
     }
 } else {
-    logMessage("ℹ️ No JSON body detected; likely a GET request.");
+    $input = array(); // ensure valid default
+    logMessage("ℹ️ No JSON body detected; treating as GET/POST request.");
 }
+
 
 // ----------------------------------------------------------------------
 // 🧭 3️⃣  Hard fail if still empty
