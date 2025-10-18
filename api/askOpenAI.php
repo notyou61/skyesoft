@@ -485,21 +485,28 @@ if (!empty($prompt) && preg_match(
 
         if ($ok) {
             // Expected public URL
-            $cleanTitle = preg_replace('/\s+/', ' ', trim($title)); // collapse spaces
+            // Remove emojis and invisible unicode (PHP 5.6-safe)
+            $cleanTitle = preg_replace(
+                '/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u',
+                '',
+                $title
+            );
+            $cleanTitle = preg_replace('/[^\w\s-]/u', '', trim($cleanTitle));
+            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse double spaces
+            // Finalize filename
             $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-
             // Determine actual generator directory
             $possiblePaths = array(
                 '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName,
                 '/home/notyou64/public_html/skyesoft/api/../docs/sheets/' . $fileName
             );
-
+            // Locate existing file
             $pdfPath = '';
             foreach ($possiblePaths as $p) {
                 if (file_exists($p)) { $pdfPath = realpath($p); break; }
             }
             if ($pdfPath === '') { $pdfPath = $possiblePaths[0]; } // fallback
-
+            // Build public URL
             $publicUrl = str_replace(
                 array('/home/notyou64/public_html', ' '),
                 array('https://www.skyelighting.com', '%20'),
