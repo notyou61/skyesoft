@@ -197,19 +197,33 @@ if (!isset($_REQUEST['slug']) && !isset($_REQUEST['module'])) {
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
 // ----------------------------------------------------------------------
 $slug  = isset($slug)  ? $slug  : null;
-$input = isset($input) ? $input : null;
+$input = isset($input) ? $input : array();
 
 // ----------------------------------------------------------------------
-// Safe Input Bootstrap (handles both JSON POST and GET requests)
+// 🧭 1️⃣  Detect direct GET or POST query first
 // ----------------------------------------------------------------------
-$input = array(); // always start with a valid array
+if (!$slug && isset($_GET['module']) && !empty($_GET['module'])) {
+    $slug = trim($_GET['module']);
+    logMessage("✅ Detected module via GET query: $slug");
+}
+if (!$slug && isset($_POST['slug']) && !empty($_POST['slug'])) {
+    $slug = trim($_POST['slug']);
+    logMessage("✅ Detected module via POST form: $slug");
+}
 
+// ----------------------------------------------------------------------
+// 🧭 2️⃣  Then check for JSON body (e.g., { "slug": "xyz" })
+// ----------------------------------------------------------------------
 $rawInput = @file_get_contents('php://input');
 if ($rawInput !== false && strlen($rawInput) > 0) {
     $tmp = @json_decode($rawInput, true);
     if (is_array($tmp)) {
         $input = $tmp;
         logMessage("ℹ️ JSON input detected and parsed successfully.");
+        if (!$slug && isset($input['slug'])) {
+            $slug = trim($input['slug']);
+            logMessage("✅ Detected slug via JSON body: $slug");
+        }
     } else {
         logMessage("⚠️ Raw input present but not valid JSON.");
     }
@@ -217,22 +231,9 @@ if ($rawInput !== false && strlen($rawInput) > 0) {
     logMessage("ℹ️ No JSON body detected; likely a GET request.");
 }
 
-// --- 1️⃣  JSON body (e.g., { "slug": "xyz" }) ---
-if (!$slug && isset($input) && is_array($input) && isset($input['slug'])) {
-    $slug = trim($input['slug']);
-}
-
-// --- 2️⃣  GET query (?module=xyz) ---
-if (!$slug && isset($_GET['module'])) {
-    $slug = trim($_GET['module']);
-}
-
-// --- 3️⃣  POST form (slug=xyz) ---
-if (!$slug && isset($_POST['slug'])) {
-    $slug = trim($_POST['slug']);
-}
-
-// --- 4️⃣  Hard fail if still empty ---
+// ----------------------------------------------------------------------
+// 🧭 3️⃣  Hard fail if still empty
+// ----------------------------------------------------------------------
 if (!$slug) {
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(array(
@@ -242,15 +243,18 @@ if (!$slug) {
     exit;
 }
 
-// --- 5️⃣  Normalize and sanitize ---
+// ----------------------------------------------------------------------
+// 🧭 4️⃣  Normalize and sanitize
+// ----------------------------------------------------------------------
 $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
 
-// --- 6️⃣  Validate existence in $modules ---
+// ----------------------------------------------------------------------
+// 🧭 5️⃣  Validate existence in $modules
+// ----------------------------------------------------------------------
 if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
-
     logMessage("🔍 DEBUG: Searching for slug '$slug' in modules. Keys: " . implode(', ', array_keys($modules)));
 
-    // ✅ Case-insensitive fallback search
+    // Case-insensitive fallback search
     $foundKey = null;
     foreach ($modules as $key => $val) {
         if (strcasecmp($key, $slug) === 0) {
