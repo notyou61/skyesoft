@@ -485,12 +485,24 @@ if (!empty($prompt) && preg_match(
 
         if ($ok) {
             // Expected public URL
-            $cleanTitle = preg_replace('/[^\w\s-]/u', '', trim($title));
+            $cleanTitle = preg_replace('/\s+/', ' ', trim($title)); // collapse spaces
             $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-            $pdfPath    = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
-            $publicUrl  = str_replace(
-                array('/home/notyou64/public_html', ' ', '(', ')'),
-                array('https://www.skyelighting.com', '%20', '%28', '%29'),
+
+            // Determine actual generator directory
+            $possiblePaths = array(
+                '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName,
+                '/home/notyou64/public_html/skyesoft/api/../docs/sheets/' . $fileName
+            );
+
+            $pdfPath = '';
+            foreach ($possiblePaths as $p) {
+                if (file_exists($p)) { $pdfPath = realpath($p); break; }
+            }
+            if ($pdfPath === '') { $pdfPath = $possiblePaths[0]; } // fallback
+
+            $publicUrl = str_replace(
+                array('/home/notyou64/public_html', ' '),
+                array('https://www.skyelighting.com', '%20'),
                 $pdfPath
             );
 
@@ -516,7 +528,6 @@ if (!empty($prompt) && preg_match(
     }
 }
 #endregion
-
 
 #region 🚧 SKYEBOT INPUT VALIDATION & GUARD CLAUSE
 // ================================================================
