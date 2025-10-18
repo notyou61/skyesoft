@@ -214,22 +214,26 @@ if (!$slug && isset($_POST['slug']) && !empty($_POST['slug'])) {
 // ----------------------------------------------------------------------
 // 🧭 2️⃣  Then check for JSON body (e.g., { "slug": "xyz" })
 // ----------------------------------------------------------------------
-$rawInput = @file_get_contents('php://input');
+$input = array();
+$method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
 
-// ✅ Ignore empty or null JSON, ensure PHP 5.6-safe behavior
-if ($rawInput !== false && strlen(trim($rawInput)) > 2) {
-    $tmp = @json_decode($rawInput, true);
-    if (is_array($tmp)) {
-        $input = $tmp;
-        logMessage("ℹ️ JSON input detected and parsed successfully.");
+if (in_array($method, array('POST', 'PUT'))) {
+    $rawInput = @file_get_contents('php://input');
+    if ($rawInput && strlen(trim($rawInput)) > 2 && $rawInput !== 'null') {
+        $tmp = @json_decode($rawInput, true);
+        if (is_array($tmp)) {
+            $input = $tmp;
+            if (!$slug && isset($input['slug'])) $slug = trim($input['slug']);
+            logMessage("ℹ️ JSON input detected and parsed successfully.");
+        } else {
+            logMessage("⚠️ Raw input present but not valid JSON: " . substr($rawInput, 0, 80));
+        }
     } else {
-        logMessage("⚠️ Raw input present but not valid JSON: " . substr($rawInput, 0, 80));
+        logMessage("ℹ️ Empty or null JSON body; skipping decode.");
     }
 } else {
-    $input = array(); // ensure valid default
-    logMessage("ℹ️ No JSON body detected; treating as GET/POST request.");
+    logMessage("ℹ️ Skipping php://input parse for {$method} request.");
 }
-
 
 // ----------------------------------------------------------------------
 // 🧭 3️⃣  Hard fail if still empty
