@@ -4,13 +4,16 @@
 // =====================================================================
 
 // Dependencies
-// Prefer vendor autoload if TCPDF is installed via Composer
-if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+// Prefer Composer autoload when PHP ≥7.1, else fallback to manual TCPDF
+if (version_compare(PHP_VERSION, '7.1.0', '>=')
+    && file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once(__DIR__ . '/../vendor/autoload.php');
 } elseif (file_exists(__DIR__ . '/../libs/tcpdf/tcpdf.php')) {
-    // Legacy fallback for manual TCPDF install
     require_once(__DIR__ . '/../libs/tcpdf/tcpdf.php');
+} else {
+    die("❌ ERROR: No TCPDF library found and PHP version too low for Composer autoload.");
 }
+
 
 // TCPDF is a global class (no namespace) — no "use TCPDF;" needed
 
