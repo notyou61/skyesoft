@@ -178,6 +178,18 @@ foreach ($modules as $key => $value) {
 $modules = $validatedModules;
 logMessage("ℹ️ Codex merge complete: " . count($modules) . " valid modules loaded from dynamic Codex.");
 
+// ===========================================================
+// 🧭 Input bridge — allow both HTTP and internal include calls
+// ===========================================================
+if (!isset($_REQUEST['slug']) && !isset($_REQUEST['module'])) {
+    // Handle internal include case: detect $data or $reportData variable
+    if (isset($data) && is_array($data) && isset($data['slug'])) {
+        $_REQUEST['slug'] = $data['slug'];
+    } elseif (isset($reportData) && is_array($reportData) && isset($reportData['slug'])) {
+        $_REQUEST['slug'] = $reportData['slug'];
+    }
+}
+
 // ----------------------------------------------------------------------
 // ✅ Slug Resolver — JSON / GET / POST compatibility for PHP 5.6
 // ----------------------------------------------------------------------
@@ -201,7 +213,6 @@ if ($rawInput !== false && strlen($rawInput) > 0) {
 } else {
     logMessage("ℹ️ No JSON body detected; likely a GET request.");
 }
-
 
 // --- 1️⃣  JSON body (e.g., { "slug": "xyz" }) ---
 if (!$slug && isset($input) && is_array($input) && isset($input['slug'])) {
