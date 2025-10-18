@@ -283,6 +283,28 @@ if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
 }
 
 logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
+// ----------------------------------------------------------------------
+// ✅ FINAL safeguard for PHP 5.6 variable timing — recheck slug sources
+// ----------------------------------------------------------------------
+if (empty($slug)) {
+    if (isset($_REQUEST['module']) && $_REQUEST['module'] !== '') {
+        $slug = trim($_REQUEST['module']);
+        logMessage("🔁 Fallback recovered slug from \$_REQUEST[module]: $slug");
+    } elseif (isset($_REQUEST['slug']) && $_REQUEST['slug'] !== '') {
+        $slug = trim($_REQUEST['slug']);
+        logMessage("🔁 Fallback recovered slug from \$_REQUEST[slug]: $slug");
+    }
+}
+
+// If still empty, hard fail one more time
+if (empty($slug)) {
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(array(
+        'error'   => true,
+        'message' => 'Slug could not be resolved even after fallback.'
+    ));
+    exit;
+}
 
 // ----------------------------------------------------------------------
 // Validate each module's sections
