@@ -383,6 +383,33 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             error_log("🔗 Auto-mapped Codex title → '$target'");
         }
     }
+    
+    // 🧭 Universal Codex Auto-Mapping — scalable, regex-free
+    if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
+        $promptLower = strtolower($prompt);
+        $bestSlug = null;
+        $bestScore = 0.0;
+
+        foreach ($allModules as $slug => $meta) {
+            if (!isset($meta['title'])) continue;
+            $title = strtolower($meta['title']);
+            $aliases = isset($meta['relationships']['aliases']) ? array_map('strtolower', $meta['relationships']['aliases']) : array();
+            $bag = array_merge([$title], $aliases);
+            foreach ($bag as $term) {
+                if (strlen($term) < 4) continue; // skip noise
+                $overlap = similar_text($promptLower, $term, $percent);
+                if ($percent > $bestScore) {
+                    $bestScore = $percent;
+                    $bestSlug = $slug;
+                }
+            }
+        }
+
+        if ($bestSlug && $bestScore > 30) { // 30% similarity threshold
+            $target = $bestSlug;
+            error_log("🔗 Codex-wide semantic match: '{$prompt}' → '{$target}' ({$bestScore}%)");
+        }
+    }
 
     switch ($intent) {
         case "logout":
