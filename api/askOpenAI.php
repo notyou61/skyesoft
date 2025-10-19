@@ -372,13 +372,13 @@ if (!empty($dynamicData)) {
 
 #region ✅ Handle Report Generation via Semantic Responder (Replaces Regex)
 // Semantic-first: Use overlap scorer for fuzzy matching (per Codex spec).
-// Triggers on creation verbs + module hints; aligns with "automatic intent mapping".
-if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|compile)\b/i', $prompt)) {
-    $slug = resolveSemanticModule($prompt, $allModules);
-    $aiFallbackStarted = false; // safeguard tracker
+    // Triggers on creation verbs + module hints; aligns with "automatic intent mapping".
+    if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|compile)\b/i', $prompt)) {
+        $slug = resolveSemanticModule($prompt, $allModules);
+        $aiFallbackStarted = false; // safeguard tracker
 
-    if ($slug && isset($allModules[$slug])) {
-        error_log("🧭 Semantic match: “$slug” detected from prompt: $prompt");
+        if ($slug && isset($codexData[$slug])) {
+        error_log("🧭 Semantic match: \"$slug\" detected from prompt: $prompt");
 
         // =====================================================
         // 🧾 Generate via internal API POST (not include)
@@ -396,31 +396,25 @@ if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|com
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Skyebot/1.0');
         $result   = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr  = curl_error($ch);
         curl_close($ch);
 
         error_log("🧾 Report POST -> code=$httpCode err=" . ($curlErr ?: 'none') . " body=" . substr((string)$result, 0, 200));
 
-        // Determine title from Codex (per schema)
-        $title = isset($allModules[$slug]['title'])
-            ? $allModules[$slug]['title']
+        // Determine title from Codex
+        $title = isset($codexData[$slug]['title'])
+            ? $codexData[$slug]['title']
             : ucwords(str_replace(array('-', '_'), ' ', $slug));
 
-        // Success heuristic: generator echoes "✅ PDF created successfully: /path..."
         $ok = ($httpCode === 200) && (strpos((string)$result, '✅ PDF created successfully') !== false);
 
         if ($ok) {
-            // Clean title for filename (remove emojis/unicode per original)
-            $cleanTitle = preg_replace(
-                '/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u',
-                '',
-                $title
-            );
+            $cleanTitle = preg_replace('/[\x{1F000}-\x{1FFFF}\x{FE0F}\x{1F3FB}-\x{1F3FF}\x{200D}]/u', '', $title);
             $cleanTitle = preg_replace('/[^\w\s-]/u', '', trim($cleanTitle));
-            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle); // collapse double spaces
+            $cleanTitle = preg_replace('/\s+/', ' ', $cleanTitle);
             $fileName   = 'Information Sheet - ' . $cleanTitle . '.pdf';
-            // Assume standard path (per original; could parse $result for dynamic)
+
             $pdfPath = '/home/notyou64/public_html/skyesoft/docs/sheets/' . $fileName;
             $publicUrl = str_replace(
                 array('/home/notyou64/public_html', ' '),
@@ -428,9 +422,9 @@ if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|com
                 $pdfPath
             );
 
-            header('Content-Type: application/json; charset=UTF-8');
+            if (!headers_sent()) header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array(
-                "response"  => "🧭 Semantic match: “$slug” detected.\n✅ Information Sheet generated successfully.\n📎 [Open Report]($publicUrl)",
+                "response"  => "🧭 Semantic match: \"$slug\" detected.\n✅ Information Sheet generated successfully.\n📎 [Open Report]($publicUrl)",
                 "action"    => "sheet_generated",
                 "slug"      => $slug,
                 "reportUrl" => $publicUrl,
@@ -438,7 +432,7 @@ if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|com
             ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             exit;
         } else {
-            header('Content-Type: application/json; charset=UTF-8');
+            if (!headers_sent()) header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array(
                 "response"  => "⚠️ Report generation failed (HTTP {$httpCode}). " . ($curlErr ? "cURL: {$curlErr}" : "Response: " . substr((string)$result, 0, 160)),
                 "action"    => "error",
@@ -449,8 +443,9 @@ if (!empty($prompt) && preg_match('/\b(generate|create|build|prepare|produce|com
         }
     } else {
         error_log("⚠️ No semantic match in Codex for prompt: " . $prompt);
-        // Continue to intent router (no early exit; per spec fallback chain)
+        // Continue to intent router (no early exit)
     }
+
 }
 #endregion
 
