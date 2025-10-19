@@ -357,8 +357,32 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         if (!empty($meta['provides'])) $meta['resolvedProviders'] = $meta['provides'];
         $codexMeta[$target] = $meta;
     }
-
+    // Log resolved intent
     error_log("🧭 Intent: $intent | Target: $target | Conf: $confidence | Prompt: $prompt");
+    // 🧭 Auto-resolve Codex slug by title (LLM-hybrid, Codex-driven, regex-free)
+    function resolveCodexSlugByTitle($prompt, $modules) {
+        $p = strtolower($prompt);
+        foreach ($modules as $slug => $meta) {
+            if (!isset($meta['title'])) continue;
+            $title = strtolower($meta['title']);
+            $aliases = isset($meta['relationships']['aliases']) ? array_map('strtolower', $meta['relationships']['aliases']) : array();
+            // Codex-aligned inference: matches on title, slug, or known aliases
+            if (strpos($p, $title) !== false || strpos($p, strtolower($slug)) !== false) return $slug;
+            foreach ($aliases as $alias) {
+                if (strpos($p, $alias) !== false) return $slug;
+            }
+        }
+        return null;
+    }
+
+    // 🔍 Hybrid inference: if router didn’t find a valid target, auto-map via Codex
+    if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
+        $autoSlug = resolveCodexSlugByTitle($prompt, $allModules);
+        if ($autoSlug) {
+            $target = $autoSlug;
+            error_log("🔗 Auto-mapped Codex title → '$target'");
+        }
+    }
 
     switch ($intent) {
         case "logout":
