@@ -121,10 +121,20 @@ if (!function_exists('getCodeFileSafe')) {
 }
 #endregion
 
-#region 📂 Load Unified Context (DynamicData) - Completed
+#region 📂 Load Unified Context (DynamicData + Codex Integration)
+// ===============================================================
+// Purpose:
+//  - Load live SSE data from getDynamicData.php
+//  - Parse Codex (modules, glossary, constitution, etc.)
+//  - Build $codexData, $allModules, $codexMeta, and $injectBlocks
+//  - Provide snapshot context for AI reasoning
+// ===============================================================
+
 $dynamicUrl = 'https://www.skyelighting.com/skyesoft/api/getDynamicData.php';
 $dynamicData = array();
 $snapshotSummary = '{}';
+
+// --- Fetch Dynamic Data (SSE Stream) ---
 $ch = curl_init($dynamicUrl);
 curl_setopt_array($ch, array(
     CURLOPT_RETURNTRANSFER => true,
@@ -137,41 +147,85 @@ $dynamicRaw = curl_exec($ch);
 $err = curl_error($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
+
+// --- Decode SSE Response ---
 if ($dynamicRaw !== false && empty($err) && $httpCode === 200) {
     $decoded = json_decode($dynamicRaw, true);
-    if (is_array($decoded)) {
-        $dynamicData = $decoded;
+    if (is_array($decoded)) $dynamicData = $decoded;
+} else {
+    error_log("⚠️ SSE fetch failed (HTTP $httpCode, err=$err)");
+}
+
+// --- Initialize Codex Data ---
+$codexData = isset($dynamicData['codex']) && is_array($dynamicData['codex'])
+    ? $dynamicData['codex']
+    : array();
+
+// --- Flatten All Modules (for semantic reference) ---
+$allModules = array();
+if (is_array($codexData)) {
+    foreach ($codexData as $key => $value) {
+        if (is_array($value)) $allModules[$key] = $value;
+        if (isset($value['modules']) && is_array($value['modules'])) {
+            foreach ($value['modules'] as $slug => $mod) {
+                $allModules[$slug] = $mod;
+            }
+        }
     }
 }
-$snapshotSlim = isset($dynamicData['sseSnapshot']) ? json_encode($dynamicData['sseSnapshot'], JSON_UNESCAPED_SLASHES) : '{}';
-$codexCategories = array('modules' => array_keys(isset($dynamicData['codex']['modules']) ? $dynamicData['codex']['modules'] : array()));
-$injectBlocks = array(
-    "snapshot" => $snapshotSlim,
-    "glossary" => isset($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
-    "modules"  => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
+error_log("📚 Codex loaded: " . count($allModules) . " modules available.");
+
+// --- Slim Snapshot for SSE Awareness ---
+$snapshotSlim = isset($dynamicData['sseSnapshot'])
+    ? json_encode($dynamicData['sseSnapshot'], JSON_UNESCAPED_SLASHES)
+    : '{}';
+
+// --- Codex Categories ---
+$codexCategories = array(
+    'modules'      => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
+    'constitution' => isset($dynamicData['codex']['constitution']) ? array_keys($dynamicData['codex']['constitution']) : array(),
+    'glossary'     => isset($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array()
 );
+
+// --- Inject Blocks for Router Context ---
+$injectBlocks = array(
+    'snapshot' => $snapshotSlim,
+    'glossary' => $codexCategories['glossary'],
+    'modules'  => $codexCategories['modules']
+);
+
+// --- Build Codex Meta (semantic index) ---
 $codexMeta = array();
-if (isset($dynamicData['codex']['modules'])) {
-    foreach ($dynamicData['codex']['modules'] as $key => $mod) {
-        $codexMeta[$key] = array(
-            'title' => isset($mod['title']) ? $mod['title'] : $key,
+if (isset($codexData['modules']) && is_array($codexData['modules'])) {
+    foreach ($codexData['modules'] as $slug => $mod) {
+        $codexMeta[$slug] = array(
+            'title'       => isset($mod['title']) ? $mod['title'] : $slug,
             'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
-            'tags' => isset($mod['tags']) ? $mod['tags'] : array()
+            'tags'        => isset($mod['tags']) ? $mod['tags'] : array(),
+            'category'    => isset($mod['category']) ? $mod['category'] : ''
         );
     }
 }
 $injectBlocks['codexMeta'] = $codexMeta;
+
+// --- Expand Matching Codex Sections (based on user prompt) ---
 foreach ($codexCategories as $section => $keys) {
     foreach ($keys as $key) {
-        if (strpos($lowerPrompt, strtolower($key)) !== false) {
-            $injectBlocks[$section][$key] = $dynamicData['codex'][$section][$key];
+        if (strpos(strtolower($prompt), strtolower($key)) !== false) {
+            if (isset($dynamicData['codex'][$section][$key])) {
+                $injectBlocks[$section][$key] = $dynamicData['codex'][$section][$key];
+            }
         }
     }
 }
-if (stripos($prompt, 'report') !== false) {
-    $injectBlocks['reportTypes'] = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-        ? array_keys($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-        : array();
+
+// --- Attach Report Types (optional) ---
+if (stripos($prompt, 'report') !== false && isset($dynamicData['modules']['reportGenerationSuite'])) {
+    $injectBlocks['reportTypes'] = array_keys(
+        isset($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+            ? $dynamicData['modules']['reportGenerationSuite']['reportTypesSpec']
+            : array()
+    );
 }
 #endregion
 
