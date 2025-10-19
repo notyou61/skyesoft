@@ -359,68 +359,56 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
     }
     // Log resolved intent
     error_log("🧭 Intent: $intent | Target: $target | Conf: $confidence | Prompt: $prompt");
-    // 🧭 Auto-resolve Codex slug by title (LLM-hybrid, Codex-driven, regex-free)
-    function resolveCodexSlugByTitle($prompt, $modules) {
-        $p = strtolower($prompt);
-        foreach ($modules as $slug => $meta) {
-            if (!isset($meta['title'])) continue;
-            $title = strtolower($meta['title']);
-            $aliases = isset($meta['relationships']['aliases']) ? array_map('strtolower', $meta['relationships']['aliases']) : array();
-            // Codex-aligned inference: matches on title, slug, or known aliases
-            if (strpos($p, $title) !== false || strpos($p, strtolower($slug)) !== false) return $slug;
-            foreach ($aliases as $alias) {
-                if (strpos($p, $alias) !== false) return $slug;
+    
+    // 🧭 Universal Codex Auto-Mapping Helper — Resolves $target from prompt using ontology
+    // (Defined once here; callable from anywhere)
+    if (!function_exists('resolveCodexSlugByTitle')) {
+        function resolveCodexSlugByTitle($prompt, $allModules, $codexMeta = null) {
+            if (empty($allModules)) {
+                error_log("⚠️ No Codex modules loaded for mapping.");
+                return null;
+            }
+            $promptLower = strtolower($prompt);
+            $bestSlug = null;
+            $bestScore = 0.0;
+
+            foreach ($allModules as $slug => $meta) {
+                if (!isset($meta['title'])) continue;
+                $title = strtolower($meta['title']);
+                $aliases = isset($meta['relationships']['aliases'])
+                    ? array_map('strtolower', (array)$meta['relationships']['aliases'])
+                    : array();
+                $bag = array_merge(array($title), $aliases);
+                foreach ($bag as $term) {
+                    if (strlen($term) < 4) continue; // Skip noise
+                    if (strpos($promptLower, $term) !== false) { // Exact substring boost
+                        $percent = 100; // Instant high score for direct hits
+                    } else {
+                        similar_text($promptLower, $term, $percent);
+                    }
+                    if ($percent > $bestScore) {
+                        $bestScore = $percent;
+                        $bestSlug = $slug;
+                    }
+                }
+            }
+
+            if ($bestSlug && $bestScore > 30) {
+                error_log("🔗 Codex-wide semantic match: '$prompt' → '$bestSlug' ($bestScore%)");
+                return $bestSlug;
+            } else {
+                error_log("⚠️ No strong Codex match (max score $bestScore%).");
+                return null;
             }
         }
-        return null;
     }
 
     // 🔍 Hybrid inference: if router didn’t find a valid target, auto-map via Codex
     if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
-        $autoSlug = resolveCodexSlugByTitle($prompt, $allModules);
+        $autoSlug = resolveCodexSlugByTitle($prompt, $allModules, $codexMeta);
         if ($autoSlug) {
             $target = $autoSlug;
             error_log("🔗 Auto-mapped Codex title → '$target'");
-        }
-    }
-    
-    // 🧭 Universal Codex Auto-Mapping Helper — Resolves $target from prompt using ontology
-    function resolveCodexSlugByTitle($prompt, $allModules, $codexMeta = null) {
-        if (empty($allModules)) {
-            error_log("⚠️ No Codex modules loaded for mapping.");
-            return null;
-        }
-        $promptLower = strtolower($prompt);
-        $bestSlug = null;
-        $bestScore = 0.0;
-
-        foreach ($allModules as $slug => $meta) {
-            if (!isset($meta['title'])) continue;
-            $title = strtolower($meta['title']);
-            $aliases = isset($meta['relationships']['aliases'])
-                ? array_map('strtolower', (array)$meta['relationships']['aliases'])
-                : array();
-            $bag = array_merge(array($title), $aliases);
-            foreach ($bag as $term) {
-                if (strlen($term) < 4) continue; // Skip noise
-                if (strpos($promptLower, $term) !== false) { // Exact substring boost
-                    $percent = 100; // Instant high score for direct hits
-                } else {
-                    similar_text($promptLower, $term, $percent);
-                }
-                if ($percent > $bestScore) {
-                    $bestScore = $percent;
-                    $bestSlug = $slug;
-                }
-            }
-        }
-
-        if ($bestSlug && $bestScore > 30) {
-            error_log("🔗 Codex-wide semantic match: '$prompt' → '$bestSlug' ($bestScore%)");
-            return $bestSlug;
-        } else {
-            error_log("⚠️ No strong Codex match (max score $bestScore%).");
-            return null;
         }
     }
 
