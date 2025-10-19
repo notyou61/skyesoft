@@ -582,12 +582,6 @@ if (!empty($conversation)) {
 #endregion
 
 #region 🚀 Execute Router Classification
-function callOpenAi($messages, $apiKey) {
-    // Stub: Implement your OpenAI call here (e.g., curl to chat/completions)
-    // For brevity, assume it's defined in helpers.php or env_boot.php
-    // Return simulated response; replace with real API call
-    return '{"intent":"general","target":"","confidence":0.8}'; // Placeholder
-}
 
 $routerMessages = array(
     array("role" => "system", "content" => "You are Skyebot’s intent classifier. Respond only with JSON."),
