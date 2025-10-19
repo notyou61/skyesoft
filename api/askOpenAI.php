@@ -1,3 +1,6 @@
+ add api/askOpenAI.php
+git commit -m "í¾¯ Tuned semantic threshold to 0.08 â€“ improved match for natural phrasing"
+git push origin main
 <?php
 // ðŸ“„ File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.0)
@@ -225,7 +228,7 @@ if (!function_exists('resolveSemanticModule')) {
 
         $bestSlug = null;
         $bestScore = 0;
-        $threshold = 0.2; // Tuned for ~80% precision; adjustable per spec
+        $threshold = 0.08; // Tuned for ~80% precision; adjustable per spec
 
         foreach ($allModules as $slug => $module) {
             if (!is_array($module)) continue;
