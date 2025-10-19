@@ -384,8 +384,12 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         }
     }
     
-    // 🧭 Universal Codex Auto-Mapping — ensures valid $target before dispatch
-    if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
+    // 🧭 Universal Codex Auto-Mapping Helper — Resolves $target from prompt using ontology
+    function resolveCodexSlugByTitle($prompt, $allModules, $codexMeta = null) {
+        if (empty($allModules)) {
+            error_log("⚠️ No Codex modules loaded for mapping.");
+            return null;
+        }
         $promptLower = strtolower($prompt);
         $bestSlug = null;
         $bestScore = 0.0;
@@ -394,12 +398,16 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             if (!isset($meta['title'])) continue;
             $title = strtolower($meta['title']);
             $aliases = isset($meta['relationships']['aliases'])
-                ? array_map('strtolower', $meta['relationships']['aliases'])
+                ? array_map('strtolower', (array)$meta['relationships']['aliases'])
                 : array();
-            $bag = array_merge([$title], $aliases);
+            $bag = array_merge(array($title), $aliases);
             foreach ($bag as $term) {
-                if (strlen($term) < 4) continue; // skip short words
-                $overlap = similar_text($promptLower, $term, $percent);
+                if (strlen($term) < 4) continue; // Skip noise
+                if (strpos($promptLower, $term) !== false) { // Exact substring boost
+                    $percent = 100; // Instant high score for direct hits
+                } else {
+                    similar_text($promptLower, $term, $percent);
+                }
                 if ($percent > $bestScore) {
                     $bestScore = $percent;
                     $bestSlug = $slug;
@@ -408,11 +416,17 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         }
 
         if ($bestSlug && $bestScore > 30) {
-            $target = $bestSlug;
-            error_log("🔗 Codex-wide semantic match: '{$prompt}' → '{$target}' ({$bestScore}%)");
+            error_log("🔗 Codex-wide semantic match: '$prompt' → '$bestSlug' ($bestScore%)");
+            return $bestSlug;
         } else {
-            error_log("⚠️ No strong Codex match (max score {$bestScore}%).");
+            error_log("⚠️ No strong Codex match (max score $bestScore%).");
+            return null;
         }
+    }
+
+    // 🧭 Universal Codex Auto-Mapping — Ensures valid $target before dispatch
+    if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
+        $target = resolveCodexSlugByTitle($prompt, $allModules, $codexMeta);
     }
 
     switch ($intent) {
