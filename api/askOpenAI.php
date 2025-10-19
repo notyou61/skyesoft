@@ -384,7 +384,7 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         }
     }
     
-    // 🧭 Universal Codex Auto-Mapping — scalable, regex-free
+    // 🧭 Universal Codex Auto-Mapping — ensures valid $target before dispatch
     if (($intent === "report" || $intent === "summary") && (!$target || !isset($allModules[$target]))) {
         $promptLower = strtolower($prompt);
         $bestSlug = null;
@@ -393,10 +393,12 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         foreach ($allModules as $slug => $meta) {
             if (!isset($meta['title'])) continue;
             $title = strtolower($meta['title']);
-            $aliases = isset($meta['relationships']['aliases']) ? array_map('strtolower', $meta['relationships']['aliases']) : array();
+            $aliases = isset($meta['relationships']['aliases'])
+                ? array_map('strtolower', $meta['relationships']['aliases'])
+                : array();
             $bag = array_merge([$title], $aliases);
             foreach ($bag as $term) {
-                if (strlen($term) < 4) continue; // skip noise
+                if (strlen($term) < 4) continue; // skip short words
                 $overlap = similar_text($promptLower, $term, $percent);
                 if ($percent > $bestScore) {
                     $bestScore = $percent;
@@ -405,9 +407,11 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
             }
         }
 
-        if ($bestSlug && $bestScore > 30) { // 30% similarity threshold
+        if ($bestSlug && $bestScore > 30) {
             $target = $bestSlug;
             error_log("🔗 Codex-wide semantic match: '{$prompt}' → '{$target}' ({$bestScore}%)");
+        } else {
+            error_log("⚠️ No strong Codex match (max score {$bestScore}%).");
         }
     }
 
