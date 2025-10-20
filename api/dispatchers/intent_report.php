@@ -44,15 +44,21 @@ global $codex;  // Ensure available
 if (!$target || !isset($codex[$target])) {
     $resolved = resolveSkyesoftObject($prompt, $dynamicData);
     error_log("🔗 Dispatcher resolver for '{$prompt}': " . json_encode($resolved));
-    if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {
+
+    if (is_array($resolved) && isset($resolved['key']) && isset($resolved['confidence']) && $resolved['confidence'] > 70) {
         $target = $resolved['key'];
         error_log("🔗 Dispatcher auto-resolved → {$target} ({$resolved['confidence']}%) [from: {$originalTarget}]");
     } else {
-        sendJsonResponse("⚠️ No valid report target resolved from '{$prompt}' (conf: " . ($resolved['confidence'] ?? 0) . ").", "error", array(
-            "sessionId" => $sessionId,
-            "prompt"    => $prompt,
-            "originalTarget" => $originalTarget
-        ));
+        $conf = (isset($resolved['confidence']) ? $resolved['confidence'] : 0);
+        sendJsonResponse(
+            "⚠️ No valid report target resolved from '{$prompt}' (conf: " . $conf . ").",
+            "error",
+            array(
+                "sessionId"       => $sessionId,
+                "prompt"          => $prompt,
+                "originalTarget"  => $originalTarget
+            )
+        );
         exit;
     }
 } else {
