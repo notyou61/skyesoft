@@ -789,7 +789,10 @@ if (is_array($intentData) && isset($intentData['intent'])) {
                 if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {
                     $target = $resolved['key'];
                 } else {
-                    sendJsonResponse("⚠️ Unable to resolve report target from '{$prompt}' (conf: " . ($resolved['confidence'] ?? 0) . ").", "error");
+                    sendJsonResponse(
+                        "⚠️ Unable to resolve report target from '{$prompt}' (conf: " . (isset($resolved['confidence']) ? $resolved['confidence'] : 0) . ").",
+                        "error"
+                    );
                     $handled = true;
                     break;
                 }
