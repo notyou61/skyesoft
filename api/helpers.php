@@ -654,9 +654,11 @@ function resolveSkyesoftObject($input, $context = null) {
 }
 // ======================================================================
 // 🔍 querySSE()
-// Performs semantic lookup within SSE / dynamicData array.
-// Returns the most relevant key/value pair for a given prompt.
-// Compatible with PHP 5.6 (no modern syntax).
+// Purpose:
+//   • Fallback semantic lookup inside SSE / dynamicData array
+//   • Used only when LLM is unavailable or disabled
+//   • Provides approximate, human-readable answers without hardcoding
+// Compatibility: PHP 5.6
 // ======================================================================
 if (!function_exists('querySSE')) {
     function querySSE($prompt, $data)
@@ -668,7 +670,9 @@ if (!function_exists('querySSE')) {
         $promptLower = strtolower(trim($prompt));
         $flat = array();
 
+        // --------------------------------------------------------------
         // Recursive flattening helper (dot notation)
+        // --------------------------------------------------------------
         $flatten = function ($arr, $prefix = '') use (&$flatten, &$flat) {
             foreach ($arr as $k => $v) {
                 $key = $prefix === '' ? $k : $prefix . '.' . $k;
@@ -681,11 +685,13 @@ if (!function_exists('querySSE')) {
         };
         $flatten($data);
 
-        // Find best lexical match
+        // --------------------------------------------------------------
+        // Compute lexical similarity
+        // --------------------------------------------------------------
         $bestKey = '';
         $bestScore = 0;
         foreach ($flat as $key => $value) {
-            $keyNorm = strtolower(str_replace(array('_', '-'), '', $key));
+            $keyNorm = strtolower(str_replace(array('_', '-', '.'), '', $key));
             similar_text($promptLower, $keyNorm, $score);
             if ($score > $bestScore) {
                 $bestScore = $score;
@@ -693,17 +699,50 @@ if (!function_exists('querySSE')) {
             }
         }
 
-        if ($bestKey !== '' && $bestScore > 40) {
+        // --------------------------------------------------------------
+        // Context weighting (adds bias for semantic proximity)
+        // --------------------------------------------------------------
+        if (strpos($promptLower, 'time') !== false && strpos($bestKey, 'time') !== false) {
+            $bestScore += 10;
+        }
+        if (strpos($promptLower, 'date') !== false && strpos($bestKey, 'date') !== false) {
+            $bestScore += 8;
+        }
+        if (strpos($promptLower, 'holiday') !== false && strpos($bestKey, 'holiday') !== false) {
+            $bestScore += 12;
+        }
+        if (strpos($promptLower, 'weather') !== false && strpos($bestKey, 'weather') !== false) {
+            $bestScore += 10;
+        }
+
+        // --------------------------------------------------------------
+        // Humanized fallback (only if strong lexical match)
+        // --------------------------------------------------------------
+        if ($bestKey !== '' && $bestScore > 45) {
             $val = $flat[$bestKey];
-            $msg = '📡 ' . ucwords(str_replace('.', ' → ', $bestKey)) . ': ' . $val;
+            $cleanKey = ucwords(str_replace('.', ' → ', $bestKey));
+
+            // Basic contextual phrasing (minimal, not hardcoded)
+            $msg = '📡 ' . $cleanKey . ': ' . $val;
+            if (preg_match('/\btime\b/i', $bestKey)) {
+                $msg = '🕒 It appears the relevant time is ' . $val . '.';
+            } elseif (preg_match('/\bdate\b/i', $bestKey)) {
+                $msg = '📅 The relevant date seems to be ' . $val . '.';
+            } elseif (preg_match('/holiday/i', $bestKey)) {
+                $msg = '🎉 The upcoming holiday is ' . $val . '.';
+            } elseif (preg_match('/weather/i', $bestKey)) {
+                $msg = '🌤 Weather info: ' . $val . '.';
+            }
+
             return array(
-                'key' => $bestKey,
-                'value' => $val,
-                'score' => $bestScore,
+                'key'     => $bestKey,
+                'value'   => $val,
+                'score'   => $bestScore,
                 'message' => $msg
             );
         }
 
+        // No useful match
         return null;
     }
 }
