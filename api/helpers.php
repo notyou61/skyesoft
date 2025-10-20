@@ -633,10 +633,13 @@ function resolveSkyesoftObject($prompt, $dynamicData) {
     // 4. Normalize output key (Codex-compatible form)
     // ============================================================
     if ($best['confidence'] > 30 && !empty($best['key'])) {
-        $normalized = preg_replace('/[^a-z0-9]+/i', ' ', strtolower($best['key']));
-        $normalized = ucwords(trim($normalized));
-        $normalized = str_replace(' ', '', $normalized);
-        $normalized = lcfirst($normalized); // camelCase
+        $clean = strtolower($best['key']);
+        // Remove anything in parentheses, e.g. "(TIS)"
+        $clean = preg_replace('/\([^)]*\)/', '', $clean);
+        // Remove punctuation and collapse spaces
+        $normalized = preg_replace('/[^a-z0-9]+/i', ' ', trim($clean));
+        // Convert to camelCase
+        $normalized = lcfirst(str_replace(' ', '', ucwords($normalized)));
         $best['key'] = $normalized;
 
         error_log("🧭 resolveSkyesoftObject() matched {$best['layer']} → {$best['key']} ({$best['confidence']}%)");
