@@ -646,6 +646,7 @@ function resolveSkyesoftObject($prompt, $dynamicData) {
         return $best;
     }
 
+
     error_log("⚠️ resolveSkyesoftObject() found no strong match (max={$best['confidence']}%)");
     return null;
 }
