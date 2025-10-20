@@ -83,20 +83,24 @@ error_reporting(E_ALL);
 ob_start();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    // Clean buffer completely
+    // Clean buffer completely (reset any prior output)
     while (ob_get_level()) { ob_end_clean(); }
     http_response_code(500);
-    header('Content-Type: application/json; charset=UTF-8', true);
+
+    // ✅ MTCO fix: send header only if still allowed
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+    }
 
     $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
     $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
-    $response = array(
+
+    echo json_encode(array(
         "response"  => $msg,
         "action"    => "error",
         "sessionId" => session_id() ?: 'N/A'
-    );
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit(1);
 }, E_ALL);
 
@@ -104,36 +108,72 @@ register_shutdown_function(function () {
     $lastError = error_get_last();
     $output = ob_get_clean();
 
-    // Catch fatal errors that bypass the handler
+    // 🚨 Catch fatal errors that bypass the normal error handler
     if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
-        while (ob_get_level()) { ob_end_clean(); }
-        http_response_code(500);
-        header('Content-Type: application/json; charset=UTF-8', true);
 
+        // 🧹 Clean current buffer only (don’t destroy the stack)
+        if (ob_get_length()) {
+            ob_clean();
+        }
+
+        http_response_code(500);
+
+        // 🧭 MTCO safeguard: only set headers if still possible
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8', true);
+        }
+
+        // 🧩 Sanitize and build fatal-error message
         $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
-        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
+        $msg   = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
+
         $response = array(
             "response"  => $msg,
             "action"    => "error",
             "sessionId" => session_id() ?: 'N/A'
         );
-        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+        // 📤 Output clean JSON error payload
+        echo json_encode(
+            $response,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
+        );
+
+        // 🧯 Stop further execution to ensure clean exit
         return;
     }
 
-    // If normal output exists but isn’t JSON, wrap it safely
+    // 🧩 If output exists but isn't valid JSON, wrap it safely
     if (!empty($output) && stripos(trim($output), '{') !== 0) {
-        header('Content-Type: application/json; charset=UTF-8', true);
+
+        // 🧭 MTCO safeguard: send header only if still possible
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8', true);
+        }
+
+        // ✂️ Sanitize and limit leaked output
         $clean = substr(strip_tags($output), 0, 500);
+
         echo json_encode(array(
             "response"  => "❌ Internal error: " . $clean,
             "action"    => "error",
             "sessionId" => session_id() ?: 'N/A'
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
     } elseif (!empty($output)) {
-        header('Content-Type: application/json; charset=UTF-8', true);
+        // 🧭 If output already looks like JSON, just ensure proper header
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8', true);
+        }
+
         echo trim($output);
     }
+
+    // 🧯 Finally, flush remaining buffer if active
+    if (ob_get_length()) {
+        @ob_end_flush();
+    }
+
 });
 #endregion
 
@@ -153,21 +193,34 @@ error_reporting(E_ALL);
 ob_start();
 
 // --------------------------------------------------
-// 🧩 Error Handler — converts PHP warnings/notices to JSON
+// 🧩 Error Handler — converts PHP warnings/notices to JSON (MTCO safe)
 // --------------------------------------------------
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-    while (ob_get_level()) { ob_end_clean(); }
+
+    // 🧹 Clean current buffer without destroying the stack
+    if (ob_get_length()) {
+        ob_clean();
+    }
+
     http_response_code(500);
-    header('Content-Type: application/json; charset=UTF-8', true);
 
+    // 🧭 MTCO safeguard: set header only if still possible
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=UTF-8', true);
+    }
+
+    // ✂️ Sanitize and build message
     $clean = htmlspecialchars(strip_tags($errstr), ENT_QUOTES, 'UTF-8');
-    $msg = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
+    $msg   = "⚠️ PHP error [$errno]: $clean in $errfile on line $errline";
 
+    // 📤 Emit structured JSON error
     echo json_encode(array(
         "response"  => $msg,
         "action"    => "error",
         "sessionId" => session_id() ?: 'N/A'
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+    // 🧯 Stop further processing
     exit(1);
 }, E_ALL);
 
@@ -178,37 +231,75 @@ register_shutdown_function(function () {
     $lastError = error_get_last();
     $output = ob_get_clean();
 
-    // 🚨 Catch fatal errors that bypass the handler
-    if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
-        while (ob_get_level()) { ob_end_clean(); }
-        http_response_code(500);
-        header('Content-Type: application/json; charset=UTF-8', true);
+// --------------------------------------------------
+// 🚨 Catch fatal errors that bypass the normal handler
+// --------------------------------------------------
+if ($lastError && ($lastError['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
 
-        $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
-        $msg = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
-
-        echo json_encode(array(
-            "response"  => $msg,
-            "action"    => "error",
-            "sessionId" => session_id() ?: 'N/A'
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
-        return;
+    // 🧹 Clean current buffer without destroying stack
+    if (ob_get_length()) {
+        ob_clean();
     }
 
-    // ✅ Wrap non-JSON output safely
-    if (!empty($output) && stripos(trim($output), '{') !== 0) {
+    http_response_code(500);
+
+    // 🧭 MTCO safeguard: only send header if still allowed
+    if (!headers_sent()) {
         header('Content-Type: application/json; charset=UTF-8', true);
+    }
+
+    // ✂️ Sanitize message to prevent HTML leakage
+    $clean = htmlspecialchars(strip_tags($lastError['message']), ENT_QUOTES, 'UTF-8');
+    $msg   = "❌ Fatal error: $clean in {$lastError['file']} on line {$lastError['line']}";
+
+    // 📤 Output structured JSON response
+    echo json_encode(array(
+        "response"  => $msg,
+        "action"    => "error",
+        "sessionId" => session_id() ?: 'N/A'
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+    // 🧯 End handler cleanly
+    return;
+}
+
+    // --------------------------------------------------
+    // ✅ Wrap any non-JSON output safely
+    // --------------------------------------------------
+    if (!empty($output) && stripos(trim($output), '{') !== 0) {
+
+        // 🧭 Guard header call
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8', true);
+        }
+
+        // ✂️ Sanitize visible text (limit 500 chars)
         $clean = substr(strip_tags($output), 0, 500);
+
         echo json_encode(array(
             "response"  => "❌ Internal error: " . $clean,
             "action"    => "error",
             "sessionId" => session_id() ?: 'N/A'
         ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
     } elseif (!empty($output)) {
-        header('Content-Type: application/json; charset=UTF-8', true);
+
+        // 🧭 Ensure header if output already valid JSON
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8', true);
+        }
+
         echo trim($output);
     }
-});
+
+    // --------------------------------------------------
+    // 🧾 Flush remaining buffer gracefully
+    // --------------------------------------------------
+    if (ob_get_length()) {
+        @ob_end_flush();
+    }
+
+    });
 #endregion
 
 #region 🧩 SKYEBOT HELPER SAFEGUARDS (Loaded After Shield)
