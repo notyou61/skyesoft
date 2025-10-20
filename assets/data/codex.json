@@ -536,6 +536,26 @@
         "Reduced need for manual intervention or prompt engineering."
       ]
     },
+    "pipeline": {
+      "icon": "flow",
+      "format": "numbered",
+      "items": [
+        "Receive and normalize user prompt.",
+        "Load live SSE + Codex context.",
+        "Build semantic index of all modules and relationships.",
+        "Invoke LLM Router for reasoning: infer intent, target, and confidence.",
+        "Fallback to local semantic scoring if confidence < threshold.",
+        "Determine whether intent is summary, report, or crud via Codex subtypes.",
+        "Trigger Report Kernel or Summary Renderer accordingly.",
+        "Log every semantic decision, score, and action.",
+        "Respond as structured JSON or conversational text."
+      ]
+    },
+    "updateNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "As of version 2025.10.20, Skyebot™ accesses all reasoning data—temporal, contextual, and doctrinal—through the unified SSE Stream. The AI Integration layer no longer queries separate Codex files; instead, it traverses the live stream to interpret meaning, enabling real-time semantic reasoning across dynamic and static domains."
+    },
     "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
     "version": "2.0",
     "updated": "2025-10-14"
@@ -566,6 +586,11 @@
         { "Stream": "weatherData", "Purpose": "Dynamic weather injection for context" },
         { "Stream": "siteMeta", "Purpose": "Deployment and Netlify sync data" }
       ]
+    },
+    "integrationNotes": {
+      "icon": "link",
+      "format": "text",
+      "text": "The SSE Stream now subsumes the Skyesoft Codex as a live data object. This unification makes the stream the single source of truth for both operational telemetry and organizational logic. All semantic resolution, including Codex module discovery, now occurs directly within the SSE context without secondary loaders."
     }
   },
   "ragFramework": {
@@ -585,28 +610,67 @@
         "Cross-reference between modules and SSE streams",
         "Context summarization for AI agents"
       ]
+    },
+    "integrationPoints": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "semanticResponder",
+        "codex",
+        "sseStream"
+      ]
     }
   },
   "semanticResponder": {
-  "title": "🧭 Semantic Responder",
-  "category": "Adaptive Layer",
-  "enrichment": "medium",
-  "description": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence.",
-  "purpose": {
-    "icon": "target",
-    "format": "text",
-    "text": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence."
-  },
-  "features": {
-    "icon": "gear",
-    "format": "list",
-    "items": [
-      "Contextual understanding of prompts beyond keyword matching",
-      "Dynamic alignment with live SSE snapshot data",
-      "Automatic intent mapping to Codex modules or report actions",
-      "Fallback to Google Search when information is absent from Codex"
-    ]
-  }
+    "title": "🧭 Semantic Responder",
+    "category": "Adaptive Layer",
+    "enrichment": "medium",
+    "description": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence.",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence."
+    },
+    "architecture": {
+      "icon": "diagram",
+      "format": "list",
+      "items": [
+        "Receives user input and contextual data from the SSE stream.",
+        "Builds a semantic index from Codex modules (titles, purposes, actions, subtypes, aliases).",
+        "Invokes the LLM Router to infer {intent, target, confidence} from natural language.",
+        "If confidence is low, performs token-based semantic fallback (no regex).",
+        "Determines intent type (summary, report, crud, general) using Codex actions and subtypes.",
+        "Routes intent to execution layer: text summarizer, report generator, or CRUD engine.",
+        "Logs all reasoning decisions and results for traceability.",
+        "Maintains full alignment with the AI Integration and RAG Framework layers."
+      ]
+    },
+    "principles": {
+      "icon": "compass",
+      "format": "list",
+      "items": [
+        "Interpret meaning over syntax — understand what is said, not just how it’s said.",
+        "Use Codex and SSE data as the only sources of truth.",
+        "Leverage LLM reasoning to enrich semantic inference while remaining grounded.",
+        "Prefer structure when intent is actionable, conversation when exploratory.",
+        "Ensure all reasoning is auditable via the Chat History Architecture."
+      ]
+    },
+    "outcomes": {
+      "icon": "star",
+      "format": "list",
+      "items": [
+        "Skyebot distinguishes between descriptive and actionable requests.",
+        "Regex-free natural understanding of user language.",
+        "Unified decision-making between Codex, SSE, and LLM reasoning layers.",
+        "Consistent audit logs and confidence scoring for every interpretation."
+      ]
+    },
+    "integrationRevision": {
+      "icon": "compass",
+      "format": "text",
+      "text": "Semantic Responder now treats the SSE Stream as a total semantic field. Every key—timeDateArray, weatherData, codexMeta, or module definition—is discoverable through the same resolver function. This removes hardcoded category checks and enforces DRY semantic inference across all live data."
+    }
   },
   "chatHistoryArchitecture": {
     "title": "💾 Chat History Architecture",
