@@ -582,7 +582,7 @@ function handleIntentReport($intentData, $sessionId) {
 // Filters filler phrases and normalizes user targets → Codex/SSE keys
 // ======================================================================
 
-// 🧭 Skyebot™ Semantic Object Resolver Helper (v1.3 - Minor Logging Fix)
+// 🧭 Skyebot™ Semantic Object Resolver Helper (v1.3 - Flat Fallback Added)
 function resolveSkyesoftObject($input, $context = null) {
     if ($context) {
         error_log("resolveSkyesoftObject invoked in context: " . json_encode($context));
@@ -616,10 +616,13 @@ function resolveSkyesoftObject($input, $context = null) {
         'sse'   => isset($sseData) && is_array($sseData) ? array_keys($sseData) : []
     ];
     
-    // 🆕 FALLBACK: If globals empty, try from $context
-    if (empty($sources['codex']) && isset($context['codex']['modules'])) {
-        $sources['codex'] = array_keys($context['codex']['modules']);
-        error_log("🔗 Resolver fallback: Loaded " . count($sources['codex']) . " keys from context");
+    // 🆕 FALLBACK: If globals empty, try from $context (flat + nested)
+    if (empty($sources['codex']) && isset($context['codex'])) {
+        $sources['codex'] = array_keys($context['codex']);  // Flat keys (e.g., 'timeIntervalStandards')
+        error_log("🔗 Resolver fallback: Loaded flat " . count($sources['codex']) . " keys from context['codex']");
+    } elseif (empty($sources['codex']) && isset($context['codex']['modules'])) {
+        $sources['codex'] = array_keys($context['codex']['modules']);  // Nested fallback
+        error_log("🔗 Resolver fallback: Loaded nested " . count($sources['codex']) . " keys from context['codex']['modules']");
     }
     if (empty($sources['sse']) && isset($context['sseStream'])) {
         $sources['sse'] = array_keys($context['sseStream']);

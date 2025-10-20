@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/askOpenAI_next.php
-// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.2 - Full Resolution Fix)
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.3 - Codex Extracted)
 // =======================================================
 
 #region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
@@ -374,11 +374,21 @@ if (!empty($dynamicData)) {
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 
-// 🆕 FIXED: Set globals for semantic resolver (use 'codex' subtree for module keys)
+// 🔹 Load Dynamic SSE + Extract Codex Layer (Fix for Blind Resolver)
+$sseData = $dynamicData;  // Full SSE from curl (live preferred)
+$codexPath = __DIR__ . '/../assets/data/dynamicData.json';  // Local fallback if curl fails
+if (empty($sseData) && file_exists($codexPath)) {
+    $localRaw = file_get_contents($codexPath);
+    $sseData = json_decode($localRaw, true) ?: array();
+}
+
+$codex = isset($sseData['codex']) && is_array($sseData['codex'])
+    ? $sseData['codex']
+    : array();
+
+// Set globals for resolver
 global $codex, $sseData;
-$codex = isset($dynamicData['codex']) ? $dynamicData['codex'] : array();  // All keys under 'codex' (flat modules)
-$sseData = $dynamicData;  // Full SSE for broader keys (e.g., timeDateArray)
-error_log("🧭 Resolver globals set: " . count($codex) . " Codex keys [" . implode(', ', array_slice(array_keys($codex), 0, 5)) . "...], " . count($sseData) . " SSE keys");
+error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode(', ', array_slice(array_keys($codex), 0, 3)) . ") | SSE keys: " . count($sseData));
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
@@ -396,21 +406,14 @@ if (!empty($prompt) && preg_match(
     $aiFallbackStarted = false; // safeguard tracker
 
     // Load codex safely
-    $codexData = isset($dynamicData['codex'])
-        ? $dynamicData['codex']
-        : (file_exists(CODEX_PATH)
-            ? json_decode(file_get_contents(CODEX_PATH), true)
-            : array());
+    $codexData = $codex ?: array();  // Use extracted $codex
 
-    // Build full module index (accept both wrapped + flat)
+    // Build full module index (flat + nested)
     $allModules = array();
     if (is_array($codexData)) {
         foreach ($codexData as $k => $v) { $allModules[$k] = $v; }
         if (isset($codexData['modules']) && is_array($codexData['modules'])) {
             foreach ($codexData['modules'] as $k => $v) { $allModules[$k] = $v; }
-        }
-        if (isset($codexData['codexModules']) && is_array($codexData['codexModules'])) {
-            foreach ($codexData['codexModules'] as $k => $v) { $allModules[$k] = $v; }
         }
     }
 
@@ -576,22 +579,22 @@ $snapshotSlim = array(
 );
 
 $codexCategories = array(
-    "glossary"     => !empty($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
-    "constitution" => !empty($dynamicData['codex']['constitution']) ? array_keys($dynamicData['codex']['constitution']) : array(),
-    "modules"      => !empty($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array()
+    "glossary"     => !empty($codex['glossary']) ? array_keys($codex['glossary']) : array(),
+    "constitution" => !empty($codex['constitution']) ? array_keys($codex['constitution']) : array(),
+    "modules"      => !empty($codex['modules']) ? array_keys($codex['modules']) : array()
 );
 
 // Always inject slim Codex sections (keys only) for broader context
 $injectBlocks = array(
     "snapshot" => $snapshotSlim,
-    "glossary" => isset($dynamicData['codex']['glossary']) ? array_keys($dynamicData['codex']['glossary']) : array(),
-    "modules"  => isset($dynamicData['codex']['modules']) ? array_keys($dynamicData['codex']['modules']) : array(),
+    "glossary" => isset($codex['glossary']) ? array_keys($codex['glossary']) : array(),
+    "modules"  => isset($codex['modules']) ? array_keys($codex['modules']) : array(),
 );
 
 // 🧭 Flatten Codex for RAG (add metadata for AI reasoning)
 $codexMeta = array();
 if (!empty($codex)) {
-    // 🆕 FIXED: Iterate ALL top-level codex keys (flat modules like 'timeIntervalStandards')
+    // Iterate ALL top-level codex keys (flat modules like 'timeIntervalStandards')
     foreach ($codex as $key => $mod) {
         $codexMeta[$key] = array(
             'title' => isset($mod['title']) ? $mod['title'] : $key,
@@ -599,10 +602,10 @@ if (!empty($codex)) {
             'tags' => isset($mod['tags']) ? $mod['tags'] : (isset($mod['aliases']) ? $mod['aliases'] : array())
         );
     }
-    // 🆕 Also include nested 'modules' if present (avoid duplicates)
+    // Also include nested 'modules' if present (avoid duplicates)
     if (isset($codex['modules']) && is_array($codex['modules'])) {
         foreach ($codex['modules'] as $key => $mod) {
-            if (!isset($codexMeta[$key])) {  // Skip if already added
+            if (!isset($codexMeta[$key])) {
                 $codexMeta[$key] = array(
                     'title' => isset($mod['title']) ? $mod['title'] : $key,
                     'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
@@ -619,14 +622,14 @@ error_log("🧭 codexMeta built: " . count($codexMeta) . " entries [" . implode(
 foreach ($codexCategories as $section => $keys) {
     foreach ($keys as $key) {
         if (strpos($lowerPrompt, strtolower($key)) !== false) {
-            $injectBlocks[$section][$key] = $dynamicData['codex'][$section][$key];
+            $injectBlocks[$section][$key] = $codex[$section][$key];
         }
     }
 }
 
 if (stripos($prompt, 'report') !== false) {
-    $injectBlocks['reportTypes'] = !empty($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
-        ? array_keys($dynamicData['modules']['reportGenerationSuite']['reportTypesSpec'])
+    $injectBlocks['reportTypes'] = !empty($codex['modules']['reportGenerationSuite']['reportTypesSpec'])
+        ? array_keys($codex['modules']['reportGenerationSuite']['reportTypesSpec'])
         : array();
 }
 #endregion
@@ -710,23 +713,23 @@ error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 // ======================================================================
 if (is_array($intentData) && isset($intentData['intent'])) {
     $intent        = strtolower(trim($intentData['intent']));
-    $target        = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;  // Keep lowercase for now; resolve will camelCase
+    $target        = isset($intentData['target']) ? trim($intentData['target']) : null;  // Trim, no strtolower (preserve camelCase)
     $confidence    = isset($intentData['confidence']) ? (float)$intentData['confidence'] : 0.0;
-    $minConfidence = 0.7;  // 🆕 Bumped to align with resolver threshold
+    $minConfidence = 0.7;  // Bumped to align with resolver threshold
     $handled       = false;
 
     // 🧠 Step 1: Semantic Target Resolution (SSE + Codex)
-    // 🆕 IMPROVED: Always attempt resolution if target doesn't directly match (even if provided)
+    // Always attempt resolution if target doesn't directly match (even if provided)
     if (in_array($intent, array('report', 'summary', 'crud')) && 
         (!$target || !isset($codexMeta[$target]) || $confidence < $minConfidence)) {
         $resolved = resolveSkyesoftObject($prompt, $dynamicData);
         error_log("🔗 Resolver attempt for '{$prompt}': " . json_encode($resolved));
-        if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {  // 🆕 Use resolver's threshold
+        if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {
             $target = $resolved['key'];
             $confidence = $resolved['confidence'];
             error_log("🔗 Semantic resolver matched {$resolved['layer']} → {$target} ({$resolved['confidence']}%)");
         } else {
-            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}' (conf: {$resolved['confidence']})");
+            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}' (conf: " . ($resolved['confidence'] ?? 0) . ")");
         }
     }
 
@@ -778,7 +781,7 @@ if (is_array($intentData) && isset($intentData['intent'])) {
                 $handled = true;
                 break;
             }
-            // 🆕 IMPROVED: Double-check post-resolution match (now succeeds with full codexMeta)
+            // Double-check post-resolution match (now succeeds with full codexMeta)
             if (!isset($codexMeta[$target])) {
                 error_log("⚠️ Resolved target '{$target}' not in codexMeta; forcing re-resolve. Available: " . implode(', ', array_keys($codexMeta)));
                 $resolved = resolveSkyesoftObject($prompt, $dynamicData);
@@ -819,124 +822,48 @@ if (is_array($intentData) && isset($intentData['intent'])) {
             }
             break;
 
-        // ⚙️ CRUD Operations (Create, Read, Update, Delete)
+                // ⚙️ CRUD Operations (Create, Read, Update, Delete)
         case 'crud':
             error_log("⚙️ Routing CRUD action for target '{$target}'");
             include __DIR__ . "/dispatchers/intent_crud.php";
             $handled = true;
             break;
 
-        // 💬 General or fallback intent
+        // 🧩 Default / General Chat
         default:
-            error_log("💬 Default intent route invoked (no actionable type)");
+            error_log("💬 Default intent route triggered — using general chat handler.");
+            include __DIR__ . "/dispatchers/intent_general.php";
+            $handled = true;
             break;
     }
-
-    if ($handled) exit;
-}
-#endregion
-
-#region 💬 SemanticResponder (AI Fallback)
-if (!$handled) {
-    // 🧩 Build full context-aware message stack
-    $messages = array(
-        array(
-            "role" => "system",
-            "content" =>
-                "You are Skyebot — respond conversationally using the current SSE stream and Codex data. " .
-                "Reference timeDateArray, workPhase, weatherData, KPIs, and announcements if relevant. " .
-                "Be concise, friendly, and contextually aware."
-        ),
-        array(
-            "role" => "system",
-            "content" => json_encode($dynamicData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        )
-    );
-
-    // 🧠 Preserve recent conversation for continuity
-    if (!empty($conversation)) {
-        $history = array_slice($conversation, -2);
-        foreach ($history as $entry) {
-            if (isset($entry['role']) && isset($entry['content'])) {
-                $messages[] = array(
-                    "role"    => $entry['role'],
-                    "content" => $entry['content']
-                );
-            }
-        }
-    }
-
-    // Add user message last
-    $messages[] = array("role" => "user", "content" => $prompt);
-
-    // 🧠 Generate contextual AI response
-    $aiResponse = callOpenAi($messages);
-
-    if (!empty($aiResponse)) {
-        $responsePayload = array(
-            "response"  => trim($aiResponse),
-            "action"    => "answer",
-            "sessionId" => $sessionId
-        );
-        $handled = true;
-    }
-}
-#endregion
-
-#region 🌐 Google Search Fallback
-if (
-    !$handled ||
-    (!empty($aiResponse) && is_string($aiResponse) &&
-     stripos($aiResponse, "NEEDS_GOOGLE_SEARCH") !== false)
-) {
-    $searchResults = googleSearch($prompt);
-
-    file_put_contents(
-        __DIR__ . '/error.log',
-        date('Y-m-d H:i:s') .
-        " - Google Search called for prompt: $prompt\n" .
-        "Results keys: " .
-        (!empty($searchResults) && is_array($searchResults)
-            ? implode(', ', array_keys($searchResults))
-            : 'none') . "\n",
-        FILE_APPEND
-    );
-
-    if (isset($searchResults['error'])) {
-        $responsePayload = array(
-            "response"  => "⚠️ Search service unavailable: " .
-                           $searchResults['error'] . ". Please try again.",
-            "action"    => "error",
-            "sessionId" => $sessionId
-        );
-    } elseif (!empty($searchResults['summary'])) {
-        $responsePayload = array(
-            "response"  => $searchResults['summary'] . " (via Google Search)",
-            "action"    => "answer",
-            "sessionId" => $sessionId
-        );
-        if (isset($searchResults['raw'][0]) && is_array($searchResults['raw'][0])) {
-            $firstLink = isset($searchResults['raw'][0]['link'])
-                ? $searchResults['raw'][0]['link']
-                : null;
-            if ($firstLink) $responsePayload['link'] = $firstLink;
-        }
-    } else {
-        $responsePayload = array(
-            "response"  =>
-                "⚠️ No relevant search results found. Please rephrase your query.",
-            "action"    => "error",
-            "sessionId" => $sessionId
-        );
-    }
-}
-#endregion
-
-#region ✅ Final Output
-if ($responsePayload) {
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
 } else {
-    sendJsonResponse("❌ Unable to process request.", "error", array("sessionId" => $sessionId));
+    // Fallback: router returned invalid or empty JSON
+    error_log("⚠️ Invalid router output. Response: " . substr((string)$routerResponse, 0, 200));
+    sendJsonResponse("⚠️ Unable to classify request. Please rephrase.", "error");
+    $handled = true;
 }
+
+#endregion
+
+#region 🧩 FINAL RESPONSE SAFEGUARD
+// ================================================================
+// Purpose:
+//   • Ensures consistent JSON response even if a branch misses output
+//   • Prevents silent script termination or raw echoes
+// ================================================================
+
+if (!$handled) {
+    error_log("⚠️ Unhandled prompt path — returning generic AI response.");
+    sendJsonResponse(
+        "💬 I understood your message but couldn’t determine an exact action. Try rephrasing or specify a report type.",
+        "fallback",
+        array("prompt" => $prompt)
+    );
+}
+#endregion
+
+#region ✅ Output Flush
+// Force clean buffer flush (safety for GoDaddy PHP handlers)
+while (ob_get_level() > 0) { ob_end_flush(); }
+exit;
 #endregion
