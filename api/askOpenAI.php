@@ -678,41 +678,23 @@ $intentData = json_decode(trim($routerResponse), true);
 error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 #endregion
 
-#region 🧭 Intent Resolution Layer
-if (is_array($intentData) && isset($intentData['intent']) && $intentData['confidence'] >= 0.6) {
-    $intent = strtolower(trim($intentData['intent']));
-    $target = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+#region 🧭 Intent Resolution Layer (Semantic-Driven, Regex-Free)
+if (is_array($intentData) && isset($intentData['intent'])) {
+    $intent      = strtolower(trim($intentData['intent']));
+    $target      = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+    $confidence  = isset($intentData['confidence']) ? (float)$intentData['confidence'] : 0.0;
+    $minConfidence = 0.6;
 
-    // 🧠 SEMANTIC CORRECTION & REPORT BIAS
-    if ($intent === 'crud' && preg_match('/\b(sheet|report|codex)\b/i', $prompt)) {
-        error_log("🔄 Linguistic correction: CRUD → Report.");
-        $intent = 'report';
-    }
-    if (
-        in_array($intent, ['general', 'crud']) &&
-        preg_match('/\b(make|create|build|prepare|produce|compile|generate)\b/i', $prompt) &&
-        preg_match('/\b(sheet|report|codex|summary|document)\b/i', $prompt)
-    ) {
-        error_log("🔁 Semantic override: {$intent} → report (creation verb + document noun).");
-        $intent = 'report';
-    }
-
-    // 🧩 Codex-Aware “Sheet” Context Recognition
-    if ($intent !== 'report' && preg_match('/\bsheet\b/i', $prompt) && isset($codexMeta)) {
-        foreach ($codexMeta as $key => $meta) {
-            if (!isset($meta['title'])) continue;
-            $title = strtolower($meta['title']);
-            $category = isset($meta['category']) ? strtolower($meta['category']) : '';
-            if (strpos($title, 'document standards') !== false ||
-                strpos($category, 'system layer') !== false) {
-                error_log("📄 Codex-aware override: matched Document Standards context → report.");
-                $intent = 'report';
-                break;
-            }
+    // 🧠 Step 1: Semantic Target Resolution (SSE + Codex)
+    if (in_array($intent, array('report', 'summary')) && (!$target || !isset($codexMeta[$target]))) {
+        $resolved = resolveSkyesoftObject($prompt, $dynamicData);
+        if (is_array($resolved) && $resolved['confidence'] > 30) {
+            $target = $resolved['key'];
+            error_log("🔗 Semantic resolver matched {$resolved['layer']} → {$target} ({$resolved['confidence']}%)");
         }
     }
 
-    // 🔗 Relationship Resolver
+    // 🧩 Step 2: Relationship Context Expansion
     if ($target && isset($codexMeta[$target])) {
         $meta = $codexMeta[$target];
         if (!empty($meta['dependsOn'])) {
@@ -728,72 +710,50 @@ if (is_array($intentData) && isset($intentData['intent']) && $intentData['confid
         $codexMeta[$target] = $meta;
     }
 
-    // ⚙️ Intent Switch
+    // 🧩 Step 3: Log final routing decision
+    error_log("🧭 Intent: {$intent} | Target: {$target} | Confidence: {$confidence} | Prompt: {$prompt}");
+
+    // 🧾 Step 4: Dispatch by Intent
     switch ($intent) {
-        case "logout":
+
+        case 'logout':
             performLogout();
-            echo json_encode(array(
-                "actionType" => "Logout",
-                "status"     => "success",
-                "response"   => "👋 You have been logged out.",
-                "sessionId"  => $sessionId
-            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            sendJsonResponse("👋 You have been logged out.", "Logout", array("status" => "success"));
             exit;
 
-        case "login":
+        case 'login':
             $_SESSION['user'] = $target ?: 'guest';
-            echo json_encode(array(
-                "actionType" => "Login",
-                "status"     => "success",
-                "user"       => $_SESSION['user'],
-                "sessionId"  => $sessionId
-            ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            sendJsonResponse("Welcome, {$_SESSION['user']}!", "Login", array(
+                "status" => "success",
+                "user" => $_SESSION['user']
+            ));
             exit;
 
-        case "report":
-            // Auto-map Codex modules when title or slug appears in prompt
-            if (!$target) {
-                foreach ($codexMeta as $key => $meta) {
-                    $title = strtolower($meta['title']);
-                    if (preg_match('/\b(' . preg_quote($title, '/') . ')\b/i', strtolower($prompt))) {
-                        $target = $key;
-                        error_log("🔗 Auto-mapped Codex title '{$meta['title']}' → slug '$key'");
-                        break;
-                    }
-                }
-            }
+        case 'report':
+            // Route to report generator
+            error_log("🧾 Dispatching report generation for target '{$target}'");
+            include __DIR__ . "/dispatchers/intent_report.php";
+            exit;
 
-            // ✅ Ensure report generation always fires if prompt includes sheet/report keywords
-            if (
-                $target ||
-                preg_match('/\b(sheet|report|codex|information\s+sheet|module)\b/i', $prompt)
-            ) {
-                error_log("🧾 Routing to intent_report.php for target: " . ($target ?: 'none'));
-                include __DIR__ . "/dispatchers/intent_report.php";
+        case 'summary':
+            // Generate semantic summary from Codex/SSE
+            if ($target && isset($codexMeta[$target])) {
+                $m = $codexMeta[$target];
+                $summary = array(
+                    "title"    => $m['title'],
+                    "purpose"  => isset($m['purpose']['text']) ? $m['purpose']['text'] : "",
+                    "category" => isset($m['category']) ? $m['category'] : "",
+                    "features" => isset($m['features']['items']) ? $m['features']['items'] : array()
+                );
+                sendJsonResponse("📘 {$summary['title']} — {$summary['purpose']}", "summary", array("details" => $summary));
                 exit;
             }
             break;
 
-        case "crud":
-            if ($target && preg_match('/\.(php|js|json|html|css)$/i', $target)) {
-                $result = getCodeFileSafe($target);
-                if ($result['error']) {
-                    sendJsonResponse("❌ " . $result['message'], "error", array(
-                        "sessionId" => $sessionId
-                    ));
-                    exit;
-                }
-                $preview = substr($result['content'], 0, 2000);
-                if (strlen($result['content']) > 2000)
-                    $preview .= "\n\n⚠️ (Truncated for display)";
-                sendJsonResponse("📄 Here's the code for **" . basename($result['file']) . "**:\n\n```\n" . $preview . "\n```",
-                    "crud_read_code",
-                    array("sessionId" => $sessionId)
-                );
-                exit;
-            }
+        case 'crud':
             include __DIR__ . "/dispatchers/intent_crud.php";
             exit;
+
         default:
             break;
     }

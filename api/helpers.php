@@ -568,3 +568,64 @@ function handleIntentReport($intentData, $sessionId) {
     return $response;
 }
 
+// ======================================================================
+// 🧭 Skyebot™ Semantic Object Resolver Helper
+// Resolves the best matching Skyesoft object from SSE or Codex data.
+// ======================================================================
+function resolveSkyesoftObject($prompt, $dynamicData) {
+    $promptLower = strtolower($prompt);
+    $best = array('layer'=>null,'key'=>null,'confidence'=>0.0);
+
+    // ------------------------------
+    // 1. Collect keys from SSE
+    // ------------------------------
+    $searchSets = array();
+    if (isset($dynamicData['sseSnapshot']) && is_array($dynamicData['sseSnapshot'])) {
+        $searchSets['sse'] = array_keys($dynamicData['sseSnapshot']);
+    }
+
+    // ------------------------------
+    // 2. Collect keys and aliases from Codex
+    // ------------------------------
+    if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
+        foreach ($dynamicData['codex'] as $slug => $mod) {
+            $searchSets['codex'][] = $slug;
+            if (isset($mod['title'])) {
+                $searchSets['codex'][] = strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', '', $mod['title']));
+            }
+            if (isset($mod['relationships']['aliases']) && is_array($mod['relationships']['aliases'])) {
+                foreach ($mod['relationships']['aliases'] as $alias) {
+                    $searchSets['codex'][] = strtolower($alias);
+                }
+            }
+        }
+    }
+
+    // ------------------------------
+    // 3. Score similarity
+    // ------------------------------
+    foreach ($searchSets as $layer => $keys) {
+        foreach ($keys as $key) {
+            if (!is_string($key) || strlen($key) < 3) continue;
+            if (strpos($promptLower, $key) !== false) {
+                $score = 100;
+            } else {
+                similar_text($promptLower, $key, $score);
+            }
+            if ($score > $best['confidence']) {
+                $best = array('layer'=>$layer,'key'=>$key,'confidence'=>$score);
+            }
+        }
+    }
+
+    // ------------------------------
+    // 4. Logging and return
+    // ------------------------------
+    if ($best['confidence'] > 30) {
+        error_log("🧭 resolveSkyesoftObject() matched {$best['layer']} → {$best['key']} ({$best['confidence']}%)");
+        return $best;
+    } else {
+        error_log("⚠️ resolveSkyesoftObject() found no strong match (max={$best['confidence']}%)");
+        return null;
+    }
+}
