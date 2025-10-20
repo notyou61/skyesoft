@@ -652,3 +652,58 @@ function resolveSkyesoftObject($input, $context = null) {
             'confidence'  => round($best['confidence'], 2)
         ];
 }
+// ======================================================================
+// 🔍 querySSE()
+// Performs semantic lookup within SSE / dynamicData array.
+// Returns the most relevant key/value pair for a given prompt.
+// Compatible with PHP 5.6 (no modern syntax).
+// ======================================================================
+if (!function_exists('querySSE')) {
+    function querySSE($prompt, $data)
+    {
+        if (!is_array($data) || empty($data)) {
+            return null;
+        }
+
+        $promptLower = strtolower(trim($prompt));
+        $flat = array();
+
+        // Recursive flattening helper (dot notation)
+        $flatten = function ($arr, $prefix = '') use (&$flatten, &$flat) {
+            foreach ($arr as $k => $v) {
+                $key = $prefix === '' ? $k : $prefix . '.' . $k;
+                if (is_array($v)) {
+                    $flatten($v, $key);
+                } else {
+                    $flat[$key] = $v;
+                }
+            }
+        };
+        $flatten($data);
+
+        // Find best lexical match
+        $bestKey = '';
+        $bestScore = 0;
+        foreach ($flat as $key => $value) {
+            $keyNorm = strtolower(str_replace(array('_', '-'), '', $key));
+            similar_text($promptLower, $keyNorm, $score);
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestKey = $key;
+            }
+        }
+
+        if ($bestKey !== '' && $bestScore > 40) {
+            $val = $flat[$bestKey];
+            $msg = '📡 ' . ucwords(str_replace('.', ' → ', $bestKey)) . ': ' . $val;
+            return array(
+                'key' => $bestKey,
+                'value' => $val,
+                'score' => $bestScore,
+                'message' => $msg
+            );
+        }
+
+        return null;
+    }
+}
