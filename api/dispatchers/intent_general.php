@@ -5,12 +5,11 @@
 // Purpose:
 //   • Handles open-ended user prompts (not reports, CRUD, etc.)
 //   • Provides humanized responses directly from SSE / dynamicData
-//   • Zero hardcoding — all reasoning done by OpenAI using live context
+//   • Adds legacy Google fallback when internal data yields no result
 // Compatibility: PHP 5.6 (GoDaddy hosting safe)
 // ======================================================================
 
-// Ensure helpers and utilities are loaded
-require_once __DIR__ . '/../helpers.php';  // callOpenAi(), sendJsonResponse(), etc.
+require_once __DIR__ . '/../helpers.php';  // callOpenAi(), sendJsonResponse(), webFallbackSearch()
 
 // --------------------------------------------------------------
 // 🧱 Safeguard variable scope
@@ -24,13 +23,9 @@ if (!isset($sessionId)) $sessionId = session_id();
 // --------------------------------------------------------------
 $contextKeys = array('timeDateArray', 'weatherData', 'skyesoftHolidays', 'codex', 'siteMeta');
 $sseContext = array();
-
 foreach ($contextKeys as $k) {
-    if (isset($dynamicData[$k])) {
-        $sseContext[$k] = $dynamicData[$k];
-    }
+    if (isset($dynamicData[$k])) $sseContext[$k] = $dynamicData[$k];
 }
-
 error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
 
 // --------------------------------------------------------------
@@ -65,22 +60,45 @@ $messages = array(
 $llmText = callOpenAi($messages);
 
 // --------------------------------------------------------------
-// 🧯 Error handling and graceful fallback
+// 🧯 1️⃣ SSE lexical fallback if AI returned nothing
 // --------------------------------------------------------------
 if (empty($llmText)) {
     $fallback = querySSE($prompt, $sseContext);
     if ($fallback && isset($fallback['message'])) {
         sendJsonResponse($fallback['message'], "general", array(
-            "sessionId" => $sessionId,
+            "sessionId"   => $sessionId,
             "resolvedKey" => $fallback['key'],
-            "score" => $fallback['score']
+            "score"       => $fallback['score']
         ));
         exit;
     }
 }
 
 // --------------------------------------------------------------
-// 📤 Return AI result (no post-formatting = no hardcoding)
+// 🌐 2️⃣ Web fallback (Google legacy restoration)
+// Triggered if AI or internal SSE had no useful answer
+// --------------------------------------------------------------
+if (empty($llmText)
+    || stripos($llmText, 'not found') !== false
+    || stripos($llmText, 'sorry') !== false
+    || stripos($llmText, 'does not include') !== false
+    || stripos($llmText, 'no information') !== false) {
+
+    error_log("🌐 [intent_general] Invoking web fallback for '{$prompt}'");
+    $fallback = webFallbackSearch($prompt);
+
+    if ($fallback && isset($fallback['summary'])) {
+        sendJsonResponse($fallback['summary'], "general", array(
+            "sessionId" => $sessionId,
+            "source"    => "web",
+            "url"       => isset($fallback['url']) ? $fallback['url'] : ''
+        ));
+        exit;
+    }
+}
+
+// --------------------------------------------------------------
+// 📤 3️⃣ Normal return — AI result (no post-formatting, no hardcoding)
 // --------------------------------------------------------------
 sendJsonResponse(trim($llmText), "general", array(
     "sessionId" => $sessionId

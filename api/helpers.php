@@ -746,3 +746,50 @@ if (!function_exists('querySSE')) {
         return null;
     }
 }
+// ======================================================================
+// 🌐 webFallbackSearch()
+// Legacy-compatible Google fallback (restored & modernized)
+// Purpose:
+//   • Queries Google Search when Skyebot can't find an answer internally
+//   • Returns a short, humanized summary with source URL
+// Compatibility: PHP 5.6
+// ======================================================================
+if (!function_exists('webFallbackSearch')) {
+    function webFallbackSearch($query)
+    {
+        $encoded = urlencode($query);
+        $url = "https://www.google.com/search?q=" . $encoded;
+
+        $ctx = stream_context_create(array(
+            'http' => array(
+                'timeout'     => 6,
+                'user_agent'  => 'Skyebot/1.0 (+skyelighting.com)',
+                'ignore_errors' => true
+            )
+        ));
+
+        $html = @file_get_contents($url, false, $ctx);
+        if ($html === false || strlen($html) < 1000) {
+            return array(
+                'summary' => "🌍 I couldn’t reach Google right now.",
+                'url'     => $url
+            );
+        }
+
+        // Try to extract first visible snippet
+        if (preg_match('/<div[^>]+class="BNeawe[^>]*">(.*?)<\/div>/i', $html, $m)) {
+            $snippet = trim(strip_tags($m[1]));
+        } else {
+            $snippet = '';
+        }
+
+        if ($snippet === '') {
+            $snippet = "I couldn’t find a clear summary, but you can check the search page.";
+        }
+
+        return array(
+            'summary' => "🌍 According to the web: " . $snippet,
+            'url'     => $url
+        );
+    }
+}
