@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/askOpenAI_next.php
-// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.1 - Improved Resolution)
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.2 - Full Resolution Fix)
 // =======================================================
 
 #region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
@@ -374,11 +374,11 @@ if (!empty($dynamicData)) {
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 
-// 🆕 NEW: Set globals for semantic resolver (fixes empty sources issue)
+// 🆕 FIXED: Set globals for semantic resolver (use 'codex' subtree for module keys)
 global $codex, $sseData;
-$codex = $dynamicData;  // Top-level keys are modules; adjust if nested
-$sseData = isset($dynamicData['sseStream']) ? $dynamicData['sseStream'] : array();  // SSE-specific; fallback to empty
-error_log("🧭 Resolver globals set: " . count($codex) . " Codex modules, " . count($sseData) . " SSE keys");
+$codex = isset($dynamicData['codex']) ? $dynamicData['codex'] : array();  // All keys under 'codex' (flat modules)
+$sseData = $dynamicData;  // Full SSE for broader keys (e.g., timeDateArray)
+error_log("🧭 Resolver globals set: " . count($codex) . " Codex keys [" . implode(', ', array_slice(array_keys($codex), 0, 5)) . "...], " . count($sseData) . " SSE keys");
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
@@ -590,16 +590,30 @@ $injectBlocks = array(
 
 // 🧭 Flatten Codex for RAG (add metadata for AI reasoning)
 $codexMeta = array();
-if (isset($dynamicData['codex']['modules'])) {
-    foreach ($dynamicData['codex']['modules'] as $key => $mod) {
+if (!empty($codex)) {
+    // 🆕 FIXED: Iterate ALL top-level codex keys (flat modules like 'timeIntervalStandards')
+    foreach ($codex as $key => $mod) {
         $codexMeta[$key] = array(
             'title' => isset($mod['title']) ? $mod['title'] : $key,
-            'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
-            'tags' => isset($mod['tags']) ? $mod['tags'] : array()
+            'description' => isset($mod['description']) ? $mod['description'] : (isset($mod['purpose']['text']) ? $mod['purpose']['text'] : 'No summary available'),
+            'tags' => isset($mod['tags']) ? $mod['tags'] : (isset($mod['aliases']) ? $mod['aliases'] : array())
         );
+    }
+    // 🆕 Also include nested 'modules' if present (avoid duplicates)
+    if (isset($codex['modules']) && is_array($codex['modules'])) {
+        foreach ($codex['modules'] as $key => $mod) {
+            if (!isset($codexMeta[$key])) {  // Skip if already added
+                $codexMeta[$key] = array(
+                    'title' => isset($mod['title']) ? $mod['title'] : $key,
+                    'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
+                    'tags' => isset($mod['tags']) ? $mod['tags'] : array()
+                );
+            }
+        }
     }
 }
 $injectBlocks['codexMeta'] = $codexMeta;
+error_log("🧭 codexMeta built: " . count($codexMeta) . " entries [" . implode(', ', array_slice(array_keys($codexMeta), 0, 3)) . "...]");
 
 // Selectively expand specific Codex entries if keywords match
 foreach ($codexCategories as $section => $keys) {
@@ -764,14 +778,15 @@ if (is_array($intentData) && isset($intentData['intent'])) {
                 $handled = true;
                 break;
             }
-            // 🆕 IMPROVED: Double-check post-resolution match
+            // 🆕 IMPROVED: Double-check post-resolution match (now succeeds with full codexMeta)
             if (!isset($codexMeta[$target])) {
-                error_log("⚠️ Resolved target '{$target}' not in codexMeta; forcing re-resolve");
+                error_log("⚠️ Resolved target '{$target}' not in codexMeta; forcing re-resolve. Available: " . implode(', ', array_keys($codexMeta)));
                 $resolved = resolveSkyesoftObject($prompt, $dynamicData);
+                error_log("🔗 Re-resolve: " . json_encode($resolved));
                 if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {
                     $target = $resolved['key'];
                 } else {
-                    sendJsonResponse("⚠️ Unable to resolve report target from '{$prompt}'.", "error");
+                    sendJsonResponse("⚠️ Unable to resolve report target from '{$prompt}' (conf: " . ($resolved['confidence'] ?? 0) . ").", "error");
                     $handled = true;
                     break;
                 }
