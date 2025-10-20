@@ -679,22 +679,34 @@ error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 #endregion
 
 #region 🧭 Intent Resolution Layer (Semantic-Driven, Regex-Free)
+// ======================================================================
+// Purpose:
+//   • Resolve user intent and route execution semantically
+//   • Use Codex + SSE object reasoning (via resolveSkyesoftObject())
+//   • Eliminate fragile regex conditions
+//   • Maintain clear audit trail via structured logging
+// ======================================================================
 if (is_array($intentData) && isset($intentData['intent'])) {
-    $intent      = strtolower(trim($intentData['intent']));
-    $target      = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
-    $confidence  = isset($intentData['confidence']) ? (float)$intentData['confidence'] : 0.0;
+    $intent        = strtolower(trim($intentData['intent']));
+    $target        = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+    $confidence    = isset($intentData['confidence']) ? (float)$intentData['confidence'] : 0.0;
     $minConfidence = 0.6;
+    $handled       = false;
 
     // 🧠 Step 1: Semantic Target Resolution (SSE + Codex)
-    if (in_array($intent, array('report', 'summary')) && (!$target || !isset($codexMeta[$target]))) {
+    // If target was not clearly specified by LLM, find it semantically.
+    if (in_array($intent, array('report', 'summary', 'crud')) && (!$target || !isset($codexMeta[$target]))) {
         $resolved = resolveSkyesoftObject($prompt, $dynamicData);
-        if (is_array($resolved) && $resolved['confidence'] > 30) {
+        if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 30) {
             $target = $resolved['key'];
             error_log("🔗 Semantic resolver matched {$resolved['layer']} → {$target} ({$resolved['confidence']}%)");
+        } else {
+            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}'");
         }
     }
 
     // 🧩 Step 2: Relationship Context Expansion
+    // Expand dependencies or providers within Codex meta, if defined.
     if ($target && isset($codexMeta[$target])) {
         $meta = $codexMeta[$target];
         if (!empty($meta['dependsOn'])) {
@@ -711,32 +723,43 @@ if (is_array($intentData) && isset($intentData['intent'])) {
     }
 
     // 🧩 Step 3: Log final routing decision
-    error_log("🧭 Intent: {$intent} | Target: {$target} | Confidence: {$confidence} | Prompt: {$prompt}");
+    error_log("🧭 Intent: {$intent} | Target: " . ($target ?: 'none') . " | Confidence: {$confidence} | Prompt: {$prompt}");
 
     // 🧾 Step 4: Dispatch by Intent
     switch ($intent) {
 
+        // 🔒 Logout
         case 'logout':
             performLogout();
             sendJsonResponse("👋 You have been logged out.", "Logout", array("status" => "success"));
-            exit;
+            $handled = true;
+            break;
 
+        // 🔑 Login
         case 'login':
             $_SESSION['user'] = $target ?: 'guest';
             sendJsonResponse("Welcome, {$_SESSION['user']}!", "Login", array(
                 "status" => "success",
-                "user" => $_SESSION['user']
+                "user"   => $_SESSION['user']
             ));
-            exit;
+            $handled = true;
+            break;
 
+        // 🧾 Report Generation (Codex / SSE object sheets)
         case 'report':
-            // Route to report generator
+            if (!$target) {
+                error_log("⚠️ Report intent triggered with no valid target.");
+                sendJsonResponse("⚠️ No valid report target specified.", "error");
+                $handled = true;
+                break;
+            }
             error_log("🧾 Dispatching report generation for target '{$target}'");
             include __DIR__ . "/dispatchers/intent_report.php";
-            exit;
+            $handled = true;
+            break;
 
+        // 📘 Semantic Summary (Codex or SSE object description)
         case 'summary':
-            // Generate semantic summary from Codex/SSE
             if ($target && isset($codexMeta[$target])) {
                 $m = $codexMeta[$target];
                 $summary = array(
@@ -746,17 +769,32 @@ if (is_array($intentData) && isset($intentData['intent'])) {
                     "features" => isset($m['features']['items']) ? $m['features']['items'] : array()
                 );
                 sendJsonResponse("📘 {$summary['title']} — {$summary['purpose']}", "summary", array("details" => $summary));
-                exit;
+                $handled = true;
+            } else {
+                $resolved = resolveSkyesoftObject($prompt, $dynamicData);
+                if (is_array($resolved) && $resolved['confidence'] > 30) {
+                    sendJsonResponse("📘 Summary generated for {$resolved['key']}", "summary", array("resolved" => $resolved));
+                } else {
+                    sendJsonResponse("⚠️ Unable to generate summary — no target found.", "error");
+                }
+                $handled = true;
             }
             break;
 
+        // ⚙️ CRUD Operations (Create, Read, Update, Delete)
         case 'crud':
+            error_log("⚙️ Routing CRUD action for target '{$target}'");
             include __DIR__ . "/dispatchers/intent_crud.php";
-            exit;
+            $handled = true;
+            break;
 
+        // 💬 General or fallback intent
         default:
+            error_log("💬 Default intent route invoked (no actionable type)");
             break;
     }
+
+    if ($handled) exit;
 }
 #endregion
 

@@ -1,61 +1,106 @@
 <?php
 // ======================================================================
-// File: api/dispatchers/intent_report.php
-// Purpose: Handle semantic report generation routed from askOpenAI.php
+// 🧾 Skyebot™ Intent Report Dispatcher (Semantic Edition)
+// Unified Codex + SSE Integration (Regex-Free)
+// ----------------------------------------------------------------------
+// Purpose:
+// • Dynamically generate reports for any Skyesoft Codex or SSE object
+// • Automatically infer $target if missing (via resolveSkyesoftObject())
+// • Route through generateReports.php and return a clean JSON payload
 // ======================================================================
-// Compatible with PHP 5.6 (GoDaddy environment)
-// ======================================================================
 
-include_once __DIR__ . '/../helpers.php';
+#region 🧱 Environment Setup
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+header('Content-Type: application/json; charset=UTF-8');
 
-// 🧩 1️⃣ Fallback: infer target if not passed from router
-if (!isset($target) || empty($target)) {
-    if (isset($prompt)) {
-        $normalizedPrompt = strtolower(preg_replace('/[^a-z0-9]/', '', $prompt));
+require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/../env_boot.php';
+date_default_timezone_set('America/Phoenix');
 
-        if (isset($codexMeta) && is_array($codexMeta)) {
-            foreach ($codexMeta as $key => $meta) {
-                $normKey = strtolower(preg_replace('/[^a-z0-9]/', '', $key));
-                $normTitle = isset($meta['title'])
-                    ? strtolower(preg_replace('/[^a-z0-9]/', '', $meta['title']))
-                    : '';
+if (session_status() === PHP_SESSION_NONE) @session_start();
+$sessionId = session_id();
+#endregion
 
-                if (strpos($normalizedPrompt, $normKey) !== false ||
-                    strpos($normalizedPrompt, $normTitle) !== false) {
-                    $target = $key;
-                    error_log("🧭 intent_report.php inferred target → $key");
-                    break;
-                }
-            }
-        }
+
+#region 🧩 Input & Validation
+// Expect $prompt and $target from parent context
+if (!isset($prompt)) $prompt = isset($_POST['prompt']) ? $_POST['prompt'] : '';
+if (!isset($target)) $target = isset($_POST['target']) ? $_POST['target'] : '';
+if (!isset($dynamicData)) $dynamicData = array();
+
+error_log("🧾 [intent_report] invoked with target: " . ($target ?: 'none') . " | prompt: {$prompt}");
+#endregion
+
+
+#region 🔍 Step 1: Validate or Resolve Target
+if (empty($target) || strlen($target) < 2) {
+    $resolved = resolveSkyesoftObject($prompt, $dynamicData);
+    if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 30) {
+        $target = $resolved['key'];
+        error_log("🔗 Auto-resolved report target → {$target} ({$resolved['confidence']}%) [Layer: {$resolved['layer']}]");
+    } else {
+        sendJsonResponse("⚠️ No valid report target specified.", "error", array(
+            "sessionId" => $sessionId,
+            "prompt"    => $prompt
+        ));
+        exit;
     }
 }
+#endregion
 
-// 🧩 2️⃣ Guard: still no target? return graceful JSON error
-if (empty($target)) {
-    echo json_encode(array(
-        "response"  => "⚠️ No valid report target specified.",
-        "action"    => "error",
-        "sessionId" => isset($sessionId) ? $sessionId : uniqid("session_")
-    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
-}
 
-// 🧩 3️⃣ Generate report via helper bridge
-if (function_exists('handleIntentReport')) {
-    $responsePayload = handleIntentReport(
-        array("target" => $target),
-        isset($sessionId) ? $sessionId : uniqid("session_")
+#region 🧭 Step 2: Normalize Report Metadata
+$reportTitle = ucwords(str_replace(array('-', '_'), ' ', $target));
+$generatorUrl = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . urlencode($target);
+$payload = json_encode(array("slug" => $target));
+
+error_log("🧭 Preparing report request for '{$target}' at {$generatorUrl}");
+#endregion
+
+
+#region ⚙️ Step 3: Execute Report Generation
+$ch = curl_init($generatorUrl);
+curl_setopt_array($ch, array(
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $payload,
+    CURLOPT_HTTPHEADER     => array('Content-Type: application/json'),
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_TIMEOUT        => 30
+));
+
+$result = curl_exec($ch);
+$code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$err    = curl_error($ch);
+curl_close($ch);
+#endregion
+
+
+#region 📄 Step 4: Parse & Respond
+if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+)$/m', $result, $matches)) {
+    $link = trim($matches[1]);
+    sendJsonResponse(
+        "✅ Information Sheet generated for {$target}",
+        "sheet_generated",
+        array(
+            "link"      => $link,
+            "target"    => $target,
+            "title"     => $reportTitle,
+            "sessionId" => $sessionId
+        )
     );
-
-    echo json_encode($responsePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// 🧩 4️⃣ Fallback: helpers not loaded or function missing
-echo json_encode(array(
-    "response"  => "❌ Report handler unavailable (helpers.php missing or invalid).",
-    "action"    => "error",
-    "sessionId" => isset($sessionId) ? $sessionId : uniqid("session_")
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+if ($err) {
+    error_log("❌ CURL Error: {$err}");
+}
+
+sendJsonResponse("⚠️ Report generation failed (HTTP {$code}).", "error", array(
+    "body"      => substr($result, 0, 200),
+    "sessionId" => $sessionId,
+    "target"    => $target
+));
 exit;
+#endregion
