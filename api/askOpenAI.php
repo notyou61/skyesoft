@@ -729,7 +729,7 @@ if (is_array($intentData) && isset($intentData['intent'])) {
             $confidence = $resolved['confidence'];
             error_log("🔗 Semantic resolver matched {$resolved['layer']} → {$target} ({$resolved['confidence']}%)");
         } else {
-            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}' (conf: " . ($resolved['confidence'] ?? 0) . ")");
+            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}' (conf: " . (isset($resolved['confidence']) ? $resolved['confidence'] : 0) . ")");
         }
     }
 
