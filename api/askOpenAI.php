@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/askOpenAI_next.php
-// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.0)
+// Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.1 - Improved Resolution)
 // =======================================================
 
 #region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
@@ -373,6 +373,12 @@ if (!empty($dynamicData)) {
         "kpiData" => array()
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
+
+// 🆕 NEW: Set globals for semantic resolver (fixes empty sources issue)
+global $codex, $sseData;
+$codex = $dynamicData;  // Top-level keys are modules; adjust if nested
+$sseData = isset($dynamicData['sseStream']) ? $dynamicData['sseStream'] : array();  // SSE-specific; fallback to empty
+error_log("🧭 Resolver globals set: " . count($codex) . " Codex modules, " . count($sseData) . " SSE keys");
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
@@ -380,7 +386,7 @@ $lowerPrompt = strtolower($prompt);
 
 // More robust capture: "generate (an)? (information)? sheet (for)? <name>"
 if (!empty($prompt) && preg_match(
-    '/\bgenerate\b\s*(?:an?\s+)?(?:information\s+)?sheet(?:\s+for)?\s+(.+?)(?:\s*(?:sheet|report))?(?:[.!?]|\s*$)/i',
+    '/\bgenerate\b\s*(?:an?\s+)?(?:information\s+)?sheet(?:\s+for)?\s+(.+?)(?:\s*(?:sheet|report))?(?:[.!?]|\\s*$)/i',
     $prompt,
     $matches
 )) {
@@ -515,7 +521,7 @@ if (!empty($prompt) && preg_match(
 
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array(
-                "response"  => "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})",
+                "response"  => "📘 The **{$title}** sheet is ready.\n\n📄 [Open Report]($publicUrl)",
                 "action"    => "sheet_generated",
                 "slug"      => $slug,
                 "reportUrl" => $publicUrl,
@@ -646,6 +652,8 @@ If the user request involves making, creating, or preparing any sheet, report, o
 If the request involves creating, updating, or deleting an entity, classify it as intent = "crud".
 Prefer "report" over "crud" when both could apply.
 
+🆕 IMPROVED: For "target", extract ONLY the clean Codex module slug (e.g., 'timeIntervalStandards' for "Time Interval Standards" or "information sheet for time interval standards"). Ignore boilerplate like "generate", "sheet for", or full phrases. Use exact keys from the Codex Semantic Index.
+
 Return only JSON in this structure:
 {
   "intent": "logout" | "login" | "report" | "crud" | "general",
@@ -688,20 +696,23 @@ error_log("🧭 Router raw output: " . substr($routerResponse, 0, 400));
 // ======================================================================
 if (is_array($intentData) && isset($intentData['intent'])) {
     $intent        = strtolower(trim($intentData['intent']));
-    $target        = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;
+    $target        = isset($intentData['target']) ? strtolower(trim($intentData['target'])) : null;  // Keep lowercase for now; resolve will camelCase
     $confidence    = isset($intentData['confidence']) ? (float)$intentData['confidence'] : 0.0;
-    $minConfidence = 0.6;
+    $minConfidence = 0.7;  // 🆕 Bumped to align with resolver threshold
     $handled       = false;
 
     // 🧠 Step 1: Semantic Target Resolution (SSE + Codex)
-    // If target was not clearly specified by LLM, find it semantically.
-    if (in_array($intent, array('report', 'summary', 'crud')) && (!$target || !isset($codexMeta[$target]))) {
+    // 🆕 IMPROVED: Always attempt resolution if target doesn't directly match (even if provided)
+    if (in_array($intent, array('report', 'summary', 'crud')) && 
+        (!$target || !isset($codexMeta[$target]) || $confidence < $minConfidence)) {
         $resolved = resolveSkyesoftObject($prompt, $dynamicData);
-        if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 30) {
+        error_log("🔗 Resolver attempt for '{$prompt}': " . json_encode($resolved));
+        if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {  // 🆕 Use resolver's threshold
             $target = $resolved['key'];
+            $confidence = $resolved['confidence'];
             error_log("🔗 Semantic resolver matched {$resolved['layer']} → {$target} ({$resolved['confidence']}%)");
         } else {
-            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}'");
+            error_log("⚠️ Semantic resolver found no strong match for '{$prompt}' (conf: {$resolved['confidence']})");
         }
     }
 
@@ -752,6 +763,18 @@ if (is_array($intentData) && isset($intentData['intent'])) {
                 sendJsonResponse("⚠️ No valid report target specified.", "error");
                 $handled = true;
                 break;
+            }
+            // 🆕 IMPROVED: Double-check post-resolution match
+            if (!isset($codexMeta[$target])) {
+                error_log("⚠️ Resolved target '{$target}' not in codexMeta; forcing re-resolve");
+                $resolved = resolveSkyesoftObject($prompt, $dynamicData);
+                if (is_array($resolved) && isset($resolved['key']) && $resolved['confidence'] > 70) {
+                    $target = $resolved['key'];
+                } else {
+                    sendJsonResponse("⚠️ Unable to resolve report target from '{$prompt}'.", "error");
+                    $handled = true;
+                    break;
+                }
             }
             error_log("🧾 Dispatching report generation for target '{$target}'");
             include __DIR__ . "/dispatchers/intent_report.php";

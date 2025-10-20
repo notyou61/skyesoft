@@ -582,6 +582,7 @@ function handleIntentReport($intentData, $sessionId) {
 // Filters filler phrases and normalizes user targets → Codex/SSE keys
 // ======================================================================
 
+// 🧭 Skyebot™ Semantic Object Resolver Helper (v1.3 - Minor Logging Fix)
 function resolveSkyesoftObject($input, $context = null) {
     if ($context) {
         error_log("resolveSkyesoftObject invoked in context: " . json_encode($context));
@@ -608,12 +609,21 @@ function resolveSkyesoftObject($input, $context = null) {
     $camel = array_shift($parts);
     foreach ($parts as $p) $camel .= ucfirst($p);
 
-    // 🔹 5. Load data sources
+    // 🔹 5: Load data sources
     global $codex, $sseData;
     $sources = [
-        'codex' => isset($codex) ? array_keys($codex) : [],
-        'sse'   => isset($sseData) ? array_keys($sseData) : []
+        'codex' => isset($codex) && is_array($codex) ? array_keys($codex) : [],
+        'sse'   => isset($sseData) && is_array($sseData) ? array_keys($sseData) : []
     ];
+    
+    // 🆕 FALLBACK: If globals empty, try from $context
+    if (empty($sources['codex']) && isset($context['codex']['modules'])) {
+        $sources['codex'] = array_keys($context['codex']['modules']);
+        error_log("🔗 Resolver fallback: Loaded " . count($sources['codex']) . " keys from context");
+    }
+    if (empty($sources['sse']) && isset($context['sseStream'])) {
+        $sources['sse'] = array_keys($context['sseStream']);
+    }
 
     // 🔹 6. Find best lexical match
     $best = ['layer'=>null,'key'=>null,'confidence'=>0];
@@ -631,10 +641,11 @@ function resolveSkyesoftObject($input, $context = null) {
     if ($best['confidence'] < 70) {
         error_log("resolveSkyesoftObject: Low confidence ({$best['confidence']}) for '$input'");
     }
-
+    
+    // Return
     return [
-        'layer'       => $best['layer'],
-        'key'         => $best['key'],
-        'confidence'  => round($best['confidence'], 2)
-    ];
+            'layer'       => $best['layer'],
+            'key'         => $best['key'],
+            'confidence'  => round($best['confidence'], 2)
+        ];
 }
