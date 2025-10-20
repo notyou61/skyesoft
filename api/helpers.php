@@ -577,31 +577,45 @@ function handleIntentReport($intentData, $sessionId) {
 // Normalizes user targets → Codex / SSE object keys (regex-free)
 // ======================================================================
 
+// ======================================================================
+// 🧠 Semantic Resolver – Skyebot™ v1.2 (Oct 2025)
+// Filters filler phrases and normalizes user targets → Codex/SSE keys
+// ======================================================================
+
 function resolveSkyesoftObject($input, $context = null) {
-    // optional context (e.g., sessionId or request metadata)
     if ($context) {
         error_log("resolveSkyesoftObject invoked in context: " . json_encode($context));
     }
 
-    // 🔹 1. Strip parenthetical text
+    // 🔹 1. Remove parenthetical text
     $clean = preg_replace('/\s*\([^)]*\)/', '', $input);
 
-    // 🔹 2. Normalize whitespace & punctuation
+    // 🔹 2. Lowercase and strip known filler phrases
+    $clean = strtolower($clean);
+    $fillerPhrases = [
+        'information sheet for', 'information sheet on', 'sheet for',
+        'sheet on', 'report for', 'report on', 'generate', 'create', 'show me'
+    ];
+    foreach ($fillerPhrases as $phrase) {
+        $clean = str_replace($phrase, '', $clean);
+    }
+
+    // 🔹 3. Normalize whitespace & punctuation
     $clean = trim(preg_replace('/[^a-zA-Z0-9]+/', ' ', $clean));
 
-    // 🔹 3. Convert to camelCase
+    // 🔹 4. Convert to camelCase
     $parts = explode(' ', strtolower($clean));
     $camel = array_shift($parts);
     foreach ($parts as $p) $camel .= ucfirst($p);
 
-    // 🔹 4. Load data sources
+    // 🔹 5. Load data sources
     global $codex, $sseData;
     $sources = [
         'codex' => isset($codex) ? array_keys($codex) : [],
         'sse'   => isset($sseData) ? array_keys($sseData) : []
     ];
 
-    // 🔹 5. Find best lexical match
+    // 🔹 6. Find best lexical match
     $best = ['layer'=>null,'key'=>null,'confidence'=>0];
     foreach ($sources as $layer => $keys) {
         foreach ($keys as $key) {
@@ -613,12 +627,11 @@ function resolveSkyesoftObject($input, $context = null) {
         }
     }
 
-    // 🔹 6. Confidence threshold safeguard
+    // 🔹 7. Confidence threshold safeguard
     if ($best['confidence'] < 70) {
         error_log("resolveSkyesoftObject: Low confidence ({$best['confidence']}) for '$input'");
     }
 
-    // 🔹 7. Return structured result
     return [
         'layer'       => $best['layer'],
         'key'         => $best['key'],
