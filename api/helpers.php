@@ -572,81 +572,56 @@ function handleIntentReport($intentData, $sessionId) {
 // 🧭 Skyebot™ Semantic Object Resolver Helper
 // Resolves the best matching Skyesoft object from SSE or Codex data.
 // ======================================================================
-function resolveSkyesoftObject($prompt, $dynamicData) {
-    $promptLower = strtolower($prompt);
-    $best = array('layer' => null, 'key' => null, 'confidence' => 0.0);
+// ======================================================================
+// 🧠 Semantic Resolver – Skyebot™ v1.1 (Oct 2025)
+// Normalizes user targets → Codex / SSE object keys (regex-free)
+// ======================================================================
 
-    // ============================================================
-    // 1. Collect searchable keys from SSE
-    // ============================================================
-    $searchSets = array();
-    if (isset($dynamicData['sseSnapshot']) && is_array($dynamicData['sseSnapshot'])) {
-        $searchSets['sse'] = array_keys($dynamicData['sseSnapshot']);
+function resolveSkyesoftObject($input, $context = null) {
+    // optional context (e.g., sessionId or request metadata)
+    if ($context) {
+        error_log("resolveSkyesoftObject invoked in context: " . json_encode($context));
     }
 
-    // ============================================================
-    // 2. Collect searchable keys and aliases from Codex
-    // ============================================================
-    if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
-        foreach ($dynamicData['codex'] as $slug => $mod) {
-            if (!isset($searchSets['codex'])) $searchSets['codex'] = array();
+    // 🔹 1. Strip parenthetical text
+    $clean = preg_replace('/\s*\([^)]*\)/', '', $input);
 
-            // Primary slug
-            $searchSets['codex'][] = strtolower($slug);
+    // 🔹 2. Normalize whitespace & punctuation
+    $clean = trim(preg_replace('/[^a-zA-Z0-9]+/', ' ', $clean));
 
-            // Title text (plain, stripped of punctuation)
-            if (isset($mod['title'])) {
-                $titleClean = strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', '', $mod['title']));
-                $searchSets['codex'][] = $titleClean;
-            }
+    // 🔹 3. Convert to camelCase
+    $parts = explode(' ', strtolower($clean));
+    $camel = array_shift($parts);
+    foreach ($parts as $p) $camel .= ucfirst($p);
 
-            // Aliases (semantic equivalents)
-            if (isset($mod['relationships']['aliases']) && is_array($mod['relationships']['aliases'])) {
-                foreach ($mod['relationships']['aliases'] as $alias) {
-                    $aliasClean = strtolower(trim(preg_replace('/[^\p{L}\p{N}\s]/u', '', $alias)));
-                    $searchSets['codex'][] = $aliasClean;
-                }
-            }
-        }
-    }
+    // 🔹 4. Load data sources
+    global $codex, $sseData;
+    $sources = [
+        'codex' => isset($codex) ? array_keys($codex) : [],
+        'sse'   => isset($sseData) ? array_keys($sseData) : []
+    ];
 
-    // ============================================================
-    // 3. Compute similarity across all layers
-    // ============================================================
-    foreach ($searchSets as $layer => $keys) {
+    // 🔹 5. Find best lexical match
+    $best = ['layer'=>null,'key'=>null,'confidence'=>0];
+    foreach ($sources as $layer => $keys) {
         foreach ($keys as $key) {
-            if (!is_string($key) || strlen($key) < 3) continue;
-
-            if (strpos($promptLower, $key) !== false) {
-                $score = 100; // direct match boost
-            } else {
-                similar_text($promptLower, $key, $score);
-            }
-
+            $score = 0;
+            similar_text($camel, $key, $score);
             if ($score > $best['confidence']) {
-                $best = array('layer' => $layer, 'key' => $key, 'confidence' => $score);
+                $best = ['layer'=>$layer,'key'=>$key,'confidence'=>$score];
             }
         }
     }
 
-    // ============================================================
-    // 4. Normalize output key (Codex-compatible form)
-    // ============================================================
-    if ($best['confidence'] > 30 && !empty($best['key'])) {
-        $clean = strtolower($best['key']);
-        // Remove anything in parentheses, e.g. "(TIS)"
-        $clean = preg_replace('/\([^)]*\)/', '', $clean);
-        // Remove punctuation and collapse spaces
-        $normalized = preg_replace('/[^a-z0-9]+/i', ' ', trim($clean));
-        // Convert to camelCase
-        $normalized = lcfirst(str_replace(' ', '', ucwords($normalized)));
-        $best['key'] = $normalized;
-
-        error_log("🧭 resolveSkyesoftObject() matched {$best['layer']} → {$best['key']} ({$best['confidence']}%)");
-        return $best;
+    // 🔹 6. Confidence threshold safeguard
+    if ($best['confidence'] < 70) {
+        error_log("resolveSkyesoftObject: Low confidence ({$best['confidence']}) for '$input'");
     }
 
-
-    error_log("⚠️ resolveSkyesoftObject() found no strong match (max={$best['confidence']}%)");
-    return null;
+    // 🔹 7. Return structured result
+    return [
+        'layer'       => $best['layer'],
+        'key'         => $best['key'],
+        'confidence'  => round($best['confidence'], 2)
+    ];
 }
