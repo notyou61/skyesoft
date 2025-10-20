@@ -574,58 +574,75 @@ function handleIntentReport($intentData, $sessionId) {
 // ======================================================================
 function resolveSkyesoftObject($prompt, $dynamicData) {
     $promptLower = strtolower($prompt);
-    $best = array('layer'=>null,'key'=>null,'confidence'=>0.0);
+    $best = array('layer' => null, 'key' => null, 'confidence' => 0.0);
 
-    // ------------------------------
-    // 1. Collect keys from SSE
-    // ------------------------------
+    // ============================================================
+    // 1. Collect searchable keys from SSE
+    // ============================================================
     $searchSets = array();
     if (isset($dynamicData['sseSnapshot']) && is_array($dynamicData['sseSnapshot'])) {
         $searchSets['sse'] = array_keys($dynamicData['sseSnapshot']);
     }
 
-    // ------------------------------
-    // 2. Collect keys and aliases from Codex
-    // ------------------------------
+    // ============================================================
+    // 2. Collect searchable keys and aliases from Codex
+    // ============================================================
     if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
         foreach ($dynamicData['codex'] as $slug => $mod) {
-            $searchSets['codex'][] = $slug;
+            if (!isset($searchSets['codex'])) $searchSets['codex'] = array();
+
+            // Primary slug
+            $searchSets['codex'][] = strtolower($slug);
+
+            // Title text (plain, stripped of punctuation)
             if (isset($mod['title'])) {
-                $searchSets['codex'][] = strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', '', $mod['title']));
+                $titleClean = strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', '', $mod['title']));
+                $searchSets['codex'][] = $titleClean;
             }
+
+            // Aliases (semantic equivalents)
             if (isset($mod['relationships']['aliases']) && is_array($mod['relationships']['aliases'])) {
                 foreach ($mod['relationships']['aliases'] as $alias) {
-                    $searchSets['codex'][] = strtolower($alias);
+                    $aliasClean = strtolower(trim(preg_replace('/[^\p{L}\p{N}\s]/u', '', $alias)));
+                    $searchSets['codex'][] = $aliasClean;
                 }
             }
         }
     }
 
-    // ------------------------------
-    // 3. Score similarity
-    // ------------------------------
+    // ============================================================
+    // 3. Compute similarity across all layers
+    // ============================================================
     foreach ($searchSets as $layer => $keys) {
         foreach ($keys as $key) {
             if (!is_string($key) || strlen($key) < 3) continue;
+
             if (strpos($promptLower, $key) !== false) {
-                $score = 100;
+                $score = 100; // direct match boost
             } else {
                 similar_text($promptLower, $key, $score);
             }
+
             if ($score > $best['confidence']) {
-                $best = array('layer'=>$layer,'key'=>$key,'confidence'=>$score);
+                $best = array('layer' => $layer, 'key' => $key, 'confidence' => $score);
             }
         }
     }
 
-    // ------------------------------
-    // 4. Logging and return
-    // ------------------------------
-    if ($best['confidence'] > 30) {
+    // ============================================================
+    // 4. Normalize output key (Codex-compatible form)
+    // ============================================================
+    if ($best['confidence'] > 30 && !empty($best['key'])) {
+        $normalized = preg_replace('/[^a-z0-9]+/i', ' ', strtolower($best['key']));
+        $normalized = ucwords(trim($normalized));
+        $normalized = str_replace(' ', '', $normalized);
+        $normalized = lcfirst($normalized); // camelCase
+        $best['key'] = $normalized;
+
         error_log("🧭 resolveSkyesoftObject() matched {$best['layer']} → {$best['key']} ({$best['confidence']}%)");
         return $best;
-    } else {
-        error_log("⚠️ resolveSkyesoftObject() found no strong match (max={$best['confidence']}%)");
-        return null;
     }
+
+    error_log("⚠️ resolveSkyesoftObject() found no strong match (max={$best['confidence']}%)");
+    return null;
 }
