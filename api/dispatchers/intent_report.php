@@ -82,16 +82,16 @@ $err    = curl_error($ch);
 curl_close($ch);
 #endregion
 
-#region 📄 Step 4: Parse & Respond (public URL finalization)
+#region 📄 Step 4: Parse & Respond (final sanitizer for URL)
 if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+\.pdf)/i', $result, $matches)) {
     $pdfPath = trim($matches[1]);
 
-    // 🧩 Normalize "../" paths (GoDaddy-safe; prevents /docs/docs duplication)
+    // 🧩 Normalize "../" paths (GoDaddy-safe)
     $pdfReal = (strpos($pdfPath, '/api/../') !== false)
         ? str_replace('/api/../', '/docs/', $pdfPath)
         : $pdfPath;
 
-    // 🧩 Convert local path → public URL (GoDaddy-safe)
+    // 🧩 Convert local path → public URL
     $publicUrl = $pdfReal;
     if (strpos($pdfReal, '/home/notyou64/public_html/skyesoft/') === 0) {
         $publicUrl = str_replace(
@@ -100,8 +100,14 @@ if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+\.pdf)/i', 
             $pdfReal
         );
     }
-    $publicUrl = str_replace(' ', '%20', $publicUrl);
 
+    // 🧹 Sanitize redundant /docs/docs/ (handles double-flattened generator output)
+    $publicUrl = str_replace('/docs/docs/', '/docs/', $publicUrl);
+
+    // Encode safe URL characters
+    $publicUrl = str_replace(array(' ', '(', ')'), array('%20', '%28', '%29'), $publicUrl);
+
+    // ✅ Send final response
     sendJsonResponse(
         "📘 The **{$reportTitle}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})",
         "sheet_generated",
