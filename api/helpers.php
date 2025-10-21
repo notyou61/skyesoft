@@ -582,76 +582,87 @@ function handleIntentReport($intentData, $sessionId) {
 // Filters filler phrases and normalizes user targets → Codex/SSE keys
 // ======================================================================
 
-// 🧭 Skyebot™ Semantic Object Resolver Helper (v1.3 - Flat Fallback Added)
-function resolveSkyesoftObject($input, $context = null) {
-    if ($context) {
-        error_log("resolveSkyesoftObject invoked in context: " . json_encode($context));
-    }
+// ======================================================================
+// 🧠 resolveSkyesoftObject() – Ontology-Aware Resolver (v2.0)
+// ----------------------------------------------------------------------
+// Purpose:
+// • Uses Codex ontology (category, aliases, governs) to improve accuracy
+// • Still compatible with PHP 5.6 (no typed arrays or arrow functions)
+// • Returns best match with confidence score
+// ======================================================================
+if (!function_exists('resolveSkyesoftObject')) {
+    function resolveSkyesoftObject($prompt, $data)
+    {
+        $promptLower = strtolower(trim($prompt));
+        $codex = isset($data['codex']) ? $data['codex'] : array();
+        if (empty($codex) || !is_array($codex)) {
+            return array('key' => '', 'confidence' => 0, 'layer' => 'none');
+        }
 
-    // 🔹 1. Remove parenthetical text
-    $clean = preg_replace('/\s*\([^)]*\)/', '', $input);
+        $bestKey = '';
+        $bestScore = 0;
 
-    // 🔹 2. Lowercase and strip known filler phrases
-    $clean = strtolower($clean);
-    $fillerPhrases = [
-        'information sheet for', 'information sheet on', 'sheet for',
-        'sheet on', 'report for', 'report on', 'generate', 'create', 'show me'
-    ];
-    foreach ($fillerPhrases as $phrase) {
-        $clean = str_replace($phrase, '', $clean);
-    }
-
-    // 🔹 3. Normalize whitespace & punctuation
-    $clean = trim(preg_replace('/[^a-zA-Z0-9]+/', ' ', $clean));
-
-    // 🔹 4. Convert to camelCase
-    $parts = explode(' ', strtolower($clean));
-    $camel = array_shift($parts);
-    foreach ($parts as $p) $camel .= ucfirst($p);
-
-    // 🔹 5: Load data sources
-    global $codex, $sseData;
-    $sources = [
-        'codex' => isset($codex) && is_array($codex) ? array_keys($codex) : [],
-        'sse'   => isset($sseData) && is_array($sseData) ? array_keys($sseData) : []
-    ];
-    
-    // 🆕 FALLBACK: If globals empty, try from $context (flat + nested)
-    if (empty($sources['codex']) && isset($context['codex'])) {
-        $sources['codex'] = array_keys($context['codex']);  // Flat keys (e.g., 'timeIntervalStandards')
-        error_log("🔗 Resolver fallback: Loaded flat " . count($sources['codex']) . " keys from context['codex']");
-    } elseif (empty($sources['codex']) && isset($context['codex']['modules'])) {
-        $sources['codex'] = array_keys($context['codex']['modules']);  // Nested fallback
-        error_log("🔗 Resolver fallback: Loaded nested " . count($sources['codex']) . " keys from context['codex']['modules']");
-    }
-    if (empty($sources['sse']) && isset($context['sseStream'])) {
-        $sources['sse'] = array_keys($context['sseStream']);
-    }
-
-    // 🔹 6. Find best lexical match
-    $best = ['layer'=>null,'key'=>null,'confidence'=>0];
-    foreach ($sources as $layer => $keys) {
-        foreach ($keys as $key) {
+        foreach ($codex as $key => $entry) {
+            if (!is_array($entry)) continue;
             $score = 0;
-            similar_text($camel, $key, $score);
-            if ($score > $best['confidence']) {
-                $best = ['layer'=>$layer,'key'=>$key,'confidence'=>$score];
+            $keyNorm = strtolower(str_replace(array('_','-'), '', $key));
+
+            // 1️⃣ Base lexical similarity
+            similar_text($promptLower, $keyNorm, $sim);
+            $score += $sim;
+
+            // 2️⃣ Ontology reasoning layer
+            if (isset($entry['ontology']) && is_array($entry['ontology'])) {
+                $ont = $entry['ontology'];
+
+                // Category (e.g., temporal, organizational)
+                if (isset($ont['category']) && stripos($promptLower, strtolower($ont['category'])) !== false)
+                    $score += 20;
+
+                // Aliases
+                if (isset($ont['aliases']) && is_array($ont['aliases'])) {
+                    foreach ($ont['aliases'] as $alias) {
+                        if (stripos($promptLower, strtolower($alias)) !== false)
+                            $score += 15;
+                    }
+                }
+
+                // Governs
+                if (isset($ont['governs']) && is_array($ont['governs'])) {
+                    foreach ($ont['governs'] as $rel) {
+                        if (stripos($promptLower, strtolower($rel)) !== false)
+                            $score += 10;
+                    }
+                }
+            }
+
+            // 3️⃣ Description text
+            if (isset($entry['description']['text']) &&
+                stripos($promptLower, strtolower($entry['description']['text'])) !== false) {
+                $score += 10;
+            }
+
+            // 4️⃣ Track the highest score
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestKey = $key;
             }
         }
-    }
 
-    // 🔹 7. Confidence threshold safeguard
-    if ($best['confidence'] < 70) {
-        error_log("resolveSkyesoftObject: Low confidence ({$best['confidence']}) for '$input'");
+        $confidence = round(min($bestScore, 100), 1);
+
+        return array(
+            'key' => $bestKey,
+            'confidence' => $confidence,
+            'layer' => isset($codex[$bestKey]['category'])
+                ? $codex[$bestKey]['category']
+                : (isset($codex[$bestKey]['ontology']['category'])
+                    ? $codex[$bestKey]['ontology']['category']
+                    : 'unknown')
+        );
     }
-    
-    // Return
-    return [
-            'layer'       => $best['layer'],
-            'key'         => $best['key'],
-            'confidence'  => round($best['confidence'], 2)
-        ];
 }
+
 // ======================================================================
 // 🔍 querySSE()
 // Purpose:
@@ -789,4 +800,34 @@ if (!function_exists('webFallbackSearch')) {
             "url" => $url
         );
     }
+}
+// Compute seconds between "now" and a target "h:i A" today (America/Phoenix)
+function secondsUntilTodayClock($targetClock, $tzName) {
+    // Init timezone (America/Phoenix)
+    $tz = new DateTimeZone($tzName);
+
+    // Build "now" (server clock in tz)
+    $now = new DateTime('now', $tz);
+
+    // Parse target (sunset etc.) (format strict)
+    $t = DateTime::createFromFormat('g:i A', trim($targetClock), $tz);
+    if (!$t) return null;
+
+    // Align target to today's date
+    $t->setDate($now->format('Y'), $now->format('m'), $now->format('d'));
+
+    // If already passed today, return 0 (or keep negative if you prefer)
+    $diff = $t->getTimestamp() - $now->getTimestamp();
+    return ($diff < 0) ? 0 : $diff;
+}
+
+// Turn seconds into "X hours Y minutes" (concise)
+function humanizeSecondsShort($secs) {
+    if ($secs === null) return '';
+    $mins = floor($secs / 60);
+    $hrs  = floor($mins / 60);
+    $rem  = $mins % 60;
+    if ($hrs > 0 && $rem > 0) return $hrs . " hours and " . $rem . " minutes";
+    if ($hrs > 0) return $hrs . " hours";
+    return $mins . " minutes";
 }
