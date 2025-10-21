@@ -1,14 +1,16 @@
 <?php
 // ======================================================================
-// 🌐 Skyebot™ Intent Dispatcher: GENERAL  (v2.5 – Derived Time Patch)
+// 🌐 Skyebot™ Intent Dispatcher: GENERAL (Ontology-Aware v2.0)
 // ----------------------------------------------------------------------
-// • Handles open-ended prompts via SSE + AI reasoning
-// • Computes derived metrics like “time until sunset” or “workday ends in”
-// • Uses deterministic math, not LLM estimation
-// Compatibility: PHP 5.6 (GoDaddy safe)
+// Purpose:
+//   • Handles open-ended user prompts (not reports, CRUD, etc.)
+//   • Provides humanized responses directly from SSE / dynamicData
+//   • Adds legacy Google fallback when internal data yields no result
+//   • Integrates Codex Ontology for semantic reasoning
+// Compatibility: PHP 5.6 (GoDaddy hosting safe)
 // ======================================================================
 
-require_once __DIR__ . '/../helpers.php'; // callOpenAi(), sendJsonResponse(), webFallbackSearch(), etc.
+require_once __DIR__ . '/../helpers.php';  // callOpenAi(), sendJsonResponse(), webFallbackSearch()
 
 // --------------------------------------------------------------
 // 🧱 Safeguard variable scope
@@ -18,84 +20,48 @@ if (!isset($dynamicData) || !is_array($dynamicData)) $dynamicData = array();
 if (!isset($sessionId)) $sessionId = session_id();
 
 // --------------------------------------------------------------
-// 🧩 Build compact SSE context
+// 🧩 Build compact SSE context (keeps token usage minimal)
 // --------------------------------------------------------------
-$contextKeys = array('timeDateArray','weatherData','skyesoftHolidays','codex','siteMeta');
-$sseContext  = array();
+$contextKeys = array('timeDateArray', 'weatherData', 'skyesoftHolidays', 'codex', 'siteMeta');
+$sseContext = array();
 foreach ($contextKeys as $k) {
     if (isset($dynamicData[$k])) $sseContext[$k] = $dynamicData[$k];
 }
 
-// --------------------------------------------------------------
-// ⏳ Derived-time helpers (server-side, no hardcoding)
-// --------------------------------------------------------------
-if (!function_exists('secondsUntilTodayClock')) {
-    function secondsUntilTodayClock($targetClock, $tzName) {
-        $tz  = new DateTimeZone($tzName);
-        $now = new DateTime('now', $tz);
-        $t   = DateTime::createFromFormat('g:i A', trim($targetClock), $tz);
-        if (!$t) return null;
-        $t->setDate($now->format('Y'), $now->format('m'), $now->format('d'));
-        $diff = $t->getTimestamp() - $now->getTimestamp();
-        return ($diff < 0) ? 0 : $diff;
+// 🧠 Inject Codex ontology for semantic reasoning (if available)
+if (isset($dynamicData['codex'])) {
+    $semanticIndex = array();
+
+    foreach ($dynamicData['codex'] as $key => $entry) {
+        if (isset($entry['ontology']) && is_array($entry['ontology'])) {
+            $semanticIndex[$key] = $entry['ontology'];
+        }
     }
-}
-if (!function_exists('humanizeSecondsShort')) {
-    function humanizeSecondsShort($secs) {
-        if ($secs === null) return '';
-        $mins = floor($secs / 60);
-        $hrs  = floor($mins / 60);
-        $rem  = $mins % 60;
-        if ($hrs > 0 && $rem > 0) return $hrs . " hours and " . $rem . " minutes";
-        if ($hrs > 0) return $hrs . " hours";
-        return $mins . " minutes";
+
+    if (!empty($semanticIndex)) {
+        $sseContext['semanticIndex'] = $semanticIndex;
+        error_log("🧩 Ontology context loaded: " . count($semanticIndex) . " entries");
     }
 }
 
-// --------------------------------------------------------------
-// 🧮 Attach derived metrics (sunset, workday, etc.)
-// --------------------------------------------------------------
-$tzName = isset($sseContext['timeDateArray']['timeZone'])
-    ? $sseContext['timeDateArray']['timeZone']
-    : 'America/Phoenix';
-
-$derived = array();
-
-// Sunset / daylight end
-if (isset($sseContext['timeDateArray']['daylightStartEndArray']['daylightEnd'])) {
-    $sunset = $sseContext['timeDateArray']['daylightStartEndArray']['daylightEnd'];
-    $secs   = secondsUntilTodayClock($sunset, $tzName);
-    $derived['sunsetAt'] = $sunset;
-    $derived['sunsetIn'] = humanizeSecondsShort($secs);
-}
-
-// Workday end (from Codex TimeIntervalStandards)
-if (isset($sseContext['codex']['timeIntervalStandards']['segmentsOffice']['end'])) {
-    $workEnd = $sseContext['codex']['timeIntervalStandards']['segmentsOffice']['end'];
-    $secsW   = secondsUntilTodayClock($workEnd, $tzName);
-    $derived['workdayEndsAt'] = $workEnd;
-    $derived['workdayEndsIn'] = humanizeSecondsShort($secsW);
-}
-
-// Attach derived section if available
-if (!empty($derived)) $sseContext['derived'] = $derived;
+error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
 
 // --------------------------------------------------------------
 // 🧠 System instruction (AI behavioral guardrails)
 // --------------------------------------------------------------
 $systemInstr =
   "You are Skyebot™, an intelligent assistant connected to the Skyesoft system.\n" .
-  "You have two knowledge sources:\n" .
+  "You have three knowledge sources:\n" .
   "1. SSE JSON (live operational data)\n" .
-  "2. Web results (when SSE lacks the answer)\n\n" .
+  "2. Codex Ontology (semantic meaning of Skyesoft modules)\n" .
+  "3. Web results (when internal data lacks the answer)\n\n" .
   "Rules:\n" .
-  "- Prefer answers from the SSE if they clearly match the user’s question.\n" .
-  "- Use derived fields (e.g., derived.sunsetIn) for time intervals.\n" .
-  "- If SSE lacks relevant data, use webFallbackSearch to infer facts from the web.\n" .
-  "- Always return a single concise, human-readable sentence.\n" .
-  "- When using web data, prefix with 🌍.\n" .
-  "- Never guess numeric intervals; rely on derived values if available.\n" .
-  "- Never list JSON keys unless it clarifies the answer.";
+  "- Prefer answers from SSE if clearly relevant.\n" .
+  "- Use ontology when interpreting meaning between related modules (e.g., Attendance → TimeIntervalStandards).\n" .
+  "- If SSE and Codex both lack relevant data, use webFallbackSearch for verified public info.\n" .
+  "- Always reply in one concise, human-readable sentence.\n" .
+  "- When referencing external info, prefix with 🌍.\n" .
+  "- Never invent data; when uncertain, say so briefly and cite source when applicable.";
 
 // --------------------------------------------------------------
 // 🧩 Compose user message for AI model
@@ -106,16 +72,17 @@ $userMsg =
   json_encode($sseContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 // --------------------------------------------------------------
-// 🚀 Call OpenAI
+// 🚀 Call OpenAI (helpers.php manages API key & cURL)
 // --------------------------------------------------------------
 $messages = array(
   array("role" => "system", "content" => $systemInstr),
   array("role" => "user",   "content" => $userMsg)
 );
+
 $llmText = callOpenAi($messages);
 
 // --------------------------------------------------------------
-// 🧯 Fallback chain (SSE → Web)
+// 🧯 1️⃣ Primary SSE lexical fallback (AI returned nothing)
 // --------------------------------------------------------------
 if (empty($llmText)) {
     $fallback = querySSE($prompt, $sseContext);
@@ -127,6 +94,8 @@ if (empty($llmText)) {
         ));
         exit;
     }
+
+    // No SSE match — go directly to the web
     $web = webFallbackSearch($prompt);
     sendJsonResponse($web['response'], "general", array(
         "sessionId" => $sessionId,
@@ -137,14 +106,22 @@ if (empty($llmText)) {
 }
 
 // --------------------------------------------------------------
-// 🌐 Web fallback if AI reply indicates missing data
+// 🌐 2️⃣ Web fallback if AI’s reply indicates lack of data
 // --------------------------------------------------------------
-$denialPatterns = array('not found','no data','no information','does not include','sorry','cannot find','unsure');
+$denialPatterns = array(
+    'not found', 'no data', 'no information', 'does not include',
+    'i’m sorry', 'im sorry', 'cannot find', 'not available', 'unsure'
+);
 $triggerWeb = false;
 foreach ($denialPatterns as $p) {
-    if (stripos($llmText, $p) !== false) { $triggerWeb = true; break; }
+    if (stripos($llmText, $p) !== false) {
+        $triggerWeb = true;
+        break;
+    }
 }
+
 if ($triggerWeb) {
+    error_log("🌍 [intent_general] AI indicated lack of data — invoking web fallback for '{$prompt}'");
     $fallback = webFallbackSearch($prompt);
     sendJsonResponse($fallback['response'], "general", array(
         "sessionId" => $sessionId,
@@ -155,7 +132,7 @@ if ($triggerWeb) {
 }
 
 // --------------------------------------------------------------
-// 📤 Normal return — AI result
+// 📤 3️⃣ Normal return — AI result (no post-formatting)
 // --------------------------------------------------------------
 sendJsonResponse(trim($llmText), "general", array(
     "sessionId" => $sessionId,
