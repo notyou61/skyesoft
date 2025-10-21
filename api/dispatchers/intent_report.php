@@ -83,15 +83,19 @@ curl_close($ch);
 #endregion
 
 #region 📄 Step 4: Parse & Respond (patched for link output)
-if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+)$/m', $result, $matches)) {
+if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+\.pdf)/i', $result, $matches)) {
     $pdfPath = trim($matches[1]);
 
-    // Convert local path → public URL
-    $publicUrl = str_replace(
-        array('/home/notyou64/public_html', ' '),
-        array('https://www.skyelighting.com', '%20'),
-        $pdfPath
-    );
+    // 🧩 Convert local path → public URL (GoDaddy-safe)
+    $publicUrl = $pdfPath;
+    if (strpos($pdfPath, '/home/notyou64/public_html/skyesoft/') === 0) {
+        $publicUrl = str_replace(
+            '/home/notyou64/public_html',
+            'https://www.skyelighting.com',
+            $pdfPath
+        );
+    }
+    $publicUrl = str_replace(' ', '%20', $publicUrl);
 
     sendJsonResponse(
         "📘 The **{$reportTitle}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})",
