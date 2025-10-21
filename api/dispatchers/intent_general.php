@@ -63,15 +63,26 @@ $llmText = callOpenAi($messages);
 // 🧯 1️⃣ SSE lexical fallback if AI returned nothing
 // --------------------------------------------------------------
 if (empty($llmText)) {
+    // First try SSE-based resolution
     $fallback = querySSE($prompt, $sseContext);
+
     if ($fallback && isset($fallback['message'])) {
         sendJsonResponse($fallback['message'], "general", array(
-            "sessionId"   => $sessionId,
+            "sessionId" => $sessionId,
             "resolvedKey" => $fallback['key'],
-            "score"       => $fallback['score']
+            "score" => $fallback['score']
         ));
         exit;
     }
+
+    // Then try the web (AI-assisted)
+    $web = webFallbackSearch($prompt);
+    sendJsonResponse($web['response'], "general", array(
+        "sessionId" => $sessionId,
+        "source" => "web",
+        "url" => $web['url']
+    ));
+    exit;
 }
 
 // --------------------------------------------------------------

@@ -747,65 +747,46 @@ if (!function_exists('querySSE')) {
     }
 }
 // ======================================================================
-// 🌍 webFallbackSearch()
-// Queries Google Search and extracts a one-line summary when LLM + SSE fail.
-// Works under PHP 5.6 (no short array syntax, no match expressions).
+// 🌐 webFallbackSearch()
+// ----------------------------------------------------------------------
+// Performs a quick web lookup using Google and asks OpenAI to interpret
+// the results instead of using regex. PHP 5.6 compatible.
 // ======================================================================
 if (!function_exists('webFallbackSearch')) {
     function webFallbackSearch($query)
     {
-        if (empty($query)) {
-            return '🌍 No query provided for web lookup.';
+        $encoded = urlencode(trim($query));
+        $url = "https://www.google.com/search?q={$encoded}";
+        $html = @file_get_contents($url);
+
+        // Bail early if no content
+        if (!$html || strlen($html) < 200) {
+            return array(
+                "source" => "web",
+                "response" => "🌍 I tried searching the web, but no readable summary was found.",
+                "url" => $url
+            );
         }
 
-        $encoded = urlencode($query);
-        $url = "https://www.google.com/search?q={$encoded}&hl=en";
+        // Truncate for token efficiency (~1k chars)
+        $snippet = substr(strip_tags($html), 0, 1000);
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_USERAGENT,
-            'Mozilla/5.0 (compatible; Skyebot/1.0; +https://skyelighting.com)'
-        );
-        $html = curl_exec($ch);
-        $err  = curl_error($ch);
-        curl_close($ch);
+        $system = "You are Skyebot™, an intelligent assistant summarizing factual web results.\n" .
+                  "Use the following text (from Google Search) to answer the question truthfully and briefly.\n" .
+                  "If it clearly states a fact, give it. Otherwise, respond with: 'I couldn’t find a clear answer.'";
 
-        if ($html === false || !empty($err)) {
-            return "🌍 Web lookup failed (cURL error: {$err}).";
-        }
-
-        // --- Try multiple patterns in order of reliability ---
-        $patterns = array(
-            // Knowledge panel / instant answer
-            '/<div[^>]+data-attrid="title".*?>(.*?)<\/div>/is',
-            '/<div[^>]+data-attrid="wa:/.*?>(.*?)<\/div>/is',
-            // Featured snippet or dictionary
-            '/<div class="BNeawe s3v9rd AP7Wnd">(.*?)<\/div>/is',
-            '/<span class="hgKElc">(.*?)<\/span>/is'
+        $messages = array(
+            array("role" => "system", "content" => $system),
+            array("role" => "user", "content" => "Question: {$query}\n\nExtracted web text:\n{$snippet}")
         );
 
-        $result = '';
-        foreach ($patterns as $p) {
-            if (preg_match($p, $html, $m) && !empty($m[1])) {
-                $result = trim(strip_tags($m[1]));
-                break;
-            }
-        }
+        $summary = callOpenAi($messages);
+        $clean = trim(strip_tags($summary));
 
-        // --- Fallback if nothing matched ---
-        if (empty($result)) {
-            if (strpos($html, 'consent.google.com') !== false) {
-                return "🌍 Web search blocked by Google consent page.";
-            }
-            return "🌍 According to the web: I couldn’t find a clear summary, but you can check the search page.";
-        }
-
-        // --- Clean up whitespace and HTML entities ---
-        $result = html_entity_decode(preg_replace('/\s+/', ' ', $result), ENT_QUOTES, 'UTF-8');
-
-        return "🌍 According to the web: {$result}";
+        return array(
+            "source" => "web",
+            "response" => "🌍 According to the web: " . ($clean ?: "I couldn’t find a clear summary."),
+            "url" => $url
+        );
     }
 }
