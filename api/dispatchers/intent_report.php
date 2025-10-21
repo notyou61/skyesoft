@@ -86,8 +86,10 @@ curl_close($ch);
 if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+\.pdf)/i', $result, $matches)) {
     $pdfPath = trim($matches[1]);
 
-    // 🧩 Normalize any relative "../" paths (e.g., /api/../docs/)
-    $pdfReal = str_replace('/api/../', '/docs/', $pdfPath);
+    // 🧩 Normalize "../" paths (GoDaddy-safe; prevents /docs/docs duplication)
+    $pdfReal = (strpos($pdfPath, '/api/../') !== false)
+        ? str_replace('/api/../', '/docs/', $pdfPath)
+        : $pdfPath;
 
     // 🧩 Convert local path → public URL (GoDaddy-safe)
     $publicUrl = $pdfReal;
