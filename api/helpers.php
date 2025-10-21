@@ -747,49 +747,65 @@ if (!function_exists('querySSE')) {
     }
 }
 // ======================================================================
-// 🌐 webFallbackSearch()
-// Legacy-compatible Google fallback (restored & modernized)
-// Purpose:
-//   • Queries Google Search when Skyebot can't find an answer internally
-//   • Returns a short, humanized summary with source URL
-// Compatibility: PHP 5.6
+// 🌍 webFallbackSearch()
+// Queries Google Search and extracts a one-line summary when LLM + SSE fail.
+// Works under PHP 5.6 (no short array syntax, no match expressions).
 // ======================================================================
 if (!function_exists('webFallbackSearch')) {
     function webFallbackSearch($query)
     {
+        if (empty($query)) {
+            return '🌍 No query provided for web lookup.';
+        }
+
         $encoded = urlencode($query);
-        $url = "https://www.google.com/search?q=" . $encoded;
+        $url = "https://www.google.com/search?q={$encoded}&hl=en";
 
-        $ctx = stream_context_create(array(
-            'http' => array(
-                'timeout'     => 6,
-                'user_agent'  => 'Skyebot/1.0 (+skyelighting.com)',
-                'ignore_errors' => true
-            )
-        ));
-
-        $html = @file_get_contents($url, false, $ctx);
-        if ($html === false || strlen($html) < 1000) {
-            return array(
-                'summary' => "🌍 I couldn’t reach Google right now.",
-                'url'     => $url
-            );
-        }
-
-        // Try to extract first visible snippet
-        if (preg_match('/<div[^>]+class="BNeawe[^>]*">(.*?)<\/div>/i', $html, $m)) {
-            $snippet = trim(strip_tags($m[1]));
-        } else {
-            $snippet = '';
-        }
-
-        if ($snippet === '') {
-            $snippet = "I couldn’t find a clear summary, but you can check the search page.";
-        }
-
-        return array(
-            'summary' => "🌍 According to the web: " . $snippet,
-            'url'     => $url
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_USERAGENT,
+            'Mozilla/5.0 (compatible; Skyebot/1.0; +https://skyelighting.com)'
         );
+        $html = curl_exec($ch);
+        $err  = curl_error($ch);
+        curl_close($ch);
+
+        if ($html === false || !empty($err)) {
+            return "🌍 Web lookup failed (cURL error: {$err}).";
+        }
+
+        // --- Try multiple patterns in order of reliability ---
+        $patterns = array(
+            // Knowledge panel / instant answer
+            '/<div[^>]+data-attrid="title".*?>(.*?)<\/div>/is',
+            '/<div[^>]+data-attrid="wa:/.*?>(.*?)<\/div>/is',
+            // Featured snippet or dictionary
+            '/<div class="BNeawe s3v9rd AP7Wnd">(.*?)<\/div>/is',
+            '/<span class="hgKElc">(.*?)<\/span>/is'
+        );
+
+        $result = '';
+        foreach ($patterns as $p) {
+            if (preg_match($p, $html, $m) && !empty($m[1])) {
+                $result = trim(strip_tags($m[1]));
+                break;
+            }
+        }
+
+        // --- Fallback if nothing matched ---
+        if (empty($result)) {
+            if (strpos($html, 'consent.google.com') !== false) {
+                return "🌍 Web search blocked by Google consent page.";
+            }
+            return "🌍 According to the web: I couldn’t find a clear summary, but you can check the search page.";
+        }
+
+        // --- Clean up whitespace and HTML entities ---
+        $result = html_entity_decode(preg_replace('/\s+/', ' ', $result), ENT_QUOTES, 'UTF-8');
+
+        return "🌍 According to the web: {$result}";
     }
 }
