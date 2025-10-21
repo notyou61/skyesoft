@@ -1,15 +1,14 @@
 <?php
 // ======================================================================
-// 🌐 Skyebot™ Intent Dispatcher: GENERAL
+// 🌐 Skyebot™ Intent Dispatcher: GENERAL (v4.1 – Hallucination Guard)
 // ----------------------------------------------------------------------
-// Purpose:
-//   • Handles open-ended user prompts (not reports, CRUD, etc.)
-//   • Provides humanized responses directly from SSE / dynamicData
-//   • Adds legacy Google fallback when internal data yields no result
+// • Handles open-ended user prompts using SSE + AI reasoning
+// • Adds hallucination prevention when SSE data is irrelevant
+// • Maintains legacy Google fallback for factual lookups
 // Compatibility: PHP 5.6 (GoDaddy hosting safe)
 // ======================================================================
 
-require_once __DIR__ . '/../helpers.php';  // callOpenAi(), sendJsonResponse(), webFallbackSearch()
+require_once __DIR__ . '/../helpers.php';  // callOpenAi(), sendJsonResponse(), webFallbackSearch(), querySSE()
 
 // --------------------------------------------------------------
 // 🧱 Safeguard variable scope
@@ -19,7 +18,7 @@ if (!isset($dynamicData) || !is_array($dynamicData)) $dynamicData = array();
 if (!isset($sessionId)) $sessionId = session_id();
 
 // --------------------------------------------------------------
-// 🧩 Build compact SSE context (keeps token usage minimal)
+// 🧩 Build compact SSE context
 // --------------------------------------------------------------
 $contextKeys = array('timeDateArray', 'weatherData', 'skyesoftHolidays', 'codex', 'siteMeta');
 $sseContext = array();
@@ -27,6 +26,25 @@ foreach ($contextKeys as $k) {
     if (isset($dynamicData[$k])) $sseContext[$k] = $dynamicData[$k];
 }
 error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
+
+// --------------------------------------------------------------
+// 🚧 Hallucination Guard — reject prompts with no SSE relevance
+// --------------------------------------------------------------
+$promptLower = strtolower($prompt);
+$relevance = 0;
+foreach ($sseContext as $k => $v) {
+    if (stripos($promptLower, strtolower($k)) !== false) {
+        $relevance++;
+    }
+}
+if ($relevance === 0 && !preg_match('/holiday|time|day|date|weather|temperature|work|sunrise|sunset/i', $promptLower)) {
+    sendJsonResponse(
+        "That information isn't available in the current data stream.",
+        "general",
+        array("sessionId" => $sessionId)
+    );
+    exit;
+}
 
 // --------------------------------------------------------------
 // 🧠 System instruction (AI behavioral guardrails)
@@ -38,33 +56,31 @@ $systemInstr =
   "2. Web results (when SSE lacks the answer)\n\n" .
   "Rules:\n" .
   "- Prefer answers from the SSE if they clearly match the user’s question.\n" .
-  "- If SSE does not include relevant data, use the webFallbackSearch to infer the answer from live web text.\n" .
-  "- Always respond with a single concise, human-readable sentence.\n" .
-  "- When using web data, prefix your answer with 🌍.\n" .
-  "- Never say 'I don’t know'; instead summarize the best available factual information.\n" .
-  "- Do not list JSON keys unless it helps clarify the answer.\n" .
-  "- When unsure, mention that you used external context to confirm your answer.";
+  "- If SSE does not include relevant data, use webFallbackSearch to infer the answer.\n" .
+  "- Respond with one concise, human-readable sentence.\n" .
+  "- Prefix web answers with 🌍.\n" .
+  "- Never guess; if the answer is uncertain, note that it was verified externally.\n" .
+  "- Do not reveal raw JSON keys unless helpful for clarity.";
 
 // --------------------------------------------------------------
 // 🧩 Compose user message for AI model
 // --------------------------------------------------------------
 $userMsg =
-  "User request:\n" . '"' . $prompt . '"' . "\n\n" .
+  "User request:\n\"" . $prompt . "\"\n\n" .
   "SSE snapshot (partial):\n" .
   json_encode($sseContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 // --------------------------------------------------------------
-// 🚀 Call OpenAI (helpers.php manages API key & cURL)
+// 🚀 Call OpenAI
 // --------------------------------------------------------------
 $messages = array(
   array("role" => "system", "content" => $systemInstr),
   array("role" => "user",   "content" => $userMsg)
 );
-
 $llmText = callOpenAi($messages);
 
 // --------------------------------------------------------------
-// 🧯 1️⃣ Primary SSE lexical fallback (AI returned nothing)
+// 🧯 1️⃣ SSE lexical fallback (AI returned nothing)
 // --------------------------------------------------------------
 if (empty($llmText)) {
     $fallback = querySSE($prompt, $sseContext);
@@ -77,7 +93,7 @@ if (empty($llmText)) {
         exit;
     }
 
-    // No SSE match — go directly to the web
+    // Direct web fallback
     $web = webFallbackSearch($prompt);
     sendJsonResponse($web['response'], "general", array(
         "sessionId" => $sessionId,
@@ -95,12 +111,8 @@ $denialPatterns = array(
     'i’m sorry', 'im sorry', 'cannot find', 'not available', 'unsure'
 );
 $triggerWeb = false;
-
 foreach ($denialPatterns as $p) {
-    if (stripos($llmText, $p) !== false) {
-        $triggerWeb = true;
-        break;
-    }
+    if (stripos($llmText, $p) !== false) { $triggerWeb = true; break; }
 }
 
 if ($triggerWeb) {
@@ -115,7 +127,7 @@ if ($triggerWeb) {
 }
 
 // --------------------------------------------------------------
-// 📤 3️⃣ Normal return — AI result (no post-formatting or regex)
+// 📤 3️⃣ Normal return — AI result
 // --------------------------------------------------------------
 sendJsonResponse(trim($llmText), "general", array(
     "sessionId" => $sessionId,
