@@ -27,21 +27,53 @@ foreach ($contextKeys as $k) {
 }
 error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
 
+/// --------------------------------------------------------------
+// 🧠 Dynamic Hallucination Guard (Codex + SSE-driven)
 // --------------------------------------------------------------
-// 🚧 Hallucination Guard — reject prompts with no SSE relevance
-// --------------------------------------------------------------
-$promptLower = strtolower($prompt);
-$relevance = 0;
-foreach ($sseContext as $k => $v) {
-    if (stripos($promptLower, strtolower($k)) !== false) {
-        $relevance++;
+$promptLower = strtolower(trim($prompt));
+$knownDomains = array();
+
+// 1️⃣ Extract keys from SSE data
+foreach ($sseContext as $key => $val) {
+    $knownDomains[] = strtolower($key);
+}
+
+// 2️⃣ Extract module names from Codex (if available)
+if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
+    foreach (array_keys($dynamicData['codex']) as $codexKey) {
+        $knownDomains[] = strtolower($codexKey);
     }
 }
-if ($relevance === 0 && !preg_match('/holiday|time|day|date|weather|temperature|work|sunrise|sunset/i', $promptLower)) {
+
+// 3️⃣ Check prompt relevance against all known terms
+$relevant = false;
+foreach ($knownDomains as $term) {
+    if (strpos($promptLower, $term) !== false) {
+        $relevant = true;
+        break;
+    }
+}
+
+// 4️⃣ Abort if irrelevant (no known domains found)
+if (!$relevant) {
     sendJsonResponse(
         "That information isn't available in the current data stream.",
         "general",
-        array("sessionId" => $sessionId)
+        array(
+            "sessionId" => $sessionId,
+            "reason"    => "no_dynamic_relevance",
+            "domains"   => $knownDomains
+        )
+    );
+    exit;
+}
+
+// If prompt has no known domain → short-circuit before AI call
+if (!$relevant) {
+    sendJsonResponse(
+        "That information isn't available in the current data stream.",
+        "general",
+        array("sessionId" => $sessionId, "reason" => "no_sse_relevance")
     );
     exit;
 }
