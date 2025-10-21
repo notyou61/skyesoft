@@ -32,86 +32,93 @@ error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', 
 // 🧠 System instruction (AI behavioral guardrails)
 // --------------------------------------------------------------
 $systemInstr =
-    "You are Skyebot™, answering strictly from the provided SSE JSON.\n" .
-    "Rules:\n" .
-    "- Do not invent or guess. If the SSE doesn’t contain the answer, say so briefly.\n" .
-    "- Prefer humanized phrasing, but include the exact value when useful, e.g.: \"Veterans Day is coming soon (11/11/25).\"\n" .
-    "- If the user asks \"when…\", look for time/date-like values.\n" .
-    "- If multiple candidates fit, pick the most specific and mention the field name briefly in parentheses.\n" .
-    "- Be concise (one sentence).\n" .
-    "- Never reveal internal keys unless it clarifies the answer.";
+  "You are Skyebot™, an intelligent assistant connected to the Skyesoft system.\n" .
+  "You have two knowledge sources:\n" .
+  "1. SSE JSON (live operational data)\n" .
+  "2. Web results (when SSE lacks the answer)\n\n" .
+  "Rules:\n" .
+  "- Prefer answers from the SSE if they clearly match the user’s question.\n" .
+  "- If SSE does not include relevant data, use the webFallbackSearch to infer the answer from live web text.\n" .
+  "- Always respond with a single concise, human-readable sentence.\n" .
+  "- When using web data, prefix your answer with 🌍.\n" .
+  "- Never say 'I don’t know'; instead summarize the best available factual information.\n" .
+  "- Do not list JSON keys unless it helps clarify the answer.\n" .
+  "- When unsure, mention that you used external context to confirm your answer.";
 
 // --------------------------------------------------------------
 // 🧩 Compose user message for AI model
 // --------------------------------------------------------------
 $userMsg =
-    "User request:\n" . '"' . $prompt . '"' . "\n\n" .
-    "SSE snapshot (partial):\n" .
-    json_encode($sseContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+  "User request:\n" . '"' . $prompt . '"' . "\n\n" .
+  "SSE snapshot (partial):\n" .
+  json_encode($sseContext, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 // --------------------------------------------------------------
 // 🚀 Call OpenAI (helpers.php manages API key & cURL)
 // --------------------------------------------------------------
 $messages = array(
-    array("role" => "system", "content" => $systemInstr),
-    array("role" => "user",   "content" => $userMsg)
+  array("role" => "system", "content" => $systemInstr),
+  array("role" => "user",   "content" => $userMsg)
 );
 
 $llmText = callOpenAi($messages);
 
 // --------------------------------------------------------------
-// 🧯 1️⃣ SSE lexical fallback if AI returned nothing
+// 🧯 1️⃣ Primary SSE lexical fallback (AI returned nothing)
 // --------------------------------------------------------------
 if (empty($llmText)) {
-    // First try SSE-based resolution
     $fallback = querySSE($prompt, $sseContext);
-
     if ($fallback && isset($fallback['message'])) {
         sendJsonResponse($fallback['message'], "general", array(
-            "sessionId" => $sessionId,
+            "sessionId"   => $sessionId,
             "resolvedKey" => $fallback['key'],
-            "score" => $fallback['score']
+            "score"       => $fallback['score']
         ));
         exit;
     }
 
-    // Then try the web (AI-assisted)
+    // No SSE match — go directly to the web
     $web = webFallbackSearch($prompt);
     sendJsonResponse($web['response'], "general", array(
         "sessionId" => $sessionId,
-        "source" => "web",
-        "url" => $web['url']
+        "source"    => "web",
+        "url"       => isset($web['url']) ? $web['url'] : ''
     ));
     exit;
 }
 
 // --------------------------------------------------------------
-// 🌐 2️⃣ Web fallback (Google legacy restoration)
-// Triggered if AI or internal SSE had no useful answer
+// 🌐 2️⃣ Web fallback if AI’s reply shows SSE insufficiency
 // --------------------------------------------------------------
-if (empty($llmText)
-    || stripos($llmText, 'not found') !== false
-    || stripos($llmText, 'sorry') !== false
-    || stripos($llmText, 'does not include') !== false
-    || stripos($llmText, 'no information') !== false) {
+$denialPatterns = array(
+    'not found', 'no data', 'no information', 'does not include',
+    'i’m sorry', 'im sorry', 'cannot find', 'not available', 'unsure'
+);
+$triggerWeb = false;
 
-    error_log("🌐 [intent_general] Invoking web fallback for '{$prompt}'");
-    $fallback = webFallbackSearch($prompt);
-
-    if ($fallback && isset($fallback['summary'])) {
-        sendJsonResponse($fallback['summary'], "general", array(
-            "sessionId" => $sessionId,
-            "source"    => "web",
-            "url"       => isset($fallback['url']) ? $fallback['url'] : ''
-        ));
-        exit;
+foreach ($denialPatterns as $p) {
+    if (stripos($llmText, $p) !== false) {
+        $triggerWeb = true;
+        break;
     }
 }
 
+if ($triggerWeb) {
+    error_log("🌍 [intent_general] AI indicated lack of data — invoking web fallback for '{$prompt}'");
+    $fallback = webFallbackSearch($prompt);
+    sendJsonResponse($fallback['response'], "general", array(
+        "sessionId" => $sessionId,
+        "source"    => "web",
+        "url"       => isset($fallback['url']) ? $fallback['url'] : ''
+    ));
+    exit;
+}
+
 // --------------------------------------------------------------
-// 📤 3️⃣ Normal return — AI result (no post-formatting, no hardcoding)
+// 📤 3️⃣ Normal return — AI result (no post-formatting or regex)
 // --------------------------------------------------------------
 sendJsonResponse(trim($llmText), "general", array(
-    "sessionId" => $sessionId
+    "sessionId" => $sessionId,
+    "source"    => "sse"
 ));
 exit;
