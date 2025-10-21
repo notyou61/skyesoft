@@ -1,12 +1,12 @@
 <?php
 // ======================================================================
-// 🧾 Skyebot™ Intent Report Dispatcher (Semantic Edition v2.0)
-// Unified Codex + SSE Integration (Regex-Free, Improved Normalization)
+// 🧾 Skyebot™ Intent Report Dispatcher (Semantic Edition v2.1)
+// Unified Codex + SSE Integration — Public URL patch applied
 // ----------------------------------------------------------------------
 // Purpose:
 // • Dynamically generate reports for any Skyesoft Codex or SSE object
-// • Automatically infer $target if missing or invalid (via resolveSkyesoftObject())
-// • Route through generateReports.php and return a clean JSON payload
+// • Automatically infer $target if missing or invalid (via resolver)
+// • Converts local PDF path → public link for user display
 // ======================================================================
 
 #region 🧱 Environment Setup
@@ -23,7 +23,6 @@ $sessionId = session_id();
 #endregion
 
 #region 🧩 Input & Validation
-// Expect $prompt and $target from parent context
 if (!isset($prompt)) $prompt = isset($_POST['prompt']) ? $_POST['prompt'] : '';
 if (!isset($target)) $target = isset($_POST['target']) ? $_POST['target'] : '';
 if (!isset($dynamicData)) $dynamicData = array();
@@ -32,15 +31,10 @@ error_log("🧾 [intent_report] invoked with target: " . ($target ?: 'none') . "
 #endregion
 
 #region 🔍 Step 1: Validate or Resolve Target
-$originalTarget = $target;  // 🆕 For logging
+$originalTarget = $target;
+if (!is_string($target) || trim($target) === '') $target = null;
 
-// 🆕 IMPROVED: Don't smash spaces/lowercase here—let resolver handle camelCase
-if (!is_string($target) || trim($target) === '') {
-    $target = null;
-}
-
-// 🆕 ALWAYS attempt resolution if no/invalid target or no direct Codex match
-global $codex;  // Ensure available
+global $codex;
 if (!$target || !isset($codex[$target])) {
     $resolved = resolveSkyesoftObject($prompt, $dynamicData);
     error_log("🔗 Dispatcher resolver for '{$prompt}': " . json_encode($resolved));
@@ -49,14 +43,14 @@ if (!$target || !isset($codex[$target])) {
         $target = $resolved['key'];
         error_log("🔗 Dispatcher auto-resolved → {$target} ({$resolved['confidence']}%) [from: {$originalTarget}]");
     } else {
-        $conf = (isset($resolved['confidence']) ? $resolved['confidence'] : 0);
+        $conf = isset($resolved['confidence']) ? $resolved['confidence'] : 0;
         sendJsonResponse(
             "⚠️ No valid report target resolved from '{$prompt}' (conf: " . $conf . ").",
             "error",
             array(
-                "sessionId"       => $sessionId,
-                "prompt"          => $prompt,
-                "originalTarget"  => $originalTarget
+                "sessionId"      => $sessionId,
+                "prompt"         => $prompt,
+                "originalTarget" => $originalTarget
             )
         );
         exit;
@@ -67,11 +61,9 @@ if (!$target || !isset($codex[$target])) {
 #endregion
 
 #region 🧭 Step 2: Normalize Report Metadata
-$reportTitle = ucwords(str_replace(array('-', '_'), ' ', $target));
+$reportTitle  = ucwords(str_replace(array('-', '_'), ' ', $target));
 $generatorUrl = 'https://www.skyelighting.com/skyesoft/api/generateReports.php?module=' . urlencode($target);
-$payload = json_encode(array("slug" => $target));  // 🆕 Use resolved $target (clean slug)
-
-error_log("🧭 Preparing report request for '{$target}' at {$generatorUrl}");
+$payload      = json_encode(array("slug" => $target));
 #endregion
 
 #region ⚙️ Step 3: Execute Report Generation
@@ -84,39 +76,44 @@ curl_setopt_array($ch, array(
     CURLOPT_SSL_VERIFYPEER => false,
     CURLOPT_TIMEOUT        => 30
 ));
-
 $result = curl_exec($ch);
 $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err    = curl_error($ch);
 curl_close($ch);
 #endregion
 
-#region 📄 Step 4: Parse & Respond
+#region 📄 Step 4: Parse & Respond (patched for link output)
 if ($code === 200 && preg_match('/✅ PDF created successfully:\s*(.+)$/m', $result, $matches)) {
-    $link = trim($matches[1]);
+    $pdfPath = trim($matches[1]);
+
+    // Convert local path → public URL
+    $publicUrl = str_replace(
+        array('/home/notyou64/public_html', ' '),
+        array('https://www.skyelighting.com', '%20'),
+        $pdfPath
+    );
+
     sendJsonResponse(
-        "✅ Information Sheet generated for {$target}",
+        "📘 The **{$reportTitle}** sheet is ready.\n\n📄 [Open Report]({$publicUrl})",
         "sheet_generated",
         array(
-            "link"      => $link,
-            "target"    => $target,
-            "title"     => $reportTitle,
-            "sessionId" => $sessionId,
-            "resolvedFrom" => $originalTarget  // 🆕 For audit
+            "link"          => $publicUrl,
+            "target"        => $target,
+            "title"         => $reportTitle,
+            "sessionId"     => $sessionId,
+            "resolvedFrom"  => $originalTarget
         )
     );
     exit;
 }
 
-if ($err) {
-    error_log("❌ CURL Error: {$err}");
-}
+if ($err) error_log("❌ CURL Error: {$err}");
 
 sendJsonResponse("⚠️ Report generation failed (HTTP {$code}).", "error", array(
-    "body"      => substr($result, 0, 200),
-    "sessionId" => $sessionId,
-    "target"    => $target,
-    "originalTarget" => $originalTarget  // 🆕 For debug
+    "body"          => substr($result, 0, 200),
+    "sessionId"     => $sessionId,
+    "target"        => $target,
+    "originalTarget"=> $originalTarget
 ));
 exit;
 #endregion
