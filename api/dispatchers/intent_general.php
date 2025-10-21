@@ -27,53 +27,63 @@ foreach ($contextKeys as $k) {
 }
 error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
 
-/// --------------------------------------------------------------
-// 🧠 Dynamic Hallucination Guard (Codex + SSE-driven)
+// --------------------------------------------------------------
+// 🧠 Dynamic Hallucination Guard (smart general fallback)
 // --------------------------------------------------------------
 $promptLower = strtolower(trim($prompt));
 $knownDomains = array();
 
-// 1️⃣ Extract keys from SSE data
+// 1️⃣ Collect all possible domains dynamically from SSE + Codex
 foreach ($sseContext as $key => $val) {
     $knownDomains[] = strtolower($key);
 }
-
-// 2️⃣ Extract module names from Codex (if available)
 if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
     foreach (array_keys($dynamicData['codex']) as $codexKey) {
         $knownDomains[] = strtolower($codexKey);
     }
 }
 
-// 3️⃣ Check prompt relevance against all known terms
-$relevant = false;
+// 2️⃣ Compute fuzzy similarity scores
+$bestScore = 0;
 foreach ($knownDomains as $term) {
-    if (strpos($promptLower, $term) !== false) {
-        $relevant = true;
-        break;
-    }
+    similar_text($promptLower, $term, $score);
+    if ($score > $bestScore) $bestScore = $score;
 }
 
-// 4️⃣ Abort if irrelevant (no known domains found)
-if (!$relevant) {
+// 3️⃣ Decide routing tier
+if ($bestScore >= 45) {
+    // Pass to Skyesoft reasoning (normal SSE/Codex flow)
+    error_log("🧭 [intent_general] semantic match {$bestScore}% — using SSE/Codex context.");
+} else {
+    // 🆕 Low semantic score → evaluate for harmless general queries
+    $allowWeb = false;
+
+    // Allow “soft” public-interest or humor queries through web fallback
+    if (preg_match('/\b(joke|funny|laugh|quote|fact|trivia|stock|price|news)\b/i', $promptLower)) {
+        $allowWeb = true;
+    }
+
+    if ($allowWeb) {
+        error_log("🌍 [intent_general] Routed to web fallback for general-interest query '{$prompt}'.");
+        $fallback = webFallbackSearch($prompt);
+        sendJsonResponse($fallback['response'], "general", array(
+            "sessionId" => $sessionId,
+            "source"    => "web",
+            "url"       => isset($fallback['url']) ? $fallback['url'] : ''
+        ));
+        exit;
+    }
+
+    // Default block for unrelated or nonsense queries
     sendJsonResponse(
         "That information isn't available in the current data stream.",
         "general",
         array(
             "sessionId" => $sessionId,
-            "reason"    => "no_dynamic_relevance",
+            "reason"    => "low_semantic_relevance",
+            "confidence"=> round($bestScore, 2),
             "domains"   => $knownDomains
         )
-    );
-    exit;
-}
-
-// If prompt has no known domain → short-circuit before AI call
-if (!$relevant) {
-    sendJsonResponse(
-        "That information isn't available in the current data stream.",
-        "general",
-        array("sessionId" => $sessionId, "reason" => "no_sse_relevance")
     );
     exit;
 }
