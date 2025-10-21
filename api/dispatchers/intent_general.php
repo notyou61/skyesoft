@@ -28,12 +28,10 @@ foreach ($contextKeys as $k) {
 error_log("🧭 [intent_general] Prompt='{$prompt}' | SSE keys=" . implode(',', array_keys($sseContext)));
 
 // --------------------------------------------------------------
-// 🧠 Dynamic Hallucination Guard (smart general fallback)
+// 🧠 Adaptive Relevance Scoring (relaxed for temporal / schedule terms)
 // --------------------------------------------------------------
 $promptLower = strtolower(trim($prompt));
 $knownDomains = array();
-
-// 1️⃣ Collect all possible domains dynamically from SSE + Codex
 foreach ($sseContext as $key => $val) {
     $knownDomains[] = strtolower($key);
 }
@@ -43,28 +41,21 @@ if (isset($dynamicData['codex']) && is_array($dynamicData['codex'])) {
     }
 }
 
-// 2️⃣ Compute fuzzy similarity scores
+// Fuzzy similarity
 $bestScore = 0;
 foreach ($knownDomains as $term) {
     similar_text($promptLower, $term, $score);
     if ($score > $bestScore) $bestScore = $score;
 }
 
-// 3️⃣ Decide routing tier
-if ($bestScore >= 45) {
-    // Pass to Skyesoft reasoning (normal SSE/Codex flow)
-    error_log("🧭 [intent_general] semantic match {$bestScore}% — using SSE/Codex context.");
-} else {
-    // 🆕 Low semantic score → evaluate for harmless general queries
-    $allowWeb = false;
+// 🆕 Relax rules if question is time/holiday/work related
+$temporalHints = preg_match('/(time|day|date|hour|work|holiday|week|month|sun|light)/i', $promptLower);
+$threshold = $temporalHints ? 35 : 45;
 
-    // Allow “soft” public-interest or humor queries through web fallback
-    if (preg_match('/\b(joke|funny|laugh|quote|fact|trivia|stock|price|news)\b/i', $promptLower)) {
-        $allowWeb = true;
-    }
-
-    if ($allowWeb) {
-        error_log("🌍 [intent_general] Routed to web fallback for general-interest query '{$prompt}'.");
+// Route accordingly
+if ($bestScore < $threshold) {
+    // Allow harmless public-interest web fallback
+    if (preg_match('/(joke|quote|fact|trivia|stock|price|news)/i', $promptLower)) {
         $fallback = webFallbackSearch($prompt);
         sendJsonResponse($fallback['response'], "general", array(
             "sessionId" => $sessionId,
@@ -74,15 +65,14 @@ if ($bestScore >= 45) {
         exit;
     }
 
-    // Default block for unrelated or nonsense queries
+    // Block nonsense
     sendJsonResponse(
         "That information isn't available in the current data stream.",
         "general",
         array(
             "sessionId" => $sessionId,
             "reason"    => "low_semantic_relevance",
-            "confidence"=> round($bestScore, 2),
-            "domains"   => $knownDomains
+            "confidence"=> round($bestScore, 2)
         )
     );
     exit;
