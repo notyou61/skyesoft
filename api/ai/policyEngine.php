@@ -4,11 +4,11 @@
 // Compatible with PHP 5.6 (no null-coalescing operators)
 
 #region 🔧 DEPENDENCY LOADING
-$baseDir = __DIR__;
+$baseDir = dirname(__FILE__);
 
-$semanticPath = $baseDir . '/semanticRouter.php';
-$codexPath    = $baseDir . 'codexConsult.php';
-$ssePath      = $baseDir . '/sSEProxy.php';
+require_once($baseDir . '/semanticRouter.php');
+require_once($baseDir . '/codexConsult.php');
+require_once($baseDir . '/sseProxy.php');
 
 if (file_exists($semanticPath))  require_once($semanticPath);
 else error_log("⚠️ semanticRouter.php missing at $semanticPath");
