@@ -7,7 +7,7 @@
 $baseDir = __DIR__;
 
 $semanticPath = $baseDir . '/semanticRouter.php';
-$codexPath    = $baseDir . '/codexConsult.php';
+$codexPath    = $baseDir . 'codexConsult.php';
 $ssePath      = $baseDir . '/sSEProxy.php';
 
 if (file_exists($semanticPath))  require_once($semanticPath);
