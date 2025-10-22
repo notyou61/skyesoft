@@ -63,21 +63,32 @@ setInterval(() => {
       }
       // #endregion
 
-      // #region ⏳ Update Interval Remaining Message
-      const seconds = data?.intervalsArray?.currentDaySecondsRemaining;
-      const label = data?.intervalsArray?.intervalLabel;
-      const dayType = data?.intervalsArray?.dayType;
+      // #region ⏳ Update Interval Remaining Message (Codex-aware)
+      const intervalData = data?.timeDateArray?.intervalsArray || data?.intervalsArray;
+      const seconds = intervalData?.currentDaySecondsRemaining;
+      const label = intervalData?.intervalLabel;
+      const dayType = intervalData?.dayType;
+
       if (seconds !== undefined && label !== undefined && dayType !== undefined) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
+
         switch (`${dayType}-${label}`) {
-          case "0-0": message = `🔚 Workday ends in ${formatted}`; break;
-          case "0-1": message = `🔜 Workday begins in ${formatted}`; break;
-          default:    message = `📆 Next workday begins in ${formatted}`; break;
+          case "0-0":
+            message = `🔚 Workday ends in ${formatted}`;
+            break;
+          case "0-1":
+            message = `🔜 Workday begins in ${formatted}`;
+            break;
+          default:
+            message = `📆 Next workday begins in ${formatted}`;
+            break;
         }
+
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
-        // Optionally debug:
+
+        // Optional debug log
         // console.log("⏳ Interval Remaining:", message);
       }
       // #endregion
