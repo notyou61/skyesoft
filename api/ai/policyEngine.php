@@ -34,7 +34,7 @@ function runPolicyEngine($userInput) {
         'domain' => $domain,
         'tier' => $resolvedTier,
         'codexModule' => $codexModule['title'],
-        'rules' => $codexModule['rules'] ?? array(),
+        'rules' => isset($codexModule['rules']) ? $codexModule['rules'] : array(),
         'context' => $sseContext
     );
 
