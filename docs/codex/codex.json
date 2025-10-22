@@ -1,758 +1,238 @@
 {
-  "codexModules": {
-    "skyebotModule": {
-      "title": "robot Skyebot™ AI Agent",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Skyebot is the intelligent assistant that interfaces with humans and the Skyesoft platform. It interprets natural language, retrieves information, and executes actions based on constitutional rules and real-time context."
-      },
-      "behavior": {
-        "icon": "ruler",
-        "format": "list",
-        "items": [
-          "Always reference real-time SSE data when providing answers.",
-          "Normalize names, phone numbers, and entities before database insertion.",
-          "Use codex glossary terms and tags to ensure accurate communication.",
-          "Adapt behavior dynamically based on context, never rigidly hardcoded.",
-          "Escalate uncertain actions to human users for approval."
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "One-Line Task Engine",
-          "Time Interval Standards",
-          "Permit Management Suite",
-          "Financial Control Suite",
-          "Service Management Suite"
-        ]
-      },
-      "governanceLink": {
-        "icon": "scroll",
-        "format": "text",
-        "text": "Skyebot operates under the rules defined in the Skyesoft Constitution, ensuring its actions align with global principles of transparency, security, and accountability."
-      }
+    "codexMeta": {
+        "title": "🎯 Skyesoft Codex Meta",
+        "version": "2025.11",
+        "lastUpdated": "2025-10-22",
+        "category": "System Layer",
+        "enrichment": "light",
+        "description": {
+            "text": "Defines governance, telemetry, and modular policy structure for the Skyesoft ecosystem."
+        }
     },
-    "mobileFirstModals": {
-      "title": "mobilePhone Mobile-First Modals",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Enable rapid, context-aware task execution via modal windows optimized for mobile and desktop — consistent across shop, office, and field."
-      },
-      "features": {
-        "icon": "gear",
-        "format": "list",
-        "items": [
-          "Adaptive modal forms that adjust per device and role",
-          "AI-linked context insertion for prefilled fields",
-          "Real-time triggers via SSE or One-Line Task",
-          "Inline validation and AJAX/SSE submissions"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "One-Line Task Engine",
-          "Real-Time SSE",
-          "Core Database"
-        ]
-      }
-    },
-    "officeBulletins": {
-      "title": "megaphone Office Bulletins",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Centralized announcements across departments, roles, and devices with priority, visibility controls, and expiration logic."
-      },
-      "bulletinTypes": {
-        "icon": "clipboard",
-        "format": "list",
-        "items": [
-          "Global",
-          "Departmental",
-          "Urgent",
-          "Event-Based"
-        ]
-      },
-      "features": {
-        "icon": "gear",
-        "format": "list",
-        "items": [
-          "Markdown formatting support",
-          "Role/department filtering",
-          "Read receipts and pinning",
-          "Bulletin archive/history per user"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Mobile-First Modals",
-          "Time Interval Standards"
-        ]
-      }
-    },
-    "oneLineTask": {
-      "title": "brain One-Line Task (OLT) Input",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Provide a natural language entry point that intelligently interprets user input and performs the most context-appropriate action — database updates, task creation, record lookups, or communication triggers."
-      },
-      "mechanism": {
-        "icon": "bolt",
-        "format": "list",
-        "items": [
-          "Leverages the semanticResponder module for stream queries (time, date, weather, KPIs, announcements) instead of hardcoded keyword rules",
-          "Regex rules reserved only for critical agentic actions (login/logout, CRUD triggers)",
-          "Lightweight NLP scans for keywords, named entities, dates/times",
-          "Intent detection maps prompts to known action templates (contact, permit, quote, task)"
-        ]
-      },
-      "examples": {
-        "icon": "lightbulb",
-        "format": "list",
-        "items": [
-          "Jim Flanigan at ALC Group, 816-421-8335 → ➕ Add new contact",
-          "Schedule reinstall for Yogurtology next Wednesday at noon → 📅 Create task with date/time",
-          "Sign permit follow-up, call Louie → ☎️ Call task with reference note",
-          "Start quote for 810 S 56th Ave, monument sign repair → 📝 Begin quote form with prefilled fields"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Database Modules",
-          "Time Interval Standards",
-          "Permit Suite",
-          "Attendance + Escalation Trees",
-          "Semantic Responder"
-        ]
-      },
-      "futureEnhancements": {
-        "icon": "rocket",
-        "format": "list",
-        "items": [
-          "Auto-tagging entities and locations",
-          "Suggesting next steps (e.g., 'Would you like to notify the shop?')",
-          "Backfill from prior activity threads to infer intent"
-        ]
-      },
-      "strategicImportance": {
-        "icon": "trophy",
-        "format": "text",
-        "text": "Removes barriers to entry and allows front office staff and sales reps to initiate actions without navigating deep menus — accelerating workflows and boosting adoption across the organization."
-      }
-    },
-    "permitManagementSuite": {
-      "title": "folder Permit Management Suite",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Tracks sign permit lifecycle from request to approval, with SLA logic, smart routing, and real-time status updates."
-      },
-      "features": {
-        "icon": "gear",
-        "format": "list",
-        "items": [
-          "Submission logs and timestamps",
-          "SLA timers with Time Standards",
-          "Live SSE status changes",
-          "Escalation logic if delayed",
-          "AI-parsed jurisdiction assignment"
-        ]
-      },
-      "workflow": {
-        "icon": "clipboard",
-        "format": "list",
-        "items": [
-          "Created",
-          "Received",
-          "Submitted",
-          "Response Pending",
-          "Approved/Denied"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Core Database",
-          "File Management",
-          "Mobile-First Modals",
-          "Attendance Suite",
-          "Management Escalation Trees"
-        ]
-      }
+    "ontologySchema": {
+        "title": "🧠 Codex Ontology Schema",
+        "category": "System Layer",
+        "enrichment": "none",
+        "purpose": {
+            "text": "Defines conceptual types, relationships, and inheritance for all Skyesoft modules."
+        }
     },
     "timeIntervalStandards": {
-      "title": "clock Time Interval Standards (TIS)",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Defines workday types and time segments (e.g., Worktime) used across scheduling, SLAs, and validations."
-      },
-      "dayTypes": {
-        "icon": "clipboard",
-        "format": "list",
-        "items": [
-          "Workday",
-          "Weekend",
-          "Holiday"
-        ]
-      },
-      "segments": {
-        "icon": "table",
-        "format": "table",
-        "items": [
-          { "role": "Office", "before": "12:00 AM – 7:29 AM", "worktime": "7:30 AM – 3:30 PM", "after": "3:31 PM – 11:59 PM" },
-          { "role": "Shop", "before": "12:00 AM – 5:59 AM", "worktime": "6:00 AM – 2:00 PM", "after": "2:01 PM – 11:59 PM" }
-        ]
-      },
-      "exclusions": {
-        "icon": "warning",
-        "format": "text",
-        "text": "Weekends and Holidays are excluded from time-sensitive calculations"
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Permit Suite",
-          "Orders",
-          "Attendance",
-          "SSE Monitoring",
-          "Escalation Rules"
-        ]
-      }
-    },
-    "financialControlSuite": {
-      "title": "briefcase Financial Control Suite",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Track, validate, and approve all financial activities related to sign projects — enforce budget integrity, reduce waste, and ensure traceability."
-      },
-      "components": {
-        "icon": "puzzle",
-        "format": "list",
-        "items": [
-          "Job Costing Tracker (labor, materials, subs)",
-          "PO System with thresholds and approvals",
-          "Client Billing Module (deposits, payments, credit memos)",
-          "Reimbursement Log synced with attendance"
-        ]
-      },
-      "workflow": {
-        "icon": "clipboard",
-        "format": "list",
-        "items": [
-          "Project initiated",
-          "Budget auto-generated based on order type",
-          "Expenses logged via PO or reimbursement",
-          "Client billed according to progress",
-          "Flag overages and escalate via MET"
-        ]
-      },
-      "dashboards": {
-        "icon": "table",
-        "format": "list",
-        "items": [
-          "Budget vs Actual per project",
-          "Cash flow forecast vs actual",
-          "Reimbursable vs absorbed expenses",
-          "Monthly financial summaries"
-        ]
-      },
-      "controls": {
-        "icon": "shield",
-        "format": "list",
-        "items": [
-          "Role-based approvals",
-          "Spending hard stops unless overridden",
-          "Alerts for late billing or PO"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Core Database",
-          "Attendance Suite",
-          "Service Suite",
-          "Time Interval Standards"
-        ]
-      }
-    },
-    "serviceManagementSuite": {
-      "title": "tools Service Management Suite",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Handles service orders, maintenance requests, and support dispatches across field, office, and client interfaces."
-      },
-      "features": {
-        "icon": "gear",
-        "format": "list",
-        "items": [
-          "Track service requests by type (repair, install, warranty)",
-          "Assign and schedule field teams",
-          "Log outcomes, photos, and signatures",
-          "Integrate with order history and permit status"
-        ]
-      }
-    },
-    "glossaryModule": {
-      "title": "bookBlue Skyesoft Codex Glossary",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Provides a living reference of key terms, acronyms, and internal shorthand for consistent communication across AI, users, and workflows."
-      },
-      "contents": {
-        "icon": "book",
-        "format": "table",
-        "items": [
-          { "term": "LGBAS", "definition": "Let’s Go Back A Step: A reflective tool to pause and reassess logic or flow." },
-          { "term": "MTCO", "definition": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation." },
-          { "term": "Codex Context", "definition": "Memory schema loaded by the AI to operate with Skyesoft-specific logic." },
-          { "term": "Codex App", "definition": "Modular UI tool for managing and accessing structured documentation." }
-        ]
-      },
-      "integration": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "AI Prompt Normalization",
-          "Structured Chat Interpretation",
-          "Codex-based Response Justification"
-        ]
-      }
-    },
-    "attendanceSuite": {
-      "title": "clock Attendance Suite",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Tracks attendance behaviors, time in/out, overtime, and absences using segmented workday rules. Designed for field techs, office staff, and shop workers."
-      },
-      "features": {
-        "icon": "clipboard",
-        "format": "list",
-        "items": [
-          "Auto-classification by day type (Workday, Weekend, Holiday)",
-          "Segmented time blocks: Before Worktime, Worktime, After Worktime",
-          "Shift-specific logic for shop (6:00–2:00) and office (7:30–3:30)",
-          "Manual and automatic entries via device punches or server logs",
-          "Integration with Time Interval Standards (TIS)"
-        ]
-      },
-      "dataPoints": {
-        "icon": "table",
-        "format": "list",
-        "items": [
-          "Clock-in/out time per user",
-          "Location/device of punch (optional)",
-          "Duration within each segment (e.g., Worktime)",
-          "Missed punches / late entries",
-          "PTO, sick time, holidays"
-        ]
-      },
-      "smartBehaviors": {
-        "icon": "brain",
-        "format": "list",
-        "items": [
-          "Automatically resolves entry overlaps",
-          "Flags outliers and missed punches",
-          "Can trigger Management Escalation Tree rules if attendance is habitual concern"
-        ]
-      },
-      "integrations": {
-        "icon": "plug",
-        "format": "list",
-        "items": [
-          "Links with Order System for assignment-based tracking",
-          "Works with Mobile Modals for on-field punch-in",
-          "Real-time updates via SSE (Server-Sent Events)"
-        ]
-      },
-      "exampleEntry": {
-        "icon": "code",
-        "format": "text",
-        "text": "{ \"user\": \"msmith\", \"date\": \"2025-06-13\", \"in\": \"07:35\", \"out\": \"15:45\", \"worktime_minutes\": 480, \"early_minutes\": 0, \"late_minutes\": 5, \"location\": \"Shop Tablet\" }"
-      }
-    }
-  },
-  "codexSheets": {
-    "title": "📑 Skyesoft Sheet Families",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Defines structured document types used across Skyesoft — including information sheets, safety data sheets, training sheets, and others. Each sheet family has its own purpose, rules, and scaling model."
-    },
-    "informationSheets": {
-      "title": "bookBlue Information Sheet Suite",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Produce internal knowledge documents that summarize Codex modules, standards, and rules. These sheets guide developers and AI in aligning with the Skyesoft Constitution and explaining it to users."
-      },
-      "useCases": {
-        "icon": "lightbulb",
-        "format": "list",
-        "items": [
-          "Developer references for module specifications",
-          "AI explanations of Codex content to users",
-          "Validation of workflows against constitutional standards"
-        ]
-      },
-      "rules": {
-        "icon": "ruler",
-        "format": "list",
-        "items": [
-          "Each page body must begin with a section header.",
-          "If content continues onto a new page, the section header is repeated with '– Continued' appended."
-        ]
-      }
-    },
-    "safetyDataSheets": {
-      "title": "shield Safety Data Sheets",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Document material safety and compliance information for chemicals, electrical components, and signage materials used in operations."
-      }
-    },
-    "trainingSheets": {
-      "title": "graduationCap Training Sheets",
-      "purpose": {
-        "icon": "target",
-        "format": "text",
-        "text": "Provide role-based training guides that outline step-by-step instructions and best practices."
-      }
-    }
-  },
-  "skyesoftConstitution": {
-    "title": "scroll Skyesoft Constitution",
-    "introduction": {
-      "icon": "document",
-      "format": "text",
-      "priority": 1,
-      "text": "The Skyesoft Constitution defines the foundational rules for managing business operations through structured data and guided workflows. It ensures that entities, locations, contacts, and orders are managed consistently, aligning people and processes under a unified governance framework."
-    },
-    "principles": {
-      "icon": "scales",
-      "format": "table",
-      "priority": 2,
-      "items": [
-        {
-          "Principle": "Transparency",
-          "Description": "Decisions and processes must be open and explainable to all stakeholders.",
-          "Example": "Audit logs display decision trails for all permit approvals."
+        "title": "⏱️ Time Interval Standards (TIS)",
+        "enrichment": "medium",
+        "telemetry": {
+            "stream": "live-feed",
+            "updateInterval": 1,
+            "priority": "critical"
         },
-        {
-          "Principle": "Consistency",
-          "Description": "Data and workflows behave the same way across all modules and departments.",
-          "Example": "Standardized forms are used across both Service and Financial Control modules."
-        },
-        {
-          "Principle": "Accountability",
-          "Description": "Actions by humans or AI must be traceable, with clear ownership.",
-          "Example": "Each order update is tagged with the user or AI responsible."
-        },
-        {
-          "Principle": "Adaptability",
-          "Description": "Continuous learning and improvement are built into every process.",
-          "Example": "Workflows auto-adjust based on performance metrics and user feedback."
+        "purpose": {
+            "text": "Defines temporal segmentation for Skyesoft scheduling."
         }
-      ]
     },
-    "guidingFramework": {
-      "icon": "compass",
-      "format": "table",
-      "priority": 3,
-      "items": [
-        {
-          "Principle": "Be Proactive",
-          "Application": "Skyesoft surfaces real-time alerts and empowers teams to address potential issues before they escalate."
+    "recordCounts": {
+        "title": "📊 Record Counts",
+        "enrichment": "none",
+        "telemetry": {
+            "stream": "live-feed",
+            "updateInterval": 1,
+            "priority": "high"
         },
-        {
-          "Principle": "Begin with the End in Mind",
-          "Application": "Workflows are designed with a clear goal, ensuring every task contributes to meaningful outcomes."
-        },
-        {
-          "Principle": "Put First Things First",
-          "Application": "Prioritization rules guide queues and dashboards, ensuring the most important tasks come first."
-        },
-        {
-          "Principle": "Think Win-Win",
-          "Application": "Processes foster balanced value for clients, vendors, and internal teams through mutual benefit."
-        },
-        {
-          "Principle": "Seek First to Understand",
-          "Application": "Forms and AI-driven prompts collect context before taking action, reducing errors and misunderstandings."
-        },
-        {
-          "Principle": "Synergize",
-          "Application": "Modules like Permit Management, Service, and Financial Control work together seamlessly without silos."
-        },
-        {
-          "Principle": "Sharpen the Saw",
-          "Application": "Continuous updates and training keep the platform and its users aligned and improving over time."
+        "purpose": {
+            "text": "Tracks entity and record totals."
         }
-      ]
     },
-    "coreDataObjects": {
-      "icon": "database",
-      "format": "table",
-      "priority": 4,
-      "items": [
-        {
-          "Object": "Entity",
-          "Description": "Companies, jurisdictions, clients, or vendors represented within Skyesoft.",
-          "Example": "Christy Signs, City of Phoenix, Habit Burger."
+    "kpiData": {
+        "title": "💹 KPI Data",
+        "enrichment": "none",
+        "telemetry": {
+            "stream": "live-feed",
+            "updateInterval": 1,
+            "priority": "high"
         },
-        {
-          "Object": "Location",
-          "Description": "Physical or virtual places linked to entities where operations occur.",
-          "Example": "Christy Signs main office at 3145 N 33rd Ave."
-        },
-        {
-          "Object": "Contact",
-          "Description": "Individuals associated with entities and locations, stored with normalized details.",
-          "Example": "Jim Flanigan, Plant Manager at ALC Group."
-        },
-        {
-          "Object": "Order",
-          "Description": "Tracked jobs, projects, or service tickets representing deliverables and workflows.",
-          "Example": "Work order #26216 for Bank of America signage."
+        "purpose": {
+            "text": "Tracks operational key performance indicators."
         }
-      ]
     },
-    "sourcesOfTruth": {
-      "icon": "book",
-      "format": "table",
-      "priority": 5,
-      "items": [
-        {
-          "Source": "Operational Stream",
-          "Description": "Provides real-time context such as time, events, and active tasks.",
-          "Example": "Live feed of active installations and permit reviews."
+    "weatherData": {
+        "title": "🌦️ Weather Data",
+        "enrichment": "light",
+        "telemetry": {
+            "stream": "context-stream",
+            "updateInterval": 60,
+            "priority": "low"
         },
-        {
-          "Source": "Knowledge Base",
-          "Description": "Stores workflows, schemas, and rules that define how modules behave.",
-          "Example": "Permit Management rules for submission deadlines and SLA tracking."
-        },
-        {
-          "Source": "History Archive",
-          "Description": "Maintains a chronological log of actions, decisions, and updates.",
-          "Example": "Historical records of order changes and approvals."
-        },
-        {
-          "Source": "Identity Registry",
-          "Description": "Tracks roles, permissions, and relationships between entities and locations.",
-          "Example": "Mapping of Christy Signs managers to their assigned projects."
+        "purpose": {
+            "text": "Provides contextual weather information for reports and AI reasoning."
         }
-      ]
     },
-    "rolesAndResponsibilities": {
-      "icon": "users",
-      "format": "table",
-      "priority": 6,
-      "items": [
-        {
-          "Role": "User",
-          "Responsibility": "Accurately input and manage data while following defined workflows."
+    "uiHints": {
+        "title": "💬 UI Hints",
+        "enrichment": "light",
+        "telemetry": {
+            "stream": "system-pulse",
+            "updateInterval": 10,
+            "priority": "medium"
         },
-        {
-          "Role": "Manager",
-          "Responsibility": "Oversee operations, resolve exceptions, and optimize team performance."
-        },
-        {
-          "Role": "Developer",
-          "Responsibility": "Maintain modules and integrations in alignment with constitutional rules."
-        },
-        {
-          "Role": "Administrator",
-          "Responsibility": "Govern platform access and steward constitutional amendments."
+        "purpose": {
+            "text": "Delivers motivational tips and UI text hints for daily dashboards."
         }
-      ]
     },
-    "compliance": {
-      "icon": "shield",
-      "format": "list",
-      "priority": 7,
-      "items": [
-        "All data must meet privacy and security standards such as GDPR or SOC 2.",
-        "AI actions must be explainable, traceable, and overrideable by human users.",
-        "Changes to workflows require documented approval and version history."
-      ]
+    "announcements": {
+        "title": "📢 Announcements",
+        "enrichment": "medium",
+        "telemetry": {
+            "stream": "system-pulse",
+            "updateInterval": 10,
+            "priority": "medium"
+        },
+        "purpose": {
+            "text": "Broadcasts company updates and agenda information."
+        }
     },
-    "amendmentProcess": {
-      "icon": "pen",
-      "format": "list",
-      "priority": 8,
-      "items": [
-        "Propose amendments through formal submissions within Skyesoft.",
-        "Review collaboratively with stakeholders within 30 days of submission.",
-        "Escalate unresolved proposals to a governance board for a final decision.",
-        "Approved updates are versioned and communicated via system bulletins."
-      ]
+    "siteMeta": {
+        "title": "🪪 Site Meta",
+        "enrichment": "light",
+        "telemetry": {
+            "stream": "system-pulse",
+            "updateInterval": 10,
+            "priority": "medium"
+        },
+        "purpose": {
+            "text": "Contains site deployment information and version metadata."
+        }
     },
-    "glossary": {
-      "icon": "information",
-      "format": "table",
-      "priority": 9,
-      "items": [
-        { "Term": "Entity", "Definition": "A company, jurisdiction, client, or vendor represented within the Skyesoft system." },
-        { "Term": "Operational Stream", "Definition": "A live feed of current activity, enabling real-time decisions." },
-        { "Term": "Identity Registry", "Definition": "System component managing user roles, permissions, and relationships." }
-      ]
+    "deploymentCheck": {
+        "title": "🧾 Deployment Check",
+        "enrichment": "none",
+        "telemetry": {
+            "stream": "context-stream",
+            "updateInterval": 60,
+            "priority": "low"
+        },
+        "purpose": {
+            "text": "Validates deployment state and synchronization."
+        }
+    },
+    "codex": {
+        "title": "📜 Codex (Self)",
+        "enrichment": "light",
+        "telemetry": {
+            "stream": "context-stream",
+            "updateInterval": 60,
+            "priority": "low"
+        },
+        "purpose": {
+            "text": "Serves as the unified policy and governance structure for Skyesoft."
+        }
+    },
+    "sseStream": {
+        "title": "🌐 SSE Stream",
+        "category": "Adaptive Layer",
+        "type": "data-stream",
+        "subtypes": [
+            "live-feed",
+            "system-pulse",
+            "context-stream"
+        ],
+        "actions": [
+            "observe",
+            "generate-sheet",
+            "sync",
+            "describe"
+        ],
+        "enrichment": "light",
+        "tiers": {
+            "live-feed": {
+                "interval": 1,
+                "members": [
+                    "timeDateArray",
+                    "intervalsArray",
+                    "recordCounts",
+                    "kpiData"
+                ]
+            },
+            "system-pulse": {
+                "interval": 10,
+                "members": [
+                    "uiHints",
+                    "announcements",
+                    "siteMeta"
+                ]
+            },
+            "context-stream": {
+                "interval": 60,
+                "members": [
+                    "codex",
+                    "weatherData.temp",
+                    "deploymentCheck"
+                ]
+            }
+        },
+        "governanceNotes": {
+            "icon": "shield",
+            "format": "text",
+            "text": "Each module declaring telemetry joins its respective tier. getDynamicData.php enforces cadence dynamically."
+        },
+        "integrationNotes": {
+            "icon": "link",
+            "format": "text",
+            "text": "The SSE Stream subsumes the Codex as a live data object, aligning operational and governance data."
+        }
+    },
+    "permitManagementSuite": {
+        "title": "📋 Permit Management Suite",
+        "category": "Operational Layer",
+        "enrichment": "medium",
+        "purpose": {
+            "text": "Handles automated sign permit workflows."
+        }
+    },
+    "crudUserInterfaceConvention": {
+        "title": "⚙️ CRUD User Interface Convention",
+        "category": "System Layer",
+        "enrichment": "medium",
+        "purpose": {
+            "text": "Defines interaction rules for Create, Read, Update, Delete operations."
+        }
+    },
+    "aiIntegration": {
+        "title": "🧠 AI Integration",
+        "category": "Adaptive Layer",
+        "enrichment": "heavy",
+        "purpose": {
+            "text": "Defines how Skyebot interprets and reasons via Codex and SSE data."
+        }
+    },
+    "semanticResponder": {
+        "title": "🧩 Semantic Responder",
+        "category": "Adaptive Layer",
+        "enrichment": "heavy",
+        "purpose": {
+            "text": "Skyebot’s semantic reasoning core."
+        }
+    },
+    "ragFramework": {
+        "title": "📚 RAG Framework",
+        "category": "Adaptive Layer",
+        "enrichment": "medium",
+        "purpose": {
+            "text": "Defines retrieval-augmented generation logic for Skyebot AI."
+        }
+    },
+    "chatHistoryArchitecture": {
+        "title": "💾 Chat History Architecture",
+        "category": "System Layer",
+        "enrichment": "medium",
+        "purpose": {
+            "text": "Governs session memory and audit integrity for Skyebot interactions."
+        }
+    },
+    "codeManagement": {
+        "title": "💻 Code Management",
+        "category": "System Layer",
+        "enrichment": "medium",
+        "purpose": {
+            "text": "Governs Skyesoft code access, documentation, and revision safety."
+        }
     }
-  },
-  "documentStandards": {
-    "title": "pencil Document Formatting Standards",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Define page structure, styling, and metadata rules for all generated Information Sheets and reports."
-    },
-    "pageStructure": {
-      "icon": "document",
-      "format": "list",
-      "items": [
-        "Header",
-        "Body",
-        "Footer"
-      ]
-    },
-    "headers": {
-      "icon": "upArrow",
-      "format": "list",
-      "items": [
-        "Must include document title",
-        "Must include Christy Signs logo and Skyesoft identifier",
-        "May also include project name, module name, or date"
-      ]
-    },
-    "footers": {
-      "icon": "downArrow",
-      "format": "list",
-      "items": [
-        "Must include page numbering (Page X of Y)",
-        "Must include Christy Signs footer with contact information",
-        "Must include copyright line: © Christy Signs / Skyesoft, All Rights Reserved",
-        "Must display disclaimers where provided"
-      ]
-    },
-    "styling": {
-      "icon": "palette",
-      "format": "list",
-      "items": [
-        "Use Helvetica font across all documents",
-        "Section headers: black background with white text",
-        "Body text: black on white background",
-        "Margins and spacing must remain consistent"
-      ]
-    },
-    "metadata": {
-      "icon": "receipt",
-      "format": "list",
-      "items": [
-        "Must include document timestamp (UTC + local)",
-        "Must include author or system identifier (Skyebot)",
-        "Must include document version number"
-      ]
-    }
-  },
-  "ragFramework": {
-    "title": "Retrieval-Augmented Generation (RAG)",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Skyebot uses RAG to blend user prompts with real-time and historical data. Context from the SSE stream, skyesoft-data.json, codex.json, and saved chats are dynamically retrieved and included with each AI query. This ensures that responses are accurate, up-to-date, and policy-aware."
-    },
-    "sources": {
-      "icon": "clipboard",
-      "format": "list",
-      "items": [
-        "SSE Stream (dynamic operational context)",
-        "skyesoft-data.json (structured history + contact/entity DB)",
-        "codex.json (static knowledge + specs)",
-        "saveChatLog.php (chat memory archive)"
-      ]
-    }
-  },
-  "sharedReferences": {
-    "title": "link Shared References",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Reference pointer to constitution.sourcesOfTruth and constitution.aiBehavior.rules. The Constitution remains the authoritative SOT."
-    }
-  },
-  "skyesoftGlossary": {
-    "title": "bookBlue Skyesoft Glossary",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "This root-level glossary provides quick reference for AI responses. The glossaryModule in modules is the canonical, version-controlled dictionary for developers."
-    },
-    "entries": {
-      "icon": "book",
-      "format": "table",
-      "items": [
-        { "term": "MTCO", "definition": "Measure Twice, Cut Once: A guiding principle to encourage pre-action validation." },
-        { "term": "LGBAS", "definition": "Let’s Go Back A Step: Tool to pause and reassess logic or flow." },
-        { "term": "SSE", "definition": "Server-Sent Events: Streaming real-time data from server to browser (used in Skyesoft for live context)." },
-        { "term": "KPI", "definition": "Key Performance Indicator: A metric for tracking progress against goals." },
-        { "term": "Codex", "definition": "Skyesoft's central knowledge base, used by AI for definitions, rules, and workflows." }
-      ]
-    }
-  },
-  "codexMeta": {
-    "title": "Skyesoft Codex",
-    "version": "2025.09",
-    "lastUpdated": "2025-09-17",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "All-in-one source of truth for Skyebot and the Skyesoft platform."
-    },
-    "schema": {
-      "requiredKeys": [
-        "title",
-        "purpose"
-      ],
-      "optionalKeys": [
-        "description",
-        "features",
-        "workflow",
-        "integrations",
-        "rules",
-        "examples",
-        "format"
-      ],
-      "fieldTypes": {
-        "title": "String with emoji prefix",
-        "purpose": "Object {icon, text}",
-        "description": "Object {icon, text}",
-        "features": "Object {icon, items[]}",
-        "workflow": "Object {icon, items[]}",
-        "integrations": "Object {icon, items[]}",
-        "rules": "Object {icon, items[]}",
-        "examples": "Object {icon, items[]}",
-        "format": "String: 'text', 'list', or 'table'"
-      },
-      "notes": "Every module must begin with 'title' + 'purpose'. Other keys may appear as needed. Each section must include an 'icon'. The 'format' tag is optional and tells the renderer how to display structured data: 'text' for plain paragraphs, 'list' for bullet points, and 'table' for structured rows/columns."
-    }
-  }
 }
