@@ -42,6 +42,7 @@ setInterval(() => {
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
+      window.lastSSEData = data;
       // #region 🧪 Debug Log
       // console.log("🕒 Polled:", data);
       // console.log("🌡️ Weather Snapshot:", data.weatherData);
