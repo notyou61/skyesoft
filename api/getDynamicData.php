@@ -275,6 +275,25 @@ if (isset($forecast['list']) && is_array($forecast['list'])) {
 }
 #endregion
 
+#region 🧭 Codex Tier Configuration
+// ============================================================================
+// Skyesoft Policy Governance Layer – Tier Configuration
+// ----------------------------------------------------------------------------
+// Reads the current Codex and extracts the active stream tiers.
+// This allows getDynamicData.php to be guided by Codex-defined policies
+// rather than fixed PHP logic.
+// ============================================================================
+$codexTiers = array();
+
+if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers'])) {
+    $codexTiers = $codex['sseStream']['tiers'];
+    // Optional: diagnostic logging
+    // error_log('🧭 Codex Tiers Loaded: ' . json_encode(array_keys($codexTiers)));
+} else {
+    error_log('⚠️ Codex tiers missing or invalid – using legacy fallback.');
+}
+#endregion
+
 #region 📅 Time and Date Calculations
 
 date_default_timezone_set('America/Phoenix');
@@ -411,70 +430,112 @@ if ($dirty && is_writable(DATA_PATH)) {
 }
 #endregion
 
-#region 📤 Response Assembly
-$response = array(
-    // ✅ Add dynamic holidays at the top level (proper scope)
-    'skyesoftHolidays' => is_array($federalHolidays) ? $federalHolidays : array(),
-    'timeDateArray' => array(
-        'currentUnixTime' => $currentUnixTime,
-        'currentLocalTime' => $currentTime,
-        'currentDate' => $currentDate,
-        'currentYearTotalDays' => $yearTotalDays,
-        'currentYearDayNumber' => $yearDayNumber,
-        'currentYearDaysRemaining' => $yearDaysRemaining,
-        'currentMonthNumber' => strval($monthNumber),
-        'currentWeekdayNumber' => strval($weekdayNumber),
-        'currentDayNumber' => strval($dayNumber),
-        'currentHour' => strval($currentHour),
-        'timeOfDayDescription' => $timeOfDayDesc,
-        'timeZone' => 'America/Phoenix',
-        'UTCOffset' => $utcOffset,
-        'daylightStartEndArray' => array(
-            'daylightStart' => isset($weatherData['sunrise']) ? $weatherData['sunrise'] : DEFAULT_SUNRISE,
-            'daylightEnd' => isset($weatherData['sunset']) ? $weatherData['sunset'] : DEFAULT_SUNSET
+#region 📤 Response Assembly (Codex-Aware Dynamic Builder)
+// ============================================================================
+// Skyesoft Codex-Driven Response Assembly
+// ----------------------------------------------------------------------------
+// Builds the SSE stream output dynamically using Codex tier membership.
+// Falls back to legacy static structure if Codex tiers are missing.
+// ============================================================================
+
+$response = array();
+$codexVersion = isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown';
+
+// 🧩 1️⃣  Build from Codex tiers when available
+if (!empty($codexTiers) && is_array($codexTiers)) {
+
+    foreach ($codexTiers as $tierName => $tierDef) {
+        if (!isset($tierDef['members']) || !is_array($tierDef['members'])) continue;
+
+        foreach ($tierDef['members'] as $member) {
+            switch ($member) {
+
+                case 'skyesoftHolidays':   $response[$member] = $federalHolidays; break;
+                case 'timeDateArray':      $response[$member] = array(
+                    'currentUnixTime' => $currentUnixTime,
+                    'currentLocalTime' => $currentTime,
+                    'currentDate' => $currentDate,
+                    'currentYearTotalDays' => $yearTotalDays,
+                    'currentYearDayNumber' => $yearDayNumber,
+                    'currentYearDaysRemaining' => $yearDaysRemaining,
+                    'currentMonthNumber' => strval($monthNumber),
+                    'currentWeekdayNumber' => strval($weekdayNumber),
+                    'currentDayNumber' => strval($dayNumber),
+                    'currentHour' => strval($currentHour),
+                    'timeOfDayDescription' => $timeOfDayDesc,
+                    'timeZone' => 'America/Phoenix',
+                    'UTCOffset' => $utcOffset,
+                    'daylightStartEndArray' => array(
+                        'daylightStart' => isset($weatherData['sunrise']) ? $weatherData['sunrise'] : DEFAULT_SUNRISE,
+                        'daylightEnd'   => isset($weatherData['sunset'])  ? $weatherData['sunset']  : DEFAULT_SUNSET
+                    ),
+                    'defaultLatitudeLongitudeArray' => array(
+                        'defaultLatitude' => LATITUDE,
+                        'defaultLongitude'=> LONGITUDE,
+                        'solarZenithAngle'=> 90.83,
+                        'defaultUTCOffset'=> $utcOffset
+                    ),
+                    'currentDayBeginningEndingUnixTimeArray' => array(
+                        'currentDayStartUnixTime' => $currentDayStartUnix,
+                        'currentDayEndUnixTime'   => $currentDayEndUnix
+                    )
+                ); break;
+
+                case 'intervalsArray':     $response[$member] = array(
+                    'currentDaySecondsRemaining' => $secondsRemaining,
+                    'intervalLabel' => $intervalLabel,
+                    'dayType' => $dayType,
+                    'workdayIntervals' => array(
+                        'start' => WORKDAY_START,
+                        'end'   => WORKDAY_END
+                    )
+                ); break;
+
+                case 'recordCounts':       $response[$member] = $recordCounts; break;
+                case 'weatherData':        $response[$member] = $weatherData;  break;
+                case 'kpiData':            $response[$member] = array('contacts'=>36,'orders'=>22,'approvals'=>3); break;
+                case 'uiHints':            $response[$member] = array('tips'=>array(
+                                                'Measure twice, cut once.',
+                                                'Stay positive, work hard, make it happen.',
+                                                'Quality is never an accident.',
+                                                'Efficiency is doing better what is already being done.',
+                                                'Every day is a fresh start.'
+                                            )); break;
+                case 'announcements':      $response[$member] = $announcements; break;
+                case 'uiEvent':            $response[$member] = $uiEvent; break;
+                case 'siteMeta':           $response[$member] = $siteMeta; break;
+                case 'deploymentCheck':    $response[$member] = '✅ Deployed successfully from Git at ' . date('Y-m-d H:i:s'); break;
+                case 'codex':              $response[$member] = $codex; break;
+
+                default:
+                    // Unknown member → mark as drift for audit
+                    $response[$member] = array('note'=>"Unhandled member '$member' per Codex.");
+                    error_log("⚠️ Policy drift: unhandled member '$member' in tier '$tierName'");
+            }
+        }
+    }
+
+} else {
+
+    // 🕹️ 2️⃣  Fallback: legacy static response (Codex missing or invalid)
+    $response = array(
+        'skyesoftHolidays' => $federalHolidays,
+        'timeDateArray' => array(
+            'currentUnixTime' => $currentUnixTime,
+            'currentLocalTime' => $currentTime,
+            'currentDate' => $currentDate
         ),
-        'defaultLatitudeLongitudeArray' => array(
-            'defaultLatitude' => LATITUDE,
-            'defaultLongitude' => LONGITUDE,
-            'solarZenithAngle' => 90.83,
-            'defaultUTCOffset' => $utcOffset
-        ),
-        'currentDayBeginningEndingUnixTimeArray' => array(
-            'currentDayStartUnixTime' => $currentDayStartUnix,
-            'currentDayEndUnixTime' => $currentDayEndUnix
-        )
-    ),
-    'intervalsArray' => array(
-        'currentDaySecondsRemaining' => $secondsRemaining,
-        'intervalLabel' => $intervalLabel,
-        'dayType' => $dayType,
-        'workdayIntervals' => array(
-            'start' => WORKDAY_START,
-            'end' => WORKDAY_END
-        )
-    ),
-    'recordCounts' => $recordCounts,
-    'weatherData' => $weatherData,
-    'kpiData' => array(
-        'contacts' => 36,
-        'orders' => 22,
-        'approvals' => 3
-    ),
-    'uiHints' => array(
-        'tips' => array(
-            'Measure twice, cut once.',
-            'Stay positive, work hard, make it happen.',
-            'Quality is never an accident.',
-            'Efficiency is doing better what is already being done.',
-            'Every day is a fresh start.'
-        )
-    ),
-    'announcements' => $announcements,
-    'uiEvent' => $uiEvent,
-    'siteMeta' => $siteMeta,
-    'deploymentCheck' => '✅ Deployed successfully from Git at ' . date('Y-m-d H:i:s'),
-    'codex' => $codex
-);
+        'recordCounts' => $recordCounts,
+        'weatherData' => $weatherData,
+        'kpiData' => array('contacts'=>36,'orders'=>22,'approvals'=>3),
+        'siteMeta' => $siteMeta
+    );
+}
+
+// 🧾 3️⃣  Append global meta info
+$response['codexVersion'] = $codexVersion;
+$response['timestamp'] = date('Y-m-d H:i:s');
+
 #endregion
 
 #region 🟢 Output
