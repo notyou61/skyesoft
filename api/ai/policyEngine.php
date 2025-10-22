@@ -1,9 +1,9 @@
 <?php
 // 📘 File: api/PolicyEngine.php
 
-require_once 'SemanticRouter.php';
-require_once 'CodexConsult.php';
-require_once 'SSEProxy.php';
+require_once 'semanticRouter.php';
+require_once 'codexConsult.php';
+require_once 'sSEProxy.php';
 
 function runPolicyEngine($userInput) {
     // 1️⃣ Identify domain
