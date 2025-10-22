@@ -520,11 +520,20 @@ if (!empty($codexTiers) && is_array($codexTiers)) {
     // 🕹️ 2️⃣  Fallback: legacy static response (Codex missing or invalid)
     $response = array(
         'skyesoftHolidays' => $federalHolidays,
-        'timeDateArray' => array(
-            'currentUnixTime' => $currentUnixTime,
-            'currentLocalTime' => $currentTime,
-            'currentDate' => $currentDate
-        ),
+            'timeDateArray' => array(
+                'currentUnixTime'   => $currentUnixTime,
+                'currentLocalTime'  => $currentTime,
+                'currentDate'       => $currentDate,
+                'intervalsArray'    => array(
+                    'currentDaySecondsRemaining' => $secondsRemaining,
+                    'intervalLabel'              => $intervalLabel,
+                    'dayType'                    => $dayType,
+                    'workdayIntervals'           => array(
+                        'start' => WORKDAY_START,
+                        'end'   => WORKDAY_END
+                    )
+                )
+            ),
         'recordCounts' => $recordCounts,
         'weatherData' => $weatherData,
         'kpiData' => array('contacts'=>36,'orders'=>22,'approvals'=>3),
