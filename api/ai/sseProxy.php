@@ -10,7 +10,7 @@ function fetchSSESnapshot() {
     $data = array();
     $pathUsed = '';
 
-    // Try primary cache first
+    // Try primary cache first !
     if (file_exists($cachePath)) {
         $raw = @file_get_contents($cachePath);
         $data = json_decode($raw, true);
