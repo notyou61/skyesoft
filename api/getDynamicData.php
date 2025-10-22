@@ -430,6 +430,38 @@ if ($dirty && is_writable(DATA_PATH)) {
 }
 #endregion
 
+#region 🧭 Codex Context Merge (Phase 3)
+
+// ======================================================
+// Extract Codex governance, tier mapping, and summaries
+// to unify policy and telemetry within SSE heartbeat.
+// ======================================================
+$codexContext = array(
+    'version' => $codex['codexMeta']['version'] ?? 'unknown',
+    'tierMap' => array(
+        'live-feed' => array('timeDateArray','recordCounts','kpiData'),
+        'context-stream' => array('weatherData','siteMeta'),
+        'system-pulse' => array('codexContext')
+    ),
+    'governance' => array(
+        'policyPriority' => array('legal','temporal','operational','inference'),
+        'activeModules' => array_keys($codex ?? array())
+    ),
+    'summaries' => array(
+        'timeIntervalStandards' => $codex['timeIntervalStandards']['purpose']['text'] ?? '',
+        'sseStream'             => $codex['sseStream']['purpose']['text'] ?? '',
+        'aiIntegration'         => $codex['aiIntegration']['purpose']['text'] ?? ''
+    )
+);
+
+// (Optional) light caching to reduce file reads
+$cachePath = sys_get_temp_dir() . '/codex_cache.json';
+if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
+    @file_put_contents($cachePath, json_encode($codexContext, JSON_PRETTY_PRINT));
+}
+
+#endregion
+
 #region 📤 Response Assembly (Codex-Aware Dynamic Builder)
 // ============================================================================
 // Skyesoft Codex-Driven Response Assembly
