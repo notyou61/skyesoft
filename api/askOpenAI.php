@@ -4,7 +4,6 @@
 // =======================================================
 
 #region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
-
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -17,6 +16,19 @@ $logFile = $logDir . '/skyebot_debug.log';
 ini_set('error_log', $logFile);
 
 error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
+#endregion
+
+#region 🧠 SKYEBOT POLICY ENGINE INITIALIZATION (Codex-Aware Governance)
+$aiPath = __DIR__ . '/ai/policyEngine.php';
+if (file_exists($aiPath)) {
+    require_once($aiPath);
+    error_log("⚙️ PolicyEngine loaded successfully from $aiPath");
+} else {
+    error_log("❌ PolicyEngine not found at $aiPath");
+}
+
+// Prepare for governed prompt routing
+$governedPrompt = null;
 #endregion
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
@@ -71,6 +83,27 @@ $conversation = (isset($inputData['conversation']) && is_array($inputData['conve
 
 // 7️⃣ Prepare lowercase version for NLP keyword matching
 $lowerPrompt = strtolower($prompt);
+#endregion
+
+#region 🧩 SKYEBOT GOVERNED PROMPT ROUTING (Codex-Aware Policy Pass)
+// ---------------------------------------------------------------
+// Replaces direct prompt usage with a PolicyEngine-governed variant.
+// Ensures Codex, SSE context, and policy hierarchy are applied.
+// ---------------------------------------------------------------
+
+$governedPrompt = $prompt; // default fallback
+if (function_exists('runPolicyEngine')) {
+    $governedPrompt = runPolicyEngine($prompt);
+    error_log("🧩 Governed prompt constructed successfully via PolicyEngine.");
+} else {
+    error_log("⚠️ PolicyEngine unavailable — using raw prompt.");
+}
+
+// Replace main prompt for downstream logic
+$prompt = $governedPrompt;
+
+// 🔍 Debug: preview governed prompt output
+error_log("🧠 Governed prompt preview: " . substr(json_encode($prompt), 0, 250));
 
 #endregion
 
