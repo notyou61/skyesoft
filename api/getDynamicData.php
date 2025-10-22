@@ -436,29 +436,35 @@ if ($dirty && is_writable(DATA_PATH)) {
 // Extract Codex governance, tier mapping, and summaries
 // to unify policy and telemetry within SSE heartbeat.
 // ======================================================
+#region 🧭 Codex Context Merge (Phase 3)
+
+// Merge Codex governance + tier mapping into SSE heartbeat
 $codexContext = array(
-    'version' => $codex['codexMeta']['version'] ?? 'unknown',
+    'version' => (isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown'),
     'tierMap' => array(
-        'live-feed' => array('timeDateArray','recordCounts','kpiData'),
+        'live-feed'      => array('timeDateArray','recordCounts','kpiData'),
         'context-stream' => array('weatherData','siteMeta'),
-        'system-pulse' => array('codexContext')
+        'system-pulse'   => array('codexContext')
     ),
     'governance' => array(
         'policyPriority' => array('legal','temporal','operational','inference'),
-        'activeModules' => array_keys($codex ?? array())
+        'activeModules'  => (is_array($codex) ? array_keys($codex) : array())
     ),
     'summaries' => array(
-        'timeIntervalStandards' => $codex['timeIntervalStandards']['purpose']['text'] ?? '',
-        'sseStream'             => $codex['sseStream']['purpose']['text'] ?? '',
-        'aiIntegration'         => $codex['aiIntegration']['purpose']['text'] ?? ''
+        'timeIntervalStandards' => (isset($codex['timeIntervalStandards']['purpose']['text']) ? $codex['timeIntervalStandards']['purpose']['text'] : ''),
+        'sseStream'             => (isset($codex['sseStream']['purpose']['text']) ? $codex['sseStream']['purpose']['text'] : ''),
+        'aiIntegration'         => (isset($codex['aiIntegration']['purpose']['text']) ? $codex['aiIntegration']['purpose']['text'] : '')
     )
 );
 
-// (Optional) light caching to reduce file reads
+// Optional short-term cache to minimize disk reads
 $cachePath = sys_get_temp_dir() . '/codex_cache.json';
 if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
     @file_put_contents($cachePath, json_encode($codexContext, JSON_PRETTY_PRINT));
 }
+
+// Attach to outgoing SSE response
+$response['codexContext'] = $codexContext;
 
 #endregion
 
@@ -576,6 +582,38 @@ if (!empty($codexTiers) && is_array($codexTiers)) {
 // 🧾 3️⃣  Append global meta info
 $response['codexVersion'] = $codexVersion;
 $response['timestamp'] = date('Y-m-d H:i:s');
+
+#endregion
+
+#region 🧭 Codex Context Merge (Phase 3)
+
+// Merge Codex governance + tier mapping into SSE heartbeat
+$codexContext = array(
+    'version' => (isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown'),
+    'tierMap' => array(
+        'live-feed'      => array('timeDateArray','recordCounts','kpiData'),
+        'context-stream' => array('weatherData','siteMeta'),
+        'system-pulse'   => array('codexContext')
+    ),
+    'governance' => array(
+        'policyPriority' => array('legal','temporal','operational','inference'),
+        'activeModules'  => (is_array($codex) ? array_keys($codex) : array())
+    ),
+    'summaries' => array(
+        'timeIntervalStandards' => (isset($codex['timeIntervalStandards']['purpose']['text']) ? $codex['timeIntervalStandards']['purpose']['text'] : ''),
+        'sseStream'             => (isset($codex['sseStream']['purpose']['text']) ? $codex['sseStream']['purpose']['text'] : ''),
+        'aiIntegration'         => (isset($codex['aiIntegration']['purpose']['text']) ? $codex['aiIntegration']['purpose']['text'] : '')
+    )
+);
+
+// Optional short-term cache to minimize disk reads
+$cachePath = sys_get_temp_dir() . '/codex_cache.json';
+if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
+    @file_put_contents($cachePath, json_encode($codexContext, JSON_PRETTY_PRINT));
+}
+
+// Attach to outgoing SSE response
+$response['codexContext'] = $codexContext;
 
 #endregion
 
