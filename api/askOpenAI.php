@@ -26,9 +26,74 @@ if (file_exists($aiPath)) {
 } else {
     error_log("❌ PolicyEngine not found at $aiPath");
 }
+#endregion
 
-// Prepare for governed prompt routing
-$governedPrompt = null;
+#region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
+// ================================================================
+$rawInput = @file_get_contents('php://input');
+
+if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
+    global $argv;
+    if (isset($argv[1]) && trim($argv[1]) !== '') {
+        $rawInput = $argv[1];
+    }
+}
+
+$rawInput  = trim($rawInput);
+$inputData = json_decode($rawInput, true);
+if (!is_array($inputData)) {
+    $fixed = trim($rawInput, "\"'");
+    $inputData = json_decode($fixed, true);
+}
+
+if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode(array(
+        'response'  => '❌ Invalid or empty JSON payload.',
+        'action'    => 'none',
+        'sessionId' => uniqid('sess_')
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$prompt = isset($inputData['prompt'])
+    ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
+    : '';
+
+$conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
+    ? $inputData['conversation']
+    : array();
+
+$lowerPrompt = strtolower($prompt);
+#endregion
+
+#region 🧩 SKYEBOT GOVERNED PROMPT ROUTING (Codex-Aware Policy Pass)
+$governedPrompt = $prompt; // default fallback
+if (function_exists('runPolicyEngine')) {
+    $governedPrompt = runPolicyEngine($prompt);
+    error_log("🧩 Governed prompt constructed successfully via PolicyEngine.");
+} else {
+    error_log("⚠️ PolicyEngine unavailable — using raw prompt.");
+}
+
+$prompt = $governedPrompt;
+error_log("🧠 Governed prompt preview: " . substr(json_encode($prompt), 0, 250));
+#endregion
+
+#region 🧭 SEMANTIC INTENT ROUTER (Phase 5)
+$routerPath = __DIR__ . '/ai/semanticRouter.php';
+if (file_exists($routerPath)) {
+    require_once($routerPath);
+
+    $codexPath = __DIR__ . '/../docs/codex/codex.json';
+    $ssePath   = __DIR__ . '/../../assets/data/dynamicDataCache.json';
+
+    $aiReply = routeIntent($prompt, $codexPath, $ssePath);
+
+    echo json_encode(array('response' => $aiReply));
+    exit;
+} else {
+    error_log("❌ SemanticRouter not found at $routerPath");
+}
 #endregion
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
