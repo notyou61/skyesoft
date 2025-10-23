@@ -1045,9 +1045,11 @@ if (is_array($intentData) && isset($intentData['intent'])) {
 //   • Prevents silent script termination or raw echoes
 // ================================================================
 
-// 🧠 Diagnostic: Trace Skyebot policy and prompt context
-error_log("🧭 Skyebot prompt before send: " . substr($prompt, 0, 250));
-error_log("🧩 SystemInstr contains policyEngine? " . (strpos($systemInstr, 'policyEngine.php') !== false ? 'yes' : 'no'));
+// 🧠 Diagnostic: Echo prompt and policy trace inline
+echo "<!--";
+echo "\n🧭 Skyebot prompt before send: " . substr($prompt, 0, 250);
+echo "\n🧩 SystemInstr contains policyEngine? " . (strpos($systemInstr, 'policyEngine.php') !== false ? 'yes' : 'no');
+echo "\n-->";
 
 
 if (!$handled) {
