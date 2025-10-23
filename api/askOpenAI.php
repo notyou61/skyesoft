@@ -58,7 +58,8 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
-// 🧭 Forward user prompt to Policy Engine for contextual grounding
+
+    // 🧭 Forward user prompt to Policy Engine for contextual grounding
 if (!empty($prompt)) {
     $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php";
     $queryData = http_build_query(['q' => $prompt]);
