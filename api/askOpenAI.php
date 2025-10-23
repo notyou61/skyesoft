@@ -887,22 +887,22 @@ $injectBlocks = array(
 // 🧭 Flatten Codex for RAG (add metadata for AI reasoning)
 $codexMeta = array();
 if (!empty($codex)) {
-    // Iterate ALL top-level codex keys (flat modules like 'timeIntervalStandards')
     foreach ($codex as $key => $mod) {
         $codexMeta[$key] = array(
-            'title' => isset($mod['title']) ? $mod['title'] : $key,
-            'description' => isset($mod['description']) ? $mod['description'] : (isset($mod['purpose']['text']) ? $mod['purpose']['text'] : 'No summary available'),
-            'tags' => isset($mod['tags']) ? $mod['tags'] : (isset($mod['aliases']) ? $mod['aliases'] : array())
+            'title'       => isset($mod['title']) ? $mod['title'] : $key,
+            'description' => isset($mod['description']) ? $mod['description']
+                : (isset($mod['purpose']['text']) ? $mod['purpose']['text'] : 'No summary available'),
+            'tags'        => isset($mod['tags']) ? $mod['tags']
+                : (isset($mod['aliases']) ? $mod['aliases'] : array())
         );
     }
-    // Also include nested 'modules' if present (avoid duplicates)
     if (isset($codex['modules']) && is_array($codex['modules'])) {
         foreach ($codex['modules'] as $key => $mod) {
             if (!isset($codexMeta[$key])) {
                 $codexMeta[$key] = array(
-                    'title' => isset($mod['title']) ? $mod['title'] : $key,
+                    'title'       => isset($mod['title']) ? $mod['title'] : $key,
                     'description' => isset($mod['description']) ? $mod['description'] : 'No summary available',
-                    'tags' => isset($mod['tags']) ? $mod['tags'] : array()
+                    'tags'        => isset($mod['tags']) ? $mod['tags'] : array()
                 );
             }
         }
@@ -910,6 +910,12 @@ if (!empty($codex)) {
 }
 $injectBlocks['codexMeta'] = $codexMeta;
 error_log("🧭 codexMeta built: " . count($codexMeta) . " entries [" . implode(', ', array_slice(array_keys($codexMeta), 0, 3)) . "...]");
+
+// 🩹 Safeguard: normalize $prompt before using string functions
+if (is_array($prompt)) {
+    $prompt = isset($prompt['prompt']) ? (string)$prompt['prompt'] : json_encode($prompt);
+}
+$lowerPrompt = strtolower((string)$prompt);
 
 // Selectively expand specific Codex entries if keywords match
 foreach ($codexCategories as $section => $keys) {
@@ -920,6 +926,7 @@ foreach ($codexCategories as $section => $keys) {
     }
 }
 
+// Report types injection (safe for all input types)
 if (stripos($prompt, 'report') !== false) {
     $injectBlocks['reportTypes'] = !empty($codex['modules']['reportGenerationSuite']['reportTypesSpec'])
         ? array_keys($codex['modules']['reportGenerationSuite']['reportTypesSpec'])
