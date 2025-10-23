@@ -1,7 +1,6 @@
 <?php
 // 📘 File: api/ai/policyEngine.php
-// Purpose: Central governance layer for Skyebot™ prompt construction
-// Framework: Phase 5 (SSE-aware, Codex-integrated)
+// Purpose: Central governance layer for Skyebot™ prompt construction (function-based version)
 // Compatible with PHP 5.6 (no null-coalescing operators)
 
 error_reporting(E_ALL);
@@ -9,72 +8,55 @@ ini_set('display_errors', 1);
 
 #region ⚙️ DEPENDENCY LOADING
 $baseDir = dirname(__FILE__);
-$rootDir = dirname(dirname(__DIR__));  // two levels up → /skyesoft
+$rootDir = dirname(dirname(__DIR__)); // PHP 5.6-safe, two levels up
 
-// 🔗 Include helper + logic modules
+// Include helpers first
 require_once($rootDir . '/api/helpers.php');
+
+// Core modules
 require_once($baseDir . '/semanticRouter.php');
 require_once($baseDir . '/sseProxy.php');
 
-// Define Codex path (only persistent data file required)
+// Expected data files
 $codexPath = $rootDir . '/assets/data/codex.json';
+
+// Log missing file (non-fatal)
 if (!file_exists($codexPath)) {
     error_log("⚠️ codex.json missing at $codexPath");
 }
 #endregion
 
-
-#region 🧠 SEMANTIC ROUTER (fallback)
+#region 🧠 SEMANTIC ROUTER FALLBACK
 if (!function_exists('semanticRoute')) {
-    function semanticRoute($input)
-    {
-        $input = strtolower(trim($input));
-
-        if (strpos($input, 'workday') !== false || strpos($input, 'time') !== false) {
+    function semanticRoute($input) {
+        if (stripos($input, 'workday') !== false) {
             return array('domain' => 'temporal', 'target' => 'timeIntervalStandards', 'confidence' => 0.9);
-        }
-        if (strpos($input, 'weather') !== false) {
+        } elseif (stripos($input, 'weather') !== false) {
             return array('domain' => 'contextual', 'target' => 'weatherData', 'confidence' => 0.9);
+        } else {
+            return array('domain' => 'general', 'target' => 'skyesoftConstitution', 'confidence' => 0.5);
         }
-        if (strpos($input, 'policy') !== false || strpos($input, 'constitution') !== false) {
-            return array('domain' => 'governance', 'target' => 'skyesoftConstitution', 'confidence' => 0.8);
-        }
-
-        // Default fallback
-        return array('domain' => 'general', 'target' => 'codexOverview', 'confidence' => 0.5);
     }
 }
 #endregion
 
-
-#region 📘 CODEX CONSULT
+#region 🧩 CODEX CONSULT FALLBACK
 if (!function_exists('codexConsult')) {
-    function codexConsult($target)
-    {
+    function codexConsult($target) {
         $codexPath = dirname(dirname(__DIR__)) . '/assets/data/codex.json';
         if (!file_exists($codexPath)) {
             error_log("⚠️ codex.json missing at $codexPath");
             return array();
         }
-
         $codex = json_decode(file_get_contents($codexPath), true);
-        if (!is_array($codex)) {
-            error_log("⚠️ Invalid codex.json format.");
-            return array();
-        }
-
-        // Direct lookup
         if (isset($codex[$target])) {
             return $codex[$target];
         }
-
         // Deep lookup
         foreach ($codex as $sectionName => $sectionData) {
-            if (is_array($sectionData)) {
-                if ((isset($sectionData['title']) && stripos($sectionData['title'], $target) !== false)
-                    || (isset($sectionData['id']) && stripos($sectionData['id'], $target) !== false)) {
-                    return $sectionData;
-                }
+            if (is_array($sectionData) && isset($sectionData['title']) &&
+                stripos($sectionData['title'], $target) !== false) {
+                return $sectionData;
             }
         }
         return array();
@@ -82,51 +64,43 @@ if (!function_exists('codexConsult')) {
 }
 #endregion
 
+#region 🧩 POLICY ENGINE FUNCTION
+if (!function_exists('runPolicyEngine')) {
+    function runPolicyEngine($userInput) {
+        if (trim($userInput) === '') {
+            return array(
+                'success'  => false,
+                'message'  => '❌ Empty or invalid query received.',
+                'timestamp'=> date('c')
+            );
+        }
 
-#region 🧩 POLICY RESOLUTION
+        $semantic = semanticRoute($userInput);
+        $domain   = $semantic['domain'];
+        $target   = $semantic['target'];
+        $policy   = codexConsult($target);
+        $policyLoaded = !empty($policy);
 
-// ✅ Accept input from ?q= or from global inline bridge
-$userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
-
-if ($userInput === '' && isset($GLOBALS['policyQuery'])) {
-    error_log("🧩 policyEngine: using GLOBAL policyQuery='{$GLOBALS['policyQuery']}'");
-    $userInput = trim($GLOBALS['policyQuery']);
+        return array(
+            'success'     => true,
+            'input'       => $userInput,
+            'domain'      => $domain,
+            'target'      => $target,
+            'confidence'  => $semantic['confidence'],
+            'codexFound'  => $policyLoaded,
+            'policy'      => $policyLoaded ? $policy : null,
+            'timestamp'   => date('c')
+        );
+    }
 }
+#endregion
 
-// 🚨 Handle empty input after both checks
-if ($userInput === '') {
+#region 🌐 OPTIONAL DIRECT EXECUTION (for browser/GET mode)
+if (php_sapi_name() !== 'cli' && basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)) {
     header('Content-Type: application/json');
-    echo json_encode(array(
-        'success' => false,
-        'message' => '❌ No query received.',
-        '_get'     => $_GET,
-        'globals'  => array_keys($GLOBALS), // optional diagnostic
-        'uri'      => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '',
-        'referrer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'none'
-    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
+    $result = runPolicyEngine($userInput);
+    echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
-
-// 🔍 Semantic routing
-$semantic = semanticRoute($userInput);
-$domain   = $semantic['domain'];
-$target   = $semantic['target'];
-
-// 🔎 Codex consultation
-$policy = codexConsult($target);
-$policyLoaded = !empty($policy);
-
-// 📡 Compose structured reply (for askOpenAI.php)
-header('Content-Type: application/json');
-echo json_encode(array(
-    'success'     => true,
-    'input'       => $userInput,
-    'domain'      => $domain,
-    'target'      => $target,
-    'confidence'  => $semantic['confidence'],
-    'codexFound'  => $policyLoaded,
-    'policy'      => $policyLoaded ? $policy : null,
-    'timestamp'   => date('c')
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
 #endregion
