@@ -1138,14 +1138,19 @@ if (is_array($intentData) && isset($intentData['intent'])) {
 // Purpose:
 //   • Converts structured semantic or Codex-based data into natural text
 //   • Bridges structured JSON (e.g., temporal, contextual) to human reply
+//   • Ensures clean single-response output (no early exits)
 //   • Fully PHP 5.6 compatible
 // ======================================================================
 
 // 🧩 Safety: ensure variable exists before processing
 $aiReply = isset($aiReply) ? $aiReply : '';
 
+// 🧩 Guard: prevent premature echoes from upstream router blocks
+// (The Semantic Intent Router should assign $aiReply, not echo/exit)
+ob_end_clean(); // Clear any buffered output before composing
+
 // Detect if router or intent produced structured JSON
-if (isset($aiReply) && is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
+if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
     $decoded = json_decode($aiReply, true);
 
     if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
@@ -1154,13 +1159,13 @@ if (isset($aiReply) && is_string($aiReply) && substr(trim($aiReply), 0, 1) === '
 
         // ⏱️ Temporal domain → convert to conversational message
         if ($domain === 'temporal' && isset($decoded['data']['runtime'])) {
-            $rt = $decoded['data']['runtime'];
-            $now = isset($rt['now']) ? $rt['now'] : 'unknown';
+            $rt     = $decoded['data']['runtime'];
+            $now    = isset($rt['now']) ? $rt['now'] : 'unknown';
             $sunset = isset($rt['sunset']) ? $rt['sunset'] : null;
 
             if ($sunset) {
                 // Parse both times as timestamps (24-hour fallback)
-                $nowTime = strtotime($now);
+                $nowTime    = strtotime($now);
                 $sunsetTime = strtotime($sunset);
 
                 if ($nowTime !== false && $sunsetTime !== false) {
@@ -1181,7 +1186,7 @@ if (isset($aiReply) && is_string($aiReply) && substr(trim($aiReply), 0, 1) === '
                 $msg = "🕒 It’s currently {$now} in Phoenix.";
             }
 
-            // Output single clean JSON
+            // ✅ Output single clean JSON response
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array('response' => $msg), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             exit;
@@ -1197,6 +1202,8 @@ if (isset($aiReply) && is_string($aiReply) && substr(trim($aiReply), 0, 1) === '
         }
     }
 }
+
+// 🧩 Fallback: If structured JSON not detected, continue normal output flow
 #endregion
 
 #region 🧩 FINAL RESPONSE SAFEGUARD
