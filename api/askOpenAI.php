@@ -149,6 +149,8 @@ $prompt = $governedPrompt;
 error_log("🧠 Governed prompt preview: " . substr(json_encode($prompt), 0, 250));
 #endregion
 
+//
+if(1 ==2) {
 #region 🧭 SEMANTIC INTENT ROUTER (Phase 5)
 $routerPath = __DIR__ . '/ai/semanticRouter.php';
 if (file_exists($routerPath)) {
@@ -190,6 +192,7 @@ if (file_exists($routerPath)) {
     error_log("❌ SemanticRouter not found at $routerPath");
 }
 #endregion
+}
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
 // ================================================================
