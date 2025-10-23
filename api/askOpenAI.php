@@ -157,7 +157,6 @@ if (file_exists($routerPath)) {
     // ✅ Stub routeIntent() if not implemented yet
     if (!function_exists('routeIntent')) {
         function routeIntent($prompt, $codexPath = '', $ssePath = '') {
-            // placeholder logic until semantic intent routing is active
             return "🧩 SemanticRouter stub active – prompt routed to PolicyEngine only.";
         }
     }
@@ -165,24 +164,28 @@ if (file_exists($routerPath)) {
     $codexPath = __DIR__ . '/../docs/codex/codex.json';
     $ssePath   = __DIR__ . '/../../assets/data/dynamicDataCache.json';
 
+    // 🧠 Run router
     $aiReply = routeIntent($prompt, $codexPath, $ssePath);
 
     // ================================================================
-    // 🧩 OUTPUT NORMALIZATION
-    // Prevent double JSON responses (client-side “network error” fix)
+    // 🧩 OUTPUT NORMALIZATION (Single JSON response enforcement)
+    // Prevents double JSON and resolves client-side “network error”
     // ================================================================
-    if (isset($aiReply) && is_string($aiReply)) {
-        if (strpos($aiReply, '⏳') !== false ||
-            strpos($aiReply, '⚠️') !== false ||
-            strpos($aiReply, '🌦') !== false) {
-            echo json_encode(array('response' => $aiReply));
-            exit; // ✅ stop before generic OpenAI fallback output
-        }
+    header('Content-Type: application/json; charset=utf-8');
+
+    // Clear any previous buffered output (from PolicyEngine/OpenAI)
+    if (ob_get_length()) {
+        ob_clean();
     }
 
-    // Fallback: if not handled above, send normal JSON response
-    echo json_encode(array('response' => $aiReply));
-    exit;
+    // Ensure consistent single JSON return
+    if (is_array($aiReply)) {
+        echo json_encode($aiReply, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } else {
+        echo json_encode(array('response' => (string)$aiReply), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    exit; // 🧱 Stop here to avoid secondary fallback output
 } else {
     error_log("❌ SemanticRouter not found at $routerPath");
 }
