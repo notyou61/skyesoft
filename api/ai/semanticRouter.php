@@ -1,12 +1,7 @@
 <?php
 // 📘 File: api/ai/semanticRouter.php
-// Purpose: Directs user input to appropriate Codex domains and targets
-// Version: v2.3 (Array-safe normalization, 2025-10-23)
-// ================================================================
-// 🌐 SKYEBOT SEMANTIC ROUTER (v2.6 Unified)
-// Integrates safety normalization, semantic domain detection,
-// and dynamic intent routing to AI intent handlers.
-// ================================================================
+// Purpose: Directs user input to appropriate Codex domains and intent handlers
+// Version: v2.7 – Restored routeIntent() for live dispatch (2025-10-23)
 
 // ================================================================
 // 🔹 SAFETY NORMALIZATION LAYER
@@ -14,30 +9,24 @@
 // ================================================================
 function semanticRoute($input)
 {
-    // 🩹 Normalize input to string
     if (is_array($input)) {
         $input = implode(' ', $input);
     }
     $input = trim((string)$input);
 
-    // 🧠 Default response (fallback domain)
     $default = array(
         'domain'     => 'general',
         'target'     => 'skyesoftConstitution',
         'confidence' => 0.5
     );
 
-    // 🧩 Guard against empty input
     if ($input === '') {
         return $default;
     }
 
-    // ================================================================
-    // 🧭 SEMANTIC ROUTING RULES
-    // ================================================================
     $inputLower = strtolower($input);
 
-    // Temporal domain – time, workday, hours
+    // Temporal domain
     if (strpos($inputLower, 'workday') !== false ||
         strpos($inputLower, 'time') !== false ||
         strpos($inputLower, 'hour') !== false ||
@@ -49,7 +38,7 @@ function semanticRoute($input)
         );
     }
 
-    // Contextual domain – weather, environment, atmosphere
+    // Contextual domain
     if (strpos($inputLower, 'weather') !== false ||
         strpos($inputLower, 'temperature') !== false ||
         strpos($inputLower, 'forecast') !== false) {
@@ -60,7 +49,7 @@ function semanticRoute($input)
         );
     }
 
-    // Organizational domain – constitution, codex, governance
+    // Governance domain
     if (strpos($inputLower, 'constitution') !== false ||
         strpos($inputLower, 'codex') !== false ||
         strpos($inputLower, 'policy') !== false) {
@@ -71,7 +60,7 @@ function semanticRoute($input)
         );
     }
 
-    // Mission / MTCO references
+    // Frameworks
     if (strpos($inputLower, 'mtco') !== false ||
         strpos($inputLower, 'measure twice') !== false) {
         return array(
@@ -81,7 +70,6 @@ function semanticRoute($input)
         );
     }
 
-    // LGBAS references
     if (strpos($inputLower, 'lgbas') !== false ||
         strpos($inputLower, 'go back a step') !== false) {
         return array(
@@ -91,7 +79,6 @@ function semanticRoute($input)
         );
     }
 
-    // Default fallback
     return $default;
 }
 
@@ -99,14 +86,15 @@ function semanticRoute($input)
 // 🧭 ROUTE INTENT WRAPPER
 // Dispatches prompt to correct intent file based on semantic domain
 // ================================================================
-function handleIntent($prompt, $codexPath, $ssePath, $semantic = array())
+function routeIntent($prompt, $codexPath, $ssePath)
 {
     $semantic = semanticRoute($prompt);
     $domain   = isset($semantic['domain']) ? $semantic['domain'] : 'general';
     $target   = isset($semantic['target']) ? $semantic['target'] : 'skyesoftConstitution';
 
-    // Map domain → intent filename
+    // ✅ Ensure proper absolute intent file path
     $intentFile = __DIR__ . '/intents/' . $domain . '.php';
+
     if (!file_exists($intentFile)) {
         return "⚠️ No intent file found for domain '{$domain}' (target: {$target}).";
     }
@@ -114,7 +102,7 @@ function handleIntent($prompt, $codexPath, $ssePath, $semantic = array())
     require_once($intentFile);
 
     if (function_exists('handleIntent')) {
-        return handleIntent($prompt, $codexPath, $ssePath, $semantic);
+        return handleIntent($prompt, $codexPath, $ssePath);
     }
 
     return "⚠️ Intent file '{$domain}.php' found, but no handleIntent() defined.";
