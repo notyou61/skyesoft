@@ -62,7 +62,17 @@ $prompt = isset($inputData['prompt'])
 if (!empty($prompt)) {
     $encodedPrompt = urlencode($prompt);
     $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php?q=" . $encodedPrompt;
-    $policyResponse = @file_get_contents($policyUrl);
+    $context = stream_context_create(array(
+        'http' => array(
+            'method'  => 'GET',
+            'header'  => "User-Agent: SkyebotPolicyFetcher/1.0\r\n",
+            'timeout' => 4
+        )
+    ));
+
+    $policyResponse = @file_get_contents($policyUrl, false, $context);
+    error_log("📤 Sent prompt to PolicyEngine: " . urldecode($encodedPrompt));
+    error_log("📥 PolicyEngine replied: " . substr($policyResponse, 0, 100));
 
     // Append policy response to system instructions for AI context
     if ($policyResponse !== false && strlen($policyResponse) > 0) {
