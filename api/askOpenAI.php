@@ -60,32 +60,33 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine for contextual grounding
 if (!empty($prompt)) {
-    $encodedPrompt = rawurlencode($prompt); // safer for spaces and punctuation
-    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php?q={$encodedPrompt}";
+    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php";
+    $queryData = http_build_query(['q' => $prompt]);
 
-    $opts = array(
-        'http' => array(
-            'method' => 'GET',
-            'header' => "User-Agent: SkyebotPolicyFetcher/1.0\r\n" .
-                        "Accept: application/json,text/plain\r\n",
-            'timeout' => 5
-        )
-    );
+    // Use cURL for reliable query passing (GoDaddy-safe)
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $policyUrl . '?' . $queryData,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5,
+        CURLOPT_USERAGENT => 'SkyebotPolicyFetcher/1.0',
+    ]);
+    $policyResponse = curl_exec($ch);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
 
-    $context = stream_context_create($opts);
-
-    $policyResponse = @file_get_contents($policyUrl, false, $context);
-
-    error_log("📤 Sent prompt to PolicyEngine: " . urldecode($encodedPrompt));
-    error_log("📥 PolicyEngine replied: " . substr($policyResponse ?: '[no response]', 0, 120));
+    if ($curlErr) {
+        error_log("⚠️ PolicyEngine request error: $curlErr");
+    } else {
+        error_log("📤 Sent prompt to PolicyEngine: " . urldecode($prompt));
+        error_log("📥 PolicyEngine replied: " . substr($policyResponse ?: '[no response]', 0, 120));
+    }
 
     if ($policyResponse !== false && strlen($policyResponse) > 0) {
         $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
     } else {
-        error_log("⚠️ No response from PolicyEngine or failed request.");
+        error_log("⚠️ No response from PolicyEngine or empty reply.");
     }
-} else {
-    error_log("⚠️ Empty prompt; skipping PolicyEngine forwarding.");
 }
 
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
