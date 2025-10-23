@@ -60,6 +60,7 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine (inline JSON mode)
 if (!empty($prompt)) {
+    $_GET['q'] = $prompt; // ✅ inject query for inline PolicyEngine
     ob_start();
     include __DIR__ . '/ai/policyEngine.php';
     $policyRaw = ob_get_clean();
@@ -71,7 +72,6 @@ if (!empty($prompt)) {
             : '[Policy data available but no summary text]';
 
         $systemInstr .= "\n\n📜 PolicyEngine Context:\n" . $summary;
-
         error_log("📥 PolicyEngine JSON processed: domain={$policyData['domain']} target={$policyData['target']}");
     } else {
         error_log("⚠️ PolicyEngine returned non-JSON or empty data.");
