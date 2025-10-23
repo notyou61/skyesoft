@@ -847,6 +847,7 @@ if (!$apiKey) {
 
 $handled = false;
 $responsePayload = null;
+#endregion
 
 #region 🧩 Build Router Prompt
 $routerPrompt = <<<PROMPT
@@ -1043,6 +1044,11 @@ if (is_array($intentData) && isset($intentData['intent'])) {
 //   • Ensures consistent JSON response even if a branch misses output
 //   • Prevents silent script termination or raw echoes
 // ================================================================
+
+// 🧠 Diagnostic: Trace Skyebot policy and prompt context
+error_log("🧭 Skyebot prompt before send: " . substr($prompt, 0, 250));
+error_log("🧩 SystemInstr contains policyEngine? " . (strpos($systemInstr, 'policyEngine.php') !== false ? 'yes' : 'no'));
+
 
 if (!$handled) {
     error_log("⚠️ Unhandled prompt path — returning generic AI response.");
