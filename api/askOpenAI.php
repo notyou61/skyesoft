@@ -60,7 +60,7 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine (inline JSON mode)
 if (!empty($prompt)) {
-    $_GET['q'] = $prompt; // ✅ inject query for inline PolicyEngine
+    $GLOBALS['policyQuery'] = $prompt; // ✅ pass prompt globally
     ob_start();
     include __DIR__ . '/ai/policyEngine.php';
     $policyRaw = ob_get_clean();
