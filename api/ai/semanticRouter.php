@@ -1,39 +1,91 @@
 <?php
-// 📄 File: api/ai/semanticRouter.php
-// Version: v1.0 (PHP 5.6 compatible)
-// Purpose: Route Skyebot prompts to correct intent handler using Codex & SSE context
+// 📘 File: api/ai/semanticRouter.php
+// Purpose: Directs user input to appropriate Codex domains and targets
+// Version: v2.3 (Array-safe normalization, 2025-10-23)
 
-#region 🔧 Basic Setup
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// ================================================================
+// 🔹 SAFETY NORMALIZATION LAYER
+// Ensures that the router never fails when receiving non-string input
+// ================================================================
+function semanticRoute($input)
+{
+    // 🩹 Normalize input to string
+    if (is_array($input)) {
+        $input = implode(' ', $input);
+    }
+    $input = trim((string)$input);
 
-function routeIntent($prompt, $codexPath, $ssePath) {
+    // 🧠 Default response (fallback domain)
+    $default = array(
+        'domain'     => 'general',
+        'target'     => 'skyesoftConstitution',
+        'confidence' => 0.5
+    );
 
-    // Load Codex & SSE snapshots
-    $codex = (is_readable($codexPath)) ? json_decode(file_get_contents($codexPath), true) : array();
-    $sse   = (is_readable($ssePath))   ? json_decode(file_get_contents($ssePath), true)   : array();
-
-    $lower = strtolower(trim($prompt));
-    $intent = "conversation"; // default intent
-
-    // --- Simple semantic detection ---
-    if (strpos($lower, "time") !== false || strpos($lower, "workday") !== false) {
-        $intent = "temporal";
-    } elseif (strpos($lower, "permit") !== false || strpos($lower, "report") !== false) {
-        $intent = "dataRequest";
+    // 🧩 Guard against empty input
+    if ($input === '') {
+        return $default;
     }
 
-    // --- Route to intent module ---
-    $intentFile = __DIR__ . "/intents/{$intent}.php";
-    if (file_exists($intentFile)) {
-        require_once($intentFile);
-        $handler = "handle_" . $intent;
-        if (function_exists($handler)) {
-            return $handler($prompt, $codex, $sse);
-        }
+    // ================================================================
+    // 🧭 SEMANTIC ROUTING RULES
+    // ================================================================
+    $inputLower = strtolower($input);
+
+    // Temporal domain – time, workday, hours
+    if (strpos($inputLower, 'workday') !== false ||
+        strpos($inputLower, 'time') !== false ||
+        strpos($inputLower, 'hour') !== false ||
+        strpos($inputLower, 'schedule') !== false) {
+        return array(
+            'domain'     => 'temporal',
+            'target'     => 'timeIntervalStandards',
+            'confidence' => 0.9
+        );
     }
 
-    // --- Default fallback ---
-    return "I'm here and listening — tell me more about what you need.";
+    // Contextual domain – weather, environment, atmosphere
+    if (strpos($inputLower, 'weather') !== false ||
+        strpos($inputLower, 'temperature') !== false ||
+        strpos($inputLower, 'forecast') !== false) {
+        return array(
+            'domain'     => 'contextual',
+            'target'     => 'weatherData',
+            'confidence' => 0.9
+        );
+    }
+
+    // Organizational domain – constitution, codex, governance
+    if (strpos($inputLower, 'constitution') !== false ||
+        strpos($inputLower, 'codex') !== false ||
+        strpos($inputLower, 'policy') !== false) {
+        return array(
+            'domain'     => 'governance',
+            'target'     => 'skyesoftConstitution',
+            'confidence' => 0.8
+        );
+    }
+
+    // Mission / MTCO references
+    if (strpos($inputLower, 'mtco') !== false ||
+        strpos($inputLower, 'measure twice') !== false) {
+        return array(
+            'domain'     => 'framework',
+            'target'     => 'mtcoFramework',
+            'confidence' => 0.85
+        );
+    }
+
+    // LGBAS references
+    if (strpos($inputLower, 'lgbas') !== false ||
+        strpos($inputLower, 'go back a step') !== false) {
+        return array(
+            'domain'     => 'framework',
+            'target'     => 'lgbasProtocol',
+            'confidence' => 0.85
+        );
+    }
+
+    // Default fallback
+    return $default;
 }
-#endregion
