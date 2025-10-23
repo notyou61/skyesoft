@@ -24,6 +24,8 @@ if (!isset($codex['sseStream'])) {
 
 echo "🌐 SSE Stream found.\n";
 
+echo "📘 Codex Version: " . $codex['codexMeta']['version'] . "\n";
+
 print_r($codex['sseStream']);
 
 $tiers = isset($codex['sseStream']['tiers']) ? $codex['sseStream']['tiers'] : null;
