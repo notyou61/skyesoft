@@ -1,31 +1,83 @@
 <?php
-// 📄 File: api/askOpenAI_next.php
+// 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.3 - Codex Extracted)
 // =======================================================
 
-#region 🧾 SKYEBOT LOCAL LOGGING SETUP (FOR GODADDY PHP 5.6)
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+#region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
+// ==============================================================
+$rawInput = @file_get_contents('php://input');
 
-// Create a writable log file in /api/logs/
-$logDir = __DIR__ . '/logs';
-if (!is_dir($logDir)) {
-    mkdir($logDir, 0777, true);
+if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
+    global $argv;
+    if (isset($argv[1]) && trim($argv[1]) !== '') {
+        $rawInput = $argv[1];
+    }
 }
-$logFile = $logDir . '/skyebot_debug.log';
-ini_set('error_log', $logFile);
 
-error_log("🧭 --- New Skyebot session started at " . date('Y-m-d H:i:s') . " ---");
+$rawInput  = trim($rawInput);
+$inputData = json_decode($rawInput, true);
+
+// Attempt to fix malformed quotes if needed
+if (!is_array($inputData)) {
+    $fixed = trim($rawInput, "\"'");
+    $inputData = json_decode($fixed, true);
+}
+
+// Handle invalid or empty input
+if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode(array(
+        'response'  => '❌ Invalid or empty JSON payload.',
+        'action'    => 'none',
+        'sessionId' => uniqid('sess_')
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$prompt = isset($inputData['prompt'])
+    ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
+    : '';
+
+$conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
+    ? $inputData['conversation']
+    : array();
+
+$lowerPrompt = strtolower($prompt);
 #endregion
 
-#region 🧠 SKYEBOT POLICY ENGINE INITIALIZATION (Codex-Aware Governance)
-$aiPath = __DIR__ . '/ai/policyEngine.php';
-if (file_exists($aiPath)) {
-    require_once($aiPath);
-    error_log("⚙️ PolicyEngine loaded successfully from $aiPath");
+#region 🧩 SKYEBOT ⇄ POLICY ENGINE INTEGRATION
+if (!empty($prompt) && function_exists('runPolicyEngine')) {
+    $policyData = runPolicyEngine($prompt);
+
+    if ($policyData['success'] && isset($policyData['policy'])) {
+        $summary = isset($policyData['policy']['purpose']['text'])
+            ? $policyData['policy']['purpose']['text']
+            : '[Policy data available but no summary text]';
+
+        $systemInstr .= "\n\n📜 PolicyEngine Context:\n" . $summary;
+
+        error_log("📥 PolicyEngine JSON processed: domain={$policyData['domain']} target={$policyData['target']}");
+    } else {
+        error_log("⚠️ PolicyEngine returned empty or failed for prompt: {$prompt}");
+    }
 } else {
-    error_log("❌ PolicyEngine not found at $aiPath");
+    error_log("⚠️ PolicyEngine not invoked — no prompt or runPolicyEngine() unavailable.");
 }
+#endregion
+
+#region 💬 SKYEBOT CORE AI RESPONSE HANDLER (Simplified Test Output)
+// This can later call your OpenAI or local inference engine
+$responseText = "Hello! It’s " . date('g:i A') . " — how can I help you today?";
+
+// Optional: merge context from PolicyEngine into system instructions (for AI engines)
+if (!empty($systemInstr)) {
+    $responseText .= "\n\n" . $systemInstr;
+}
+
+// Output clean JSON for browser or curl test
+header('Content-Type: application/json');
+echo json_encode(array(
+    'response' => $responseText
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 #endregion
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
@@ -101,6 +153,14 @@ $routerPath = __DIR__ . '/ai/semanticRouter.php';
 if (file_exists($routerPath)) {
     require_once($routerPath);
 
+    // ✅ Stub routeIntent() if not implemented yet
+    if (!function_exists('routeIntent')) {
+        function routeIntent($prompt, $codexPath = '', $ssePath = '') {
+            // placeholder logic until semantic intent routing is active
+            return "🧩 SemanticRouter stub active – prompt routed to PolicyEngine only.";
+        }
+    }
+
     $codexPath = __DIR__ . '/../docs/codex/codex.json';
     $ssePath   = __DIR__ . '/../../assets/data/dynamicDataCache.json';
 
@@ -112,6 +172,7 @@ if (file_exists($routerPath)) {
     error_log("❌ SemanticRouter not found at $routerPath");
 }
 #endregion
+
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
 // ================================================================
