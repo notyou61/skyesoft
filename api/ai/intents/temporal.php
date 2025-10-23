@@ -1,24 +1,71 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
-// Purpose: Time- and schedule-related reasoning
+// Purpose: Generate temporal reasoning context (Codex + SSE integration)
+// Version: v3.0 – Non-hardcoded, Codex-referential, PHP 5.6-safe
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
-    date_default_timezone_set('America/Phoenix');
-    $now = new DateTime();
+    // ------------------------------------------------------------
+    // 1️⃣  Load Codex + SSE
+    // ------------------------------------------------------------
+    $codex = json_decode(@file_get_contents($codexPath), true);
+    $sse   = json_decode(@file_get_contents($ssePath), true);
 
-    // Workday end = 3:30 PM for office schedule
-    $end = new DateTime('15:30');
-    if ($now > $end) {
-        return "🌇 The workday has already ended.";
+    if (!is_array($codex) || !is_array($sse)) {
+        return json_encode(array(
+            'error' => 'Codex or SSE data unavailable.'
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     }
 
-    $diff = $now->diff($end);
-    $hrs  = $diff->h;
-    $mins = $diff->i;
+    // ------------------------------------------------------------
+    // 2️⃣  Locate the temporal-standard node dynamically
+    // ------------------------------------------------------------
+    $tis = null;
+    if (isset($codex['modules'])) {
+        foreach ($codex['modules'] as $key => $module) {
+            if (isset($module['type']) && $module['type'] === 'temporal-standard') {
+                $tis = $module;
+                $tis['key'] = $key;
+                break;
+            }
+        }
+    }
 
-    $timeLeft = sprintf("%d hour%s and %d minute%s",
-        $hrs, ($hrs !== 1 ? 's' : ''), $mins, ($mins !== 1 ? 's' : ''));
+    if (!$tis) {
+        return json_encode(array(
+            'error' => 'Temporal-standard node not found in Codex.'
+        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
 
-    return "⏳ There are {$timeLeft} remaining in the workday.";
+    // ------------------------------------------------------------
+    // 3️⃣  Build runtime snapshot from SSE
+    // ------------------------------------------------------------
+    $runtime = array(
+        'now'        => isset($sse['timeDateArray']['now']) ? $sse['timeDateArray']['now'] : null,
+        'timezone'   => isset($sse['timeDateArray']['timezone']) ? $sse['timeDateArray']['timezone'] : 'America/Phoenix',
+        'dayType'    => isset($sse['timeDateArray']['dayType']) ? $sse['timeDateArray']['dayType'] : null,
+        'phase'      => isset($sse['timeDateArray']['phase']) ? $sse['timeDateArray']['phase'] : null,
+        'sunrise'    => isset($sse['weatherData']['sunrise']) ? $sse['weatherData']['sunrise'] : null,
+        'sunset'     => isset($sse['weatherData']['sunset']) ? $sse['weatherData']['sunset'] : null,
+        'conditions' => isset($sse['weatherData']['conditions']) ? $sse['weatherData']['conditions'] : null
+    );
+
+    // ------------------------------------------------------------
+    // 4️⃣  Compose AI reasoning payload
+    // ------------------------------------------------------------
+    $context = array(
+        'domain'    => 'temporal',
+        'codexNode' => isset($tis['key']) ? $tis['key'] : 'timeIntervalStandards',
+        'prompt'    => $prompt,
+        'data'      => array(
+            'definition' => $tis['purpose']['text'],
+            'runtime'    => $runtime
+        ),
+        'intent'    => 'Derive temporal or celestial awareness using Codex + SSE context, not hardcoded logic.'
+    );
+
+    // ------------------------------------------------------------
+    // 5️⃣  Return pure JSON for AI reasoning
+    // ------------------------------------------------------------
+    return json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
