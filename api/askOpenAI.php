@@ -1133,6 +1133,72 @@ if (is_array($intentData) && isset($intentData['intent'])) {
 
 #endregion
 
+#region 🧠 PHASE 6: AI RESPONSE COMPOSER (Natural Language Generator)
+// ======================================================================
+// Purpose:
+//   • Converts structured semantic or Codex-based data into natural text
+//   • Bridges structured JSON (e.g., temporal, contextual) to human reply
+//   • Fully PHP 5.6 compatible
+// ======================================================================
+
+// 🧩 Safety: ensure variable exists before processing
+$aiReply = isset($aiReply) ? $aiReply : '';
+
+// Detect if router or intent produced structured JSON
+if (isset($aiReply) && is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
+    $decoded = json_decode($aiReply, true);
+
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $domain = isset($decoded['domain']) ? $decoded['domain'] : '';
+        $intent = isset($decoded['intent']) ? $decoded['intent'] : '';
+
+        // ⏱️ Temporal domain → convert to conversational message
+        if ($domain === 'temporal' && isset($decoded['data']['runtime'])) {
+            $rt = $decoded['data']['runtime'];
+            $now = isset($rt['now']) ? $rt['now'] : 'unknown';
+            $sunset = isset($rt['sunset']) ? $rt['sunset'] : null;
+
+            if ($sunset) {
+                // Parse both times as timestamps (24-hour fallback)
+                $nowTime = strtotime($now);
+                $sunsetTime = strtotime($sunset);
+
+                if ($nowTime !== false && $sunsetTime !== false) {
+                    $diffMin = round(($sunsetTime - $nowTime) / 60);
+                    if ($diffMin > 0) {
+                        $hrs  = floor($diffMin / 60);
+                        $mins = $diffMin % 60;
+                        $msg  = "🌇 Sundown will be in about {$hrs} hour" .
+                                ($hrs != 1 ? 's' : '') . " and {$mins} minute" .
+                                ($mins != 1 ? 's' : '') . ".";
+                    } else {
+                        $msg = "🌙 The sun has already set for today.";
+                    }
+                } else {
+                    $msg = "⏳ Current time is {$now}. Sunset is expected around {$sunset}.";
+                }
+            } else {
+                $msg = "🕒 It’s currently {$now} in Phoenix.";
+            }
+
+            // Output single clean JSON
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(array('response' => $msg), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 🧩 Other domains → prepare for AI summary or fall back
+        if (!empty($domain) && $domain !== 'temporal') {
+            $aiPrompt = "You are Skyebot. Convert this JSON context into a natural response:\n\n" .
+                        json_encode($decoded, JSON_PRETTY_PRINT);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(array('response' => $aiPrompt), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+}
+#endregion
+
 #region 🧩 FINAL RESPONSE SAFEGUARD
 // ================================================================
 // Purpose:
