@@ -5,21 +5,28 @@
 
 #region 🔧 DEPENDENCY LOADING
 $baseDir = dirname(__FILE__);
+$rootDir = dirname(__DIR__, 2); // go up from /api/ai to project root
 
+$semanticPath = $rootDir . '/assets/data/semantic.json';
+$codexPath    = $rootDir . '/assets/data/codex.json';
+$ssePath      = $rootDir . '/assets/data/dynamicData.json';
+
+// Core logic dependencies
 require_once($baseDir . '/semanticRouter.php');
 require_once($baseDir . '/codexConsult.php');
 require_once($baseDir . '/sseProxy.php');
 
-if (file_exists($semanticPath))  require_once($semanticPath);
-else error_log("⚠️ semanticRouter.php missing at $semanticPath");
-
-if (file_exists($codexPath))     require_once($codexPath);
-else error_log("⚠️ codexConsult.php missing at $codexPath");
-
-if (file_exists($ssePath))       require_once($ssePath);
-else error_log("⚠️ sSEProxy.php missing at $ssePath");
+// Optional integrity checks
+if (!file_exists($semanticPath)) error_log("⚠️ semantic.json missing at $semanticPath");
+if (!file_exists($codexPath))    error_log("⚠️ codex.json missing at $codexPath");
+if (!file_exists($ssePath))      error_log("⚠️ dynamicData.json missing at $ssePath");
 #endregion
 
+// Now safe to dynamically route to relevant Codex policy
+$semanticResult = semanticRoute($userInput);
+if (!empty($semanticResult['target'])) {
+    $policy = codexConsult($semanticResult['target']);
+}
 
 #region 🧠 POLICY ENGINE CORE
 function runPolicyEngine($userInput) {
@@ -65,7 +72,6 @@ function runPolicyEngine($userInput) {
     return $prompt;
 }
 #endregion
-
 
 #region 🪶 FALLBACK STUBS (if dependencies not yet implemented)
 if (!function_exists('detectDomain')) {
