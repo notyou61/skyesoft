@@ -58,35 +58,24 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
-
-    // 🧭 Forward user prompt to Policy Engine for contextual grounding
+// 🧭 Forward user prompt to Policy Engine for contextual grounding
 if (!empty($prompt)) {
-    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php";
-    $queryData = http_build_query(['q' => $prompt]);
+    if (!isset($systemInstr)) $systemInstr = '';
 
-    // Use cURL for reliable query passing (GoDaddy-safe)
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $policyUrl . '?' . $queryData,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 5,
-        CURLOPT_USERAGENT => 'SkyebotPolicyFetcher/1.0',
-    ]);
-    $policyResponse = curl_exec($ch);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
+    // Local path to PolicyEngine
+    $policyScript = $_SERVER['DOCUMENT_ROOT'] . '/skyesoft/api/ai/policyEngine.php';
+    $escapedPrompt = escapeshellarg($prompt);
 
-    if ($curlErr) {
-        error_log("⚠️ PolicyEngine request error: $curlErr");
-    } else {
-        error_log("📤 Sent prompt to PolicyEngine: " . urldecode($prompt));
-        error_log("📥 PolicyEngine replied: " . substr($policyResponse ?: '[no response]', 0, 120));
-    }
+    // Execute locally through PHP CLI
+    $cmd = "php " . escapeshellarg($policyScript) . " " . $escapedPrompt;
+    $policyResponse = shell_exec($cmd);
 
-    if ($policyResponse !== false && strlen($policyResponse) > 0) {
+    if ($policyResponse) {
+        error_log("📤 Local PolicyEngine executed: $cmd");
+        error_log("📥 PolicyEngine output: " . substr($policyResponse, 0, 120));
         $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
     } else {
-        error_log("⚠️ No response from PolicyEngine or empty reply.");
+        error_log("⚠️ Local PolicyEngine returned no output. Check path or permissions.");
     }
 }
 
