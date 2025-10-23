@@ -60,26 +60,32 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine for contextual grounding
 if (!empty($prompt)) {
-    $encodedPrompt = urlencode($prompt);
-    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php?q=" . $encodedPrompt;
-    $context = stream_context_create(array(
+    $encodedPrompt = rawurlencode($prompt); // safer for spaces and punctuation
+    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php?q={$encodedPrompt}";
+
+    $opts = array(
         'http' => array(
-            'method'  => 'GET',
-            'header'  => "User-Agent: SkyebotPolicyFetcher/1.0\r\n",
-            'timeout' => 4
+            'method' => 'GET',
+            'header' => "User-Agent: SkyebotPolicyFetcher/1.0\r\n" .
+                        "Accept: application/json,text/plain\r\n",
+            'timeout' => 5
         )
-    ));
+    );
+
+    $context = stream_context_create($opts);
 
     $policyResponse = @file_get_contents($policyUrl, false, $context);
-    error_log("📤 Sent prompt to PolicyEngine: " . urldecode($encodedPrompt));
-    error_log("📥 PolicyEngine replied: " . substr($policyResponse, 0, 100));
 
-    // Append policy response to system instructions for AI context
+    error_log("📤 Sent prompt to PolicyEngine: " . urldecode($encodedPrompt));
+    error_log("📥 PolicyEngine replied: " . substr($policyResponse ?: '[no response]', 0, 120));
+
     if ($policyResponse !== false && strlen($policyResponse) > 0) {
         $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
     } else {
-        error_log("⚠️ PolicyEngine returned no response or failed to load.");
+        error_log("⚠️ No response from PolicyEngine or failed request.");
     }
+} else {
+    error_log("⚠️ Empty prompt; skipping PolicyEngine forwarding.");
 }
 
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
