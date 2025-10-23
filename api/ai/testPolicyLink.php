@@ -1,29 +1,48 @@
 <?php
-// 🔍 PolicyEngine Integration Test
+// Skyesoft Policy Link Diagnostic
+header('Content-Type: text/plain; charset=utf-8');
 
-require_once(__DIR__ . '/policyEngine.php');
+$path = __DIR__ . '/../docs/codex/codex.json';
+echo "🔍 Loading Codex from: $path\n\n";
 
-echo "<h2>🧠 Skyebot PolicyEngine Diagnostic</h2>";
-
-$checks = array(
-  'semanticRouter.php' => function_exists('detectDomain'),
-  'codexConsult.php'   => function_exists('codexConsult'),
-  'sseProxy.php'       => function_exists('fetchSSESnapshot'),
-  'policyEngine.php'   => function_exists('runPolicyEngine')
-);
-
-foreach ($checks as $file => $result) {
-  echo $result
-    ? "✅ $file loaded successfully<br>"
-    : "❌ $file missing or function undefined<br>";
+if (!file_exists($path)) {
+    exit("❌ File not found.\n");
 }
 
-// Optional live test
-echo "<hr>";
-if (function_exists('runPolicyEngine')) {
-  $prompt = runPolicyEngine("What time does the workday end today?");
-  echo "<b>Sample PolicyEngine output:</b><pre>" . htmlspecialchars(print_r($prompt, true)) . "</pre>";
-} else {
-  echo "⚠️ PolicyEngine not available.";
+$json = file_get_contents($path);
+$codex = json_decode($json, true);
+
+if (!$codex) {
+    exit("❌ JSON failed to decode. Last JSON error: " . json_last_error_msg() . "\n");
 }
-?>
+
+echo "✅ Codex loaded successfully.\n\n";
+
+if (!isset($codex['sseStream'])) {
+    exit("❌ Missing 'sseStream' module in Codex.\n");
+}
+
+echo "🌐 SSE Stream found.\n";
+
+$tiers = isset($codex['sseStream']['tiers']) ? $codex['sseStream']['tiers'] : null;
+if (!is_array($tiers)) {
+    exit("❌ Invalid or missing 'tiers' array.\n");
+}
+
+echo "📊 Found " . count($tiers) . " tier(s).\n\n";
+
+foreach ($tiers as $tierName => $tierData) {
+    echo "▶️ Tier: $tierName\n";
+    echo "   Interval: " . $tierData['interval'] . "s\n";
+    if (!empty($tierData['members'])) {
+        echo "   Members:\n";
+        foreach ($tierData['members'] as $m) {
+            echo "     - $m\n";
+        }
+    } else {
+        echo "   ⚠️ No members listed.\n";
+    }
+    echo "\n";
+}
+
+echo "✅ Policy linkage test complete.\n";
