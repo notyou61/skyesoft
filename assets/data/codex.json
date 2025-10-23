@@ -1,8 +1,8 @@
 {
   "codexMeta": {
     "title": "🎯 Skyesoft Codex Meta",
-    "version": "2025.10",
-    "lastUpdated": "2025-10-06",
+    "version": "2025.11b",
+    "lastUpdated": "2025-10-11",
     "category": "System Layer",
     "enrichment": "light",
     "description": {
@@ -561,37 +561,54 @@
     "updated": "2025-10-14"
   },
   "sseStream": {
-    "title": "🌐 SSE Stream",
-    "category": "Adaptive Layer",
-    "type": "data-stream",
-    "subtypes": ["live-feed", "system-pulse", "context-stream"],
-    "actions": ["observe", "generate-sheet", "sync", "describe"],
-    "relationships": {
-      "isA": "adaptiveModule",
-      "partOf": "Adaptive Layer",
-      "governs": ["aiIntegration", "chatHistoryArchitecture"],
-      "aliases": ["Server-Sent Events", "Skyesoft Stream", "SSE Feed"]
+  "title": "🌐 SSE Stream",
+  "category": "Adaptive Layer",
+  "type": "data-stream",
+  "subtypes": ["live-feed", "system-pulse", "context-stream"],
+  "actions": ["observe", "generate-sheet", "sync", "describe"],
+  "relationships": {
+    "isA": "adaptiveModule",
+    "partOf": "Adaptive Layer",
+    "governs": ["aiIntegration", "chatHistoryArchitecture"],
+    "aliases": ["Server-Sent Events", "Skyesoft Stream", "SSE Feed"]
+  },
+  "enrichment": "light",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Provides real-time state data including time, weather, and system status. Acts as the live operational pulse of the Skyesoft system."
+  },
+  "tiers": [
+    {
+      "name": "live-feed",
+      "interval": "1s",
+      "members": ["timeDateArray", "intervalsArray", "recordCounts", "kpiData"]
     },
-    "enrichment": "light",
-    "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Provides real-time state data including time, weather, and system status. Acts as the live operational pulse of the Skyesoft system."
+    {
+      "name": "system-pulse",
+      "interval": "5s",
+      "members": ["siteMeta", "deploymentCheck"]
     },
-    "examples": {
-      "icon": "table",
-      "format": "table",
-      "items": [
-        { "Stream": "timeDateArray", "Purpose": "Real-time work interval tracking" },
-        { "Stream": "weatherData", "Purpose": "Dynamic weather injection for context" },
-        { "Stream": "siteMeta", "Purpose": "Deployment and Netlify sync data" }
-      ]
-    },
-    "integrationNotes": {
-      "icon": "link",
-      "format": "text",
-      "text": "The SSE Stream now subsumes the Skyesoft Codex as a live data object. This unification makes the stream the single source of truth for both operational telemetry and organizational logic. All semantic resolution, including Codex module discovery, now occurs directly within the SSE context without secondary loaders."
+    {
+      "name": "context-stream",
+      "interval": "10s",
+      "members": ["weatherData", "codex", "announcements"]
     }
+  ],
+  "examples": {
+    "icon": "table",
+    "format": "table",
+    "items": [
+      { "Stream": "timeDateArray", "Purpose": "Real-time work interval tracking" },
+      { "Stream": "weatherData", "Purpose": "Dynamic weather injection for context" },
+      { "Stream": "siteMeta", "Purpose": "Deployment and Netlify sync data" }
+    ]
+  },
+  "integrationNotes": {
+    "icon": "link",
+    "format": "text",
+    "text": "The SSE Stream now subsumes the Skyesoft Codex as a live data object. This unification makes the stream the single source of truth for both operational telemetry and organizational logic. All semantic resolution, including Codex module discovery, now occurs directly within the SSE context without secondary loaders."
+  }
   },
   "ragFramework": {
     "title": "📚 RAG Framework",
