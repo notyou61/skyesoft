@@ -1,7 +1,6 @@
 <?php
 // 📘 File: api/ai/semanticRouter.php
-// Purpose: Directs user input to appropriate Codex domains and intent handlers
-// Version: v2.7 – Restored routeIntent() for live dispatch (2025-10-23)
+// Version: v2.9 – Safe recursive normalization + robust intent dispatch (PHP 5.6 compatible)
 
 // ================================================================
 // 🔹 SAFETY NORMALIZATION LAYER
@@ -9,24 +8,38 @@
 // ================================================================
 function semanticRoute($input)
 {
+    // 🩹 Safely flatten arrays (recursively) before string conversion
     if (is_array($input)) {
-        $input = implode(' ', $input);
+        $flat = array();
+        array_walk_recursive($input, function ($v) use (&$flat) {
+            if (is_scalar($v) || is_null($v)) {
+                $flat[] = $v;
+            }
+        });
+        $input = implode(' ', $flat);
     }
+
+    // ✅ Guarantee clean string
     $input = trim((string)$input);
 
+    // 🧠 Default response (fallback domain)
     $default = array(
         'domain'     => 'general',
         'target'     => 'skyesoftConstitution',
         'confidence' => 0.5
     );
 
-    if ($input === '') {
+    // 🧩 Guard against empty input
+    if ($input === '' || strlen($input) === 0) {
         return $default;
     }
 
+    // ================================================================
+    // 🧭 SEMANTIC ROUTING RULES
+    // ================================================================
     $inputLower = strtolower($input);
 
-    // Temporal domain
+    // Temporal domain – time, workday, hours, schedule
     if (strpos($inputLower, 'workday') !== false ||
         strpos($inputLower, 'time') !== false ||
         strpos($inputLower, 'hour') !== false ||
@@ -38,7 +51,7 @@ function semanticRoute($input)
         );
     }
 
-    // Contextual domain
+    // Contextual domain – weather, environment, forecast
     if (strpos($inputLower, 'weather') !== false ||
         strpos($inputLower, 'temperature') !== false ||
         strpos($inputLower, 'forecast') !== false) {
@@ -49,7 +62,7 @@ function semanticRoute($input)
         );
     }
 
-    // Governance domain
+    // Governance domain – constitution, codex, policy
     if (strpos($inputLower, 'constitution') !== false ||
         strpos($inputLower, 'codex') !== false ||
         strpos($inputLower, 'policy') !== false) {
@@ -60,7 +73,7 @@ function semanticRoute($input)
         );
     }
 
-    // Frameworks
+    // Framework domain – MTCO or LGBAS
     if (strpos($inputLower, 'mtco') !== false ||
         strpos($inputLower, 'measure twice') !== false) {
         return array(
@@ -79,6 +92,7 @@ function semanticRoute($input)
         );
     }
 
+    // Default fallback
     return $default;
 }
 
@@ -92,7 +106,7 @@ function routeIntent($prompt, $codexPath, $ssePath)
     $domain   = isset($semantic['domain']) ? $semantic['domain'] : 'general';
     $target   = isset($semantic['target']) ? $semantic['target'] : 'skyesoftConstitution';
 
-    // ✅ Ensure proper absolute intent file path
+    // ✅ Build absolute intent path
     $intentFile = __DIR__ . '/intents/' . $domain . '.php';
 
     if (!file_exists($intentFile)) {
@@ -101,7 +115,9 @@ function routeIntent($prompt, $codexPath, $ssePath)
 
     require_once($intentFile);
 
+    // ✅ Only call handleIntent() if defined
     if (function_exists('handleIntent')) {
+        // Each intent handles its own context paths safely
         return handleIntent($prompt, $codexPath, $ssePath);
     }
 
