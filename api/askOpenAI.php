@@ -679,12 +679,18 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
-$lowerPrompt = strtolower($prompt);
+
+// 🧩 Normalize to string before lowercase conversion
+$lowerPrompt = is_string($prompt)
+    ? strtolower($prompt)
+    : (is_array($prompt) && isset($prompt['prompt'])
+        ? strtolower($prompt['prompt'])
+        : '');
 
 // More robust capture: "generate (an)? (information)? sheet (for)? <name>"
 if (!empty($prompt) && preg_match(
-    '/\bgenerate\b\s*(?:an?\s+)?(?:information\s+)?sheet(?:\s+for)?\s+(.+?)(?:\s*(?:sheet|report))?(?:[.!?]|\\s*$)/i',
-    $prompt,
+    '/\bgenerate\b\s*(?:an?\s+)?(?:information\s+)?sheet(?:\s+for)?\s+(.+?)(?:\s*(?:sheet|report))?(?:[.!?]|\s*$)/i',
+    is_string($prompt) ? $prompt : (is_array($prompt) && isset($prompt['prompt']) ? $prompt['prompt'] : ''),
     $matches
 )) {
     // Normalize candidate module name
@@ -706,7 +712,7 @@ if (!empty($prompt) && preg_match(
 
     // --- Resolve slug from moduleName + prompt
     $slug = '';
-    $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower($prompt));
+    $normalizedPrompt = preg_replace('/[^a-z0-9]/', '', strtolower(is_string($prompt) ? $prompt : (is_array($prompt) && isset($prompt['prompt']) ? $prompt['prompt'] : '')));
     error_log("🧭 Codex keys visible: " . implode(', ', array_keys($allModules)));
 
     // 1) Exact normalized key match
@@ -736,7 +742,7 @@ if (!empty($prompt) && preg_match(
     }
 
     if ($slug === '') {
-        error_log("⚠️ No matching Codex module found for prompt: " . $prompt);
+        error_log("⚠️ No matching Codex module found for prompt: " . (is_string($prompt) ? $prompt : json_encode($prompt)));
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode(array(
             "response"  => "⚠️ No matching Codex module found for “{$moduleNameRaw}”. Try a clearer module name.",
@@ -746,7 +752,7 @@ if (!empty($prompt) && preg_match(
         exit;
     }
 
-    error_log("✅ Codex slug resolved to '$slug' from prompt: " . $prompt);
+    error_log("✅ Codex slug resolved to '$slug' from prompt: " . (is_string($prompt) ? $prompt : json_encode($prompt)));
 
     // =====================================================
     // 🧾 Generate via internal API POST (not include)
