@@ -62,20 +62,17 @@ $prompt = isset($inputData['prompt'])
 if (!empty($prompt)) {
     if (!isset($systemInstr)) $systemInstr = '';
 
-    // Local path to PolicyEngine
-    $policyScript = $_SERVER['DOCUMENT_ROOT'] . '/skyesoft/api/ai/policyEngine.php';
-    $escapedPrompt = escapeshellarg($prompt);
+    // direct include call instead of curl or shell_exec
+    $_GET['q'] = $prompt;                // simulate query parameter
+    ob_start();
+    include __DIR__ . '/ai/policyEngine.php';
+    $policyResponse = ob_get_clean();
 
-    // Execute locally through PHP CLI
-    $cmd = "php " . escapeshellarg($policyScript) . " " . $escapedPrompt;
-    $policyResponse = shell_exec($cmd);
-
-    if ($policyResponse) {
-        error_log("📤 Local PolicyEngine executed: $cmd");
-        error_log("📥 PolicyEngine output: " . substr($policyResponse, 0, 120));
+    if ($policyResponse && strlen($policyResponse) > 0) {
+        error_log("📥 PolicyEngine inline output: " . substr($policyResponse, 0, 120));
         $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
     } else {
-        error_log("⚠️ Local PolicyEngine returned no output. Check path or permissions.");
+        error_log("⚠️ Inline PolicyEngine returned no data.");
     }
 }
 
