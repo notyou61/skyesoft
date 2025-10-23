@@ -1146,8 +1146,12 @@ if (is_array($intentData) && isset($intentData['intent'])) {
 $aiReply = isset($aiReply) ? $aiReply : '';
 
 // 🧩 Guard: prevent premature echoes from upstream router blocks
-// (The Semantic Intent Router should assign $aiReply, not echo/exit)
 ob_end_clean(); // Clear any buffered output before composing
+
+// 🧩 Normalize: if the router/intent returned an array, encode it for parsing
+if (is_array($aiReply)) {
+    $aiReply = json_encode($aiReply, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
 
 // Detect if router or intent produced structured JSON
 if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
@@ -1192,7 +1196,7 @@ if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
             exit;
         }
 
-        // 🧩 Other domains → prepare for AI summary or fall back
+        // 🧩 Other domains → prepare for AI summary or fallback
         if (!empty($domain) && $domain !== 'temporal') {
             $aiPrompt = "You are Skyebot. Convert this JSON context into a natural response:\n\n" .
                         json_encode($decoded, JSON_PRETTY_PRINT);
