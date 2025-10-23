@@ -1,66 +1,80 @@
 <?php
 // 📘 File: api/ai/policyEngine.php
 // Purpose: Central governance layer for Skyebot™ prompt construction
+// Framework: Phase 5 (SSE-aware, Codex-integrated)
 // Compatible with PHP 5.6 (no null-coalescing operators)
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-#region ⚙️  DEPENDENCY LOADING
+#region ⚙️ DEPENDENCY LOADING
 $baseDir = dirname(__FILE__);
-$rootDir = dirname(dirname(__DIR__));  // PHP 5.6-safe, two levels up
+$rootDir = dirname(dirname(__DIR__));  // two levels up → /skyesoft
 
-// 🔗 Include helpers first so codexConsult() is always available
+// 🔗 Include helper + logic modules
 require_once($rootDir . '/api/helpers.php');
-
-// Core logic modules
 require_once($baseDir . '/semanticRouter.php');
 require_once($baseDir . '/sseProxy.php');
 
-// Define expected data file paths
-$semanticPath = $rootDir . '/assets/data/semantic.json';
-$codexPath    = $rootDir . '/assets/data/codex.json';
-$ssePath      = $rootDir . '/assets/data/dynamicData.json';
-
-// Log missing data files (non-fatal)
-if (!file_exists($semanticPath)) error_log("⚠️ semantic.json missing at $semanticPath");
-if (!file_exists($codexPath))    error_log("⚠️ codex.json missing at $codexPath");
-if (!file_exists($ssePath))      error_log("⚠️ dynamicData.json missing at $ssePath");
+// Define Codex path (only persistent data file required)
+$codexPath = $rootDir . '/assets/data/codex.json';
+if (!file_exists($codexPath)) {
+    error_log("⚠️ codex.json missing at $codexPath");
+}
 #endregion
 
-#region 🧠  SEMANTIC ROUTER FALLBACK
-// Temporary stub until full semanticRouter implemented
+
+#region 🧠 SEMANTIC ROUTER (fallback)
 if (!function_exists('semanticRoute')) {
-    function semanticRoute($input) {
-        // Example semantic inference
-        if (stripos($input, 'workday') !== false) {
+    function semanticRoute($input)
+    {
+        $input = strtolower(trim($input));
+
+        if (strpos($input, 'workday') !== false || strpos($input, 'time') !== false) {
             return array('domain' => 'temporal', 'target' => 'timeIntervalStandards', 'confidence' => 0.9);
-        } elseif (stripos($input, 'weather') !== false) {
-            return array('domain' => 'contextual', 'target' => 'weatherData', 'confidence' => 0.9);
-        } else {
-            return array('domain' => 'general', 'target' => 'skyesoftConstitution', 'confidence' => 0.5);
         }
+        if (strpos($input, 'weather') !== false) {
+            return array('domain' => 'contextual', 'target' => 'weatherData', 'confidence' => 0.9);
+        }
+        if (strpos($input, 'policy') !== false || strpos($input, 'constitution') !== false) {
+            return array('domain' => 'governance', 'target' => 'skyesoftConstitution', 'confidence' => 0.8);
+        }
+
+        // Default fallback
+        return array('domain' => 'general', 'target' => 'codexOverview', 'confidence' => 0.5);
     }
 }
 #endregion
 
-#region 🧩  CODEX CONSULT FALLBACK
+
+#region 📘 CODEX CONSULT
 if (!function_exists('codexConsult')) {
-    function codexConsult($target) {
+    function codexConsult($target)
+    {
         $codexPath = dirname(dirname(__DIR__)) . '/assets/data/codex.json';
         if (!file_exists($codexPath)) {
             error_log("⚠️ codex.json missing at $codexPath");
             return array();
         }
+
         $codex = json_decode(file_get_contents($codexPath), true);
+        if (!is_array($codex)) {
+            error_log("⚠️ Invalid codex.json format.");
+            return array();
+        }
+
+        // Direct lookup
         if (isset($codex[$target])) {
             return $codex[$target];
         }
 
-        // Try deeper lookup (when target is nested)
+        // Deep lookup
         foreach ($codex as $sectionName => $sectionData) {
-            if (is_array($sectionData) && isset($sectionData['title']) && stripos($sectionData['title'], $target) !== false) {
-                return $sectionData;
+            if (is_array($sectionData)) {
+                if ((isset($sectionData['title']) && stripos($sectionData['title'], $target) !== false)
+                    || (isset($sectionData['id']) && stripos($sectionData['id'], $target) !== false)) {
+                    return $sectionData;
+                }
             }
         }
         return array();
@@ -68,33 +82,41 @@ if (!function_exists('codexConsult')) {
 }
 #endregion
 
-#region 🧩  POLICY RESOLUTION
+
+#region 🧩 POLICY RESOLUTION
 $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
 
 if ($userInput === '') {
-    // 🧠 Diagnostic block – helps confirm input path
-    echo "<pre>";
-    echo "❌ No query received.<br>";
-    echo "🔍 _GET contents:\n";
-    print_r($_GET);
-    echo "🔍 Request URI: " . $_SERVER['REQUEST_URI'] . "\n";
-    echo "🔍 Referrer: " . (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'none') . "\n";
-    echo "</pre>";
+    header('Content-Type: application/json');
+    echo json_encode(array(
+        'success' => false,
+        'message' => '❌ No query received.',
+        '_get'     => $_GET,
+        'uri'      => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '',
+        'referrer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'none'
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-echo "✅ PolicyEngine initialized.<br>";
+// 🔍 Semantic routing
+$semantic = semanticRoute($userInput);
+$domain   = $semantic['domain'];
+$target   = $semantic['target'];
 
-$semanticResult = semanticRoute($userInput);
-echo "📘 Domain: " . $semanticResult['domain'] . "<br>";
-echo "🧩 Target: " . $semanticResult['target'] . "<br>";
+// 🔎 Codex consultation
+$policy = codexConsult($target);
+$policyLoaded = !empty($policy);
 
-if (!empty($semanticResult['target'])) {
-    $policy = codexConsult($semanticResult['target']);
-    if (!empty($policy)) {
-        echo "📊 Codex Policy Loaded Successfully.<br>";
-    } else {
-        echo "⚠️ No policy found for target: " . $semanticResult['target'] . "<br>";
-    }
-}
+// 📡 Compose structured reply (for askOpenAI.php)
+header('Content-Type: application/json');
+echo json_encode(array(
+    'success'  => true,
+    'input'    => $userInput,
+    'domain'   => $domain,
+    'target'   => $target,
+    'confidence' => $semantic['confidence'],
+    'codexFound' => $policyLoaded,
+    'policy'   => $policyLoaded ? $policy : null,
+    'timestamp' => date('c')
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 #endregion
