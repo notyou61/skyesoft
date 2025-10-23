@@ -70,8 +70,16 @@ if (!function_exists('codexConsult')) {
 
 #region 🧩  POLICY RESOLUTION
 $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
+
 if ($userInput === '') {
-    echo "❌ No query received.";
+    // 🧠 Diagnostic block – helps confirm input path
+    echo "<pre>";
+    echo "❌ No query received.<br>";
+    echo "🔍 _GET contents:\n";
+    print_r($_GET);
+    echo "🔍 Request URI: " . $_SERVER['REQUEST_URI'] . "\n";
+    echo "🔍 Referrer: " . (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'none') . "\n";
+    echo "</pre>";
     exit;
 }
 

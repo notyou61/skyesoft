@@ -1051,7 +1051,6 @@ echo "\n🧭 Skyebot prompt before send: " . substr($prompt, 0, 250);
 echo "\n🧩 SystemInstr contains policyEngine? " . (strpos($systemInstr, 'policyEngine.php') !== false ? 'yes' : 'no');
 echo "\n-->";
 
-
 if (!$handled) {
     error_log("⚠️ Unhandled prompt path — returning generic AI response.");
     sendJsonResponse(
