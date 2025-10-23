@@ -1,8 +1,8 @@
 <?php
-// Skyesoft Policy Link Diagnostic
+// Skyesoft Policy Link Diagnostic (v2)
 header('Content-Type: text/plain; charset=utf-8');
 
-$path = __DIR__ . '/../docs/codex/codex.json';
+$path = __DIR__ . '/../../assets/data/codex.json';
 echo "🔍 Loading Codex from: $path\n\n";
 
 if (!file_exists($path)) {
