@@ -58,21 +58,23 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
-// 🧭 Forward user prompt to Policy Engine for contextual grounding
+// 🧭 Forward user prompt to Policy Engine (inline JSON mode)
 if (!empty($prompt)) {
-    if (!isset($systemInstr)) $systemInstr = '';
-
-    // direct include call instead of curl or shell_exec
-    $_GET['q'] = $prompt;                // simulate query parameter
     ob_start();
     include __DIR__ . '/ai/policyEngine.php';
-    $policyResponse = ob_get_clean();
+    $policyRaw = ob_get_clean();
 
-    if ($policyResponse && strlen($policyResponse) > 0) {
-        error_log("📥 PolicyEngine inline output: " . substr($policyResponse, 0, 120));
-        $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
+    $policyData = json_decode($policyRaw, true);
+    if (json_last_error() === JSON_ERROR_NONE && isset($policyData['policy'])) {
+        $summary = isset($policyData['policy']['purpose']['text'])
+            ? $policyData['policy']['purpose']['text']
+            : '[Policy data available but no summary text]';
+
+        $systemInstr .= "\n\n📜 PolicyEngine Context:\n" . $summary;
+
+        error_log("📥 PolicyEngine JSON processed: domain={$policyData['domain']} target={$policyData['target']}");
     } else {
-        error_log("⚠️ Inline PolicyEngine returned no data.");
+        error_log("⚠️ PolicyEngine returned non-JSON or empty data.");
     }
 }
 
