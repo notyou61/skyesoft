@@ -1,124 +1,70 @@
 <?php
 // 📘 File: api/ai/policyEngine.php
 // Purpose: Central governance layer for Skyebot™ prompt construction
-// Compatible with PHP 5.6
+// Compatible with PHP 5.6 (no null-coalescing operators)
 
-#region 🔧 DEPENDENCY LOADING
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+#region ⚙️  DEPENDENCY LOADING
 $baseDir = dirname(__FILE__);
-$rootDir = dirname(dirname(__DIR__)); // PHP 5.6-compatible (go up 2 levels)
+$rootDir = dirname(dirname(__DIR__));  // PHP 5.6-safe, two levels up
 
+// 🔗 Include helpers first so codexConsult() is always available
+require_once($rootDir . '/api/helpers.php');
+
+// Core logic modules
+require_once($baseDir . '/semanticRouter.php');
+require_once($baseDir . '/sseProxy.php');
+
+// Define expected data file paths
 $semanticPath = $rootDir . '/assets/data/semantic.json';
 $codexPath    = $rootDir . '/assets/data/codex.json';
 $ssePath      = $rootDir . '/assets/data/dynamicData.json';
 
-// Load dependencies
-require_once($baseDir . '/semanticRouter.php');
-require_once($baseDir . '/codexConsult.php');
-require_once($baseDir . '/sseProxy.php');
-
-// Temporary fallback if semanticRoute() not yet defined
-if (!function_exists('semanticRoute')) {
-    function semanticRoute($input) {
-        return array(
-            'domain' => 'temporal',
-            'target' => 'timeIntervalStandards',
-            'confidence' => 0.9
-        );
-    }
-}
-
+// Log missing data files (non-fatal)
 if (!file_exists($semanticPath)) error_log("⚠️ semantic.json missing at $semanticPath");
 if (!file_exists($codexPath))    error_log("⚠️ codex.json missing at $codexPath");
 if (!file_exists($ssePath))      error_log("⚠️ dynamicData.json missing at $ssePath");
 #endregion
 
-$userInput = isset($_GET['q']) ? $_GET['q'] : '';
-$semanticResult = semanticRoute($userInput);
-if (!empty($semanticResult['target'])) {
-    $policy = codexConsult($semanticResult['target']);
-}
 
-#region 🧠 POLICY ENGINE CORE
-function runPolicyEngine($userInput) {
-
-    // 1️⃣ Identify domain (temporal, permit, finance, etc.)
-    $domain = detectDomain($userInput);
-
-    // 2️⃣ Load Codex context for this domain
-    $codexModule = codexConsult($domain);
-
-    // 3️⃣ Load live SSE context when relevant
-    $sseContext = null;
-    if (in_array($domain, array('temporal','operational'))) {
-        $sseContext = fetchSSESnapshot();
-    }
-
-    // 4️⃣ Apply Codex governance hierarchy
-    $priority = array('legal','temporal','operational','inference');
-    $resolvedTier = 'inference';
-    foreach ($priority as $tier) {
-        if (codexHasRule($codexModule, $tier)) {
-            $resolvedTier = $tier;
-            break;
+#region 🧠  SEMANTIC ROUTER FALLBACK
+// Temporary stub until full semanticRouter implemented
+if (!function_exists('semanticRoute')) {
+    function semanticRoute($input) {
+        // Example semantic inference
+        if (stripos($input, 'workday') !== false) {
+            return array('domain' => 'temporal', 'target' => 'timeIntervalStandards', 'confidence' => 0.9);
+        } elseif (stripos($input, 'weather') !== false) {
+            return array('domain' => 'contextual', 'target' => 'weatherData', 'confidence' => 0.9);
+        } else {
+            return array('domain' => 'general', 'target' => 'skyesoftConstitution', 'confidence' => 0.5);
         }
     }
-
-    // 5️⃣ Compose governed context
-    $policyFrame = array(
-        'domain'      => $domain,
-        'tier'        => $resolvedTier,
-        'codexModule' => isset($codexModule['title']) ? $codexModule['title'] : 'unknown',
-        'rules'       => isset($codexModule['rules']) ? $codexModule['rules'] : array(),
-        'context'     => $sseContext
-    );
-
-    // 6️⃣ Build governed AI prompt
-    $prompt = buildGovernedPrompt($userInput, $policyFrame);
-
-    // 7️⃣ Log audit event
-    logPolicyEvent($policyFrame, $userInput);
-
-    // 8️⃣ Return prompt to Skyebot
-    return $prompt;
 }
 #endregion
 
-#region 🪶 FALLBACK STUBS (if dependencies not yet implemented)
-if (!function_exists('detectDomain')) {
-    function detectDomain($input) {
-        $map = array(
-            'time' => 'temporal',
-            'permit' => 'permit',
-            'finance' => 'finance',
-            'weather' => 'temporal',
-            'workday' => 'temporal'
-        );
-        foreach ($map as $kw => $dmn) {
-            if (stripos($input, $kw) !== false) return $dmn;
-        }
-        return 'inference';
-    }
+
+#region 🧩  POLICY RESOLUTION
+$userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
+if ($userInput === '') {
+    echo "❌ No query received.";
+    exit;
 }
 
-if (!function_exists('codexHasRule')) {
-    function codexHasRule($module, $tier) {
-        return isset($module['rules']) && is_array($module['rules']) && isset($module['rules'][$tier]);
-    }
-}
+echo "✅ PolicyEngine initialized.<br>";
 
-if (!function_exists('buildGovernedPrompt')) {
-    function buildGovernedPrompt($input, $frame) {
-        return "Based on the {$frame['domain']} domain and {$frame['tier']} tier, interpret the following request:\n\n{$input}";
-    }
-}
+$semanticResult = semanticRoute($userInput);
+echo "📘 Domain: " . $semanticResult['domain'] . "<br>";
+echo "🧩 Target: " . $semanticResult['target'] . "<br>";
 
-if (!function_exists('logPolicyEvent')) {
-    function logPolicyEvent($frame, $input) {
-        $logDir = __DIR__ . '/../logs';
-        if (!is_dir($logDir)) @mkdir($logDir, 0777, true);
-        $logFile = $logDir . '/policy_audit.log';
-        $entry = "[" . date('Y-m-d H:i:s') . "] Domain: {$frame['domain']} | Tier: {$frame['tier']} | Input: " . substr($input, 0, 120) . "\n";
-        @file_put_contents($logFile, $entry, FILE_APPEND);
+if (!empty($semanticResult['target'])) {
+    $policy = codexConsult($semanticResult['target']);
+    if (!empty($policy)) {
+        echo "📊 Codex Policy Loaded Successfully.<br>";
+    } else {
+        echo "⚠️ No policy found for target: " . $semanticResult['target'] . "<br>";
     }
 }
 #endregion
