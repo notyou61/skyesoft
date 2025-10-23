@@ -84,14 +84,22 @@ if (!function_exists('codexConsult')) {
 
 
 #region 🧩 POLICY RESOLUTION
+
+// ✅ Accept input from ?q= or from global inline bridge
 $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
 
+if ($userInput === '' && isset($GLOBALS['policyQuery'])) {
+    $userInput = trim($GLOBALS['policyQuery']);
+}
+
+// 🚨 Handle empty input after both checks
 if ($userInput === '') {
     header('Content-Type: application/json');
     echo json_encode(array(
         'success' => false,
         'message' => '❌ No query received.',
         '_get'     => $_GET,
+        'globals'  => array_keys($GLOBALS), // optional diagnostic
         'uri'      => isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '',
         'referrer' => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'none'
     ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -110,13 +118,14 @@ $policyLoaded = !empty($policy);
 // 📡 Compose structured reply (for askOpenAI.php)
 header('Content-Type: application/json');
 echo json_encode(array(
-    'success'  => true,
-    'input'    => $userInput,
-    'domain'   => $domain,
-    'target'   => $target,
-    'confidence' => $semantic['confidence'],
-    'codexFound' => $policyLoaded,
-    'policy'   => $policyLoaded ? $policy : null,
-    'timestamp' => date('c')
+    'success'     => true,
+    'input'       => $userInput,
+    'domain'      => $domain,
+    'target'      => $target,
+    'confidence'  => $semantic['confidence'],
+    'codexFound'  => $policyLoaded,
+    'policy'      => $policyLoaded ? $policy : null,
+    'timestamp'   => date('c')
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
 #endregion
