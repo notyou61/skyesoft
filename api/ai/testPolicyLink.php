@@ -24,6 +24,8 @@ if (!isset($codex['sseStream'])) {
 
 echo "🌐 SSE Stream found.\n";
 
+print_r($codex['sseStream']);
+
 $tiers = isset($codex['sseStream']['tiers']) ? $codex['sseStream']['tiers'] : null;
 if (!is_array($tiers)) {
     exit("❌ Invalid or missing 'tiers' array.\n");
