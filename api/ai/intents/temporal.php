@@ -5,67 +5,52 @@
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
-    // ------------------------------------------------------------
-    // 1️⃣  Load Codex + SSE
-    // ------------------------------------------------------------
-    $codex = json_decode(@file_get_contents($codexPath), true);
-    $sse   = json_decode(@file_get_contents($ssePath), true);
+    date_default_timezone_set('America/Phoenix');
 
-    if (!is_array($codex) || !is_array($sse)) {
-        return json_encode(array(
-            'error' => 'Codex or SSE data unavailable.'
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    // ✅ Pull live data directly from getDynamicData.php
+    $endpoint = dirname(__DIR__, 3) . '/getDynamicData.php';
+    $dynamicData = @file_get_contents($endpoint);
+
+    if ($dynamicData === false || trim($dynamicData) === '') {
+        return json_encode(array('error' => 'SSE dynamic data unavailable.'));
     }
 
-    // ------------------------------------------------------------
-    // 2️⃣  Locate the temporal-standard node dynamically
-    // ------------------------------------------------------------
-    $tis = null;
-    if (isset($codex['modules'])) {
-        foreach ($codex['modules'] as $key => $module) {
-            if (isset($module['type']) && $module['type'] === 'temporal-standard') {
-                $tis = $module;
-                $tis['key'] = $key;
-                break;
-            }
-        }
+    $sse = json_decode($dynamicData, true);
+    if (!is_array($sse) || json_last_error() !== JSON_ERROR_NONE) {
+        return json_encode(array('error' => 'Invalid SSE JSON.'));
     }
 
-    if (!$tis) {
-        return json_encode(array(
-            'error' => 'Temporal-standard node not found in Codex.'
-        ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
+    // Extract essentials
+    $timeData    = isset($sse['timeDateArray']) ? $sse['timeDateArray'] : array();
+    $weatherData = isset($sse['weatherData'])   ? $sse['weatherData']   : array();
+    $sunset      = isset($weatherData['sunset']) ? $weatherData['sunset'] : null;
 
-    // ------------------------------------------------------------
-    // 3️⃣  Build runtime snapshot from SSE
-    // ------------------------------------------------------------
-    $runtime = array(
-        'now'        => isset($sse['timeDateArray']['now']) ? $sse['timeDateArray']['now'] : null,
-        'timezone'   => isset($sse['timeDateArray']['timezone']) ? $sse['timeDateArray']['timezone'] : 'America/Phoenix',
-        'dayType'    => isset($sse['timeDateArray']['dayType']) ? $sse['timeDateArray']['dayType'] : null,
-        'phase'      => isset($sse['timeDateArray']['phase']) ? $sse['timeDateArray']['phase'] : null,
-        'sunrise'    => isset($sse['weatherData']['sunrise']) ? $sse['weatherData']['sunrise'] : null,
-        'sunset'     => isset($sse['weatherData']['sunset']) ? $sse['weatherData']['sunset'] : null,
-        'conditions' => isset($sse['weatherData']['conditions']) ? $sse['weatherData']['conditions'] : null
-    );
+    // 🧠 Codex context
+    $codex = file_exists($codexPath) ? json_decode(file_get_contents($codexPath), true) : array();
+    $timeModule = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
-    // ------------------------------------------------------------
-    // 4️⃣  Compose AI reasoning payload
-    // ------------------------------------------------------------
+    // 🕐 Build runtime context
+    $now = date("g:i A");
+    $tz  = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
+    $phase = isset($timeData['timeOfDayDescription']) ? $timeData['timeOfDayDescription'] : 'unknown';
+
+    // 🧩 Compose unified JSON context (non-hardcoded)
     $context = array(
-        'domain'    => 'temporal',
-        'codexNode' => isset($tis['key']) ? $tis['key'] : 'timeIntervalStandards',
-        'prompt'    => $prompt,
-        'data'      => array(
-            'definition' => $tis['purpose']['text'],
-            'runtime'    => $runtime
+        'domain' => 'temporal',
+        'codexNode' => 'timeIntervalStandards',
+        'prompt' => $prompt,
+        'data' => array(
+            'definition' => isset($timeModule['purpose']['text']) ? $timeModule['purpose']['text'] : '',
+            'runtime' => array(
+                'now' => $now,
+                'timezone' => $tz,
+                'phase' => $phase,
+                'sunset' => $sunset,
+                'conditions' => isset($weatherData['description']) ? $weatherData['description'] : 'unknown'
+            )
         ),
-        'intent'    => 'Derive temporal or celestial awareness using Codex + SSE context, not hardcoded logic.'
+        'intent' => 'Derive temporal context using Codex + SSE dynamic data (no hardcoding).'
     );
 
-    // ------------------------------------------------------------
-    // 5️⃣  Return pure JSON for AI reasoning
-    // ------------------------------------------------------------
     return json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
