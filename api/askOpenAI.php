@@ -60,12 +60,14 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine (inline JSON mode)
 if (!empty($prompt)) {
-    $GLOBALS['policyQuery'] = $prompt; // ✅ pass prompt globally
+    $GLOBALS['policyQuery'] = $prompt; // ✅ THIS LINE MUST EXIST
+
     ob_start();
     include __DIR__ . '/ai/policyEngine.php';
     $policyRaw = ob_get_clean();
 
     $policyData = json_decode($policyRaw, true);
+    // ✅ Extract policy summary if valid JSON
     if (json_last_error() === JSON_ERROR_NONE && isset($policyData['policy'])) {
         $summary = isset($policyData['policy']['purpose']['text'])
             ? $policyData['policy']['purpose']['text']
