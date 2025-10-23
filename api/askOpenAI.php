@@ -60,7 +60,11 @@ $prompt = isset($inputData['prompt'])
     : '';
 // 🧭 Forward user prompt to Policy Engine (inline JSON mode)
 if (!empty($prompt)) {
-    $GLOBALS['policyQuery'] = $prompt; // ✅ THIS LINE MUST EXIST
+    //
+    error_log("🧩 askOpenAI: setting policyQuery='{$prompt}'");
+    $GLOBALS['policyQuery'] = $prompt;
+    error_log("🧩 askOpenAI: global keys now " . implode(', ', array_keys($GLOBALS)));
+
 
     ob_start();
     include __DIR__ . '/ai/policyEngine.php';

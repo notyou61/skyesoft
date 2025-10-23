@@ -89,6 +89,7 @@ if (!function_exists('codexConsult')) {
 $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
 
 if ($userInput === '' && isset($GLOBALS['policyQuery'])) {
+    error_log("🧩 policyEngine: using GLOBAL policyQuery='{$GLOBALS['policyQuery']}'");
     $userInput = trim($GLOBALS['policyQuery']);
 }
 
