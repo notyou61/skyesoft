@@ -1214,7 +1214,6 @@ if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
 //   • Prevents silent script termination or raw echoes
 // ================================================================
 
-// 🧠 Diagnostic: Echo prompt and policy trace inline
 echo "<!--";
 echo "\n🧭 Skyebot prompt before send: " . substr($prompt, 0, 250);
 echo "\n🧩 SystemInstr contains policyEngine? " . (strpos($systemInstr, 'policyEngine.php') !== false ? 'yes' : 'no');
