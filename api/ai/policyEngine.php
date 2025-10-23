@@ -28,7 +28,6 @@ if (!file_exists($codexPath))    error_log("⚠️ codex.json missing at $codexP
 if (!file_exists($ssePath))      error_log("⚠️ dynamicData.json missing at $ssePath");
 #endregion
 
-
 #region 🧠  SEMANTIC ROUTER FALLBACK
 // Temporary stub until full semanticRouter implemented
 if (!function_exists('semanticRoute')) {
@@ -45,6 +44,29 @@ if (!function_exists('semanticRoute')) {
 }
 #endregion
 
+#region 🧩  CODEX CONSULT FALLBACK
+if (!function_exists('codexConsult')) {
+    function codexConsult($target) {
+        $codexPath = dirname(dirname(__DIR__)) . '/assets/data/codex.json';
+        if (!file_exists($codexPath)) {
+            error_log("⚠️ codex.json missing at $codexPath");
+            return array();
+        }
+        $codex = json_decode(file_get_contents($codexPath), true);
+        if (isset($codex[$target])) {
+            return $codex[$target];
+        }
+
+        // Try deeper lookup (when target is nested)
+        foreach ($codex as $sectionName => $sectionData) {
+            if (is_array($sectionData) && isset($sectionData['title']) && stripos($sectionData['title'], $target) !== false) {
+                return $sectionData;
+            }
+        }
+        return array();
+    }
+}
+#endregion
 
 #region 🧩  POLICY RESOLUTION
 $userInput = isset($_GET['q']) ? trim($_GET['q']) : '';
