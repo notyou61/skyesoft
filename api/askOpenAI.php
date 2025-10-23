@@ -1,10 +1,8 @@
 <?php
 // 📄 File: api/askOpenAI.php
 // Entry point for Skyebot AI interactions (PHP 5.6 compatible refactor v2.3 - Codex Extracted)
-// =======================================================
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
-// ==============================================================
 $rawInput = @file_get_contents('php://input');
 
 if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
@@ -13,6 +11,9 @@ if (PHP_SAPI === 'cli' && (empty($rawInput) || trim($rawInput) === '')) {
         $rawInput = $argv[1];
     }
 }
+
+// 🧭 Initialize system instructions accumulator
+$systemInstr = '';
 
 $rawInput  = trim($rawInput);
 $inputData = json_decode($rawInput, true);
@@ -172,7 +173,6 @@ if (file_exists($routerPath)) {
     error_log("❌ SemanticRouter not found at $routerPath");
 }
 #endregion
-
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
 // ================================================================
