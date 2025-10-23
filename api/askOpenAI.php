@@ -58,6 +58,19 @@ if (!is_array($inputData) || json_last_error() !== JSON_ERROR_NONE) {
 $prompt = isset($inputData['prompt'])
     ? trim(strip_tags(filter_var($inputData['prompt'], FILTER_DEFAULT)))
     : '';
+// 🧭 Forward user prompt to Policy Engine for contextual grounding
+if (!empty($prompt)) {
+    $encodedPrompt = urlencode($prompt);
+    $policyUrl = "https://www.skyelighting.com/skyesoft/api/ai/policyEngine.php?q=" . $encodedPrompt;
+    $policyResponse = @file_get_contents($policyUrl);
+
+    // Append policy response to system instructions for AI context
+    if ($policyResponse !== false && strlen($policyResponse) > 0) {
+        $systemInstr .= "\n\n📜 PolicyEngine Response:\n" . strip_tags($policyResponse);
+    } else {
+        error_log("⚠️ PolicyEngine returned no response or failed to load.");
+    }
+}
 
 $conversation = (isset($inputData['conversation']) && is_array($inputData['conversation']))
     ? $inputData['conversation']
