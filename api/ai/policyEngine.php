@@ -1,28 +1,38 @@
 <?php
 // 📘 File: api/ai/policyEngine.php
 // Purpose: Central governance layer for Skyebot™ prompt construction
-// Compatible with PHP 5.6 (no null-coalescing operators)
+// Compatible with PHP 5.6
 
 #region 🔧 DEPENDENCY LOADING
 $baseDir = dirname(__FILE__);
-$rootDir = dirname(__DIR__, 2); // go up from /api/ai to project root
+$rootDir = dirname(dirname(__DIR__)); // PHP 5.6-compatible (go up 2 levels)
 
 $semanticPath = $rootDir . '/assets/data/semantic.json';
 $codexPath    = $rootDir . '/assets/data/codex.json';
 $ssePath      = $rootDir . '/assets/data/dynamicData.json';
 
-// Core logic dependencies
+// Load dependencies
 require_once($baseDir . '/semanticRouter.php');
 require_once($baseDir . '/codexConsult.php');
 require_once($baseDir . '/sseProxy.php');
 
-// Optional integrity checks
+// Temporary fallback if semanticRoute() not yet defined
+if (!function_exists('semanticRoute')) {
+    function semanticRoute($input) {
+        return array(
+            'domain' => 'temporal',
+            'target' => 'timeIntervalStandards',
+            'confidence' => 0.9
+        );
+    }
+}
+
 if (!file_exists($semanticPath)) error_log("⚠️ semantic.json missing at $semanticPath");
 if (!file_exists($codexPath))    error_log("⚠️ codex.json missing at $codexPath");
 if (!file_exists($ssePath))      error_log("⚠️ dynamicData.json missing at $ssePath");
 #endregion
 
-// Now safe to dynamically route to relevant Codex policy
+$userInput = isset($_GET['q']) ? $_GET['q'] : '';
 $semanticResult = semanticRoute($userInput);
 if (!empty($semanticResult['target'])) {
     $policy = codexConsult($semanticResult['target']);
