@@ -1148,7 +1148,7 @@ $aiReply = isset($aiReply) ? $aiReply : '';
 // 🧩 Guard: prevent premature echoes from upstream router blocks
 ob_end_clean(); // Clear any buffered output before composing
 
-// 🧩 Normalize: if the router/intent returned an array, encode it for parsing
+// ✅ Normalize: if the router/intent returned an array, encode for parsing
 if (is_array($aiReply)) {
     $aiReply = json_encode($aiReply, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
@@ -1168,10 +1168,8 @@ if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
             $sunset = isset($rt['sunset']) ? $rt['sunset'] : null;
 
             if ($sunset) {
-                // Parse both times as timestamps (24-hour fallback)
                 $nowTime    = strtotime($now);
                 $sunsetTime = strtotime($sunset);
-
                 if ($nowTime !== false && $sunsetTime !== false) {
                     $diffMin = round(($sunsetTime - $nowTime) / 60);
                     if ($diffMin > 0) {
@@ -1190,7 +1188,6 @@ if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
                 $msg = "🕒 It’s currently {$now} in Phoenix.";
             }
 
-            // ✅ Output single clean JSON response
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode(array('response' => $msg), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             exit;
