@@ -167,6 +167,20 @@ if (file_exists($routerPath)) {
 
     $aiReply = routeIntent($prompt, $codexPath, $ssePath);
 
+    // ================================================================
+    // 🧩 OUTPUT NORMALIZATION
+    // Prevent double JSON responses (client-side “network error” fix)
+    // ================================================================
+    if (isset($aiReply) && is_string($aiReply)) {
+        if (strpos($aiReply, '⏳') !== false ||
+            strpos($aiReply, '⚠️') !== false ||
+            strpos($aiReply, '🌦') !== false) {
+            echo json_encode(array('response' => $aiReply));
+            exit; // ✅ stop before generic OpenAI fallback output
+        }
+    }
+
+    // Fallback: if not handled above, send normal JSON response
     echo json_encode(array('response' => $aiReply));
     exit;
 } else {
