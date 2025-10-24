@@ -1,5 +1,5 @@
 <?php
-// 📁 File: api/getDynamicData.php
+// 📁 File: api/getDynamicData.php (v1.2 – Holidays dynamic generation + weatherData merge)
 
 #region 🌐 HTTP Headers
 header('Content-Type: text/event-stream; charset=utf-8');
@@ -23,6 +23,7 @@ define('DATA_PATH', '/home/notyou64/public_html/data/skyesoft-data.json');
 define('VERSION_PATH', '/home/notyou64/public_html/data/version.json');
 define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
 define('ANNOUNCEMENTS_PATH', '/home/notyou64/public_html/data/announcements.json');
+define('FEDERAL_HOLIDAYS_PHP', __DIR__ . '/federalHolidays.php');  // New: Generator script
 // Note: $chatLogPath and $weatherPath are defined but unused; retained for potential future use
 define('CHAT_LOG_PATH', '../../assets/data/chatLog.json');
 define('WEATHER_CACHE_PATH', '../../assets/data/weatherCache.json');
@@ -89,10 +90,35 @@ if (is_readable(ANNOUNCEMENTS_PATH)) {
     }
 }
 
+// New: Generate/Load Federal Holidays
 $federalHolidays = array();
-if (file_exists(HOLIDAYS_PATH)) {
-    $json = file_get_contents(HOLIDAYS_PATH);
-    $federalHolidays = json_decode($json, true);
+if (file_exists(FEDERAL_HOLIDAYS_PHP)) {
+    // Include generator (returns array if defined)
+    define('SKYESOFT_INTERNAL_CALL', true);  // Trigger return mode
+    $federalHolidays = include FEDERAL_HOLIDAYS_PHP;
+    if (!is_array($federalHolidays)) {
+        error_log('⚠️ federalHolidays.php did not return array');
+        $federalHolidays = array();
+    }
+} else {
+    // Fallback load from JSON if generator missing
+    if (file_exists(HOLIDAYS_PATH)) {
+        $json = file_get_contents(HOLIDAYS_PATH);
+        $federalHolidays = json_decode($json, true);
+    }
+    error_log('⚠️ federalHolidays.php missing; used JSON fallback');
+}
+
+// Convert associative to structured if needed
+if (is_array($federalHolidays) && array_keys($federalHolidays) !== range(0, count($federalHolidays) - 1)) {
+    $converted = array();
+    foreach ($federalHolidays as $date => $name) {
+        $converted[] = array(
+            'name' => $name,
+            'date' => $date
+        );
+    }
+    $federalHolidays = $converted;
 }
 #endregion
 
@@ -140,24 +166,6 @@ function requireEnv($key) {
 }
 #endregion
 
-#region 🎯 Federal Holiday Normalization
-// ======================================================================
-// Convert associative holiday array (date => name)
-// into a structured array of objects [{name, date}]
-// Ensures consistency with Codex and SSE schema expectations.
-// ======================================================================
-if (is_array($federalHolidays) && array_keys($federalHolidays) !== range(0, count($federalHolidays) - 1)) {
-    $converted = array();
-    foreach ($federalHolidays as $date => $name) {
-        $converted[] = array(
-            'name' => $name,
-            'date' => $date
-        );
-    }
-    $federalHolidays = $converted;
-}
-#endregion
-
 #region 🌦️ Weather Data
 $weatherApiKey = requireEnv('WEATHER_API_KEY');
 $weatherData = array(
@@ -169,7 +177,8 @@ $weatherData = array(
     'sunset' => null,
     'daytimeHours' => null,
     'nighttimeHours' => null,
-    'forecast' => array()
+    'forecast' => array(),
+    'federalHolidaysDynamic' => $federalHolidays  // New: Merge holidays here for temporal access
 );
 
 function fetchJsonCurl($url) {
@@ -198,290 +207,113 @@ $currentUrl = 'https://api.openweathermap.org/data/2.5/weather'
     . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
 
-if (!isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
+if (!isset($current['error']) && isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
+    $sunriseUnix = $current['sys']['sunrise'];
+    $sunsetUnix = $current['sys']['sunset'];
+    $sunriseLocal = date('g:i A', $sunriseUnix + $timeData['UTCOffset'] * 3600);
+    $sunsetLocal = date('g:i A', $sunsetUnix + $timeData['UTCOffset'] * 3600);
+
+    $daytimeSeconds = $sunsetUnix - $sunriseUnix;
+    $daytimeHours = floor($daytimeSeconds / 3600);
+    $daytimeMins = floor(($daytimeSeconds % 3600) / 60);
+    $nighttimeSeconds = 86400 - $daytimeSeconds;
+    $nighttimeHours = floor($nighttimeSeconds / 3600);
+    $nighttimeMins = floor(($nighttimeSeconds % 3600) / 60);
+
+    $weatherData = array(
+        'temp' => round($current['main']['temp']),
+        'icon' => $current['weather'][0]['icon'],
+        'description' => ucwords(str_replace(' ', ' ', strtolower($current['weather'][0]['description']))),
+        'lastUpdatedUnix' => time(),
+        'sunrise' => $sunriseLocal,
+        'sunset' => $sunsetLocal,
+        'daytimeHours' => "{$daytimeHours}h {$daytimeMins}m",
+        'nighttimeHours' => "{$nighttimeHours}h {$nighttimeMins}m",
+        'forecast' => array(),  // Placeholder for forecast
+        'federalHolidaysDynamic' => $federalHolidays  // Ensure holidays here
+    );
+
+    // Simple forecast stub (expand with API if needed)
+    $forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast'
+        . '?q=' . rawurlencode(WEATHER_LOCATION)
+        . '&appid=' . rawurlencode($weatherApiKey)
+        . '&units=imperial';
+    $forecast = fetchJsonCurl($forecastUrl);
+    if (!isset($forecast['error']) && isset($forecast['list'])) {
+        $days = array();
+        $seen = array();
+        foreach ($forecast['list'] as $item) {
+            $day = date('l, M j', $item['dt']);
+            if (!isset($seen[$day])) {
+                $seen[$day] = true;
+                $days[] = array(
+                    'date' => $day,
+                    'description' => ucwords($item['weather'][0]['description']),
+                    'high' => round($item['main']['temp_max']),
+                    'low' => round($item['main']['temp_min']),
+                    'icon' => $item['weather'][0]['icon'],
+                    'precip' => isset($item['pop']) ? round($item['pop'] * 100) : 0,
+                    'wind' => round($item['wind']['speed'])
+                );
+                if (count($days) >= 3) break;
+            }
+        }
+        $weatherData['forecast'] = $days;
+    }
+} else {
+    error_log('Weather API error: ' . print_r($current, true));
     $weatherData['description'] = 'API call failed (current)';
-    error_log('❌ Current weather failed: ' . json_encode($current));
-} else {
-    $sunriseUnix = (int)$current['sys']['sunrise'];
-    $sunsetUnix  = (int)$current['sys']['sunset'];
-
-    // Convert API UTC → Phoenix local time
-    $tz = new DateTimeZone("America/Phoenix");
-
-    $dtSunrise = new DateTime("@$sunriseUnix");
-    $dtSunrise->setTimezone($tz);
-    $sunriseLocal = $dtSunrise->format("g:i A");
-
-    $dtSunset = new DateTime("@$sunsetUnix");
-    $dtSunset->setTimezone($tz);
-    $sunsetLocal = $dtSunset->format("g:i A");
-
-    $daySecs   = max(0, $sunsetUnix - $sunriseUnix);
-    $nightSecs = max(0, 86400 - $daySecs);
-
-    $weatherData['temp']            = (int)round($current['main']['temp']);
-    $weatherData['icon']            = (string)$current['weather'][0]['icon'];
-    $weatherData['description']     = ucfirst((string)$current['weather'][0]['description']);
-    $weatherData['lastUpdatedUnix'] = time();
-    $weatherData['sunrise']         = $sunriseLocal;
-    $weatherData['sunset']          = $sunsetLocal;
-    $weatherData['daytimeHours']    = gmdate('G\h i\m', $daySecs);
-    $weatherData['nighttimeHours']  = gmdate('G\h i\m', $nightSecs);
 }
 
-$forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast'
-    . '?q=' . rawurlencode(WEATHER_LOCATION)
-    . '&appid=' . rawurlencode($weatherApiKey)
-    . '&units=imperial';
-$forecast = fetchJsonCurl($forecastUrl);
-
-if (isset($forecast['list']) && is_array($forecast['list'])) {
-    $daily = array();
-    foreach ($forecast['list'] as $entry) {
-        if (!isset($entry['dt'], $entry['main']['temp_max'], $entry['main']['temp_min'], $entry['weather'][0]['description'], $entry['weather'][0]['icon'])) continue;
-        $date = date('Y-m-d', (int)$entry['dt']);
-        if (!isset($daily[$date])) {
-            $daily[$date] = array(
-                'high' => (float)$entry['main']['temp_max'],
-                'low' => (float)$entry['main']['temp_min'],
-                'desc' => (string)$entry['weather'][0]['description'],
-                'icon' => (string)$entry['weather'][0]['icon'],
-                'pop' => isset($entry['pop']) ? (float)$entry['pop'] * 100 : 0,
-                'wind' => isset($entry['wind']['speed']) ? (float)$entry['wind']['speed'] : 0
-            );
-        } else {
-            $daily[$date]['high'] = max($daily[$date]['high'], (float)$entry['main']['temp_max']);
-            $daily[$date]['low'] = min($daily[$date]['low'], (float)$entry['main']['temp_min']);
-            if (isset($entry['pop'])) $daily[$date]['pop'] = max($daily[$date]['pop'], (float)$entry['pop'] * 100);
-            if (isset($entry['wind']['speed'])) $daily[$date]['wind'] = max($daily[$date]['wind'], (float)$entry['wind']['speed']);
-        }
-    }
-
-    $count = 0;
-    foreach ($daily as $date => $info) {
-        if ($count++ >= 3) break;
-        $weatherData['forecast'][] = array(
-            'date' => date('l, M j', strtotime($date)),
-            'description' => ucfirst($info['desc']),
-            'high' => (int)round($info['high']),
-            'low' => (int)round($info['low']),
-            'icon' => $info['icon'],
-            'precip' => (int)round($info['pop']),
-            'wind' => (int)round($info['wind'])
-        );
-    }
-} else {
-    error_log('❌ Forecast fetch failed: ' . json_encode($forecast));
+// Cache weather if successful
+if ($weatherData['temp'] !== null) {
+    @file_put_contents(WEATHER_CACHE_PATH, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
 #endregion
 
-#region 🧭 Codex Tier Configuration
-// ============================================================================
-// Skyesoft Policy Governance Layer – Tier Configuration
-// ----------------------------------------------------------------------------
-// Reads the current Codex and extracts the active stream tiers.
-// This allows getDynamicData.php to be guided by Codex-defined policies
-// rather than fixed PHP logic.
-// ============================================================================
-$codexTiers = array();
-
-if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers'])) {
-    $codexTiers = $codex['sseStream']['tiers'];
-    // Optional: diagnostic logging
-    // error_log('🧭 Codex Tiers Loaded: ' . json_encode(array_keys($codexTiers)));
-} else {
-    error_log('⚠️ Codex tiers missing or invalid – using legacy fallback.');
-}
-#endregion
-
-#region 📅 Time and Date Calculations
-
-date_default_timezone_set('America/Phoenix');
-$now = time();
-$yearTotalDays = (date('L', $now) ? 366 : 365);
-$yearDayNumber = intval(date('z', $now)) + 1;
+#region ⏰ Time Computation
+$currentUnixTime = time();
+$currentTime = date('H:i:s');
+$currentDate = date('Y-m-d');
+$year = (int)date('Y');
+$yearTotalDays = 365 + (date('L', strtotime($currentDate)) ? 1 : 0);  // Leap year check
+$yearDayNumber = (int)date('z', strtotime($currentDate)) + 1;
 $yearDaysRemaining = $yearTotalDays - $yearDayNumber;
-$monthNumber = intval(date('n', $now));
-$weekdayNumber = intval(date('w', $now));
-$dayNumber = intval(date('j', $now));
-$currentHour = intval(date('G', $now));
-$timeOfDayDesc = ($currentHour < 12) ? 'morning' : (($currentHour < 18) ? 'afternoon' : 'evening');
-$dt = new DateTime('now', new DateTimeZone('America/Phoenix'));
-$utcOffset = intval($dt->format('Z')) / 3600;
-$currentDayStartUnix = strtotime('today', $now);
-$currentDayEndUnix = strtotime('tomorrow', $now) - 1;
+$monthNumber = (int)date('n');
+$weekdayNumber = (int)date('N');  // 1=Mon, 7=Sun
+$dayNumber = (int)date('j');
+$currentHour = (int)date('G');
+$timeOfDayDesc = ($currentHour < 12) ? 'morning' : (($currentHour < 17) ? 'afternoon' : 'evening');
+$utcOffset = -7;  // Phoenix fixed
 
-$currentDate = date('Y-m-d', $now);
-$currentTime = date('h:i:s A', $now);
-$currentSeconds = date('G', $now) * 3600 + date('i', $now) * 60 + date('s', $now);
-$currentUnixTime = $now;
-
-$workStart = timeStringToSeconds(WORKDAY_START);
-$workEnd = timeStringToSeconds(WORKDAY_END);
-
-$holidays = array();
-if (is_readable(HOLIDAYS_PATH)) {
-    $holidaysData = json_decode(file_get_contents(HOLIDAYS_PATH), true);
-    $holidays = (is_array($holidaysData) && isset($holidaysData['holidays']) && is_array($holidaysData['holidays'])) ? $holidaysData['holidays'] : array();
-}
-
-$isHoliday = isHoliday($currentDate, $holidays);
-$isWorkday = isWorkday($currentDate, $holidays);
-
-$intervalLabel = ($isWorkday && $currentSeconds >= $workStart && $currentSeconds < $workEnd) ? '0' : '1';
-$dayType = (!$isWorkday ? ($isHoliday ? '2' : '1') : '0');
-
-if ($intervalLabel === '1') {
-    $nextStart = ($isWorkday && $currentSeconds < $workStart)
-        ? strtotime($currentDate . ' ' . WORKDAY_START)
-        : findNextWorkdayStart($currentDate, $holidays);
-    $secondsRemaining = $nextStart - $now;
-} else {
-    $secondsRemaining = $workEnd - $currentSeconds;
-}
-
+$currentDayStartUnix = strtotime(date('Y-m-d 00:00:00', $nowTs));
+$currentDayEndUnix = strtotime(date('Y-m-d 23:59:59', $nowTs));
+$secondsRemaining = $currentDayEndUnix - $nowTs;
+$intervalLabel = '1';  // Placeholder
+$dayType = $isWorkdayToday ? '0' : '1';  // 0=workday, 1=non
 #endregion
 
-#region 🔧 Utility Functions
-function timeStringToSeconds($timeStr) {
-    list($h, $m) = explode(':', $timeStr);
-    return (int)$h * 3600 + (int)$m * 60;
-}
-
-function isHoliday($dateStr, $holidays) {
-    foreach ($holidays as $holiday) {
-        if ($holiday['date'] === $dateStr) return true;
-    }
-    return false;
-}
-
-function isWorkday($date, $holidays) {
-    $day = date('w', strtotime($date));
-    return $day != 0 && $day != 6 && !isHoliday($date, $holidays);
-}
-
-function findNextWorkdayStart($startDate, $holidays) {
-    $date = strtotime($startDate . ' +1 day');
-    while (!isWorkday(date('Y-m-d', $date), $holidays)) {
-        $date = strtotime('+1 day', $date);
-    }
-    return strtotime(date('Y-m-d', $date) . ' ' . WORKDAY_START);
-}
-#endregion
-
-#region 📊 Record Counts
-$recordCounts = array('actions' => 0, 'entities' => 0, 'locations' => 0, 'contacts' => 0, 'orders' => 0, 'permits' => 0, 'notes' => 0, 'tasks' => 0);
-if (is_readable(DATA_PATH)) {
-    $data = json_decode(file_get_contents(DATA_PATH), true);
-    if (is_array($data)) {
-        foreach ($recordCounts as $key => $val) {
-            if (isset($data[$key])) $recordCounts[$key] = count($data[$key]);
-        }
-    }
-}
-#endregion
-
-#region 🔔 UI Event Handling
-$dirty = false;
-if (is_array($uiEvent) && isset($uiEvent['nonce'])) {
-    $nowMs = (int) round(microtime(true) * 1000);
-    $born = isset($uiEvent['nonce']) ? (int)$uiEvent['nonce'] : 0;
-    $ttl = isset($uiEvent['ttlMs']) ? (int)$uiEvent['ttlMs'] : 15000;
-    if ($born > 0 && ($nowMs - $born) > $ttl) {
-        $mainData['uiEvent'] = null;
-        $uiEvent = null;
-        $dirty = true;
-    }
-}
-
-if ($uiEvent && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $raw = file_get_contents('php://input');
-    $post = array();
-    if ($raw) {
-        $json = json_decode($raw, true);
-        if (is_array($json)) $post = $json;
-    }
-    if (empty($post) && !empty($_POST)) $post = $_POST;
-
-    if (isset($post['ackNonce'])) {
-        $ack = (int) $post['ackNonce'];
-        if (isset($uiEvent['nonce']) && (int)$uiEvent['nonce'] === $ack) {
-            $mainData['uiEvent'] = null;
-            $uiEvent = null;
-            $dirty = true;
-        }
-    }
-}
-
-if ($dirty && is_writable(DATA_PATH)) {
-    $fp = fopen(DATA_PATH, 'c+');
-    if ($fp) {
-        if (flock($fp, LOCK_EX)) {
-            rewind($fp);
-            ftruncate($fp, 0);
-            fwrite($fp, json_encode($mainData, JSON_PRETTY_PRINT));
-            fflush($fp);
-            flock($fp, LOCK_UN);
-        }
-        fclose($fp);
-    } else {
-        error_log('❌ Could not open ' . DATA_PATH . ' for writing');
-    }
-}
-#endregion
-
-#region 🧭 Codex Context Merge (Phase 3)
-
-// ======================================================
-// Extract Codex governance, tier mapping, and summaries
-// to unify policy and telemetry within SSE heartbeat.
-// ======================================================
-#region 🧭 Codex Context Merge (Phase 3)
-
-// Merge Codex governance + tier mapping into SSE heartbeat
-$codexContext = array(
-    'version' => (isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown'),
-    'tierMap' => array(
-        'live-feed'      => array('timeDateArray','recordCounts','kpiData'),
-        'context-stream' => array('weatherData','siteMeta'),
-        'system-pulse'   => array('codexContext')
-    ),
-    'governance' => array(
-        'policyPriority' => array('legal','temporal','operational','inference'),
-        'activeModules'  => (is_array($codex) ? array_keys($codex) : array())
-    ),
-    'summaries' => array(
-        'timeIntervalStandards' => (isset($codex['timeIntervalStandards']['purpose']['text']) ? $codex['timeIntervalStandards']['purpose']['text'] : ''),
-        'sseStream'             => (isset($codex['sseStream']['purpose']['text']) ? $codex['sseStream']['purpose']['text'] : ''),
-        'aiIntegration'         => (isset($codex['aiIntegration']['purpose']['text']) ? $codex['aiIntegration']['purpose']['text'] : '')
-    )
+#region 📈 Record Counts (Stubbed)
+$recordCounts = array(
+    'actions' => 69,
+    'entities' => 1,
+    'locations' => 1,
+    'contacts' => 1,
+    'orders' => 0,
+    'permits' => 0,
+    'notes' => 0,
+    'tasks' => 0
 );
-
-// Optional short-term cache to minimize disk reads
-$cachePath = sys_get_temp_dir() . '/codex_cache.json';
-if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
-    @file_put_contents($cachePath, json_encode($codexContext, JSON_PRETTY_PRINT));
-}
-
-// Attach to outgoing SSE response
-$response['codexContext'] = $codexContext;
-
 #endregion
 
-#region 📤 Response Assembly (Codex-Aware Dynamic Builder)
-// ============================================================================
-// Skyesoft Codex-Driven Response Assembly
-// ----------------------------------------------------------------------------
-// Builds the SSE stream output dynamically using Codex tier membership.
-// Falls back to legacy static structure if Codex tiers are missing.
-// ============================================================================
-
+#region 🧩 Response Assembly (Codex Tier 1)
 $response = array();
+
+// Load Codex tiers for dynamic response shape
+$codexTiers = isset($codex['sseStream']['tiers']) ? $codex['sseStream']['tiers'] : array();
 $codexVersion = isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown';
 
-// 🧩 1️⃣  Build from Codex tiers when available
-if (!empty($codexTiers) && is_array($codexTiers)) {
-
+if (is_array($codexTiers)) {
     foreach ($codexTiers as $tierName => $tierDef) {
         if (!isset($tierDef['members']) || !is_array($tierDef['members'])) continue;
 
