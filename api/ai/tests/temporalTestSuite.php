@@ -43,16 +43,27 @@ function printResult($prompt, $result)
         return;
     }
 
-    $runtime = isset($result['data']['runtime']) ? $result['data']['runtime'] : [];
-    $flags   = isset($result['flags']) ? $result['flags'] : [];
+    $runtime = isset($result['data']['runtime']) ? $result['data']['runtime'] : array();
+    $flags   = isset($result['flags']) ? $result['flags'] : array();
 
-    echo "• Event: " . ($result['event'] ?? 'unknown') . "\n";
-    echo "• Status: " . ($result['status'] ?? 'n/a') . "\n";
+    echo "• Event: " . (isset($result['event']) ? $result['event'] : 'unknown') . "\n";
+    echo "• Status: " . (isset($result['status']) ? $result['status'] : 'n/a') . "\n";
     echo "• Workday? " . (isset($result['isWorkdayToday']) ? ($result['isWorkdayToday'] ? '✅ Yes' : '❌ No') : 'Unknown') . "\n";
-    echo "• Target: " . ($runtime['targetDate'] ?? 'n/a') . " " . ($runtime['targetTime'] ?? '') . "\n";
-    echo "• Delta: " . ($runtime['delta']['hours'] ?? '?') . "h " . ($runtime['delta']['minutes'] ?? '?') . "m " . ($runtime['delta']['direction'] ?? '') . "\n";
-    echo "• Rollover: " . ((isset($flags['rollover']) && $flags['rollover']) ? 'Yes' : 'No') . "\n";
-    echo "• Post-Start: " . ((isset($flags['postStart']) && $flags['postStart']) ? 'Yes' : 'No') . "\n";
+
+    $targetDate = isset($runtime['targetDate']) ? $runtime['targetDate'] : 'n/a';
+    $targetTime = isset($runtime['targetTime']) ? $runtime['targetTime'] : '';
+    echo "• Target: {$targetDate} {$targetTime}\n";
+
+    $delta = isset($runtime['delta']) ? $runtime['delta'] : array();
+    $deltaHours = isset($delta['hours']) ? $delta['hours'] : '?';
+    $deltaMins  = isset($delta['minutes']) ? $delta['minutes'] : '?';
+    $deltaDir   = isset($delta['direction']) ? $delta['direction'] : '';
+    echo "• Delta: {$deltaHours}h {$deltaMins}m {$deltaDir}\n";
+
+    $rollover = (isset($flags['rollover']) && $flags['rollover']) ? 'Yes' : 'No';
+    $postStart = (isset($flags['postStart']) && $flags['postStart']) ? 'Yes' : 'No';
+    echo "• Rollover: {$rollover}\n";
+    echo "• Post-Start: {$postStart}\n";
     echo "───────────────────────────────\n\n";
 }
 
