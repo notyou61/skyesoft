@@ -271,43 +271,47 @@ if ($weatherData['temp'] !== null) {
 #endregion
 
 #region ⏰ Time Computation
-// Define early to avoid undefined notices
-$timeData = array(
-    'currentUnixTime' => time(),
-    'currentLocalTime' => date('H:i:s'),
-    'currentDate' => date('Y-m-d'),
-    'currentYearTotalDays' => 365 + (date('L') ? 1 : 0),
-    'currentYearDayNumber' => (int)date('z') + 1,
-    'currentYearDaysRemaining' => 365 + (date('L') ? 1 : 0) - ((int)date('z') + 1),
-    'currentMonthNumber' => (int)date('n'),
-    'currentWeekdayNumber' => (int)date('N'),
-    'currentDayNumber' => (int)date('j'),
-    'currentHour' => (int)date('G'),
-    'timeOfDayDescription' => ($currentHour < 12) ? 'morning' : (($currentHour < 17) ? 'afternoon' : 'evening'),
-    'timeZone' => 'America/Phoenix',
-    'UTCOffset' => -7
-);
-$nowTs = time();  // Early definition for $nowTs
-
-$currentUnixTime = $nowTs;
-$currentTime = date('H:i:s');
-$currentDate = date('Y-m-d');
-$year = (int)date('Y');
-$yearTotalDays = 365 + (date('L', $nowTs) ? 1 : 0);  // Leap year check
-$yearDayNumber = (int)date('z', $nowTs) + 1;
-$yearDaysRemaining = $yearTotalDays - $yearDayNumber;
-$monthNumber = (int)date('n', $nowTs);
-$weekdayNumber = (int)date('N', $nowTs);
-$dayNumber = (int)date('j', $nowTs);
+// --- Initialize timestamp helpers early to prevent undefined notices ---
+$nowTs = time();  // current UNIX time baseline
 $currentHour = (int)date('G', $nowTs);
-$timeOfDayDesc = ($currentHour < 12) ? 'morning' : (($currentHour < 17) ? 'afternoon' : 'evening');
-$utcOffset = -7;  // Phoenix fixed
 
+// Define unified $timeData array for downstream references (e.g., UTCOffset)
+$timeData = array(
+    'currentUnixTime'          => $nowTs,
+    'currentLocalTime'         => date('H:i:s', $nowTs),
+    'currentDate'              => date('Y-m-d', $nowTs),
+    'currentYearTotalDays'     => 365 + (date('L', $nowTs) ? 1 : 0),
+    'currentYearDayNumber'     => (int)date('z', $nowTs) + 1,
+    'currentYearDaysRemaining' => (365 + (date('L', $nowTs) ? 1 : 0)) - ((int)date('z', $nowTs) + 1),
+    'currentMonthNumber'       => (int)date('n', $nowTs),
+    'currentWeekdayNumber'     => (int)date('N', $nowTs),
+    'currentDayNumber'         => (int)date('j', $nowTs),
+    'currentHour'              => $currentHour,
+    'timeOfDayDescription'     => ($currentHour < 12) ? 'morning' : (($currentHour < 17) ? 'afternoon' : 'evening'),
+    'timeZone'                 => 'America/Phoenix',
+    'UTCOffset'                => -7 // Phoenix is UTC-7 year-round
+);
+
+// Derivative fields used downstream
+$currentUnixTime = $nowTs;
+$currentTime     = $timeData['currentLocalTime'];
+$currentDate     = $timeData['currentDate'];
+$year            = (int)date('Y', $nowTs);
+$yearTotalDays   = $timeData['currentYearTotalDays'];
+$yearDayNumber   = $timeData['currentYearDayNumber'];
+$yearDaysRemaining = $timeData['currentYearDaysRemaining'];
+$monthNumber     = $timeData['currentMonthNumber'];
+$weekdayNumber   = $timeData['currentWeekdayNumber'];
+$dayNumber       = $timeData['currentDayNumber'];
+$timeOfDayDesc   = $timeData['timeOfDayDescription'];
+$utcOffset       = $timeData['UTCOffset'];
+
+// Compute day boundaries and workday interval flags
 $currentDayStartUnix = strtotime(date('Y-m-d 00:00:00', $nowTs));
-$currentDayEndUnix = strtotime(date('Y-m-d 23:59:59', $nowTs));
-$secondsRemaining = $currentDayEndUnix - $nowTs;
-$intervalLabel = '1';  // Placeholder
-$dayType = $isWorkdayToday ? '0' : '1';  // 0=workday, 1=non
+$currentDayEndUnix   = strtotime(date('Y-m-d 23:59:59', $nowTs));
+$secondsRemaining    = $currentDayEndUnix - $nowTs;
+$intervalLabel       = '1';  // Placeholder
+$dayType             = isset($isWorkdayToday) && $isWorkdayToday ? '0' : '1';  // 0=workday, 1=non
 #endregion
 
 #region 📈 Record Counts (Stubbed)
