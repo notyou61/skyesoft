@@ -1,12 +1,7 @@
 <?php
-// ================================================================
-// 🌇 SKYEBOT TEMPORAL INTENT HANDLER  (v4.1 – Workday/Sundown/Time)
-// ================================================================
-// Purpose:
-//   • Respond to temporal queries (time, sundown, workday start)
-//   • Pulls live SSE + Codex timeIntervalStandards
-//   • Returns structured array for Phase 6 natural composer
-// ================================================================
+// 📄 File: api/ai/intents/temporal.php
+// Purpose: Generate temporal reasoning context (Codex + SSE integration)
+// Version: v4.1 – Workday/Sundown/Time; fixed unassigned $isWorkdayToday, full rollover/post-start, tomorrow validation, consistent deltas, PHP 5.6-safe
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
@@ -43,39 +38,54 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $codex = json_decode(@file_get_contents($codexPath), true) ?: array();
     $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
-    // 🔹 4. Build interval map (office)
+    // 🔹 4. Build interval map (office) – focus on worktime/sundown
     $segments = array();
     if (isset($tis['segmentsOffice']['items']) && is_array($tis['segmentsOffice']['items'])) {
         foreach ($tis['segmentsOffice']['items'] as $seg) {
             if (!isset($seg['Interval']) || !isset($seg['Hours'])) continue;
-            list($s, $e) = explode(' – ', $seg['Hours']);
-            $segments[strtolower(str_replace(' ', '_', $seg['Interval']))] = array(
-                'start' => trim($s), 'end' => trim($e)
-            );
+            if (stripos($seg['Interval'], 'Worktime') !== false) {
+                list($s, $e) = explode(' – ', $seg['Hours']);
+                $segments['worktime'] = array(
+                    'start' => trim($s), 'end' => trim($e),
+                    'name' => $seg['Interval']
+                );
+            }
         }
     }
-    if ($sunset) $segments['sundown'] = array('start' => $sunset);
+    // Shop override if prompted
+    $lp = strtolower($prompt);
+    if (strpos($lp, 'shop') !== false && isset($tis['segmentsShop']['items']) && is_array($tis['segmentsShop']['items'])) {
+        foreach ($tis['segmentsShop']['items'] as $seg) {
+            if (stripos($seg['Interval'], 'Worktime') !== false) {
+                list($s, $e) = explode(' – ', $seg['Hours']);
+                $segments['worktime'] = array(
+                    'start' => trim($s), 'end' => trim($e),
+                    'name' => $seg['Interval']
+                );
+                break;
+            }
+        }
+    }
+    if ($sunset) $segments['sundown'] = array('start' => $sunset, 'name' => 'Sundown');
 
     // 🔹 5. Detect event type
-    $lp = strtolower($prompt);
     $event = 'time'; // default
     if (preg_match('/sun(set|down)|dusk/', $lp))      $event = 'sundown';
-    elseif (preg_match('/work(day|time)|office|start|begin/', $lp)) $event = 'worktime';
+    elseif (preg_match('/work(day|time)|office|start|begin|finish|end|business hours/', $lp)) $event = 'worktime';
     elseif (preg_match('/time|clock|now/', $lp))      $event = 'time';
 
     // 🔹 6. Resolve target timestamp
     $today = date('Y-m-d', $nowTs);
-    $dow   = date('N', $nowTs);
+    $dow   = date('N', $nowTs);  // 1=Mon, 7=Sun
 
     // ✅ Always define variable before use
-    $isWorkdayToday = false;
-
-    // Determine if today is a valid workday
-    if ($dow >= 1 && $dow <= 5 && !in_array($today, $holidays)) {
-        $isWorkdayToday = true;
-    }
+    $isWorkdayToday = ($dow >= 1 && $dow <= 5) && !in_array($today, $holidays);
 
     $targetTs = $nowTs;
+    $targetDate = $today;
+    $useEndTime = (strpos($lp, 'finish') !== false || strpos($lp, 'end') !== false);
+    $isTomorrow = strpos($lp, 'tomorrow') !== false;
+    $isNext = strpos($lp, 'next') !== false;
 
     switch ($event) {
         case 'sundown':
@@ -83,35 +93,57 @@ function handleIntent($prompt, $codexPath, $ssePath)
             break;
 
         case 'worktime':
-            $target = isset($segments['worktime']['start']) ? $segments['worktime']['start'] : '7:30 AM';
-            $tDate  = $today;
+            $seg = isset($segments['worktime']) ? $segments['worktime'] : array('start' => '7:30 AM', 'end' => '3:30 PM');
+            $targetTime = $useEndTime ? $seg['end'] : $seg['start'];
+            $targetDate = $today;
 
-            if (!$isWorkdayToday) {
-                $n = 1;
-                while (true) {
-                    $next = strtotime("+$n day", $nowTs);
-                    $dowN = date('N', $next);
-                    $dStr = date('Y-m-d', $next);
-                    if ($dowN <= 5 && !in_array($dStr, $holidays)) { 
-                        $tDate = $dStr; 
-                        break; 
-                    }
-                    $n++;
+            // Rollover logic: Skip non-workdays, handle tomorrow/next/post-start
+            $offset = $isTomorrow ? 1 : 0;
+            if ($isNext || $isTomorrow || $useEndTime) $offset = 1;
+            $candidateOffset = $offset;
+            while (true) {
+                $candidateTs = strtotime("+{$candidateOffset} days", $nowTs);
+                $candidateDow = date('N', $candidateTs);
+                $candidateDate = date('Y-m-d', $candidateTs);
+                if ($candidateDow >= 1 && $candidateDow <= 5 && !in_array($candidateDate, $holidays)) {
+                    $targetDate = $candidateDate;
+                    break;
                 }
+                $candidateOffset++;
             }
-            $targetTs = strtotime("$tDate $target");
-            if ($targetTs <= $nowTs) $targetTs = strtotime("+1 day", $targetTs);
+            $targetTs = strtotime("$targetDate $targetTime");
+            if ($targetTs <= $nowTs) {
+                $targetTs = strtotime("+1 day", $targetTs);
+                $targetDate = date('Y-m-d', $targetTs);
+            }
             break;
 
         default:
             $targetTs = $nowTs;
     }
 
-    // 🔹 7. Delta computation
+    // 🔹 7. Delta computation with multi-day verbal
     $delta = $targetTs - $nowTs;
-    $hrs = abs(floor($delta / 3600));
-    $mins = abs(floor(($delta % 3600) / 60));
-    $direction = ($delta >= 0) ? 'until' : 'since';
+    $absDelta = abs($delta);
+    $totalDays = floor($absDelta / 86400);
+    $remSeconds = $absDelta % 86400;
+    $hrs = floor($remSeconds / 3600);
+    $mins = floor(($remSeconds % 3600) / 60);
+    $isPast = $delta < 0;
+    $direction = $isPast ? 'ago' : 'until';
+
+    // Verbal delta (e.g., "1 day and 2 hours 30 minutes")
+    $parts = array();
+    if ($totalDays > 0) $parts[] = "{$totalDays} day" . ($totalDays > 1 ? 's' : '');
+    if ($hrs > 0) $parts[] = "{$hrs} hour" . ($hrs > 1 ? 's' : '');
+    if ($mins > 0 || empty($parts)) $parts[] = "{$mins} minute" . ($mins != 1 ? 's' : '');
+    $verbal = implode(' and ', $parts) ?: 'imminent';
+
+    $verbalDelta = $isPast ? "{$verbal} {$direction}" : "in {$verbal}";
+    $isAgoPrompt = strpos($lp, 'ago') !== false;
+    if ($isAgoPrompt && !$isPast) {
+        $verbalDelta = "The event hasn't started yet—{$verbal} {$direction}.";
+    }
 
     // 🔹 8. Structured output (Phase 6-ready)
     return array(
@@ -127,12 +159,17 @@ function handleIntent($prompt, $codexPath, $ssePath)
                 'date' => date('F j, Y', $nowTs),
                 'timezone' => $tz,
                 'sunset' => $sunset,
+                'targetDate' => $targetDate,
+                'targetTime' => isset($targetTime) ? $targetTime : date('g:i A', $targetTs),
                 'deltaHours' => $hrs,
                 'deltaMinutes' => $mins,
-                'direction' => $direction
+                'totalDays' => $totalDays,
+                'direction' => $direction,
+                'verbalDelta' => $verbalDelta,
+                'isPast' => $isPast
             ),
             'intervals' => $segments
         ),
-        'intent' => "Temporal query ($event) resolved via SSE + Codex TIS module"
+        'intent' => "Temporal query ($event) resolved via SSE + Codex TIS module (rollover/verbal fixed)"
     );
 }
