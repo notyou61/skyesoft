@@ -65,32 +65,6 @@ if (!empty($prompt) && function_exists('runPolicyEngine')) {
 }
 #endregion
 
-#region 💬 SKYEBOT CORE AI RESPONSE HANDLER (Simplified Test Output)
-// ================================================================
-// Purpose:
-//   • Preserve test output for non-AI (no intent) prompts
-//   • Prevent duplicate greeting when Phase 6 or Codex handled output
-// ================================================================
-
-// 🧩 Only run if nothing else handled or composed a reply
-if (empty($aiReply) && empty($handled)) {
-    $responseText = "Hello! It’s " . date('g:i A') . " — how can I help you today?";
-
-    // Optional: include system instruction trace for debugging
-    if (!empty($systemInstr)) {
-        $responseText .= "\n\n" . $systemInstr;
-    }
-
-    header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode(array(
-        'response' => $responseText
-    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    // ✅ Stop here so Phase 6 doesn’t double-emit output
-    exit;
-}
-#endregion
-
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
 // ================================================================
 $rawInput = @file_get_contents('php://input');
