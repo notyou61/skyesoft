@@ -831,49 +831,79 @@ function humanizeSecondsShort($secs) {
     if ($hrs > 0) return $hrs . " hours";
     return $mins . " minutes";
 }
+/**
+ * 🔹 resolveDayType()
+ * Purpose: Determine the day classification (Workday / Weekend / Holiday)
+ * Used by: temporal.php, scheduling modules, and SSE temporal layer.
+ * Version: v2.2 – Codex-aligned; PHP 5.6 safe
+ *
+ * @param array|string $tis       Time Interval Standards (from Codex or JSON)
+ * @param array        $holidays  Array of dynamic holiday objects
+ * @param int|string   $timestamp UNIX timestamp or date string
+ * @return array Structured classification
+ */
+
 function resolveDayType($tis, $holidays, $timestamp)
 {
-    // Default classification
-    $dayType = 'Unknown';
+    // --- Normalize timestamp input ---
+    if (!is_numeric($timestamp)) {
+        $timestamp = strtotime($timestamp);
+    }
+    if (!$timestamp) $timestamp = time();
 
-    // Normalize input
+    // --- Normalize Codex + holidays ---
     if (!is_array($tis)) $tis = array();
     if (!is_array($holidays)) $holidays = array();
 
-    // 🗓️ Extract Codex-defined dayTypeArray
+    // --- Load Codex-defined dayTypeArray or fallback ---
     $dayTypes = array();
     if (isset($tis['dayTypeArray']) && is_array($tis['dayTypeArray'])) {
         $dayTypes = $tis['dayTypeArray'];
     } else {
-        // Fallback reflection (Codex mirror)
+        // Fallback (standard office/work pattern)
         $dayTypes = array(
-            array('DayType' => 'Workday', 'Days' => 'Mon-Fri'),
-            array('DayType' => 'Weekend', 'Days' => 'Sat-Sun'),
+            array('DayType' => 'Workday', 'Days' => 'Mon,Tue,Wed,Thu,Fri'),
+            array('DayType' => 'Weekend', 'Days' => 'Sat,Sun'),
             array('DayType' => 'Holiday', 'Days' => 'Dynamic')
         );
     }
 
-    // 🌅 Determine weekday abbreviation (Mon, Tue, etc.)
-    $weekday = date('D', $timestamp);
+    // --- Extract weekday + formatted date ---
+    $weekday   = date('D', $timestamp); // e.g., Fri
     $todayDate = date('Y-m-d', $timestamp);
+    $dayType   = 'Unknown';
 
-    // 🔹 Step 1: Base classification from Codex
+    // --- Step 1: Base classification from Codex ---
     foreach ($dayTypes as $dt) {
-        if (isset($dt['Days']) && stripos($dt['Days'], $weekday) !== false) {
-            $dayType = $dt['DayType'];
+        if (!isset($dt['Days']) || !isset($dt['DayType'])) continue;
+
+        // Support comma or dash-separated formats
+        $daysNorm = str_replace(array('-', ' '), ',', $dt['Days']);
+        $daysArr  = array_map('trim', explode(',', $daysNorm));
+
+        if (in_array($weekday, $daysArr)) {
+            $dayType = ucfirst(strtolower($dt['DayType']));
             break;
         }
     }
 
-    // 🔹 Step 2: Override if in dynamic holiday list
+    // --- Step 2: Override with dynamic holiday list ---
     foreach ($holidays as $h) {
-        if (isset($h['date']) && $h['date'] === $todayDate) {
+        $hDate = isset($h['date']) ? $h['date'] : null;
+        if ($hDate && $hDate === $todayDate) {
             $dayType = 'Holiday';
             break;
         }
     }
 
-    // 🔹 Step 3: Return structured object for clarity
+    // --- Step 3: Fallback normalization ---
+    if ($dayType === 'Unknown') {
+        $dow = date('N', $timestamp);
+        if ($dow >= 1 && $dow <= 5) $dayType = 'Workday';
+        else $dayType = 'Weekend';
+    }
+
+    // --- Step 4: Return structured result ---
     return array(
         'dayType'    => $dayType,
         'weekday'    => $weekday,
