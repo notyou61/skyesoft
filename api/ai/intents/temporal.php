@@ -1,8 +1,8 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
 // Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
-// Version: v4.3 – Refactored for separation: data only, no phrasing. Event flags for Phase 6 composer.
-// Aligns with: AI Integration (structured output), TIS (read-only segments), SSE (live context)
+// Version: v4.4 – Fixed rollover/ongoing for start queries; offset leakage; elapsed field for composer.
+// Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
@@ -34,6 +34,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $todayStr = isset($timeData['currentDate']) ? $timeData['currentDate'] : date('Y-m-d');
     $tz       = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
     $nowTs    = strtotime("$todayStr $nowStr") ?: time();
+    $today    = date('Y-m-d', $nowTs);
 
     // 🔹 3. Load Codex TIS module (read-only)
     $codex = json_decode(@file_get_contents($codexPath), true) ?: array();
@@ -89,13 +90,16 @@ function handleIntent($prompt, $codexPath, $ssePath)
     );
 
     // 🔹 6. Resolve target (structured; rollover via loop)
-    $today = date('Y-m-d', $nowTs);
     $dow = date('N', $nowTs); // 1=Mon, 7=Sun
     $isWorkdayToday = ($dow >= 1 && $dow <= 5) && !in_array($today, $holidays);
     $targetTs = $nowTs;
     $targetDate = $today;
     $targetTime = null;
     $rollover = false;
+    $status = 'pending';
+    $workStartToday = null;
+    $workEndToday = null;
+    $elapsed = null; // For ongoing
 
     switch ($event) {
         case 'holiday':
@@ -124,9 +128,11 @@ function handleIntent($prompt, $codexPath, $ssePath)
         case 'worktime':
             $seg = isset($segments['worktime']) ? $segments['worktime'] : array('start' => '7:30 AM', 'end' => '3:30 PM');
             $targetTime = $flags['useEndTime'] ? $seg['end'] : $seg['start'];
+            $workStartToday = strtotime("$today {$seg['start']}");
+            $workEndToday = strtotime("$today {$seg['end']}");
 
-            // Rollover logic: Find next valid workday
-            $offset = ($flags['isTomorrow'] || $flags['isNext'] || $flags['useEndTime'] || $flags['isDelayed']) ? 1 : 0;
+            // FIXED Offset: Only future/delayed flags; no useEndTime
+            $offset = ($flags['isTomorrow'] || $flags['isNext'] || $flags['isDelayed']) ? 1 : 0;
             $candidateOffset = $offset;
             while (true) {
                 $candidateTs = strtotime("+{$candidateOffset} days", $nowTs);
@@ -146,9 +152,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
                 $rollover = true;
             }
 
-            // Structured special cases (flags for composer)
-            $workStartToday = strtotime("$today {$seg['start']}");
-            $workEndToday = strtotime("$today {$seg['end']}");
+            // FIXED: Special cases
             if ($flags['isDelayed'] && $isWorkdayToday && $nowTs > $workStartToday) {
                 $ongoingDelta = $nowTs - $workStartToday;
                 $ongoingHrs = floor($ongoingDelta / 3600);
@@ -178,8 +182,16 @@ function handleIntent($prompt, $codexPath, $ssePath)
                     'flags' => $flags + array('rollover' => $rollover)
                 );
             }
-            if (!$flags['useEndTime'] && $nowTs > $workStartToday && $nowTs < $workEndToday) {
-                $status = 'in_effect';
+
+            // FIXED Override: For start queries in progress (unifies 'in_effect')
+            if (!$flags['useEndTime'] && $nowTs >= $workStartToday && $nowTs < $workEndToday) {
+                $targetTs = $workStartToday;
+                $targetDate = $today;
+                $rollover = false;
+                $elapsedDelta = $nowTs - $workStartToday;
+                $elapsed['hours'] = floor($elapsedDelta / 3600);
+                $elapsed['minutes'] = floor(($elapsedDelta % 3600) / 60);
+                $status = 'ongoing';
             }
             break;
 
@@ -199,34 +211,39 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $direction = $isPast ? 'ago' : 'until';
 
     // Post-start flag for start queries
-    $postStart = ($event === 'worktime' && !$flags['useEndTime'] && $nowTs > strtotime("$today {$segments['worktime']['start']}"));
+    $postStart = ($event === 'worktime' && !$flags['useEndTime'] && $nowTs > ($workStartToday ?: strtotime("$today {$segments['worktime']['start']}")));
 
     // 🔹 8. Structured output (Phase 6-ready: data only)
+    $runtime = array(
+        'now' => date('g:i A', $nowTs),
+        'date' => date('F j, Y', $nowTs),
+        'timezone' => $tz,
+        'sunset' => $sunset,
+        'targetDate' => $targetDate,
+        'targetTime' => $targetTime ?: date('g:i A', $targetTs),
+        'delta' => array(
+            'totalDays' => $totalDays,
+            'hours' => $hrs,
+            'minutes' => $mins,
+            'direction' => $direction,
+            'isPast' => $isPast
+        )
+    );
+    if ($elapsed) {
+        $runtime['elapsed'] = $elapsed; // Positive ongoing components for composer
+    }
+
     return array(
         'domain' => 'temporal',
         'codexNode' => 'timeIntervalStandards',
         'prompt' => $prompt,
         'intent' => 'temporal_query',
         'event' => $event,
-        'status' => isset($status) ? $status : 'pending',
+        'status' => $status,
         'isWorkdayToday' => $isWorkdayToday,
         'data' => array(
             'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : 'Defines temporal segmentation for scheduling.',
-            'runtime' => array(
-                'now' => date('g:i A', $nowTs),
-                'date' => date('F j, Y', $nowTs),
-                'timezone' => $tz,
-                'sunset' => $sunset,
-                'targetDate' => $targetDate,
-                'targetTime' => $targetTime ?: date('g:i A', $targetTs),
-                'delta' => array(
-                    'totalDays' => $totalDays,
-                    'hours' => $hrs,
-                    'minutes' => $mins,
-                    'direction' => $direction,
-                    'isPast' => $isPast
-                )
-            ),
+            'runtime' => $runtime,
             'intervals' => $segments
         ),
         'flags' => $flags + array(
