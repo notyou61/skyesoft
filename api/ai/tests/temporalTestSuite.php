@@ -1,8 +1,20 @@
 <?php
-// 📄 File: api/ai/tests/temporalTestSuite.php
-// Purpose: Structured stress-test for temporal.php logic
-// Version: v1.0 – Codex-aligned validation harness
-// Usage: php api/ai/tests/temporalTestSuite.php
+// === SKYEBOT TEMPORAL TEST SUITE (v1.1 – GoDaddy Diagnostic) ===
+// PHP 5.6-compatible version with timezone validation
+
+// Force Phoenix timezone first
+date_default_timezone_set('America/Phoenix');
+
+// 🧭 Server Time Diagnostics
+echo "Server Time Debug:\n";
+echo "• PHP version: " . PHP_VERSION . "\n";
+echo "• Default timezone: " . date_default_timezone_get() . "\n";
+echo "• Current time (system): " . date('Y-m-d H:i:s T') . "\n";
+echo "• UTC time (baseline): " . gmdate('Y-m-d H:i:s') . " UTC\n\n";
+
+// Header
+echo "=== SKYEBOT TEMPORAL TEST SUITE (v1.1) ===\n";
+echo "Date: " . date('F j, Y g:i A') . " | Timezone: " . date_default_timezone_get() . "\n\n";
 
 require_once __DIR__ . '/../intents/temporal.php';
 
