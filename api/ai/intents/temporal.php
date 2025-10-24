@@ -1,8 +1,11 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
 // Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
-// Version: v4.5 – Minor resilience (holiday validation, init flags); consistent return; exact segment match fix.
+// Version: v4.6 – Integrated Codex-based dayType resolver (resolveDayType.php)
 // Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
+
+// LOAD HELPERS
+require_once __DIR__ . '/../../helpers.php';
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
@@ -41,7 +44,12 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $codex = json_decode(@file_get_contents($codexPath), true) ?: array();
     $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
-    // 🔹 4. Build environment-aware segments (from Codex TIS)
+    // 🔹 4. Resolve Day Type (Codex-based)
+    $dayInfo = resolveDayType($tis, $holidays, $nowTs);
+    $dayType = $dayInfo['dayType'];
+    $isWorkdayToday = $dayInfo['isWorkday'];
+
+    // 🔹 5. Build environment-aware segments (from Codex TIS)
     $segments = array();
     $environment = 'office'; // Default
     $lp = strtolower($prompt);
@@ -49,7 +57,6 @@ function handleIntent($prompt, $codexPath, $ssePath)
     if (isset($tis[$tisKey]['items']) && is_array($tis[$tisKey]['items'])) {
         $environment = (strpos($lp, 'shop') !== false) ? 'shop' : 'office';
         foreach ($tis[$tisKey]['items'] as $seg) {
-            // FIXED: Exact match for 'Worktime' to avoid 'Before Worktime' false-positive
             if (preg_match('/^Worktime$/i', $seg['Interval'])) {
                 list($s, $e) = explode(' – ', $seg['Hours']);
                 $segments['worktime'] = array(
@@ -60,19 +67,18 @@ function handleIntent($prompt, $codexPath, $ssePath)
             }
         }
     } else {
-        // Fallback (Codex-aligned default)
         $segments['worktime'] = array('start' => '7:30 AM', 'end' => '3:30 PM', 'name' => 'Worktime');
     }
     if ($sunset) {
         $segments['sundown'] = array('start' => $sunset, 'name' => 'Sundown');
     }
 
-    // 🔹 5. Minimal event detection (Codex extensible; flags for router)
+    // 🔹 6. Minimal event detection (Codex extensible)
     $eventMap = array(
-        'sundown' => '/sun(set|down)|dusk/',
+        'sundown'  => '/sun(set|down)|dusk/',
         'worktime' => '/work(day|time)|office|start|begin|finish|end|close|business hours/',
-        'holiday' => '/holiday/',
-        'time' => '/time|clock|now/' // Default
+        'holiday'  => '/holiday/',
+        'time'     => '/time|clock|now/'
     );
     $event = 'time';
     foreach ($eventMap as $key => $pattern) {
@@ -82,21 +88,16 @@ function handleIntent($prompt, $codexPath, $ssePath)
         }
     }
 
-    // Flags from prompt (for composer hooks)
+    // Flags for compositional phase
     $flags = array(
         'useEndTime' => (strpos($lp, 'finish') !== false || strpos($lp, 'end') !== false || strpos($lp, 'close') !== false),
         'isTomorrow' => strpos($lp, 'tomorrow') !== false,
-        'isNext' => strpos($lp, 'next') !== false,
-        'isDelayed' => strpos($lp, 'delayed') !== false,
-        'isAgo' => strpos($lp, 'ago') !== false
+        'isNext'     => strpos($lp, 'next') !== false,
+        'isDelayed'  => strpos($lp, 'delayed') !== false,
+        'isAgo'      => strpos($lp, 'ago') !== false
     );
 
-    // 🔹 6. Resolve target (structured; rollover via loop)
-    $dow = date('N', $nowTs); // 1=Mon, 7=Sun
-    $isWorkdayToday = false; // FIXED: Explicit init
-    if ($dow >= 1 && $dow <= 5 && !in_array($today, $holidays)) {
-        $isWorkdayToday = true;
-    }
+    // 🔹 7. Resolve target (structured; rollover via loop)
     $targetTs = $nowTs;
     $targetDate = $today;
     $targetTime = null;
@@ -104,7 +105,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $status = 'pending';
     $workStartToday = null;
     $workEndToday = null;
-    $elapsed = null; // For ongoing
+    $elapsed = null;
 
     switch ($event) {
         case 'holiday':
@@ -134,17 +135,16 @@ function handleIntent($prompt, $codexPath, $ssePath)
             $seg = isset($segments['worktime']) ? $segments['worktime'] : array('start' => '7:30 AM', 'end' => '3:30 PM');
             $targetTime = $flags['useEndTime'] ? $seg['end'] : $seg['start'];
             $workStartToday = strtotime("$today {$seg['start']}");
-            $workEndToday = strtotime("$today {$seg['end']}");
+            $workEndToday   = strtotime("$today {$seg['end']}");
 
-            // FIXED Offset: Only future/delayed flags; no useEndTime
+            // Use Codex-based resolver to skip weekends/holidays
             $offset = ($flags['isTomorrow'] || $flags['isNext'] || $flags['isDelayed']) ? 1 : 0;
             $candidateOffset = $offset;
             while (true) {
-                $candidateTs = strtotime("+{$candidateOffset} days", $nowTs);
-                $candidateDow = date('N', $candidateTs);
-                $candidateDate = date('Y-m-d', $candidateTs);
-                if ($candidateDow >= 1 && $candidateDow <= 5 && !in_array($candidateDate, $holidays)) {
-                    $targetDate = $candidateDate;
+                $candidateTs   = strtotime("+{$candidateOffset} days", $nowTs);
+                $candidateInfo = resolveDayType($tis, $holidays, $candidateTs);
+                if ($candidateInfo['isWorkday']) {
+                    $targetDate = date('Y-m-d', $candidateTs);
                     $rollover = ($candidateOffset > 0);
                     break;
                 }
@@ -157,7 +157,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
                 $rollover = true;
             }
 
-            // FIXED: Special cases
+            // Special cases
             if ($flags['isDelayed'] && $isWorkdayToday && $nowTs > $workStartToday) {
                 $ongoingDelta = $nowTs - $workStartToday;
                 $ongoingHrs = floor($ongoingDelta / 3600);
@@ -180,6 +180,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
                             'targetTime' => $targetTime,
                             'workStart' => $seg['start'],
                             'isWorkdayToday' => $isWorkdayToday,
+                            'dayType' => $dayType,
                             'ongoing' => array('hours' => $ongoingHrs, 'minutes' => $ongoingMins)
                         ),
                         'intervals' => $segments
@@ -188,7 +189,6 @@ function handleIntent($prompt, $codexPath, $ssePath)
                 );
             }
 
-            // FIXED Override: For start queries in progress (unifies 'in_effect')
             if (!$flags['useEndTime'] && $nowTs >= $workStartToday && $nowTs < $workEndToday) {
                 $targetTs = $workStartToday;
                 $targetDate = $today;
@@ -203,11 +203,10 @@ function handleIntent($prompt, $codexPath, $ssePath)
             break;
 
         default:
-            // Time query: no change
             break;
     }
 
-    // 🔹 7. Compute raw delta (multi-day aware; for composer)
+    // 🔹 8. Compute delta for composer
     $delta = $targetTs - $nowTs;
     $absDelta = abs($delta);
     $totalDays = floor($absDelta / 86400);
@@ -216,11 +215,9 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $mins = floor(($remSeconds % 3600) / 60);
     $isPast = $delta < 0;
     $direction = $isPast ? 'ago' : 'until';
-
-    // Post-start flag for start queries
     $postStart = ($event === 'worktime' && !$flags['useEndTime'] && $nowTs > ($workStartToday ?: strtotime("$today {$segments['worktime']['start']}")));
 
-    // 🔹 8. Structured output (Phase 6-ready: data only)
+    // 🔹 9. Structured output (Codex-grounded)
     $runtime = array(
         'now' => date('g:i A', $nowTs),
         'date' => date('F j, Y', $nowTs),
@@ -234,10 +231,11 @@ function handleIntent($prompt, $codexPath, $ssePath)
             'minutes' => $mins,
             'direction' => $direction,
             'isPast' => $isPast
-        )
+        ),
+        'dayType' => $dayType
     );
     if ($elapsed) {
-        $runtime['elapsed'] = $elapsed; // Positive ongoing components for composer
+        $runtime['elapsed'] = $elapsed;
     }
 
     $data = array(

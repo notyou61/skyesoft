@@ -831,3 +831,55 @@ function humanizeSecondsShort($secs) {
     if ($hrs > 0) return $hrs . " hours";
     return $mins . " minutes";
 }
+function resolveDayType($tis, $holidays, $timestamp)
+{
+    // Default classification
+    $dayType = 'Unknown';
+
+    // Normalize input
+    if (!is_array($tis)) $tis = array();
+    if (!is_array($holidays)) $holidays = array();
+
+    // 🗓️ Extract Codex-defined dayTypeArray
+    $dayTypes = array();
+    if (isset($tis['dayTypeArray']) && is_array($tis['dayTypeArray'])) {
+        $dayTypes = $tis['dayTypeArray'];
+    } else {
+        // Fallback reflection (Codex mirror)
+        $dayTypes = array(
+            array('DayType' => 'Workday', 'Days' => 'Mon-Fri'),
+            array('DayType' => 'Weekend', 'Days' => 'Sat-Sun'),
+            array('DayType' => 'Holiday', 'Days' => 'Dynamic')
+        );
+    }
+
+    // 🌅 Determine weekday abbreviation (Mon, Tue, etc.)
+    $weekday = date('D', $timestamp);
+    $todayDate = date('Y-m-d', $timestamp);
+
+    // 🔹 Step 1: Base classification from Codex
+    foreach ($dayTypes as $dt) {
+        if (isset($dt['Days']) && stripos($dt['Days'], $weekday) !== false) {
+            $dayType = $dt['DayType'];
+            break;
+        }
+    }
+
+    // 🔹 Step 2: Override if in dynamic holiday list
+    foreach ($holidays as $h) {
+        if (isset($h['date']) && $h['date'] === $todayDate) {
+            $dayType = 'Holiday';
+            break;
+        }
+    }
+
+    // 🔹 Step 3: Return structured object for clarity
+    return array(
+        'dayType'    => $dayType,
+        'weekday'    => $weekday,
+        'timestamp'  => $timestamp,
+        'isWorkday'  => ($dayType === 'Workday'),
+        'isWeekend'  => ($dayType === 'Weekend'),
+        'isHoliday'  => ($dayType === 'Holiday')
+    );
+}
