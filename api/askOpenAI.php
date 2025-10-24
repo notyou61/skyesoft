@@ -66,19 +66,29 @@ if (!empty($prompt) && function_exists('runPolicyEngine')) {
 #endregion
 
 #region 💬 SKYEBOT CORE AI RESPONSE HANDLER (Simplified Test Output)
-// This can later call your OpenAI or local inference engine
-$responseText = "Hello! It’s " . date('g:i A') . " — how can I help you today?";
+// ================================================================
+// Purpose:
+//   • Preserve test output for non-AI (no intent) prompts
+//   • Prevent duplicate greeting when Phase 6 or Codex handled output
+// ================================================================
 
-// Optional: merge context from PolicyEngine into system instructions (for AI engines)
-if (!empty($systemInstr)) {
-    $responseText .= "\n\n" . $systemInstr;
+// 🧩 Only run if nothing else handled or composed a reply
+if (empty($aiReply) && empty($handled)) {
+    $responseText = "Hello! It’s " . date('g:i A') . " — how can I help you today?";
+
+    // Optional: include system instruction trace for debugging
+    if (!empty($systemInstr)) {
+        $responseText .= "\n\n" . $systemInstr;
+    }
+
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(array(
+        'response' => $responseText
+    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    // ✅ Stop here so Phase 6 doesn’t double-emit output
+    exit;
 }
-
-// Output clean JSON for browser or curl test
-header('Content-Type: application/json');
-echo json_encode(array(
-    'response' => $responseText
-), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 #endregion
 
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
