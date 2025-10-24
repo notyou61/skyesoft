@@ -952,13 +952,15 @@ Use Codex Semantic Index, SSE context, and conversation history.
 
 If the user request involves making, creating, or preparing any sheet, report, or codex, classify it as intent = "report".
 If the request involves creating, updating, or deleting an entity, classify it as intent = "crud".
+If the user is asking a question about time, duration, schedules, or events (e.g., 'how long until workday begins', 'when is sunset', 'time till X'), classify it as intent = "temporal" — target the relevant codex slug if applicable (e.g., 'timeIntervalStandards' for workday/schedule queries).
+Prefer "temporal" over "report" for time-related questions, even if they reference Codex terms like 'workday'.
 Prefer "report" over "crud" when both could apply.
 
 🆕 IMPROVED: For "target", extract ONLY the clean Codex module slug (e.g., 'timeIntervalStandards' for "Time Interval Standards" or "information sheet for time interval standards"). Ignore boilerplate like "generate", "sheet for", or full phrases. Use exact keys from the Codex Semantic Index.
 
 Return only JSON in this structure:
 {
-  "intent": "logout" | "login" | "report" | "crud" | "general",
+  "intent": "logout" | "login" | "report" | "crud" | "temporal" | "general",
   "target": "codex-slug-or-entity",
   "confidence": 0.0–1.0
 }
