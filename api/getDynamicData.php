@@ -167,6 +167,12 @@ function requireEnv($key) {
 
 #region 🌦️ Weather Data
 $weatherApiKey = requireEnv('WEATHER_API_KEY');
+
+// ✅ Define timezone and offset early (used by both weather + time sections)
+date_default_timezone_set('America/Phoenix');
+$utcOffset = -7; // Phoenix fixed offset (no DST)
+
+// Initialize base weather array
 $weatherData = array(
     'temp' => null,
     'icon' => '❓',
@@ -177,7 +183,7 @@ $weatherData = array(
     'daytimeHours' => null,
     'nighttimeHours' => null,
     'forecast' => array(),
-    'federalHolidaysDynamic' => $federalHolidays  // New: Merge holidays here for temporal access
+    'federalHolidaysDynamic' => $federalHolidays
 );
 
 function fetchJsonCurl($url) {
@@ -200,6 +206,7 @@ function fetchJsonCurl($url) {
     return is_array($json) ? $json : array('error' => 'Invalid JSON', 'code' => $code);
 }
 
+// 🌤️ Fetch current conditions
 $currentUrl = 'https://api.openweathermap.org/data/2.5/weather'
     . '?q=' . rawurlencode(WEATHER_LOCATION)
     . '&appid=' . rawurlencode($weatherApiKey)
@@ -208,31 +215,33 @@ $current = fetchJsonCurl($currentUrl);
 
 if (!isset($current['error']) && isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
     $sunriseUnix = $current['sys']['sunrise'];
-    $sunsetUnix = $current['sys']['sunset'];
-    $sunriseLocal = date('g:i A', $sunriseUnix + $utcOffset * 3600);  // Use $utcOffset (defined later, but safe fallback -7)
-    $sunsetLocal = date('g:i A', $sunsetUnix + $utcOffset * 3600);
+    $sunsetUnix  = $current['sys']['sunset'];
 
-    $daytimeSeconds = $sunsetUnix - $sunriseUnix;
-    $daytimeHours = floor($daytimeSeconds / 3600);
-    $daytimeMins = floor(($daytimeSeconds % 3600) / 60);
+    // ✅ Use known offset (defined above)
+    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * 3600));
+    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * 3600));
+
+    $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
+    $daytimeHours     = floor($daytimeSeconds / 3600);
+    $daytimeMins      = floor(($daytimeSeconds % 3600) / 60);
     $nighttimeSeconds = 86400 - $daytimeSeconds;
-    $nighttimeHours = floor($nighttimeSeconds / 3600);
-    $nighttimeMins = floor(($nighttimeSeconds % 3600) / 60);
+    $nighttimeHours   = floor($nighttimeSeconds / 3600);
+    $nighttimeMins    = floor(($nighttimeSeconds % 3600) / 60);
 
     $weatherData = array(
         'temp' => round($current['main']['temp']),
         'icon' => $current['weather'][0]['icon'],
-        'description' => ucwords(str_replace(' ', ' ', strtolower($current['weather'][0]['description']))),
+        'description' => ucwords(strtolower($current['weather'][0]['description'])),
         'lastUpdatedUnix' => time(),
         'sunrise' => $sunriseLocal,
         'sunset' => $sunsetLocal,
         'daytimeHours' => "{$daytimeHours}h {$daytimeMins}m",
         'nighttimeHours' => "{$nighttimeHours}h {$nighttimeMins}m",
-        'forecast' => array(),  // Placeholder for forecast
-        'federalHolidaysDynamic' => $federalHolidays  // Ensure holidays here
+        'forecast' => array(),
+        'federalHolidaysDynamic' => $federalHolidays
     );
 
-    // Simple forecast stub (expand with API if needed)
+    // 🌦️ 3-Day Forecast (optional stub)
     $forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast'
         . '?q=' . rawurlencode(WEATHER_LOCATION)
         . '&appid=' . rawurlencode($weatherApiKey)
@@ -264,7 +273,7 @@ if (!isset($current['error']) && isset($current['main']['temp'], $current['weath
     $weatherData['description'] = 'API call failed (current)';
 }
 
-// Cache weather if successful
+// 💾 Cache successful response
 if ($weatherData['temp'] !== null) {
     @file_put_contents(WEATHER_CACHE_PATH, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
