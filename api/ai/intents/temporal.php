@@ -1,7 +1,7 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
 // Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
-// Version: v4.4 – Fixed rollover/ongoing for start queries; offset leakage; elapsed field for composer.
+// Version: v4.5 – Minor resilience (holiday validation, init flags); consistent return; exact segment match fix.
 // Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
 
 function handleIntent($prompt, $codexPath, $ssePath)
@@ -28,6 +28,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $timeData   = isset($sse['timeDateArray']) ? $sse['timeDateArray'] : array();
     $weather    = isset($sse['weatherData']) ? $sse['weatherData'] : array();
     $holidays   = isset($weather['federalHolidaysDynamic']) ? $weather['federalHolidaysDynamic'] : array();
+    if (!is_array($holidays)) $holidays = array(); // Validation for malformed SSE
     $sunset     = isset($weather['sunset']) ? $weather['sunset'] : null;
 
     $nowStr   = isset($timeData['currentLocalTime']) ? $timeData['currentLocalTime'] : date('g:i A');
@@ -48,7 +49,8 @@ function handleIntent($prompt, $codexPath, $ssePath)
     if (isset($tis[$tisKey]['items']) && is_array($tis[$tisKey]['items'])) {
         $environment = (strpos($lp, 'shop') !== false) ? 'shop' : 'office';
         foreach ($tis[$tisKey]['items'] as $seg) {
-            if (stripos($seg['Interval'], 'Worktime') !== false) {
+            // FIXED: Exact match for 'Worktime' to avoid 'Before Worktime' false-positive
+            if (preg_match('/^Worktime$/i', $seg['Interval'])) {
                 list($s, $e) = explode(' – ', $seg['Hours']);
                 $segments['worktime'] = array(
                     'start' => trim($s), 'end' => trim($e),
@@ -91,7 +93,10 @@ function handleIntent($prompt, $codexPath, $ssePath)
 
     // 🔹 6. Resolve target (structured; rollover via loop)
     $dow = date('N', $nowTs); // 1=Mon, 7=Sun
-    $isWorkdayToday = ($dow >= 1 && $dow <= 5) && !in_array($today, $holidays);
+    $isWorkdayToday = false; // FIXED: Explicit init
+    if ($dow >= 1 && $dow <= 5 && !in_array($today, $holidays)) {
+        $isWorkdayToday = true;
+    }
     $targetTs = $nowTs;
     $targetDate = $today;
     $targetTime = null;
@@ -189,8 +194,10 @@ function handleIntent($prompt, $codexPath, $ssePath)
                 $targetDate = $today;
                 $rollover = false;
                 $elapsedDelta = $nowTs - $workStartToday;
-                $elapsed['hours'] = floor($elapsedDelta / 3600);
-                $elapsed['minutes'] = floor(($elapsedDelta % 3600) / 60);
+                $elapsed = array(
+                    'hours' => floor($elapsedDelta / 3600),
+                    'minutes' => floor(($elapsedDelta % 3600) / 60)
+                );
                 $status = 'ongoing';
             }
             break;
@@ -233,19 +240,21 @@ function handleIntent($prompt, $codexPath, $ssePath)
         $runtime['elapsed'] = $elapsed; // Positive ongoing components for composer
     }
 
+    $data = array(
+        'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : 'Defines temporal segmentation for scheduling.',
+        'runtime' => $runtime,
+        'intervals' => $segments
+    );
+
     return array(
         'domain' => 'temporal',
         'codexNode' => 'timeIntervalStandards',
         'prompt' => $prompt,
         'intent' => 'temporal_query',
         'event' => $event,
-        'status' => $status,
+        'status' => $status ?? 'pending',
         'isWorkdayToday' => $isWorkdayToday,
-        'data' => array(
-            'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : 'Defines temporal segmentation for scheduling.',
-            'runtime' => $runtime,
-            'intervals' => $segments
-        ),
+        'data' => $data,
         'flags' => $flags + array(
             'rollover' => $rollover,
             'postStart' => $postStart,
