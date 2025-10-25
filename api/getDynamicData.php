@@ -455,8 +455,12 @@ if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > CACHE_TTL_SEC
 }
 $response['codexContext'] = $codexContext;
 
+// === 7.5. Flush Setup ===
+while (@ob_end_flush());
+ob_implicit_flush(1);
+error_log('[SSE] Flushing live JSON output…');
+
 // === 8. SSE Output (with flush) ===
 echo "data: " . json_encode($response) . "\n\n";
 flush();
 exit;
-?>
