@@ -1163,37 +1163,52 @@ if (is_string($aiReply) && substr(trim($aiReply), 0, 1) === '{') {
         $domain = isset($decoded['domain']) ? $decoded['domain'] : '';
         $intent = isset($decoded['intent']) ? $decoded['intent'] : '';
 
-        // ⏱️ Temporal domain → convert to conversational message
-        if ($domain === 'temporal' && isset($decoded['data']['runtime'])) {
-            $rt     = $decoded['data']['runtime'];
-            $now    = isset($rt['now']) ? $rt['now'] : 'unknown';
-            $sunset = isset($rt['sunset']) ? $rt['sunset'] : null;
+    // ⏱️ Temporal domain → Natural Language Composer (v1.3 Codex-aligned)
+    if ($domain === 'temporal' && isset($decoded['data']['runtime'])) {
+        $rt = $decoded['data']['runtime'];
+        $d  = isset($rt['delta']) ? $rt['delta'] : array();
+        $event = isset($decoded['event']) ? $decoded['event'] : 'event';
+        $targetDate = isset($rt['targetDate']) ? $rt['targetDate'] : date('Y-m-d');
+        $targetTime = isset($rt['targetTime']) ? $rt['targetTime'] : date('g:i A');
+        $now = isset($rt['now']) ? $rt['now'] : date('g:i A');
+        $tz  = isset($rt['timezone']) ? $rt['timezone'] : 'America/Phoenix';
 
-            if ($sunset) {
-                $nowTime    = strtotime($now);
-                $sunsetTime = strtotime($sunset);
-                if ($nowTime !== false && $sunsetTime !== false) {
-                    $diffMin = round(($sunsetTime - $nowTime) / 60);
-                    if ($diffMin > 0) {
-                        $hrs  = floor($diffMin / 60);
-                        $mins = $diffMin % 60;
-                        $msg  = "🌇 Sundown will be in about {$hrs} hour" .
-                                ($hrs != 1 ? 's' : '') . " and {$mins} minute" .
-                                ($mins != 1 ? 's' : '') . ".";
-                    } else {
-                        $msg = "🌙 The sun has already set for today.";
-                    }
-                } else {
-                    $msg = "⏳ Current time is {$now}. Sunset is expected around {$sunset}.";
-                }
-            } else {
-                $msg = "🕒 It’s currently {$now} in Phoenix.";
-            }
+        // Build human-readable delta (from resolver, no recomputation)
+        $parts = array();
+        if (!empty($d['totalDays'])) $parts[] = $d['totalDays'].' day'.($d['totalDays']!=1?'s':'');
+        if (!empty($d['hours']))     $parts[] = $d['hours'].' hour'.($d['hours']!=1?'s':'');
+        if (!empty($d['minutes']))   $parts[] = $d['minutes'].' minute'.($d['minutes']!=1?'s':'');
+        $deltaText = empty($parts) ? 'less than a minute' : implode(' and ', $parts);
+        $dir = isset($d['direction']) ? $d['direction'] : 'until';
 
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(array('response' => $msg), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            exit;
+        // Compose message
+        if ($dir === 'ago') {
+            $msg = "The {$event} started {$deltaText} ago at {$targetTime} on {$targetDate}.";
+        } else {
+            $msg = "The next {$event} begins at {$targetTime} on {$targetDate}, which is {$deltaText} from now.";
         }
+
+        // Domain-specific refinements
+        if ($event === 'sundown') {
+            $msg = "Sunset is at {$targetTime} today ({$tz}), which is {$deltaText} from now.";
+        }
+        if ($event === 'worktime' && isset($decoded['isWorkdayToday']) && !$decoded['isWorkdayToday']) {
+            $msg = "The next workday begins at {$targetTime} on {$targetDate} ({$tz}), {$deltaText} from now.";
+        }
+
+        // Optional: add ongoing check
+        if (isset($rt['elapsed']) && is_array($rt['elapsed'])) {
+            $e = $rt['elapsed'];
+            $eh = isset($e['hours']) ? $e['hours'] : 0;
+            $em = isset($e['minutes']) ? $e['minutes'] : 0;
+            $msg = "The workday began {$eh} hour".($eh!=1?'s':'')." and {$em} minute".($em!=1?'s':'')." ago at {$targetTime}.";
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(array('response' => $msg), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
 
         // 🧩 Other domains → prepare for AI summary or fallback
         if (!empty($domain) && $domain !== 'temporal') {

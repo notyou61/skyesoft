@@ -1,281 +1,236 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
-// Purpose: Generate temporal reasoning context (Codex + SSE integration)
-// Version: v3.4 – Enhanced delta verbalization (multi-day, ago overrides), SSE intervals override, PHP 5.6-safe
+// Version: v4.8 – DayType Integration & Sunset Localization
+// Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
+// Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
+
+require_once __DIR__ . '/../../helpers.php'; // resolveDayType()
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
     date_default_timezone_set('America/Phoenix');
 
-    // ✅ Pull live data from remote endpoint
+    // 🔹 1. Load live SSE data (5 s timeout)
     $endpoint = "https://www.skyelighting.com/skyesoft/api/getDynamicData.php";
-    $context = stream_context_create(array(
-        'http' => array(
-            'method'  => 'GET',
-            'timeout' => 5,
-            'header'  => "User-Agent: SkyebotTemporalFetcher/1.0\r\n"
-        )
-    ));
-
-    $dynamicData = @file_get_contents($endpoint, false, $context);
-    if ($dynamicData === false || trim($dynamicData) === '') {
-        return array('error' => 'SSE dynamic data unavailable (endpoint unreachable).');
+    $ctx = stream_context_create(array('http' => array(
+        'method'  => 'GET',
+        'timeout' => 5,
+        'header'  => "User-Agent: SkyebotTemporalFetcher/1.0\r\n"
+    )));
+    $sseRaw = @file_get_contents($endpoint, false, $ctx);
+    if ($sseRaw === false || trim($sseRaw) === '') {
+        return array('domain' => 'temporal', 'error' => 'SSE unreachable');
+    }
+    $sse = json_decode($sseRaw, true);
+    if (!is_array($sse)) {
+        return array('domain' => 'temporal', 'error' => 'Invalid SSE JSON');
     }
 
-    $sse = json_decode($dynamicData, true);
-    if (!is_array($sse) || json_last_error() !== JSON_ERROR_NONE) {
-        return array('error' => 'Invalid SSE JSON.');
-    }
+    // 🔹 2. Extract runtime fields
+    $timeData = isset($sse['timeDateArray']) ? $sse['timeDateArray'] : array();
+    $weather  = isset($sse['weatherData']) ? $sse['weatherData'] : array();
+    $holidays = isset($weather['federalHolidaysDynamic']) ? $weather['federalHolidaysDynamic'] : array();
+    if (!is_array($holidays)) $holidays = array();
+    $utcOffset = isset($timeData['utcOffset']) ? (float)$timeData['utcOffset'] : -7; // Phoenix default
+    $sunsetUtc = isset($weather['sunset']) ? $weather['sunset'] : null;
+    $sunset    = $sunsetUtc ? date('g:i A', strtotime($sunsetUtc) + ($utcOffset * 3600)) : null;
 
-    // Extract live data
-    $timeData    = isset($sse['timeDateArray']) ? $sse['timeDateArray'] : array();
-    $weatherData = isset($sse['weatherData'])   ? $sse['weatherData']   : array();
-    $sunset      = isset($weatherData['sunset']) ? $weatherData['sunset'] : null;
-    $holidays    = isset($weatherData['federalHolidaysDynamic']) && is_array($weatherData['federalHolidaysDynamic'])
-        ? $weatherData['federalHolidaysDynamic'] : array();
-
-    // Load Codex
-    $codexRaw = file_exists($codexPath) ? file_get_contents($codexPath) : '{}';
-    $codex = json_decode($codexRaw, true) ?: array();
-    $timeModule = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
-
-    $nowStr   = isset($timeData['currentLocalTime']) ? $timeData['currentLocalTime'] : date("g:i A");
-    $phase    = isset($timeData['timeOfDayDescription']) ? $timeData['timeOfDayDescription'] : 'unknown';
-    $tz       = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
+    $nowStr   = isset($timeData['currentLocalTime']) ? $timeData['currentLocalTime'] : date('g:i A');
     $todayStr = isset($timeData['currentDate']) ? $timeData['currentDate'] : date('Y-m-d');
+    $tz       = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
+    $nowTs    = strtotime("$todayStr $nowStr") ?: time();
+    $today    = date('Y-m-d', $nowTs);
 
-    // --- 🔹 Parse current time first (then classify day) ---
-    $nowTimestamp = strtotime("$todayStr $nowStr");
-    if ($nowTimestamp === false) {
-        $nowTimestamp = time(); // Fallback to Unix timestamp
-    }
+    // 🔹 3. Load Codex TIS module
+    $codex = json_decode(@file_get_contents($codexPath), true) ?: array();
+    $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
-    // --- 🔹 Determine Day Type via Codex + Helper ---
-    $dayOfWeek  = (int)date('N', $nowTimestamp);
-    $todayDate  = date('Y-m-d', $nowTimestamp);
+    // 🔹 4. Determine current day classification
+    $dayInfo = resolveDayType($tis, $holidays, $nowTs);
+    $isWorkdayToday = $dayInfo['isWorkday'];
 
-
-    // Safely include the helper if not already loaded
-    if (!function_exists('resolveDayType')) {
-        $helperPath = dirname(__DIR__) . '/../helpers.php';
-        if (file_exists($helperPath)) {
-            include_once($helperPath);
-        }
-    }
-
-    // Use Codex-based day resolver
-    $dayTypeInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
-    if (function_exists('resolveDayType')) {
-        $dayTypeInfo = resolveDayType($timeModule, $holidays, $nowTimestamp);
-    }
-    $isWorkdayToday = isset($dayTypeInfo['isWorkday']) ? $dayTypeInfo['isWorkday'] : false;
-
-
-    // Normalize prompt to lowercase for matching
-    $lowerPrompt = strtolower(trim($prompt));
-
-    // Parse intervals from Codex tables (Office/Shop segments) – override with SSE if available
-    $events = array();
-    $environment = 'office'; // Default; detect from prompt (e.g., 'shop' keyword)
-
-    // Check SSE for live workday intervals (overrides Codex)
-    $sseWorkIntervals = isset($sse['intervalsArray']['workdayIntervals']) ? $sse['intervalsArray']['workdayIntervals'] : null;
-    if ($sseWorkIntervals && isset($sseWorkIntervals['start']) && isset($sseWorkIntervals['end'])) {
-        $events['worktime'] = array(
-            'start' => $sseWorkIntervals['start'],
-            'end'   => $sseWorkIntervals['end'],
-            'name'  => 'Worktime',
-            'environment' => $environment  // Inherit detected env
-        );
-        error_log("⏱️ SSE live intervals override: {$sseWorkIntervals['start']}–{$sseWorkIntervals['end']}");
-    } else {
-        // Fallback to Codex parsing
-        // Office segments
-        if (isset($timeModule['segmentsOffice']) && isset($timeModule['segmentsOffice']['items']) && is_array($timeModule['segmentsOffice']['items'])) {
-            foreach ($timeModule['segmentsOffice']['items'] as $item) {
-                if (stripos($item['Interval'], 'Worktime') !== false) {  // Focus on worktime for default
-                    $intervalKey = 'worktime';
-                    $hoursRange = $item['Hours']; // e.g., "7:30 AM – 3:30 PM"
-                    list($startTime, $endTime) = explode(' – ', $hoursRange);
-                    $events[$intervalKey] = array(
-                        'start' => trim($startTime),
-                        'end'   => trim($endTime),
-                        'name'  => $item['Interval'],
-                        'environment' => 'office'
-                    );
-                    break;  // Use first match for simplicity
-                }
-            }
-        }
-
-        // Shop segments (if detected, override)
-        if (strpos($lowerPrompt, 'shop') !== false && isset($timeModule['segmentsShop']) && isset($timeModule['segmentsShop']['items']) && is_array($timeModule['segmentsShop']['items'])) {
-            $environment = 'shop';
-            foreach ($timeModule['segmentsShop']['items'] as $item) {
-                if (stripos($item['Interval'], 'Worktime') !== false) {
-                    $intervalKey = 'worktime';
-                    $hoursRange = $item['Hours']; // e.g., "6:00 AM – 2:00 PM"
-                    list($startTime, $endTime) = explode(' – ', $hoursRange);
-                    $events[$intervalKey] = array(
-                        'start' => trim($startTime),
-                        'end'   => trim($endTime),
-                        'name'  => $item['Interval'],
-                        'environment' => 'shop'
-                    );
-                    break;
-                }
+    // 🔹 5. Build environment-aware segments
+    $segments = array();
+    $lp = strtolower($prompt);
+    $tisKey = (strpos($lp, 'shop') !== false) ? 'segmentsShop' : 'segmentsOffice';
+    if (isset($tis[$tisKey]['items']) && is_array($tis[$tisKey]['items'])) {
+        foreach ($tis[$tisKey]['items'] as $seg) {
+            if (preg_match('/^Worktime$/i', $seg['Interval'])) {
+                list($s, $e) = explode(' – ', $seg['Hours']);
+                $segments['worktime'] = array('start' => trim($s), 'end' => trim($e), 'name' => $seg['Interval']);
+                break;
             }
         }
     }
-
-    // Sundown as special event
+    if (!isset($segments['worktime'])) {
+        $segments['worktime'] = array('start' => '7:30 AM', 'end' => '3:30 PM', 'name' => 'Worktime');
+    }
     if ($sunset) {
-        $events['sundown'] = array(
-            'start' => $sunset,
-            'end'   => null,
-            'name'  => 'Sundown',
-            'environment' => 'general'
-        );
+        $segments['sundown'] = array('start' => $sunset, 'name' => 'Sundown');
     }
 
-    // Detect intent from prompt (simple keyword matching, extensible to regex/AI)
-    $detectedEvent = null;
-    $eventMapping = array(
-        'worktime' => array('workday', 'work day', 'worktime', 'office hours', 'business hours', 'work begins', 'work starts', 'business hours', 'next workday'),
-        'sundown'  => array('sundown', 'sunset', 'sun down', 'dusk')
+    // 🔹 6. Event detection
+    $eventMap = array(
+        'sundown' => '/sun(set|down)|dusk/',
+        'worktime' => '/work(day|time)|office|start|begin|finish|end|close|business hours/',
+        'holiday' => '/holiday/',
+        'time' => '/time|clock|now/'
+    );
+    $event = 'time';
+    foreach ($eventMap as $key => $pattern) {
+        if (preg_match($pattern, $lp)) {
+            $event = $key; break;
+        }
+    }
+
+    // 🔹 7. Prompt flags
+    $flags = array(
+        'useEndTime' => (strpos($lp, 'finish') !== false || strpos($lp, 'end') !== false || strpos($lp, 'close') !== false),
+        'isTomorrow' => strpos($lp, 'tomorrow') !== false,
+        'isNext'     => strpos($lp, 'next') !== false,
+        'isDelayed'  => strpos($lp, 'delayed') !== false,
+        'isAgo'      => strpos($lp, 'ago') !== false
     );
 
-    foreach ($eventMapping as $eventKey => $keywords) {
-        foreach ($keywords as $kw) {
-            if (strpos($lowerPrompt, $kw) !== false) {
-                $detectedEvent = $eventKey;
-                break 2;
-            }
-        }
-    }
+    // 🔹 8. Resolve target
+    $targetTs = $nowTs;
+    $targetDate = $today;
+    $targetTime = null;
+    $rollover = false;
+    $status = 'pending';
+    $workStartToday = null;
+    $workEndToday = null;
+    $elapsed = null;
 
-    // Fallback: if no specific event, default to generic time query (e.g., current time)
-    if (!$detectedEvent) {
-        $detectedEvent = 'worktime'; // Assume workday query as default for temporal
-    }
-
-    $eventData = isset($events[$detectedEvent]) ? $events[$detectedEvent] : null;
-    if (!$eventData) {
-        return array('error' => "Unsupported temporal event: $detectedEvent");
-    }
-
-    // For workday: adjust target to next workday start if today is not workday or prompt specifies "next"/"tomorrow"
-    $targetTimeStr = $eventData['start']; // Default to start
-    $useEndTime = (strpos($lowerPrompt, 'finish') !== false || strpos($lowerPrompt, 'end') !== false);
-    if ($useEndTime) {
-        $targetTimeStr = $eventData['end'];
-    }
-    $targetDateStr = $todayStr;
-    $isNextDay = (strpos($lowerPrompt, 'tomorrow') !== false || strpos($lowerPrompt, 'next') !== false);
-    if (($detectedEvent === 'worktime' && (!$isWorkdayToday || $isNextDay)) || $useEndTime) {
-        // Find next valid occurrence (workday for worktime; today for end/sundown)
-        $offsetDays = $useEndTime ? 0 : 1;  // End is today; next start skips if needed
-        // Loop until next valid workday found
-        while (true) {
-            $nextDateTimestamp = strtotime("+$offsetDays days", $nowTimestamp);
-            if (function_exists('resolveDayType')) {
-                $nextDayInfo = resolveDayType($timeModule, $holidays, $nextDateTimestamp);
-                if ($detectedEvent !== 'worktime' || $nextDayInfo['isWorkday']) {
-                    $targetDateStr = date('Y-m-d', $nextDateTimestamp);
-                    break;
-                }
-            } else {
-                // Fallback to weekday logic if helper not loaded
-                $nextDayOfWeek = (int)date('N', $nextDateTimestamp);
-                $nextDateStr = date('Y-m-d', $nextDateTimestamp);
-                if ($detectedEvent !== 'worktime' || ($nextDayOfWeek >= 1 && $nextDayOfWeek <= 5 && !in_array($nextDateStr, $holidays))) {
-                    $targetDateStr = $nextDateStr;
+    switch ($event) {
+        case 'holiday':
+            $nextHoliday = null;
+            foreach ($holidays as $h) {
+                $hDate = isset($h['date']) ? $h['date'] : null;
+                $hTs = $hDate ? strtotime($hDate) : null;
+                if ($hTs && $hTs >= $nowTs) {
+                    $nextHoliday = array('date' => $hDate, 'name' => isset($h['name']) ? $h['name'] : 'Holiday');
                     break;
                 }
             }
-            $offsetDays++;
-        }
+            if ($nextHoliday) {
+                $targetTs = strtotime($nextHoliday['date']);
+                $targetDate = $nextHoliday['date'];
+                $status = 'holiday';
+            }
+            break;
+
+        case 'sundown':
+            if ($sunset) {
+                $targetTs = strtotime("$today $sunset");
+                $targetTime = $sunset;
+            }
+            break;
+
+        case 'worktime':
+            $seg = $segments['worktime'];
+            $targetTime = $flags['useEndTime'] ? $seg['end'] : $seg['start'];
+            $workStartToday = strtotime("$today {$seg['start']}");
+            $workEndToday   = strtotime("$today {$seg['end']}");
+
+            // find next valid workday (Codex-aligned)
+            $offset = ($flags['isTomorrow'] || $flags['isNext'] || $flags['isDelayed']) ? 1 : 0;
+            $candidateOffset = $offset;
+            while (true) {
+                $candidateTs = strtotime("+{$candidateOffset} days", $nowTs);
+                $candidateInfo = resolveDayType($tis, $holidays, $candidateTs);
+                if ($candidateInfo['isWorkday']) {
+                    $targetDate = date('Y-m-d', $candidateTs);
+                    $rollover = ($candidateOffset > 0);
+                    break;
+                }
+                $candidateOffset++;
+            }
+            $targetTs = strtotime("$targetDate $targetTime");
+            if ($targetTs <= $nowTs && !$flags['useEndTime']) {
+                $targetTs = strtotime("+1 day", $targetTs);
+                $targetDate = date('Y-m-d', $targetTs);
+                $rollover = true;
+            }
+
+            if ($flags['isDelayed'] && $isWorkdayToday && $nowTs > $workStartToday) {
+                $ongoingDelta = $nowTs - $workStartToday;
+                $ongoingHrs = floor($ongoingDelta / 3600);
+                $ongoingMins = floor(($ongoingDelta % 3600) / 60);
+                return array(
+                    'domain' => 'temporal',
+                    'codexNode' => 'timeIntervalStandards',
+                    'prompt' => $prompt,
+                    'intent' => 'worktime_delayed',
+                    'event' => 'worktime',
+                    'status' => 'no_delay_ongoing',
+                    'dayInfo' => $dayInfo,
+                    'data' => array(
+                        'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : '',
+                        'runtime' => array(
+                            'now' => date('g:i A', $nowTs),
+                            'date' => date('F j, Y', $nowTs),
+                            'timezone' => $tz,
+                            'sunset' => $sunset,
+                            'targetDate' => $targetDate,
+                            'targetTime' => $targetTime,
+                            'ongoing' => array('hours' => $ongoingHrs, 'minutes' => $ongoingMins)
+                        ),
+                        'intervals' => $segments
+                    ),
+                    'flags' => $flags + array('rollover' => $rollover)
+                );
+            }
+
+            if (!$flags['useEndTime'] && $nowTs >= $workStartToday && $nowTs < $workEndToday) {
+                $elapsedDelta = $nowTs - $workStartToday;
+                $elapsed = array(
+                    'hours' => floor($elapsedDelta / 3600),
+                    'minutes' => floor(($elapsedDelta % 3600) / 60)
+                );
+                $status = 'ongoing';
+            }
+            break;
     }
 
-    // Handle sundown specially (single point, today only)
-    if ($detectedEvent === 'sundown') {
-        $targetTimestamp = $sunset ? strtotime("$todayStr $sunset") : $nowTimestamp;
-    } else {
-        // Parse target time for target date
-        $targetTimestamp = strtotime("$targetDateStr $targetTimeStr");
-        if ($targetTimestamp === false || $targetTimestamp <= $nowTimestamp) {
-            // If past or equal, roll to next occurrence
-            $nextOccurrence = strtotime("+1 day", $targetTimestamp);
-            $targetTimestamp = $nextOccurrence;
-            $targetDateStr = date('Y-m-d', $targetTimestamp);  // Update date
-        }
-    }
-
-    // Compute delta with multi-day support
-    $deltaSeconds = $targetTimestamp - $nowTimestamp;
-    $totalDays = floor(abs($deltaSeconds) / 86400);
-    $remainingSeconds = abs($deltaSeconds) % 86400;
-    $deltaHours = floor($remainingSeconds / 3600);
-    $deltaMinutes = floor(($remainingSeconds % 3600) / 60);
-    $isPast = $deltaSeconds < 0;
-
-    // Verbal delta for Phase 6 (e.g., "1 day, 2 hours" or "15 minutes ago")
-    $verbalParts = array();
-    if ($totalDays > 0) {
-        $verbalParts[] = "{$totalDays} day" . ($totalDays > 1 ? 's' : '');
-    }
-    if ($deltaHours > 0) {
-        $verbalParts[] = "{$deltaHours} hour" . ($deltaHours > 1 ? 's' : '');
-    }
-    if ($deltaMinutes > 0 || (empty($verbalParts) && $totalDays == 0 && $deltaHours == 0)) {
-        $verbalParts[] = "{$deltaMinutes} minute" . ($deltaMinutes > 1 ? 's' : '');
-    }
-    $verbalDelta = implode(' and ', $verbalParts);
+    // 🔹 9. Delta calculation
+    $delta = $targetTs - $nowTs;
+    $absDelta = abs($delta);
+    $hrs = floor(($absDelta % 86400) / 3600);
+    $mins = floor(($absDelta % 3600) / 60);
+    $isPast = $delta < 0;
     $direction = $isPast ? 'ago' : 'until';
-    if (strpos($lowerPrompt, 'ago') !== false && !$isPast) {
-        $verbalDelta = "The event hasn't started yet—it's {$verbalDelta} {$direction}.";
-    } elseif ($isPast) {
-        $verbalDelta .= " {$direction}";
-    } else {
-        $verbalDelta = $verbalDelta ? "in {$verbalDelta}" : 'imminent';
-    }
 
-    // Structured response for Phase 6 composer
+    // 🔹 10. Structured output
+    $runtime = array(
+        'now' => date('g:i A', $nowTs),
+        'date' => date('F j, Y', $nowTs),
+        'timezone' => $tz,
+        'sunset' => $sunset,
+        'targetDate' => $targetDate,
+        'targetTime' => $targetTime ?: date('g:i A', $targetTs),
+        'delta' => array(
+            'hours' => $hrs,
+            'minutes' => $mins,
+            'direction' => $direction,
+            'isPast' => $isPast
+        )
+    );
+    if ($elapsed) $runtime['elapsed'] = $elapsed;
+
     return array(
-        'domain'    => 'temporal',
+        'domain' => 'temporal',
         'codexNode' => 'timeIntervalStandards',
-        'prompt'    => $prompt,
-        'event'     => $detectedEvent,
-        'environment' => $environment,
-        'isWorkdayToday' => $isWorkdayToday,
+        'prompt' => $prompt,
+        'intent' => 'temporal_query',
+        'event' => $event,
+        'status' => $status,
+        'dayInfo' => $dayInfo,
         'data' => array(
-            'definition' => isset($timeModule['purpose']['text']) ? $timeModule['purpose']['text'] : 'Time interval standards for operational scheduling.',
-            'runtime' => array(
-                'now'           => $nowStr,
-                'nowTimestamp'  => $nowTimestamp,
-                'today'         => $todayStr,
-                'targetEvent'   => $eventData['name'],
-                'targetDate'    => $targetDateStr,
-                'targetTime'    => $targetTimeStr,
-                'targetTimestamp' => $targetTimestamp,
-                'delta'         => array(
-                    'seconds' => $deltaSeconds,
-                    'days'    => $totalDays,
-                    'hours'   => $deltaHours,
-                    'minutes' => $deltaMinutes,
-                    'isPast'  => $isPast,
-                    'direction' => $direction,
-                    'verbal'  => $verbalDelta  // Ready for Phase 6 natural text
-                ),
-                'timezone'      => $tz,
-                'phase'         => $phase,
-                'sunset'        => $sunset,
-                'conditions'    => isset($weatherData['description']) ? $weatherData['description'] : 'unknown',
-                'dayOfWeek'     => $dayOfWeek,
-                'holidays'      => $holidays
-            ),
-            'intervals' => $events // For broader context if needed
+            'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : '',
+            'runtime' => $runtime,
+            'intervals' => $segments
         ),
-        'intent' => "Temporal query for '$detectedEvent' resolved with enhanced delta (multi-day verbal, ago overrides) using SSE/Codex + live data (holiday/weekend aware)."
+        'flags' => $flags + array('rollover' => $rollover)
     );
 }
