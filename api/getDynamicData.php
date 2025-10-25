@@ -80,7 +80,11 @@ $weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['
 if (!$weatherLoc) error_log('[SSE] ⚠️ No weather location in Codex—using default Phoenix,US.');
 $weatherLoc = $weatherLoc ?: 'Phoenix,US';
 
-$weatherApiKey = requireEnv('WEATHER_API_KEY');
+//$weatherApiKey = requireEnv('WEATHER_API_KEY');
+$weatherApiKey = envVal('WEATHER_API_KEY', '');
+if (empty($weatherApiKey)) {
+    error_log('[SSE] ⚠️ Weather key optional skip—using cache/null.');
+}
 
 $baseDataPath = envVal('BASE_DATA_PATH', '/home/notyou64/public_html/data/');  // Env-only
 
