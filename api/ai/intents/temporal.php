@@ -44,16 +44,32 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $tz       = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
     $todayStr = isset($timeData['currentDate']) ? $timeData['currentDate'] : date('Y-m-d');
 
-    // Parse current time to timestamp (PHP 5.6-safe)
+    // --- 🔹 Parse current time first (then classify day) ---
     $nowTimestamp = strtotime("$todayStr $nowStr");
     if ($nowTimestamp === false) {
         $nowTimestamp = time(); // Fallback to Unix timestamp
     }
 
-    // Determine if today is a workday (not weekend/holiday) – use standard PHP date('N'): 1=Mon, 7=Sun
-    $dayOfWeek = (int)date('N', $nowTimestamp);
-    $todayDate = date('Y-m-d', $nowTimestamp);
-    $isWorkdayToday = ($dayOfWeek >= 1 && $dayOfWeek <= 5) && !in_array($todayDate, $holidays);
+    // --- 🔹 Determine Day Type via Codex + Helper ---
+    $dayOfWeek  = (int)date('N', $nowTimestamp);
+    $todayDate  = date('Y-m-d', $nowTimestamp);
+
+
+    // Safely include the helper if not already loaded
+    if (!function_exists('resolveDayType')) {
+        $helperPath = dirname(__DIR__) . '/../helpers.php';
+        if (file_exists($helperPath)) {
+            include_once($helperPath);
+        }
+    }
+
+    // Use Codex-based day resolver
+    $dayTypeInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
+    if (function_exists('resolveDayType')) {
+        $dayTypeInfo = resolveDayType($timeModule, $holidays, $nowTimestamp);
+    }
+    $isWorkdayToday = isset($dayTypeInfo['isWorkday']) ? $dayTypeInfo['isWorkday'] : false;
+
 
     // Normalize prompt to lowercase for matching
     $lowerPrompt = strtolower(trim($prompt));
@@ -159,13 +175,23 @@ function handleIntent($prompt, $codexPath, $ssePath)
     if (($detectedEvent === 'worktime' && (!$isWorkdayToday || $isNextDay)) || $useEndTime) {
         // Find next valid occurrence (workday for worktime; today for end/sundown)
         $offsetDays = $useEndTime ? 0 : 1;  // End is today; next start skips if needed
+        // Loop until next valid workday found
         while (true) {
             $nextDateTimestamp = strtotime("+$offsetDays days", $nowTimestamp);
-            $nextDayOfWeek = (int)date('N', $nextDateTimestamp);  // Consistent std
-            $nextDateStr = date('Y-m-d', $nextDateTimestamp);
-            if ($detectedEvent !== 'worktime' || ($nextDayOfWeek >= 1 && $nextDayOfWeek <= 5 && !in_array($nextDateStr, $holidays))) {
-                $targetDateStr = $nextDateStr;
-                break;
+            if (function_exists('resolveDayType')) {
+                $nextDayInfo = resolveDayType($timeModule, $holidays, $nextDateTimestamp);
+                if ($detectedEvent !== 'worktime' || $nextDayInfo['isWorkday']) {
+                    $targetDateStr = date('Y-m-d', $nextDateTimestamp);
+                    break;
+                }
+            } else {
+                // Fallback to weekday logic if helper not loaded
+                $nextDayOfWeek = (int)date('N', $nextDateTimestamp);
+                $nextDateStr = date('Y-m-d', $nextDateTimestamp);
+                if ($detectedEvent !== 'worktime' || ($nextDayOfWeek >= 1 && $nextDayOfWeek <= 5 && !in_array($nextDateStr, $holidays))) {
+                    $targetDateStr = $nextDateStr;
+                    break;
+                }
             }
             $offsetDays++;
         }
