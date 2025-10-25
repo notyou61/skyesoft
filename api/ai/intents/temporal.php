@@ -68,7 +68,15 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $todayDate  = date('Y-m-d', $nowTs);
     $dayInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
     if (function_exists('resolveDayType')) {
-        $dayInfo = resolveDayType($tis, $holidays, $nowTs);
+        $tmpInfo = resolveDayType($tis, $holidays, $nowTs);
+        if (is_array($tmpInfo) && isset($tmpInfo['dayType'])) {
+            $dayInfo = $tmpInfo;
+        } else {
+            // Fallback using Codex day index
+            $dow = (int)date('N', $nowTs);
+            $isWorkday = ($dow >= 1 && $dow <= 5); // Mon–Fri
+            $dayInfo = array('dayType' => $isWorkday ? 'Workday' : 'Weekend', 'isWorkday' => $isWorkday);
+        }
     }
     $isWorkdayToday = isset($dayInfo['isWorkday']) ? $dayInfo['isWorkday'] : false;
 
