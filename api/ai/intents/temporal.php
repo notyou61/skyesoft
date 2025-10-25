@@ -1,10 +1,11 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
-// Version: v4.8 – DayType Integration & Sunset Localization
+// Version: v4.8.1 – Refined Edge Cases (Sunset Guard, Holidays Fallback, Loop Safety)
 // Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
 // Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
 
 require_once __DIR__ . '/../../helpers.php'; // resolveDayType()
+
 
 function handleIntent($prompt, $codexPath, $ssePath)
 {
@@ -29,16 +30,32 @@ function handleIntent($prompt, $codexPath, $ssePath)
     // 🔹 2. Extract runtime fields
     $timeData = isset($sse['timeDateArray']) ? $sse['timeDateArray'] : array();
     $weather  = isset($sse['weatherData']) ? $sse['weatherData'] : array();
-    $holidays = isset($weather['federalHolidaysDynamic']) ? $weather['federalHolidaysDynamic'] : array();
+    // 🔧 Holidays fallback for SSE schema variants
+    $holidays = array();
+    if (isset($weather['federalHolidaysDynamic'])) $holidays = $weather['federalHolidaysDynamic'];
+    elseif (isset($sse['holidayData'])) $holidays = $sse['holidayData'];
+    elseif (isset($timeData['holidays'])) $holidays = $timeData['holidays'];
     if (!is_array($holidays)) $holidays = array();
     $utcOffset = isset($timeData['utcOffset']) ? (float)$timeData['utcOffset'] : -7; // Phoenix default
     $sunsetUtc = isset($weather['sunset']) ? $weather['sunset'] : null;
-    $sunset    = $sunsetUtc ? date('g:i A', strtotime($sunsetUtc) + ($utcOffset * 3600)) : null;
+    // 🔧 Sunset guard: Avoid double-offset if UTC string already has timezone info
+    $sunset = null;
+    if ($sunsetUtc) {
+        if (strpos($sunsetUtc, 'Z') === false && !preg_match('/[+-]\d{2}:\d{2}$/', $sunsetUtc)) {
+            $sunset = date('g:i A', strtotime($sunsetUtc) + ($utcOffset * 3600));
+        } else {
+            $sunset = date('g:i A', strtotime($sunsetUtc));
+        }
+    }
 
-    $nowStr   = isset($timeData['currentLocalTime']) ? $timeData['currentLocalTime'] : date('g:i A');
+    // --- 🔹 Establish current time first ---
+    $nowStr   = isset($timeData['currentLocalTime']) ? $timeData['currentLocalTime'] : date("g:i A");
     $todayStr = isset($timeData['currentDate']) ? $timeData['currentDate'] : date('Y-m-d');
     $tz       = isset($timeData['timeZone']) ? $timeData['timeZone'] : 'America/Phoenix';
-    $nowTs    = strtotime("$todayStr $nowStr") ?: time();
+    $nowTs    = strtotime("$todayStr $nowStr");
+    if ($nowTs === false) {
+        $nowTs = time();
+    }
     $today    = date('Y-m-d', $nowTs);
 
     // 🔹 3. Load Codex TIS module
@@ -46,8 +63,14 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
     // 🔹 4. Determine current day classification
-    $dayInfo = resolveDayType($tis, $holidays, $nowTs);
-    $isWorkdayToday = $dayInfo['isWorkday'];
+    // --- 🔹 Determine Day Type via Codex + Helper ---
+    $dayOfWeek  = (int)date('N', $nowTs);
+    $todayDate  = date('Y-m-d', $nowTs);
+    $dayInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
+    if (function_exists('resolveDayType')) {
+        $dayInfo = resolveDayType($tis, $holidays, $nowTs);
+    }
+    $isWorkdayToday = isset($dayInfo['isWorkday']) ? $dayInfo['isWorkday'] : false;
 
     // 🔹 5. Build environment-aware segments
     $segments = array();
@@ -145,6 +168,8 @@ function handleIntent($prompt, $codexPath, $ssePath)
                     break;
                 }
                 $candidateOffset++;
+                // 🛡️ Safety: Bail after 14 days to prevent infinite loop on edge cases
+                if ($candidateOffset > 14) break;
             }
             $targetTs = strtotime("$targetDate $targetTime");
             if ($targetTs <= $nowTs && !$flags['useEndTime']) {
@@ -169,7 +194,8 @@ function handleIntent($prompt, $codexPath, $ssePath)
                         'definition' => isset($tis['purpose']['text']) ? $tis['purpose']['text'] : '',
                         'runtime' => array(
                             'now' => date('g:i A', $nowTs),
-                            'date' => date('F j, Y', $nowTs),
+                            'date' => date('Y-m-d', $nowTs), // Machine-readable
+                            'displayDate' => date('F j, Y', $nowTs), // Human-readable
                             'timezone' => $tz,
                             'sunset' => $sunset,
                             'targetDate' => $targetDate,
@@ -178,7 +204,7 @@ function handleIntent($prompt, $codexPath, $ssePath)
                         ),
                         'intervals' => $segments
                     ),
-                    'flags' => $flags + array('rollover' => $rollover)
+                    'flags' => array_merge($flags, array('rollover' => $rollover))
                 );
             }
 
@@ -204,7 +230,8 @@ function handleIntent($prompt, $codexPath, $ssePath)
     // 🔹 10. Structured output
     $runtime = array(
         'now' => date('g:i A', $nowTs),
-        'date' => date('F j, Y', $nowTs),
+        'date' => date('Y-m-d', $nowTs), // Machine-readable
+        'displayDate' => date('F j, Y', $nowTs), // Human-readable
         'timezone' => $tz,
         'sunset' => $sunset,
         'targetDate' => $targetDate,
@@ -231,6 +258,6 @@ function handleIntent($prompt, $codexPath, $ssePath)
             'runtime' => $runtime,
             'intervals' => $segments
         ),
-        'flags' => $flags + array('rollover' => $rollover)
+        'flags' => array_merge($flags, array('rollover' => $rollover))
     );
 }
