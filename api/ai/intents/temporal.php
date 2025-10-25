@@ -85,25 +85,42 @@ function handleIntent($prompt, $codexPath, $ssePath)
 
     $isWorkdayToday = $dayInfo['isWorkday'];
 
-    // 🔹 5. Build environment-aware segments
+    // 🔹 5. Build environment-aware segments (Codex-driven)
+    // (Purpose: pull Worktime from Codex; no hardcoded hours)
+    // (Note: 'sundown' is an event time from SSE, not a scheduled interval)
+
     $segments = array();
     $lp = strtolower($prompt);
+
+    // // User check (office vs shop)
     $tisKey = (strpos($lp, 'shop') !== false) ? 'segmentsShop' : 'segmentsOffice';
+
     if (isset($tis[$tisKey]['items']) && is_array($tis[$tisKey]['items'])) {
         foreach ($tis[$tisKey]['items'] as $seg) {
-            if (preg_match('/^Worktime$/i', $seg['Interval'])) {
+            // Worktime only (single source of truth)
+            if (isset($seg['Interval'], $seg['Hours']) && preg_match('/^Worktime$/i', $seg['Interval'])) {
+                // Parse hours (HH:MM AM – HH:MM PM)
                 list($s, $e) = explode(' – ', $seg['Hours']);
-                $segments['worktime'] = array('start' => trim($s), 'end' => trim($e), 'name' => $seg['Interval']);
+                $segments['worktime'] = array(
+                    'start' => trim($s),
+                    'end'   => trim($e),
+                    'name'  => 'Worktime'
+                );
                 break;
             }
         }
     }
+
+    // If still missing, do NOT hardcode; mark config gap for UI/logs
     if (!isset($segments['worktime'])) {
-        $segments['worktime'] = array('start' => '7:30 AM', 'end' => '3:30 PM', 'name' => 'Worktime');
+        $segments['worktime_missing'] = true; // (signals Codex config issue)
     }
+
+    // Sundown is an instant, not an interval; keep as event time only
     if ($sunset) {
-        $segments['sundown'] = array('start' => $sunset, 'name' => 'Sundown');
+        $segments['sundown'] = array('at' => $sunset, 'name' => 'Sundown');
     }
+
 
     // 🔹 6. Event detection
     $eventMap = array(
