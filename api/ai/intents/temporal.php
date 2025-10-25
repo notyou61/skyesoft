@@ -62,25 +62,25 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $codex = json_decode(@file_get_contents($codexPath), true) ?: array();
     $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
-    // 🔹 4. Determine current day classification
+    // 🔹 4. Determine current day classification (guaranteed fallback-safe)
     $dayOfWeek  = (int)date('N', $nowTs);
     $todayDate  = date('Y-m-d', $nowTs);
-    $dayInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
 
-    $tmpInfo = null;
+    // Default: weekday/weekend baseline
+    $isWorkdayBase = ($dayOfWeek >= 1 && $dayOfWeek <= 5); // Mon–Fri
+    $dayInfo = array(
+        'dayType'   => $isWorkdayBase ? 'Workday' : 'Weekend',
+        'isWorkday' => $isWorkdayBase
+    );
+
+    // Try Codex/holiday overlay if helper is present
     if (function_exists('resolveDayType')) {
         $tmpInfo = resolveDayType($tis, $holidays, $nowTs);
-    }
-
-    // 🛡️ Always guarantee a valid result
-    if (is_array($tmpInfo) && isset($tmpInfo['dayType'])) {
-        $dayInfo = $tmpInfo;
-    } else {
-        $isWorkday = ($dayOfWeek >= 1 && $dayOfWeek <= 5); // Mon–Fri
-        $dayInfo = array(
-            'dayType'   => $isWorkday ? 'Workday' : 'Weekend',
-            'isWorkday' => $isWorkday
-        );
+        if (is_array($tmpInfo) && isset($tmpInfo['dayType'])) {
+            // Merge Codex-based classification, but never lose fallback
+            $dayInfo['dayType']   = !empty($tmpInfo['dayType']) ? $tmpInfo['dayType'] : $dayInfo['dayType'];
+            $dayInfo['isWorkday'] = isset($tmpInfo['isWorkday']) ? $tmpInfo['isWorkday'] : $dayInfo['isWorkday'];
+        }
     }
 
     $isWorkdayToday = $dayInfo['isWorkday'];
