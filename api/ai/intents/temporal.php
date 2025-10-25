@@ -1,6 +1,6 @@
 <?php
 // 📄 File: api/ai/intents/temporal.php
-// Version: v4.8.1 – Refined Edge Cases (Sunset Guard, Holidays Fallback, Loop Safety)
+// Version: v4.8.3 – Force Workday/Weekend Fallback (Guaranteed dayType)
 // Purpose: Resolve temporal intent to structured data (Codex-aligned resolver)
 // Aligns with: AI Integration (status flags), TIS (interval checks), SSE (live context)
 
@@ -63,22 +63,27 @@ function handleIntent($prompt, $codexPath, $ssePath)
     $tis   = isset($codex['timeIntervalStandards']) ? $codex['timeIntervalStandards'] : array();
 
     // 🔹 4. Determine current day classification
-    // --- 🔹 Determine Day Type via Codex + Helper ---
     $dayOfWeek  = (int)date('N', $nowTs);
     $todayDate  = date('Y-m-d', $nowTs);
     $dayInfo = array('dayType' => 'Unknown', 'isWorkday' => false);
+
+    $tmpInfo = null;
     if (function_exists('resolveDayType')) {
         $tmpInfo = resolveDayType($tis, $holidays, $nowTs);
-        if (is_array($tmpInfo) && isset($tmpInfo['dayType'])) {
-            $dayInfo = $tmpInfo;
-        } else {
-            // Fallback using Codex day index
-            $dow = (int)date('N', $nowTs);
-            $isWorkday = ($dow >= 1 && $dow <= 5); // Mon–Fri
-            $dayInfo = array('dayType' => $isWorkday ? 'Workday' : 'Weekend', 'isWorkday' => $isWorkday);
-        }
     }
-    $isWorkdayToday = isset($dayInfo['isWorkday']) ? $dayInfo['isWorkday'] : false;
+
+    // 🛡️ Always guarantee a valid result
+    if (is_array($tmpInfo) && isset($tmpInfo['dayType'])) {
+        $dayInfo = $tmpInfo;
+    } else {
+        $isWorkday = ($dayOfWeek >= 1 && $dayOfWeek <= 5); // Mon–Fri
+        $dayInfo = array(
+            'dayType'   => $isWorkday ? 'Workday' : 'Weekend',
+            'isWorkday' => $isWorkday
+        );
+    }
+
+    $isWorkdayToday = $dayInfo['isWorkday'];
 
     // 🔹 5. Build environment-aware segments
     $segments = array();
