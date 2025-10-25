@@ -1,5 +1,5 @@
 <?php
-// === SKYEBOT TEMPORAL TEST SUITE (v1.1 – GoDaddy Diagnostic) ===
+// === SKYEBOT TEMPORAL TEST SUITE (v1.3 – GoDaddy Diagnostic) ===
 // PHP 5.6-compatible version with timezone validation
 
 // Force Phoenix timezone first
@@ -13,7 +13,7 @@ echo "• Current time (system): " . date('Y-m-d H:i:s T') . "\n";
 echo "• UTC time (baseline): " . gmdate('Y-m-d H:i:s') . " UTC\n\n";
 
 // Header
-echo "=== SKYEBOT TEMPORAL TEST SUITE (v1.1) ===\n";
+echo "=== SKYEBOT TEMPORAL TEST SUITE (v1.3) ===\n";
 echo "Date: " . date('F j, Y g:i A') . " | Timezone: " . date_default_timezone_get() . "\n\n";
 
 require_once __DIR__ . '/../intents/temporal.php';
@@ -60,7 +60,15 @@ function printResult($prompt, $result)
 
     echo "• Event: " . (isset($result['event']) ? $result['event'] : 'unknown') . "\n";
     echo "• Status: " . (isset($result['status']) ? $result['status'] : 'n/a') . "\n";
-    echo "• Workday? " . (isset($result['isWorkdayToday']) ? ($result['isWorkdayToday'] ? '✅ Yes' : '❌ No') : 'Unknown') . "\n";
+
+    // 🩹 Fixed: Read from dayInfo instead of missing top-level isWorkdayToday
+    $dayTypeLabel = 'Unknown';
+    if (isset($result['dayInfo']['dayType'])) {
+        $dayTypeLabel = $result['dayInfo']['dayType'];
+    } elseif (isset($result['dayInfo']['isWorkday'])) {
+        $dayTypeLabel = $result['dayInfo']['isWorkday'] ? 'Workday' : 'Weekend';
+    }
+    echo "• Workday? " . ($dayTypeLabel === 'Workday' ? '✅ Yes (' . $dayTypeLabel . ')' : '❌ No (' . $dayTypeLabel . ')') . "\n";
 
     $targetDate = isset($runtime['targetDate']) ? $runtime['targetDate'] : 'n/a';
     $targetTime = isset($runtime['targetTime']) ? $runtime['targetTime'] : '';
@@ -80,7 +88,7 @@ function printResult($prompt, $result)
 }
 
 // 🚀 Execute test suite
-echo "=== SKYEBOT TEMPORAL TEST SUITE (v1.0) ===\n";
+echo "=== SKYEBOT TEMPORAL TEST SUITE (v1.3) ===\n";
 echo "Date: " . date('F j, Y g:i A') . " | Timezone: America/Phoenix\n\n";
 
 foreach ($tests as $prompt) {
