@@ -11,11 +11,11 @@ function handleIntent($prompt, $codexPath, $ssePath)
 {
     date_default_timezone_set('America/Phoenix');
 
-    // 🔹 1. Load live SSE data (5 s timeout)
+    // 🔹 1. Load live SSE data (1 s timeout)
     $endpoint = "https://www.skyelighting.com/skyesoft/api/getDynamicData.php";
     $ctx = stream_context_create(array('http' => array(
         'method'  => 'GET',
-        'timeout' => 5,
+        'timeout' => 1,
         'header'  => "User-Agent: SkyebotTemporalFetcher/1.0\r\n"
     )));
     $sseRaw = @file_get_contents($endpoint, false, $ctx);
