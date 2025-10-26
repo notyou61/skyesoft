@@ -215,7 +215,7 @@ function fetchJsonCurl($url) {
 }
 
 // 🌤️ Fetch current conditions
-$currentUrl = resolveApiUrl('data/2.5/weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+$currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
 // Process current conditions
 if (!isset($current['error']) && isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
