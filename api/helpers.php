@@ -915,28 +915,30 @@ function resolveDayType($tis, $holidays, $timestamp)
 }
 // 🌐 Codex-Aligned Helpers (PHP 5.6-Safe)
 
-// Codex-Aligned URL Resolver (with runtime logging + temp debug)
-function resolveApiUrl($endpoint, $opts = array()) {
-    global $codex;
-    $passedBase = isset($opts['base']) ? $opts['base'] : null;
-    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
-    
-    // Runtime Log (check GoDaddy error_log for $opts/$passedBase values)
-    error_log("resolveApiUrl: opts['base'] = " . var_export($opts['base'], true) . ", passedBase = " . var_export($passedBase, true) . ", usedBase = " . var_export($base, true));
-    
-    // TEMP DEBUG: Echo to SSE (remove after)
-    $debug = array(
-        'helperDebug' => array(
-            'endpoint' => $endpoint,
-            'passedBase' => $passedBase,
-            'usedBase' => $base,
-            'finalUrl' => rtrim($base, '/') . '/' . ltrim($endpoint, '/')
-        )
-    );
-    echo "data: " . json_encode($debug) . "\n\n";
-    flush();
-    
-    return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
+// Codex-Aligned URL Resolver (guarded, with runtime logging + temp debug)
+if (!function_exists('resolveApiUrl')) {
+    function resolveApiUrl($endpoint, $opts = array()) {
+        global $codex;
+        $passedBase = isset($opts['base']) ? $opts['base'] : null;
+        $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+        
+        // Runtime Log (check GoDaddy error_log for $opts/$passedBase values)
+        error_log("resolveApiUrl: opts['base'] = " . var_export($opts['base'], true) . ", passedBase = " . var_export($passedBase, true) . ", usedBase = " . var_export($base, true));
+        
+        // TEMP DEBUG: Echo to SSE (remove after)
+        $debug = array(
+            'helperDebug' => array(
+                'endpoint' => $endpoint,
+                'passedBase' => $passedBase,
+                'usedBase' => $base,
+                'finalUrl' => rtrim($base, '/') . '/' . ltrim($endpoint, '/')
+            )
+        );
+        echo "data: " . json_encode($debug) . "\n\n";
+        flush();
+        
+        return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
+    }
 }
 
 // Fetch constants or KPI values from Codex/SSE context
