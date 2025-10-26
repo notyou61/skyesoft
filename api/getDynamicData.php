@@ -137,7 +137,8 @@ foreach ($envFiles as $p) {
     if ($p && is_readable($p)) {
         $lines = file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
-            if ($line === '' || $line[0] === '#') continue;
+            $trimmed = trim($line);
+            if (empty($trimmed) || $trimmed[0] === '#') continue;
             $pos = strpos($line, '=');
             if ($pos === false) continue;
             $k = trim(substr($line, 0, $pos));
@@ -149,16 +150,21 @@ foreach ($envFiles as $p) {
 }
 
 function envVal($key, $default = '') {
-    global $env;
-    if (isset($env[$key]) && $env[$key] !== '') return $env[$key];
-    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return $_SERVER[$key];
+    global $env, $codex;
+    if (isset($env[$key]) && !empty($env[$key])) return $env[$key];
+    if (isset($_SERVER[$key]) && !empty($_SERVER[$key])) return $_SERVER[$key];
     $g = getenv($key);
-    return ($g !== false && $g !== '') ? $g : $default;
+    if ($g !== false && !empty($g)) return $g;
+    
+    // Codex fallback for known keys (e.g., timeouts, API stubs)
+    if (isset($codex['kpiData'][$key])) return $codex['kpiData'][$key];
+    
+    return $default;
 }
 
 function requireEnv($key) {
     $v = envVal($key);
-    if ($v === '') {
+    if (empty($v)) {  // Updated to empty() for consistency
         echo "data: " . json_encode(array('error' => "Missing env: $key")) . "\n\n";
         flush();
         exit;
@@ -209,12 +215,9 @@ function fetchJsonCurl($url) {
 }
 
 // 🌤️ Fetch current conditions
-$currentUrl = 'https://api.openweathermap.org/data/2.5/weather'
-    . '?q=' . rawurlencode(WEATHER_LOCATION)
-    . '&appid=' . rawurlencode($weatherApiKey)
-    . '&units=imperial';
+$currentUrl = resolveApiUrl('data/2.5/weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
-
+// Process current conditions
 if (!isset($current['error']) && isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
     $sunriseUnix = $current['sys']['sunrise'];
     $sunsetUnix  = $current['sys']['sunset'];
@@ -244,11 +247,9 @@ if (!isset($current['error']) && isset($current['main']['temp'], $current['weath
     );
 
     // 🌦️ 3-Day Forecast (optional stub)
-    $forecastUrl = 'https://api.openweathermap.org/data/2.5/forecast'
-        . '?q=' . rawurlencode(WEATHER_LOCATION)
-        . '&appid=' . rawurlencode($weatherApiKey)
-        . '&units=imperial';
+    $forecastUrl = resolveApiUrl('data/2.5/forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
     $forecast = fetchJsonCurl($forecastUrl);
+    // Process forecast
     if (!isset($forecast['error']) && isset($forecast['list'])) {
         $days = array();
         $seen = array();
