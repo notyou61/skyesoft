@@ -199,6 +199,14 @@ $weatherData = array(
     'federalHolidaysDynamic' => $federalHolidays
 );
 
+// Fixed Resolver (self-contained; move to top if used elsewhere)
+function resolveApiUrl($endpoint, $opts = array()) {
+    global $codex;
+    $passedBase = isset($opts['base']) ? $opts['base'] : null;
+    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
+}
+
 function fetchJsonCurl($url) {
     $ch = curl_init();
     curl_setopt_array($ch, array(
@@ -208,22 +216,24 @@ function fetchJsonCurl($url) {
         CURLOPT_CONNECTTIMEOUT => getConst('curlConnectTimeout', 4),
         CURLOPT_TIMEOUT => getConst('curlTimeout', 6),
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,  // GoDaddy SSL fix
         CURLOPT_USERAGENT => 'SkyeSoft/1.0 (+skyelighting.com)',
     ));
     $res = curl_exec($ch);
     $err = curl_error($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($res === false) return array('error' => $err);
+    if ($res === false) return array('error' => $err, 'code' => $code);
     $json = json_decode($res, true);
-    return is_array($json) ? $json : array('error' => 'Invalid JSON', 'code' => $code);
+    if (json_last_error() !== JSON_ERROR_NONE) return array('error' => 'Invalid JSON: ' . json_last_error_msg(), 'code' => $code, 'raw' => substr($res, 0, 200));
+    return is_array($json) ? $json : array('error' => 'Non-array JSON', 'code' => $code);
 }
 
 // 🌤️ Fetch current conditions
 $currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
 
-// TEMP DEBUG: Log URL, Codex base, response (remove after)
+// TEMP DEBUG: Log URL, Codex base, response (remove after success)
 $debug = array(
     'debug' => array(
         'currentUrl' => $currentUrl,
@@ -232,6 +242,7 @@ $debug = array(
         'keyLength' => strlen($weatherKey),
         'responseCode' => isset($current['code']) ? $current['code'] : 'N/A',
         'error' => isset($current['error']) ? $current['error'] : 'No error key',
+        'tempPreview' => isset($current['main']['temp']) ? $current['main']['temp'] : 'N/A',
         'rawResponseSnippet' => isset($current['raw']) ? substr($current['raw'], 0, 200) . '...' : 'N/A'
     )
 );

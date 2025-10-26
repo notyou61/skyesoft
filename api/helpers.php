@@ -915,14 +915,24 @@ function resolveDayType($tis, $holidays, $timestamp)
 }
 // 🌐 Codex-Aligned Helpers (PHP 5.6-Safe)
 
-// Resolve API or site URL using Codex / SiteMeta fallbacks
-function resolveApiUrl($endpoint, $codex = null) {
-    global $codex, $siteMeta;
-    $base = isset($siteMeta['baseUrl'])
-        ? $siteMeta['baseUrl']
-        : (isset($codex['apiMap']['base'])
-            ? $codex['apiMap']['base']
-            : 'https://www.skyelighting.com/skyesoft');
+// Codex-Aligned URL Resolver (with temp debug for fallback bug)
+function resolveApiUrl($endpoint, $opts = array()) {
+    global $codex;
+    $passedBase = isset($opts['base']) ? $opts['base'] : null;
+    $base = $passedBase ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    
+    // TEMP DEBUG: Echo to SSE (remove after)
+    $debug = array(
+        'helperDebug' => array(
+            'endpoint' => $endpoint,
+            'passedBase' => $passedBase,
+            'usedBase' => $base,
+            'finalUrl' => rtrim($base, '/') . '/' . ltrim($endpoint, '/')
+        )
+    );
+    echo "data: " . json_encode($debug) . "\n\n";
+    flush();
+    
     return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
 }
 
