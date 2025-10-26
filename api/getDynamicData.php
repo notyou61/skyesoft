@@ -1,8 +1,8 @@
 <?php
-// 📁 File: api/getDynamicData.php (v1.3 – Fixed undefined $timeData/$nowTs notices, PHP 5.6-safe)
+// 📁 File: api/getDynamicData.php
+// Version: v4.5 – Codex-Compliant Initialization (safe getConst + helper include)
 
 #region 🌐 HTTP Headers
-// Version: Codex v1.4
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
@@ -10,24 +10,48 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
 #endregion
 
-#region 📁 Constants and File Paths
-// Version: Codex v1.4
-define('WORKDAY_START', '07:30');
-define('WORKDAY_END', '15:30');
-define('WEATHER_LOCATION', 'Phoenix,US');
-define('LATITUDE', '33.448376');
-define('LONGITUDE', '-112.074036');
-define('DEFAULT_SUNRISE', getConst('kpiData','defaultSunrise'));
-define('DEFAULT_SUNSET', getConst('kpiData','defaultSunset'));
+#region 🔧 Initialization and Error Reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-define('HOLIDAYS_PATH', '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
-define('DATA_PATH', '/home/notyou64/public_html/data/skyesoft-data.json');
-define('VERSION_PATH', '/home/notyou64/public_html/data/version.json');
-define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
-define('ANNOUNCEMENTS_PATH', '/home/notyou64/public_html/data/announcements.json');
-define('FEDERAL_HOLIDAYS_PHP', __DIR__ . '/federalHolidays.php');  // New: Generator script
-define('CHAT_LOG_PATH', '../../assets/data/chatLog.json');
-define('WEATHER_CACHE_PATH', '../../assets/data/weatherCache.json');
+// Normalize helper include path to avoid redeclaration on PHP 5.6
+$helperPath = realpath(__DIR__ . '/helpers.php');
+if ($helperPath && !in_array($helperPath, get_included_files())) {
+    require_once $helperPath;
+}
+
+// Provide a lightweight fallback for getConst()
+// (prevents “undefined function” before helpers are loaded)
+if (!function_exists('getConst')) {
+    function getConst($section, $key, $default = null) {
+        global $codex;
+        if (isset($codex[$section][$key])) {
+            return $codex[$section][$key];
+        }
+        return $default;
+    }
+}
+#endregion
+
+#region 📁 Constants and File Paths
+define('WORKDAY_START', '07:30');
+define('WORKDAY_END',   '15:30');
+define('WEATHER_LOCATION', 'Phoenix,US');
+define('LATITUDE',  '33.448376');
+define('LONGITUDE', '-112.074036');
+
+// Pull sunrise/sunset from Codex → fallback defaults
+define('DEFAULT_SUNRISE', getConst('kpiData', 'defaultSunrise', '05:27:00'));
+define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset',  '19:42:00'));
+
+define('HOLIDAYS_PATH',        '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
+define('DATA_PATH',            '/home/notyou64/public_html/data/skyesoft-data.json');
+define('VERSION_PATH',         '/home/notyou64/public_html/data/version.json');
+define('CODEX_PATH',           '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
+define('ANNOUNCEMENTS_PATH',   '/home/notyou64/public_html/data/announcements.json');
+define('FEDERAL_HOLIDAYS_PHP', __DIR__ . '/federalHolidays.php');
+define('CHAT_LOG_PATH',        '../../assets/data/chatLog.json');
+define('WEATHER_CACHE_PATH',   '../../assets/data/weatherCache.json');
 #endregion
 
 #region 🔧 Initialization and Error Reporting
