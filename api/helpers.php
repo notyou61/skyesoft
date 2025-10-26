@@ -936,3 +936,88 @@ function getConst($key, $default = null) {
     if (isset($sse['kpiData'][$key]))   return $sse['kpiData'][$key];
     return $default;
 }
+// =============================================================
+// envVal() — Codex-Aware Environment Resolver
+// Version: Codex Compliance v1.3 (Phase 3)
+// Compatible: PHP 5.6+
+// =============================================================
+
+function envVal($key, $default = '') {
+    static $codex = null;
+
+    // Lazy-load Codex JSON once
+    if ($codex === null) {
+        $path = __DIR__ . '/../assets/data/codex.json';
+        if (file_exists($path)) {
+            $raw = file_get_contents($path);
+            $codex = json_decode($raw, true);
+        } else {
+            $codex = array();
+        }
+    }
+
+    // Step 1 – Direct .env lookup
+    $val = getenv($key);
+    if ($val !== false && $val !== '') return $val;
+
+    // Step 2 – Ontology fallback
+    if (isset($codex['ontology']['envKeys']) && in_array($key, $codex['ontology']['envKeys'])) {
+        // look for key aliases or defaults
+        if (isset($codex['ontology'][$key])) {
+            return $codex['ontology'][$key];
+        }
+    }
+
+    // Step 3 – kpiData fallback
+    if (isset($codex['kpiData'][$key])) {
+        return $codex['kpiData'][$key];
+    }
+
+    // Step 4 – Use explicit default + log non-fatal notice
+    logMissingEnv($key, $default);
+    return $default;
+}
+
+// =============================================================
+// logMissingEnv() — Non-Fatal Notice for Missing ENV Keys
+// =============================================================
+function logMissingEnv($key, $default) {
+    $msg = date('Y-m-d H:i:s') . " | Missing ENV: {$key} → using default '{$default}'\n";
+    $logPath = __DIR__ . '/../logs/env-fallback.log';
+
+    // Ensure log directory exists
+    if (!file_exists(dirname($logPath))) {
+        @mkdir(dirname($logPath), 0755, true);
+    }
+
+    @file_put_contents($logPath, $msg, FILE_APPEND);
+
+    // Optional: Stream to SSE (non-fatal)
+    if (function_exists('sseEmit')) {
+        sseEmit('env_notice', array('key' => $key, 'default' => $default));
+    }
+}
+// =============================================================
+// envValTest() — Self-Diagnostic for Codex-Aware Environment Logic
+// Run manually: php helpers.php
+// =============================================================
+if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['argv'][0])) {
+
+    echo "🧭 Skyesoft Codex Compliance — Phase 3 Diagnostic\n";
+    echo "--------------------------------------------------\n";
+
+    $testKeys = array(
+        'OPENAI_API_KEY',
+        'WEATHER_API_KEY',
+        'NON_EXISTENT_KEY',
+        'secondsPerDay'
+    );
+
+    foreach ($testKeys as $key) {
+        $val = envVal($key, '[default]');
+        printf("%-22s => %s\n", $key, ($val !== '' ? $val : '[empty]'));
+    }
+
+    echo "\nCheck /logs/env-fallback.log for missing ENV notices.\n";
+    echo "If SSE active, confirm 'env_notice' events are emitted.\n";
+}

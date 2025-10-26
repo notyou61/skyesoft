@@ -1,6 +1,8 @@
 <?php
 // 📄 File: scripts/codexComplianceScan.php
-// Version: 1.0 – Static code audit based on Codex principles
+// Version: 1.2 – Dual Output Mode: CLI print + JSON log with recommendations
+// Changelog: v1.0 → v1.2: Added recommendations, aggregated JSON export to /logs/, line hints, meta for auditability.
+// Codex-Aligned: Transparency (logs), Consistency (structured output), Scalability (machine-readable), Resilience (mkdir/error-check).
 
 function scanFileForCodexViolations($filePath) {
     $rules = array(
@@ -12,30 +14,99 @@ function scanFileForCodexViolations($filePath) {
         'Literal Constants' => '/[><=]\s*(\d{2,4})/'
     );
 
+    $recommendations = array(
+        'Hardcoded Time' => 'Replace with $tis[\'segmentsOffice\'] or $tis[\'segmentsShop\'] from SSE load.',
+        'Static Dates' => 'Reference $holidaysDynamic from federalHolidays.php or SSE weatherData.',
+        'Regex Classification' => 'Use Codex actions/subtypes or Semantic Responder for taxonomy matching—no regex.',
+        'Hardcoded Path' => 'Replace with $siteMeta[\'baseUrl\'] or dynamic root from SSE siteMeta.',
+        'Conditional Violation' => 'Map to semantic variables from ontologySchema.relationships—no string literals.',
+        'Literal Constants' => 'Pull thresholds from SSE kpiData or Codex config values.'
+    );
+
     $code = @file_get_contents($filePath);
     if (!$code) return array('error' => 'Unable to read file.');
 
     $results = array();
     foreach ($rules as $ruleName => $pattern) {
-        if (preg_match_all($pattern, $code, $matches)) {
-            $results[$ruleName] = array_unique($matches[0]);
+        preg_match_all($pattern, $code, $matches, PREG_OFFSET_CAPTURE);
+        if (!empty($matches[0])) {
+            $hits = array();
+            foreach ($matches[0] as $match) {
+                $line = substr_count($code, "\n", 0, $match[1]) + 1;  // Basic line calc (PHP 5.6 safe)
+                $hits[] = $match[0] . ' (line ~' . $line . ')';
+            }
+            $results[$ruleName] = array_unique($hits);
+        }
+    }
+
+    // Attach recs to results for JSON
+    foreach ($results as $rule => &$hits) {
+        if (isset($recommendations[$rule])) {
+            $hits['recommendation'] = $recommendations[$rule];  // Nested for easy parsing
         }
     }
 
     return $results;
 }
 
-// Usage example
+// Main Scanner
 $targetDir = __DIR__ . '/../api/';
+$allResults = array();  // Aggregate for JSON
 $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($targetDir));
+$totalFiles = 0;
+$totalViolations = 0;
+
 foreach ($rii as $file) {
     if (pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+        $totalFiles++;
         $violations = scanFileForCodexViolations($file);
-        if (!empty($violations)) {
+        if (!empty($violations) && !isset($violations['error'])) {
+            $fileKey = (string)$file;
+            $allResults[$fileKey] = $violations;
             echo "\n🔎 {$file}\n";
             foreach ($violations as $rule => $hits) {
-                echo "  ⚠️ {$rule}: " . implode(', ', array_slice($hits, 0, 3)) . "\n";
+                if (is_array($hits) && isset($hits['recommendation'])) {
+                    $hitList = implode(', ', array_slice(array_filter($hits, 'is_string'), 0, 3));
+                    echo "  ⚠️ {$rule}: {$hitList}\n";
+                    echo "     💡 Recommendation: {$hits['recommendation']}\n";
+                    unset($hits['recommendation']);  // Clean for CLI
+                } else {
+                    echo "  ⚠️ {$rule}: " . implode(', ', array_slice($hits, 0, 3)) . "\n";
+                }
+                $totalViolations += count(array_filter($hits, 'is_string'));
             }
         }
     }
+}
+
+// === 📄 Dual Output: CLI Summary + JSON Log ===
+echo "\n📊 CLI Summary: {$totalViolations} violations across {$totalFiles} files.\n";
+
+$savePath = __DIR__ . '/../logs/codexComplianceReport.json';
+$report = array(
+    'meta' => array(
+        'timestamp' => date('c'),  // ISO 8601 for audit
+        'scanDate' => date('Y-m-d'),  // e.g., 2025-10-25
+        'dayType' => 'Weekend',  // Hardcoded for now; future: load TIS dynamically
+        'environment' => php_uname(),
+        'mode' => 'dual',
+        'version' => '1.2',
+        'totalFiles' => $totalFiles,
+        'totalViolations' => $totalViolations
+    ),
+    'results' => $allResults
+);
+
+// Ensure logs dir exists (resilience)
+$logDir = dirname($savePath);
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0755, true);
+}
+
+// Write JSON (audit trail)
+$jsonWrite = file_put_contents($savePath, json_encode($report, JSON_PRETTY_PRINT));
+if ($jsonWrite === false) {
+    echo "❌ Error: Could not write JSON log to {$savePath}.\n";
+} else {
+    echo "✅ Full report saved to: {$savePath} (JSON for Skyebot/RAG ingestion).\n";
 }
