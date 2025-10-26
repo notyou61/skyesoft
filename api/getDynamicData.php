@@ -166,19 +166,6 @@ foreach ($envFiles as $p) {
     }
 }
 
-function envVal($key, $default = '') {
-    global $env, $codex;
-    if (isset($env[$key]) && !empty($env[$key])) return $env[$key];
-    if (isset($_SERVER[$key]) && !empty($_SERVER[$key])) return $_SERVER[$key];
-    $g = getenv($key);
-    if ($g !== false && !empty($g)) return $g;
-    
-    // Codex fallback for known keys (e.g., timeouts, API stubs)
-    if (isset($codex['kpiData'][$key])) return $codex['kpiData'][$key];
-    
-    return $default;
-}
-
 function requireEnv($key) {
     $v = envVal($key);
     if (empty($v)) {  // Updated to empty() for consistency
@@ -187,6 +174,63 @@ function requireEnv($key) {
         exit;
     }
     return $v;
+}
+#endregion
+
+#region ⚡ Codex-Aware Caching & TTL Enforcement
+// =============================================================
+// Phase 4 – Codex-Aware Caching & TTL Enforcement
+// Version: v1.4 – PHP 5.6-safe
+// =============================================================
+
+define('CACHE_PATH', __DIR__ . '/../assets/data/cache.json');
+
+// -------------------------------------------------------------
+// resolveCache() — Load or refresh cached data per TTL
+// -------------------------------------------------------------
+function resolveCache($key, $ttl = 300, $fetchFn = null) {
+    $path = CACHE_PATH;
+    $cache = file_exists($path)
+        ? json_decode(@file_get_contents($path), true)
+        : array();
+
+    $now = time();
+    $isValid = isset($cache[$key]) && isset($cache[$key]['ts'])
+        && ($now - $cache[$key]['ts'] < $ttl);
+
+    if ($isValid) {
+        if (function_exists('sseEmit')) {
+            sseEmit('cache_hit', array(
+                'key' => $key,
+                'age' => $now - $cache[$key]['ts']
+            ));
+        }
+        return $cache[$key]['data'];
+    }
+
+    // Refresh data via callback
+    $data = is_callable($fetchFn) ? $fetchFn() : null;
+    $cache[$key] = array('ts' => $now, 'data' => $data);
+    @file_put_contents($path, json_encode($cache, JSON_PRETTY_PRINT));
+
+    if (function_exists('sseEmit')) {
+        sseEmit('cache_miss', array('key' => $key));
+    }
+
+    logCacheEvent($key, 'refresh');
+    return $data;
+}
+
+// -------------------------------------------------------------
+// logCacheEvent() — Append lightweight diagnostics (optional)
+// -------------------------------------------------------------
+function logCacheEvent($key, $status) {
+    $log = __DIR__ . '/../logs/cache-events.log';
+    if (!file_exists(dirname($log))) {
+        @mkdir(dirname($log), 0755, true);
+    }
+    $msg = date('Y-m-d H:i:s') . " | Cache {$status}: {$key}\n";
+    @file_put_contents($log, $msg, FILE_APPEND);
 }
 #endregion
 

@@ -870,5 +870,14 @@
       "body": 50,
       "footer": 25
     }
+  },
+  "ontology": {
+    "envKeys": [
+      "OPENAI_API_KEY",
+      "WEATHER_API_KEY",
+      "BASE_DATA_PATH",
+      "CODEX_PATH",
+      "ENV_PATH"
+    ]
   }
 }
