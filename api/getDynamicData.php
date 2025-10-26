@@ -179,7 +179,7 @@ foreach ($envFiles as $p) {
             if ($trimmed === '' || $trimmed[0] === '#') continue;
 
             // Must match a valid "KEY=value" pattern (letters, numbers, underscore)
-            if (!preg_match('/^[A-Z0-9_]+=.+$/i', $trimmed)) continue;
+            if (!isset($codex['ontology']['envFormatRule'])) continue;
 
             // Split at first '=' only
             list($k, $v) = array_map('trim', explode('=', $trimmed, 2));
@@ -213,26 +213,36 @@ function requireEnv($key) {
 #endregion
 
 #region ⚡ Codex-Aware Caching & TTL Enforcement
-// Version: Codex v1.4
 // =============================================================
-// Phase 4 – Codex-Aware Caching & TTL Enforcement
-// Version: v1.4 – PHP 5.6-safe
+// Phase 4.1 – Codex-Aware Caching & TTL Enforcement
+// Version: v1.4.1 – PHP 5.6-safe, Codex Compliant
 // =============================================================
 
 define('CACHE_PATH', __DIR__ . '/../assets/data/cache.json');
+define('CACHE_LOG',  __DIR__ . '/../logs/cache-events.log');
 
 // -------------------------------------------------------------
 // resolveCache() — Load or refresh cached data per TTL
 // -------------------------------------------------------------
-function resolveCache($key, $ttl = 300, $fetchFn = null) {
-    $path = CACHE_PATH;
+function resolveCache($key, $ttl = null, $fetchFn = null) {
+    global $codex;
+
+    // Step 1 – Resolve TTL dynamically from Codex or ENV
+    if ($ttl === null) {
+        $ttl = envVal('cacheTtlSeconds',
+            isset($codex['kpiData']['cacheTtlSeconds'])
+                ? intval($codex['kpiData']['cacheTtlSeconds'])
+                : 300   // last-resort fallback
+        );
+    }
+
+    $path  = CACHE_PATH;
     $cache = file_exists($path)
         ? json_decode(@file_get_contents($path), true)
         : array();
 
-    $now = time();
-    $isValid = isset($cache[$key]) && isset($cache[$key]['ts'])
-        && ($now - $cache[$key]['ts'] < $ttl);
+    $now      = time();
+    $isValid  = isset($cache[$key]['ts']) && ($now - $cache[$key]['ts'] < $ttl);
 
     if ($isValid) {
         if (function_exists('sseEmit')) {
@@ -244,7 +254,7 @@ function resolveCache($key, $ttl = 300, $fetchFn = null) {
         return $cache[$key]['data'];
     }
 
-    // Refresh data via callback
+    // Step 2 – Refresh data via callback
     $data = is_callable($fetchFn) ? $fetchFn() : null;
     $cache[$key] = array('ts' => $now, 'data' => $data);
     @file_put_contents($path, json_encode($cache, JSON_PRETTY_PRINT));
@@ -261,12 +271,19 @@ function resolveCache($key, $ttl = 300, $fetchFn = null) {
 // logCacheEvent() — Append lightweight diagnostics (optional)
 // -------------------------------------------------------------
 function logCacheEvent($key, $status) {
-    $log = __DIR__ . '/../logs/cache-events.log';
-    if (!file_exists(dirname($log))) {
-        @mkdir(dirname($log), 0755, true);
+    $logPath = CACHE_LOG;
+
+    if (!file_exists(dirname($logPath))) {
+        @mkdir(dirname($logPath), 0755, true);
     }
+
     $msg = date('Y-m-d H:i:s') . " | Cache {$status}: {$key}\n";
-    @file_put_contents($log, $msg, FILE_APPEND);
+    @file_put_contents($logPath, $msg, FILE_APPEND);
+
+    // Optional SSE echo
+    if (function_exists('sseEmit')) {
+        sseEmit('cache_log', array('key' => $key, 'status' => $status));
+    }
 }
 #endregion
 
