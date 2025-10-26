@@ -174,7 +174,9 @@ function requireEnv($key) {
 #endregion
 
 #region 🌦️ Weather Data
-$weatherApiKey = requireEnv('WEATHER_API_KEY');
+// Codex & Env Defaults (prevents undefined notices)
+$weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
+$weatherKey = envVal('WEATHER_API_KEY', '');
 
 // ✅ Define timezone and offset early (used by both weather + time sections)
 date_default_timezone_set('America/Phoenix');
@@ -200,8 +202,8 @@ function fetchJsonCurl($url) {
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => 4,
-        CURLOPT_TIMEOUT => 6,
+        CURLOPT_CONNECTTIMEOUT => getConst('curlConnectTimeout', 4),
+        CURLOPT_TIMEOUT => getConst('curlTimeout', 6),
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_USERAGENT => 'SkyeSoft/1.0 (+skyelighting.com)',
     ));
@@ -217,21 +219,29 @@ function fetchJsonCurl($url) {
 // 🌤️ Fetch current conditions
 $currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
+
 // Process current conditions
-if (!isset($current['error']) && isset($current['main']['temp'], $current['weather'][0]['icon'], $current['sys']['sunrise'], $current['sys']['sunset'])) {
+if (empty($current['error']) && 
+    isset($current['main']['temp']) && 
+    isset($current['weather'][0]['icon']) && 
+    isset($current['sys']['sunrise']) && 
+    isset($current['sys']['sunset'])) {
+    
     $sunriseUnix = $current['sys']['sunrise'];
     $sunsetUnix  = $current['sys']['sunset'];
 
     // ✅ Use known offset (defined above)
-    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * 3600));
-    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * 3600));
+    $secondsPerHour = getConst('secondsPerHour', 3600);
+    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * $secondsPerHour));
+    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * $secondsPerHour));
 
     $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
-    $daytimeHours     = floor($daytimeSeconds / 3600);
-    $daytimeMins      = floor(($daytimeSeconds % 3600) / 60);
-    $nighttimeSeconds = 86400 - $daytimeSeconds;
-    $nighttimeHours   = floor($nighttimeSeconds / 3600);
-    $nighttimeMins    = floor(($nighttimeSeconds % 3600) / 60);
+    $daytimeHours     = floor($daytimeSeconds / $secondsPerHour);
+    $daytimeMins      = floor(($daytimeSeconds % $secondsPerHour) / 60);
+    $secondsPerDay = getConst('secondsPerDay', 86400);
+    $nighttimeSeconds = $secondsPerDay - $daytimeSeconds;
+    $nighttimeHours   = floor($nighttimeSeconds / $secondsPerHour);
+    $nighttimeMins    = floor(($nighttimeSeconds % $secondsPerHour) / 60);
 
     $weatherData = array(
         'temp' => round($current['main']['temp']),
@@ -247,10 +257,10 @@ if (!isset($current['error']) && isset($current['main']['temp'], $current['weath
     );
 
     // 🌦️ 3-Day Forecast (optional stub)
-    $forecastUrl = resolveApiUrl('data/2.5/forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+    $forecastUrl = resolveApiUrl('forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
     $forecast = fetchJsonCurl($forecastUrl);
     // Process forecast
-    if (!isset($forecast['error']) && isset($forecast['list'])) {
+    if (empty($forecast['error']) && !empty($forecast['list'])) {
         $days = array();
         $seen = array();
         foreach ($forecast['list'] as $item) {
@@ -276,9 +286,10 @@ if (!isset($current['error']) && isset($current['main']['temp'], $current['weath
     $weatherData['description'] = 'API call failed (current)';
 }
 
-// 💾 Cache successful response
+// 💾 Cache successful response (define path dynamically if needed)
+$cachePath = $baseDataPath . 'weather_cache.json';  // Or envVal('WEATHER_CACHE_PATH', $baseDataPath . 'weather_cache.json');
 if ($weatherData['temp'] !== null) {
-    @file_put_contents(WEATHER_CACHE_PATH, json_encode($weatherData, JSON_PRETTY_PRINT));
+    @file_put_contents($cachePath, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
 #endregion
 
