@@ -178,6 +178,9 @@ function requireEnv($key) {
 $weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
 $weatherKey = envVal('WEATHER_API_KEY', '');
 
+// Data Path (for cache; Codex/env fallback)
+$baseDataPath = envVal('BASE_DATA_PATH', '/home/notyou64/public_html/data/');
+
 // ✅ Define timezone and offset early (used by both weather + time sections)
 date_default_timezone_set('America/Phoenix');
 $utcOffset = -7; // Phoenix fixed offset (no DST)
