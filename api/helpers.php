@@ -925,18 +925,6 @@ if (!function_exists('resolveApiUrl')) {
         // Runtime Log (check GoDaddy error_log for $opts/$passedBase values)
         error_log("resolveApiUrl: opts['base'] = " . var_export($opts['base'], true) . ", passedBase = " . var_export($passedBase, true) . ", usedBase = " . var_export($base, true));
         
-        // TEMP DEBUG: Echo to SSE (remove after)
-        $debug = array(
-            'helperDebug' => array(
-                'endpoint' => $endpoint,
-                'passedBase' => $passedBase,
-                'usedBase' => $base,
-                'finalUrl' => rtrim($base, '/') . '/' . ltrim($endpoint, '/')
-            )
-        );
-        echo "data: " . json_encode($debug) . "\n\n";
-        flush();
-        
         return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
     }
 }
