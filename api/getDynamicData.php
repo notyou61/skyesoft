@@ -31,6 +31,8 @@ define('WEATHER_CACHE_PATH', '../../assets/data/weatherCache.json');
 #region 🔧 Initialization and Error Reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+// Include helper functions
+require_once __DIR__ . '/helpers.php';
 #endregion
 
 #region 📊 Data Loading
