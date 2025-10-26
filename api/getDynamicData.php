@@ -2,6 +2,7 @@
 // 📁 File: api/getDynamicData.php (v1.3 – Fixed undefined $timeData/$nowTs notices, PHP 5.6-safe)
 
 #region 🌐 HTTP Headers
+// Version: Codex v1.4
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
@@ -10,13 +11,14 @@ header('Access-Control-Allow-Headers: Content-Type');
 #endregion
 
 #region 📁 Constants and File Paths
+// Version: Codex v1.4
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END', '15:30');
 define('WEATHER_LOCATION', 'Phoenix,US');
 define('LATITUDE', '33.448376');
 define('LONGITUDE', '-112.074036');
-define('DEFAULT_SUNRISE', '05:27:00');
-define('DEFAULT_SUNSET', '19:42:00');
+define('DEFAULT_SUNRISE', getConst('kpiData','defaultSunrise'));
+define('DEFAULT_SUNSET', getConst('kpiData','defaultSunset'));
 
 define('HOLIDAYS_PATH', '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
 define('DATA_PATH', '/home/notyou64/public_html/data/skyesoft-data.json');
@@ -29,13 +31,21 @@ define('WEATHER_CACHE_PATH', '../../assets/data/weatherCache.json');
 #endregion
 
 #region 🔧 Initialization and Error Reporting
+// Version: Codex v1.4
+// Version: Codex Compliance v1.4
+// Purpose: Initialize PHP error reporting and include helpers safely (PHP 5.6+)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// Include helper functions
-require_once __DIR__ . '/helpers.php';
+
+// Normalize helper include path to avoid redeclaration on PHP 5.6
+$helperPath = realpath(__DIR__ . '/helpers.php');
+if ($helperPath && !in_array($helperPath, get_included_files())) {
+    require_once $helperPath;
+}
 #endregion
 
 #region 📊 Data Loading
+// Version: Codex v1.4
 $mainData = array();
 $uiEvent = null;
 
@@ -44,17 +54,17 @@ if (is_readable(DATA_PATH)) {
     if ($rawData !== false) {
         $mainData = json_decode($rawData, true);
         if (!is_array($mainData)) {
-            error_log('❌ Invalid JSON in ' . DATA_PATH);
+            logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Invalid JSON in ' . DATA_PATH));
             $mainData = array();
         } elseif (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
             $uiEvent = $mainData['uiEvent'];
             $mainData['uiEvent'] = null;
             if (!file_put_contents(DATA_PATH, json_encode($mainData, JSON_PRETTY_PRINT))) {
-                error_log('❌ Could not write to ' . DATA_PATH);
+                logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not write to ' . DATA_PATH));
             }
         }
     } else {
-        error_log('❌ Could not read ' . DATA_PATH);
+        logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not read ' . DATA_PATH));
     }
 }
 
@@ -98,7 +108,7 @@ if (file_exists(FEDERAL_HOLIDAYS_PHP)) {
     define('SKYESOFT_INTERNAL_CALL', true);  // Trigger return mode
     $federalHolidays = include FEDERAL_HOLIDAYS_PHP;
     if (!is_array($federalHolidays)) {
-        error_log('⚠️ federalHolidays.php did not return array');
+        logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ federalHolidays.php did not return array'));
         $federalHolidays = array();
     }
 } else {
@@ -107,7 +117,7 @@ if (file_exists(FEDERAL_HOLIDAYS_PHP)) {
         $json = file_get_contents(HOLIDAYS_PATH);
         $federalHolidays = json_decode($json, true);
     }
-    error_log('⚠️ federalHolidays.php missing; used JSON fallback');
+    logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ federalHolidays.php missing; used JSON fallback'));
 }
 
 // Convert associative to structured if needed
@@ -124,6 +134,7 @@ if (is_array($federalHolidays) && array_keys($federalHolidays) !== range(0, coun
 #endregion
 
 #region 🔐 Environment Variables
+// Version: Codex v1.4
 $env = array();
 $envFiles = array(
     '/home/notyou64/secure/.env',
@@ -155,7 +166,7 @@ foreach ($envFiles as $p) {
 
             // Optional Codex ontology validation (if defined)
             if (isset($codex['ontology']['envKeys']) && !in_array($k, $codex['ontology']['envKeys'])) {
-                error_log("[SSE] ⚠️ Non-standard env key skipped: $k");
+                logCacheEvent('getDynamicData', 'warning: ' . trim("[SSE] ⚠️ Non-standard env key skipped: $k"));
                 continue;
             }
 
@@ -178,6 +189,7 @@ function requireEnv($key) {
 #endregion
 
 #region ⚡ Codex-Aware Caching & TTL Enforcement
+// Version: Codex v1.4
 // =============================================================
 // Phase 4 – Codex-Aware Caching & TTL Enforcement
 // Version: v1.4 – PHP 5.6-safe
@@ -235,6 +247,7 @@ function logCacheEvent($key, $status) {
 #endregion
 
 #region 🌦️ Weather Data
+// Version: Codex v1.4
 // Codex & Env Defaults (prevents undefined notices)
 $weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
 $weatherKey = envVal('WEATHER_API_KEY', '');
@@ -368,6 +381,7 @@ if ($weatherData['temp'] !== null) {
 #endregion
 
 #region ⏰ Time Computation
+// Version: Codex v1.4
 // --- Initialize timestamp helpers early to prevent undefined notices ---
 $nowTs = time();  // current UNIX time baseline
 $currentHour = (int)date('G', $nowTs);
@@ -412,6 +426,7 @@ $dayType             = isset($isWorkdayToday) && $isWorkdayToday ? '0' : '1';  /
 #endregion
 
 #region 📈 Record Counts (Stubbed)
+// Version: Codex v1.4
 $recordCounts = array(
     'actions' => 69,
     'entities' => 1,
@@ -425,6 +440,7 @@ $recordCounts = array(
 #endregion
 
 #region 🔔 UI Event Handling
+// Version: Codex v1.4
 $dirty = false;
 if (is_array($uiEvent) && isset($uiEvent['nonce'])) {
     $nowMs = (int) round(microtime(true) * 1000);
@@ -468,12 +484,13 @@ if ($dirty && is_writable(DATA_PATH)) {
         }
         fclose($fp);
     } else {
-        error_log('❌ Could not open ' . DATA_PATH . ' for writing');
+        logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not open ' . DATA_PATH . ' for writing'));
     }
 }
 #endregion
 
 #region 🧭 Codex Tier Configuration
+// Version: Codex v1.4
 // ============================================================================
 // Skyesoft Policy Governance Layer – Tier Configuration
 // ----------------------------------------------------------------------------
@@ -488,11 +505,12 @@ if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers']
     // Optional: diagnostic logging
     // error_log('🧭 Codex Tiers Loaded: ' . json_encode(array_keys($codexTiers)));
 } else {
-    error_log('⚠️ Codex tiers missing or invalid – using legacy fallback.');
+    logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ Codex tiers missing or invalid – using legacy fallback.'));
 }
 #endregion
 
 #region 📅 Time and Date Calculations
+// Version: Codex v1.4
 date_default_timezone_set('America/Phoenix');
 $now = $nowTs;
 $yearTotalDays = (date('L', $now) ? 366 : 365);
@@ -539,6 +557,7 @@ if ($intervalLabel === '1') {
 #endregion
 
 #region 🔧 Utility Functions
+// Version: Codex v1.4
 function timeStringToSeconds($timeStr) {
     list($h, $m) = explode(':', $timeStr);
     return (int)$h * 3600 + (int)$m * 60;
@@ -566,6 +585,7 @@ function findNextWorkdayStart($startDate, $holidays) {
 #endregion
 
 #region 📊 Record Counts
+// Version: Codex v1.4
 $recordCounts = array('actions' => 0, 'entities' => 0, 'locations' => 0, 'contacts' => 0, 'orders' => 0, 'permits' => 0, 'notes' => 0, 'tasks' => 0);
 if (is_readable(DATA_PATH)) {
     $data = json_decode(file_get_contents(DATA_PATH), true);
@@ -578,6 +598,7 @@ if (is_readable(DATA_PATH)) {
 #endregion
 
 #region 🔔 UI Event Handling
+// Version: Codex v1.4
 $dirty = false;
 if (is_array($uiEvent) && isset($uiEvent['nonce'])) {
     $nowMs = (int) round(microtime(true) * 1000);
@@ -621,22 +642,24 @@ if ($dirty && is_writable(DATA_PATH)) {
         }
         fclose($fp);
     } else {
-        error_log('❌ Could not open ' . DATA_PATH . ' for writing');
+        logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not open ' . DATA_PATH . ' for writing'));
     }
 }
 #endregion
 
 #region 🧭 Codex Tier Configuration
+// Version: Codex v1.4
 $codexTiers = array();
 
 if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers'])) {
     $codexTiers = $codex['sseStream']['tiers'];
 } else {
-    error_log('⚠️ Codex tiers missing or invalid – using legacy fallback.');
+    logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ Codex tiers missing or invalid – using legacy fallback.'));
 }
 #endregion
 
 #region 📅 Time and Date Calculations
+// Version: Codex v1.4
 // Early definitions to avoid undefined notices
 $timeData = array(
     'currentUnixTime' => $nowTs,
@@ -670,6 +693,7 @@ $timeData = array(
 #endregion
 
 #region 🧩 Response Assembly (Codex-Aware Dynamic Builder)
+// Version: Codex v1.4
 $response = array();
 $codexVersion = isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown';
 
@@ -708,7 +732,7 @@ if (is_array($codexTiers)) {
 
                 default:
                     $response[$member] = array('note'=>"Unhandled member '$member' per Codex.");
-                    error_log("⚠️ Policy drift: unhandled member '$member' in tier '$tierName'");
+                    logCacheEvent('getDynamicData', 'warning: ' . trim("⚠️ Policy drift: unhandled member '$member' in tier '$tierName'"));
             }
         }
     }
@@ -739,6 +763,7 @@ $response['timestamp'] = date('Y-m-d H:i:s');
 #endregion
 
 #region 🧭 Codex Context Merge (Phase 3)
+// Version: Codex v1.4
 $codexContext = array(
     'version' => (isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown'),
     'tierMap' => array(
@@ -766,6 +791,14 @@ $response['codexContext'] = $codexContext;
 #endregion
 
 #region 🟢 Output
+// Version: Codex v1.4
 echo json_encode($response);
 exit;
+#endregion
+
+#region ⚡ Phase 4 – Codex-Aware Caching & TTL Enforcement
+// Version: Codex v1.4
+$weatherData = resolveCache('weather', getConst('kpiData','cacheTtlSeconds'), function() {
+    return fetchWeatherData(); // your existing weather fetch routine
+});
 #endregion
