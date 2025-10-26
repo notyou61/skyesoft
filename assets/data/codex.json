@@ -1,8 +1,8 @@
 {
   "codexMeta": {
     "title": "🎯 Skyesoft Codex Meta",
-    "version": "2025.11b",
-    "lastUpdated": "2025-10-11",
+    "version": "2025.26a",
+    "lastUpdated": "2025-10-26",
     "category": "System Layer",
     "enrichment": "light",
     "description": {
@@ -848,6 +848,27 @@
         "format": "auto",
         "source": "data.content"
       }
+    }
+  },
+  "apiMap": {
+    "base": "https://www.skyelighting.com/skyesoft",
+    "openai": "https://api.openai.com/v1",
+    "openWeather": "https://api.openweathermap.org/data/2.5"
+  },
+  "kpiData": {
+    "secondsPerDay": 86400,
+    "daysPerYearBase": 365,
+    "morningEndHour": 12,
+    "afternoonEndHour": 17,
+    "defaultTimeout": 10,
+    "openaiMaxTokens": 1500,
+    "httpOk": 200,
+    "minConfidence": 70,
+    "cacheTtlSeconds": 300,
+    "pdfMargins": {
+      "header": 80,
+      "body": 50,
+      "footer": 25
     }
   }
 }
