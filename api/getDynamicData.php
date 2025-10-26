@@ -208,11 +208,29 @@ if (is_array($tiers) && !empty($tiers)) {
     $response['siteMeta'] = $siteMeta;
 }
 
-// final meta
+// final meta (move inside loop later)
 $response['codexVersion'] = isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown';
 $response['codexCompliance'] = true;
 
-// emit
-echo "data: " . json_encode($response) . "\n\n";
-flush();
-exit;
+// === Continuous SSE heartbeat (1 Hz) ===
+$startTime  = time();
+$maxRuntime = 86400; // 24 h cap for safety
+header('X-Accel-Buffering: no'); // prevent FastCGI buffering
+
+while (true) {
+    if (connection_aborted() || (time() - $startTime) > $maxRuntime) break;
+
+    // Recompute dynamic bits
+    $nowTs = time();
+    $response['meta']['timestamp'] = date('c', $nowTs);
+    $response['timeDateArray']['currentUnixTime'] = $nowTs;
+    $response['timeDateArray']['currentLocalTime'] = date('H:i:s', $nowTs);
+
+    // Optional: refresh heavy data every 300 s
+    // if (($nowTs % 300) === 0) { /* refetch weather */ }
+
+    echo "data: " . json_encode($response) . "\n\n";
+    @ob_flush();
+    flush();
+    sleep(1);
+}
