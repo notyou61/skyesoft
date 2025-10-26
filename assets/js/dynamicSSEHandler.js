@@ -1,71 +1,128 @@
-// 🛰️ dynamicSSEHandler.js – Skyesoft Live SSE Stream Handler (v2.0)
-// Purpose: Maintain a continuous EventSource connection to getDynamicData.php
-// Compatible with: PHP 5.6 SSE backend (data: {...}\n\n)
-// Codex-Aligned: Resilience (auto-reconnect), Transparency (heartbeat log), Efficiency (1s updates)
+// 📁 File: assets/js/dynamicSSEHandler.js
 
-(function () {
-  const endpoint = "/skyesoft/api/getDynamicData.php";
-  let es = null;
-  let reconnectTimer = null;
-  let lastPing = Date.now();
+// Start the browser-local stream count at 0 for this tab/window
+window.activeStreams = 0;
 
-  // 💓 Heartbeat timer — log once per second if data arrives
-  setInterval(() => {
-    if (window.lastSSEData) {
-      const t = new Date().toLocaleTimeString();
-      console.log(`[SSE 💓] Stream active — ${t}`);
-    } else {
-      console.log("[SSE ⏳] Waiting for first payload…");
-    }
-  }, 1000);
+//#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
+function formatDurationPadded(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
 
-  // 🔄 Initialize EventSource stream
-  function startSSE() {
-    if (es) es.close();
-    console.log(`[SSE] Connecting to ${endpoint} …`);
-    es = new EventSource(endpoint);
+  const dayPart = d > 0 ? `${d}d ` : "";  // No leading zero
+  const hourPart = `${String(h).padStart(2, '0')}h`;
+  const minutePart = `${String(m).padStart(2, '0')}m`;
+  const secondPart = `${String(s).padStart(2, '0')}s`;
 
-    // 📡 On data message
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        window.lastSSEData = data;
-        lastPing = Date.now();
+  return `${dayPart}${hourPart} ${minutePart} ${secondPart}`.trim();
+}
+//#endregion
 
-        // Optional: broadcast event globally
-        const evt = new CustomEvent("SSEUpdate", { detail: data });
-        window.dispatchEvent(evt);
+//#region 🌤️ Weather Emoji Helper
+function getWeatherEmoji(iconCode) {
+  if (!iconCode) return "❓";
+  if (iconCode.startsWith("01")) return "☀️";        // Clear sky
+  if (iconCode.startsWith("02")) return "🌤️";        // Few clouds
+  if (iconCode.startsWith("03")) return "⛅";         // Scattered clouds
+  if (iconCode.startsWith("04")) return "☁️";        // Broken clouds
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️"; // Rain
+  if (iconCode.startsWith("11")) return "⛈️";        // Thunderstorm
+  if (iconCode.startsWith("13")) return "❄️";        // Snow
+  if (iconCode.startsWith("50")) return "🌫️";        // Mist
+  return "❓";
+}
+//#endregion
 
-        // Update visible UI (if function defined)
-        if (typeof updateDynamicUI === "function") updateDynamicUI(data);
-
-      } catch (err) {
-        console.error("[SSE ❌] Parse error:", err, event.data);
+//#region 🔁 Poll Every Second for Dynamic Data
+setInterval(() => {
+  // 🕒 Increment Active Stream Count
+  window.activeStreams++; // Increment by 1 every poll tick  
+  // 🗺️ Fetch Dynamic Data
+  fetch("/skyesoft/api/getDynamicData.php")
+    .then(res => res.json())
+    .then(data => {
+      window.lastSSEData = data;
+      // #region 🧪 Debug Log
+      // console.log("🕒 Polled:", data);
+      // console.log("🌡️ Weather Snapshot:", data.weatherData);
+      // Uid Event Debuggin
+      if (
+        data.uiEvent &&
+        // Optionally: Only show if any meaningful field is set (not just empty defaults)
+        (data.uiEvent.title || data.uiEvent.message || data.uiEvent.icon)
+      ) {
+        // Console Log UI Event
+        console.log("🎛️ UI Event received:", data.uiEvent);
       }
-    };
+      // #endregion
 
-    // ⚠️ On error / connection loss
-    es.onerror = (err) => {
-      console.warn("[SSE ⚠️] Connection lost:", err);
-      es.close();
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          reconnectTimer = null;
-          startSSE();
-        }, 3000); // auto-reconnect after 3 s
+      // #region ⏰ Update Time Display
+      if (data?.timeDateArray?.currentLocalTime) {
+        const timeEl = document.getElementById("currentTime");
+        if (timeEl) timeEl.textContent = data.timeDateArray.currentLocalTime;
       }
-    };
-  }
+      // #endregion
 
-  // 🚀 Launch stream
-  startSSE();
+      // #region ⏳ Update Interval Remaining Message (Codex-aware)
+      const intervalData = data?.timeDateArray?.intervalsArray || data?.intervalsArray;
+      const seconds = intervalData?.currentDaySecondsRemaining;
+      const label = intervalData?.intervalLabel;
+      const dayType = intervalData?.dayType;
 
-  // 🧩 Allow manual restart if needed
-  window.restartDynamicSSE = () => {
-    console.log("[SSE] Manual restart requested.");
-    startSSE();
-  };
+      if (seconds !== undefined && label !== undefined && dayType !== undefined) {
+        const formatted = formatDurationPadded(seconds);
+        let message = "";
 
-  // 🧠 Optional: helper to get last data snapshot
-  window.getDynamicSnapshot = () => window.lastSSEData || null;
-})();
+        switch (`${dayType}-${label}`) {
+          case "0-0":
+            message = `🔚 Workday ends in ${formatted}`;
+            break;
+          case "0-1":
+            message = `🔜 Workday begins in ${formatted}`;
+            break;
+          default:
+            message = `📆 Next workday begins in ${formatted}`;
+            break;
+        }
+
+        const intervalEl = document.getElementById("intervalRemainingData");
+        if (intervalEl) intervalEl.textContent = message;
+
+        // Optional debug log
+        // console.log("⏳ Interval Remaining:", message);
+      }
+      // #endregion
+
+      // #region 🏷️ Version Tag
+      if (data?.siteMeta?.siteVersion) {
+        const versionEl = document.querySelector(".version");
+        if (versionEl) {
+          versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteMeta.siteVersion}`;
+        }
+      }
+      // #endregion
+
+      // #region 🌦️ Update Weather Display
+      if (
+        typeof data?.weatherData?.temp === "number" &&
+        data.weatherData.description
+      ) {
+        const tempEl = document.getElementById("weatherTemp");
+        const descEl = document.getElementById("weatherDesc");
+        const iconEl = document.getElementById("weatherIcon");
+
+        if (tempEl) tempEl.textContent = `${Math.round(data.weatherData.temp)}°F`;
+        if (descEl) descEl.textContent = data.weatherData.description;
+        if (iconEl) iconEl.textContent = getWeatherEmoji(data.weatherData.icon);
+      }
+      // #endregion
+      
+    })
+    // #region ❌ Handle Fetch Errors
+    .catch(err => {
+      console.error("❌ Polling Error:", err);
+    });
+  // #endregion
+}, 1000);
+//#endregion
