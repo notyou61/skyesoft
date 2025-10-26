@@ -913,3 +913,23 @@ function resolveDayType($tis, $holidays, $timestamp)
         'isHoliday'  => ($dayType === 'Holiday')
     );
 }
+// 🌐 Codex-Aligned Helpers (PHP 5.6-Safe)
+
+// Resolve API or site URL using Codex / SiteMeta fallbacks
+function resolveApiUrl($endpoint, $codex = null) {
+    global $codex, $siteMeta;
+    $base = isset($siteMeta['baseUrl'])
+        ? $siteMeta['baseUrl']
+        : (isset($codex['apiMap']['base'])
+            ? $codex['apiMap']['base']
+            : 'https://www.skyelighting.com/skyesoft');
+    return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
+}
+
+// Fetch constants or KPI values from Codex/SSE context
+function getConst($key, $default = null) {
+    global $codex, $sse;
+    if (isset($codex['kpiData'][$key])) return $codex['kpiData'][$key];
+    if (isset($sse['kpiData'][$key]))   return $sse['kpiData'][$key];
+    return $default;
+}
