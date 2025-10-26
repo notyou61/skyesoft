@@ -915,11 +915,14 @@ function resolveDayType($tis, $holidays, $timestamp)
 }
 // 🌐 Codex-Aligned Helpers (PHP 5.6-Safe)
 
-// Codex-Aligned URL Resolver (with temp debug for fallback bug)
+// Codex-Aligned URL Resolver (with runtime logging + temp debug)
 function resolveApiUrl($endpoint, $opts = array()) {
     global $codex;
     $passedBase = isset($opts['base']) ? $opts['base'] : null;
-    $base = $passedBase ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    
+    // Runtime Log (check GoDaddy error_log for $opts/$passedBase values)
+    error_log("resolveApiUrl: opts['base'] = " . var_export($opts['base'], true) . ", passedBase = " . var_export($passedBase, true) . ", usedBase = " . var_export($base, true));
     
     // TEMP DEBUG: Echo to SSE (remove after)
     $debug = array(
