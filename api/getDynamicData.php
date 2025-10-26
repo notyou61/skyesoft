@@ -136,15 +136,32 @@ $envFiles = array(
 foreach ($envFiles as $p) {
     if ($p && is_readable($p)) {
         $lines = file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        // Parse key=value pairs
         foreach ($lines as $line) {
             $trimmed = trim($line);
-            if (empty($trimmed) || $trimmed[0] === '#') continue;
-            $pos = strpos($line, '=');
-            if ($pos === false) continue;
-            $k = trim(substr($line, 0, $pos));
-            $v = trim(substr($line, $pos + 1));
-            $env[$k] = trim($v, "\"'");
+
+            // Skip comments or blank lines
+            if ($trimmed === '' || $trimmed[0] === '#') continue;
+
+            // Must match a valid "KEY=value" pattern (letters, numbers, underscore)
+            if (!preg_match('/^[A-Z0-9_]+=.+$/i', $trimmed)) continue;
+
+            // Split at first '=' only
+            list($k, $v) = array_map('trim', explode('=', $trimmed, 2));
+
+            // Normalize key casing
+            $k = strtoupper($k);
+            $v = trim($v, "\"' \t");
+
+            // Optional Codex ontology validation (if defined)
+            if (isset($codex['ontology']['envKeys']) && !in_array($k, $codex['ontology']['envKeys'])) {
+                error_log("[SSE] ⚠️ Non-standard env key skipped: $k");
+                continue;
+            }
+
+            $env[$k] = $v;
         }
+        // Break
         break;
     }
 }
@@ -232,22 +249,6 @@ function fetchJsonCurl($url) {
 // 🌤️ Fetch current conditions
 $currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
-
-// TEMP DEBUG: Log URL, Codex base, response (remove after success)
-$debug = array(
-    'debug' => array(
-        'currentUrl' => $currentUrl,
-        'openWeatherBase' => isset($codex['apiMap']['openWeather']) ? $codex['apiMap']['openWeather'] : 'MISSING FROM CODEX',
-        'siteBase' => isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : 'MISSING',
-        'keyLength' => strlen($weatherKey),
-        'responseCode' => isset($current['code']) ? $current['code'] : 'N/A',
-        'error' => isset($current['error']) ? $current['error'] : 'No error key',
-        'tempPreview' => isset($current['main']['temp']) ? $current['main']['temp'] : 'N/A',
-        'rawResponseSnippet' => isset($current['raw']) ? substr($current['raw'], 0, 200) . '...' : 'N/A'
-    )
-);
-echo "data: " . json_encode($debug) . "\n\n";
-flush();
 
 // Process current conditions
 if (empty($current['error']) && 
