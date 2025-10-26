@@ -223,14 +223,16 @@ function fetchJsonCurl($url) {
 $currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
 
-// TEMP DEBUG: Log $currentUrl and $current to SSE (remove after)
+// TEMP DEBUG: Log URL, Codex base, response (remove after)
 $debug = array(
     'debug' => array(
-        'url' => $currentUrl,
+        'currentUrl' => $currentUrl,
+        'openWeatherBase' => isset($codex['apiMap']['openWeather']) ? $codex['apiMap']['openWeather'] : 'MISSING FROM CODEX',
+        'siteBase' => isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : 'MISSING',
         'keyLength' => strlen($weatherKey),
         'responseCode' => isset($current['code']) ? $current['code'] : 'N/A',
         'error' => isset($current['error']) ? $current['error'] : 'No error key',
-        'fullResponse' => substr($current, 0, 200) . '...'  // Trunc for safety
+        'rawResponseSnippet' => isset($current['raw']) ? substr($current['raw'], 0, 200) . '...' : 'N/A'
     )
 );
 echo "data: " . json_encode($debug) . "\n\n";
