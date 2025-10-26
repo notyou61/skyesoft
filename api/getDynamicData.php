@@ -33,6 +33,46 @@ if (!function_exists('getConst')) {
 }
 #endregion
 
+#region 📘 Load Codex Early (Dual-Environment Safe)
+$codex = array();
+
+// Candidate search paths (server first, then local dev)
+$codexPathCandidates = array(
+    '/home/notyou64/public_html/skyesoft/assets/data/codex.json',  // GoDaddy live
+    realpath(__DIR__ . '/../assets/data/codex.json'),              // local dev (C:\Users\SteveS\Documents\skyesoft)
+    realpath(__DIR__ . '/../../assets/data/codex.json')            // fallback one level deeper
+);
+
+$foundCodexPath = null;
+foreach ($codexPathCandidates as $candidate) {
+    if ($candidate && is_readable($candidate)) {
+        $foundCodexPath = $candidate;
+        define('CODEX_PATH', $candidate);
+        $rawCodex = file_get_contents($candidate);
+        $codex = json_decode($rawCodex, true);
+        if (!is_array($codex)) {
+            error_log('⚠️ Invalid Codex JSON — using empty structure');
+            $codex = array();
+        } else {
+            error_log("✅ Codex loaded from {$candidate}");
+        }
+        break;
+    }
+}
+
+// If no valid Codex found, initialize empty structure and warn
+if (!$foundCodexPath) {
+    define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
+    error_log('❌ Codex file not found in any candidate path.');
+    $codex = array();
+}
+#endregion
+
+#region ⚙️ Cache Constants (used by safeJsonLoad + logCacheEvent)
+if (!defined('CACHE_PATH')) define('CACHE_PATH', __DIR__ . '/../assets/data/cache.json');
+if (!defined('CACHE_LOG'))  define('CACHE_LOG',  __DIR__ . '/../logs/cache-events.log');
+#endregion
+
 #region 📁 Constants and File Paths
 define('WORKDAY_START', '07:30');
 define('WORKDAY_END',   '15:30');
@@ -47,7 +87,6 @@ define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset',  '19:42:00'));
 define('HOLIDAYS_PATH',        '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
 define('DATA_PATH',            '/home/notyou64/public_html/data/skyesoft-data.json');
 define('VERSION_PATH',         '/home/notyou64/public_html/data/version.json');
-define('CODEX_PATH',           '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
 define('ANNOUNCEMENTS_PATH',   '/home/notyou64/public_html/data/announcements.json');
 define('FEDERAL_HOLIDAYS_PHP', __DIR__ . '/federalHolidays.php');
 define('CHAT_LOG_PATH',        '../../assets/data/chatLog.json');
@@ -57,9 +96,6 @@ define('WEATHER_CACHE_PATH',   '../../assets/data/weatherCache.json');
 #region 🔧 Initialization and Error Reporting
 // Version: Codex v1.4
 // Version: Codex Compliance v1.4
-// Purpose: Initialize PHP error reporting and include helpers safely (PHP 5.6+)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Normalize helper include path to avoid redeclaration on PHP 5.6
 $helperPath = realpath(__DIR__ . '/helpers.php');
@@ -69,91 +105,85 @@ if ($helperPath && !in_array($helperPath, get_included_files())) {
 #endregion
 
 #region 📊 Data Loading
-// Version: Codex v1.4
-$mainData = array();
-$uiEvent = null;
+// Version: Codex v1.5 (DRY-Compliant, Safe-Load Architecture)
 
-if (is_readable(DATA_PATH)) {
-    $rawData = file_get_contents(DATA_PATH);
-    if ($rawData !== false) {
-        $mainData = json_decode($rawData, true);
-        if (!is_array($mainData)) {
-            logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Invalid JSON in ' . DATA_PATH));
-            $mainData = array();
-        } elseif (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
-            $uiEvent = $mainData['uiEvent'];
-            $mainData['uiEvent'] = null;
-            if (!file_put_contents(DATA_PATH, json_encode($mainData, JSON_PRETTY_PRINT))) {
-                logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not write to ' . DATA_PATH));
-            }
-        }
-    } else {
-        logCacheEvent('getDynamicData', 'warning: ' . trim('❌ Could not read ' . DATA_PATH));
-    }
-}
-
-$siteMeta = array();
-if (is_readable(VERSION_PATH)) {
-    $versionJson = file_get_contents(VERSION_PATH);
-    if ($versionJson !== false) {
-        $siteMeta = json_decode($versionJson, true);
-        if (!is_array($siteMeta)) {
-            $siteMeta = array();
-        }
-    }
-}
-
-$codex = array();
-if (is_readable(CODEX_PATH)) {
-    $raw = file_get_contents(CODEX_PATH);
-    if ($raw !== false) {
-        $codex = json_decode($raw, true);
-        if (!is_array($codex)) {
-            $codex = array();
-        }
-    }
-}
-
-$announcements = array();
-if (is_readable(ANNOUNCEMENTS_PATH)) {
-    $json = file_get_contents(ANNOUNCEMENTS_PATH);
-    if ($json !== false) {
-        $announcementsData = json_decode($json, true);
-        if (is_array($announcementsData) && isset($announcementsData['announcements']) && is_array($announcementsData['announcements'])) {
-            $announcements = $announcementsData['announcements'];
-        }
-    }
-}
-
-// New: Generate/Load Federal Holidays
+// -------------------------------------------------------------
+// Initialize base variables
+// -------------------------------------------------------------
+$mainData        = array();
+$uiEvent         = null;
+$siteMeta        = array();
+$announcements   = array();
 $federalHolidays = array();
+
+// -------------------------------------------------------------
+// Unified JSON loader (with logging + default fallback)
+// -------------------------------------------------------------
+if (!function_exists('safeJsonLoad')) {
+    function safeJsonLoad($path, $context = 'unknown', $default = array()) {
+        if (!is_readable($path)) {
+            logCacheEvent('getDynamicData', "warning: ⚠️ {$context} not readable ({$path})");
+            return $default;
+        }
+        $raw = @file_get_contents($path);
+        if ($raw === false) {
+            logCacheEvent('getDynamicData', "warning: ❌ Failed to read {$context} ({$path})");
+            return $default;
+        }
+        $json = json_decode($raw, true);
+        if (!is_array($json)) {
+            logCacheEvent('getDynamicData', "warning: ⚠️ Invalid JSON in {$context}");
+            return $default;
+        }
+        return $json;
+    }
+}
+
+// -------------------------------------------------------------
+// 1️⃣ Load main data & UI event
+// -------------------------------------------------------------
+$mainData = safeJsonLoad(DATA_PATH, 'DATA_PATH', array());
+
+if (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
+    $uiEvent = $mainData['uiEvent'];
+    $mainData['uiEvent'] = null;
+    if (!@file_put_contents(DATA_PATH, json_encode($mainData, JSON_PRETTY_PRINT))) {
+        logCacheEvent('getDynamicData', 'warning: ❌ Could not write back to DATA_PATH');
+    }
+}
+
+// -------------------------------------------------------------
+// 2️⃣ Load site meta and announcements
+// -------------------------------------------------------------
+$siteMeta      = safeJsonLoad(VERSION_PATH, 'VERSION_PATH', array());
+$announceData  = safeJsonLoad(ANNOUNCEMENTS_PATH, 'ANNOUNCEMENTS_PATH', array());
+
+if (isset($announceData['announcements']) && is_array($announceData['announcements'])) {
+    $announcements = $announceData['announcements'];
+}
+
+// -------------------------------------------------------------
+// 3️⃣ Load or generate federal holidays
+// -------------------------------------------------------------
 if (file_exists(FEDERAL_HOLIDAYS_PHP)) {
-    // Include generator (returns array if defined)
-    define('SKYESOFT_INTERNAL_CALL', true);  // Trigger return mode
+    define('SKYESOFT_INTERNAL_CALL', true); // triggers return-mode
     $federalHolidays = include FEDERAL_HOLIDAYS_PHP;
     if (!is_array($federalHolidays)) {
-        logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ federalHolidays.php did not return array'));
+        logCacheEvent('getDynamicData', 'warning: ⚠️ federalHolidays.php did not return array');
         $federalHolidays = array();
     }
 } else {
-    // Fallback load from JSON if generator missing
-    if (file_exists(HOLIDAYS_PATH)) {
-        $json = file_get_contents(HOLIDAYS_PATH);
-        $federalHolidays = json_decode($json, true);
-    }
-    logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ federalHolidays.php missing; used JSON fallback'));
+    $federalHolidays = safeJsonLoad(HOLIDAYS_PATH, 'HOLIDAYS_PATH', array());
+    logCacheEvent('getDynamicData', 'warning: ⚠️ Using JSON fallback for holidays');
 }
 
-// Convert associative to structured if needed
+// Normalize associative {date:name} → indexed [{"date":..,"name":..}]
 if (is_array($federalHolidays) && array_keys($federalHolidays) !== range(0, count($federalHolidays) - 1)) {
-    $converted = array();
+    $normalized = array();
     foreach ($federalHolidays as $date => $name) {
-        $converted[] = array(
-            'name' => $name,
-            'date' => $date
-        );
+        $normalized[] = array('name' => $name, 'date' => $date);
     }
-    $federalHolidays = $converted;
+    $federalHolidays = $normalized;
 }
 #endregion
 
@@ -213,14 +243,7 @@ function requireEnv($key) {
 #endregion
 
 #region ⚡ Codex-Aware Caching & TTL Enforcement
-// =============================================================
-// Phase 4.1 – Codex-Aware Caching & TTL Enforcement
-// Version: v1.4.1 – PHP 5.6-safe, Codex Compliant
-// =============================================================
-
-define('CACHE_PATH', __DIR__ . '/../assets/data/cache.json');
-define('CACHE_LOG',  __DIR__ . '/../logs/cache-events.log');
-
+// Version: Codex v1.4
 // -------------------------------------------------------------
 // resolveCache() — Load or refresh cached data per TTL
 // -------------------------------------------------------------
@@ -284,140 +307,6 @@ function logCacheEvent($key, $status) {
     if (function_exists('sseEmit')) {
         sseEmit('cache_log', array('key' => $key, 'status' => $status));
     }
-}
-#endregion
-
-#region 🌦️ Weather Data
-// Version: Codex v1.4
-// Codex & Env Defaults (prevents undefined notices)
-$weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
-$weatherKey = envVal('WEATHER_API_KEY', '');
-
-// Data Path (for cache; Codex/env fallback)
-$baseDataPath = envVal('BASE_DATA_PATH', '/home/notyou64/public_html/data/');
-
-// ✅ Define timezone and offset early (used by both weather + time sections)
-date_default_timezone_set('America/Phoenix');
-$utcOffset = -7; // Phoenix fixed offset (no DST)
-
-// Initialize base weather array
-$weatherData = array(
-    'temp' => null,
-    'icon' => '❓',
-    'description' => 'Unavailable',
-    'lastUpdatedUnix' => null,
-    'sunrise' => null,
-    'sunset' => null,
-    'daytimeHours' => null,
-    'nighttimeHours' => null,
-    'forecast' => array(),
-    'federalHolidaysDynamic' => $federalHolidays
-);
-
-// Fixed Resolver (self-contained; move to top if used elsewhere)
-function resolveApiUrl($endpoint, $opts = array()) {
-    global $codex;
-    $passedBase = isset($opts['base']) ? $opts['base'] : null;
-    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
-    return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
-}
-
-function fetchJsonCurl($url) {
-    $ch = curl_init();
-    curl_setopt_array($ch, array(
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_CONNECTTIMEOUT => getConst('curlConnectTimeout', 4),
-        CURLOPT_TIMEOUT => getConst('curlTimeout', 6),
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,  // GoDaddy SSL fix
-        CURLOPT_USERAGENT => 'SkyeSoft/1.0 (+skyelighting.com)',
-    ));
-    $res = curl_exec($ch);
-    $err = curl_error($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($res === false) return array('error' => $err, 'code' => $code);
-    $json = json_decode($res, true);
-    if (json_last_error() !== JSON_ERROR_NONE) return array('error' => 'Invalid JSON: ' . json_last_error_msg(), 'code' => $code, 'raw' => substr($res, 0, 200));
-    return is_array($json) ? $json : array('error' => 'Non-array JSON', 'code' => $code);
-}
-
-// 🌤️ Fetch current conditions
-$currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
-$current = fetchJsonCurl($currentUrl);
-
-// Process current conditions
-if (empty($current['error']) && 
-    isset($current['main']['temp']) && 
-    isset($current['weather'][0]['icon']) && 
-    isset($current['sys']['sunrise']) && 
-    isset($current['sys']['sunset'])) {
-    
-    $sunriseUnix = $current['sys']['sunrise'];
-    $sunsetUnix  = $current['sys']['sunset'];
-
-    // ✅ Use known offset (defined above)
-    $secondsPerHour = getConst('secondsPerHour', 3600);
-    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * $secondsPerHour));
-    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * $secondsPerHour));
-
-    $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
-    $daytimeHours     = floor($daytimeSeconds / $secondsPerHour);
-    $daytimeMins      = floor(($daytimeSeconds % $secondsPerHour) / 60);
-    $secondsPerDay = getConst('secondsPerDay', 86400);
-    $nighttimeSeconds = $secondsPerDay - $daytimeSeconds;
-    $nighttimeHours   = floor($nighttimeSeconds / $secondsPerHour);
-    $nighttimeMins    = floor(($nighttimeSeconds % $secondsPerHour) / 60);
-
-    $weatherData = array(
-        'temp' => round($current['main']['temp']),
-        'icon' => $current['weather'][0]['icon'],
-        'description' => ucwords(strtolower($current['weather'][0]['description'])),
-        'lastUpdatedUnix' => time(),
-        'sunrise' => $sunriseLocal,
-        'sunset' => $sunsetLocal,
-        'daytimeHours' => "{$daytimeHours}h {$daytimeMins}m",
-        'nighttimeHours' => "{$nighttimeHours}h {$nighttimeMins}m",
-        'forecast' => array(),
-        'federalHolidaysDynamic' => $federalHolidays
-    );
-
-    // 🌦️ 3-Day Forecast (optional stub)
-    $forecastUrl = resolveApiUrl('forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
-    $forecast = fetchJsonCurl($forecastUrl);
-    // Process forecast
-    if (empty($forecast['error']) && !empty($forecast['list'])) {
-        $days = array();
-        $seen = array();
-        foreach ($forecast['list'] as $item) {
-            $day = date('l, M j', $item['dt']);
-            if (!isset($seen[$day])) {
-                $seen[$day] = true;
-                $days[] = array(
-                    'date' => $day,
-                    'description' => ucwords($item['weather'][0]['description']),
-                    'high' => round($item['main']['temp_max']),
-                    'low' => round($item['main']['temp_min']),
-                    'icon' => $item['weather'][0]['icon'],
-                    'precip' => isset($item['pop']) ? round($item['pop'] * 100) : 0,
-                    'wind' => round($item['wind']['speed'])
-                );
-                if (count($days) >= 3) break;
-            }
-        }
-        $weatherData['forecast'] = $days;
-    }
-} else {
-    error_log('Weather API error: ' . print_r($current, true));
-    $weatherData['description'] = 'API call failed (current)';
-}
-
-// 💾 Cache successful response (define path dynamically if needed)
-$cachePath = $baseDataPath . 'weather_cache.json';  // Or envVal('WEATHER_CACHE_PATH', $baseDataPath . 'weather_cache.json');
-if ($weatherData['temp'] !== null) {
-    @file_put_contents($cachePath, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
 #endregion
 
@@ -696,6 +585,175 @@ if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers']
     $codexTiers = $codex['sseStream']['tiers'];
 } else {
     logCacheEvent('getDynamicData', 'warning: ' . trim('⚠️ Codex tiers missing or invalid – using legacy fallback.'));
+}
+#endregion
+
+#region 🌦️ Weather Data
+// Version: Codex v1.4
+// Codex & Env Defaults (prevents undefined notices)
+$weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
+$weatherKey = envVal('WEATHER_API_KEY', '');
+
+// 🧩 Diagnostic: Confirm WEATHER_API_KEY resolution
+if (empty($weatherKey)) {
+    // log where env is failing
+    $envPaths = array(
+        '/home/notyou64/secure/.env',
+        realpath(dirname(__FILE__) . '/../secure/.env'),
+        realpath('C:/Users/SteveS/Documents/skyesoft/secure/.env')
+    );
+    error_log("⚠️ WEATHER_API_KEY missing. Checking env paths:");
+    foreach ($envPaths as $p) {
+        error_log("   → {$p} " . ((file_exists($p) && is_readable($p)) ? "[✅ readable]" : "[❌ not found]"));
+    }
+
+    // Optional: manual fallback for local Windows test
+    foreach ($envPaths as $p) {
+        if (file_exists($p) && is_readable($p)) {
+            $lines = file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos($line, 'WEATHER_API_KEY=') === 0) {
+                    list(, $val) = explode('=', $line, 2);
+                    $weatherKey = trim($val);
+                    putenv('WEATHER_API_KEY=' . $weatherKey);
+                    error_log("✅ Loaded WEATHER_API_KEY manually from {$p}");
+                    break 2;
+                }
+            }
+        }
+    }
+
+    if (empty($weatherKey)) {
+        error_log('❌ WEATHER_API_KEY could not be loaded — skipping weather fetch.');
+        $weatherData['description'] = 'API key missing – fallback mode';
+    }
+}
+
+// Data Path (for cache; Codex/env fallback)
+$baseDataPath = envVal('BASE_DATA_PATH', '/home/notyou64/public_html/data/');
+
+// ✅ Define timezone and offset early (used by both weather + time sections)
+date_default_timezone_set('America/Phoenix');
+$utcOffset = -7; // Phoenix fixed offset (no DST)
+
+// Initialize base weather array
+$weatherData = array(
+    'temp' => null,
+    'icon' => '❓',
+    'description' => 'Unavailable',
+    'lastUpdatedUnix' => null,
+    'sunrise' => null,
+    'sunset' => null,
+    'daytimeHours' => null,
+    'nighttimeHours' => null,
+    'forecast' => array(),
+    'federalHolidaysDynamic' => $federalHolidays
+);
+
+// Fixed Resolver (self-contained; move to top if used elsewhere)
+function resolveApiUrl($endpoint, $opts = array()) {
+    global $codex;
+    $passedBase = isset($opts['base']) ? $opts['base'] : null;
+    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
+}
+
+function fetchJsonCurl($url) {
+    $ch = curl_init();
+    curl_setopt_array($ch, array(
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => getConst('curlConnectTimeout', 4),
+        CURLOPT_TIMEOUT => getConst('curlTimeout', 6),
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,  // GoDaddy SSL fix
+        CURLOPT_USERAGENT => 'SkyeSoft/1.0 (+skyelighting.com)',
+    ));
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($res === false) return array('error' => $err, 'code' => $code);
+    $json = json_decode($res, true);
+    if (json_last_error() !== JSON_ERROR_NONE) return array('error' => 'Invalid JSON: ' . json_last_error_msg(), 'code' => $code, 'raw' => substr($res, 0, 200));
+    return is_array($json) ? $json : array('error' => 'Non-array JSON', 'code' => $code);
+}
+
+// 🌤️ Fetch current conditions
+$currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+$current = fetchJsonCurl($currentUrl);
+
+// Process current conditions
+if (empty($current['error']) && 
+    isset($current['main']['temp']) && 
+    isset($current['weather'][0]['icon']) && 
+    isset($current['sys']['sunrise']) && 
+    isset($current['sys']['sunset'])) {
+    
+    $sunriseUnix = $current['sys']['sunrise'];
+    $sunsetUnix  = $current['sys']['sunset'];
+
+    // ✅ Use known offset (defined above)
+    $secondsPerHour = getConst('secondsPerHour', 3600);
+    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * $secondsPerHour));
+    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * $secondsPerHour));
+
+    $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
+    $daytimeHours     = floor($daytimeSeconds / $secondsPerHour);
+    $daytimeMins      = floor(($daytimeSeconds % $secondsPerHour) / 60);
+    $secondsPerDay = getConst('secondsPerDay', 86400);
+    $nighttimeSeconds = $secondsPerDay - $daytimeSeconds;
+    $nighttimeHours   = floor($nighttimeSeconds / $secondsPerHour);
+    $nighttimeMins    = floor(($nighttimeSeconds % $secondsPerHour) / 60);
+
+    $weatherData = array(
+        'temp' => round($current['main']['temp']),
+        'icon' => $current['weather'][0]['icon'],
+        'description' => ucwords(strtolower($current['weather'][0]['description'])),
+        'lastUpdatedUnix' => time(),
+        'sunrise' => $sunriseLocal,
+        'sunset' => $sunsetLocal,
+        'daytimeHours' => "{$daytimeHours}h {$daytimeMins}m",
+        'nighttimeHours' => "{$nighttimeHours}h {$nighttimeMins}m",
+        'forecast' => array(),
+        'federalHolidaysDynamic' => $federalHolidays
+    );
+
+    // 🌦️ 3-Day Forecast (optional stub)
+    $forecastUrl = resolveApiUrl('forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+    $forecast = fetchJsonCurl($forecastUrl);
+    // Process forecast
+    if (empty($forecast['error']) && !empty($forecast['list'])) {
+        $days = array();
+        $seen = array();
+        foreach ($forecast['list'] as $item) {
+            $day = date('l, M j', $item['dt']);
+            if (!isset($seen[$day])) {
+                $seen[$day] = true;
+                $days[] = array(
+                    'date' => $day,
+                    'description' => ucwords($item['weather'][0]['description']),
+                    'high' => round($item['main']['temp_max']),
+                    'low' => round($item['main']['temp_min']),
+                    'icon' => $item['weather'][0]['icon'],
+                    'precip' => isset($item['pop']) ? round($item['pop'] * 100) : 0,
+                    'wind' => round($item['wind']['speed'])
+                );
+                if (count($days) >= 3) break;
+            }
+        }
+        $weatherData['forecast'] = $days;
+    }
+} else {
+    error_log('Weather API error: ' . print_r($current, true));
+    $weatherData['description'] = 'API call failed (current)';
+}
+
+// 💾 Cache successful response (define path dynamically if needed)
+$cachePath = $baseDataPath . 'weather_cache.json';  // Or envVal('WEATHER_CACHE_PATH', $baseDataPath . 'weather_cache.json');
+if ($weatherData['temp'] !== null) {
+    @file_put_contents($cachePath, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
 #endregion
 

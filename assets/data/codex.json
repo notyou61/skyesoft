@@ -851,9 +851,9 @@
     }
   },
   "apiMap": {
-    "base": "https://www.skyelighting.com/skyesoft",
-    "openai": "https://api.openai.com/v1",
-    "openWeather": "https://api.openweathermap.org/data/2.5"
+    "base": "https://www.skyelighting.com/skyesoft/",
+    "openai": "https://api.openai.com/v1/",
+    "openWeather": "https://api.openweathermap.org/data/2.5/"
   },
   "kpiData": {
     "secondsPerDay": 86400,
@@ -872,6 +872,7 @@
     }
   },
   "ontology": {
+    "envFormatRule": true,
     "envKeys": [
       "OPENAI_API_KEY",
       "WEATHER_API_KEY",
