@@ -118,31 +118,25 @@ if ($officeOK
 }
 #endregion
 
-#region 🚫 Codex Failure Gate (Strict Mode)
-$codexCriticalKeys = array(
-    'timeIntervalStandards.workdayStart',
-    'timeIntervalStandards.workdayEnd',
-    'weatherData.defaultLocation'
-);
-
+#region 🚫 Codex Failure Gate (Strict Mode – structure aware)
 $codexIntegrityPassed = true;
 
-foreach ($codexCriticalKeys as $keyPath) {
-    $parts = explode('.', $keyPath);
-    $node = $codex;
-    foreach ($parts as $p) {
-        if (isset($node[$p])) {
-            $node = $node[$p];
-        } else {
-            $codexIntegrityPassed = false;
-            error_log("🚫 Critical Codex failure: {$keyPath} missing.");
-            break 2;
-        }
-    }
+// Validate key structural elements
+if (!isset($codex['timeIntervalStandards']['segmentsOffice']['items'])
+    || !is_array($codex['timeIntervalStandards']['segmentsOffice']['items'])) {
+    error_log("🚫 Critical Codex failure: timeIntervalStandards.segmentsOffice.items missing or invalid.");
+    $codexIntegrityPassed = false;
 }
 
+if (!isset($codex['weatherData']['defaultLocation'])
+    || !isset($codex['weatherData']['latitude'])
+    || !isset($codex['weatherData']['longitude'])) {
+    error_log("🚫 Critical Codex failure: weatherData section incomplete.");
+    $codexIntegrityPassed = false;
+}
+
+// Abort stream if any critical structure failed
 if (!$codexIntegrityPassed) {
-    // Halt Skyesoft SSE to prevent false positives
     header('Content-Type: application/json');
     echo json_encode(array(
         "error" => "❌ Critical Codex failure. SSE stream aborted.",
@@ -151,6 +145,8 @@ if (!$codexIntegrityPassed) {
     ));
     exit;
 }
+
+error_log("✅ Codex Failure Gate passed – all critical structures valid.");
 #endregion
 
 #region ⚙️ Cache Constants (used by safeJsonLoad + logCacheEvent)
