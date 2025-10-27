@@ -1,6 +1,6 @@
 <?php
 // 📁 File: api/getDynamicData.php
-// Version: v4.5 – Codex-Compliant Initialization (safe getConst + helper include)
+// Version: v5.0 – Codex-Compliant Initialization (strict mode, PHP 5.6 safe)
 
 #region 🌐 HTTP Headers
 header('Content-Type: text/event-stream; charset=utf-8');
@@ -31,77 +31,111 @@ if (!function_exists('getConst')) {
         return $default;
     }
 }
+
+// Define base paths
+$rootPath = realpath(dirname(__DIR__));
+$dataPath = realpath($rootPath . '/assets/data');
+$logPath  = realpath($rootPath . '/logs');
 #endregion
 
-#region 📘 Load Codex Early (Dual-Environment Safe)
+#region 📘 Load Codex Early (Dynamic Environment Safe)
 $codex = array();
+$codexFile = $dataPath . '/codex.json';
 
-// Candidate search paths (server first, then local dev)
-$codexPathCandidates = array(
-    '/home/notyou64/public_html/skyesoft/assets/data/codex.json',  // GoDaddy live
-    realpath(__DIR__ . '/../assets/data/codex.json'),              // local dev (C:\Users\SteveS\Documents\skyesoft)
-    realpath(__DIR__ . '/../../assets/data/codex.json')            // fallback one level deeper
-);
-
-$foundCodexPath = null;
-foreach ($codexPathCandidates as $candidate) {
-    if ($candidate && is_readable($candidate)) {
-        $foundCodexPath = $candidate;
-        define('CODEX_PATH', $candidate);
-        $rawCodex = file_get_contents($candidate);
-        $codex = json_decode($rawCodex, true);
-        if (!is_array($codex)) {
-            error_log('⚠️ Invalid Codex JSON — using empty structure');
-            $codex = array();
-        } else {
-            error_log("✅ Codex loaded from {$candidate}");
-        }
-        break;
+if (file_exists($codexFile)) {
+    $rawCodex = file_get_contents($codexFile);
+    $codex = json_decode($rawCodex, true);
+    if (!is_array($codex)) {
+        error_log('⚠️ Invalid Codex JSON — using empty structure');
+        $codex = array();
+    } else {
+        error_log("✅ Codex loaded from {$codexFile}");
     }
-}
-
-// If no valid Codex found, initialize empty structure and warn
-if (!$foundCodexPath) {
-    define('CODEX_PATH', '/home/notyou64/public_html/skyesoft/assets/data/codex.json');
-    error_log('❌ Codex file not found in any candidate path.');
+} else {
+    error_log('❌ Codex file not found at expected path: ' . $codexFile);
     $codex = array();
 }
 #endregion
 
-#region ⚙️ Cache Constants (used by safeJsonLoad + logCacheEvent)
-if (!defined('CACHE_PATH')) define('CACHE_PATH', __DIR__ . '/../assets/data/cache.json');
-if (!defined('CACHE_LOG'))  define('CACHE_LOG',  __DIR__ . '/../logs/cache-events.log');
-#endregion
+#region ⚠️ Codex Integrity Check
+$requiredCodexKeys = array(
+    'timeIntervalStandards.workdayStart',
+    'timeIntervalStandards.workdayEnd',
+    'weatherData.defaultLocation',
+    'weatherData.latitude',
+    'weatherData.longitude'
+);
 
-#region 📁 Constants and File Paths
-define('WORKDAY_START', '07:30');
-define('WORKDAY_END',   '15:30');
-define('WEATHER_LOCATION', 'Phoenix,US');
-define('LATITUDE',  '33.448376');
-define('LONGITUDE', '-112.074036');
-
-// Pull sunrise/sunset from Codex → fallback defaults
-define('DEFAULT_SUNRISE', getConst('kpiData', 'defaultSunrise', '05:27:00'));
-define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset',  '19:42:00'));
-
-define('HOLIDAYS_PATH',        '/home/notyou64/public_html/data/federal_holidays_dynamic.json');
-define('DATA_PATH',            '/home/notyou64/public_html/data/skyesoft-data.json');
-define('VERSION_PATH',         '/home/notyou64/public_html/data/version.json');
-define('ANNOUNCEMENTS_PATH',   '/home/notyou64/public_html/data/announcements.json');
-define('FEDERAL_HOLIDAYS_PHP', __DIR__ . '/federalHolidays.php');
-define('CHAT_LOG_PATH',        '../../assets/data/chatLog.json');
-define('WEATHER_CACHE_PATH',   '../../assets/data/weatherCache.json');
-#endregion
-
-#region 🔧 Initialization and Error Reporting
-// Version: Codex v1.4
-// Version: Codex Compliance v1.4
-
-// Normalize helper include path to avoid redeclaration on PHP 5.6
-$helperPath = realpath(__DIR__ . '/helpers.php');
-if ($helperPath && !in_array($helperPath, get_included_files())) {
-    require_once $helperPath;
+foreach ($requiredCodexKeys as $keyPath) {
+    $parts = explode('.', $keyPath);
+    $node = $codex;
+    foreach ($parts as $p) {
+        if (isset($node[$p])) {
+            $node = $node[$p];
+        } else {
+            error_log("❌ Missing Codex key: {$keyPath}");
+            break;
+        }
+    }
 }
+#endregion
+
+#region 🚫 Codex Failure Gate (Strict Mode)
+$codexCriticalKeys = array(
+    'timeIntervalStandards.workdayStart',
+    'timeIntervalStandards.workdayEnd',
+    'weatherData.defaultLocation'
+);
+
+$codexIntegrityPassed = true;
+
+foreach ($codexCriticalKeys as $keyPath) {
+    $parts = explode('.', $keyPath);
+    $node = $codex;
+    foreach ($parts as $p) {
+        if (isset($node[$p])) {
+            $node = $node[$p];
+        } else {
+            $codexIntegrityPassed = false;
+            error_log("🚫 Critical Codex failure: {$keyPath} missing.");
+            break 2;
+        }
+    }
+}
+
+if (!$codexIntegrityPassed) {
+    // Halt Skyesoft SSE to prevent false positives
+    header('Content-Type: application/json');
+    echo json_encode(array(
+        "error" => "❌ Critical Codex failure. SSE stream aborted.",
+        "action" => "check_codex_integrity",
+        "status" => "stopped"
+    ));
+    exit;
+}
+#endregion
+
+#region ⚙️ Cache Constants (used by safeJsonLoad + logCacheEvent)
+if (!defined('CACHE_PATH')) define('CACHE_PATH',  $dataPath . '/cache.json');
+if (!defined('CACHE_LOG'))  define('CACHE_LOG',   $logPath  . '/cache-events.log');
+#endregion
+
+#region 📁 Constants and File Paths (strict Codex mode)
+define('WORKDAY_START', getConst('timeIntervalStandards', 'workdayStart'));
+define('WORKDAY_END',   getConst('timeIntervalStandards', 'workdayEnd'));
+define('WEATHER_LOCATION', getConst('weatherData', 'defaultLocation'));
+define('LATITUDE',  getConst('weatherData', 'latitude'));
+define('LONGITUDE', getConst('weatherData', 'longitude'));
+define('DEFAULT_SUNRISE', getConst('kpiData', 'defaultSunrise'));
+define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset'));
+
+define('HOLIDAYS_PATH',        $dataPath . '/federal_holidays_dynamic.json');
+define('DATA_PATH',            $dataPath . '/skyesoft-data.json');
+define('VERSION_PATH',         $dataPath . '/version.json');
+define('ANNOUNCEMENTS_PATH',   $dataPath . '/announcements.json');
+define('FEDERAL_HOLIDAYS_PHP', dirname(__FILE__) . '/federalHolidays.php');
+define('CHAT_LOG_PATH',        $dataPath . '/chatLog.json');
+define('WEATHER_CACHE_PATH',   $dataPath . '/weatherCache.json');
 #endregion
 
 #region 📊 Data Loading
