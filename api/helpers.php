@@ -1021,3 +1021,40 @@ if (php_sapi_name() === 'cli' && basename(__FILE__) === basename($_SERVER['argv'
     echo "\nCheck /logs/env-fallback.log for missing ENV notices.\n";
     echo "If SSE active, confirm 'env_notice' events are emitted.\n";
 }
+// --- Weather fetch utility (OpenWeather API, robust mode) ---
+function getWeatherData($apiKey) {
+    $lat = LATITUDE;
+    $lon = LONGITUDE;
+    $base = 'https://api.openweathermap.org/data/2.5/weather';
+    $url  = sprintf('%s?lat=%s&lon=%s&appid=%s&units=imperial', $base, $lat, $lon, $apiKey);
+
+    // 5 s timeout + error suppression
+    $ctx = stream_context_create(array('http' => array('timeout' => 5)));
+    $raw = @file_get_contents($url, false, $ctx);
+
+    if ($raw === false) {
+        error_log('⚠️ OpenWeather fetch failed (' . $url . ')');
+        return array(
+            'temp' => null,
+            'icon' => '❓',
+            'description' => 'API call failed (fetch error)',
+        );
+    }
+
+    $json = json_decode($raw, true);
+    if (!is_array($json) || !isset($json['weather'][0])) {
+        error_log('⚠️ OpenWeather invalid JSON');
+        return array(
+            'temp' => null,
+            'icon' => '❓',
+            'description' => 'API call failed (bad JSON)',
+        );
+    }
+
+    return array(
+        'temp'         => isset($json['main']['temp']) ? $json['main']['temp'] : null,
+        'icon'         => isset($json['weather'][0]['icon']) ? $json['weather'][0]['icon'] : '❓',
+        'description'  => isset($json['weather'][0]['description']) ? $json['weather'][0]['description'] : 'unknown',
+        'lastUpdatedUnix' => time(),
+    );
+}
