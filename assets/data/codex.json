@@ -225,12 +225,77 @@
       "icon": "calendar",
       "format": "dynamic",
       "source": "sseStream.weatherData.federalHolidaysDynamic",
-      "description": "Holiday data is dynamically sourced from the SSE stream (via federalHolidays.php). Updates automatically reflect new or upcoming federal holidays."
+      "description": "Holiday data is dynamically sourced from the SSE stream (via federalHolidays.php). Updates automatically reflect new or upcoming federal holidays.",
+      "governs": ["companyHolidaysEngine", "getDynamicData", "holidayRecognition"]
     },
     "exclusions": {
       "icon": "shield",
       "format": "text",
       "text": "Weekends and dynamically sourced Holidays are automatically excluded from all time-sensitive calculations and scheduling routines."
+    },
+    "holidayRegistry": {
+      "icon": "calendar",
+      "format": "table",
+      "description": "Unified registry of holidays recognized by Skyesoft, including federal, company, cultural, awareness, and novelty observances. Used by the Time Interval Standards to identify non-working or special-context days.",
+      "source": "Codex internal list (static registry; supersedes federalHolidays.php)",
+      "revision": {
+        "version": "1.0",
+        "lastUpdated": "2025-10-27",
+        "author": "System Codex Enrichment"
+      },
+      "categories": {
+        "federal": {
+          "description": "Official U.S. government holidays that may influence permit offices, shipping, and municipal operations.",
+          "workdayImpact": "high",
+          "excludeFromScheduling": true
+        },
+        "company": {
+          "description": "Days when Christy Signs offices are closed or operating on limited hours.",
+          "workdayImpact": "critical",
+          "excludeFromScheduling": true
+        },
+        "cultural": {
+          "description": "Widespread cultural observances that may affect communications, marketing tone, or social relevance but do not close operations.",
+          "workdayImpact": "moderate",
+          "excludeFromScheduling": false
+        },
+        "awareness": {
+          "description": "Global or national awareness days recognized in reporting or AI contextual reasoning (e.g., Earth Day).",
+          "workdayImpact": "low",
+          "excludeFromScheduling": false
+        },
+        "novelty": {
+          "description": "Light-hearted or social media observances used for engagement or contextual commentary (e.g., National Donut Day).",
+          "workdayImpact": "minimal",
+          "excludeFromScheduling": false
+        }
+      },
+      "holidays": [
+        { "name": "New Year's Day", "rule": "Jan 1", "category": "federal" },
+        { "name": "Martin Luther King Jr. Day", "rule": "Third Monday of Jan", "category": "federal" },
+        { "name": "Presidents' Day", "rule": "Third Monday of Feb", "category": "federal" },
+        { "name": "Memorial Day", "rule": "Last Monday of May", "category": "federal" },
+        { "name": "Juneteenth", "rule": "Jun 19", "category": "federal" },
+        { "name": "Independence Day", "rule": "Jul 4", "category": "federal" },
+        { "name": "Labor Day", "rule": "First Monday of Sep", "category": "federal" },
+        { "name": "Veterans Day", "rule": "Nov 11", "category": "federal" },
+        { "name": "Thanksgiving Day", "rule": "Fourth Thursday of Nov", "category": "federal" },
+        { "name": "Christmas Day", "rule": "Dec 25", "category": "federal" },
+        { "name": "Day After Thanksgiving", "rule": "Fourth Friday of Nov", "category": "company" },
+        { "name": "Christmas Eve", "rule": "Dec 24", "category": "company" },
+        { "name": "New Year's Eve", "rule": "Dec 31", "category": "company" },
+        { "name": "Cinco de Mayo", "rule": "May 5", "category": "cultural" },
+        { "name": "Mother's Day", "rule": "Second Sunday of May", "category": "cultural" },
+        { "name": "Father's Day", "rule": "Third Sunday of June", "category": "cultural" },
+        { "name": "Halloween", "rule": "Oct 31", "category": "cultural" },
+        { "name": "Earth Day", "rule": "Apr 22", "category": "awareness" },
+        { "name": "Patriot Day", "rule": "Sep 11", "category": "awareness" },
+        { "name": "Pi Day", "rule": "Mar 14", "category": "novelty" },
+        { "name": "Star Wars Day", "rule": "May 4", "category": "novelty" },
+        { "name": "National Donut Day", "rule": "First Friday of Jun", "category": "novelty" },
+        { "name": "Talk Like a Pirate Day", "rule": "Sep 19", "category": "novelty" },
+        { "name": "National Coffee Day", "rule": "Sep 29", "category": "novelty" }
+      ]
     }
   },
   "fileManagement": {

@@ -154,6 +154,85 @@ if (!defined('CACHE_PATH')) define('CACHE_PATH',  $dataPath . '/cache.json');
 if (!defined('CACHE_LOG'))  define('CACHE_LOG',   $logPath  . '/cache-events.log');
 #endregion
 
+#region 🧮 Holiday Derivation (Codex-based, in-memory)
+// Derive holidays directly from Codex → no external JSON required
+
+if (!isset($codex) || !is_array($codex)) {
+    error_log("🚫 Codex not available — holiday derivation skipped.");
+} else {
+    // Extract holiday registry rules
+    $registry = array();
+    if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays'])) {
+        $registry = $codex['timeIntervalStandards']['holidayRegistry']['holidays'];
+    }
+
+    // Helper: derive date from rule
+    function resolveHolidayDate($rule, $year) {
+        if (preg_match('/^[A-Za-z]{3,9}\s+\d{1,2}$/', $rule)) {
+            return date('Y-m-d', strtotime($rule . ' ' . $year));
+        }
+        if (preg_match('/(First|Second|Third|Fourth)\s+([A-Za-z]+)\s+of\s+([A-Za-z]+)/i', $rule, $m)) {
+            $nthMap = array('First'=>1,'Second'=>2,'Third'=>3,'Fourth'=>4);
+            $n = $nthMap[ucfirst(strtolower($m[1]))];
+            $weekday = ucfirst(strtolower($m[2]));
+            $month = ucfirst(strtolower($m[3]));
+            $monthNum = date('n', strtotime($month . ' 1 ' . $year));
+            $firstDay = strtotime("$year-$monthNum-01");
+            $firstWeekday = date('N', $firstDay);
+            $targetWeekday = date('N', strtotime($weekday));
+            $offsetDays = ($targetWeekday - $firstWeekday + 7) % 7;
+            $day = 1 + $offsetDays + 7 * ($n - 1);
+            return date('Y-m-d', mktime(0, 0, 0, $monthNum, $day, $year));
+        }
+        if (preg_match('/Last\s+([A-Za-z]+)\s+of\s+([A-Za-z]+)/i', $rule, $m)) {
+            $weekday = ucfirst(strtolower($m[1]));
+            $month = ucfirst(strtolower($m[2]));
+            $monthNum = date('n', strtotime($month . ' 1 ' . $year));
+            $lastDay = date('t', strtotime("$year-$monthNum-01"));
+            $lastDate = strtotime("$year-$monthNum-$lastDay");
+            $targetWeekday = date('N', strtotime($weekday));
+            $lastWeekday = date('N', $lastDate);
+            $offsetDays = ($lastWeekday - $targetWeekday + 7) % 7;
+            $day = $lastDay - $offsetDays;
+            return date('Y-m-d', mktime(0, 0, 0, $monthNum, $day, $year));
+        }
+        return null;
+    }
+
+    // Build derived holiday list
+    $year = date('Y');
+    $derivedHolidays = array();
+    foreach ($registry as $h) {
+        $date = resolveHolidayDate($h['rule'], $year);
+        if ($date) {
+            $derivedHolidays[] = array(
+                'name' => $h['name'],
+                'date' => $date,
+                'category' => isset($h['category']) ? $h['category'] : 'unspecified'
+            );
+        }
+    }
+
+    // Merge with legacy federal holidays
+    $mergedHolidays = array_merge(
+        isset($federalHolidaysDynamic) ? $federalHolidaysDynamic : array(),
+        $derivedHolidays
+    );
+
+    // Deduplicate by date
+    $unique = array();
+    foreach ($mergedHolidays as $h) {
+        $unique[$h['date']] = $h;
+    }
+    $holidaysFinal = array_values($unique);
+
+    // Store into main data array for SSE
+    $data['holidays'] = $holidaysFinal;
+
+    error_log("✅ Holiday derivation completed in-memory (" . count($holidaysFinal) . " holidays for $year)");
+}
+#endregion
+
 #region 📁 Constants and File Paths (strict Codex mode)
 
 // Derive Office Workday Start/End dynamically from Codex
@@ -200,6 +279,7 @@ define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset'));
 
 // Data and log paths
 define('HOLIDAYS_PATH',        $dataPath . '/federal_holidays_dynamic.json');
+define('COMPANY_HOLIDAYS_DYNAMIC', $dataPath . '/company_holidays_dynamic.json');
 define('DATA_PATH',            $dataPath . '/skyesoft-data.json');
 define('VERSION_PATH',         $dataPath . '/version.json');
 define('ANNOUNCEMENTS_PATH',   $dataPath . '/announcements.json');
@@ -985,6 +1065,7 @@ $codexContext = array(
     )
 );
 
+// Cache Codex Context (5-minute TTL)
 $cachePath = sys_get_temp_dir() . '/codex_cache.json';
 if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
     @file_put_contents($cachePath, json_encode($codexContext, JSON_PRETTY_PRINT));
@@ -993,15 +1074,15 @@ if (!file_exists($cachePath) || (time() - filemtime($cachePath)) > 300) {
 $response['codexContext'] = $codexContext;
 #endregion
 
+#region 🎯 Inject Derived Holidays (from in-memory derivation)
+// Attach holidays array to top-level output before echo
+if (isset($holidaysFinal) && is_array($holidaysFinal)) {
+    $response['holidays'] = $holidaysFinal;
+}
+#endregion
+
 #region 🟢 Output
 // Version: Codex v1.4
 echo json_encode($response);
 exit;
-#endregion
-
-#region ⚡ Phase 4 – Codex-Aware Caching & TTL Enforcement
-// Version: Codex v1.4
-$weatherData = resolveCache('weather', getConst('kpiData','cacheTtlSeconds'), function() {
-    return fetchWeatherData(); // your existing weather fetch routine
-});
 #endregion
