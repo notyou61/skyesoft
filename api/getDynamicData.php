@@ -233,6 +233,38 @@ if (!isset($codex) || !is_array($codex)) {
 }
 #endregion
 
+#region 🧩 Phase 2 – Legacy Compatibility Bridge
+// Purpose: Ensure existing modules (e.g., interval logic, Office Board) 
+// still access federal holidays via weatherData.federalHolidaysDynamic
+// until full migration to unified $data['holidays'] is complete.
+
+if (!isset($weatherData)) {
+    $weatherData = array();
+}
+
+if (
+    !isset($weatherData['federalHolidaysDynamic']) &&
+    isset($data['holidays']) &&
+    is_array($data['holidays'])
+) {
+    $weatherData['federalHolidaysDynamic'] = array();
+    foreach ($data['holidays'] as $h) {
+        if (isset($h['category']) && strtolower($h['category']) === 'federal') {
+            $weatherData['federalHolidaysDynamic'][] = array(
+                'name' => $h['name'],
+                'date' => $h['date']
+            );
+        }
+    }
+
+    error_log(
+        "🧩 Compatibility bridge active → " .
+        count($weatherData['federalHolidaysDynamic']) .
+        " federal holidays synced from Codex."
+    );
+}
+#endregion
+
 #region 📁 Constants and File Paths (strict Codex mode)
 
 // Derive Office Workday Start/End dynamically from Codex
@@ -655,11 +687,40 @@ if (is_readable(HOLIDAYS_PATH)) {
 }
 
 $isHoliday = isHoliday($currentDate, $holidays);
-$isWorkday = isWorkday($currentDate, $holidays);
 
+// 🏢 Company Holiday Detection (Codex-aware)
+$isCompanyHoliday = false;
+if (isset($data['holidays']) && is_array($data['holidays'])) {
+    foreach ($data['holidays'] as $h) {
+        if (
+            isset($h['category']) &&
+            strtolower($h['category']) === 'company' &&
+            isset($h['date']) &&
+            $h['date'] === $currentDate
+        ) {
+            $isCompanyHoliday = true;
+            break;
+        }
+    }
+}
+
+// 🛠 Workday Determination
+$isWorkday = isWorkday($currentDate, isset($data['holidays']) ? $data['holidays'] : array());
+
+// ⏱ Interval Labeling
 $intervalLabel = ($isWorkday && $currentSeconds >= $workStart && $currentSeconds < $workEnd) ? '0' : '1';
-$dayType = (!$isWorkday ? ($isHoliday ? '2' : '1') : '0');
 
+// 🧭 Day Type Mapping
+// 0 = Workday, 1 = Weekend, 2 = Company Holiday
+if ($isCompanyHoliday) {
+    $dayType = '2';
+} elseif (!$isWorkday) {
+    $dayType = '1';
+} else {
+    $dayType = '0';
+}
+
+// ⏳ Seconds Remaining Calculation
 if ($intervalLabel === '1') {
     $nextStart = ($isWorkday && $currentSeconds < $workStart)
         ? strtotime($currentDate . ' ' . WORKDAY_START)
