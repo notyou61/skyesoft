@@ -36,6 +36,15 @@ if (!function_exists('getConst')) {
 $rootPath = realpath(dirname(__DIR__));
 $dataPath = realpath($rootPath . '/assets/data');
 $logPath  = realpath($rootPath . '/logs');
+
+// 🔎 Force local error log if /logs/ is unavailable
+$localLog = $logPath && is_dir($logPath)
+    ? $logPath . '/error_log.txt'
+    : $dataPath . '/error_log.txt';
+
+ini_set('log_errors', '1');
+ini_set('error_log', $localLog);
+error_log("🧭 Skyesoft log initialized → {$localLog}");
 #endregion
 
 #region 📘 Load Codex Early (Dynamic Environment Safe)
