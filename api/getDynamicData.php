@@ -66,15 +66,16 @@ if (file_exists($codexFile)) {
 }
 #endregion
 
-#region ⚠️ Codex Integrity Check
+#region ⚠️ Codex Integrity Check (strict structural validation)
 $requiredCodexKeys = array(
-    'timeIntervalStandards.workdayStart',
-    'timeIntervalStandards.workdayEnd',
+    'timeIntervalStandards.segmentsOffice.items',
+    'weatherData',
     'weatherData.defaultLocation',
     'weatherData.latitude',
     'weatherData.longitude'
 );
 
+// Step 1: Validate existence of required structures and keys
 foreach ($requiredCodexKeys as $keyPath) {
     $parts = explode('.', $keyPath);
     $node = $codex;
@@ -82,10 +83,38 @@ foreach ($requiredCodexKeys as $keyPath) {
         if (isset($node[$p])) {
             $node = $node[$p];
         } else {
-            error_log("❌ Missing Codex key: {$keyPath}");
+            error_log("❌ Missing Codex key or structure: {$keyPath}");
             break;
         }
     }
+}
+
+// Step 2: Verify Office Worktime segment exists
+$officeOK = false;
+if (isset($codex['timeIntervalStandards']['segmentsOffice']['items'])
+    && is_array($codex['timeIntervalStandards']['segmentsOffice']['items'])) {
+
+    foreach ($codex['timeIntervalStandards']['segmentsOffice']['items'] as $segment) {
+        if (isset($segment['Interval']) &&
+            strtolower(trim($segment['Interval'])) === 'worktime' &&
+            isset($segment['Hours']) &&
+            trim($segment['Hours']) != '') {
+            $officeOK = true;
+            break;
+        }
+    }
+}
+
+if (!$officeOK) {
+    error_log("🚫 Missing or invalid 'Worktime' interval in timeIntervalStandards.segmentsOffice.items");
+}
+
+// Step 3: Log successful structural verification
+if ($officeOK
+    && isset($codex['weatherData']['defaultLocation'])
+    && isset($codex['weatherData']['latitude'])
+    && isset($codex['weatherData']['longitude'])) {
+    error_log("✅ Codex structural integrity verified (timeIntervalStandards + weatherData)");
 }
 #endregion
 
@@ -130,14 +159,50 @@ if (!defined('CACHE_LOG'))  define('CACHE_LOG',   $logPath  . '/cache-events.log
 #endregion
 
 #region 📁 Constants and File Paths (strict Codex mode)
-define('WORKDAY_START', getConst('timeIntervalStandards', 'workdayStart'));
-define('WORKDAY_END',   getConst('timeIntervalStandards', 'workdayEnd'));
+
+// Derive Office Workday Start/End dynamically from Codex
+$workdayStart = null;
+$workdayEnd   = null;
+
+if (isset($codex['timeIntervalStandards']['segmentsOffice']['items'])
+    && is_array($codex['timeIntervalStandards']['segmentsOffice']['items'])) {
+
+    foreach ($codex['timeIntervalStandards']['segmentsOffice']['items'] as $segment) {
+        if (isset($segment['Interval']) && strtolower(trim($segment['Interval'])) === 'worktime') {
+            if (isset($segment['Hours'])) {
+                $hours = $segment['Hours']; // e.g. "7:30 AM – 3:30 PM"
+                $parts = preg_split('/–|-/', $hours); // handle en dash or hyphen
+                if (count($parts) == 2) {
+                    $start = trim($parts[0]);
+                    $end   = trim($parts[1]);
+                    $workdayStart = date('H:i', strtotime($start));
+                    $workdayEnd   = date('H:i', strtotime($end));
+                }
+            }
+            break;
+        }
+    }
+}
+
+if (!$workdayStart || !$workdayEnd) {
+    error_log("🚫 Could not derive Office Workday times from Codex (segmentsOffice)");
+    exit(json_encode(array(
+        "error" => "Critical Codex structure error: Missing Office Worktime interval.",
+        "status" => "stopped"
+    )));
+}
+
+define('WORKDAY_START', $workdayStart);
+define('WORKDAY_END',   $workdayEnd);
+
+// Weather and KPI constants (direct Codex read)
 define('WEATHER_LOCATION', getConst('weatherData', 'defaultLocation'));
 define('LATITUDE',  getConst('weatherData', 'latitude'));
 define('LONGITUDE', getConst('weatherData', 'longitude'));
 define('DEFAULT_SUNRISE', getConst('kpiData', 'defaultSunrise'));
 define('DEFAULT_SUNSET',  getConst('kpiData', 'defaultSunset'));
 
+// Data and log paths
 define('HOLIDAYS_PATH',        $dataPath . '/federal_holidays_dynamic.json');
 define('DATA_PATH',            $dataPath . '/skyesoft-data.json');
 define('VERSION_PATH',         $dataPath . '/version.json');

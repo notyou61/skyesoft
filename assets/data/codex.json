@@ -855,6 +855,13 @@
     "openai": "https://api.openai.com/v1/",
     "openWeather": "https://api.openweathermap.org/data/2.5/"
   },
+  "weatherData": {
+    "title": "🌤️ Weather Data Defaults",
+    "category": "System Layer",
+    "defaultLocation": "Phoenix,US",
+    "latitude": "33.448376",
+    "longitude": "-112.074036"
+  },
   "kpiData": {
     "secondsPerDay": 86400,
     "daysPerYearBase": 365,
