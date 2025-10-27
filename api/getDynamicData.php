@@ -656,7 +656,7 @@ if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers']
 #endregion
 
 #region 📅 Time and Date Calculations
-// Version: Codex v1.4
+// Version: Codex v1.5 – Company Holiday Standard
 date_default_timezone_set('America/Phoenix');
 $now = $nowTs;
 $yearTotalDays = (date('L', $now) ? 366 : 365);
@@ -678,15 +678,16 @@ $currentSeconds = date('G', $now) * 3600 + date('i', $now) * 60 + date('s', $now
 $currentUnixTime = $now;
 
 $workStart = timeStringToSeconds(WORKDAY_START);
-$workEnd = timeStringToSeconds(WORKDAY_END);
+$workEnd   = timeStringToSeconds(WORKDAY_END);
 
+// 🗓️ Load company holiday list
 $holidays = array();
 if (is_readable(HOLIDAYS_PATH)) {
     $holidaysData = json_decode(file_get_contents(HOLIDAYS_PATH), true);
-    $holidays = (is_array($holidaysData) && isset($holidaysData['holidays']) && is_array($holidaysData['holidays'])) ? $holidaysData['holidays'] : array();
+    $holidays = (is_array($holidaysData) && isset($holidaysData['holidays']) && is_array($holidaysData['holidays']))
+        ? $holidaysData['holidays']
+        : array();
 }
-
-$isHoliday = isHoliday($currentDate, $holidays);
 
 // 🏢 Company Holiday Detection (Codex-aware)
 $isCompanyHoliday = false;
@@ -732,25 +733,45 @@ if ($intervalLabel === '1') {
 #endregion
 
 #region 🔧 Utility Functions
-// Version: Codex v1.4
+// Version: Codex v1.5 – Company Holiday Standard
+
 function timeStringToSeconds($timeStr) {
     list($h, $m) = explode(':', $timeStr);
     return (int)$h * 3600 + (int)$m * 60;
 }
 
+// 🏢 Check if a date is a company holiday
 function isHoliday($dateStr, $holidays) {
+    if (isset($holidays['holidays']) && is_array($holidays['holidays'])) {
+        $holidays = $holidays['holidays'];
+    }
     foreach ($holidays as $holiday) {
-        if ($holiday['date'] === $dateStr) return true;
+        if (
+            isset($holiday['category']) &&
+            strtolower($holiday['category']) === 'company' &&
+            isset($holiday['date']) &&
+            $holiday['date'] === $dateStr
+        ) {
+            return true;
+        }
     }
     return false;
 }
 
+// 🗓️ Check if a date is a workday (not weekend or company holiday)
 function isWorkday($date, $holidays) {
-    $day = date('w', strtotime($date));
-    return $day != 0 && $day != 6 && !isHoliday($date, $holidays);
+    if (isset($holidays['holidays']) && is_array($holidays['holidays'])) {
+        $holidays = $holidays['holidays'];
+    }
+    $day = date('w', strtotime($date)); // 0 = Sun, 6 = Sat
+    return ($day != 0 && $day != 6 && !isHoliday($date, $holidays));
 }
 
+// ⏰ Find the next workday start time (company holidays only)
 function findNextWorkdayStart($startDate, $holidays) {
+    if (isset($holidays['holidays']) && is_array($holidays['holidays'])) {
+        $holidays = $holidays['holidays'];
+    }
     $date = strtotime($startDate . ' +1 day');
     while (!isWorkday(date('Y-m-d', $date), $holidays)) {
         $date = strtotime('+1 day', $date);

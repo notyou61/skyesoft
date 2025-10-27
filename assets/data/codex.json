@@ -231,7 +231,7 @@
     "exclusions": {
       "icon": "shield",
       "format": "text",
-      "text": "Weekends and dynamically sourced Holidays are automatically excluded from all time-sensitive calculations and scheduling routines."
+      "text": "Weekends and recognized Company Holidays are automatically excluded from all time-sensitive calculations and scheduling routines. Federal holidays are excluded only when they coincide with official company closures as defined in the holidayRegistry."
     },
     "holidayRegistry": {
       "icon": "calendar",
