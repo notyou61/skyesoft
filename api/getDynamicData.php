@@ -551,8 +551,8 @@ $timeOfDayDesc   = $timeData['timeOfDayDescription'];
 $utcOffset       = $timeData['UTCOffset'];
 
 // 🕒 Add human-readable 12-hour time for SSE/UI
-$currentTime12h = date('g:i A', $now);
-$currentTimeShort = date('g:i', $now) . ' ' . strtolower(date('A', $now));
+$currentTime12h = date('g:i A', $nowTs);
+$currentTimeShort = date('g:i', $nowTs) . ' ' . strtolower(date('A', $now));
 
 // Compute day boundaries and workday interval flags
 $currentDayStartUnix = strtotime(date('Y-m-d 00:00:00', $nowTs));
@@ -1159,7 +1159,12 @@ if (is_array($codexTiers)) {
 } else {
     // Fallback: minimal safe response
     $response = array(
-        'timeDateArray'  => $timeData,
+        'timeDateArray' => array_merge($timeData, array(
+            // 🕒 Add 12-hour formatted time variants for Skyebot and SSE dashboards
+            'currentLocalTime12h'      => date('h:i:s A', $nowTs),       // 02:17:41 PM
+            'currentLocalTimeShort'    => date('g:i A', $nowTs),         // 2:17 PM
+            'currentLocalTimeCompact'  => strtolower(date('g:i a', $nowTs)), // 2:17 pm
+        )),
         'intervalsArray' => array(
             'currentDaySecondsRemaining' => $secondsRemaining,
             'intervalLabel' => $intervalLabel,
