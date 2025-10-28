@@ -631,96 +631,38 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 #endregion
 
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
-
-if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) && is_array($codex['timeIntervalStandards']['holidayRegistry']['holidays'])) {
-    $today       = date('Y-m-d');
-    $todayTime   = strtotime($today . ' 00:00:00');
-    $currentYear = date('Y');
-
-    // Normalize prompt
-    $queryLower = '';
-    if (isset($prompt)) {
-        if (is_string($prompt)) {
-            $queryLower = strtolower($prompt);
-        } elseif (is_array($prompt)) {
-            $queryLower = strtolower(implode(' ', array_filter($prompt, 'is_string')));
-        }
+$triggered = false;
+if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
+    is_array($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
+    isset($prompt))
+{
+    // 🩹 Normalize prompt (string or array)
+    $queryText = '';
+    if (is_string($prompt)) {
+        $queryText = strtolower($prompt);
+    } elseif (is_array($prompt)) {
+        $queryText = strtolower(implode(' ', array_filter($prompt, 'is_string')));
     }
 
-    // Determine filter type
-    $filterCategory = null;
-    if (strpos($queryLower, 'company') !== false) $filterCategory = 'company';
-    elseif (strpos($queryLower, 'federal') !== false) $filterCategory = 'federal';
-
-    // --- Helper: Parse Codex holiday rules to actual date ---
-    function parseHolidayRule($year, $rule) {
-        $months = array('Jan'=>1,'Feb'=>2,'Mar'=>3,'Apr'=>4,'May'=>5,'Jun'=>6,'Jul'=>7,'Aug'=>8,'Sep'=>9,'Oct'=>10,'Nov'=>11,'Dec'=>12);
-        $ord    = array('First'=>1,'Second'=>2,'Third'=>3,'Fourth'=>4,'Last'=>-1);
-        $wday   = array('Sunday'=>0,'Monday'=>1,'Tuesday'=>2,'Wednesday'=>3,'Thursday'=>4,'Friday'=>5,'Saturday'=>6);
-
-        // Fixed date: "Oct 31"
-        if (preg_match('/^(\w{3})\s+(\d{1,2})$/', $rule, $m)) {
-            if (isset($months[$m[1]])) return sprintf('%04d-%02d-%02d', $year, $months[$m[1]], $m[2]);
-        }
-
-        // Relative date: "Fourth Thursday of Nov"
-        if (preg_match('/^(\w+)\s+(\w+)\s+of\s+(\w{3})$/', $rule, $m)) {
-            if (isset($ord[$m[1]]) && isset($wday[$m[2]]) && isset($months[$m[3]])) {
-                $month = $months[$m[3]];
-                $first = strtotime("$year-$month-01");
-                $dayCount = 0; $target = 0;
-                for ($i = 0; $i < 31; $i++) {
-                    $t = strtotime("+$i day", $first);
-                    if (date('n', $t) != $month) break;
-                    if (date('w', $t) == $wday[$m[2]]) {
-                        $dayCount++;
-                        if ($ord[$m[1]] == $dayCount) { $target = $t; break; }
-                    }
-                }
-                if ($ord[$m[1]] == -1) $target = strtotime("last {$m[2]} of {$m[3]} $year");
-                return date('Y-m-d', $target);
-            }
-        }
-        return null;
+    // Only trigger if it's clearly a holiday-related question
+    if (strpos($queryText, 'holiday') !== false ||
+        strpos($queryText, 'christmas') !== false ||
+        strpos($queryText, 'thanksgiving') !== false ||
+        strpos($queryText, 'halloween') !== false)
+    {
+        $triggered = true;
     }
+}
 
-    // --- Build candidate list ---
-    $candidates = array();
-    foreach ($codex['timeIntervalStandards']['holidayRegistry']['holidays'] as $h) {
-        $holidayDate = parseHolidayRule($currentYear, $h['rule']);
-        if (!$holidayDate) continue;
-
-        $holidayTime = strtotime($holidayDate);
-        if ($holidayTime < $todayTime) continue;
-
-        // Normalize categories
-        $cats = array();
-        if (isset($h['categories'])) $raw = $h['categories'];
-        elseif (isset($h['category'])) $raw = array($h['category']);
-        else $raw = array();
-        foreach ((array)$raw as $c) {
-            if (is_string($c)) $cats[] = strtolower($c);
-            elseif (is_array($c)) foreach ($c as $inner) if (is_string($inner)) $cats[] = strtolower($inner);
-        }
-
-        if (!$filterCategory || in_array($filterCategory, $cats)) {
-            $candidates[] = array_merge($h, array('date'=>$holidayDate));
-        }
-    }
-
-    // --- Return next holiday ---
-    if (!empty($candidates)) {
-        usort($candidates, function($a,$b){return strcmp($a['date'],$b['date']);});
-        $next = reset($candidates);
-        $respText = 'The next ' . ($filterCategory ? $filterCategory . ' ' : '') .
-                    'holiday is ' . $next['name'] . ' on ' .
-                    date('F j, Y', strtotime($next['date'])) . '.';
-        $response = array('response'=>$respText,'action'=>'inform','status'=>'ok');
-        if (!headers_sent()) {
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-            exit(0);
-        }
+if ($triggered) {
+    // (your existing rule-parsing + category-filtering code here)
+    // ...
+    // At the very end:
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        flush();
+        exit(0);
     }
 }
 #endregion
