@@ -631,9 +631,19 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 #endregion
 
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
+// Ensure prompt normalization (string or array safe)
+$queryLower = '';
+if (isset($prompt)) {
+    if (is_string($prompt)) {
+        $queryLower = strtolower($prompt);
+    } elseif (is_array($prompt)) {
+        // Flatten any text parts of the array
+        $queryLower = strtolower(implode(' ', array_filter($prompt, 'is_string')));
+    }
+}
+
 if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     $today = date('Y-m-d');
-    $queryLower = isset($prompt) ? strtolower($prompt) : '';
     $filterCategory = null;
 
     if (strpos($queryLower, 'company') !== false) {
@@ -643,13 +653,16 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     }
 
     $candidates = array();
+
     // Collect future holidays matching category (if any)
     foreach ($sseData['holidays'] as $h) {
         if (!isset($h['date'])) continue;
         if ($h['date'] <= $today) continue;
+
         // Normalize categories (handles string, array, or nested array safely)
         $cats = array();
-        // Extract raw categories   
+
+        // Extract raw categories
         if (isset($h['categories'])) {
             $rawCats = is_array($h['categories']) ? $h['categories'] : array($h['categories']);
         } elseif (isset($h['category'])) {
@@ -657,6 +670,7 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
         } else {
             $rawCats = array();
         }
+
         // Flatten and normalize
         foreach ($rawCats as $c) {
             if (is_string($c)) {
@@ -669,12 +683,14 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
                 }
             }
         }
+
         // Include if no filter or matching category
         if (!$filterCategory || in_array($filterCategory, $cats)) {
             $candidates[] = $h;
         }
     }
 
+    // Sort and respond
     if (!empty($candidates)) {
         usort($candidates, function ($a, $b) {
             return strcmp($a['date'], $b['date']);
@@ -683,7 +699,11 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
         $respText = 'The next ' . ($filterCategory ? $filterCategory . ' ' : '') .
                     'holiday is ' . $next['name'] . ' on ' .
                     date('F j, Y', strtotime($next['date'])) . '.';
-        $response = array('response' => $respText, 'action' => 'inform', 'status' => 'ok');
+        $response = array(
+            'response' => $respText,
+            'action' => 'inform',
+            'status' => 'ok'
+        );
     }
 }
 #endregion
