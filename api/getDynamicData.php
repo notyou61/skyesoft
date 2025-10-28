@@ -550,6 +550,10 @@ $dayNumber       = $timeData['currentDayNumber'];
 $timeOfDayDesc   = $timeData['timeOfDayDescription'];
 $utcOffset       = $timeData['UTCOffset'];
 
+// 🕒 Add human-readable 12-hour time for SSE/UI
+$currentTime12h = date('g:i A', $now);
+$currentTimeShort = date('g:i', $now) . ' ' . strtolower(date('A', $now));
+
 // Compute day boundaries and workday interval flags
 $currentDayStartUnix = strtotime(date('Y-m-d 00:00:00', $nowTs));
 $currentDayEndUnix   = strtotime(date('Y-m-d 23:59:59', $nowTs));
@@ -1038,7 +1042,9 @@ if ($weatherData['temp'] !== null) {
 // Early definitions to avoid undefined notices
 $timeData = array(
     'currentUnixTime' => $nowTs,
-    'currentLocalTime' => date('H:i:s', $nowTs),
+    'currentLocalTime'        => date('h:i:s A', $nowTs),     // full 12-hour with seconds + AM/PM
+    'currentLocalTimeShort'   => date('g:i A', $nowTs),       // clean UI-friendly version
+    'currentLocalTimeCompact' => strtolower(date('g:i a', $nowTs)), // lowercase for conversational AI
     'currentDate' => date('Y-m-d', $nowTs),
     'currentYearTotalDays' => $yearTotalDays,
     'currentYearDayNumber' => $yearDayNumber,
