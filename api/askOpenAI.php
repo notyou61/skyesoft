@@ -631,21 +631,18 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 #endregion
 
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
-// Ensure prompt normalization (string or array safe)
-$queryLower = '';
-if (isset($prompt)) {
-    if (is_string($prompt)) {
-        $queryLower = strtolower($prompt);
-    } elseif (is_array($prompt)) {
-        // Flatten any text parts of the array
-        $queryLower = strtolower(implode(' ', array_filter($prompt, 'is_string')));
-    }
-}
-
 if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     $today = date('Y-m-d');
-    $filterCategory = null;
+    $queryLower = '';
+    if (isset($prompt)) {
+        if (is_string($prompt)) {
+            $queryLower = strtolower($prompt);
+        } elseif (is_array($prompt)) {
+            $queryLower = strtolower(implode(' ', array_filter($prompt, 'is_string')));
+        }
+    }
 
+    $filterCategory = null;
     if (strpos($queryLower, 'company') !== false) {
         $filterCategory = 'company';
     } elseif (strpos($queryLower, 'federal') !== false) {
@@ -653,16 +650,21 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     }
 
     $candidates = array();
+    $todayTime = strtotime($today . ' 00:00:00');
 
-    // Collect future holidays matching category (if any)
     foreach ($sseData['holidays'] as $h) {
-        if (!isset($h['date'])) continue;
-        if ($h['date'] <= $today) continue;
+        if (!isset($h['date']) || empty($h['date'])) continue;
 
-        // Normalize categories (handles string, array, or nested array safely)
+        $holidayTime = strtotime($h['date'] . ' 00:00:00');
+        if ($holidayTime === false) {
+            error_log("⚠️ Invalid holiday date skipped: " . $h['name'] . " (" . $h['date'] . ")");
+            continue;
+        }
+
+        if ($holidayTime < $todayTime) continue;
+
+        // Normalize categories
         $cats = array();
-
-        // Extract raw categories
         if (isset($h['categories'])) {
             $rawCats = is_array($h['categories']) ? $h['categories'] : array($h['categories']);
         } elseif (isset($h['category'])) {
@@ -671,26 +673,21 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
             $rawCats = array();
         }
 
-        // Flatten and normalize
         foreach ($rawCats as $c) {
             if (is_string($c)) {
                 $cats[] = strtolower($c);
             } elseif (is_array($c)) {
                 foreach ($c as $inner) {
-                    if (is_string($inner)) {
-                        $cats[] = strtolower($inner);
-                    }
+                    if (is_string($inner)) $cats[] = strtolower($inner);
                 }
             }
         }
 
-        // Include if no filter or matching category
         if (!$filterCategory || in_array($filterCategory, $cats)) {
             $candidates[] = $h;
         }
     }
 
-    // Sort and respond
     if (!empty($candidates)) {
         usort($candidates, function ($a, $b) {
             return strcmp($a['date'], $b['date']);
@@ -701,9 +698,13 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
                     date('F j, Y', strtotime($next['date'])) . '.';
         $response = array(
             'response' => $respText,
-            'action' => 'inform',
-            'status' => 'ok'
+            'action'   => 'inform',
+            'status'   => 'ok',
+            'sessionId'=> isset($sessionId) ? $sessionId : uniqid('sess_')
         );
+        error_log("🧩 Holiday resolved: {$next['name']} ({$next['date']}) | Candidates: " . count($candidates) . " | Filter: " . ($filterCategory ?: 'all'));
+    } else {
+        error_log("⚠️ No future holidays matched query: {$queryLower} | Today: {$today}");
     }
 }
 #endregion
