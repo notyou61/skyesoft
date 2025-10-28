@@ -133,51 +133,6 @@ $prompt = $governedPrompt;
 error_log("🧠 Governed prompt preview: " . substr(json_encode($prompt), 0, 250));
 #endregion
 
-//
-if(1 ==2) {
-#region 🧭 SEMANTIC INTENT ROUTER (Phase 5)
-$routerPath = __DIR__ . '/ai/semanticRouter.php';
-if (file_exists($routerPath)) {
-    require_once($routerPath);
-
-    // ✅ Stub routeIntent() if not implemented yet
-    if (!function_exists('routeIntent')) {
-        function routeIntent($prompt, $codexPath = '', $ssePath = '') {
-            return "🧩 SemanticRouter stub active – prompt routed to PolicyEngine only.";
-        }
-    }
-
-    $codexPath = __DIR__ . '/../docs/codex/codex.json';
-    $ssePath   = __DIR__ . '/../../assets/data/dynamicDataCache.json';
-
-    // 🧠 Run router
-    $aiReply = routeIntent($prompt, $codexPath, $ssePath);
-
-    // ================================================================
-    // 🧩 OUTPUT NORMALIZATION (Single JSON response enforcement)
-    // Prevents double JSON and resolves client-side “network error”
-    // ================================================================
-    header('Content-Type: application/json; charset=utf-8');
-
-    // Clear any previous buffered output (from PolicyEngine/OpenAI)
-    if (ob_get_length()) {
-        ob_clean();
-    }
-
-    // Ensure consistent single JSON return
-    if (is_array($aiReply)) {
-        echo json_encode($aiReply, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    } else {
-        echo json_encode(array('response' => (string)$aiReply), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    exit; // 🧱 Stop here to avoid secondary fallback output
-} else {
-    error_log("❌ SemanticRouter not found at $routerPath");
-}
-#endregion
-}
-
 #region 🧠 SKYEBOT UNIVERSAL INPUT LOADER (CLI + WEB Compatible)
 // ================================================================
 // Purpose:
@@ -651,6 +606,19 @@ $codexPath = __DIR__ . '/../assets/data/dynamicData.json';  // Local fallback if
 if (empty($sseData) && file_exists($codexPath)) {
     $localRaw = file_get_contents($codexPath);
     $sseData = json_decode($localRaw, true) ?: array();
+}
+
+// 🧩 Codex v5.3 – Unified Dynamic Context Integration
+// Merge all top-level SSE keys dynamically to maintain Codex alignment
+if (is_array($sseData)) {
+    foreach ($sseData as $key => $value) {
+        if (is_array($value) || is_object($value)) {
+            $dynamicData[$key] = $value;
+        }
+    }
+    error_log("🧠 Unified context loaded (" . count($sseData) . " SSE keys integrated)");
+} else {
+    error_log("⚠️ SSE data not an array; skipping context merge.");
 }
 
 $codex = isset($sseData['codex']) && is_array($sseData['codex'])
