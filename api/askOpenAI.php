@@ -643,7 +643,7 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     }
 
     $candidates = array();
-    //
+    // Collect future holidays matching category (if any)
     foreach ($sseData['holidays'] as $h) {
         if (!isset($h['date'])) continue;
         if ($h['date'] <= $today) continue;
