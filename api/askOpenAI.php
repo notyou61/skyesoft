@@ -643,30 +643,32 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
     }
 
     $candidates = array();
+    //
     foreach ($sseData['holidays'] as $h) {
         if (!isset($h['date'])) continue;
         if ($h['date'] <= $today) continue;
-
-        // Normalize categories
+        // Normalize categories (handles string, array, or nested array safely)
         $cats = array();
-        if (isset($h['categories']) && is_array($h['categories'])) {
-            foreach ($h['categories'] as $c) {
-                if (is_string($c)) {
-                    $cats[] = strtolower($c);
-                }
-            }
+        // Extract raw categories   
+        if (isset($h['categories'])) {
+            $rawCats = is_array($h['categories']) ? $h['categories'] : array($h['categories']);
         } elseif (isset($h['category'])) {
-            if (is_array($h['category'])) {
-                foreach ($h['category'] as $c) {
-                    if (is_string($c)) {
-                        $cats[] = strtolower($c);
+            $rawCats = is_array($h['category']) ? $h['category'] : array($h['category']);
+        } else {
+            $rawCats = array();
+        }
+        // Flatten and normalize
+        foreach ($rawCats as $c) {
+            if (is_string($c)) {
+                $cats[] = strtolower($c);
+            } elseif (is_array($c)) {
+                foreach ($c as $inner) {
+                    if (is_string($inner)) {
+                        $cats[] = strtolower($inner);
                     }
                 }
-            } elseif (is_string($h['category'])) {
-                $cats[] = strtolower($h['category']);
             }
         }
-
         // Include if no filter or matching category
         if (!$filterCategory || in_array($filterCategory, $cats)) {
             $candidates[] = $h;
