@@ -630,6 +630,50 @@ global $codex, $sseData;
 error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode(', ', array_slice(array_keys($codex), 0, 3)) . ") | SSE keys: " . count($sseData));
 #endregion
 
+#region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
+if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
+    $today = date('Y-m-d');
+    $queryLower = isset($prompt) ? strtolower($prompt) : '';
+    $filterCategory = null;
+
+    if (strpos($queryLower, 'company') !== false) {
+        $filterCategory = 'company';
+    } elseif (strpos($queryLower, 'federal') !== false) {
+        $filterCategory = 'federal';
+    }
+
+    $candidates = array();
+    foreach ($sseData['holidays'] as $h) {
+        if (!isset($h['date'])) continue;
+        if ($h['date'] <= $today) continue;
+
+        // Normalize categories
+        $cats = array();
+        if (isset($h['categories']) && is_array($h['categories'])) {
+            foreach ($h['categories'] as $c) $cats[] = strtolower($c);
+        } elseif (isset($h['category'])) {
+            $cats[] = strtolower($h['category']);
+        }
+
+        // Include if no filter or matching category
+        if (!$filterCategory || in_array($filterCategory, $cats)) {
+            $candidates[] = $h;
+        }
+    }
+
+    if (!empty($candidates)) {
+        usort($candidates, function ($a, $b) {
+            return strcmp($a['date'], $b['date']);
+        });
+        $next = reset($candidates);
+        $respText = 'The next ' . ($filterCategory ? $filterCategory . ' ' : '') .
+                    'holiday is ' . $next['name'] . ' on ' .
+                    date('F j, Y', strtotime($next['date'])) . '.';
+        $response = array('response' => $respText, 'action' => 'inform', 'status' => 'ok');
+    }
+}
+#endregion
+
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
 
 // 🧩 Normalize to string before lowercase conversion
