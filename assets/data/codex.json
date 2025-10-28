@@ -86,6 +86,41 @@
         "reasoningRole": "Creates relational intelligence — allows AI to infer intent even if a term or alias differs."
       }
     },
+
+    "temporalOntology": {
+      "title": "⏳ Temporal Ontology",
+      "category": "Time and Duration Mapping",
+      "version": "1.0",
+      "description": "Defines how Skyebot™ interprets and calculates time-based relationships across all modules using Codex data rather than hardcoded PHP logic.",
+      "mappings": {
+        "universalTemporalFields": [
+          "createdAt",
+          "updatedAt",
+          "submittedDate",
+          "approvedDate",
+          "completedDate",
+          "lastModified",
+          "archivedAt"
+        ],
+        "permitManagementSuite": [
+          "submittedDate",
+          "reviewStartDate",
+          "approvedDate",
+          "finalInspectionDate"
+        ],
+        "financeSuite": [
+          "invoiceDate",
+          "paymentDate",
+          "dueDate"
+        ],
+        "crmSuite": [
+          "contactCreated",
+          "lastInteraction"
+        ]
+      },
+      "notes": "This ontology allows Skyebot to perform temporal reasoning (e.g., 'how long in review', 'days since approval', 'time until payment due') without any PHP logic changes."
+    },
+
     "scalabilityNotes": {
       "icon": "gear",
       "format": "text",
