@@ -632,69 +632,91 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
 
-// --- Step 1: Guard clause: only continue if Codex holiday data + prompt exist ---
-if (
-    isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
-    is_array($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
-    isset($prompt)
-) {
-    // 🧹 Normalize prompt to lowercase text
-    $queryText = '';
-    if (is_string($prompt)) {
-        $queryText = strtolower($prompt);
-    } elseif (is_array($prompt)) {
-        $queryText = strtolower(implode(' ', array_filter($prompt, 'is_string')));
+// --- Parse rule-based holiday strings like "Fourth Thursday of Nov" ---
+function parseHolidayRule($year, $rule) {
+    $monthMap = array(
+        'Jan'=>1,'Feb'=>2,'Mar'=>3,'Apr'=>4,'May'=>5,'Jun'=>6,
+        'Jul'=>7,'Aug'=>8,'Sep'=>9,'Oct'=>10,'Nov'=>11,'Dec'=>12
+    );
+    $weekdayMap = array(
+        'Sunday'=>0,'Monday'=>1,'Tuesday'=>2,'Wednesday'=>3,
+        'Thursday'=>4,'Friday'=>5,'Saturday'=>6
+    );
+    $ordinalMap = array('First'=>1,'Second'=>2,'Third'=>3,'Fourth'=>4,'Last'=>-1);
+
+    // Fixed date (e.g. "Oct 31")
+    if (preg_match('/^(\w{3})\s+(\d{1,2})$/i', $rule, $m)) {
+        $mon = isset($monthMap[ucfirst(strtolower($m[1]))]) ? $monthMap[ucfirst(strtolower($m[1]))] : null;
+        $day = (int)$m[2];
+        return $mon ? date('Y-m-d', strtotime("$year-$mon-$day")) : null;
     }
 
-    // --- Step 2: Determine if this query should trigger the resolver ---
+    // Weekday rule (e.g. "Fourth Thursday of Nov")
+    if (preg_match('/^(\w+)\s+(\w+)\s+of\s+(\w{3})$/i', $rule, $m)) {
+        $ordStr = ucfirst(strtolower($m[1]));
+        $wdStr  = ucfirst(strtolower($m[2]));
+        $monStr = ucfirst(strtolower($m[3]));
+        if (!isset($ordinalMap[$ordStr]) || !isset($weekdayMap[$wdStr]) || !isset($monthMap[$monStr])) return null;
+
+        $ordinal = $ordinalMap[$ordStr];
+        $weekday = $weekdayMap[$wdStr];
+        $month   = $monthMap[$monStr];
+
+        $firstDay = strtotime("$year-$month-01");
+        $daysInMonth = date('t', $firstDay);
+        $dates = array();
+        for ($d=1; $d<=$daysInMonth; $d++) {
+            $t = strtotime("$year-$month-$d");
+            if ((int)date('w',$t) === $weekday) $dates[]=$d;
+        }
+        if (!$dates) return null;
+        $day = ($ordinal==-1) ? end($dates) : (isset($dates[$ordinal-1])?$dates[$ordinal-1]:null);
+        return $day ? date('Y-m-d', strtotime("$year-$month-$day")) : null;
+    }
+
+    return null;
+}
+
+// --- Proceed only if Codex holiday data exists ---
+if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
+    is_array($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
+    isset($prompt))
+{
+    // Normalize query
+    $queryText = is_string($prompt)
+        ? strtolower($prompt)
+        : (is_array($prompt) ? strtolower(implode(' ', array_filter($prompt, 'is_string'))) : '');
+
+    // Trigger check
     $triggered = false;
-    if (
-        strpos($queryText, 'holiday')      !== false ||
-        strpos($queryText, 'christmas')    !== false ||
-        strpos($queryText, 'thanksgiving') !== false ||
-        strpos($queryText, 'halloween')    !== false
-    ) {
+    if (strpos($queryText,'holiday')!==false || strpos($queryText,'christmas')!==false ||
+        strpos($queryText,'thanksgiving')!==false || strpos($queryText,'halloween')!==false)
+    {
         $triggered = true;
     }
 
-    // --- Step 3: Process only if triggered ---
     if ($triggered) {
-        $today       = date('Y-m-d');
-        $todayTime   = strtotime($today . ' 00:00:00');
+        $today = date('Y-m-d');
+        $todayTime = strtotime($today.' 00:00:00');
         $currentYear = date('Y');
 
         $filterCategory = null;
-        if (strpos($queryText, 'company') !== false) {
-            $filterCategory = 'company';
-        } elseif (strpos($queryText, 'federal') !== false) {
-            $filterCategory = 'federal';
-        }
+        if (strpos($queryText,'company')!==false) $filterCategory='company';
+        elseif (strpos($queryText,'federal')!==false) $filterCategory='federal';
 
-        // --- Step 4: Build candidate list from Codex registry ---
         $candidates = array();
+
         foreach ($codex['timeIntervalStandards']['holidayRegistry']['holidays'] as $h) {
             if (!isset($h['rule'])) continue;
-            $rule = $h['rule'];
-
-            // Basic fixed-date parser (safe subset of your rule logic)
-            if (preg_match('/^(\w{3})\s+(\d{1,2})$/', $rule, $m)) {
-                $month = date('m', strtotime($m[1] . ' 1'));
-                $day   = sprintf('%02d', $m[2]);
-                $holidayDate = "$currentYear-$month-$day";
-            } else {
-                // Fallback: skip complex rules here (already resolved upstream)
-                continue;
-            }
-
-            $holidayTime = strtotime($holidayDate . ' 00:00:00');
+            $holidayDate = parseHolidayRule($currentYear, $h['rule']);
+            if (!$holidayDate) continue;
+            $holidayTime = strtotime($holidayDate.' 00:00:00');
             if ($holidayTime < $todayTime) continue;
 
-            // Normalize categories (single or multi)
+            // Normalize categories
             $cats = array();
             if (isset($h['categories']) && is_array($h['categories'])) {
-                foreach ($h['categories'] as $c) {
-                    if (is_string($c)) $cats[] = strtolower($c);
-                }
+                foreach ($h['categories'] as $c) if (is_string($c)) $cats[] = strtolower($c);
             } elseif (isset($h['category'])) {
                 $cats[] = strtolower($h['category']);
             }
@@ -705,11 +727,9 @@ if (
             }
         }
 
-        // --- Step 5: Formulate response ---
+        // Build response
         if (!empty($candidates)) {
-            usort($candidates, function ($a, $b) {
-                return strcmp($a['date'], $b['date']);
-            });
+            usort($candidates, function($a,$b){ return strcmp($a['date'],$b['date']); });
             $next = reset($candidates);
             $respText = 'The next ' . ($filterCategory ? $filterCategory . ' ' : '') .
                         'holiday is ' . $next['name'] . ' on ' .
@@ -719,13 +739,12 @@ if (
         }
 
         $response = array(
-            'response'  => $respText,
-            'action'    => 'inform',
-            'status'    => 'ok',
-            'sessionId' => isset($sessionId) ? $sessionId : uniqid('sess_')
+            'response'=>$respText,
+            'action'=>'inform',
+            'status'=>'ok',
+            'sessionId'=>isset($sessionId)?$sessionId:uniqid('sess_')
         );
 
-        // --- Step 6: Output JSON and exit cleanly ---
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -735,7 +754,7 @@ if (
     }
 }
 
-// If we reach here, resolver was not triggered — continue normal AI logic.
+// Otherwise continue normal AI flow
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
