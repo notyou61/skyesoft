@@ -631,12 +631,14 @@ error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode('
 #endregion
 
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
-$triggered = false;
-if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
+
+// --- Step 1: Guard clause: only continue if Codex holiday data + prompt exist ---
+if (
+    isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
     is_array($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
-    isset($prompt))
-{
-    // 🩹 Normalize prompt (string or array)
+    isset($prompt)
+) {
+    // 🧹 Normalize prompt to lowercase text
     $queryText = '';
     if (is_string($prompt)) {
         $queryText = strtolower($prompt);
@@ -644,27 +646,96 @@ if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
         $queryText = strtolower(implode(' ', array_filter($prompt, 'is_string')));
     }
 
-    // Only trigger if it's clearly a holiday-related question
-    if (strpos($queryText, 'holiday') !== false ||
-        strpos($queryText, 'christmas') !== false ||
+    // --- Step 2: Determine if this query should trigger the resolver ---
+    $triggered = false;
+    if (
+        strpos($queryText, 'holiday')      !== false ||
+        strpos($queryText, 'christmas')    !== false ||
         strpos($queryText, 'thanksgiving') !== false ||
-        strpos($queryText, 'halloween') !== false)
-    {
+        strpos($queryText, 'halloween')    !== false
+    ) {
         $triggered = true;
     }
-}
 
-if ($triggered) {
-    // (your existing rule-parsing + category-filtering code here)
-    // ...
-    // At the very end:
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        flush();
+    // --- Step 3: Process only if triggered ---
+    if ($triggered) {
+        $today       = date('Y-m-d');
+        $todayTime   = strtotime($today . ' 00:00:00');
+        $currentYear = date('Y');
+
+        $filterCategory = null;
+        if (strpos($queryText, 'company') !== false) {
+            $filterCategory = 'company';
+        } elseif (strpos($queryText, 'federal') !== false) {
+            $filterCategory = 'federal';
+        }
+
+        // --- Step 4: Build candidate list from Codex registry ---
+        $candidates = array();
+        foreach ($codex['timeIntervalStandards']['holidayRegistry']['holidays'] as $h) {
+            if (!isset($h['rule'])) continue;
+            $rule = $h['rule'];
+
+            // Basic fixed-date parser (safe subset of your rule logic)
+            if (preg_match('/^(\w{3})\s+(\d{1,2})$/', $rule, $m)) {
+                $month = date('m', strtotime($m[1] . ' 1'));
+                $day   = sprintf('%02d', $m[2]);
+                $holidayDate = "$currentYear-$month-$day";
+            } else {
+                // Fallback: skip complex rules here (already resolved upstream)
+                continue;
+            }
+
+            $holidayTime = strtotime($holidayDate . ' 00:00:00');
+            if ($holidayTime < $todayTime) continue;
+
+            // Normalize categories (single or multi)
+            $cats = array();
+            if (isset($h['categories']) && is_array($h['categories'])) {
+                foreach ($h['categories'] as $c) {
+                    if (is_string($c)) $cats[] = strtolower($c);
+                }
+            } elseif (isset($h['category'])) {
+                $cats[] = strtolower($h['category']);
+            }
+
+            if (!$filterCategory || in_array($filterCategory, $cats)) {
+                $h['date'] = $holidayDate;
+                $candidates[] = $h;
+            }
+        }
+
+        // --- Step 5: Formulate response ---
+        if (!empty($candidates)) {
+            usort($candidates, function ($a, $b) {
+                return strcmp($a['date'], $b['date']);
+            });
+            $next = reset($candidates);
+            $respText = 'The next ' . ($filterCategory ? $filterCategory . ' ' : '') .
+                        'holiday is ' . $next['name'] . ' on ' .
+                        date('F j, Y', strtotime($next['date'])) . '.';
+        } else {
+            $respText = 'No upcoming holidays found in the current registry.';
+        }
+
+        $response = array(
+            'response'  => $respText,
+            'action'    => 'inform',
+            'status'    => 'ok',
+            'sessionId' => isset($sessionId) ? $sessionId : uniqid('sess_')
+        );
+
+        // --- Step 6: Output JSON and exit cleanly ---
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            flush();
+        }
         exit(0);
     }
 }
+
+// If we reach here, resolver was not triggered — continue normal AI logic.
 #endregion
 
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
