@@ -625,6 +625,22 @@
       "reasoningRole": "Prevents misrouting of temporal assertions into non-temporal semantic domains such as the Constitution or Philosophy modules.",
       "feedbackBehavior": "Acknowledges correction gracefully, confirms understanding, and adjusts reasoning context in memory."
     },
+    "temporalGovernance": {
+      "icon": "scales",
+      "format": "table",
+      "definition": "Defines which Codex modules are governed by the universal duration-inference logic inherited from aiIntegration.temporalReasoning. This ensures that time comparisons—past or future—use a single, consistent framework.",
+      "appliesTo": [
+        "holidays",
+        "permits",
+        "tasks",
+        "invoices",
+        "projects",
+        "attendance",
+        "kpiData"
+      ],
+      "reasoningRole": "Ensures all modules capable of temporal comparison automatically inherit duration handling from aiIntegration.temporalReasoning, without hardcoding or local duplication.",
+      "notes": "Expands automatically as new modules register temporal fields (e.g., submittedDate, completedAt, dueDate). The Codex Interpreter binds these modules dynamically at runtime."
+    },
     "integrationPoints": {
       "icon": "link",
       "format": "list",
