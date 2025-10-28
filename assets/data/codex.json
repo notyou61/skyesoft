@@ -239,9 +239,10 @@
       "description": "Unified registry of holidays recognized by Skyesoft, including federal, company, cultural, awareness, and novelty observances. Used by the Time Interval Standards to identify non-working or special-context days.",
       "source": "Codex internal list (static registry; supersedes federalHolidays.php)",
       "revision": {
-        "version": "1.0",
-        "lastUpdated": "2025-10-27",
-        "author": "System Codex Enrichment"
+        "version": "1.1",
+        "lastUpdated": "2025-10-28",
+        "author": "System Codex Enrichment",
+        "notes": "Upgraded to multi-category holiday model; holidays may belong to several observance groups."
       },
       "categories": {
         "federal": {
@@ -268,33 +269,34 @@
           "description": "Light-hearted or social media observances used for engagement or contextual commentary (e.g., National Donut Day).",
           "workdayImpact": "minimal",
           "excludeFromScheduling": false
-        }
+        },
+        "notes": "A holiday may list multiple categories; logic interprets inclusion by intersection."
       },
       "holidays": [
-        { "name": "New Year's Day", "rule": "Jan 1", "category": "federal" },
-        { "name": "Martin Luther King Jr. Day", "rule": "Third Monday of Jan", "category": "federal" },
-        { "name": "Presidents' Day", "rule": "Third Monday of Feb", "category": "federal" },
-        { "name": "Memorial Day", "rule": "Last Monday of May", "category": "federal" },
-        { "name": "Juneteenth", "rule": "Jun 19", "category": "federal" },
-        { "name": "Independence Day", "rule": "Jul 4", "category": "federal" },
-        { "name": "Labor Day", "rule": "First Monday of Sep", "category": "federal" },
-        { "name": "Veterans Day", "rule": "Nov 11", "category": "federal" },
-        { "name": "Thanksgiving Day", "rule": "Fourth Thursday of Nov", "category": "federal" },
-        { "name": "Christmas Day", "rule": "Dec 25", "category": "federal" },
-        { "name": "Day After Thanksgiving", "rule": "Fourth Friday of Nov", "category": "company" },
-        { "name": "Christmas Eve", "rule": "Dec 24", "category": "company" },
-        { "name": "New Year's Eve", "rule": "Dec 31", "category": "company" },
-        { "name": "Cinco de Mayo", "rule": "May 5", "category": "cultural" },
-        { "name": "Mother's Day", "rule": "Second Sunday of May", "category": "cultural" },
-        { "name": "Father's Day", "rule": "Third Sunday of June", "category": "cultural" },
-        { "name": "Halloween", "rule": "Oct 31", "category": "cultural" },
-        { "name": "Earth Day", "rule": "Apr 22", "category": "awareness" },
-        { "name": "Patriot Day", "rule": "Sep 11", "category": "awareness" },
-        { "name": "Pi Day", "rule": "Mar 14", "category": "novelty" },
-        { "name": "Star Wars Day", "rule": "May 4", "category": "novelty" },
-        { "name": "National Donut Day", "rule": "First Friday of Jun", "category": "novelty" },
-        { "name": "Talk Like a Pirate Day", "rule": "Sep 19", "category": "novelty" },
-        { "name": "National Coffee Day", "rule": "Sep 29", "category": "novelty" }
+        { "name": "New Year's Day", "rule": "Jan 1", "categories": ["federal", "company"] },
+        { "name": "Martin Luther King Jr. Day", "rule": "Third Monday of Jan", "categories": ["federal"] },
+        { "name": "Presidents' Day", "rule": "Third Monday of Feb", "categories": ["federal"] },
+        { "name": "Memorial Day", "rule": "Last Monday of May", "categories": ["federal", "company"] },
+        { "name": "Juneteenth", "rule": "Jun 19", "categories": ["federal"] },
+        { "name": "Independence Day", "rule": "Jul 4", "categories": ["federal", "company"] },
+        { "name": "Labor Day", "rule": "First Monday of Sep", "categories": ["federal", "company"] },
+        { "name": "Veterans Day", "rule": "Nov 11", "categories": ["federal"] },
+        { "name": "Thanksgiving Day", "rule": "Fourth Thursday of Nov", "categories": ["federal", "company"] },
+        { "name": "Day After Thanksgiving", "rule": "Fourth Friday of Nov", "categories": ["company"] },
+        { "name": "Christmas Eve", "rule": "Dec 24", "categories": ["cultural"] },
+        { "name": "Christmas Day", "rule": "Dec 25", "categories": ["federal", "company"] },
+        { "name": "New Year's Eve", "rule": "Dec 31", "categories": ["company"] },
+        { "name": "Cinco de Mayo", "rule": "May 5", "categories": ["cultural"] },
+        { "name": "Mother's Day", "rule": "Second Sunday of May", "categories": ["cultural"] },
+        { "name": "Father's Day", "rule": "Third Sunday of June", "categories": ["cultural"] },
+        { "name": "Halloween", "rule": "Oct 31", "categories": ["cultural"] },
+        { "name": "Earth Day", "rule": "Apr 22", "categories": ["awareness"] },
+        { "name": "Patriot Day", "rule": "Sep 11", "categories": ["awareness"] },
+        { "name": "Pi Day", "rule": "Mar 14", "categories": ["novelty"] },
+        { "name": "Star Wars Day", "rule": "May 4", "categories": ["novelty"] },
+        { "name": "National Donut Day", "rule": "First Friday of Jun", "categories": ["novelty"] },
+        { "name": "Talk Like a Pirate Day", "rule": "Sep 19", "categories": ["novelty"] },
+        { "name": "National Coffee Day", "rule": "Sep 29", "categories": ["novelty"] }
       ]
     }
   },
