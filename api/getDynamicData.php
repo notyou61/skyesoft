@@ -154,9 +154,7 @@ if (!defined('CACHE_PATH')) define('CACHE_PATH',  $dataPath . '/cache.json');
 if (!defined('CACHE_LOG'))  define('CACHE_LOG',   $logPath  . '/cache-events.log');
 #endregion
 
-#region 🧮 Holiday Derivation (Codex-based, in-memory)
-// Derive holidays directly from Codex → no external JSON required
-
+#region 🧮 Holiday Derivation (Codex-based, single-source)
 if (!isset($codex) || !is_array($codex)) {
     error_log("🚫 Codex not available — holiday derivation skipped.");
 } else {
@@ -199,7 +197,7 @@ if (!isset($codex) || !is_array($codex)) {
         return null;
     }
 
-    // Build derived holiday list
+    // Build derived holiday list from Codex rules
     $year = date('Y');
     $derivedHolidays = array();
     foreach ($registry as $h) {
@@ -213,15 +211,9 @@ if (!isset($codex) || !is_array($codex)) {
         }
     }
 
-    // Merge with legacy federal holidays
-    $mergedHolidays = array_merge(
-        isset($federalHolidaysDynamic) ? $federalHolidaysDynamic : array(),
-        $derivedHolidays
-    );
-
-    // Deduplicate by date
+    // Deduplicate by date (Codex-only)
     $unique = array();
-    foreach ($mergedHolidays as $h) {
+    foreach ($derivedHolidays as $h) {
         $unique[$h['date']] = $h;
     }
     $holidaysFinal = array_values($unique);
@@ -229,39 +221,23 @@ if (!isset($codex) || !is_array($codex)) {
     // Store into main data array for SSE
     $data['holidays'] = $holidaysFinal;
 
-    error_log("✅ Holiday derivation completed in-memory (" . count($holidaysFinal) . " holidays for $year)");
+    error_log("✅ Holiday derivation completed (Codex-only, " . count($holidaysFinal) . " holidays for $year)");
 }
 #endregion
 
-#region 🧩 Phase 2 – Legacy Compatibility Bridge
-// Purpose: Ensure existing modules (e.g., interval logic, Office Board) 
-// still access federal holidays via weatherData.federalHolidaysDynamic
-// until full migration to unified $data['holidays'] is complete.
+#region 🧩 Phase 2 – Holiday Data Normalization (Codex Unified)
+// Purpose: Retire legacy 'federalHolidaysDynamic' mapping
+// All holiday consumers must now use $data['holidays']
+// Temporary compatibility note for any old front-end references.
 
 if (!isset($weatherData)) {
     $weatherData = array();
 }
 
-if (
-    !isset($weatherData['federalHolidaysDynamic']) &&
-    isset($data['holidays']) &&
-    is_array($data['holidays'])
-) {
-    $weatherData['federalHolidaysDynamic'] = array();
-    foreach ($data['holidays'] as $h) {
-        if (isset($h['category']) && strtolower($h['category']) === 'federal') {
-            $weatherData['federalHolidaysDynamic'][] = array(
-                'name' => $h['name'],
-                'date' => $h['date']
-            );
-        }
-    }
-
-    error_log(
-        "🧩 Compatibility bridge active → " .
-        count($weatherData['federalHolidaysDynamic']) .
-        " federal holidays synced from Codex."
-    );
+// Maintain single-source consistency
+if (isset($data['holidays']) && is_array($data['holidays'])) {
+    $weatherData['holidays'] = $data['holidays'];
+    error_log("🧩 Holiday data normalized → " . count($data['holidays']) . " total holidays available.");
 }
 #endregion
 
@@ -854,15 +830,16 @@ if (isset($codex['sseStream']['tiers']) && is_array($codex['sseStream']['tiers']
 }
 #endregion
 
-#region 🌦️ Weather Data
-// Version: Codex v1.4
-// Codex & Env Defaults (prevents undefined notices)
-$weatherLoc = isset($codex['weatherData']['location']) ? $codex['weatherData']['location'] : 'Phoenix,US';
+#region 🌦️ Weather Data (Codex v5.2 – unified holidays, no legacy keys)
+
+// Codex & Env Defaults
+$weatherLoc = isset($codex['weatherData']['defaultLocation'])
+    ? $codex['weatherData']['defaultLocation']
+    : 'Phoenix,US';
 $weatherKey = envVal('WEATHER_API_KEY', '');
 
-// 🧩 Diagnostic: Confirm WEATHER_API_KEY resolution
+// Diagnostic: Confirm WEATHER_API_KEY resolution
 if (empty($weatherKey)) {
-    // log where env is failing
     $envPaths = array(
         '/home/notyou64/secure/.env',
         realpath(dirname(__FILE__) . '/../secure/.env'),
@@ -872,8 +849,6 @@ if (empty($weatherKey)) {
     foreach ($envPaths as $p) {
         error_log("   → {$p} " . ((file_exists($p) && is_readable($p)) ? "[✅ readable]" : "[❌ not found]"));
     }
-
-    // Optional: manual fallback for local Windows test
     foreach ($envPaths as $p) {
         if (file_exists($p) && is_readable($p)) {
             $lines = file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -888,17 +863,12 @@ if (empty($weatherKey)) {
             }
         }
     }
-
     if (empty($weatherKey)) {
         error_log('❌ WEATHER_API_KEY could not be loaded — skipping weather fetch.');
-        $weatherData['description'] = 'API key missing – fallback mode';
     }
 }
 
-// Data Path (for cache; Codex/env fallback)
-$baseDataPath = envVal('BASE_DATA_PATH', '/home/notyou64/public_html/data/');
-
-// ✅ Define timezone and offset early (used by both weather + time sections)
+// Define timezone and offset early
 date_default_timezone_set('America/Phoenix');
 $utcOffset = -7; // Phoenix fixed offset (no DST)
 
@@ -912,15 +882,16 @@ $weatherData = array(
     'sunset' => null,
     'daytimeHours' => null,
     'nighttimeHours' => null,
-    'forecast' => array(),
-    'federalHolidaysDynamic' => $federalHolidays
+    'forecast' => array()
 );
 
-// Fixed Resolver (self-contained; move to top if used elsewhere)
+// --- Utility helpers ---
 function resolveApiUrl($endpoint, $opts = array()) {
     global $codex;
     $passedBase = isset($opts['base']) ? $opts['base'] : null;
-    $base = !empty($passedBase) ? $passedBase : (isset($codex['apiMap']['base']) ? $codex['apiMap']['base'] : '');
+    $base = !empty($passedBase)
+        ? $passedBase
+        : (isset($codex['apiMap']['openWeather']) ? $codex['apiMap']['openWeather'] : '');
     return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
 }
 
@@ -933,7 +904,7 @@ function fetchJsonCurl($url) {
         CURLOPT_CONNECTTIMEOUT => getConst('curlConnectTimeout', 4),
         CURLOPT_TIMEOUT => getConst('curlTimeout', 6),
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,  // GoDaddy SSL fix
+        CURLOPT_SSL_VERIFYHOST => false, // GoDaddy SSL quirk fix
         CURLOPT_USERAGENT => 'SkyeSoft/1.0 (+skyelighting.com)',
     ));
     $res = curl_exec($ch);
@@ -942,25 +913,28 @@ function fetchJsonCurl($url) {
     curl_close($ch);
     if ($res === false) return array('error' => $err, 'code' => $code);
     $json = json_decode($res, true);
-    if (json_last_error() !== JSON_ERROR_NONE) return array('error' => 'Invalid JSON: ' . json_last_error_msg(), 'code' => $code, 'raw' => substr($res, 0, 200));
+    if (json_last_error() !== JSON_ERROR_NONE)
+        return array('error' => 'Invalid JSON: ' . json_last_error_msg(), 'code' => $code, 'raw' => substr($res, 0, 200));
     return is_array($json) ? $json : array('error' => 'Non-array JSON', 'code' => $code);
 }
 
 // 🌤️ Fetch current conditions
-$currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+$currentUrl = resolveApiUrl('weather', array('base' => $codex['apiMap']['openWeather'])) .
+    '?q=' . rawurlencode($weatherLoc) .
+    '&appid=' . rawurlencode($weatherKey) .
+    '&units=imperial';
 $current = fetchJsonCurl($currentUrl);
 
 // Process current conditions
-if (empty($current['error']) && 
-    isset($current['main']['temp']) && 
-    isset($current['weather'][0]['icon']) && 
-    isset($current['sys']['sunrise']) && 
+if (empty($current['error']) &&
+    isset($current['main']['temp']) &&
+    isset($current['weather'][0]['icon']) &&
+    isset($current['sys']['sunrise']) &&
     isset($current['sys']['sunset'])) {
-    
+
     $sunriseUnix = $current['sys']['sunrise'];
     $sunsetUnix  = $current['sys']['sunset'];
 
-    // ✅ Use known offset (defined above)
     $secondsPerHour = getConst('secondsPerHour', 3600);
     $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * $secondsPerHour));
     $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * $secondsPerHour));
@@ -982,14 +956,16 @@ if (empty($current['error']) &&
         'sunset' => $sunsetLocal,
         'daytimeHours' => "{$daytimeHours}h {$daytimeMins}m",
         'nighttimeHours' => "{$nighttimeHours}h {$nighttimeMins}m",
-        'forecast' => array(),
-        'federalHolidaysDynamic' => $federalHolidays
+        'forecast' => array()
     );
 
     // 🌦️ 3-Day Forecast (optional stub)
-    $forecastUrl = resolveApiUrl('forecast', array('base' => $codex['apiMap']['openWeather'])) . '?q=' . rawurlencode($weatherLoc) . '&appid=' . rawurlencode($weatherKey) . '&units=imperial';
+    $forecastUrl = resolveApiUrl('forecast', array('base' => $codex['apiMap']['openWeather'])) .
+        '?q=' . rawurlencode($weatherLoc) .
+        '&appid=' . rawurlencode($weatherKey) .
+        '&units=imperial';
     $forecast = fetchJsonCurl($forecastUrl);
-    // Process forecast
+
     if (empty($forecast['error']) && !empty($forecast['list'])) {
         $days = array();
         $seen = array();
@@ -1016,8 +992,8 @@ if (empty($current['error']) &&
     $weatherData['description'] = 'API call failed (current)';
 }
 
-// 💾 Cache successful response (define path dynamically if needed)
-$cachePath = $baseDataPath . 'weather_cache.json';  // Or envVal('WEATHER_CACHE_PATH', $baseDataPath . 'weather_cache.json');
+// 💾 Cache successful response
+$cachePath = envVal('WEATHER_CACHE_PATH', $dataPath . '/weather_cache.json');
 if ($weatherData['temp'] !== null) {
     @file_put_contents($cachePath, json_encode($weatherData, JSON_PRETTY_PRINT));
 }
@@ -1057,72 +1033,111 @@ $timeData = array(
 );
 #endregion
 
-#region 🧩 Response Assembly (Codex-Aware Dynamic Builder)
-// Version: Codex v1.4
+#region 🧩 Response Assembly (Codex v5.3 – Unified Holidays + Ordered Output)
+// Version: Codex v5.3
 $response = array();
 $codexVersion = isset($codex['codexMeta']['version']) ? $codex['codexMeta']['version'] : 'unknown';
 
+// Build from tier map if available
 if (is_array($codexTiers)) {
     foreach ($codexTiers as $tierName => $tierDef) {
         if (!isset($tierDef['members']) || !is_array($tierDef['members'])) continue;
 
         foreach ($tierDef['members'] as $member) {
             switch ($member) {
-                case 'skyesoftHolidays':   $response[$member] = $federalHolidays; break;
-                case 'timeDateArray':      $response[$member] = $timeData; break;
-                case 'intervalsArray':     $response[$member] = array(
-                    'currentDaySecondsRemaining' => $secondsRemaining,
-                    'intervalLabel' => $intervalLabel,
-                    'dayType' => $dayType,
-                    'workdayIntervals' => array(
-                        'start' => WORKDAY_START,
-                        'end'   => WORKDAY_END
-                    )
-                ); break;
-                case 'recordCounts':       $response[$member] = $recordCounts; break;
-                case 'weatherData':        $response[$member] = $weatherData;  break;
-                case 'kpiData':            $response[$member] = array('contacts'=>36,'orders'=>22,'approvals'=>3); break;
-                case 'uiHints':            $response[$member] = array('tips'=>array(
-                                                'Measure twice, cut once.',
-                                                'Stay positive, work hard, make it happen.',
-                                                'Quality is never an accident.',
-                                                'Efficiency is doing better what is already being done.',
-                                                'Every day is a fresh start.'
-                                            )); break;
-                case 'announcements':      $response[$member] = $announcements; break;
-                case 'uiEvent':            $response[$member] = $uiEvent; break;
-                case 'siteMeta':           $response[$member] = $siteMeta; break;
-                case 'deploymentCheck':    $response[$member] = '✅ Deployed successfully from Git at ' . date('Y-m-d H:i:s'); break;
-                case 'codex':              $response[$member] = $codex; break;
+                case 'timeDateArray':
+                    $response[$member] = $timeData;
+                    break;
+
+                case 'intervalsArray':
+                    $response[$member] = array(
+                        'currentDaySecondsRemaining' => $secondsRemaining,
+                        'intervalLabel' => $intervalLabel,
+                        'dayType' => $dayType,
+                        'workdayIntervals' => array(
+                            'start' => WORKDAY_START,
+                            'end'   => WORKDAY_END
+                        )
+                    );
+                    break;
+
+                case 'recordCounts':
+                    $response[$member] = $recordCounts;
+                    break;
+
+                case 'weatherData':
+                    $response[$member] = $weatherData;
+                    // ✅ Immediately follow weather with unified holidays array
+                    if (isset($data['holidays']) && is_array($data['holidays'])) {
+                        $response['holidays'] = $data['holidays'];
+                    }
+                    break;
+
+                case 'kpiData':
+                    $response[$member] = array('contacts'=>36,'orders'=>22,'approvals'=>3);
+                    break;
+
+                case 'uiHints':
+                    $response[$member] = array('tips'=>array(
+                        'Measure twice, cut once.',
+                        'Stay positive, work hard, make it happen.',
+                        'Quality is never an accident.',
+                        'Efficiency is doing better what is already being done.',
+                        'Every day is a fresh start.'
+                    ));
+                    break;
+
+                case 'announcements':
+                    $response[$member] = $announcements;
+                    break;
+
+                case 'uiEvent':
+                    $response[$member] = $uiEvent;
+                    break;
+
+                case 'siteMeta':
+                    $response[$member] = $siteMeta;
+                    break;
+
+                case 'deploymentCheck':
+                    $response[$member] = '✅ Deployed successfully from Git at ' . date('Y-m-d H:i:s');
+                    break;
+
+                case 'codex':
+                    $response[$member] = $codex;
+                    break;
 
                 default:
                     $response[$member] = array('note'=>"Unhandled member '$member' per Codex.");
-                    logCacheEvent('getDynamicData', 'warning: ' . trim("⚠️ Policy drift: unhandled member '$member' in tier '$tierName'"));
+                    logCacheEvent(
+                        'getDynamicData',
+                        'warning: ⚠️ Policy drift – unhandled member ' . $member . ' in tier ' . $tierName
+                    );
             }
         }
     }
 } else {
-    // Fallback: legacy static response
+    // Fallback: minimal safe response
     $response = array(
-        'skyesoftHolidays' => $federalHolidays,
-        'timeDateArray' => $timeData,
+        'timeDateArray'  => $timeData,
         'intervalsArray' => array(
             'currentDaySecondsRemaining' => $secondsRemaining,
             'intervalLabel' => $intervalLabel,
             'dayType' => $dayType,
             'workdayIntervals' => array(
                 'start' => WORKDAY_START,
-                'end' => WORKDAY_END
+                'end'   => WORKDAY_END
             )
         ),
-        'recordCounts' => $recordCounts,
-        'weatherData' => $weatherData,
-        'kpiData' => array('contacts'=>36,'orders'=>22,'approvals'=>3),
-        'siteMeta' => $siteMeta
+        'recordCounts'   => $recordCounts,
+        'weatherData'    => $weatherData,
+        'holidays'       => isset($data['holidays']) ? $data['holidays'] : array(),
+        'kpiData'        => array('contacts'=>36,'orders'=>22,'approvals'=>3),
+        'siteMeta'       => $siteMeta
     );
 }
 
-// Append global meta
+// Append meta
 $response['codexVersion'] = $codexVersion;
 $response['timestamp'] = date('Y-m-d H:i:s');
 #endregion
