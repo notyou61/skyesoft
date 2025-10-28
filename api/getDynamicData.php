@@ -552,7 +552,7 @@ $utcOffset       = $timeData['UTCOffset'];
 
 // 🕒 Add human-readable 12-hour time for SSE/UI
 $currentTime12h = date('g:i A', $nowTs);
-$currentTimeShort = date('g:i', $nowTs) . ' ' . strtolower(date('A', $now));
+$currentTimeShort = date('g:i', $nowTs) . ' ' . strtolower(date('A', $nowTs));
 
 // Compute day boundaries and workday interval flags
 $currentDayStartUnix = strtotime(date('Y-m-d 00:00:00', $nowTs));
