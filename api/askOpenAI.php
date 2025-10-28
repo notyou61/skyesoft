@@ -650,9 +650,21 @@ if (isset($sseData['holidays']) && is_array($sseData['holidays'])) {
         // Normalize categories
         $cats = array();
         if (isset($h['categories']) && is_array($h['categories'])) {
-            foreach ($h['categories'] as $c) $cats[] = strtolower($c);
+            foreach ($h['categories'] as $c) {
+                if (is_string($c)) {
+                    $cats[] = strtolower($c);
+                }
+            }
         } elseif (isset($h['category'])) {
-            $cats[] = strtolower($h['category']);
+            if (is_array($h['category'])) {
+                foreach ($h['category'] as $c) {
+                    if (is_string($c)) {
+                        $cats[] = strtolower($c);
+                    }
+                }
+            } elseif (is_string($h['category'])) {
+                $cats[] = strtolower($h['category']);
+            }
         }
 
         // Include if no filter or matching category
