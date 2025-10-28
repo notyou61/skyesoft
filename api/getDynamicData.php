@@ -202,11 +202,22 @@ if (!isset($codex) || !is_array($codex)) {
     $derivedHolidays = array();
     foreach ($registry as $h) {
         $date = resolveHolidayDate($h['rule'], $year);
+        // Only include if date was successfully derived
         if ($date) {
+            // Normalize to support multi-category arrays
+            $categories = array();
+            if (isset($h['categories']) && is_array($h['categories'])) {
+                $categories = $h['categories'];
+            } elseif (isset($h['category'])) {
+                $categories = [$h['category']];
+            } else {
+                $categories = ['unspecified'];
+            }
+
             $derivedHolidays[] = array(
                 'name' => $h['name'],
                 'date' => $date,
-                'category' => isset($h['category']) ? $h['category'] : 'unspecified'
+                'categories' => $categories
             );
         }
     }
@@ -665,17 +676,27 @@ if (is_readable(HOLIDAYS_PATH)) {
         : array();
 }
 
-// 🏢 Company Holiday Detection (Codex-aware)
+// 🏢 Company Holiday Detection (Codex v5.4-compliant)
 $isCompanyHoliday = false;
+
 if (isset($data['holidays']) && is_array($data['holidays'])) {
     foreach ($data['holidays'] as $h) {
+        // Normalize categories array
+        $categories = array();
+        if (isset($h['categories']) && is_array($h['categories'])) {
+            $categories = array_map('strtolower', $h['categories']);
+        } elseif (isset($h['category'])) {
+            $categories = [strtolower($h['category'])];
+        }
+
+        // Check if "company" appears in category list and the date matches today
         if (
-            isset($h['category']) &&
-            strtolower($h['category']) === 'company' &&
+            in_array('company', $categories) &&
             isset($h['date']) &&
             $h['date'] === $currentDate
         ) {
             $isCompanyHoliday = true;
+            error_log("🏢 Company holiday detected today: " . $h['name']);
             break;
         }
     }
