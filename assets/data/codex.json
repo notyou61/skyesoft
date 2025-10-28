@@ -570,6 +570,20 @@
         "Automatically attaches actionable CTAs when intent resolves to a valid Codex module or report type."
       ]
     },
+    "temporalReasoning": {
+      "icon": "hourglass",
+      "format": "list",
+      "items": [
+        "Understands and computes durations using timestamp or date fields (e.g., submittedDate, createdAt, lastUpdated).",
+        "Automatically recognizes natural queries such as 'how long ago', 'how many days', 'when was', or 'since when'.",
+        "Uses timeDateArray.currentUnixTime from the SSE stream as the reference point for all temporal comparisons.",
+        "Adapts contextual scope based on module: e.g., for permits → duration in review; for holidays → days until next; for KPIs → days since last update.",
+        "Uses Codex ontology relationships to locate relevant date fields dynamically instead of fixed code paths.",
+        "Returns human-readable time intervals (e.g., '3 days', '2 weeks', '5 hours') rather than raw numeric differences.",
+        "Supports both retrospective (elapsed time) and prospective (remaining time) reasoning."
+      ],
+      "notes": "This enables Skyebot to respond to duration and count queries without code modification. Logic is purely data-driven through Codex ontology and SSE context."
+    },
     "integrationPoints": {
       "icon": "link",
       "format": "list",
@@ -624,8 +638,8 @@
       "text": "As of version 2025.10.20, Skyebot™ accesses all reasoning data—temporal, contextual, and doctrinal—through the unified SSE Stream. The AI Integration layer no longer queries separate Codex files; instead, it traverses the live stream to interpret meaning, enabling real-time semantic reasoning across dynamic and static domains."
     },
     "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
-    "version": "2.0",
-    "updated": "2025-10-14"
+    "version": "3.0",
+    "updated": "2025-10-28"
   },
   "sseStream": {
   "title": "🌐 SSE Stream",
