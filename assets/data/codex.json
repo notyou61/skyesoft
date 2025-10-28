@@ -619,6 +619,12 @@
       ],
       "notes": "This enables Skyebot to respond to duration and count queries without code modification. Logic is purely data-driven through Codex ontology and SSE context."
     },
+    "temporalCorrectionHandling": {
+      "definition": "Interprets declarative date statements as factual corrections, not philosophical prompts.",
+      "example": "User: 'Friday is 10/31/25' → update internal reference date, re-evaluate interval reasoning.",
+      "reasoningRole": "Prevents misrouting of temporal assertions into non-temporal semantic domains such as the Constitution or Philosophy modules.",
+      "feedbackBehavior": "Acknowledges correction gracefully, confirms understanding, and adjusts reasoning context in memory."
+    },
     "integrationPoints": {
       "icon": "link",
       "format": "list",
@@ -670,7 +676,7 @@
     "updateNotes": {
       "icon": "gear",
       "format": "text",
-      "text": "As of version 2025.10.20, Skyebot™ accesses all reasoning data—temporal, contextual, and doctrinal—through the unified SSE Stream. The AI Integration layer no longer queries separate Codex files; instead, it traverses the live stream to interpret meaning, enabling real-time semantic reasoning across dynamic and static domains."
+      "text": "As of version 2025.10.28, Skyebot™ accesses all reasoning data—temporal, contextual, and doctrinal—through the unified SSE Stream. The AI Integration layer no longer queries separate Codex files; instead, it traverses the live stream to interpret meaning, enabling real-time semantic reasoning across dynamic and static domains."
     },
     "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
     "version": "3.0",
