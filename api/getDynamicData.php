@@ -957,8 +957,21 @@ if (empty($current['error']) &&
     $sunsetUnix  = $current['sys']['sunset'];
 
     $secondsPerHour = getConst('secondsPerHour', 3600);
-    $sunriseLocal = date('g:i A', $sunriseUnix + ($utcOffset * $secondsPerHour));
-    $sunsetLocal  = date('g:i A', $sunsetUnix + ($utcOffset * $secondsPerHour));
+
+    // --- Convert UTC timestamps to local Phoenix time correctly ---
+    $tz = new DateTimeZone('America/Phoenix');
+
+    $sunriseDT = new DateTime('@' . $sunriseUnix); // interpret as UTC
+    $sunriseDT->setTimezone($tz);
+    $sunriseLocal = $sunriseDT->format('g:i A');
+
+    $sunsetDT = new DateTime('@' . $sunsetUnix);
+    $sunsetDT->setTimezone($tz);
+    $sunsetLocal = $sunsetDT->format('g:i A');
+
+    // Optional debug logging (safe to remove after verification)
+    // error_log("☀️ Sunrise UTC: {$sunriseUnix}, Local: {$sunriseLocal}");
+    // error_log("🌇 Sunset  UTC: {$sunsetUnix}, Local: {$sunsetLocal}");
 
     $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
     $daytimeHours     = floor($daytimeSeconds / $secondsPerHour);
