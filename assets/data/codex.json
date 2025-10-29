@@ -641,6 +641,20 @@
       "reasoningRole": "Ensures all modules capable of temporal comparison automatically inherit duration handling from aiIntegration.temporalReasoning, without hardcoding or local duplication.",
       "notes": "Expands automatically as new modules register temporal fields (e.g., submittedDate, completedAt, dueDate). The Codex Interpreter binds these modules dynamically at runtime."
     },
+    "temporalResolvers": {
+      "icon": "infinity",
+      "format": "object",
+      "definition": "Formalizes non-procedural inference patterns allowing Skyebot™ to compute dynamic temporal fields (e.g., nextHoliday, daysSincePermitSubmission, hoursUntilWorkdayEnd) directly from Codex and SSE data without invoking external resolver scripts.",
+      "governance": "Extends aiIntegration.temporalGovernance. All modules listed there automatically inherit resolver-free duration inference.",
+      "examples": {
+        "holidays": "Infers upcoming holiday by category (company, federal, civic) through date comparison against currentUnixTime.",
+        "permits": "Calculates duration between submittedDate and currentUnixTime for 'in review' or 'elapsed' status reporting.",
+        "tasks": "Determines remaining time until dueDate for urgency ranking.",
+        "kpiData": "Computes time since last KPI update for trend tracking."
+      },
+      "reasoningRole": "Eliminates procedural resolver files by declaring inference patterns as part of Codex doctrine. Skyebot interprets and applies these rules dynamically through semantic context and temporal reasoning.",
+      "notes": "Codex Amendment CPD-03.A – Elimination of Procedural Temporal Resolvers. All future duration or interval logic must be declarative and Codex-driven."
+    },
     "integrationPoints": {
       "icon": "link",
       "format": "list",
