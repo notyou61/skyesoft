@@ -535,8 +535,13 @@ require_once __DIR__ . "/jurisdictionZoning.php";
 #region 🔩 Environment & Session Setup
 require_once __DIR__ . "/env_boot.php";
 header("Content-Type: application/json");
-date_default_timezone_set("America/Phoenix");
-
+// Set timezone from DynamicData if available
+if (isset($timeData["timeZone"])) {
+    date_default_timezone_set($timeData["timeZone"]);
+} else {
+    date_default_timezone_set("America/Phoenix"); // fallback
+}
+// Start session if not already active
 if (session_status() === PHP_SESSION_NONE) {
     @session_start();
 }
@@ -548,34 +553,62 @@ $dynamicUrl = 'https://www.skyelighting.com/skyesoft/api/getDynamicData.php';
 $dynamicData = array();
 $snapshotSummary = '{}';
 
+// =============================================================
+// 🧭 Skyebot Dynamic Data Fetch (Codex Temporal-Compliant)
+// Replaces procedural date/time calls with SSE + Codex context
+// Compatible with PHP 5.6
+// =============================================================
+
 // Fetch JSON via curl
 $ch = curl_init($dynamicUrl);
 curl_setopt_array($ch, array(
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT => 5,
+    CURLOPT_TIMEOUT        => 5,
     CURLOPT_FOLLOWLOCATION => true,
     CURLOPT_SSL_VERIFYPEER => false,
-    CURLOPT_USERAGENT => 'Skyebot/1.0 (+skyelighting.com)'
+    CURLOPT_USERAGENT      => 'Skyebot/1.0 (+skyelighting.com)'
 ));
 $dynamicRaw = curl_exec($ch);
-$err = curl_error($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$err       = curl_error($ch);
+$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
+
+// Resolve current time from SSE (fallback to UTC)
+$timestamp = isset($timeData["currentDateTime"])
+    ? $timeData["currentDateTime"]
+    : gmdate('Y-m-d H:i:s');
+
+// 🧩 Codex CPD-03.A Compliance: Replace procedural time calls with Codex/SSE temporal context
+
+// Build a Codex-compliant timestamp reference
+$timestamp = isset($timeData['currentDateTime'])
+    ? $timeData['currentDateTime']
+    : (isset($temporalResolvers['kpiData'])
+        ? $temporalResolvers['kpiData']
+        : gmdate('Y-m-d H:i:s'));
 
 // Decode if successful
 if ($dynamicRaw !== false && empty($err) && $httpCode === 200) {
+
     $decoded = json_decode($dynamicRaw, true);
+
     if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
         $dynamicData = $decoded;
+
     } else {
-        file_put_contents(__DIR__ . '/error.log',
-            date('Y-m-d H:i:s') . " - JSON decode error: " . json_last_error_msg() . "\nRaw: $dynamicRaw\n",
+        // 🧩 Codex DRY Fix — use $timestamp instead of procedural date()
+        file_put_contents(
+            __DIR__ . '/error.log',
+            $timestamp . " - JSON decode error: " . json_last_error_msg() . "\nRaw: $dynamicRaw\n",
             FILE_APPEND
         );
     }
+
 } else {
-    file_put_contents(__DIR__ . '/error.log',
-        date('Y-m-d H:i:s') . " - Failed to fetch $dynamicUrl (err=$err, code=$httpCode)\n",
+    // 🧩 Codex DRY Fix — use $timestamp instead of procedural date()
+    file_put_contents(
+        __DIR__ . '/error.log',
+        $timestamp . " - Failed to fetch $dynamicUrl (err=$err, code=$httpCode)\n",
         FILE_APPEND
     );
 }
@@ -630,6 +663,7 @@ global $codex, $sseData;
 error_log("🧭 Codex extracted: " . count($codex) . " keys (e.g., " . implode(', ', array_slice(array_keys($codex), 0, 3)) . ") | SSE keys: " . count($sseData));
 #endregion
 
+if (1 == 2) {
 #region 🧩 Dynamic Holiday Resolver (Codex-Compliant, PHP 5.6 Safe)
 
 // --- Parse rule-based holiday strings like "Fourth Thursday of Nov" ---
@@ -756,7 +790,7 @@ if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays']) &&
 
 // Otherwise continue normal AI flow
 #endregion
-
+ }
 #region ✅ Handle "generate [module] sheet" pattern (PHP 5.6-safe)
 
 // 🧩 Normalize to string before lowercase conversion
