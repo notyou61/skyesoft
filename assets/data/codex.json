@@ -581,142 +581,126 @@
     "purpose": {
       "icon": "target",
       "format": "text",
-      "text": "Defines how Skyebot™ interprets user intent through semantic analysis, real-time data fusion, and contextual recall. The AI Integration layer enables natural, context-aware interaction without reliance on rigid syntax or keyword triggers."
+      "text": "Defines how Skyebot™ interprets user intent through semantic analysis, real-time data fusion, and contextual recall. The AI Integration layer enables natural, context-aware interaction without rigid syntax or procedural logic."
     },
-    "architecture": {
+    "systemFlow": {
       "icon": "diagram",
-      "format": "list",
-      "items": [
-        "Semantic Intent Router — the central AI engine that interprets meaning from user input, using Codex, SSE data, and Chat History.",
-        "Codex Semantic Index — provides structured metadata (titles, descriptions, tags) to ground understanding in organizational context.",
-        "SSE Context Stream — supplies real-time data (time, KPIs, weather, system state) for situational awareness.",
-        "Chat History Ledger — serves as short- and long-term memory, allowing Skyebot™ to recall prior exchanges and avoid repetition.",
-        "Report Kernel — generates structured deliverables (sheets, reports, summaries) once the user’s intent is resolved."
-      ]
+      "format": "sections",
+      "sections": {
+        "architecture": [
+          "Semantic Intent Router — interprets user input using Codex, SSE data, and Chat History.",
+          "Codex Semantic Index — anchors reasoning in structured organizational context.",
+          "SSE Context Stream — supplies real-time situational awareness (time, KPIs, weather, system state).",
+          "Chat History Ledger — maintains session memory and recall continuity.",
+          "Report Kernel — generates structured deliverables once intent is resolved."
+        ],
+        "integrationPoints": [
+          "Codex Knowledge Graph — semantic foundation linking all modules.",
+          "CRUD Engine — executes inferred create/read/update/delete actions from natural phrasing.",
+          "Report Kernel — shared rendering component ensuring document standard alignment."
+        ],
+        "pipeline": [
+          "Receive user prompt → Normalize → Load SSE + Codex context.",
+          "Infer intent and confidence → Route → Generate structured or conversational output.",
+          "Log all semantic decisions for audit and traceability."
+        ]
+      }
     },
     "functionality": {
       "icon": "workflow",
       "format": "list",
       "items": [
-        "Understands user intent based on phrasing, context, and conversation memory rather than keyword patterns.",
+        "Understands user intent based on phrasing, context, and conversation history rather than keyword matching.",
         "Recognizes semantic relationships (e.g., 'workday report' → Time Interval Standards) through Codex indexing.",
-        "Adapts tone and response depth based on task complexity and recent history.",
-        "Prioritizes contextually relevant data from the SSE snapshot to keep replies temporally accurate.",
-        "Automatically attaches actionable CTAs when intent resolves to a valid Codex module or report type."
+        "Adapts tone and depth based on task complexity and recent interactions.",
+        "Prioritizes temporally relevant data from the SSE snapshot for accuracy.",
+        "Attaches actionable CTAs when intent resolves to a valid Codex module or report type."
       ]
+    },
+    "temporalDoctrine": {
+      "definition": "Defines the unified temporal reasoning framework governing duration inference, comparison, and correction across all modules.",
+      "inheritsFrom": "aiIntegration.temporalReasoning",
+      "includes": [
+        "temporalReasoning",
+        "temporalCorrectionHandling",
+        "temporalGovernance",
+        "temporalResolvers",
+        "temporalComparators"
+      ],
+      "notes": "Collectively known as the Temporal Doctrine Suite (Codex Amendments CPD-03.A–C)."
     },
     "temporalReasoning": {
       "icon": "hourglass",
       "format": "list",
       "items": [
-        "Understands and computes durations using timestamp or date fields (e.g., submittedDate, createdAt, lastUpdated).",
-        "Automatically recognizes natural queries such as 'how long ago', 'how many days', 'when was', or 'since when'.",
-        "Uses timeDateArray.currentUnixTime from the SSE stream as the reference point for all temporal comparisons.",
-        "Adapts contextual scope based on module: e.g., for permits → duration in review; for holidays → days until next; for KPIs → days since last update.",
-        "Uses Codex ontology relationships to locate relevant date fields dynamically instead of fixed code paths.",
-        "Returns human-readable time intervals (e.g., '3 days', '2 weeks', '5 hours') rather than raw numeric differences.",
-        "Supports both retrospective (elapsed time) and prospective (remaining time) reasoning."
+        "Computes durations using timestamp or date fields (e.g., submittedDate, createdAt, lastUpdated).",
+        "Recognizes natural queries such as 'how long ago', 'how many days', 'when was', or 'since when'.",
+        "Uses timeDateArray.currentUnixTime from the SSE stream as the temporal anchor for comparisons.",
+        "Adapts contextual scope: permits → duration in review; holidays → days until next; KPIs → days since update.",
+        "Locates relevant date fields dynamically through Codex ontology relationships, avoiding fixed code paths.",
+        "Returns human-readable intervals ('3 days', '2 weeks', '5 hours') instead of numeric differences.",
+        "Supports both retrospective (elapsed) and prospective (remaining) reasoning."
       ],
-      "notes": "This enables Skyebot to respond to duration and count queries without code modification. Logic is purely data-driven through Codex ontology and SSE context."
+      "notes": "Enables Skyebot to perform duration and count reasoning without external code. All logic is data-driven via Codex ontology and SSE context."
     },
     "temporalCorrectionHandling": {
       "definition": "Interprets declarative date statements as factual corrections, not philosophical prompts.",
-      "example": "User: 'Friday is 10/31/25' → update internal reference date, re-evaluate interval reasoning.",
-      "reasoningRole": "Prevents misrouting of temporal assertions into non-temporal semantic domains such as the Constitution or Philosophy modules.",
-      "feedbackBehavior": "Acknowledges correction gracefully, confirms understanding, and adjusts reasoning context in memory.",
-      "updateScope": "Adjusts internal date anchors for all active temporal modules without triggering domain reassignment."
+      "example": "User: 'Friday is 10/31/25' → update internal reference date and re-evaluate intervals.",
+      "reasoningRole": "Prevents misrouting of date assertions into non-temporal modules.",
+      "feedbackBehavior": "Acknowledges corrections gracefully and updates reasoning context in memory.",
+      "updateScope": "Adjusts date anchors across all active temporal modules without domain reassignment."
     },
     "temporalGovernance": {
       "icon": "scales",
       "format": "table",
-      "definition": "Defines which Codex modules are governed by the universal duration-inference logic inherited from aiIntegration.temporalReasoning. This ensures that time comparisons—past or future—use a single, consistent framework.",
-      "appliesTo": [
-        "holidays",
-        "permits",
-        "tasks",
-        "invoices",
-        "projects",
-        "attendance",
-        "kpiData"
-      ],
-      "reasoningRole": "Ensures all modules capable of temporal comparison automatically inherit duration handling from aiIntegration.temporalReasoning, without hardcoding or local duplication.",
-      "notes": "Expands automatically as new modules register temporal fields (e.g., submittedDate, completedAt, dueDate). The Codex Interpreter binds these modules dynamically at runtime."
+      "definition": "Specifies which modules inherit duration inference from the Temporal Doctrine Suite.",
+      "appliesTo": ["holidays", "permits", "tasks", "invoices", "projects", "attendance", "kpiData"],
+      "reasoningRole": "Ensures all time-aware modules share consistent interval logic without duplication.",
+      "notes": "Expands automatically as new modules register temporal fields (e.g., submittedDate, completedAt, dueDate)."
     },
     "temporalResolvers": {
       "icon": "infinity",
       "format": "object",
-      "definition": "Formalizes non-procedural inference patterns allowing Skyebot™ to compute dynamic temporal fields (e.g., nextHoliday, daysSincePermitSubmission, hoursUntilWorkdayEnd) directly from Codex and SSE data without invoking external resolver scripts.",
-      "governance": "Extends aiIntegration.temporalGovernance. All modules listed there automatically inherit resolver-free duration inference.",
+      "definition": "Declares non-procedural inference patterns that compute dynamic temporal fields (e.g., nextHoliday, daysSincePermitSubmission, hoursUntilWorkdayEnd) directly from Codex and SSE data.",
+      "governance": "Extends temporalGovernance for resolver-free duration inference.",
       "examples": {
-        "holidays": "Infers upcoming holiday by category (company, federal, civic) through date comparison against currentUnixTime.",
-        "permits": "Calculates duration between submittedDate and currentUnixTime for 'in review' or 'elapsed' status reporting.",
-        "tasks": "Determines remaining time until dueDate for urgency ranking.",
-        "kpiData": "Computes time since last KPI update for trend tracking."
+        "holidays": "Determines upcoming holiday by category (company, federal, cultural) via date comparison.",
+        "permits": "Computes duration between submittedDate and currentUnixTime for status evaluation.",
+        "tasks": "Calculates remaining time until dueDate for urgency ranking.",
+        "kpiData": "Determines time since last KPI update for performance tracking."
       },
-      "reasoningRole": "Eliminates procedural resolver files by declaring inference patterns as part of Codex doctrine. Skyebot interprets and applies these rules dynamically through semantic context and temporal reasoning.",
-      "notes": "Codex Amendment CPD-03.A – Elimination of Procedural Temporal Resolvers. All future duration or interval logic must be declarative and Codex-driven."
+      "reasoningRole": "Eliminates procedural resolver files. All duration logic is declarative and Codex-driven.",
+      "notes": "Codex Amendment CPD-03.A – Elimination of Procedural Temporal Resolvers."
     },
     "temporalComparators": {
-      "definition": "Defines directional temporal logic used by Skyebot™ to distinguish between past and future references.",
+      "definition": "Defines directional temporal logic to distinguish between past and future reasoning.",
       "operators": ["before", "after", "since", "until"],
-      "reasoningRole": "Allows declarative differentiation between retrospective and prospective interval reasoning across all governed modules."
+      "mapping": {
+        "prospective": ["until", "in", "till", "to"],
+        "retrospective": ["since", "ago", "before", "earlier"]
+      },
+      "binding": "The Codex Interpreter applies these comparators dynamically to any temporalResolver, determining interval polarity relative to currentUnixTime.",
+      "reasoningRole": "Provides bidirectional inference capability across all governed modules."
     },
-    "integrationPoints": {
-      "icon": "link",
-      "format": "list",
-      "items": [
-        "Codex Knowledge Graph — semantic foundation for structured meaning and inter-module relationships.",
-        "SSE Dynamic Stream — provides continuous real-time data for contextual grounding.",
-        "Chat History Architecture — maintains chronological user interactions as an immutable reference.",
-        "CRUD Engine — executes create, read, update, and delete actions inferred through natural phrasing.",
-        "Report Kernel — materializes structured outputs aligned with Codex module specifications."
-      ]
-    },
-    "principles": {
+    "philosophy": {
       "icon": "compass",
-      "format": "list",
-      "items": [
-        "Interpret meaning over syntax — understand what is said, not just how it’s said.",
-        "Ground all reasoning in Codex and SSE data — Skyebot™ never hallucinates or assumes without a source.",
-        "Use chat history for continuity — avoid repetition and leverage prior actions.",
-        "Preserve auditability — all inferred actions and AI-driven responses remain traceable in the chat ledger.",
-        "Deliver structured output when actionable, natural language when conversational."
-      ]
-    },
-    "outcomes": {
-      "icon": "star",
-      "format": "list",
-      "items": [
-        "Natural conversation replaces command syntax.",
-        "Full contextual reasoning with Codex and SSE awareness.",
-        "Automated, self-grounded decision-making within organizational context.",
-        "Adaptive user experience that learns and evolves per user and system state.",
-        "Reduced need for manual intervention or prompt engineering."
-      ]
-    },
-    "pipeline": {
-      "icon": "flow",
-      "format": "numbered",
-      "items": [
-        "Receive and normalize user prompt.",
-        "Load live SSE + Codex context.",
-        "Build semantic index of all modules and relationships.",
-        "Invoke LLM Router for reasoning: infer intent, target, and confidence.",
-        "Fallback to local semantic scoring if confidence < threshold.",
-        "Determine whether intent is summary, report, or crud via Codex subtypes.",
-        "Trigger Report Kernel or Summary Renderer accordingly.",
-        "Log every semantic decision, score, and action.",
-        "Respond as structured JSON or conversational text."
+      "format": "pairedList",
+      "pairs": [
+        {"principle": "Interpret meaning over syntax.", "outcome": "Natural conversation replaces command syntax."},
+        {"principle": "Ground reasoning in Codex and SSE data.", "outcome": "No assumptions without verifiable source context."},
+        {"principle": "Use chat history for continuity.", "outcome": "Maintains memory integrity and contextual awareness."},
+        {"principle": "Preserve auditability.", "outcome": "All actions and inferences remain traceable in the chat ledger."},
+        {"principle": "Deliver structured output when actionable.", "outcome": "Ensures adaptive, self-evolving user experience."}
       ]
     },
     "updateNotes": {
       "icon": "gear",
       "format": "text",
-      "text": "As of version 2025.10.28, Skyebot™ accesses all reasoning data—temporal, contextual, and doctrinal—through the unified SSE Stream. The AI Integration layer no longer queries separate Codex files; instead, it traverses the live stream to interpret meaning, enabling real-time semantic reasoning across dynamic and static domains."
+      "text": "As of v5.3.4-DRY, all AI Integration logic operates declaratively through the unified SSE Stream and Temporal Doctrine Suite. Procedural resolvers and redundant schema entries were retired under Parliamentarian Directive CPD-03.C."
     },
     "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
-    "version": "3.0",
-    "updated": "2025-10-28"
+    "version": "5.3.4-DRY",
+    "updated": "2025-10-29"
   },
   "sseStream": {
   "title": "🌐 SSE Stream",
