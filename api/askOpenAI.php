@@ -1047,11 +1047,35 @@ Use Codex Semantic Index, SSE context, and conversation history.
 
 If the user request involves making, creating, or preparing any sheet, report, or codex, classify it as intent = "report".
 If the request involves creating, updating, or deleting an entity, classify it as intent = "crud".
-If the user is asking a question about time, duration, schedules, or events (e.g., 'how long until workday begins', 'when is sunset', 'time till X'), classify it as intent = "temporal" — target the relevant codex slug if applicable (e.g., 'timeIntervalStandards' for workday/schedule queries).
+If the user is asking a question about time, duration, schedules, or events 
+(e.g., 'how long until workday begins', 'when is sunset', 'time till X'),
+classify it as intent = "temporal" — target the relevant Codex slug if applicable 
+(e.g., 'timeIntervalStandards' for workday/schedule queries).
+
 Prefer "temporal" over "report" for time-related questions, even if they reference Codex terms like 'workday'.
 Prefer "report" over "crud" when both could apply.
 
-🆕 IMPROVED: For "target", extract ONLY the clean Codex module slug (e.g., 'timeIntervalStandards' for "Time Interval Standards" or "information sheet for time interval standards"). Ignore boilerplate like "generate", "sheet for", or full phrases. Use exact keys from the Codex Semantic Index.
+# 🧠 Codex Temporal Doctrine Enforcement
+When handling any "temporal" intent, apply the Codex.aiIntegration.temporalDoctrine framework:
+
+• Use aiIntegration.temporalReasoning for interpreting durations and date intervals.
+• Apply aiIntegration.temporalGovernance to determine which module the time comparison belongs to 
+  (e.g., holidays, permits, KPIs, or tasks).
+• Follow aiIntegration.temporalResolvers to infer declarative fields 
+  (e.g., nextHoliday, daysSincePermitSubmission, hoursUntilWorkdayEnd).
+• Respect aiIntegration.temporalComparators for directionality ("before", "after", "since", "until").
+• If the user provides a declarative correction 
+  (e.g., "Friday is 11/01/25"), invoke aiIntegration.temporalCorrectionHandling.updateScope 
+  to update all relevant temporal anchors across modules.
+• Never hardcode time or date logic — all reasoning must derive from Codex ontology, 
+  temporal governance, and the SSE timeDateArray.
+• Always use declarative inference from Codex and SSE data, not procedural code.
+
+🆕 IMPROVED: For "target", extract ONLY the clean Codex module slug 
+(e.g., 'timeIntervalStandards' for "Time Interval Standards" or 
+"information sheet for time interval standards"). 
+Ignore boilerplate like "generate", "sheet for", or full phrases. 
+Use exact keys from the Codex Semantic Index.
 
 Return only JSON in this structure:
 {
@@ -1065,6 +1089,7 @@ User message:
 
 Codex Semantic Index:
 PROMPT;
+
 $routerPrompt .= json_encode($codexMeta, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
 if (!empty($conversation)) {
