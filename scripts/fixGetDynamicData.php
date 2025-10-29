@@ -83,4 +83,3 @@ if (file_put_contents($output, $src)) {
 } else {
     echo "❌ Failed to write repaired file.\n";
 }
-?>
