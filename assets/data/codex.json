@@ -623,7 +623,8 @@
       "definition": "Interprets declarative date statements as factual corrections, not philosophical prompts.",
       "example": "User: 'Friday is 10/31/25' → update internal reference date, re-evaluate interval reasoning.",
       "reasoningRole": "Prevents misrouting of temporal assertions into non-temporal semantic domains such as the Constitution or Philosophy modules.",
-      "feedbackBehavior": "Acknowledges correction gracefully, confirms understanding, and adjusts reasoning context in memory."
+      "feedbackBehavior": "Acknowledges correction gracefully, confirms understanding, and adjusts reasoning context in memory.",
+      "updateScope": "Adjusts internal date anchors for all active temporal modules without triggering domain reassignment."
     },
     "temporalGovernance": {
       "icon": "scales",
@@ -654,6 +655,11 @@
       },
       "reasoningRole": "Eliminates procedural resolver files by declaring inference patterns as part of Codex doctrine. Skyebot interprets and applies these rules dynamically through semantic context and temporal reasoning.",
       "notes": "Codex Amendment CPD-03.A – Elimination of Procedural Temporal Resolvers. All future duration or interval logic must be declarative and Codex-driven."
+    },
+    "temporalComparators": {
+      "definition": "Defines directional temporal logic used by Skyebot™ to distinguish between past and future references.",
+      "operators": ["before", "after", "since", "until"],
+      "reasoningRole": "Allows declarative differentiation between retrospective and prospective interval reasoning across all governed modules."
     },
     "integrationPoints": {
       "icon": "link",
