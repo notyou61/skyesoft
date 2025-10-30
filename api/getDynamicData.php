@@ -680,6 +680,75 @@ if (is_readable(HOLIDAYS_PATH)) {
         : array();
 }
 
+// 🎯 Holiday Fallback & Next-Holiday Resolver (Codex v5.4.2)
+if (empty($holidays)) {
+    error_log("⚠️ No holidays found; loading from Codex fallback registry.");
+    $codexPath = __DIR__ . '/../assets/data/codex.json';
+    if (file_exists($codexPath)) {
+        $codex = json_decode(file_get_contents($codexPath), true);
+        if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays'])) {
+            $holidays = $codex['timeIntervalStandards']['holidayRegistry']['holidays'];
+        }
+    }
+}
+
+// 🧭 Next-Holiday Determination
+$nextHoliday = null;
+$currentYear = intval(date('Y', strtotime($currentDate)));
+$todayUnix = strtotime($currentDate);
+
+// 🅰️  A. Same-Year Search
+foreach ($holidays as $h) {
+    if (!isset($h['rule'])) continue;
+    $rule = $h['rule'];
+    $ts = strtotime($rule . ' ' . $currentYear);
+
+    if ($ts && $ts >= $todayUnix) {
+        $nextHoliday = array(
+            'name' => $h['name'],
+            'date' => date('Y-m-d', $ts),
+            'rollover' => false
+        );
+        break;
+    }
+}
+
+// 🅱️  B. Year-Rollover (after final holiday, e.g. post-Christmas)
+if (!$nextHoliday && !empty($holidays)) {
+    foreach ($holidays as $h) {
+        if (!isset($h['rule']) || !isset($h['categories'])) continue;
+        $cats = array_map('strtolower', $h['categories']);
+        // Only roll to next-year federal/company holidays
+        if (in_array('company', $cats) || in_array('federal', $cats)) {
+            $rule = $h['rule'];
+            $ts = strtotime($rule . ' ' . ($currentYear + 1));
+            if ($ts) {
+                $nextHoliday = array(
+                    'name' => $h['name'],
+                    'date' => date('Y-m-d', $ts),
+                    'rollover' => true
+                );
+                error_log("🎆 Year rollover → {$nextHoliday['name']} ({$nextHoliday['date']})");
+                break;
+            }
+        }
+    }
+}
+
+// 🅲️  C. Fallback Safety (no valid holiday found)
+if (!$nextHoliday) {
+    $nextHoliday = array(
+        'name' => 'Undetermined (Provisional)',
+        'date' => date('Y-m-d', strtotime('+7 days', $now)),
+        'rollover' => true
+    );
+    error_log("⚠️ Fallback Tier 3 → provisional 7-day placeholder used.");
+}
+
+// 🧩 Diagnostic Log
+error_log("🧭 Next holiday resolved: {$nextHoliday['name']} ({$nextHoliday['date']}) rollover=" . ($nextHoliday['rollover'] ? 'true' : 'false'));
+
+
 // 🏢 Company Holiday Detection (Codex v5.4-compliant)
 $isCompanyHoliday = false;
 

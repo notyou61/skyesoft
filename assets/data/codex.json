@@ -1,14 +1,16 @@
 {
   "codexMeta": {
     "title": "🎯 Skyesoft Codex Meta",
-    "version": "2025.26a",
-    "lastUpdated": "2025-10-26",
+    "version": "v5.5.1",
+    "build": "2025.26b",
+    "lastUpdated": "2025-10-30",
+    "ratifiedBy": "CPAP-01 (Parliamentarian)",
     "category": "System Layer",
     "enrichment": "light",
     "description": {
       "icon": "book",
       "format": "text",
-      "text": "The Codex Meta governs the format, validation, and enrichment logic for every Skyesoft module. It ensures consistency between how data is structured, interpreted, and visually rendered through the Skyesoft Report Kernel and Skyebot AI."
+      "text": "The Codex Meta governs the format, validation, and enrichment logic for every Skyesoft module. Version 5.5.1 implements the Containment Clause, enabling hierarchical 'containedModules' under governing doctrines."
     },
     "schema": {
       "requiredKeys": ["title", "purpose"],
@@ -36,45 +38,60 @@
         "format": "String: 'text', 'list', or 'table'",
         "enrichment": "String: 'none', 'light', 'medium', or 'heavy'"
       },
-      "notes": "Every module must include 'title' and 'purpose'. The 'enrichment' property determines how aggressively AI expands the text. This schema defines the governance rules that allow Skyesoft to self-document."
+      "notes": "Every module must include 'title' and 'purpose'. The 'enrichment' property determines AI expansion depth. As of v5.5.1, containment and amendment types are formally recognized within the Codex schema."
     },
     "implementationNotes": {
       "icon": "gear",
       "format": "text",
-      "text": "The Codex Meta itself is parsed but excluded from standard report output. It is used to validate module structure, apply enrichment rules, and maintain interoperability between AI components."
+      "text": "The Codex Meta is parsed but excluded from standard report output. It validates structure, applies enrichment rules, and enforces doctrinal integrity for all modules. Ratified under the Containment Clause (V-5.5.0)."
     }
   },
   "ontologySchema": {
     "title": "🧠 Codex Ontology Schema",
     "category": "System Layer",
+    "version": "5.5.1",
     "enrichment": "none",
     "purpose": {
       "icon": "target",
       "format": "text",
-      "text": "Defines the universal semantic keys that describe how each Codex module relates to others, enabling AI-driven reasoning and context-aware classification without hardcoded logic."
+      "text": "Defines the universal semantic keys that describe how each Codex module relates to others, enabling AI-driven reasoning, versioned amendments, and context-aware classification without hardcoded logic."
     },
     "fields": {
       "type": {
-        "definition": "Specifies what kind of conceptual object the module represents (e.g., document, process, data-stream, entity, layer).",
+        "definition": {
+          "document": "Represents a structured data or narrative record such as a report, sheet, or summary.",
+          "standard": "Defines a doctrine or system-level rule that governs subordinate modules.",
+          "taxonomy": "Classifies and organizes related families of modules under a governing standard.",
+          "specification": "Details the format, structure, and expected behavior of a specific report, sheet, or survey.",
+          "suite": "Groups multiple related modules or subsystems under a shared purpose or process.",
+          "entity": "Defines a discrete organizational unit, contact, or jurisdiction recognized by the system.",
+          "process": "Represents an operational or procedural function (e.g., validation, routing, calculation).",
+          "data-stream": "Describes a dynamic feed or live source of data such as an SSE endpoint.",
+          "registry": "Acts as a ledger for tracking amendments, policies, or other high-level governance data.",
+          "amendment": "Represents a formal rule change, correction, or extension to an existing Codex doctrine."
+        },
         "example": "document",
-        "reasoningRole": "Allows Skyebot to group modules by their nature for intent routing."
+        "reasoningRole": "Allows Skyebot to group and interpret modules by conceptual nature for CRUD and intent routing."
       },
       "subtypes": {
         "definition": "Lists any derivative types under the main type (e.g., sheet, report, summary).",
         "example": ["sheet", "report", "summary"],
-        "reasoningRole": "Enables recognition that 'sheet' and 'report' are semantically related."
+        "reasoningRole": "Enables recognition that derivative formats such as 'sheet' and 'report' share semantic lineage."
       },
       "actions": {
-        "definition": "Verbs or operations the module supports (e.g., generate, create, describe).",
+        "definition": "Verbs or operations the module supports (e.g., generate, create, review).",
         "example": ["generate", "create", "review"],
-        "reasoningRole": "Used by the Semantic Intent Router to map user verbs to system functions."
+        "reasoningRole": "Used by the Semantic Intent Router to map user verbs to system functions during CRUD operations."
       },
       "relationships": {
         "definition": "Describes how this module connects to others in the Codex Knowledge Graph.",
         "structure": {
           "isA": "Parent type or conceptual ancestor.",
-          "partOf": "Layer or suite it belongs to.",
+          "partOf": "Layer, suite, or domain it belongs to.",
           "governs": "Modules governed or influenced by this one.",
+          "dependsOn": "Modules this one requires or references.",
+          "isSubordinateTo": "Indicates hierarchical dependency under another doctrine.",
+          "containedModules": "Introduced by Amendment V-5.5.0 — allows direct containment of submodules inside a governing object.",
           "aliases": "Alternate names or identifiers used in conversation."
         },
         "example": {
@@ -83,10 +100,9 @@
           "governs": ["permitManagementSuite", "financialControlSuite"],
           "aliases": ["document rules", "sheet standard"]
         },
-        "reasoningRole": "Creates relational intelligence — allows AI to infer intent even if a term or alias differs."
+        "reasoningRole": "Creates relational intelligence — enabling Skyebot to infer intent and hierarchy even when terminology varies."
       }
     },
-
     "temporalOntology": {
       "title": "⏳ Temporal Ontology",
       "category": "Time and Duration Mapping",
@@ -118,13 +134,12 @@
           "lastInteraction"
         ]
       },
-      "notes": "This ontology allows Skyebot to perform temporal reasoning (e.g., 'how long in review', 'days since approval', 'time until payment due') without any PHP logic changes."
+      "notes": "Allows Skyebot to perform temporal reasoning (e.g., 'days since approval', 'time until payment due') without any PHP logic changes."
     },
-
     "scalabilityNotes": {
       "icon": "gear",
       "format": "text",
-      "text": "By defining these fields, Skyebot can interpret meaning directly from Codex data instead of using rigid conditionals. Future modules automatically inherit semantic awareness through consistent ontology mapping."
+      "text": "By defining these fields, Skyebot can interpret meaning directly from Codex data instead of rigid conditionals. Registry and amendment types are now semantically recognized (per v5.5.1 Containment Clause), ensuring automatic inheritance and reasoning consistency."
     }
   },
   "skyesoftOverview": {
@@ -188,30 +203,61 @@
   "documentStandards": {
     "title": "📄 Document Standards",
     "category": "System Layer",
-    "type": "document",
-    "subtypes": ["sheet", "report", "summary"],
-    "actions": ["generate", "create", "review"],
-    "relationships": {
-      "isA": "systemStandard",
-      "partOf": "System Layer",
-      "governs": ["permitReports", "photoSurveyReports"],
-      "aliases": ["document rules", "report format", "sheet layout"]
-    },
-    "enrichment": "medium",
+    "type": "standard",
+    "tier": 1,
+    "hierarchyOrder": "A",
+    "governs": ["documentTypes"],
+    "dependsOn": ["skyesoftConstitution"],
     "purpose": {
-      "icon": "target",
-      "format": "text",
-      "text": "Defines the formatting, layout, and branding policies that govern all Skyesoft-generated documents including reports, sheets, and correspondence."
-    },
-    "features": {
-      "icon": "gear",
-      "format": "list",
-      "items": [
-        "Uniform header/footer structure with metadata",
-        "Automatic pagination and timestamp alignment",
-        "Integrated iconography from iconMap.json",
-        "Configurable spacing and typography standards"
-      ]
+      "text": "Defines structure, layout, and branding policies governing all Skyesoft documents."
+    }
+  },
+  "documentTypes": {
+    "title": "🧾 Document Types",
+    "category": "System Layer",
+    "type": "taxonomy",
+    "tier": 2,
+    "hierarchyOrder": "1",
+    "isSubordinateTo": ["documentStandards"],
+    "governs": ["temporalIntegritySpec", "permitReportSpec", "photoSurveySpec"],
+    "purpose": {
+      "text": "Maintains document family classifications under the Document Standards doctrine."
+    }
+  },
+  "temporalIntegritySpec": {
+    "title": "🕰️ Temporal Integrity Report Specification",
+    "category": "System Layer",
+    "type": "specification",
+    "family": "report",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "text": "Defines how the Temporal Integrity Report is structured and validated."
+    }
+  },
+  "permitReportSpec": {
+    "title": "🏛️ Permit Report Specification",
+    "category": "Operations",
+    "type": "specification",
+    "family": "report",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "text": "Defines format and fields for permit-related reports."
+    }
+  },
+  "photoSurveySpec": {
+    "title": "📷 Photo Survey Specification",
+    "category": "Operations",
+    "type": "specification",
+    "family": "survey",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "text": "Defines the standardized format for photo survey reports."
     }
   },
   "timeIntervalStandards": {
@@ -320,7 +366,7 @@
         { "name": "Day After Thanksgiving", "rule": "Fourth Friday of Nov", "categories": ["company"] },
         { "name": "Christmas Eve", "rule": "Dec 24", "categories": ["cultural"] },
         { "name": "Christmas Day", "rule": "Dec 25", "categories": ["federal", "company"] },
-        { "name": "New Year's Eve", "rule": "Dec 31", "categories": ["company"] },
+        { "name": "New Year's Eve", "rule": "Dec 31", "categories": ["cultural"] },
         { "name": "Cinco de Mayo", "rule": "May 5", "categories": ["cultural"] },
         { "name": "Mother's Day", "rule": "Second Sunday of May", "categories": ["cultural"] },
         { "name": "Father's Day", "rule": "Third Sunday of June", "categories": ["cultural"] },
@@ -333,7 +379,82 @@
         { "name": "Talk Like a Pirate Day", "rule": "Sep 19", "categories": ["novelty"] },
         { "name": "National Coffee Day", "rule": "Sep 29", "categories": ["novelty"] }
       ]
+    },
+    "holidayFallbackRules": {
+      "icon": "gear",
+      "format": "object",
+      "description": "Resolves temporal gaps after the last holiday of a calendar year or before the first holiday of a new year.",
+      "rules": {
+        "after_last_holiday": {
+          "strategy": "next_year_rollover",
+          "fallback_method": "lookup_first_holiday_next_year",
+          "reasoning": "When no upcoming holiday exists in the current year, Skyebot automatically fetches the first recognized holiday from the next year using Codex holidayRegistry."
+        },
+        "before_first_holiday": {
+          "strategy": "previous_year_anchor",
+          "fallback_method": "lookup_last_holiday_prev_year",
+          "reasoning": "When reasoning backward before the first holiday of a year, Skyebot anchors to the prior year's final recognized holiday."
+        }
+      }
+    },
+    "meta": {
+      "introducedInVersion": "v5.3.9",
+      "maintainedBy": "Temporal Doctrine Suite",
+      "notes": "Ensures continuous holiday mapping across year boundaries; tested under stress suite v3.6."
     }
+  },
+  "codexAmendments": {
+  "title": "📜 Codex Amendments Register",
+  "category": "System Layer",
+  "type": "registry",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Maintains all ratified Skyesoft™ doctrinal amendments enacted by the Parliamentarian and Codex Council. Each amendment modifies or extends existing system doctrine."
+  },
+  "amendments": {
+    "V550": {
+      "title": "📜 Codex Amendment V-5.5.0 – The Containment Clause",
+      "status": "ratified",
+      "ratifiedOn": "2025-10-30",
+      "appliesTo": ["systemStandard", "taxonomy", "governingDoctrine"],
+      "summary": {
+        "icon": "scale",
+        "format": "text",
+        "text": "Authorizes governing standards to contain subordinate doctrinal modules through the reserved key 'containedModules', thereby permitting hierarchical containment without violating Codex uniformity."
+      },
+      "articles": {
+        "Article I – Definition": {
+          "text": "The property 'containedModules' is a sanctioned structural key in the Codex schema. It may appear only within objects of type 'standard', 'taxonomy', or other designated 'governingDoctrine' types."
+        },
+        "Article II – Scope": {
+          "text": "Contained modules must conform to full Codex object schema and inherit their parent’s doctrinal lineage while retaining unique identifiers."
+        },
+        "Article III – Interpretation": {
+          "text": "Contained modules are subordinate for hierarchy mapping yet remain accessible through the global Codex registry for cross-reference, ensuring recursive and flat access."
+        },
+        "Article IV – Application": {
+          "text": "All foundational doctrines—including Document Standards, Time Interval Standards, and Data Exchange Standards—shall adopt 'containedModules' for direct subordination. Non-governing objects continue to use relational keys such as 'isSubordinateTo' or 'dependsOn'."
+        },
+        "Article V – Transitional Provisions": {
+          "text": "Legacy keys ('submodules', 'tier', 'hierarchyOrder') will be migrated to 'containedModules' by Codex v5.6 while preserving backward compatibility."
+        }
+      },
+      "signatories": [
+        {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
+        {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
+        {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
+      ],
+      "meta": {
+        "introducedInVersion": "v5.5.0",
+        "effectiveVersion": "v5.5.1",
+        "revisionHistory": [
+          {"version": "Draft v5.5.0-RC1", "notes": "Initial definition of containment concept"},
+          {"version": "Ratified v5.5.0", "notes": "Final approval by Parliamentarian CPAP-01"}
+        ]
+      }
+    }
+  }
   },
   "fileManagement": {
     "title": "🗂️ File Management",
