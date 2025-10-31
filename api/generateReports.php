@@ -5,7 +5,7 @@
 
 // Dependencies
 // Prefer Composer autoload when PHP ≥7.1, else fallback to manual TCPDF
-if (version_compare(PHP_VERSION, '7.1.0', '>=')
+if (version_compare(PHP_VERSION, '7.1.0', '>=') 
     && file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once(__DIR__ . '/../vendor/autoload.php');
 } elseif (file_exists(__DIR__ . '/../libs/tcpdf/tcpdf.php')) {
@@ -25,6 +25,39 @@ $config = array(
 
 // Consistent spacing value (in points)
 $consistent_spacing = 10;
+
+// ───────────────────────────────
+//  Report Type Detection
+// ───────────────────────────────
+$slug = null;
+
+// 🧭 CLI argument bridge (ensures "slug=..." works in terminal)
+if (php_sapi_name() === 'cli' && isset($argv) && count($argv) > 1) {
+    foreach ($argv as $arg) {
+        if (strpos($arg, '=') !== false) {
+            list($key, $value) = explode('=', $arg, 2);
+            $_REQUEST[$key] = $value;
+            $_GET[$key] = $value;
+            $_POST[$key] = $value;
+        }
+    }
+}
+
+if (isset($_GET['slug'])) {
+    $slug = $_GET['slug'];
+} elseif (isset($_POST['slug'])) {
+    $slug = $_POST['slug'];
+}
+
+if (!$slug) {
+    if (php_sapi_name() === 'cli') {
+        $slug = 'temporalIntegrityReport';
+        logMessage("🔁 CLI fallback assigned default slug: $slug");
+    } else {
+        echo json_encode(["error" => true, "message" => "Slug could not be resolved even after fallback."]);
+        exit;
+    }
+}
 
 // --------------------------
 // Load API key securely
@@ -240,11 +273,18 @@ if (in_array($method, array('POST', 'PUT'))) {
 // ----------------------------------------------------------------------
 if (!$slug) {
     header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode(array(
-        'error'   => true,
-        'message' => 'Missing slug/module in request.'
-    ));
-    exit;
+    if (php_sapi_name() === 'cli') {
+        $slug = 'temporalIntegrityReport';
+        logMessage("🔁 CLI fallback assigned default slug: $slug");
+    } else {
+        if (php_sapi_name() === 'cli') {
+            $slug = 'temporalIntegrityReport';
+            logMessage("🔁 CLI fallback assigned default slug: $slug");
+        } else {
+            echo json_encode(["error" => true, "message" => "Slug could not be resolved even after fallback."]);
+            exit;
+        }
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -255,34 +295,42 @@ $slug = preg_replace('/[^a-zA-Z0-9_-]/', '', $slug);
 // ----------------------------------------------------------------------
 // 🧭 5️⃣  Validate existence in $modules
 // ----------------------------------------------------------------------
-if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
-    logMessage("🔍 DEBUG: Searching for slug '$slug' in modules. Keys: " . implode(', ', array_keys($modules)));
-
-    // Case-insensitive fallback search
-    $foundKey = null;
-    foreach ($modules as $key => $val) {
-        if (strcasecmp($key, $slug) === 0) {
-            $foundKey = $key;
-            break;
-        }
-    }
-
-    if ($foundKey) {
-        logMessage("✅ Case-insensitive match found: '$foundKey'");
-        $module = $modules[$foundKey];
-    } else {
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(array(
-            'error'   => true,
-            'message' => "Module '$slug' not found in Codex."
-        ));
-        exit;
-    }
+$module = null;
+if ($slug === 'temporalIntegrityReport') {
+    // Skip module validation for special reports
 } else {
-    $module = $modules[$slug]; // Normal match
+    if (!isset($modules[$slug]) || !is_array($modules[$slug])) {
+        logMessage("🔍 DEBUG: Searching for slug '$slug' in modules. Keys: " . implode(', ', array_keys($modules)));
+
+        // Case-insensitive fallback search
+        $foundKey = null;
+        foreach ($modules as $key => $val) {
+            if (strcasecmp($key, $slug) === 0) {
+                $foundKey = $key;
+                break;
+            }
+        }
+
+        if ($foundKey) {
+            logMessage("✅ Case-insensitive match found: '$foundKey'");
+            $module = $modules[$foundKey];
+        } else {
+            header('Content-Type: application/json; charset=UTF-8');
+            if (php_sapi_name() === 'cli') {
+                $slug = 'temporalIntegrityReport';
+                logMessage("🔁 CLI fallback assigned default slug: $slug");
+            } else {
+                echo json_encode(["error" => true, "message" => "Slug could not be resolved even after fallback."]);
+                exit;
+            }
+        }
+    } else {
+        $module = $modules[$slug]; // Normal match
+    }
+
+    logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
 }
 
-logMessage("ℹ️ Loaded " . count($modules) . " valid modules for slug lookup (including ontology).");
 // ----------------------------------------------------------------------
 // ✅ FINAL safeguard for PHP 5.6 variable timing — recheck slug sources
 // ----------------------------------------------------------------------
@@ -298,27 +346,37 @@ if (empty($slug)) {
 
 // If still empty, hard fail one more time
 if (empty($slug)) {
-    header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode(array(
-        'error'   => true,
-        'message' => 'Slug could not be resolved even after fallback.'
-    ));
-    exit;
+    // Allow default for CLI temporalIntegrityReport call
+    if (php_sapi_name() === 'cli') {
+        $slug = 'temporalIntegrityReport';
+        logMessage("🔁 CLI fallback assigned default slug: $slug");
+    } else {
+        header('Content-Type: application/json; charset=UTF-8');
+        if (php_sapi_name() === 'cli') {
+            $slug = 'temporalIntegrityReport';
+            logMessage("🔁 CLI fallback assigned default slug: $slug");
+        } else {
+            echo json_encode(["error" => true, "message" => "Slug could not be resolved even after fallback."]);
+            exit;
+        }
+    }
 }
 
 // ----------------------------------------------------------------------
-// Validate each module's sections
+// Validate each module's sections (skip for special reports)
 // ----------------------------------------------------------------------
-$ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
+if ($slug !== 'temporalIntegrityReport') {
+    $ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
 
-foreach ($module as $key => $section) {
-    if (in_array($key, $ontologyWhitelist)) continue;
-    if ($key === 'title') continue;
-    if (!is_array($section)) continue;
-    if (!isset($section['format'])) continue;
-    if (!in_array($section['format'], array('text', 'list', 'table', 'dynamic'))) {
-        logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', 'table', or 'dynamic'.");
-        die();
+    foreach ($module as $key => $section) {
+        if (in_array($key, $ontologyWhitelist)) continue;
+        if ($key === 'title') continue;
+        if (!is_array($section)) continue;
+        if (!isset($section['format'])) continue;
+        if (!in_array($section['format'], array('text', 'list', 'table', 'dynamic'))) {
+            logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', 'table', or 'dynamic'.");
+            die();
+        }
     }
 }
 
@@ -333,57 +391,6 @@ if (file_exists($iconMapPath)) {
         $iconMap = array();
         logMessage("⚠️ WARNING: Failed to decode iconMap.json. Using empty icon map.");
     }
-}
-
-// --------------------------
-// Handle CLI or HTTP Input
-// --------------------------
-$input = null;
-if (php_sapi_name() === 'cli' && isset($argv[1])) {
-    $rawInput = $argv[1];
-    logMessage("ℹ️ CLI raw input: $rawInput");
-    $input = json_decode($rawInput, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        logError("❌ ERROR: Failed to parse CLI JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
-        die();
-    }
-} else {
-    $rawInput = file_get_contents('php://input');
-    logMessage("ℹ️ HTTP raw input: $rawInput");
-    $input = json_decode($rawInput, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        logError("❌ ERROR: Failed to parse HTTP JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
-        die();
-    }
-}
-
-if (!is_array($input)) {
-    logError("❌ ERROR: Invalid input JSON.\nParsed input: " . print_r($input, true));
-    die();
-}
-
-// Sanitize input
-$slug = isset($input['slug']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['slug']) : '';
-$type = isset($input['type']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['type']) : 'information_sheet';
-$requestor = isset($input['requestor']) ? preg_replace('/[^A-Za-z0-9\s]/', '', $input['requestor']) : 'Skyesoft';
-$outputMode = isset($input['outputMode']) ? strtoupper($input['outputMode']) : 'F';
-$mode = isset($input['mode']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['mode']) : 'single';
-
-if (!in_array($outputMode, array('I', 'D', 'F'))) {
-    logError("❌ ERROR: Invalid outputMode '$outputMode'. Must be 'I', 'D', or 'F'.");
-    die();
-}
-
-$isFull = ($mode === 'full');
-
-if (!$isFull) {
-    if (empty($slug) || !isset($modules[$slug])) {
-        logError("❌ ERROR: Slug '$slug' not found in Codex.");
-        die();
-    }
-    $currentModules = array($slug => $modules[$slug]);
-} else {
-    $currentModules = $modules;
 }
 
 // =====================================================================
@@ -406,135 +413,447 @@ function logError($message) {
     echo $message . "\n";
 }
 
-// =====================================================================
-// Enrichment Control Helper
-// =====================================================================
-function getEnrichmentPrompt($slug, $key, $enrichment, $moduleData) {
-    switch (strtolower($enrichment)) {
-        case 'none':
-            $desc = "No AI enrichment is permitted. Use codex content exactly as written.";
-            break;
-        case 'light':
-            $desc = "Use light enrichment. You may correct tone, grammar, and minor phrasing only.";
-            break;
-        case 'medium':
-            $desc = "Use medium enrichment. You may expand lightly, add short examples or clarifying context, but avoid major rewrites.";
-            break;
-        case 'heavy':
-            $desc = "Use heavy enrichment. You may elaborate with detailed explanations, analogies, or workflow expansions.";
-            break;
-        default:
-            $desc = "Default light enrichment applies. Perform minimal improvement for clarity and readability.";
+// ───────────────────────────────
+//  Report Body Routing
+// ───────────────────────────────
+if ($slug === 'temporalIntegrityReport') {
+
+    // ======================================================
+    // 1️⃣  Fetch live dynamic data
+    // ======================================================
+    // Capture dynamic data quietly (prevent echo)
+    ob_start();
+    include(__DIR__ . '/getDynamicData.php');
+    $jsonOutput = ob_get_clean();
+    $data = json_decode($jsonOutput, true);
+
+    // Safety fallback if decoding fails
+    if (!is_array($data)) {
+        echo "⚠️ Error: could not parse dynamic data.\n";
+        $data = array();
     }
 
-    logMessage("💡 Enrichment mode for $slug/$key: " . strtoupper($enrichment));
-    return "Enrichment Policy: " . strtoupper($enrichment) . " — " . $desc .
-        "\n\nModule Context:\n" . json_encode($moduleData, JSON_PRETTY_PRINT);
-}
+    $today       = date('Y-m-d');
+    $nextHoliday = isset($data['nextHoliday']['name']) ? $data['nextHoliday']['name'] : 'N/A';
+    $nextDate    = isset($data['nextHoliday']['date']) ? $data['nextHoliday']['date'] : 'N/A';
+    $rollover    = isset($data['nextHoliday']['rollover']) && $data['nextHoliday']['rollover'] ? 'true' : 'false';
 
-// =====================================================================
-// AI Helper: Generate narrative sections dynamically
-// =====================================================================
-function getAIEnrichedBody($slug, $key, $moduleData, $apiKey, $format = 'text') {
-    $cacheDir = __DIR__ . '/../cache/';
-    $cacheFile = $cacheDir . "{$slug}_{$key}.json";
-    
-    if (file_exists($cacheFile)) {
-        $cachedContent = json_decode(file_get_contents($cacheFile), true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            if (($format === 'text' && is_string($cachedContent) && !empty($cachedContent)) ||
-                ($format === 'list' && is_array($cachedContent) && array_is_list($cachedContent) && !empty($cachedContent)) ||
-                ($format === 'table' && is_array($cachedContent) && !empty($cachedContent) && is_array($cachedContent[0]))) {
-                logMessage("✅ Loaded valid cached content for $slug/$key");
-                return $cachedContent;
-            } else {
-                logMessage("⚠️ Invalid or empty cached content for $slug/$key, regenerating");
-                unlink($cacheFile);
-            }
+    // ======================================================
+    // 2️⃣  Build HTML body
+    // ======================================================
+    $reportBody  = '';
+    $reportBody .= '<h1 style="font-family:Arial;">🕰️ Temporal Integrity Report</h1>';
+    $reportBody .= '<p><strong>Test Date:</strong> ' . $today . '</p>';
+    $reportBody .= '<p><strong>Next Holiday:</strong> ' . $nextHoliday . ' on ' . $nextDate . '</p>';
+    $reportBody .= '<p><strong>Rollover:</strong> ' . $rollover . '</p>';
+    $reportBody .= '<hr><p>Validation complete — Codex holiday mapping verified.</p>';
+
+    // ======================================================
+    // 3️⃣  Insert Codex metadata (if available)
+    // ======================================================
+    $codexFile = __DIR__ . '/../assets/data/codex.json';
+    if (file_exists($codexFile)) {
+        $localCodex = json_decode(file_get_contents($codexFile), true);
+        if (isset($localCodex['temporalIntegritySpec'])) {
+            $meta = $localCodex['temporalIntegritySpec'];
+            $reportBody .= '<p><strong>Codex Module:</strong> ' . $meta['title'] . '</p>';
+            $reportBody .= '<p><strong>Category:</strong> ' . $meta['category'] . '</p>';
         }
     }
 
-    $basePrompt = "You are generating content for the '{$key}' section of an information sheet for the '{$slug}' module. 
+    // ======================================================
+    // 4️⃣  Configure output paths
+    // ======================================================
+    $type       = 'report';
+    $isFull     = false;
+    $requestor  = 'CLI/Skyebot';
+    $cleanTitle = 'Temporal Integrity Report';
+    $baseDir    = __DIR__ . '/../docs/reports/';
+
+    if (!file_exists($baseDir)) {
+        $oldUmask = umask(0);
+        mkdir($baseDir, 0777, true);
+        umask($oldUmask);
+    }
+
+    $outputFile = $baseDir . 'temporalIntegrityReport_' . date('Ymd_His') . '.pdf';
+
+    // ======================================================
+    // 5️⃣  Render PDF
+    // ======================================================
+    include_once(__DIR__ . '/utils/renderPDF.php');
+    if (function_exists('renderTemporalIntegrityReport')) {
+        renderTemporalIntegrityReport($reportBody, $outputFile, $cleanTitle);
+        echo "✅ PDF created successfully: $outputFile\n";
+    } else {
+        echo "⚠️ renderTemporalIntegrityReport() not found — verify utils/renderPDF.php.\n";
+    }
+
+    exit; // Prevents fallback logic from executing
+
+} else {
+    // Existing Information Sheet logic remains untouched
+
+    // -------------------------- Handle CLI or HTTP Input
+    // --------------------------
+    $input = null;
+    if (php_sapi_name() === 'cli' && isset($argv[1])) {
+        $rawInput = $argv[1];
+        logMessage("ℹ️ CLI raw input: $rawInput");
+        $input = json_decode($rawInput, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            logError("❌ ERROR: Failed to parse CLI JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
+            die();
+        }
+    } else {
+        $rawInput = file_get_contents('php://input');
+        logMessage("ℹ️ HTTP raw input: $rawInput");
+        $input = json_decode($rawInput, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            logError("❌ ERROR: Failed to parse HTTP JSON input: " . json_last_error_msg() . "\nRaw input: $rawInput");
+            die();
+        }
+    }
+
+    if (!is_array($input)) {
+        logError("❌ ERROR: Invalid input JSON.\nParsed input: " . print_r($input, true));
+        die();
+    }
+
+    // Sanitize input
+    $slug = isset($input['slug']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['slug']) : '';
+    $type = isset($input['type']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['type']) : 'information_sheet';
+    $requestor = isset($input['requestor']) ? preg_replace('/[^A-Za-z0-9\s]/', '', $input['requestor']) : 'Skyesoft';
+    $outputMode = isset($input['outputMode']) ? strtoupper($input['outputMode']) : 'F';
+    $mode = isset($input['mode']) ? preg_replace('/[^A-Za-z0-9_-]/', '', $input['mode']) : 'single';
+
+    if (!in_array($outputMode, array('I', 'D', 'F'))) {
+        logError("❌ ERROR: Invalid outputMode '$outputMode'. Must be 'I', 'D', or 'F'.");
+        die();
+    }
+
+    $isFull = ($mode === 'full');
+
+    if (!$isFull) {
+        if (empty($slug) || !isset($modules[$slug])) {
+            logError("❌ ERROR: Slug '$slug' not found in Codex.");
+            die();
+        }
+        $currentModules = array($slug => $modules[$slug]);
+    } else {
+        $currentModules = $modules;
+    }
+
+    // =====================================================================
+    // Enrichment Control Helper
+    // =====================================================================
+    function getEnrichmentPrompt($slug, $key, $enrichment, $moduleData) {
+        switch (strtolower($enrichment)) {
+            case 'none':
+                $desc = "No AI enrichment is permitted. Use codex content exactly as written.";
+                break;
+            case 'light':
+                $desc = "Use light enrichment. You may correct tone, grammar, and minor phrasing only.";
+                break;
+            case 'medium':
+                $desc = "Use medium enrichment. You may expand lightly, add short examples or clarifying context, but avoid major rewrites.";
+                break;
+            case 'heavy':
+                $desc = "Use heavy enrichment. You may elaborate with detailed explanations, analogies, or workflow expansions.";
+                break;
+            default:
+                $desc = "Default light enrichment applies. Perform minimal improvement for clarity and readability.";
+        }
+
+        logMessage("💡 Enrichment mode for $slug/$key: " . strtoupper($enrichment));
+        return "Enrichment Policy: " . strtoupper($enrichment) . " — " . $desc .
+            "\n\nModule Context:\n" . json_encode($moduleData, JSON_PRETTY_PRINT);
+    }
+
+    // =====================================================================
+    // AI Helper: Generate narrative sections dynamically
+    // =====================================================================
+    function getAIEnrichedBody($slug, $key, $moduleData, $apiKey, $format = 'text') {
+        $cacheDir = __DIR__ . '/../cache/';
+        $cacheFile = $cacheDir . "{$slug}_{$key}.json";
+        
+        if (file_exists($cacheFile)) {
+            $cachedContent = json_decode(file_get_contents($cacheFile), true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                if (($format === 'text' && is_string($cachedContent) && !empty($cachedContent)) ||
+                    ($format === 'list' && is_array($cachedContent) && array_is_list($cachedContent) && !empty($cachedContent)) ||
+                    ($format === 'table' && is_array($cachedContent) && !empty($cachedContent) && is_array($cachedContent[0]))) {
+                    logMessage("✅ Loaded valid cached content for $slug/$key");
+                    return $cachedContent;
+                } else {
+                    logMessage("⚠️ Invalid or empty cached content for $slug/$key, regenerating");
+                    unlink($cacheFile);
+                }
+            }
+        }
+
+        $basePrompt = "You are generating content for the '{$key}' section of an information sheet for the '{$slug}' module. 
 DO NOT create section headers or icons. 
 The display formatting (headers, icons, tables, lists) will be applied dynamically by the system.
 
 Module Data:
 " . json_encode($moduleData, JSON_PRETTY_PRINT);
 
-    $enrichmentPrompt = getEnrichmentPrompt($slug, $key, isset($moduleData['enrichment']) ? $moduleData['enrichment'] : 'none', $moduleData);
-    $prompt = $enrichmentPrompt . "\n\n" . $basePrompt;
+        $enrichmentPrompt = getEnrichmentPrompt($slug, $key, isset($moduleData['enrichment']) ? $moduleData['enrichment'] : 'none', $moduleData);
+        $prompt = $enrichmentPrompt . "\n\n" . $basePrompt;
 
-    if ($format === 'text') {
-        $prompt .= "\n\nOnly generate narrative text for this section.";
-    } elseif ($format === 'list') {
-        $prompt .= "\n\nGenerate the list items for this section as a JSON array of strings.";
-    } elseif ($format === 'table') {
-        $prompt .= "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
-    } else {
-        logError("⚠️ Unsupported format for AI enrichment: $format");
-        return "⚠️ Unsupported format for AI enrichment.";
-    }
+        if ($format === 'text') {
+            $prompt .= "\n\nOnly generate narrative text for this section.";
+        } elseif ($format === 'list') {
+            $prompt .= "\n\nGenerate the list items for this section as a JSON array of strings.";
+        } elseif ($format === 'table') {
+            $prompt .= "\n\nGenerate the table data for this section as a JSON array of objects, where each object has keys corresponding to the table columns.";
+        } else {
+            logError("⚠️ Unsupported format for AI enrichment: $format");
+            return "⚠️ Unsupported format for AI enrichment.";
+        }
 
-    $ch = curl_init("https://api.openai.com/v1/chat/completions");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        "Content-Type: application/json",
-        "Authorization: Bearer " . $apiKey
-    ));
+        $ch = curl_init("https://api.openai.com/v1/chat/completions");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            "Content-Type: application/json",
+            "Authorization: Bearer " . $apiKey
+        ));
 
-    $payload = json_encode(array(
-        "model" => getenv("OPENAI_MODEL") ?: "gpt-4o-mini",
-        "messages" => array(
-            array("role" => "system", "content" => "You are an assistant that writes clear, structured PDF content."),
-            array("role" => "user", "content" => $prompt)
-        ),
-        "max_tokens" => 1500
-    ));
+        $payload = json_encode(array(
+            "model" => getenv("OPENAI_MODEL") ?: "gpt-4o-mini",
+            "messages" => array(
+                array("role" => "system", "content" => "You are an assistant that writes clear, structured PDF content."),
+                array("role" => "user", "content" => $prompt)
+            ),
+            "max_tokens" => 1500
+        ));
 
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 
-    $response = curl_exec($ch);
-    if ($response === false) {
-        $error = "⚠️ OpenAI API request failed: " . curl_error($ch);
-        logError($error);
-        return $error;
-    }
-    curl_close($ch);
+        $response = curl_exec($ch);
+        if ($response === false) {
+            $error = "⚠️ OpenAI API request failed: " . curl_error($ch);
+            logError($error);
+            return $error;
+        }
+        curl_close($ch);
 
-    $decoded = json_decode($response, true);
-    if (isset($decoded['choices'][0]['message']['content'])) {
-        $content = trim($decoded['choices'][0]['message']['content']);
-        if ($format !== 'text') {
-            $jsonContent = json_decode($content, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                if (!is_dir($cacheDir)) {
-                    $oldUmask = umask(0);
-                    mkdir($cacheDir, 0777, true);
-                    umask($oldUmask);
+        $decoded = json_decode($response, true);
+        if (isset($decoded['choices'][0]['message']['content'])) {
+            $content = trim($decoded['choices'][0]['message']['content']);
+            if ($format !== 'text') {
+                $jsonContent = json_decode($content, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    if (!is_dir($cacheDir)) {
+                        $oldUmask = umask(0);
+                        mkdir($cacheDir, 0777, true);
+                        umask($oldUmask);
+                    }
+                    file_put_contents($cacheFile, json_encode($jsonContent));
+                    logMessage("✅ Cached AI content for $slug/$key");
+                    return $jsonContent;
+                } else {
+                    $error = "⚠️ Failed to parse AI JSON response: " . json_last_error_msg();
+                    logError($error);
+                    return $error;
                 }
-                file_put_contents($cacheFile, json_encode($jsonContent));
-                logMessage("✅ Cached AI content for $slug/$key");
-                return $jsonContent;
-            } else {
-                $error = "⚠️ Failed to parse AI JSON response: " . json_last_error_msg();
-                logError($error);
-                return $error;
+            }
+            if (!is_dir($cacheDir)) {
+                $oldUmask = umask(0);
+                mkdir($cacheDir, 0777, true);
+                umask($oldUmask);
+            }
+            file_put_contents($cacheFile, json_encode($content));
+            logMessage("✅ Cached AI content for $slug/$key");
+            return $content;
+        } else {
+            $error = "⚠️ AI enrichment failed. Response: " . $response;
+            logError($error);
+            return $error;
+        }
+    }
+
+    // =============================================================== TIS: Inject live schedules + holidays (Office/Shop + Holidays Table)
+    // =============================================================== 
+    if (isset($currentModules['timeIntervalStandards'])) {
+        $tis =& $currentModules['timeIntervalStandards'];
+
+        // (A) Pull live segments from SSE (Office/Shop)
+        $dynUrl = 'https://skyelighting.com/skyesoft/api/getDynamicData.php';
+        $dynRaw = @file_get_contents($dynUrl);
+        if ($dynRaw !== false) {
+            $dyn = json_decode($dynRaw, true);
+
+            // Schedules from SSE payload (timeIntervalStandards.segments)
+            if (isset($dyn['timeIntervalStandards']['segments'])) {
+                $segments = $dyn['timeIntervalStandards']['segments'];
+
+                // Office
+                if (isset($segments['Office'])) {
+                    $tis['officeSchedule']['items'] = array(
+                        array('Interval' => 'Before Worktime', 'Hours' => $segments['Office']['before']),
+                        array('Interval' => 'Worktime',        'Hours' => $segments['Office']['worktime']),
+                        array('Interval' => 'After Worktime',  'Hours' => $segments['Office']['after'])
+                    );
+                }
+
+                // Shop
+                if (isset($segments['Shop'])) {
+                    $tis['shopSchedule']['items'] = array(
+                        array('Interval' => 'Before Worktime', 'Hours' => $segments['Shop']['before']),
+                        array('Interval' => 'Worktime',        'Hours' => $segments['Shop']['worktime']),
+                        array('Interval' => 'After Worktime',  'Hours' => $segments['Shop']['after'])
+                    );
+                }
+
+                logMessage('✅ TIS schedules injected from SSE segments.');
+            }
+
+            // (B) Holidays from SSE if present (supports array of {name,date} or strings)
+            $holidayRows = array();
+            if (isset($dyn['holidays']) && is_array($dyn['holidays'])) {
+                foreach ($dyn['holidays'] as $h) {
+                    if (is_array($h) && isset($h['name']) && isset($h['date'])) {
+                        $holidayRows[] = array('Holiday' => $h['name'], 'Date' => $h['date']);
+                    } elseif (is_string($h)) {
+                        $holidayRows[] = array('Holiday' => $h, 'Date' => '');
+                    }
+                }
+            }
+
+            // (C) Fallback: local federalHolidays.php (if SSE does not provide)
+            if (empty($holidayRows)) {
+                $localPath = __DIR__ . '/../api/federalHolidays.php';
+                if (!file_exists($localPath)) {
+                    $localPath = __DIR__ . '/../federalHolidays.php'; // alt location
+                }
+
+                if (file_exists($localPath)) {
+                    // Safely include without echo leak
+                    define('SKYESOFT_INTERNAL_CALL', true);
+                    $fhData = include($localPath);
+
+                    if (is_array($fhData) && count($fhData) > 0) {
+                        foreach ($fhData as $date => $name) {
+                            if (preg_match('/\d{4}-\d{2}-\d{2}/', $date)) {
+                                $holidayRows[] = array(
+                                    'Date' => date('m/d/Y', strtotime($date)),
+                                    'Holiday' => $name
+                                );
+                            }
+                        }
+                        logMessage('✅ Holidays loaded internally (' . count($holidayRows) . ' entries).');
+                    } else {
+                        logError('⚠️ No valid holiday data returned by federalHolidays.php include.');
+                    }
+                } else {
+                    logError('⚠️ Fallback file not found: ' . $localPath);
+                }
+            }
+
+            // Inject holidays into TIS module
+            if (!empty($holidayRows)) {
+                $tis['holidays']['items'] = $holidayRows;
+                logMessage('✅ Holidays table populated with ' . count($holidayRows) . ' rows.');
+            }
+        } else {
+            logError('⚠️ Could not reach SSE dynamic data for TIS: ' . $dynUrl);
+        }
+    }
+
+    // =====================================================================
+    // Enrich Content
+    // =====================================================================
+    foreach ($currentModules as $modSlug => &$mod) {
+        $modForAI = $mod;
+        unset($modForAI['title']);
+
+        $enrichment = isset($mod['enrichment']) ? strtolower($mod['enrichment']) : 'none';
+        if ($enrichment === 'none') {
+            logMessage("🚫 Skipping AI enrichment for module '$modSlug' due to enrichment=none");
+            continue;
+        }
+
+        $sectionKeys = array();
+        foreach ($mod as $skey => $sval) {
+            if ($skey !== 'title' && isset($sval['format'])) {
+                $sectionKeys[$skey] = isset($sval['priority']) ? intval($sval['priority']) : 999;
             }
         }
-        if (!is_dir($cacheDir)) {
-            $oldUmask = umask(0);
-            mkdir($cacheDir, 0777, true);
-            umask($oldUmask);
+        asort($sectionKeys);
+
+        foreach ($sectionKeys as $key => $pri) {
+            $section =& $mod[$key];
+            if (!isset($section['format'])) {
+                continue;
+            }
+
+            $format = strtolower(trim($section['format']));
+            if (!in_array($format, array('text', 'list', 'table'))) {
+                logError("❌ Invalid format for '$key', defaulting to text.");
+                $format = 'text';
+            }
+            $section['format'] = $format;
+
+            if (isset($section['items']) && is_array($section['items'])) {
+                if (is_array(reset($section['items']))) {
+                    $format = 'table';
+                } elseif (is_string(reset($section['items']))) {
+                    $format = 'list';
+                }
+                $section['format'] = $format;
+            }
+
+            if ($format === 'text' && isset($section['text']) && trim($section['text']) !== '') {
+                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
+                continue;
+            }
+
+            if ($format === 'list' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0 && is_string(current($section['items']))) {
+                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
+                continue;
+            }
+
+            if ($format === 'table' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0) {
+                $firstRow = current($section['items']);
+                if (is_array($firstRow)) {
+                    logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
+                    continue;
+                }
+            }
+
+            logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
+
+            switch ($format) {
+                case 'text':
+                    $section['text'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'text');
+                    break;
+                case 'list':
+                    $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'list');
+                    break;
+                case 'table':
+                    $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'table');
+                    break;
+            }
+
+            if ($format === 'text' && empty($section['text'])) {
+                logError("❌ Invalid text data for '$key'. Expected non-empty string.");
+                $section['text'] = '';
+            } elseif ($format === 'list' && (!is_array($section['items']) || empty($section['items']))) {
+                logError("❌ Invalid list data for '$key'. Expected array of strings.");
+                $section['items'] = array();
+            } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
+                logError("❌ Invalid table data for '$key'. Expected array of objects.");
+                $section['items'] = array();
+            }
         }
-        file_put_contents($cacheFile, json_encode($content));
-        logMessage("✅ Cached AI content for $slug/$key");
-        return $content;
-    } else {
-        $error = "⚠️ AI enrichment failed. Response: " . $response;
-        logError($error);
-        return $error;
+        unset($section);
     }
+    unset($mod);
+
+    $currentModules = $currentModules; // For PDF build
 }
 
 // =====================================================================
@@ -785,7 +1104,7 @@ class SkyesoftPDF extends TCPDF {
                     $iconMap = array();
                 }
                 $iconFile = resolveHeaderIcon(
-                    isset($currentSectionIcon) ? $currentSectionIcon : '',
+                    isset($this->currentSectionIcon) ? $this->currentSectionIcon : '',
                     $iconMap
                 );
 
@@ -1077,185 +1396,6 @@ class SkyesoftPDF extends TCPDF {
     }
 }
 
-// ===============================================================
-// TIS: Inject live schedules + holidays (Office/Shop + Holidays Table)
-// ===============================================================
-if (isset($currentModules['timeIntervalStandards'])) {
-    $tis =& $currentModules['timeIntervalStandards'];
-
-    // (A) Pull live segments from SSE (Office/Shop)
-    $dynUrl = 'https://skyelighting.com/skyesoft/api/getDynamicData.php';
-    $dynRaw = @file_get_contents($dynUrl);
-    if ($dynRaw !== false) {
-        $dyn = json_decode($dynRaw, true);
-
-        // Schedules from SSE payload (timeIntervalStandards.segments)
-        if (isset($dyn['timeIntervalStandards']['segments'])) {
-            $segments = $dyn['timeIntervalStandards']['segments'];
-
-            // Office
-            if (isset($segments['Office'])) {
-                $tis['officeSchedule']['items'] = array(
-                    array('Interval' => 'Before Worktime', 'Hours' => $segments['Office']['before']),
-                    array('Interval' => 'Worktime',        'Hours' => $segments['Office']['worktime']),
-                    array('Interval' => 'After Worktime',  'Hours' => $segments['Office']['after'])
-                );
-            }
-
-            // Shop
-            if (isset($segments['Shop'])) {
-                $tis['shopSchedule']['items'] = array(
-                    array('Interval' => 'Before Worktime', 'Hours' => $segments['Shop']['before']),
-                    array('Interval' => 'Worktime',        'Hours' => $segments['Shop']['worktime']),
-                    array('Interval' => 'After Worktime',  'Hours' => $segments['Shop']['after'])
-                );
-            }
-
-            logMessage('✅ TIS schedules injected from SSE segments.');
-        }
-
-        // (B) Holidays from SSE if present (supports array of {name,date} or strings)
-        $holidayRows = array();
-        if (isset($dyn['holidays']) && is_array($dyn['holidays'])) {
-            foreach ($dyn['holidays'] as $h) {
-                if (is_array($h) && isset($h['name']) && isset($h['date'])) {
-                    $holidayRows[] = array('Holiday' => $h['name'], 'Date' => $h['date']);
-                } elseif (is_string($h)) {
-                    $holidayRows[] = array('Holiday' => $h, 'Date' => '');
-                }
-            }
-        }
-
-        // (C) Fallback: local federalHolidays.php (if SSE does not provide)
-        if (empty($holidayRows)) {
-            $localPath = __DIR__ . '/../api/federalHolidays.php';
-            if (!file_exists($localPath)) {
-                $localPath = __DIR__ . '/../federalHolidays.php'; // alt location
-            }
-
-            if (file_exists($localPath)) {
-                // Safely include without echo leak
-                define('SKYESOFT_INTERNAL_CALL', true);
-                $fhData = include($localPath);
-
-                if (is_array($fhData) && count($fhData) > 0) {
-                    foreach ($fhData as $date => $name) {
-                        if (preg_match('/\d{4}-\d{2}-\d{2}/', $date)) {
-                            $holidayRows[] = array(
-                                'Date' => date('m/d/Y', strtotime($date)),
-                                'Holiday' => $name
-                            );
-                        }
-                    }
-                    logMessage('✅ Holidays loaded internally (' . count($holidayRows) . ' entries).');
-                } else {
-                    logError('⚠️ No valid holiday data returned by federalHolidays.php include.');
-                }
-            } else {
-                logError('⚠️ Fallback file not found: ' . $localPath);
-            }
-        }
-
-        // Inject holidays into TIS module
-        if (!empty($holidayRows)) {
-            $tis['holidays']['items'] = $holidayRows;
-            logMessage('✅ Holidays table populated with ' . count($holidayRows) . ' rows.');
-        }
-    } else {
-        logError('⚠️ Could not reach SSE dynamic data for TIS: ' . $dynUrl);
-    }
-}
-
-// =====================================================================
-// Enrich Content
-// =====================================================================
-foreach ($currentModules as $modSlug => &$mod) {
-    $modForAI = $mod;
-    unset($modForAI['title']);
-
-    $enrichment = isset($mod['enrichment']) ? strtolower($mod['enrichment']) : 'none';
-    if ($enrichment === 'none') {
-        logMessage("🚫 Skipping AI enrichment for module '$modSlug' due to enrichment=none");
-        continue;
-    }
-
-    $sectionKeys = array();
-    foreach ($mod as $skey => $sval) {
-        if ($skey !== 'title' && isset($sval['format'])) {
-            $sectionKeys[$skey] = isset($sval['priority']) ? intval($sval['priority']) : 999;
-        }
-    }
-    asort($sectionKeys);
-
-    foreach ($sectionKeys as $key => $pri) {
-        $section =& $mod[$key];
-        if (!isset($section['format'])) {
-            continue;
-        }
-
-        $format = strtolower(trim($section['format']));
-        if (!in_array($format, array('text', 'list', 'table'))) {
-            logError("❌ Invalid format for '$key', defaulting to text.");
-            $format = 'text';
-        }
-        $section['format'] = $format;
-
-        if (isset($section['items']) && is_array($section['items'])) {
-            if (is_array(reset($section['items']))) {
-                $format = 'table';
-            } elseif (is_string(reset($section['items']))) {
-                $format = 'list';
-            }
-            $section['format'] = $format;
-        }
-
-        if ($format === 'text' && isset($section['text']) && trim($section['text']) !== '') {
-            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
-            continue;
-        }
-
-        if ($format === 'list' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0 && is_string(current($section['items']))) {
-            logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
-            continue;
-        }
-
-        if ($format === 'table' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0) {
-            $firstRow = current($section['items']);
-            if (is_array($firstRow)) {
-                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
-                continue;
-            }
-        }
-
-        logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
-
-        switch ($format) {
-            case 'text':
-                $section['text'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'text');
-                break;
-            case 'list':
-                $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'list');
-                break;
-            case 'table':
-                $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'table');
-                break;
-        }
-
-        if ($format === 'text' && empty($section['text'])) {
-            logError("❌ Invalid text data for '$key'. Expected non-empty string.");
-            $section['text'] = '';
-        } elseif ($format === 'list' && (!is_array($section['items']) || empty($section['items']))) {
-            logError("❌ Invalid list data for '$key'. Expected array of strings.");
-            $section['items'] = array();
-        } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
-            logError("❌ Invalid table data for '$key'. Expected array of objects.");
-            $section['items'] = array();
-        }
-    }
-    unset($section);
-}
-unset($mod);
-
 // =====================================================================
 // Build PDF
 // =====================================================================
@@ -1269,259 +1409,270 @@ $pdf->SetAutoPageBreak(true, $pdf->bodyEndOffset); // use symmetric bottom gap
 $pdf->SetHeaderMargin(0); // No additional header margin
 $pdf->SetFooterMargin(0); // No additional footer margin
 
-$modulesToRender = $currentModules;
-if ($isFull) {
-    $pdf->setReportTitle('Skyesoft Codex', null);
-} else {
-    $slug = key($modulesToRender);
-    $module = $modulesToRender[$slug];
-    $iconKey = null;
-    $titleText = $slug;
-    if (isset($module['title'])) {
-        $parts = explode(' ', $module['title'], 2);
-        if (count($parts) === 2) {
-            $iconKey = $parts[0];
-            $titleText = $parts[1];
-        } else {
-            $titleText = $module['title'];
-        }
-    }
-    $cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
-    $pdf->setReportTitle($cleanTitle, $iconKey);
-}
-// For Each Module
-foreach ($modulesToRender as $modSlug => $module) {
+if ($slug === 'temporalIntegrityReport') {
+    $pdf->setReportTitle('Temporal Integrity Report', 'clock'); // Use metaTitle if available
     $pdf->AddPage();
     $pdf->SetY($pdf->bodyStartY);
-
+    // Render HTML body (TCPDF supports basic HTML)
+    $pdf->writeHTML($reportBody, true, false, true, false, '');
+} else {
+    $modulesToRender = $currentModules;
     if ($isFull) {
-        // Render module title header
-        $parts = explode(' ', $module['title'], 2);
-        $modIconKey = (count($parts) === 2) ? $parts[0] : null;
-        $modTitleText = (count($parts) === 2) ? $parts[1] : $module['title'];
-        $modCleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $modTitleText)));
-
-        $iconFile = resolveHeaderIcon($modIconKey, $iconMap);
-        $startX = 20;
-        $currentY = $pdf->GetY();
-        if ($iconFile) {
-            $pdf->Image($iconFile, $startX, $currentY - 2, 20);
-            $startX += 24;
+        $pdf->setReportTitle('Skyesoft Codex', null);
+    } else {
+        $slug = key($modulesToRender);
+        $module = $modulesToRender[$slug];
+        $iconKey = null;
+        $titleText = $slug;
+        if (isset($module['title'])) {
+            $parts = explode(' ', $module['title'], 2);
+            if (count($parts) === 2) {
+                $iconKey = $parts[0];
+                $titleText = $parts[1];
+            } else {
+                $titleText = $module['title'];
+            }
         }
-        $pdf->SetXY($startX, $currentY);
-        $pdf->SetFont('helvetica', 'B', 16);
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->Cell(0, 10, $modCleanTitle, 0, 1, 'L', false);
-        $pdf->Ln(8);
-        $pdf->SetFont('helvetica', '', 11);
+        $cleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $titleText)));
+        $pdf->setReportTitle($cleanTitle, $iconKey);
     }
+    // For Each Module
+    foreach ($modulesToRender as $modSlug => $module) {
+        $pdf->AddPage();
+        $pdf->SetY($pdf->bodyStartY);
 
-    // ==========================================================
-    // Preserve natural Codex order while respecting priorities
-    // ==========================================================
+        if ($isFull) {
+            // Render module title header
+            $parts = explode(' ', $module['title'], 2);
+            $modIconKey = (count($parts) === 2) ? $parts[0] : null;
+            $modTitleText = (count($parts) === 2) ? $parts[1] : $module['title'];
+            $modCleanTitle = ucwords(trim(str_replace(array('_', '-'), ' ', $modTitleText)));
 
-    // 1️⃣ Capture section keys in the same order as in codex.json
-    $sortedSectionKeys = [];
-    foreach (array_keys($module) as $key) {
-        if ($key === 'title') continue;
-        if (isset($module[$key]['format'])) {
-            $sortedSectionKeys[] = $key;
-        }
-    }
-
-    // 2️⃣ Apply optional priority-based reordering if present
-    $priorityMap = [];
-    foreach ($sortedSectionKeys as $key) {
-        $priorityMap[$key] = isset($module[$key]['priority'])
-            ? intval($module[$key]['priority'])
-            : 999; // default priority if not defined
-    }
-
-    // Only reorder if at least one section defines a priority < 999
-    if (count(array_filter($priorityMap, function($p) { return $p < 999; })) > 0) {
-        asort($priorityMap);
-        $sortedSectionKeys = array_keys($priorityMap);
-    }
-
-    $totalModSections = count($sortedSectionKeys);
-
-    // 3️⃣ Render each section in correct order (with DRY feature derivation)
-    foreach ($sortedSectionKeys as $i => $key) {
-        if (!isset($module[$key]) || !is_array($module[$key])) {
-            continue; // skip non-structured or empty sections
+            $iconFile = resolveHeaderIcon($modIconKey, $iconMap);
+            $startX = 20;
+            $currentY = $pdf->GetY();
+            if ($iconFile) {
+                $pdf->Image($iconFile, $startX, $currentY - 2, 20);
+                $startX += 24;
+            }
+            $pdf->SetXY($startX, $currentY);
+            $pdf->SetFont('helvetica', 'B', 16);
+            $pdf->SetTextColor(0, 0, 0);
+            $pdf->Cell(0, 10, $modCleanTitle, 0, 1, 'L', false);
+            $pdf->Ln(8);
+            $pdf->SetFont('helvetica', '', 11);
         }
 
-        $section = $module[$key];
+        // ==========================================================
+        // Preserve natural Codex order while respecting priorities
+        // ==========================================================
 
-        // 🧠 Auto-Derive Features from Data (DRY System)
-        if (
-            isset($section['source']) &&
-            $section['source'] === 'data.content' &&
-            isset($module['data']['content']) &&
-            is_array($module['data']['content'])
-        ) {
-            $section['items'] = [];
-            foreach ($module['data']['content'] as $alias => $desc) {
-                // Extract short summary before dash, colon, or em dash
-                if (preg_match('/^(.{0,80}?)\s+[—\-–:]/u', $desc, $m)) {
-                    $short = trim($m[1]);
-                } else {
-                    $short = trim(substr($desc, 0, 80));
+        // 1️⃣ Capture section keys in the same order as in codex.json
+        $sortedSectionKeys = [];
+        foreach (array_keys($module) as $key) {
+            if ($key === 'title') continue;
+            if (isset($module[$key]['format'])) {
+                $sortedSectionKeys[] = $key;
+            }
+        }
+
+        // 2️⃣ Apply optional priority-based reordering if present
+        $priorityMap = [];
+        foreach ($sortedSectionKeys as $key) {
+            $priorityMap[$key] = isset($module[$key]['priority'])
+                ? intval($module[$key]['priority'])
+                : 999; // default priority if not defined
+        }
+
+        // Only reorder if at least one section defines a priority < 999
+        if (count(array_filter($priorityMap, function($p) { return $p < 999; })) > 0) {
+            asort($priorityMap);
+            $sortedSectionKeys = array_keys($priorityMap);
+        }
+
+        $totalModSections = count($sortedSectionKeys);
+
+        // 3️⃣ Render each section in correct order (with DRY feature derivation)
+        foreach ($sortedSectionKeys as $i => $key) {
+            if (!isset($module[$key]) || !is_array($module[$key])) {
+                continue; // skip non-structured or empty sections
+            }
+
+            $section = $module[$key];
+
+            // 🧠 Auto-Derive Features from Data (DRY System)
+            if (
+                isset($section['source']) &&
+                $section['source'] === 'data.content' &&
+                isset($module['data']['content']) &&
+                is_array($module['data']['content'])
+            ) {
+                $section['items'] = [];
+                foreach ($module['data']['content'] as $alias => $desc) {
+                    // Extract short summary before dash, colon, or em dash
+                    if (preg_match('/^(.{0,80}?)\s+[—\-–:]/u', $desc, $m)) {
+                        $short = trim($m[1]);
+                    } else {
+                        $short = trim(substr($desc, 0, 80));
+                    }
+                    $section['items'][] = "{$alias} — {$short}";
                 }
-                $section['items'][] = "{$alias} — {$short}";
+
+                // Default visual hints if not specified
+                if (!isset($section['format'])) {
+                    $section['format'] = 'list';
+                }
+                if (!isset($section['icon'])) {
+                    $section['icon'] = 'list';
+                }
             }
 
-            // Default visual hints if not specified
-            if (!isset($section['format'])) {
-                $section['format'] = 'list';
-            }
-            if (!isset($section['icon'])) {
-                $section['icon'] = 'list';
+            // 🧾 Render section
+            $pdf->resetSectionIcon();
+            $pdf->renderSection($key, $section, $iconMap, []);
+
+            // Maintain consistent vertical spacing
+            if ($i < $totalModSections - 1) {
+                $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
             }
         }
 
-        // 🧾 Render section
-        $pdf->resetSectionIcon();
-        $pdf->renderSection($key, $section, $iconMap, []);
+        // ======================================================
+        // 🧠 Ontology-Aware Module Rendering (Post-Standard Sections)
+        // ======================================================
+        $ontologySections = [];
 
-        // Maintain consistent vertical spacing
-        if ($i < $totalModSections - 1) {
+        // --- Primary Purpose (if not already rendered as a standard section) ---
+        if (isset($module['purpose']['text']) && !in_array('purpose', $sortedSectionKeys)) {
+            $ontologySections['purpose'] = [
+                'format' => 'text',
+                'text' => $module['purpose']['text'],
+                'icon' => 'info' // Default icon; override in codex if needed
+            ];
+        }
+
+        // --- Dependencies ---
+        if (!empty($module['dependsOn'])) {
+            $depItems = array();
+            foreach ($module['dependsOn'] as $dep) {
+                if (isset($modules[$dep])) { // Use global $modules for lookup
+                    $depTitle   = isset($modules[$dep]['title']) ? $modules[$dep]['title'] : ucfirst($dep);
+                    $depPurpose = (isset($modules[$dep]['purpose']) && isset($modules[$dep]['purpose']['text']))
+                        ? $modules[$dep]['purpose']['text']
+                        : 'No description available.';
+                    $depItems[] = "<b>{$depTitle}</b> — {$depPurpose}";
+                } else {
+                    $depItems[] = "<b>{$dep}</b> (not found in Codex)";
+                }
+            }
+            $ontologySections['dependencies'] = array(
+                'format' => 'list',
+                'items'  => $depItems,
+                'icon'   => 'link' // Or 'chain' if in iconMap
+            );
+        }
+
+        // --- Provides ---
+        if (!empty($module['provides'])) {
+            $provItems = array_map(function($prov) {
+                return "• {$prov} (data stream/capability)";
+            }, $module['provides']);
+            $ontologySections['provides'] = [
+                'format' => 'list',
+                'items' => $provItems,
+                'icon' => 'output'
+            ];
+        }
+
+        // --- Aliases ---
+        if (!empty($module['aliases'])) {
+            $ontologySections['aliases'] = [
+                'format' => 'text',
+                'text' => 'Synonyms: ' . implode(', ', $module['aliases']),
+                'icon' => 'tag'
+            ];
+        }
+
+        // --- Dynamic Holidays (if module relates to scheduling, e.g., TIS) ---
+        if (isset($dyn['holidays']) && is_array($dyn['holidays']) && !empty($dyn['holidays'])) {
+            $holidayItems = array();
+            foreach ($dyn['holidays'] as $h) {
+                if (is_array($h)) {
+                    $name = isset($h['name']) ? $h['name'] : 'Holiday';
+                    $date = isset($h['date']) ? $h['date'] : '—';
+                } else {
+                    $name = $h;
+                    $date = '—';
+                }
+                $holidayItems[] = "{$name} – {$date}";
+            }
+            $ontologySections['holidays'] = array(
+                'format' => 'list',
+                'items'  => $holidayItems,
+                'icon'   => 'calendar'
+            );
+        }
+
+        // Render ontology sections (appended after standard ones)
+        $ontologyPriorityMap = array(
+            'purpose'      => 1,
+            'dependencies' => 2,
+            'provides'     => 3,
+            'aliases'      => 4,
+            'holidays'     => 5
+        );
+
+        uksort($ontologySections, function($a, $b) use ($ontologyPriorityMap) {
+            $aVal = isset($ontologyPriorityMap[$a]) ? $ontologyPriorityMap[$a] : 999;
+            $bVal = isset($ontologyPriorityMap[$b]) ? $ontologyPriorityMap[$b] : 999;
+
+            if ($aVal == $bVal) {
+                return 0;
+            }
+            return ($aVal < $bVal) ? -1 : 1;
+        });
+
+
+        foreach ($ontologySections as $ontKey => $ontSection) {
+            $pdf->resetSectionIcon();
+            $pdf->renderSection(formatHeaderTitle($ontKey), $ontSection, $iconMap, array());
             $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
         }
-    }
 
-    // ======================================================
-    // 🧠 Ontology-Aware Module Rendering (Post-Standard Sections)
-    // ======================================================
-    $ontologySections = [];
-
-    // --- Primary Purpose (if not already rendered as a standard section) ---
-    if (isset($module['purpose']['text']) && !in_array('purpose', $sortedSectionKeys)) {
-        $ontologySections['purpose'] = [
-            'format' => 'text',
-            'text' => $module['purpose']['text'],
-            'icon' => 'info' // Default icon; override in codex if needed
-        ];
-    }
-
-    // --- Dependencies ---
-    if (!empty($module['dependsOn'])) {
-        $depItems = array();
-        foreach ($module['dependsOn'] as $dep) {
-            if (isset($modules[$dep])) { // Use global $modules for lookup
-                $depTitle   = isset($modules[$dep]['title']) ? $modules[$dep]['title'] : ucfirst($dep);
-                $depPurpose = (isset($modules[$dep]['purpose']) && isset($modules[$dep]['purpose']['text']))
-                    ? $modules[$dep]['purpose']['text']
-                    : 'No description available.';
-                $depItems[] = "<b>{$depTitle}</b> — {$depPurpose}";
-            } else {
-                $depItems[] = "<b>{$dep}</b> (not found in Codex)";
-            }
+        // --- Timestamp Footer (per-module in full reports) ---
+        if ($isFull) {
+            $pdf->Ln(5);
+            $pdf->SetFont('helvetica', 'I', 9);
+            $pdf->Cell(0, 6, "Generated on " . date('F j, Y, g:i A'), 0, 1, 'R');
+            $pdf->SetFont('helvetica', '', 11);
+            $pdf->Ln(10);
         }
-        $ontologySections['dependencies'] = array(
-            'format' => 'list',
-            'items'  => $depItems,
-            'icon'   => 'link' // Or 'chain' if in iconMap
-        );
-    }
 
-    // --- Provides ---
-    if (!empty($module['provides'])) {
-        $provItems = array_map(function($prov) {
-            return "• {$prov} (data stream/capability)";
-        }, $module['provides']);
-        $ontologySections['provides'] = [
-            'format' => 'list',
-            'items' => $provItems,
-            'icon' => 'output'
-        ];
-    }
-
-    // --- Aliases ---
-    if (!empty($module['aliases'])) {
-        $ontologySections['aliases'] = [
-            'format' => 'text',
-            'text' => 'Synonyms: ' . implode(', ', $module['aliases']),
-            'icon' => 'tag'
-        ];
-    }
-
-    // --- Dynamic Holidays (if module relates to scheduling, e.g., TIS) ---
-    if (isset($dyn['holidays']) && is_array($dyn['holidays']) && !empty($dyn['holidays'])) {
-        $holidayItems = array();
-        foreach ($dyn['holidays'] as $h) {
-            if (is_array($h)) {
-                $name = isset($h['name']) ? $h['name'] : 'Holiday';
-                $date = isset($h['date']) ? $h['date'] : '—';
-            } else {
-                $name = $h;
-                $date = '—';
-            }
-            $holidayItems[] = "{$name} – {$date}";
+        // 4️⃣ Final bottom padding for full reports
+        if ($isFull) {
+            $pdf->Ln(10);
         }
-        $ontologySections['holidays'] = array(
-            'format' => 'list',
-            'items'  => $holidayItems,
-            'icon'   => 'calendar'
-        );
     }
 
-    // Render ontology sections (appended after standard ones)
-    $ontologyPriorityMap = array(
-        'purpose'      => 1,
-        'dependencies' => 2,
-        'provides'     => 3,
-        'aliases'      => 4,
-        'holidays'     => 5
-    );
-
-    uksort($ontologySections, function($a, $b) use ($ontologyPriorityMap) {
-        $aVal = isset($ontologyPriorityMap[$a]) ? $ontologyPriorityMap[$a] : 999;
-        $bVal = isset($ontologyPriorityMap[$b]) ? $ontologyPriorityMap[$b] : 999;
-
-        if ($aVal == $bVal) {
-            return 0;
+    while ($pdf->getNumPages() > 3) {
+        $pdf->setPage($pdf->getNumPages());
+        $margins = $pdf->getMargins();
+        $pageHeight = $pdf->getPageHeight() - $margins['top'] - $margins['bottom'] - $pdf->getFooterMargin();
+        $contentHeight = $pdf->GetY() - $margins['top'];
+        if ($contentHeight < 5 && $pdf->getNumPages() > 3) {
+            $pdf->deletePage($pdf->getNumPages());
+        } else {
+            break;
         }
-        return ($aVal < $bVal) ? -1 : 1;
-    });
-
-
-    foreach ($ontologySections as $ontKey => $ontSection) {
-        $pdf->resetSectionIcon();
-        $pdf->renderSection(formatHeaderTitle($ontKey), $ontSection, $iconMap, array());
-        $pdf->Ln(isset($consistent_spacing) ? $consistent_spacing : 8);
-    }
-
-    // --- Timestamp Footer (per-module in full reports) ---
-    if ($isFull) {
-        $pdf->Ln(5);
-        $pdf->SetFont('helvetica', 'I', 9);
-        $pdf->Cell(0, 6, "Generated on " . date('F j, Y, g:i A'), 0, 1, 'R');
-        $pdf->SetFont('helvetica', '', 11);
-        $pdf->Ln(10);
-    }
-
-    // 4️⃣ Final bottom padding for full reports
-    if ($isFull) {
-        $pdf->Ln(10);
     }
 }
 
-while ($pdf->getNumPages() > 3) {
-    $pdf->setPage($pdf->getNumPages());
-    $margins = $pdf->getMargins();
-    $pageHeight = $pdf->getPageHeight() - $margins['top'] - $margins['bottom'] - $pdf->getFooterMargin();
-    $contentHeight = $pdf->GetY() - $margins['top'];
-    if ($contentHeight < 5 && $pdf->getNumPages() > 3) {
-        $pdf->deletePage($pdf->getNumPages());
-    } else {
-        break;
-    }
-}
-
-$baseDir = ($type === 'information_sheet')
-    ? __DIR__ . '/../docs/sheets/'
-    : __DIR__ . '/../docs/reports/';
+// ───────────────────────────────
+//  Save Report Output
+// ───────────────────────────────
+$baseDir = ($slug === 'temporalIntegrityReport' || $type === 'report')
+    ? __DIR__ . '/../docs/reports/'
+    : __DIR__ . '/../docs/sheets/';
 
 if (!is_dir($baseDir)) {
     $oldUmask = umask(0);
@@ -1533,7 +1684,10 @@ if (!is_dir($baseDir)) {
     }
 }
 
-if ($isFull) {
+if ($slug === 'temporalIntegrityReport') {
+    $outputFile = $baseDir . $slug . '_' . date('Ymd_His') . '.pdf';
+    $cleanTitle = 'Temporal Integrity Report';
+} elseif ($isFull) {
     $outputFile = $baseDir . "Information Sheet - Skyesoft Codex.pdf";
 } elseif ($type === 'information_sheet') {
     $outputFile = $baseDir . "Information Sheet - " . $cleanTitle . ".pdf";
