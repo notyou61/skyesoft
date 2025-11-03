@@ -158,7 +158,7 @@ function renderDocument($module, $sseData = array()) {
         $format = $section['format'];
         $icon = isset($section['icon']) ? $section['icon'] . ' ' : '';
         $html .= "<h2>{$icon}" . ucfirst($key) . "</h2>";
-
+        // Render based on format
         switch ($format) {
             case 'text':
                 $text = isset($section['text']) ? $section['text'] : '(No content)';
@@ -191,7 +191,29 @@ function renderDocument($module, $sseData = array()) {
                     $html .= "</table>";
                 }
                 break;
+
+            // 🧩 New support for object-format data (e.g., holidayFallbackRules)
+            case 'object':
+                if (isset($section['data']) && is_array($section['data'])) {
+                    $html .= "<table><tr><th>Key</th><th>Details</th></tr>";
+                    foreach ($section['data'] as $objKey => $objVal) {
+                        $details = "";
+                        if (is_array($objVal)) {
+                            foreach ($objVal as $subKey => $subVal) {
+                                $details .= "<b>" . htmlspecialchars($subKey) . ":</b> " . htmlspecialchars($subVal) . "<br>";
+                            }
+                        } else {
+                            $details = htmlspecialchars($objVal);
+                        }
+                        $html .= "<tr><td><b>" . htmlspecialchars($objKey) . "</b></td><td>$details</td></tr>";
+                    }
+                    $html .= "</table>";
+                } else {
+                    $html .= "<p><em>No structured data found.</em></p>";
+                }
+                break;
         }
+
     }
 
     // SSE snapshot footer (if present)
@@ -241,9 +263,73 @@ $reportTitle = isset($module['title'])
 
 $reportBody = renderDocument($module, $sseData);
 
-$sanitizedSlug = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($slug));
-$outputFile = $reportsDir . $sanitizedSlug . '_' . date('Ymd_His') . '.pdf';
+// -------------------------
+// 📄 Intelligent File Naming + Folder Routing
+// -------------------------
 
+// 1) Base map + helpers
+$prefixMap = array(
+    'specification' => 'Information Sheet',
+    'standard'      => 'Information Sheet',
+    'report'        => 'Report',
+    'doctrine'      => 'Doctrine Sheet',
+    'survey'        => 'Survey Report'
+);
+
+function pickPrefix($module) {
+    // Prefer explicit type
+    if (!empty($module['type'])) {
+        $t = strtolower($module['type']);
+
+        // Exact map first
+        if (isset($GLOBALS['prefixMap'][$t])) return $GLOBALS['prefixMap'][$t];
+
+        // Heuristics: handle custom types like "temporal-standard"
+        if (strpos($t, 'standard') !== false) return 'Information Sheet';
+        if (strpos($t, 'report')   !== false) return 'Report';
+        if (strpos($t, 'survey')   !== false) return 'Survey Report';
+    }
+
+    // Fallback to family hints
+    if (!empty($module['family'])) {
+        $f = strtolower($module['family']);
+        if ($f === 'report') return 'Report';
+        if ($f === 'survey') return 'Survey Report';
+    }
+
+    // Default
+    return 'Information Sheet';
+}
+
+$prefix = pickPrefix($module);
+
+// 2) Clean title text
+$titleClean = preg_replace('/[^a-zA-Z0-9\s\(\)\-]/', '', $reportTitle);
+$titleClean = trim(preg_replace('/\s+/', ' ', $titleClean));
+
+// 3) Folder by prefix
+$folderByPrefix = array(
+    'Information Sheet' => $basePath . '/docs/sheets/',
+    'Doctrine Sheet'    => $basePath . '/docs/sheets/',
+    'Report'            => $basePath . '/docs/reports/',
+    'Survey Report'     => $basePath . '/docs/reports/'
+);
+
+// Default to sheets if somehow unknown
+$targetDir = isset($folderByPrefix[$prefix]) ? $folderByPrefix[$prefix] : ($basePath . '/docs/sheets/');
+
+// 4) Ensure folder exists
+if (!is_dir($targetDir)) {
+    $oldUmask = umask(0);
+    mkdir($targetDir, 0777, true);
+    umask($oldUmask);
+}
+
+// 5) Final filename + path
+$fileName   = $prefix . ' - ' . $titleClean . '.pdf';
+$outputFile = $targetDir . $fileName;
+
+// 7️⃣ Metadata
 $meta = array(
     'generatedAt' => date('Y-m-d H:i:s'),
     'source'      => 'Codex v6',

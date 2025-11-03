@@ -225,7 +225,7 @@
     }
   },
   "temporalIntegritySpec": {
-    "title": "🕰️ Temporal Integrity Report Specification",
+    "title": "🕰️ Temporal Integrity Report",
     "category": "System Layer",
     "type": "specification",
     "family": "report",
@@ -384,7 +384,7 @@
       "icon": "gear",
       "format": "object",
       "description": "Resolves temporal gaps after the last holiday of a calendar year or before the first holiday of a new year.",
-      "rules": {
+      "data": {
         "after_last_holiday": {
           "strategy": "next_year_rollover",
           "fallback_method": "lookup_first_holiday_next_year",

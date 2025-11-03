@@ -362,23 +362,6 @@ if (empty($slug)) {
     }
 }
 
-// ----------------------------------------------------------------------
-// Validate each module's sections (skip for special reports)
-// ----------------------------------------------------------------------
-if ($slug !== 'temporalIntegrityReport') {
-    $ontologyWhitelist = array('dependencies', 'provides', 'aliases', 'holidays');
-
-    foreach ($module as $key => $section) {
-        if (in_array($key, $ontologyWhitelist)) continue;
-        if ($key === 'title') continue;
-        if (!is_array($section)) continue;
-        if (!isset($section['format'])) continue;
-        if (!in_array($section['format'], array('text', 'list', 'table', 'dynamic'))) {
-            logError("❌ ERROR: Invalid format for section '$key' in slug '$slug'. Must be 'text', 'list', 'table', or 'dynamic'.");
-            die();
-        }
-    }
-}
 
 // --------------------------
 // Load iconMap.json dynamically
@@ -481,7 +464,7 @@ if ($slug === 'temporalIntegrityReport') {
     // ======================================================
     // 5️⃣  Render PDF
     // ======================================================
-    include_once(__DIR__ . '/utils/renderPDF.php');
+    include_once(__DIR__ . '/utils/renderPDF_v7.3.php');
     if (function_exists('renderTemporalIntegrityReport')) {
         renderTemporalIntegrityReport($reportBody, $outputFile, $cleanTitle);
         echo "✅ PDF created successfully: $outputFile\n";
@@ -783,20 +766,22 @@ Module Data:
             }
         }
         asort($sectionKeys);
-
+        // Process sections in priority order
         foreach ($sectionKeys as $key => $pri) {
             $section =& $mod[$key];
             if (!isset($section['format'])) {
                 continue;
             }
 
+            // Normalize and validate format
             $format = strtolower(trim($section['format']));
-            if (!in_array($format, array('text', 'list', 'table'))) {
-                logError("❌ Invalid format for '$key', defaulting to text.");
+            if (!in_array($format, ['text', 'list', 'table', 'dynamic', 'object'])) {
+                logError("❌ Invalid format for '$key' ($format), defaulting to text.");
                 $format = 'text';
             }
             $section['format'] = $format;
 
+            // Infer format automatically if items exist
             if (isset($section['items']) && is_array($section['items'])) {
                 if (is_array(reset($section['items']))) {
                     $format = 'table';
@@ -806,38 +791,55 @@ Module Data:
                 $section['format'] = $format;
             }
 
-            if ($format === 'text' && isset($section['text']) && trim($section['text']) !== '') {
-                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has text).");
-                continue;
+            // --- Skip enrichment if Codex already provides valid data ---
+            $skip = false;
+            if ($format === 'text' && !empty(trim($section['text'] ?? ''))) {
+                $skip = true;
+            } elseif ($format === 'list' && !empty($section['items'] ?? [])) {
+                $skip = true;
+            } elseif ($format === 'table' && is_array($section['items'] ?? null) && count($section['items']) > 0 && is_array(current($section['items']))) {
+                $skip = true;
+            } elseif ($format === 'object' && !empty($section['data'] ?? [])) {
+                $skip = true;
             }
 
-            if ($format === 'list' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0 && is_string(current($section['items']))) {
-                logMessage("ℹ️ Skipping enrichment for '$key' (codex already has list items).");
+            if ($skip) {
+                logMessage("ℹ️ Skipping enrichment for '$key' (already populated).");
                 continue;
-            }
-
-            if ($format === 'table' && isset($section['items']) && is_array($section['items']) && count($section['items']) > 0) {
-                $firstRow = current($section['items']);
-                if (is_array($firstRow)) {
-                    logMessage("ℹ️ Skipping enrichment for '$key' (codex already has table items).");
-                    continue;
-                }
             }
 
             logMessage("ℹ️ Enriching section '$key' with format '{$format}'.");
 
+            // --- AI Enrichment Routing ---
             switch ($format) {
                 case 'text':
                     $section['text'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'text');
                     break;
+
                 case 'list':
                     $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'list');
                     break;
+
                 case 'table':
                     $section['items'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'table');
                     break;
+
+                case 'dynamic':
+                    // Handle live/dynamic sections if your Codex defines them
+                    $section['data'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'dynamic');
+                    break;
+
+                case 'object':
+                    // Structured/nested data (e.g., fallback rules, JSON blocks)
+                    $section['data'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'object');
+                    break;
+
+                default:
+                    $section['text'] = getAIEnrichedBody($modSlug, $key, $modForAI, $OPENAI_API_KEY, 'text');
+                    break;
             }
 
+            // --- Validate enrichment results ---
             if ($format === 'text' && empty($section['text'])) {
                 logError("❌ Invalid text data for '$key'. Expected non-empty string.");
                 $section['text'] = '';
@@ -847,6 +849,9 @@ Module Data:
             } elseif ($format === 'table' && (!is_array($section['items']) || empty($section['items']) || !is_array(current($section['items'])))) {
                 logError("❌ Invalid table data for '$key'. Expected array of objects.");
                 $section['items'] = array();
+            } elseif ($format === 'object' && (!is_array($section['data']) && !is_object($section['data']))) {
+                logError("❌ Invalid object data for '$key'. Expected array or object.");
+                $section['data'] = array();
             }
         }
         unset($section);

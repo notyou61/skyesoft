@@ -53,6 +53,15 @@
       "exampleContext": "Represents AI, thinking, or intelligence features."
     }
   },
+  "bricks": {
+    "file": "bricks.png",
+    "icon": "🧱",
+    "alt": "Brick wall icon for structural and database frameworks",
+    "sampleUsage": {
+      "codexSection": "architecture",
+      "exampleContext": "Used for Core Database Structure and data infrastructure modules."
+    }
+  },
   "briefcase": {
     "file": "briefcase.png",
     "icon": "💼",
@@ -71,6 +80,15 @@
       "exampleContext": "Represents schedules or timelines."
     }
   },
+  "camera": {
+    "file": "camera.png",
+    "icon": "📷",
+    "alt": "Camera icon for photo survey and field inspection documents",
+    "sampleUsage": {
+      "codexSection": "operations",
+      "exampleContext": "Used for Photo Survey Specification and visual reports."
+    }
+  },
   "clipboard": {
     "file": "clipboard.png",
     "icon": "📋",
@@ -87,6 +105,15 @@
     "sampleUsage": {
       "codexSection": "general",
       "exampleContext": "Indicates time, deadlines, or schedules."
+    }
+  },
+  "clockFace": {
+    "file": "clockFace.png",
+    "icon": "🕒",
+    "alt": "Clock face icon for attendance and scheduling systems",
+    "sampleUsage": {
+      "codexSection": "operations",
+      "exampleContext": "Used for Attendance Suite."
     }
   },
   "code": {
@@ -168,6 +195,15 @@
     "sampleUsage": {
       "codexSection": "general",
       "exampleContext": "Represents alerts or urgent issues."
+    }
+  },
+  "floppyDisk": {
+    "file": "floppyDisk.png",
+    "icon": "💾",
+    "alt": "Floppy disk icon for data persistence and archival storage modules",
+    "sampleUsage": {
+      "codexSection": "systemLayer",
+      "exampleContext": "Used for Chat History Architecture and backups."
     }
   },
   "folder": {
@@ -260,6 +296,15 @@
       "exampleContext": "Represents live data or broadcasts."
     }
   },
+  "mantleClock": {
+    "file": "mantleClock.png",
+    "icon": "🕰️",
+    "alt": "Mantle clock icon for temporal integrity and timekeeping reports",
+    "sampleUsage": {
+      "codexSection": "systemLayer",
+      "exampleContext": "Used for the Temporal Integrity Report and related time governance documents."
+    }
+  },
   "megaphone": {
     "file": "megaphone.png",
     "icon": "📢",
@@ -285,6 +330,24 @@
     "sampleUsage": {
       "codexSection": "general",
       "exampleContext": "Represents smartphone interactions."
+    }
+  },
+  "moneyBag": {
+    "file": "moneyBag.png",
+    "icon": "💰",
+    "alt": "Money bag icon for financial and billing systems",
+    "sampleUsage": {
+      "codexSection": "finance",
+      "exampleContext": "Used for Financial Control Suite and accounting modules."
+    }
+  },
+  "network": {
+    "file": "network.png",
+    "icon": "🌐",
+    "alt": "Globe network icon for live SSE streams and connectivity modules",
+    "sampleUsage": {
+      "codexSection": "systemLayer",
+      "exampleContext": "Used for SSE Stream definitions."
     }
   },
   "notes": {
@@ -323,13 +386,13 @@
       "exampleContext": "Represents styling, color, or themes."
     }
   },
-  "pencil": {
-    "file": "pencil.png",
-    "icon": "✏️",
-    "alt": "Pencil icon for writing or editing",
+  "partlyCloudy": {
+    "file": "partlyCloudy.png",
+    "icon": "🌤️",
+    "alt": "Partly cloudy icon for weather and environmental modules",
     "sampleUsage": {
-      "codexSection": "general",
-      "exampleContext": "Represents drafting, writing, or editing."
+      "codexSection": "systemLayer",
+      "exampleContext": "Used for Weather Data Defaults and forecasting reports."
     }
   },
   "pen": {
@@ -339,6 +402,15 @@
     "sampleUsage": {
       "codexSection": "general",
       "exampleContext": "Represents signatures or finalized writing."
+    }
+  },
+  "pencil": {
+    "file": "pencil.png",
+    "icon": "✏️",
+    "alt": "Pencil icon for writing or editing",
+    "sampleUsage": {
+      "codexSection": "general",
+      "exampleContext": "Represents drafting, writing, or editing."
     }
   },
   "pin": {
@@ -440,6 +512,15 @@
       "exampleContext": "Represents protection, compliance, or security."
     }
   },
+  "stopwatch": {
+    "file": "stopwatch.png",
+    "icon": "⏱️",
+    "alt": "Stopwatch icon for time interval and performance measurement documents",
+    "sampleUsage": {
+      "codexSection": "systemLayer",
+      "exampleContext": "Used for Time Interval Standards (TIS)."
+    }
+  },
   "sunrise": {
     "file": "sunrise.png",
     "icon": "🌅",
@@ -476,6 +557,15 @@
       "exampleContext": "Represents objectives or goals."
     }
   },
+  "temple": {
+    "file": "temple.png",
+    "icon": "🏛️",
+    "alt": "Government building icon for permit reports and regulatory documents",
+    "sampleUsage": {
+      "codexSection": "operations",
+      "exampleContext": "Used for Permit Report Specification and related compliance reports."
+    }
+  },
   "tools": {
     "file": "tools.png",
     "icon": "🛠️",
@@ -483,6 +573,15 @@
     "sampleUsage": {
       "codexSection": "general",
       "exampleContext": "Represents service tools or management."
+    }
+  },
+  "tree": {
+    "file": "tree.png",
+    "icon": "🌳",
+    "alt": "Tree icon for organizational hierarchy and escalation flow diagrams",
+    "sampleUsage": {
+      "codexSection": "management",
+      "exampleContext": "Used for Management Escalation Trees."
     }
   },
   "trophy": {
