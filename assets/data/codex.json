@@ -210,6 +210,31 @@
     "dependsOn": ["skyesoftConstitution"],
     "purpose": {
       "text": "Defines structure, layout, and branding policies governing all Skyesoft documents."
+    },
+    "containedModules": {
+      "metaFooterInformationSheet": {
+        "title": "📘 Meta Footer – Information Sheet Doctrine Standard",
+        "category": "Doctrinal Provenance",
+        "type": "metaSection",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A-1",
+        "effectiveVersion": "v5.5.2",
+        "issuedBy": "CPAP-01 (Parliamentarian)",
+        "appliesTo": ["informationSheet"],
+        "implementationReference": "CP-R7-2025, Article IV – Audit Provenance",
+        "description": "Establishes the standardized doctrinal meta footer for all Information Sheet documents. Serves as the closing meta section confirming module source, codex version, amendment lineage, and last parliamentary review.",
+        "format": "text",
+        "text": "Doctrine Source: {moduleAbbrev} • Codex {codexVersion} • Amendments {amendmentList} • Reviewed by {reviewer} ({reviewDate})",
+        "variables": {
+          "moduleAbbrev": "Short code for the originating module (e.g., TIS)",
+          "codexVersion": "Effective Codex version at time of generation",
+          "amendmentList": "List of applied amendments (comma- or ampersand-separated)",
+          "reviewer": "Formal reviewer name or entity",
+          "reviewDate": "Human-readable or ISO date of review"
+        },
+        "notes": "This meta footer applies only to Information Sheet–class documents. Other document classes employ alternate metadata standards such as operational, audit, or regulatory footers."
+      }
     }
   },
   "documentTypes": {
@@ -404,57 +429,108 @@
     }
   },
   "codexAmendments": {
-  "title": "📜 Codex Amendments Register",
-  "category": "System Layer",
-  "type": "registry",
-  "purpose": {
-    "icon": "target",
-    "format": "text",
-    "text": "Maintains all ratified Skyesoft™ doctrinal amendments enacted by the Parliamentarian and Codex Council. Each amendment modifies or extends existing system doctrine."
-  },
-  "amendments": {
-    "V550": {
-      "title": "📜 Codex Amendment V-5.5.0 – The Containment Clause",
-      "status": "ratified",
-      "ratifiedOn": "2025-10-30",
-      "appliesTo": ["systemStandard", "taxonomy", "governingDoctrine"],
-      "summary": {
-        "icon": "scale",
-        "format": "text",
-        "text": "Authorizes governing standards to contain subordinate doctrinal modules through the reserved key 'containedModules', thereby permitting hierarchical containment without violating Codex uniformity."
-      },
-      "articles": {
-        "Article I – Definition": {
-          "text": "The property 'containedModules' is a sanctioned structural key in the Codex schema. It may appear only within objects of type 'standard', 'taxonomy', or other designated 'governingDoctrine' types."
+    "title": "📜 Codex Amendments Register",
+    "category": "System Layer",
+    "type": "registry",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Maintains all ratified Skyesoft™ doctrinal amendments enacted by the Parliamentarian and Codex Council. Each amendment modifies or extends existing system doctrine."
+    },
+    "amendments": {
+      "V550": {
+        "title": "📜 Codex Amendment V-5.5.0 – The Containment Clause",
+        "status": "ratified",
+        "ratifiedOn": "2025-10-30",
+        "appliesTo": ["systemStandard", "taxonomy", "governingDoctrine"],
+        "summary": {
+          "icon": "scale",
+          "format": "text",
+          "text": "Authorizes governing standards to contain subordinate doctrinal modules through the reserved key 'containedModules', thereby permitting hierarchical containment without violating Codex uniformity."
         },
-        "Article II – Scope": {
-          "text": "Contained modules must conform to full Codex object schema and inherit their parent’s doctrinal lineage while retaining unique identifiers."
+        "articles": {
+          "Article I – Definition": {
+            "text": "The property 'containedModules' is a sanctioned structural key in the Codex schema. It may appear only within objects of type 'standard', 'taxonomy', or other designated 'governingDoctrine' types."
+          },
+          "Article II – Scope": {
+            "text": "Contained modules must conform to full Codex object schema and inherit their parent’s doctrinal lineage while retaining unique identifiers."
+          },
+          "Article III – Interpretation": {
+            "text": "Contained modules are subordinate for hierarchy mapping yet remain accessible through the global Codex registry for cross-reference, ensuring recursive and flat access."
+          },
+          "Article IV – Application": {
+            "text": "All foundational doctrines—including Document Standards, Time Interval Standards, and Data Exchange Standards—shall adopt 'containedModules' for direct subordination. Non-governing objects continue to use relational keys such as 'isSubordinateTo' or 'dependsOn'."
+          },
+          "Article V – Transitional Provisions": {
+            "text": "Legacy keys ('submodules', 'tier', 'hierarchyOrder') will be migrated to 'containedModules' by Codex v5.6 while preserving backward compatibility."
+          }
         },
-        "Article III – Interpretation": {
-          "text": "Contained modules are subordinate for hierarchy mapping yet remain accessible through the global Codex registry for cross-reference, ensuring recursive and flat access."
-        },
-        "Article IV – Application": {
-          "text": "All foundational doctrines—including Document Standards, Time Interval Standards, and Data Exchange Standards—shall adopt 'containedModules' for direct subordination. Non-governing objects continue to use relational keys such as 'isSubordinateTo' or 'dependsOn'."
-        },
-        "Article V – Transitional Provisions": {
-          "text": "Legacy keys ('submodules', 'tier', 'hierarchyOrder') will be migrated to 'containedModules' by Codex v5.6 while preserving backward compatibility."
+        "signatories": [
+          {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
+          {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
+          {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
+        ],
+        "meta": {
+          "introducedInVersion": "v5.5.0",
+          "effectiveVersion": "v5.5.1",
+          "revisionHistory": [
+            {"version": "Draft v5.5.0-RC1", "notes": "Initial definition of containment concept"},
+            {"version": "Ratified v5.5.0", "notes": "Final approval by Parliamentarian CPAP-01"}
+          ]
         }
       },
-      "signatories": [
-        {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
-        {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
-        {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
-      ],
-      "meta": {
-        "introducedInVersion": "v5.5.0",
-        "effectiveVersion": "v5.5.1",
-        "revisionHistory": [
-          {"version": "Draft v5.5.0-RC1", "notes": "Initial definition of containment concept"},
-          {"version": "Ratified v5.5.0", "notes": "Final approval by Parliamentarian CPAP-01"}
-        ]
+
+      "CPR72025": {
+        "title": "📜 Refocus Directive CP-R7-2025 – Doctrine-Centered Rendering Standard",
+        "status": "ratified",
+        "ratifiedOn": "2025-11-03",
+        "appliesTo": ["codeManagement", "generateReports_v7", "documentStandards"],
+        "summary": {
+          "icon": "scale",
+          "format": "text",
+          "text": "Reclassifies report generation as doctrinal translation rather than presentation logic; mandates enrichment hooks, meta-field resolution, and audit provenance in all renderers."
+        },
+        "articles": {
+          "Article I – Separation of Concerns": {
+            "text": "Rendering functions interpret Codex schema only; presentation details are delegated to Document Standards."
+          },
+          "Article II – Meta-Field Resolution": {
+            "text": "Section titles and ordering are derived dynamically from codexMeta schema keys to avoid brittle key maps."
+          },
+          "Article III – Enrichment Hooks": {
+            "text": "Renderers implement applyEnrichmentHints(level) to control verbosity and annotation depth."
+          },
+          "Article IV – Audit Provenance": {
+            "text": "Every render session logs a JSON entry to the Chat History Architecture for traceability."
+          },
+          "Article V – Transitional Provision": {
+            "text": "Existing PHP 5.6 renderers remain compliant under probation until refitted with enrichment and meta-field features (build ≥ 2025.40)."
+          }
+        },
+        "signatories": [
+          {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
+          {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
+          {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
+        ],
+        "meta": {
+          "introducedInVersion": "v5.5.2-draft",
+          "effectiveVersion": "v5.5.2",
+          "revisionHistory": [
+            {"version": "Draft v5.5.2-RC1", "notes": "Initial procedural directive drafted by Parliamentarian CPAP-01"},
+            {"version": "Ratified v5.5.2", "notes": "Approved and entered into Amendments Register"}
+          ]
+        }
+      }
+    },
+
+    "reviews": {
+      "CPR72025": {
+        "reviewedBy": "CPAP-01 (Parliamentarian)",
+        "reviewDate": "2025-11-03",
+        "finding": "no contradictions detected",
+        "notes": "Temporal, thematic, and structural coherence confirmed. Amendment CPR72025 aligns with V550 and codexMeta schema without introducing doctrinal conflict. Verified version continuity (v5.5.2), proper containment linkage, and adherence to Code Management jurisdiction. Recorded under audit reference CP-R7-2025-A1."
       }
     }
-  }
   },
   "fileManagement": {
     "title": "🗂️ File Management",
