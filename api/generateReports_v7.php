@@ -288,7 +288,13 @@ function renderCodexNode($slug, $key, $node, $module, $apiKey, $depth = 0, $isSu
                     $tableData = $node['data'];
                 }
                 $dataCount = $tableData ? count($tableData) : 0;
-                logReport("DEBUG renderCodexNode '$key': Table data source='$tableData source', rows=$dataCount");
+                // Debug table structure
+                if (!empty($tableData) && is_array($tableData)) {
+                    logReport("DEBUG renderCodexNode '$key': Table rows=$dataCount, columns=" . implode(',', array_keys($tableData[0])));
+                } else {
+                    logReport("DEBUG renderCodexNode '$key': No valid table data detected");
+                }
+                // Render table
                 if ($tableData && $dataCount > 0) {
                     $headers = array_keys($tableData[0]);
                     $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
@@ -472,8 +478,16 @@ function renderCodexNode($slug, $key, $node, $module, $apiKey, $depth = 0, $isSu
                 }
             }
         }
-
+        // Final debug
         logReport("DEBUG renderCodexNode '$key': Final inferred HTML len=" . strlen($html));
+        // --- Last resort: display raw array structure for empty renders ---
+        if (trim(strip_tags($html)) === '' && is_array($node)) {
+            logReport("DEBUG renderCodexNode '$key': Fallback raw array dump");
+            $html .= "<pre style='font-size:9pt; color:#555; background:#f8f8f8; border:0.5pt solid #ddd; padding:4pt;'>" .
+                    htmlspecialchars(json_encode($node, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) .
+                    "</pre>";
+        }
+        // Return final HTML
         return $html;
     }
 }
@@ -486,26 +500,21 @@ function renderDocument($slug, $module, $apiKey) {
         ? "<style>" . file_get_contents($cssPath) . "</style>"
         : "<style>body{font-family:Arial,sans-serif;font-size:11pt;color:#111;}</style>";
     $html = $styleBlock;
-
     logReport("DEBUG renderDocument: Starting for slug '$slug', module keys=" . implode(',', array_keys($module)));
-
     // --- Header ---
     $title = isset($module['title']) ? $module['title'] : 'Untitled Report';
     $category = isset($module['category']) ? $module['category'] : 'General';
     $html .= "<h1>$title</h1>";
     $html .= "<p><strong>Category:</strong> $category</p>";
     logReport("DEBUG renderDocument: Header added, len=" . strlen($html));
-
     // --- Section Loop ---
     $sectionsProcessed = 0;
     foreach ($module as $key => $section) {
         // Skip meta or system keys (but NOT relationships)
         if (in_array($key, ['title', 'category', 'type', 'enrichment', 'meta', 'subtypes', 'actions'])) continue;
-
         $sectionsProcessed++;
         $hasFormat = isset($section['format']) ? 'yes' : 'no';
         logReport("DEBUG Section Loop: Processing [$key] (section $sectionsProcessed). Type=" . gettype($section) . "; Has format=$hasFormat; Section keys=" . (is_array($section) ? implode(',', array_keys($section)) : 'N/A'));
-
         // --- Handle string-only sections ---
         if (is_string($section)) {
             $label = ucfirst(str_replace('_', ' ', $key));
@@ -517,7 +526,6 @@ function renderDocument($slug, $module, $apiKey) {
             logReport("DEBUG Section '$key': String section rendered, content len=" . strlen($section));
             continue;
         }
-
         // --- Generic Relationship Structure Detection ---
         if (isset($section['isA']) || isset($section['governs']) || isset($section['dependsOn'])) {
             logReport("DEBUG Section '$key': Relationship-type structure detected");
@@ -525,54 +533,77 @@ function renderDocument($slug, $module, $apiKey) {
             $html .= renderCodexNode($slug, $key, $section, $module, $apiKey, 0, false);
             continue;
         }
-
         // --- Handle structured sections (array) with recursive rendering ---
         if (is_array($section)) {
             $headerLen = strlen($html);
             $html .= renderSectionHeader($key, $section);
             logReport("DEBUG Section '$key': Header added, delta len=" . (strlen($html) - $headerLen));
-
             $bodyStartLen = strlen($html);
-
-            // Stage-3: Conditional rendering
+            // --- Auto-format detection (for missing 'format' fields) ---
+            if (!isset($section['format'])) {
+                if (isset($section['text'])) {
+                    $section['format'] = 'text';
+                } elseif (isset($section['items']) && is_array($section['items'])) {
+                    $section['format'] = 'table';
+                } elseif (array_keys($section) === range(0, count($section) - 1)) {
+                    $section['format'] = 'list';
+                }
+                logReport("DEBUG Section '$key': Auto-detected format='" . ($section['format'] ?? 'none') . "'");
+            }
+            // --- Stage-3: Conditional rendering ---
             if (isset($section['format'])) {
                 logReport("DEBUG Section '$key': Has section format, calling renderCodexNode on whole section");
                 $html .= renderCodexNode($slug, $key, $section, $module, $apiKey, 0, false);
             } else {
                 logReport("DEBUG Section '$key': No section format, iterating subnodes");
-                foreach ($section as $subKey => $subNode) {
-                    if (in_array($subKey, ['icon', 'format'])) continue;
-                    logReport("DEBUG Section '$key': Rendering subnode '$subKey' (type=" . gettype($subNode) . ")");
-                    if (!is_array($subNode)) {
-                        // Simple value
-                        if (in_array($subKey, ['text', 'description'])) {
-                            $subHtml = "<p style='margin:4pt 0 10pt 0;'>" . htmlspecialchars($subNode) . "</p>";
+                // ✅ If section looks like plain key/value pairs, render as table
+                $isSimple = true;
+                foreach ($section as $v) {
+                    if (is_array($v)) { $isSimple = false; break; }
+                }
+                if ($isSimple) {
+                    $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
+                    foreach ($section as $k => $v) {
+                        $labelK = ucwords(str_replace('_', ' ', $k));
+                        $html .= "<tr><td style='border:0.5pt solid #ccc; padding:4pt; font-weight:bold;'>{$labelK}</td>"
+                            . "<td style='border:0.5pt solid #ccc; padding:4pt;'>"
+                            . htmlspecialchars($v) . "</td></tr>";
+                    }
+                    $html .= "</table>";
+                    logReport("DEBUG Section '$key': Rendered simple key/value table");
+                } else {
+                    foreach ($section as $subKey => $subNode) {
+                        if (in_array($subKey, ['icon', 'format'])) continue;
+                        logReport("DEBUG Section '$key': Rendering subnode '$subKey' (type=" . gettype($subNode) . ")");
+                        if (!is_array($subNode)) {
+                            // Basic scalar field
+                            $labelSub = ucwords(str_replace('_', ' ', $subKey));
+                            $html .= "<p style='margin:4pt 0;'><b>{$labelSub}:</b> "
+                                . htmlspecialchars($subNode) . "</p>";
                         } else {
-                            $labelSub = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', str_replace('_', ' ', $subKey)));
-                            $subHtml = "<p style='margin:4pt 0;'><b>{$labelSub}:</b> " . htmlspecialchars($subNode) . "</p>";
+                            // Always recurse for arrays
+                            $subHtml = renderCodexNode($slug, $subKey, $subNode, $module, $apiKey, 0, true);
+                            if (trim(strip_tags($subHtml)) === '') {
+                                // Fallback JSON for visibility
+                                $html .= "<pre style='font-size:9pt; color:#555; background:#f8f8f8;"
+                                    . " border:0.5pt solid #ddd; padding:4pt;'>"
+                                    . htmlspecialchars(json_encode($subNode, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))
+                                    . "</pre>";
+                                logReport("DEBUG Section '$key': Subnode '$subKey' empty, raw JSON shown");
+                            } else {
+                                $html .= $subHtml;
+                            }
                         }
-                        $html .= $subHtml;
-                        logReport("DEBUG Section '$key' sub '$subKey': Simple P added, len=" . strlen($subHtml));
-                    } else {
-                        // Array subnode
-                        $useSubHeader = (
-                            is_array($subNode)
-                            && !isset($subNode['format'])
-                            && array_values($subNode) !== $subNode // associative array
-                        );
-                        $subHtml = renderCodexNode($slug, $subKey, $subNode, $module, $apiKey, 0, $useSubHeader);
-                        $html .= $subHtml;
-                        logReport("DEBUG Section '$key' sub '$subKey': Recursive call, added len=" . strlen($subHtml));
                     }
                 }
             }
-
+            // --- Log body length ---
             $bodyLen = strlen($html) - $bodyStartLen;
             logReport("DEBUG Section '$key': Body complete, added len=$bodyLen");
         }
-    }
+    } // Close foreach loop
+    // End of sections
     logReport("DEBUG renderDocument: Processed $sectionsProcessed sections, total HTML len=" . strlen($html));
-
     // --- Meta Footer ---
     $type = isset($module['type']) ? strtolower($module['type']) : '';
     if (strpos($type, 'information') !== false) {
@@ -580,7 +611,6 @@ function renderDocument($slug, $module, $apiKey) {
         $html .= "<hr>" . renderMetaFooterFromCodex($codex, $slug, $module);
         logReport("DEBUG renderDocument: Meta footer added");
     }
-
     // --- Technical Footer ---
     $html .= "<hr><p style='font-size:9pt; color:#666;'><em>Generated from Codex v7 – AI Hybrid Renderer (Recursive v7.3.1-stable)</em></p>";
     
