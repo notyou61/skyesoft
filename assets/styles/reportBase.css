@@ -17,11 +17,14 @@ h1 {
 }
 
 h2 {
-  font-size: 13pt;
-  font-weight: bold;
-  color: #003366;
-  margin-top: 14pt;
-  margin-bottom: 4pt;
+    font-size: 12.5pt;
+    font-weight: bold;
+    color: #003366;
+    margin-top: 6pt;        /* Slight lift above prior content */
+    margin-bottom: 1pt;     /* Tight gap before underline */
+    padding: 0;
+    border-bottom: 0.5pt solid red;
+    line-height: 1.15;      /* Balances text visually above line */
 }
 
 hr {
@@ -56,4 +59,37 @@ th {
 td {
   border: 0.6pt solid #777;
   padding: 4pt;
+}
+
+.tis-header {
+    display: flex;
+    align-items: center;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+}
+
+.tis-icon-wrap {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    line-height: 1;
+}
+
+.tis-icon {
+    height: 16px;
+    width: auto;
+    margin-top: -2px; /* ✅ raised alignment */
+}
+
+.tis-emoji {
+    font-size: 16px;
+    margin-top: -2px; /* ✅ aligns visually with header text */
+}
+
+h2 {
+    font-size: 12.5pt;
+    font-weight: bold;
+    margin: 0;
+    padding: 0;
+    border-bottom: 0.5pt solid #999;
 }

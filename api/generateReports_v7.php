@@ -195,478 +195,338 @@ if (!function_exists('renderMetaFooterFromCodex')) {
 
 #region Render Section Header Function
 function renderSectionHeader($key, $section) {
-    logHelperInvocation(__FUNCTION__);
-    $html = '';
-    $iconKey = isset($section['icon']) ? $section['icon'] : null;
-    $iconFile = $iconKey ? getIconFile($iconKey) : null;  // Assume this returns full path
-    $label = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', str_replace('_', ' ', $key)));
 
-    logReport("DEBUG: Rendering header for '$key' - icon: $iconKey, label: $label");
+    logReport(">>> renderSectionHeader called for key: " . $key);
 
-    // --- Simplified Header (TCPDF-safe) ---
-    $html .= "<h2 style='font-size:13pt; font-weight:bold; color:#000; margin-top:14pt; margin-bottom:6pt;'>";
-    if ($iconFile && file_exists($iconFile)) {
-        $html .= "<img src='{$iconFile}' alt='{$iconKey}' style='width:11pt; height:11pt; vertical-align:middle; margin-right:6pt;'>";
-    } elseif (!empty($iconKey)) {
-        $html .= " {$iconKey} ";  // Emoji fallback
+    $label = ucwords(str_replace('_', ' ', $key));
+
+    // ✅ Load icon map once
+    static $iconMap = null;
+    if ($iconMap === null) {
+        $mapPath = __DIR__ . '/../assets/data/iconMap.json';
+        $iconMap = file_exists($mapPath)
+            ? json_decode(file_get_contents($mapPath), true)
+            : array();
     }
-    $html .= "{$label}</h2>";
-    $html .= "<hr style='border:1pt solid #555; margin-bottom:6pt;'>";
 
-    return $html;
+    $iconHTML = '';
+    if (isset($section['icon'])) {
+        $iconKey = $section['icon'];
+
+        if (isset($iconMap[$iconKey]['file'])) {
+
+            // ✅ Use filesystem path for TCPDF
+            $iconFile = __DIR__ . '/../assets/images/icons/' . $iconMap[$iconKey]['file'];
+
+            if (file_exists($iconFile)) {
+                // PDF-safe inline scaling + alignment
+                $iconHTML = '<img src="' . $iconFile . '" style="width:12pt; height:12pt; vertical-align:middle; margin-right:6pt;">';
+            }
+
+        } elseif (isset($iconMap[$iconKey]['icon'])) {
+            // ✅ Emoji fallback
+            $emoji = $iconMap[$iconKey]['icon'];
+            $iconHTML = '<span style="font-size:13pt; margin-right:6pt; vertical-align:middle;">' . $emoji . '</span>';
+        }
+    }
+    // Return header HTML
+    return "<div style='margin-top:10pt; margin-bottom:6pt;'>"
+        . "<h2 style='font-size:13pt; font-weight:bold; color:#003366;"
+        . "line-height:1.0; margin-bottom:2pt; padding:0;'>"
+        . $iconHTML . $label . "</h2>"
+        . "<div style='height:0.8pt; background-color:#555; margin-top:1pt; margin-bottom:8pt;'></div>"
+        . "</div>";
+
 }
 #endregion
 
-#region Recursive Codex Node Renderer (Phase 2 Implementation with Debug)
+#region Recursive Codex Node Renderer (v7.3.3 – Guaranteed Body Render)
 function renderCodexNode($slug, $key, $node, $module, $apiKey, $depth = 0, $isSub = false) {
-    global $logDir; // For debug
+    global $logDir;
 
     if ($depth > 10) {
-        logReport("Max recursion depth reached for node '$key'");
-        return "<p style='color:#999; font-style:italic;'>[Max depth reached]</p>";
+        logReport("Max recursion depth for '$key'");
+        return "<p style='opacity:0.6;'><em>[Max depth]</em></p>";
     }
 
-    $nodeType = gettype($node);
-    logReport("DEBUG renderCodexNode: key='$key', depth=$depth, isSub=" . ($isSub ? 'true' : 'false') . ", type=$nodeType");
+    logReport("renderCodexNode: key='$key', depth=$depth, type=" . gettype($node));
 
+    // ✅ STRING / simple scalar
     if (!is_array($node)) {
         $html = htmlspecialchars($node);
-        logReport("DEBUG renderCodexNode '$key': Non-array, HTML len=" . strlen($html));
         return $html;
     }
 
     $format = isset($node['format']) ? strtolower($node['format']) : null;
     $html = '';
-    logReport("DEBUG renderCodexNode '$key': Format='$format', keys=" . implode(',', array_keys($node)));
 
     $enrichmentLevel = isset($module['enrichment']) ? $module['enrichment'] : 'none';
     $useAI = ($enrichmentLevel === 'medium' && $apiKey);
 
+    // ✅ ✨ UNIVERSAL BODY VISIBILITY GUARD ✨
+    $hasRenderData = false;
+
+    if (isset($node['text']) && strlen(trim($node['text'])) > 0) $hasRenderData = true;
+    if (isset($node['items']) && is_array($node['items']) && count($node['items']) > 0) $hasRenderData = true;
+    if (isset($node['data']) && is_array($node['data']) && count($node['data']) > 0) $hasRenderData = true;
+    if (isset($node['holidays']) && is_array($node['holidays']) && count($node['holidays']) > 0) $hasRenderData = true;
+
+    if (!$hasRenderData && !$useAI) {
+        logReport("SKIP '$key': No visible content");
+        return "";
+    }
+
+    // ✅ EXPLICIT FORMAT HANDLING
     if ($format) {
-        logReport("DEBUG renderCodexNode '$key': Processing explicit format '$format'");
-        // Render based on explicit format
+        logReport("explicit format='$format' on '$key'");
+
         switch ($format) {
             case 'text':
-            case 'dynamic':  // Fallback to text
+            case 'dynamic':
                 $textKey = ($format === 'dynamic') ? 'description' : 'text';
                 $text = isset($node[$textKey]) ? trim($node[$textKey]) : '';
-                logReport("DEBUG renderCodexNode '$key': textKey='$textKey', raw text len=" . strlen($text) . ", preview='" . substr($text, 0, 50) . "'");
+
                 if (empty($text) && $useAI) {
                     $text = getAIEnrichedBody($slug, $key, $module, $apiKey, 'text');
-                    logReport("DEBUG renderCodexNode '$key': AI text len=" . strlen($text));
                 }
-                $html .= "<p style='margin:4pt 0 10pt 0;'>{$text}</p>";
-                logReport("DEBUG renderCodexNode '$key': Generated text HTML len=" . strlen($html));
-                break;
+
+                $html .= "<p class='tis-text'>{$text}</p>";
+                return $html;
 
             case 'list':
-                $items = isset($node['items']) && is_array($node['items']) ? $node['items'] : $node;  // Fallback to self if no 'items'
-                $itemsCount = count($items);
-                logReport("DEBUG renderCodexNode '$key': List items count=$itemsCount");
-                if (empty($items) && $useAI) {
-                    $aiText = getAIEnrichedBody($slug, $key, $module, $apiKey, 'list');
-                    $html .= "<p>{$aiText}</p>";
-                    logReport("DEBUG renderCodexNode '$key': Used AI for list");
-                } else {
-                    $html .= "<ul style='margin:6pt 0 10pt 18pt;'>";
-                    foreach ($items as $idx => $item) {
-                        $itemHtml = is_array($item) ? renderCodexNode($slug, "item_$idx", $item, $module, $apiKey, $depth + 1, false) : htmlspecialchars($item);
-                        $html .= "<li style='margin-bottom:4pt;'>{$itemHtml}</li>";
-                    }
-                    $html .= "</ul>";
-                    logReport("DEBUG renderCodexNode '$key': Generated UL with $itemsCount LIs, total len=" . strlen($html));
+                $items = (isset($node['items']) && is_array($node['items'])) ? $node['items'] : $node;
+
+                $html .= "<ul class='tis-list'>";
+                foreach ($items as $i) {
+                    $itemHtml = is_array($i)
+                        ? renderCodexNode($slug, $key, $i, $module, $apiKey, $depth+1, false)
+                        : htmlspecialchars($i);
+                    $html .= "<li>{$itemHtml}</li>";
                 }
-                break;
+                $html .= "</ul>";
+                return $html;
 
             case 'table':
                 $tableData = null;
-                if (isset($node['items']) && is_array($node['items']) && count($node['items']) > 0) {
-                    $tableData = $node['items'];
-                } elseif (isset($node['holidays']) && is_array($node['holidays']) && count($node['holidays']) > 0) {
-                    $tableData = $node['holidays'];
-                } elseif (isset($node['data']) && is_array($node['data']) && count($node['data']) > 0) {
-                    $tableData = $node['data'];
-                }
-                $dataCount = $tableData ? count($tableData) : 0;
-                // Debug table structure
-                if (!empty($tableData) && is_array($tableData)) {
-                    logReport("DEBUG renderCodexNode '$key': Table rows=$dataCount, columns=" . implode(',', array_keys($tableData[0])));
-                } else {
-                    logReport("DEBUG renderCodexNode '$key': No valid table data detected");
-                }
-                // Render table
-                if ($tableData && $dataCount > 0) {
+                if (isset($node['items']) && count($node['items']) > 0) $tableData = $node['items'];
+                if (isset($node['holidays']) && count($node['holidays']) > 0) $tableData = $node['holidays'];
+                if (isset($node['data']) && count($node['data']) > 0) $tableData = $node['data'];
+
+                if ($tableData) {
                     $headers = array_keys($tableData[0]);
-                    $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
+                    $html .= "<table class='tis-table'>";
                     $html .= "<tr>";
-                    foreach ($headers as $h) {
-                        $html .= "<th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>{$h}</th>";
-                    }
+                    foreach ($headers as $h) { $html .= "<th>{$h}</th>"; }
                     $html .= "</tr>";
+
                     foreach ($tableData as $row) {
                         $html .= "<tr>";
                         foreach ($headers as $h) {
                             $val = isset($row[$h]) ? $row[$h] : '';
-                            if (is_array($val)) $val = implode(', ', $val);
-                            $html .= "<td style='border:0.5pt solid #888; padding:4pt;'>{$val}</td>";
+                            if (is_array($val)) $val = implode(", ", $val);
+                            $html .= "<td>{$val}</td>";
                         }
                         $html .= "</tr>";
                     }
                     $html .= "</table>";
-                    logReport("DEBUG renderCodexNode '$key': Generated table with " . count($headers) . " cols, $dataCount rows, len=" . strlen($html));
-                } elseif ($useAI) {
-                    $html .= getAIEnrichedBody($slug, $key, $module, $apiKey, 'table');
-                    logReport("DEBUG renderCodexNode '$key': Used AI for table");
-                } else {
-                    $html .= "<p><em>No table data available.</em></p>";
-                    logReport("DEBUG renderCodexNode '$key': Table fallback message");
+                    return $html;
                 }
-                break;
+
+                return "<p><em>No table data available.</em></p>";
 
             case 'object':
-                $data = isset($node['data']) ? $node['data'] : $node;  // Fallback to self
-                $dataCount = count($data);
-                logReport("DEBUG renderCodexNode '$key': Object data count=$dataCount");
-                if (!empty($data)) {
-                    $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
-                    $html .= "<tr><th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>Key</th><th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>Value</th></tr>";
-                    foreach ($data as $k => $v) {
-                        $details = is_array($v) ? json_encode($v, JSON_PRETTY_PRINT) : htmlspecialchars($v);
-                        $html .= "<tr><td style='border:0.5pt solid #888; padding:4pt; font-weight:bold;'>{$k}</td><td style='border:0.5pt solid #888; padding:4pt;'>{$details}</td></tr>";
+                $data = isset($node['data']) ? $node['data'] : $node;
+
+                $html .= "<table class='tis-table'>";
+                $html .= "<tr><th>Key</th><th>Value</th></tr>";
+                foreach ($data as $k => $v) {
+                    $label = ucwords(str_replace('_', ' ', $k));
+                    if (is_array($v)) {
+                        $v = htmlspecialchars(json_encode($v));
                     }
-                    $html .= "</table>";
-                    logReport("DEBUG renderCodexNode '$key': Generated object table with $dataCount rows, len=" . strlen($html));
-                } elseif ($useAI) {
-                    $html .= getAIEnrichedBody($slug, $key, $module, $apiKey, 'object');
-                    logReport("DEBUG renderCodexNode '$key': Used AI for object");
-                } else {
-                    $html .= "<p><em>No object data available.</em></p>";
-                    logReport("DEBUG renderCodexNode '$key': Object fallback message");
+                    $html .= "<tr><td style='font-weight:bold;'>{$label}</td><td>{$v}</td></tr>";
                 }
-                break;
-
-            default:
-                $html .= "<p><em>Format '{$format}' not yet supported.</em></p>";
-                logReport("DEBUG renderCodexNode '$key': Unsupported format '$format'");
-        }
-        logReport("DEBUG renderCodexNode '$key': Final explicit HTML len=" . strlen($html));
-        return $html;
-    } else {
-        // No explicit format: infer and recurse
-        logReport("DEBUG renderCodexNode '$key': No format, inferring structure");
-        if ($isSub) {
-            $label = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', str_replace('_', ' ', $key)));
-            $html .= "<h3 style='font-size:12pt; font-weight:bold; color:#000; margin-top:10pt; margin-bottom:4pt;'>{$label}</h3>";
-            $html .= "<hr style='border:0.5pt solid #888; margin-bottom:4pt;'>";
-            logReport("DEBUG renderCodexNode '$key': Added sub-header");
-        }
-
-        // Single-text pattern
-        if (count($node) == 1 && isset($node['text'])) {
-            $text = trim($node['text']);
-            logReport("DEBUG renderCodexNode '$key': Single-text match, len=" . strlen($text));
-            if (empty($text) && $useAI) {
-                $text = getAIEnrichedBody($slug, $key, $module, $apiKey, 'text');
-            }
-            if (!empty($text)) {
-                $html .= "<p style='margin:4pt 0 10pt 0;'>{$text}</p>";
-                logReport("DEBUG renderCodexNode '$key': Generated single-text P, len=" . strlen($html));
+                $html .= "</table>";
                 return $html;
-            }
         }
 
-        // List-like (indexed array)
-        $keys = array_keys($node);
-        $isList = $keys === range(0, count($keys) - 1);
-        logReport("DEBUG renderCodexNode '$key': isList=" . ($isList ? 'true' : 'false'));
-        if ($isList && !empty($node)) {
-            // Infer table for assoc items
-            $allAssoc = true;
-            $commonHeaders = null;
-            $itemCount = count($node);
-            for ($i = 0; $i < min(3, $itemCount); $i++) {
-                $item = $node[$i];
-                if (!is_array($item) || array_keys($item) === range(0, count($item)-1)) {
-                    $allAssoc = false;
-                    break;
-                }
-                $itemKeys = array_keys($item);
-                if ($commonHeaders === null) {
-                    $commonHeaders = $itemKeys;
-                } elseif ($commonHeaders !== $itemKeys) {
-                    $allAssoc = false;
-                    break;
-                }
-            }
-            logReport("DEBUG renderCodexNode '$key': allAssoc=" . ($allAssoc ? 'true' : 'false') . ", headers=" . ($commonHeaders ? implode(',', $commonHeaders) : 'none'));
-            if ($allAssoc && $commonHeaders !== null && count($commonHeaders) > 0) {
-                $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
-                $html .= "<tr>";
-                foreach ($commonHeaders as $h) {
-                    $html .= "<th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>{$h}</th>";
-                }
-                $html .= "</tr>";
-                foreach ($node as $row) {
-                    $html .= "<tr>";
-                    foreach ($commonHeaders as $h) {
-                        $val = isset($row[$h]) ? $row[$h] : '';
-                        if (is_array($val)) $val = implode(', ', $val);
-                        $html .= "<td style='border:0.5pt solid #888; padding:4pt;'>{$val}</td>";
-                    }
-                    $html .= "</tr>";
-                }
-                $html .= "</table>";
-                logReport("DEBUG renderCodexNode '$key': Inferred table len=" . strlen($html));
-            } else {
-                // Bulleted list
-                if (empty($node) && $useAI) {
-                    $html .= getAIEnrichedBody($slug, $key, $module, $apiKey, 'list');
-                } else {
-                    $html .= "<ul style='margin:6pt 0 10pt 18pt;'>";
-                    foreach ($node as $item) {
-                        $itemHtml = is_array($item) ? renderCodexNode($slug, 'item', $item, $module, $apiKey, $depth + 1, false) : htmlspecialchars($item);
-                        $html .= "<li style='margin-bottom:4pt;'>{$itemHtml}</li>";
-                    }
-                    $html .= "</ul>";
-                    logReport("DEBUG renderCodexNode '$key': Inferred list len=" . strlen($html));
-                }
-            }
-        } else {
-            // Object/inferred
-            $allSimple = true;
-            $simpleCount = 0;
-            foreach ($node as $subNode) {
-                if (is_array($subNode)) {
-                    $allSimple = false;
-                    break;
-                }
-                $simpleCount++;
-            }
-            logReport("DEBUG renderCodexNode '$key': allSimple=" . ($allSimple ? 'true' : 'false') . ", simpleCount=$simpleCount");
-            if ($allSimple && $simpleCount > 0) {
-                $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
-                $html .= "<tr><th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>Key</th><th style='border:0.5pt solid #888; padding:4pt; background:#f2f2f2;'>Value</th></tr>";
-                foreach ($node as $k => $v) {
-                    if (in_array($k, ['format', 'icon'])) continue;
-                    $labelK = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', str_replace('_', ' ', $k)));
-                    $details = htmlspecialchars($v);
-                    $html .= "<tr><td style='border:0.5pt solid #888; padding:4pt; font-weight:bold;'>{$labelK}</td><td style='border:0.5pt solid #888; padding:4pt;'>{$details}</td></tr>";
-                }
-                $html .= "</table>";
-                logReport("DEBUG renderCodexNode '$key': Inferred simple object len=" . strlen($html));
-            } else {
-                // Recurse subs
-                if (empty($node) && $useAI) {
-                    $html .= getAIEnrichedBody($slug, $key, $module, $apiKey, 'object');
-                } else {
-                    $subProcessed = 0;
-                    foreach ($node as $subKey => $subNode) {
-                        if (in_array($subKey, ['format', 'icon'])) continue;
-                        $subProcessed++;
-                        logReport("DEBUG renderCodexNode '$key': Recursing sub '$subKey'");
-                        if (!is_array($subNode)) {
-                            $labelSub = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', str_replace('_', ' ', $subKey)));
-                            $html .= "<p style='margin:4pt 0;'><b>{$labelSub}:</b> " . htmlspecialchars($subNode) . "</p>";
-                        } else {
-                            $subHtml = renderCodexNode($slug, $subKey, $subNode, $module, $apiKey, $depth + 1, true);
-                            if (!empty($subHtml)) {
-                                $html .= $subHtml;
-                            }
-                        }
-                    }
-                    logReport("DEBUG renderCodexNode '$key': Processed $subProcessed subs, total len=" . strlen($html));
-                }
-            }
-        }
-        // Final debug
-        logReport("DEBUG renderCodexNode '$key': Final inferred HTML len=" . strlen($html));
-        // --- Last resort: display raw array structure for empty renders ---
-        if (trim(strip_tags($html)) === '' && is_array($node)) {
-            logReport("DEBUG renderCodexNode '$key': Fallback raw array dump");
-            $html .= "<pre style='font-size:9pt; color:#555; background:#f8f8f8; border:0.5pt solid #ddd; padding:4pt;'>" .
-                    htmlspecialchars(json_encode($node, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) .
-                    "</pre>";
-        }
-        // Return final HTML
+        $html .= "<p><em>Format '{$format}' unsupported.</em></p>";
         return $html;
     }
+
+    // ✅ NO FORMAT → clean table/list fallback
+    $keys = array_keys($node);
+    $isList = ($keys === range(0, count($keys)-1));
+
+    if ($isList && !empty($node)) {
+        $html .= "<ul class='tis-list'>";
+        foreach ($node as $item) {
+            $html .= "<li>" . htmlspecialchars($item) . "</li>";
+        }
+        $html .= "</ul>";
+        return $html;
+    }
+
+    // ✅ Raw fallback display (debug only)
+    if (trim(strip_tags($html)) === '') {
+        $html .= "<pre class='tis-debug'>" .
+            htmlspecialchars(json_encode($node, JSON_PRETTY_PRINT)) .
+            "</pre>";
+    }
+
+    return $html;
 }
 #endregion
 
-#region Render Document Function
+#region Render Document Function (v7.3.7 – Codex-Compliant Body Layout)
 function renderDocument($slug, $module, $apiKey) {
+
+    global $codex;
+    logReport("DEBUG renderDocument: Starting for slug '$slug'");
+    logReport(">>> renderDocument invoked for slug: " . (isset($slug) ? $slug : 'unknown'));
+
+    // ✅ Load stylesheet
     $cssPath = __DIR__ . '/../assets/styles/reportBase.css';
-    $styleBlock = file_exists($cssPath)
+    $html = file_exists($cssPath)
         ? "<style>" . file_get_contents($cssPath) . "</style>"
-        : "<style>body{font-family:Arial,sans-serif;font-size:11pt;color:#111;}</style>";
-    $html = $styleBlock;
-    logReport("DEBUG renderDocument: Starting for slug '$slug', module keys=" . implode(',', array_keys($module)));
-    // --- Header ---
-    $title = isset($module['title']) ? $module['title'] : 'Untitled Report';
-    $category = isset($module['category']) ? $module['category'] : 'General';
-    $html .= "<h1>$title</h1>";
-    $html .= "<p><strong>Category:</strong> $category</p>";
-    logReport("DEBUG renderDocument: Header added, len=" . strlen($html));
-    // --- Section Loop ---
+        : "<style>body{font-family:Arial,sans-serif;font-size:11pt;}</style>";
+
+    // ✅ Top title ONLY appears in Header Block (PDF renderer)
+    // Do NOT repeat <h1> or <p> Category inside body ✅
+
+    $bodyHtml = "";
+    $relationshipsBlock = ""; // ✅ Captured and printed at bottom
     $sectionsProcessed = 0;
+
     foreach ($module as $key => $section) {
-        // Skip meta or system keys (but NOT relationships)
-        if (in_array($key, ['title', 'category', 'type', 'enrichment', 'meta', 'subtypes', 'actions'])) continue;
+
+        // Skip meta/system keys but NOT relationships
+        if (in_array($key, array('title','category','type','enrichment','meta','subtypes','actions'))) {
+            continue;
+        }
+
         $sectionsProcessed++;
-        $hasFormat = isset($section['format']) ? 'yes' : 'no';
-        logReport("DEBUG Section Loop: Processing [$key] (section $sectionsProcessed). Type=" . gettype($section) . "; Has format=$hasFormat; Section keys=" . (is_array($section) ? implode(',', array_keys($section)) : 'N/A'));
-        // --- Handle string-only sections ---
+        logReport("BODY: Processing [$key]");
+
+        // ✅ 1️⃣ STRING SECTIONS
         if (is_string($section)) {
-            $label = ucfirst(str_replace('_', ' ', $key));
-            $html .= "<div style='margin-top:14pt; margin-bottom:6pt;'>";
-            $html .= "<span style='font-size:13pt; font-weight:bold; color:#000;'>{$label}</span>";
-            $html .= "<div style='border-bottom:1pt solid #555; margin-top:3pt;'></div>";
-            $html .= "<p style='margin-top:4pt; margin-bottom:10pt;'>" . htmlspecialchars($section) . "</p>";
-            $html .= "</div>";
-            logReport("DEBUG Section '$key': String section rendered, content len=" . strlen($section));
+            $bodyHtml .= renderSectionHeader($key, $section);
+            $bodyHtml .= "<p class='tis-text'>" . htmlspecialchars($section) . "</p>";
             continue;
         }
-        // --- Generic Relationship Structure Detection ---
-        if (isset($section['isA']) || isset($section['governs']) || isset($section['dependsOn'])) {
-            logReport("DEBUG Section '$key': Relationship-type structure detected");
-            $html .= renderSectionHeader($key, $section);
-            $html .= renderCodexNode($slug, $key, $section, $module, $apiKey, 0, false);
+
+        // ✅ Detect Relationship Section → hold for final placement
+        if ($key === 'relationships' ||
+            !empty(array_intersect(array('isA','governs','dependsOn','aliases','partOf'), array_keys($section)))) {
+            
+            logReport("Capture relationships block for placement at end: '$key'");
+            $relationshipsBlock .= renderSectionHeader("Governance & Dependencies", $section);
+            $relationshipsBlock .= renderCodexNode($slug, $key, $section, $module, $apiKey, 0, true);
             continue;
         }
-        // --- Handle structured sections (array) with recursive rendering ---
-        if (is_array($section)) {
-            $headerLen = strlen($html);
-            $html .= renderSectionHeader($key, $section);
-            logReport("DEBUG Section '$key': Header added, delta len=" . (strlen($html) - $headerLen));
-            $bodyStartLen = strlen($html);
-            // --- Auto-format detection (for missing 'format' fields) ---
-            if (!isset($section['format'])) {
-                if (isset($section['text'])) {
-                    $section['format'] = 'text';
-                } elseif (isset($section['items']) && is_array($section['items'])) {
-                    $section['format'] = 'table';
-                } elseif (array_keys($section) === range(0, count($section) - 1)) {
-                    $section['format'] = 'list';
-                }
-                logReport("DEBUG Section '$key': Auto-detected format='" . ($section['format'] ?? 'none') . "'");
+
+        // ✅ 3️⃣ Structured Codex Sections
+        $bodyHtml .= renderSectionHeader($key, $section);
+
+        // Normalize missing formats
+        if (!isset($module[$key]['format'])) {
+            if (isset($section['text'])) {
+                $module[$key]['format'] = 'text';
+            } elseif (isset($section['items']) && is_array($section['items'])) {
+                $module[$key]['format'] = 'table';
+            } elseif (array_keys($section) === range(0, count($section) - 1)) {
+                $module[$key]['format'] = 'list';
             }
-            // --- Stage-3: Conditional rendering ---
-            if (isset($section['format'])) {
-                logReport("DEBUG Section '$key': Has section format, calling renderCodexNode on whole section");
-                $html .= renderCodexNode($slug, $key, $section, $module, $apiKey, 0, false);
-            } else {
-                logReport("DEBUG Section '$key': No section format, iterating subnodes");
-                // ✅ If section looks like plain key/value pairs, render as table
-                $isSimple = true;
-                foreach ($section as $v) {
-                    if (is_array($v)) { $isSimple = false; break; }
-                }
-                if ($isSimple) {
-                    $html .= "<table style='border-collapse:collapse; width:100%; margin:6pt 0;'>";
-                    foreach ($section as $k => $v) {
-                        $labelK = ucwords(str_replace('_', ' ', $k));
-                        $html .= "<tr><td style='border:0.5pt solid #ccc; padding:4pt; font-weight:bold;'>{$labelK}</td>"
-                            . "<td style='border:0.5pt solid #ccc; padding:4pt;'>"
-                            . htmlspecialchars($v) . "</td></tr>";
-                    }
-                    $html .= "</table>";
-                    logReport("DEBUG Section '$key': Rendered simple key/value table");
-                } else {
-                    foreach ($section as $subKey => $subNode) {
-                        if (in_array($subKey, ['icon', 'format'])) continue;
-                        logReport("DEBUG Section '$key': Rendering subnode '$subKey' (type=" . gettype($subNode) . ")");
-                        if (!is_array($subNode)) {
-                            // Basic scalar field
-                            $labelSub = ucwords(str_replace('_', ' ', $subKey));
-                            $html .= "<p style='margin:4pt 0;'><b>{$labelSub}:</b> "
-                                . htmlspecialchars($subNode) . "</p>";
-                        } else {
-                            // Always recurse for arrays
-                            $subHtml = renderCodexNode($slug, $subKey, $subNode, $module, $apiKey, 0, true);
-                            if (trim(strip_tags($subHtml)) === '') {
-                                // Fallback JSON for visibility
-                                $html .= "<pre style='font-size:9pt; color:#555; background:#f8f8f8;"
-                                    . " border:0.5pt solid #ddd; padding:4pt;'>"
-                                    . htmlspecialchars(json_encode($subNode, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))
-                                    . "</pre>";
-                                logReport("DEBUG Section '$key': Subnode '$subKey' empty, raw JSON shown");
-                            } else {
-                                $html .= $subHtml;
-                            }
-                        }
-                    }
-                }
-            }
-            // --- Log body length ---
-            $bodyLen = strlen($html) - $bodyStartLen;
-            logReport("DEBUG Section '$key': Body complete, added len=$bodyLen");
+            $section = $module[$key];
         }
-    } // Close foreach loop
-    // End of sections
-    logReport("DEBUG renderDocument: Processed $sectionsProcessed sections, total HTML len=" . strlen($html));
-    // --- Meta Footer ---
+
+        $rendered = renderCodexNode($slug, $key, $section, $module, $apiKey, 0, true);
+
+        if (trim(strip_tags($rendered)) !== '') {
+            $bodyHtml .= $rendered;
+        } else {
+            $bodyHtml .= "<p><em>No content available.</em></p>";
+        }
+    }
+
+    // ✅ Append relationships at the end (if any)
+    if (trim(strip_tags($relationshipsBlock)) !== '') {
+        logReport("APPEND: Governance & Dependencies");
+        $bodyHtml .= $relationshipsBlock;
+    }
+
+    // ✅ Meta Footer only for information sheets
     $type = isset($module['type']) ? strtolower($module['type']) : '';
     if (strpos($type, 'information') !== false) {
-        global $codex;
-        $html .= "<hr>" . renderMetaFooterFromCodex($codex, $slug, $module);
-        logReport("DEBUG renderDocument: Meta footer added");
+        $bodyHtml .= "<hr>" . renderMetaFooterFromCodex($codex, $slug, $module);
     }
-    // --- Technical Footer ---
-    $html .= "<hr><p style='font-size:9pt; color:#666;'><em>Generated from Codex v7 – AI Hybrid Renderer (Recursive v7.3.1-stable)</em></p>";
-    
-    // Return final HTML
-    return $html;
+
+    // Log HTML for debug
+    file_put_contents(__DIR__ . "/../logs/last_rendered_html.html", $bodyHtml);
+    logReport("BODY COMPLETE: $sectionsProcessed main sections rendered");
+
+    return $html . $bodyHtml;
 }
 #endregion
 
 #region PDF Generation and Output
 require_once(__DIR__ . '/utils/renderPDF_v7.3.php');
 
+// --- Debug: module keys ---
 $moduleDump = json_encode(array_keys($module));
 logReport("DEBUG keys for $slug: $moduleDump");
-$bodyPreview = renderDocument($slug, $module, $OPENAI_API_KEY);
-logReport("DEBUG body length: " . strlen($bodyPreview));
-logReport("DEBUG body preview (stripped tags): " . substr(strip_tags($bodyPreview), 0, 500));  // Longer preview
 
+// --- Render document once (DRY fix) ---
 $reportTitle = strip_tags(isset($module['title']) ? $module['title'] : ucfirst($slug));
-$reportBody = renderDocument($slug, $module, $OPENAI_API_KEY);
+$reportBody  = renderDocument($slug, $module, $OPENAI_API_KEY);   // render only once
 
-// NEW v7.3.1: Save full HTML for inspection
-$debugHtmlFile = $basePath . '/debug_' . $slug . '_' . date('His') . '.html';  // Timestamped
+// --- Log + preview from same HTML ---
+logReport("DEBUG body length: " . strlen($reportBody));
+logReport("DEBUG body preview (stripped tags): " . substr(strip_tags($reportBody), 0, 500));
+
+// --- Save full HTML for inspection ---
+$debugHtmlFile = $basePath . '/debug_' . $slug . '_' . date('His') . '.html'; // timestamped
 file_put_contents($debugHtmlFile, $reportBody);
 logReport("DEBUG HTML saved: $debugHtmlFile (len=" . strlen($reportBody) . ")");
 
-$type = isset($module['type']) ? strtolower($module['type']) : 'standard';
+// --- Determine output path and prefix ---
+$type   = isset($module['type']) ? strtolower($module['type']) : 'standard';
 $prefix = (strpos($type, 'report') !== false) ? 'Report' : 'Information Sheet';
 
-// ✅ Route output path via File Management schema
+// ✅ Route output path via File-Management schema
 global $codex;
-$rules = $codex['fileManagement']['rules']['items'] ?? [];
-$baseOut = strpos(json_encode($rules), '/docs/reports/') !== false ? '/docs/reports/' : '/docs/sheets/';
+$rules    = isset($codex['fileManagement']['rules']['items']) ? $codex['fileManagement']['rules']['items'] : array();
+$baseOut  = (strpos(json_encode($rules), '/docs/reports/') !== false) ? '/docs/reports/' : '/docs/sheets/';
 $titleClean = trim(preg_replace('/[^a-zA-Z0-9\s\(\)\-]/', '', $reportTitle));
 $fileName   = $prefix . ' - ' . $titleClean . '.pdf';
 $outputFile = $basePath . $baseOut . $fileName;
 
-if (!is_dir(dirname($outputFile))) { mkdir(dirname($outputFile), 0777, true); }
+// --- Ensure directory exists ---
+if (!is_dir(dirname($outputFile))) {
+    mkdir(dirname($outputFile), 0777, true);
+}
 
+// --- Meta information ---
 $meta = array(
     'generatedAt' => date('Y-m-d H:i:s'),
     'source'      => 'Codex v7',
     'author'      => 'Skyebot System Layer'
 );
 
+// --- Generate PDF ---
 renderPDF($reportTitle, $reportBody, $meta, $outputFile);
 logReport("PDF created: $outputFile");
 
+// --- JSON response ---
 echo json_encode(array(
-    "success"   => true,
-    "slug"      => $slug,
-    "title"     => $reportTitle,
-    "timestamp" => date('Y-m-d H:i:s'),
-    "fileReady" => true,
-    "filePath"  => str_replace($basePath . '/', '', $outputFile),
-    "debugHtml" => str_replace($basePath . '/', '', $debugHtmlFile),
-    "message"   => "PDF generated (v7.3.1-stable). Check logs and debug HTML for content."
+    'success'   => true,
+    'slug'      => $slug,
+    'title'     => $reportTitle,
+    'timestamp' => date('Y-m-d H:i:s'),
+    'fileReady' => true,
+    'filePath'  => str_replace($basePath . '/', '', $outputFile),
+    'debugHtml' => str_replace($basePath . '/', '', $debugHtmlFile),
+    'message'   => 'PDF generated (v7.3.1-stable). Check logs and debug HTML for content.'
 ));
 exit;
 #endregion
