@@ -16,15 +16,15 @@ h1 {
   margin-bottom: 8pt;
 }
 
+/* Section titles: let inline block draw the line */
 h2 {
-    font-size: 12.5pt;
-    font-weight: bold;
-    color: #003366;
-    margin-top: 6pt;        /* Slight lift above prior content */
-    margin-bottom: 1pt;     /* Tight gap before underline */
-    padding: 0;
-    border-bottom: 0.5pt solid red;
-    line-height: 1.15;      /* Balances text visually above line */
+  font-size: 12.5pt;
+  font-weight: bold;
+  color: #003366;
+  margin: 0;             /* no extra top/bottom here */
+  padding: 0;
+  line-height: 1.05;
+  border-bottom: none;   /* critical: do NOT draw a second line */
 }
 
 hr {

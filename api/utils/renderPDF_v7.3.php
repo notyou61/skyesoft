@@ -97,7 +97,10 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null) {
     if (file_exists($cssPath)) {
         $pdf->writeHTML('<style>' . file_get_contents($cssPath) . '</style>', false, false, true, false, '');
     }
-
+    
+    // ✅ Debug: Save Input HTML
+    file_put_contents(__DIR__ . '/../debug_pdf_input.html', $html);
+    
     // ✅ Render Body HTML (force full re-parse)
     $pdf->writeHTMLCell(
         0, 0, '', '', 
