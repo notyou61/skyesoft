@@ -1,18 +1,29 @@
 <?php
 // =====================================================================
 //  Skyesoft™ Codex Report Generator – Core Glue  |  PHP 5.6-Safe
-//  Purpose: Loads Codex entry by slug, uses its title & body renderer,
-//           and passes data to the Core PDF Renderer (v1.0 Frame)
-//  Parliamentarian Compliance: Section 4.2.1 (Document Title Integrity)
+// ---------------------------------------------------------------------
+//  Parliamentarian Compliance:
+//     • §4.1.2  Dynamic Slug Resolution
+//     • §4.2.1  Document Title Integrity
+//     • §4.3.4  Non-Hardcoded Document Classification
+//     • §5.1.1  Regional Code Structuring
 // =====================================================================
 
+#region Dependencies
 require_once(__DIR__ . '/renderPDF_core.php');
 require_once(__DIR__ . '/renderBodyFromCodex.php');
+#endregion
 
-// --- 1️⃣  Resolve input slug ---
-$slug = isset($argv[1]) ? trim($argv[1]) : 'timeIntervalStandards';
+#region Slug Resolution
+$slug = null;
+if (isset($argv[1])) {
+    $slug = trim($argv[1]);
+} elseif (isset($_GET['slug'])) {
+    $slug = trim($_GET['slug']);
+}
+#endregion
 
-// --- 2️⃣  Load Codex JSON ---
+#region Load Codex
 $codexPath = __DIR__ . '/../../assets/data/codex.json';
 if (!file_exists($codexPath)) {
     echo "❌ Codex file missing at $codexPath\n";
@@ -23,36 +34,92 @@ if (!is_array($codex)) {
     echo "❌ Codex could not be decoded.\n";
     exit(1);
 }
+#endregion
 
-// --- 3️⃣  Determine readable title ---
-$title = '';
-if (isset($codex[$slug]['title']) && trim($codex[$slug]['title']) !== '') {
-    // Use the Codex-defined title (e.g., "⏱️ Time Interval Standards (TIS)")
-    $title = $codex[$slug]['title'];
+#region Default Fallback
+if (!$slug) {
+    $slug = isset($codex['defaults']['primaryModule'])
+        ? $codex['defaults']['primaryModule']
+        : 'index';
+}
+#endregion
+
+#region Extract Node and Title
+$node = isset($codex[$slug]) ? $codex[$slug] : array();
+if (isset($node['title']) && trim($node['title']) !== '') {
+    $title = trim($node['title']);
 } else {
-    // Fallback: format slug → "Time Interval Standards"
     $title = ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $slug));
 }
+#endregion
 
-// --- 4️⃣  Render the body content ---
-$body = renderBodyFromCodex($slug);
-
-// --- 5️⃣  Determine output path ---
-$outputDir = __DIR__ . '/../../docs/sheets/';
-if (!is_dir($outputDir)) {
-    $old = umask(0);
-    mkdir($outputDir, 0777, true);
-    umask($old);
+#region Document Class Determination
+function codex_getDocClass($n) {
+    $type   = isset($n['type']) ? strtolower($n['type']) : '';
+    $family = isset($n['family']) ? strtolower($n['family']) : '';
+    if ($type === 'specification') {
+        if ($family === 'report') return 'Report';
+        if ($family === 'survey') return 'Survey';
+        return 'Specification';
+    }
+    if (strpos($type, 'standard') !== false) return 'Information Sheet';
+    if ($type === 'registry') return 'Registry';
+    if ($type === 'taxonomy') return 'Taxonomy';
+    return 'Document';
 }
-$outputFile = $outputDir . 'Information_Sheet_' . $slug . '.pdf';
+$docClass = codex_getDocClass($node);
+#endregion
 
-// --- 6️⃣  Generate PDF ---
+#region Body Rendering
+$body = renderBodyFromCodex($slug);
+#endregion
+
+#region Output Path and File
+$baseDir = realpath(__DIR__ . '/../../docs/');
+$subDir  = 'sheets';
+if ($docClass === 'Report') $subDir = 'reports';
+elseif ($docClass === 'Survey') $subDir = 'surveys';
+$outputDir = $baseDir . DIRECTORY_SEPARATOR . $subDir . DIRECTORY_SEPARATOR;
+if (!is_dir($outputDir)) {
+    $old = umask(0); mkdir($outputDir, 0777, true); umask($old);
+}
+$titleClean = preg_replace('/[^a-zA-Z0-9\s\(\)\-\x{1F300}-\x{1FAFF}]/u', '', $title);
+$outputFile = $outputDir . $docClass . ' - ' . trim($titleClean) . '.pdf';
+#endregion
+
+#region Metadata + PDF Generation  // Parliamentarian §3.4.2 – DRY Temporal Source
+
+// --- Default timestamp (fallback) ---
+$localTime = date('Y-m-d H:i:s');
+
+// --- Prefer SSE Stream time if available ---
+$dynDataPath = __DIR__ . '/../../api/getDynamicData.php';
+if (file_exists($dynDataPath)) {
+    // Execute PHP file and decode JSON (PHP 5.6-safe)
+    $json = shell_exec('php ' . escapeshellarg($dynDataPath));
+    $data = json_decode($json, true);
+
+    if (is_array($data)
+        && isset($data['timeDateArray']['currentDate'])
+        && isset($data['timeDateArray']['currentLocalTime'])
+    ) {
+        // Combine date + time from SSE (America/Phoenix clock)
+        $localTime = trim($data['timeDateArray']['currentDate'] . ' ' . $data['timeDateArray']['currentLocalTime']);
+    }
+}
+
+// --- Metadata passed to renderer ---
 $meta = array(
-    'generatedAt' => date('Y-m-d H:i:s'),
-    'author'      => 'Skyebot™ System Layer'
+    'generatedAt' => $localTime,
+    'author'      => 'Skyebot™ System Layer',
+    'docClass'    => $docClass
 );
 
+// --- Render PDF ---
 renderPDF($title, $body, $meta, $outputFile);
 
-// --- 7️⃣  Final output ---
+#endregion
+
+#region Final Output
 echo "✅ PDF created: " . realpath($outputFile) . "\n";
+#endregion

@@ -1,20 +1,32 @@
 <?php
 // =====================================================================
 //  Skyesoft™ Core PDF Renderer v1.0  |  PHP 5.6-Safe
-//  (Implements Unified Header/Footer Frame – Parliamentarian Approved)
+// ---------------------------------------------------------------------
+//  Implements Unified Header/Footer Frame (Parliamentarian Approved)
+//  Parliamentarian Compliance:
+//     • §3.2.1  Header/Footer Uniformity
+//     • §3.3.4  Page Number Disclosure
+//     • §5.1.1  Regional Code Structuring
 // =====================================================================
 
+#region Dependencies
 require_once(__DIR__ . '/../../libs/tcpdf/tcpdf.php');
+#endregion
 
+#region Class Definition
 class SkyesoftPDF extends TCPDF {
-    public $docTitle = '';
-    public $docType  = 'Skyesoft™ Information Sheet';
-    public $generatedAt = '';
-    // Header
+
+    public $docTitle     = '';
+    public $docType      = 'Skyesoft™ Information Sheet';
+    public $generatedAt  = '';
+
+    #region Header
     public function Header() {
-        $logo = __DIR__ . '/../../assets/images/christyLogo.png';
+
+        // --- Asset paths ---
+        $logo        = __DIR__ . '/../../assets/images/christyLogo.png';
         $iconMapPath = __DIR__ . '/../../assets/data/iconMap.json';
-        $iconBase = __DIR__ . '/../../assets/images/icons/';
+        $iconBase    = __DIR__ . '/../../assets/images/icons/';
 
         $this->SetY(10);
 
@@ -26,13 +38,12 @@ class SkyesoftPDF extends TCPDF {
         // --- Extract emoji and readable title ---
         $emoji = null;
         $cleanTitle = $this->docTitle;
-
         if (preg_match('/^([\p{So}\p{Sk}\x{FE0F}\x{1F300}-\x{1FAFF}]+)\s*(.*)$/u', $this->docTitle, $m)) {
-            $emoji = trim($m[1]);
+            $emoji      = trim($m[1]);
             $cleanTitle = trim($m[2]);
         }
 
-        // --- Fallback: convert slug style to spaced title ---
+        // --- Fallback: convert camelCase slug to spaced title ---
         if (preg_match('/^[a-z]+([A-Z][a-z]+)/', $cleanTitle)) {
             $cleanTitle = trim(preg_replace('/([a-z])([A-Z])/', '$1 $2', $cleanTitle));
         }
@@ -75,37 +86,50 @@ class SkyesoftPDF extends TCPDF {
         $this->SetFont('helvetica', '', 8.5);
         $this->SetTextColor(110, 110, 110);
         $this->SetXY(60, 23);
-        $this->Cell(0, 5, 'Generated ' . date('F j, Y • g:i A', strtotime($this->generatedAt)), 0, 1, 'L');
+        $this->Cell(0, 5,
+            'Generated ' . date('F j, Y • g:i A', strtotime($this->generatedAt)),
+            0, 1, 'L');
 
         // --- Divider ---
         $this->SetLineWidth(0.4);
         $this->Line(10, 30, 205, 30);
         $this->Ln(5);
     }
-    // Footer
+    #endregion
+
+    #region Footer
     public function Footer() {
+        // --- Position footer 15 mm from bottom ---
         $this->SetY(-15);
         $this->SetFont('helvetica', '', 8);
         $this->SetTextColor(80, 80, 80);
+
+        // --- Divider line ---
         $this->Line(10, $this->GetY(), 205, $this->GetY());
         $this->Ln(2);
-        $this->Cell(0, 6,
-            '© Christy Signs / Skyesoft • All Rights Reserved | (602) 242-4488 | christysigns.com',
-            0, 1, 'C');
-        $this->Cell(0, 6,
-            'Page ' . $this->getAliasNumPage() . ' of ' . $this->getAliasNbPages(),
-            0, 0, 'R');
+
+        // --- Unified single-line footer ---
+        $footerText =
+            '© Christy Signs / Skyesoft, All Rights Reserved | ' .
+            '3145 N 33rd Ave, Phoenix AZ 85017 | ' .
+            '(602) 242-4488 | christysigns.com | ' .
+            'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages();
+
+        $this->Cell(0, 6, $footerText, 0, 0, 'C');
     }
+    #endregion
 }
-// Main render function
-function renderPDF($title, $html, $meta = array(), $outputFile = null) {
+#endregion
 
+#region Render Function
+function renderPDF($title, $html, $meta = array(), $outputFile = null)
+{
     $pdf = new SkyesoftPDF('P', 'mm', 'Letter', true, 'UTF-8', false);
-    $pdf->docTitle     = $title;
-    $pdf->generatedAt  = isset($meta['generatedAt']) ? $meta['generatedAt'] : date('Y-m-d H:i:s');
-    $pdf->docType      = 'Skyesoft™ Information Sheet';
+    $pdf->docTitle    = $title;
+    $pdf->generatedAt = isset($meta['generatedAt']) ? $meta['generatedAt'] : date('Y-m-d H:i:s');
+    $pdf->docType     = isset($meta['docClass']) ? 'Skyesoft™ ' . $meta['docClass'] : 'Skyesoft™ Information Sheet';
 
-    // Standardized margins for Core v1.0
+    // --- Standardized margins for Core v1.0 ---
     $pdf->SetMargins(15, 35, 15);
     $pdf->SetHeaderMargin(8);
     $pdf->SetFooterMargin(12);
@@ -115,10 +139,12 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null) {
     $pdf->SetAuthor(isset($meta['author']) ? $meta['author'] : 'Skyebot™ System Layer');
     $pdf->SetTitle($title);
 
+    // --- Render body ---
     $pdf->AddPage();
     $pdf->SetFont('helvetica', '', 10.5);
     $pdf->writeHTML($html, true, false, true, false, '');
 
+    // --- Output path ---
     if (!$outputFile) {
         $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower(strip_tags($title)));
         $outputFile = __DIR__ . '/../../docs/sheets/Information_Sheet_' . $safeName . '.pdf';
@@ -130,3 +156,4 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null) {
     $pdf->Output($outputFile, 'F');
     return $outputFile;
 }
+#endregion
