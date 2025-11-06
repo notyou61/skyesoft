@@ -146,7 +146,8 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null)
     $pdf->setHtmlVSpace(array('div' => array(0, 0), 'p' => array(0, 0)));
 
     // ✨ FIX: inline writeHTML mode (no post-block line gap)
-    $pdf->writeHTML($html, false, false, false, false, '');
+    //$pdf->writeHTML($html, false, false, false, false, '');
+    $pdf->writeHTML($html, true, false, true, false, '');
 
     // --- Output path ---
     if (!$outputFile) {

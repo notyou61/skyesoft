@@ -203,13 +203,13 @@
   "documentStandards": {
     "title": "📄 Document Standards",
     "category": "System Layer",
-    "type": "standard",
+    "type": "directive",
     "tier": 1,
     "hierarchyOrder": "A",
-    "governs": ["documentTypes"],
+    "governs": ["documentTypesRegistry", "metaFooters", "renderDirectives"],
     "dependsOn": ["skyesoftConstitution"],
     "purpose": {
-      "text": "Defines structure, layout, and branding policies governing all Skyesoft documents."
+      "text": "Defines structure, layout, and branding policies governing all Skyesoft documents, ensuring uniform appearance and doctrinal consistency across all document types."
     },
     "containedModules": {
       "metaFooterInformationSheet": {
@@ -235,6 +235,30 @@
         },
         "notes": "This meta footer applies only to Information Sheet–class documents. Other document classes employ alternate metadata standards such as operational, audit, or regulatory footers."
       }
+    },
+    "documentTypesRegistry": {
+      "title": "📂 Document Types Registry",
+      "category": "System Layer",
+      "type": "registry",
+      "status": "ratified",
+      "tier": 2,
+      "hierarchyOrder": "A-2",
+      "effectiveVersion": "v5.6.1",
+      "issuedBy": "CPAP-01 (Parliamentarian)",
+      "description": "Defines the official document-type taxonomy recognized by the Skyesoft Codex and rendering systems. Each entry provides a structural and semantic definition used to determine formatting, layout, and doctrinal labeling.",
+      "format": "table",
+      "items": [
+        { "key": "directive", "type": "Directive", "purpose": "Governing or procedural guidance defining rules, methods, or standards.", "headerExample": "Time Interval Standards Directive" },
+        { "key": "audit", "type": "Audit", "purpose": "System-level or governance review verifying compliance, integrity, or performance of Skyesoft frameworks.", "headerExample": "Temporal Integrity Audit" },
+        { "key": "report", "type": "Report", "purpose": "Analytical or results-oriented summary presenting data, findings, or outcomes.", "headerExample": "Permit Fee Report" },
+        { "key": "survey", "type": "Survey", "purpose": "Observational or visual data capture emphasizing site or condition evidence.", "headerExample": "Photo Survey" },
+        { "key": "bulletin", "type": "Bulletin", "purpose": "Advisory or informational dispatch intended for distribution or awareness.", "headerExample": "Safety Bulletin" },
+        { "key": "incident", "type": "Incident", "purpose": "Record of an event, malfunction, or occurrence requiring investigation or corrective action.", "headerExample": "Service Interruption Incident Report" },
+        { "key": "specification", "type": "Specification", "purpose": "Detailed technical or operational definition governing materials, design, or execution.", "headerExample": "Sign Fabrication Specification" },
+        { "key": "record", "type": "Record", "purpose": "Archival or registry entry capturing amendment, approval, or version history.", "headerExample": "Codex Amendments Record" },
+        { "key": "sheet", "type": "Sheet", "purpose": "Concise reference or informational document summarizing a discrete topic.", "headerExample": "Information Sheet" }
+      ],
+      "notes": "All Codex modules must declare a 'type' matching one of the keys above. Renderers concatenate the module title and its type to form standardized headers (e.g., 'Time Interval Standards Directive'). Future document families should extend this registry rather than redefine it."
     }
   },
   "documentTypes": {
@@ -244,45 +268,48 @@
     "tier": 2,
     "hierarchyOrder": "1",
     "isSubordinateTo": ["documentStandards"],
-    "governs": ["temporalIntegritySpec", "permitReportSpec", "photoSurveySpec"],
+    "dependsOn": ["documentTypesRegistry"],
+    "governs": ["temporalIntegrity", "permit", "photo"],
     "purpose": {
-      "text": "Maintains document family classifications under the Document Standards doctrine."
-    }
+      "text": "Applies the official document type registry by mapping individual Codex modules to their respective document type classification (e.g., Audit, Report, Survey, Directive). Ensures each operational or governance document inherits its correct doctrinal family from the Document Standards layer."
+    },
+    "status": "ratified",
+    "effectiveVersion": "v5.6.1"
   },
-  "temporalIntegritySpec": {
-    "title": "🕰️ Temporal Integrity Report",
+  "temporalIntegrity": {
+    "title": "🕰️ Temporal Integrity Audit",
     "category": "System Layer",
-    "type": "specification",
-    "family": "report",
+    "type": "audit",
+    "family": "governance",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
-      "text": "Defines how the Temporal Integrity Report is structured and validated."
+      "text": "Audits the Skyesoft system’s temporal cohesion, including interval classification, holiday rollover logic, and SSE stream integrity. Ensures compliance with Time Interval Standards (TIS) and related constitutional doctrines."
     }
   },
-  "permitReportSpec": {
-    "title": "🏛️ Permit Report Specification",
+  "permit": {
+    "title": "🏛️ Permit Report",
     "category": "Operations",
-    "type": "specification",
-    "family": "report",
+    "type": "report",
+    "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
-      "text": "Defines format and fields for permit-related reports."
+      "text": "Documents permit acquisition, submittal, and release activity. Summarizes status, fees, and jurisdictional details in standardized format."
     }
   },
-  "photoSurveySpec": {
-    "title": "📷 Photo Survey Specification",
+  "photo": {
+    "title": "📷 Photo Survey",
     "category": "Operations",
-    "type": "specification",
-    "family": "survey",
+    "type": "survey",
+    "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
-      "text": "Defines the standardized format for photo survey reports."
+      "text": "Captures photographic documentation of field conditions, sign installations, or site verifications following the Skyesoft survey standard."
     }
   },
   "timeIntervalStandards": {

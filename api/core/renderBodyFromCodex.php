@@ -33,16 +33,20 @@ function _ss_h2($label) {
         "></div>
     </div>';
 }
-// Text renderer
+
+// Text renderer – baseline flush under divider
 function _ss_render_text($node, $fallback='') {
     $txt = isset($node['text']) ? $node['text'] : $fallback;
-    return '<div style="
+    return '<span style="
+        display:inline-block;
         font-size:11pt;
         line-height:1.1;
         margin:0;
-        margin-top:-1.5pt;  /* pulls paragraph closer to divider */
         padding:0;
-    ">' . htmlspecialchars($txt) . '</div>';
+        white-space:normal;
+        position:relative;
+        top:-1pt;   /* pull text up to remove TCPDF baseline gap */
+    ">' . htmlspecialchars($txt) . '</span>';
 }
 
 // Wrapper: Anti-bloat
