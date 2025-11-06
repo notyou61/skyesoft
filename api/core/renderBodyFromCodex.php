@@ -1,7 +1,7 @@
 <?php
 // =====================================================================
-//  Skyesoft™ Core Codex Body Builder v3.6  |  PHP 5.6-Safe
-//  Focus: Harmonized vertical rhythm (text vs tables) under section rules
+//  Skyesoft™ Core Codex Body Builder v3.9  |  PHP 5.6-Safe
+//  Polish: Zero-gap bullets/lists; white-space fix for wraps
 // =====================================================================
 
 #region Utilities
@@ -12,30 +12,45 @@ function _ss_human_label($k) {
 }
 #endregion
 
-#region Header (tight rule, with faint debug line)
+// Header 2 renderer
 function _ss_h2($label) {
-    return '<div style="margin:0;">'
-         . '<div style="
+    return '
+    <div style="margin:0;padding:0;line-height:1;">
+        <div style="
             font-size:12.5pt;
             font-weight:bold;
             color:#003366;
-            line-height:1.1;          /* slightly tighter baseline */
-            padding-bottom:0.25pt;    /* minimal gap above rule */
-            border-bottom:1pt solid #555; /* darker gray to confirm change */
             margin:0;
-         ">' . htmlspecialchars($label) . '</div>'
-         . '</div>';
+            padding:0;
+        ">' . htmlspecialchars($label) . '</div>
+        <div style="
+            height:0;
+            line-height:0;
+            margin:0;
+            padding:0;
+            border-bottom:1pt solid #555;
+            margin-top:-1.2pt;
+        "></div>
+    </div>';
 }
-#endregion
+// Text renderer
+function _ss_render_text($node, $fallback='') {
+    $txt = isset($node['text']) ? $node['text'] : $fallback;
+    return '<div style="
+        font-size:11pt;
+        line-height:1.1;
+        margin:0;
+        margin-top:-1.5pt;  /* pulls paragraph closer to divider */
+        padding:0;
+    ">' . htmlspecialchars($txt) . '</div>';
+}
 
-#region Content wrapper (eliminate TCPDF baseline gap)
+// Wrapper: Anti-bloat
 function _ss_wrap_content($innerHtml) {
-    // negative top margin collapses the phantom line TCPDF adds
-    return '<div style="margin:-1pt 0 5pt 0;">' . $innerHtml . '</div>';
+    return '<div style="margin:0;padding:0;line-height:1.0;white-space:normal;">' . $innerHtml . '</div>';
 }
-#endregion
 
-#region Table renderers (white table style medium 15 w/ zebra)
+#region Table renderers (unchanged)
 function _ss_render_table($rows) {
     if (!is_array($rows) || empty($rows)) return _ss_wrap_content('<div><em>No table data.</em></div>');
     $headers = array_keys($rows[0]);
@@ -55,7 +70,7 @@ function _ss_render_table($rows) {
         foreach ($headers as $h) {
             $val = isset($r[$h]) ? $r[$h] : '';
             if (is_array($val)) $val = implode(', ', $val);
-            $html .= '<td style="padding:6pt 4pt;border:0.5pt solid #ccc;">'
+            $html .= '<td style="padding:6pt 4pt;border:0.5pt solid #ccc;white-space:normal;">'
                   . htmlspecialchars($val) . '</td>';
         }
         $html .= '</tr>';
@@ -74,23 +89,18 @@ function _ss_render_kv_table($assoc) {
 #endregion
 
 #region Section renderers
-// IMPORTANT: render text as <div>, not <p>, to eliminate paragraph leading.
-function _ss_render_text($node, $fallback='') {
-    $txt = isset($node['text']) ? $node['text'] : $fallback;
-    return _ss_wrap_content('<div style="font-size:11pt;margin:0;">' . htmlspecialchars($txt) . '</div>');
-}
-
 function _ss_render_dynamic($node) {
     $desc = isset($node['description']) ? $node['description'] : '(Dynamic section)';
-    return _ss_wrap_content('<div style="font-size:11pt;margin:0;"><em>' . htmlspecialchars($desc) . '</em></div>');
+    return _ss_wrap_content('<div style="font-size:11pt;margin:0;line-height:1.0;"><em>' . htmlspecialchars($desc) . '</em></div>');
 }
 
+// Lists: Zero-top margin for header hug
 function _ss_render_list($node) {
     $items = isset($node['items']) && is_array($node['items']) ? $node['items'] : array();
-    if (!count($items)) return _ss_wrap_content('<div><em>No list items.</em></div>');
-    $html = '<ul style="margin:0 0 0 16pt;">';
+    if (!count($items)) return '';  // Skip empty (no "Notes" blank)
+    $html = '<ul style="margin:0 0 0 16pt;padding:0;line-height:1.0;">';
     foreach ($items as $i)
-        $html .= '<li style="margin-bottom:2pt;">' . htmlspecialchars(is_string($i)?$i:json_encode($i)) . '</li>';
+        $html .= '<li style="margin:0 0 2pt 0;padding:0;line-height:1.0;white-space:normal;">' . htmlspecialchars(is_string($i)?$i:json_encode($i)) . '</li>';
     return _ss_wrap_content($html . '</ul>');
 }
 
@@ -114,6 +124,9 @@ function _ss_render_relationships($node) {
 
 function _ss_render_holiday_registry($node) {
     $html = '';
+    if (isset($node['description']) && $node['description'] !== '') {
+        $html = _ss_render_text(array('text' => $node['description']));  // Reuse text renderer for tight desc
+    }
     if (isset($node['categories']) && is_array($node['categories'])) {
         $catRows = array();
         foreach ($node['categories'] as $name => $cfg)
@@ -123,7 +136,7 @@ function _ss_render_holiday_registry($node) {
                 'Workday Impact' => isset($cfg['workdayImpact']) ? $cfg['workdayImpact'] : '',
                 'Exclude From Scheduling' => isset($cfg['excludeFromScheduling']) ? ($cfg['excludeFromScheduling'] ? 'Yes' : 'No') : ''
             );
-        $html .= '<div style="font-weight:bold;margin:6pt 0 2pt 0;">Categories</div>';
+        $html .= '<div style="font-weight:bold;margin:6pt 0 0 0;line-height:1.0;">Categories</div>';  // Zero bottom
         $html .= _ss_render_table($catRows);
     }
 
@@ -135,14 +148,10 @@ function _ss_render_holiday_registry($node) {
                 'Rule' => isset($h['rule']) ? $h['rule'] : '',
                 'Categories' => isset($h['categories']) ? (is_array($h['categories']) ? implode(', ', $h['categories']) : $h['categories']) : ''
             );
-        $html .= '<div style="font-weight:bold;margin:8pt 0 2pt 0;">Holidays</div>';
+        $html .= '<div style="font-weight:bold;margin:8pt 0 0 0;line-height:1.0;">Holidays</div>';  // Zero bottom
         $html .= _ss_render_table($hRows);
     }
-
-    if (isset($node['description']) && $node['description'] !== '') {
-        $html = '<div style="font-size:11pt;margin:0;">' . htmlspecialchars($node['description']) . '</div>' . $html;
-    }
-    return _ss_wrap_content($html !== '' ? $html : '<div><em>No registry data.</em></div>');
+    return _ss_wrap_content($html !== '' ? $html : '');
 }
 #endregion
 
@@ -159,7 +168,7 @@ function renderBodyFromCodex($slug) {
         : array('purpose','dayTypes','segmentsOffice','segmentsShop','holidays','exclusions','holidayRegistry','holidayFallbackRules','relationships');
 
     $suppress = array('title','category','type','subtypes','actions','meta','codexMeta','enrichment','icon','format','source','revision');
-    $html = '';
+    $html = '<div style="line-height:1.0;margin:0;padding:0;white-space:normal;">';  // Root with wrap fix
 
     foreach ($order as $key) {
         if (!isset($m[$key])) continue;
@@ -183,16 +192,15 @@ function renderBodyFromCodex($slug) {
                 break;
             default:
                 if (is_string($node)) {
-                    $html .= _ss_wrap_content('<div style="font-size:11pt;margin:0;">' . htmlspecialchars($node) . '</div>');
-                } elseif (is_array($node)) {
-                    if (isset($node['items']) && is_array($node['items'])) {
-                        $html .= _ss_render_table($node['items']);
-                    } else {
-                        $html .= _ss_wrap_content('<pre style="font-size:9pt;background:#f8f8f8;padding:6pt;margin:0;">'
-                              . htmlspecialchars(json_encode($node, JSON_PRETTY_PRINT))
-                              . '</pre>');
-                    }
+                    $html .= _ss_wrap_content('<div style="
+                        font-size:11pt;
+                        margin:0;
+                        line-height:1.0;
+                        white-space:normal;
+                        margin-top:-1.2pt; /* pulls text closer to divider */
+                    ">' . htmlspecialchars($node) . '</div>');
                 }
+                // Break
                 break;
         }
     }
@@ -201,13 +209,14 @@ function renderBodyFromCodex($slug) {
         if (in_array($k,$suppress)||in_array($k,$order)) continue;
         $html .= _ss_h2(_ss_human_label($k));
         if (is_string($v)) {
-            $html .= _ss_wrap_content('<div style="font-size:11pt;margin:0;">' . htmlspecialchars($v) . '</div>');
+            $html .= _ss_wrap_content('<div style="font-size:11pt;margin:0;line-height:1.0;white-space:normal;">' . htmlspecialchars($v) . '</div>');
         } else {
-            $html .= _ss_wrap_content('<pre style="font-size:9pt;background:#f8f8f8;padding:6pt;margin:0;">'
+            $html .= _ss_wrap_content('<pre style="font-size:9pt;background:#f8f8f8;padding:6pt;margin:0;line-height:1.0;white-space:pre-wrap;">'
                   . htmlspecialchars(json_encode($v, JSON_PRETTY_PRINT))
                   . '</pre>');
         }
     }
+    $html .= '</div>';
     return $html;
 }
 #endregion

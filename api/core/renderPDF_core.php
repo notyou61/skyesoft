@@ -1,8 +1,9 @@
 <?php
 // =====================================================================
-//  Skyesoft™ Core PDF Renderer v1.0  |  PHP 5.6-Safe
+//  Skyesoft™ Core PDF Renderer v1.2  |  PHP 5.6-Safe
 // ---------------------------------------------------------------------
 //  Implements Unified Header/Footer Frame (Parliamentarian Approved)
+//  Fix: Eliminated phantom inter-section gap via inline writeHTML mode
 //  Parliamentarian Compliance:
 //     • §3.2.1  Header/Footer Uniformity
 //     • §3.3.4  Page Number Disclosure
@@ -83,7 +84,7 @@ class SkyesoftPDF extends TCPDF {
         $this->Cell(0, 6, $this->docType, 0, 1, 'L');
 
         // --- Timestamp ---
-        $this->SetFont('helvetica', '', 8.5);
+        $this->SetFont('helvetica', '', 8);
         $this->SetTextColor(110, 110, 110);
         $this->SetXY(60, 23);
         $this->Cell(0, 5,
@@ -93,22 +94,19 @@ class SkyesoftPDF extends TCPDF {
         // --- Divider ---
         $this->SetLineWidth(0.4);
         $this->Line(10, 30, 205, 30);
-        $this->Ln(5);
+        $this->Ln(2);  // Reduced from 5mm to 2mm for tight body start
     }
     #endregion
 
     #region Footer
     public function Footer() {
-        // --- Position footer 15 mm from bottom ---
         $this->SetY(-15);
         $this->SetFont('helvetica', '', 8);
         $this->SetTextColor(80, 80, 80);
 
-        // --- Divider line ---
         $this->Line(10, $this->GetY(), 205, $this->GetY());
         $this->Ln(2);
 
-        // --- Unified single-line footer ---
         $footerText =
             '© Christy Signs / Skyesoft, All Rights Reserved | ' .
             '3145 N 33rd Ave, Phoenix AZ 85017 | ' .
@@ -129,7 +127,7 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null)
     $pdf->generatedAt = isset($meta['generatedAt']) ? $meta['generatedAt'] : date('Y-m-d H:i:s');
     $pdf->docType     = isset($meta['docClass']) ? 'Skyesoft™ ' . $meta['docClass'] : 'Skyesoft™ Information Sheet';
 
-    // --- Standardized margins for Core v1.0 ---
+    // --- Margins and document meta ---
     $pdf->SetMargins(15, 35, 15);
     $pdf->SetHeaderMargin(8);
     $pdf->SetFooterMargin(12);
@@ -139,10 +137,16 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null)
     $pdf->SetAuthor(isset($meta['author']) ? $meta['author'] : 'Skyebot™ System Layer');
     $pdf->SetTitle($title);
 
-    // --- Render body ---
+    // --- Render body: anchor Y just after divider ---
     $pdf->AddPage();
+    $pdf->SetY(32);
     $pdf->SetFont('helvetica', '', 10.5);
-    $pdf->writeHTML($html, true, false, true, false, '');
+
+    // --- ✨ FIX: eliminate post-block gaps ---
+    $pdf->setHtmlVSpace(array('div' => array(0, 0), 'p' => array(0, 0)));
+
+    // ✨ FIX: inline writeHTML mode (no post-block line gap)
+    $pdf->writeHTML($html, false, false, false, false, '');
 
     // --- Output path ---
     if (!$outputFile) {
@@ -153,7 +157,7 @@ function renderPDF($title, $html, $meta = array(), $outputFile = null)
         $old = umask(0); mkdir(dirname($outputFile), 0777, true); umask($old);
     }
 
-    $pdf->Output($outputFile, 'F');
+    $pdf->Output($outputFile, 'F', true);
     return $outputFile;
 }
 #endregion
