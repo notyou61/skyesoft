@@ -2,7 +2,7 @@
 // ======================================================================
 //  FILE: pdf_framework.php
 //  PURPOSE: Skyesoft™ Document Framework (Header, Body, Footer)
-//  VERSION: v2.3.1 (Slug-Deterministic Codex Edition, Stable Footer)
+//  VERSION: v2.3.2 (Codex Edition, Restored Footer)
 //  AUTHOR: CPAP-01 Parliamentarian Integration
 //  PHP 5.6 Compatible
 // ======================================================================
@@ -30,6 +30,8 @@ class SkyesoftPDF extends TCPDF {
     public function __construct($orientation='P',$unit='mm',$format='Letter',$unicode=true,$encoding='UTF-8',$diskcache=false){
         parent::__construct($orientation,$unit,$format,$unicode,$encoding,$diskcache);
         $this->root = dirname(__DIR__,2);
+        // ✅ Disable TCPDF’s internal footer globally, preserve our custom one
+        parent::setPrintFooter(false);
     }
 
     public function bindContext($ctx=array()){
@@ -41,90 +43,76 @@ class SkyesoftPDF extends TCPDF {
     // --------------------------------------------------
     //  HEADER
     // --------------------------------------------------
-    public function Header(){
-        $logoPath    = $this->root.'/assets/images/christyLogo.png';
-        $iconMapPath = $this->root.'/assets/data/iconMap.json';
-        $iconBase    = $this->root.'/assets/images/icons/';
+    public function Header() {
+        $logoPath = $this->root . '/assets/images/christyLogo.png';
 
-        $yBase=8; $logoW=36; $gap=9; $textW=120;
-        $pageW=$this->getPageWidth()-$this->lMargin-$this->rMargin;
-        $xOffset=($pageW-($logoW+$gap+$textW))/2+$this->lMargin;
+        $yBase  = 8;
+        $logoW  = 36;
+        $gap    = 2;
+        $xOffset = $this->lMargin;
 
-        if(file_exists($logoPath))
-            $this->Image($logoPath,$xOffset,$yBase,$logoW,0,'PNG');
-
-        $rawTitle=$this->docTitle;
-        $emoji=function_exists('mb_substr')?mb_substr($rawTitle,0,2,'UTF-8'):substr($rawTitle,0,2);
-        $titleText=trim(preg_replace('/^\X\s*/u','',$rawTitle));
-
-        $iconFile=null;
-        if(file_exists($iconMapPath)){
-            $map=json_decode(@file_get_contents($iconMapPath),true);
-            foreach($map as $entry){
-                if(isset($entry['icon'])&&$entry['icon']===$emoji&&isset($entry['file'])){
-                    $candidate=$iconBase.$entry['file'];
-                    if(file_exists($candidate)) $iconFile=$candidate;
-                }
-            }
+        // --- Christy Logo ---
+        if (file_exists($logoPath) && is_readable($logoPath)) {
+            // suppress TCPDF missing-image placeholder
+            @$this->Image($logoPath, $xOffset, $yBase, $logoW, 0, 'PNG', '', '', false, 300, '', false, false, 0, false, false, false);
         }
 
-        $textX=$xOffset+$logoW+$gap;
-        $titleY=$yBase+1.5;
+        // --- Text geometry ---
+        $textX  = $xOffset + $logoW + $gap;
+        $titleY = $yBase + 2.5;
 
-        if($iconFile){
-            $this->Image($iconFile,$textX,$titleY+0.3,6.5,6.5,'','','',true);
-            $textX+=8.5;
-        }
+        // --- Title ---
+        $this->SetFont('helvetica', 'B', 12.5);
+        $this->SetTextColor(0, 0, 0);
+        $this->SetXY($textX, $titleY);
+        // Remove emoji if present (prevents ?? fallback)
+        $titleText = preg_replace('/^[\x{1F300}-\x{1FAFF}]\s*/u', '', $this->docTitle);
+        $this->Cell(0, 5.5, $titleText, 0, 1, 'L');
 
-        $this->SetFont('helvetica','B',12.5);
-        $this->SetTextColor(0,0,0);
-        $this->SetXY($textX,$titleY);
-        $this->Cell(0,5.5,$titleText,0,1,'L');
+        // --- Document Type ---
+        $this->SetFont('helvetica', '', 9.2);
+        $this->SetTextColor(60, 60, 60);
+        $this->SetXY($textX, $titleY + 5.2);
+        $this->Cell(0, 4.5, $this->docType, 0, 1, 'L');
 
-        $this->SetFont('helvetica','',9);
-        $this->SetTextColor(80,80,80);
-        $this->SetXY($xOffset+$logoW+$gap,$titleY+5.3);
-        $this->Cell(0,4.5,$this->docType,0,1,'L');
+        // --- Timestamp ---
+        $this->SetFont('helvetica', '', 7.8);
+        $this->SetTextColor(100, 100, 100);
+        $this->SetXY($textX, $titleY + 10.1);
+        $this->Cell(0, 4, 'Generated ' . $this->generatedAt, 0, 1, 'L');
 
-        $this->SetFont('helvetica','',7.8);
-        $this->SetTextColor(110,110,110);
-        $this->SetXY($xOffset+$logoW+$gap,$titleY+10.2);
-        $this->Cell(0,4,'Generated '.$this->generatedAt,0,1,'L');
-
+        // --- Divider ---
         $this->SetLineWidth(0.4);
-        $this->Line($this->lMargin,$yBase+20,$this->getPageWidth()-$this->rMargin,$yBase+20);
+        $this->Line($this->lMargin, $yBase + 20, $this->getPageWidth() - $this->rMargin, $yBase + 20);
     }
 
     // --------------------------------------------------
     //  FOOTER
     // --------------------------------------------------
-    public function Footer(){
+    public function Footer() {
         // Parliamentarian §3.3.4 – Page Number Disclosure
         $this->SetY(-15.5);
         $this->SetFont('helvetica','',8);
         $this->SetTextColor(80,80,80);
 
-        $left=$this->lMargin;
-        $right=$this->getPageWidth()-$this->rMargin;
-        $this->Line($left,$this->GetY(),$right,$this->GetY());
+        // Divider line
+        $this->Line($this->lMargin, $this->GetY(), $this->getPageWidth() - $this->rMargin, $this->GetY());
         $this->Ln(2.2);
 
-        $codexVer=isset($this->codexMeta['version'])?' • Codex '.$this->codexMeta['version']:'';
-        $reviewer=isset($this->codexMeta['reviewedBy'])?' • Reviewed '.$this->codexMeta['reviewedBy']:'';
+        // Footer text
+        $footerText = 
+            '© Christy Signs / Skyesoft, All Rights Reserved | ' .
+            '3145 N 33rd Ave, Phoenix AZ 85017 | (602) 242-4488 | christysigns.com' .
+            ' | Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages();
 
-        $footerText='© Christy Signs / Skyesoft, All Rights Reserved | '.
-            '3145 N 33rd Ave, Phoenix AZ 85017 | (602) 242-4488 | christysigns.com'.
-            $codexVer.$reviewer.
-            ' | Page '.$this->getAliasNumPage().'/'.$this->getAliasNbPages();
+        // Compute full printable width
+        $printableWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
 
-        $tempText=str_replace(array($this->getAliasNumPage(),$this->getAliasNbPages()),array('999','999'),$footerText);
-        $printableWidth=$this->getPageWidth()-$this->lMargin-$this->rMargin;
-        $textWidth=$this->GetStringWidth($tempText,'helvetica','',8);
-        $x=round($this->lMargin+(($printableWidth-$textWidth)/2),2);
-
-        $this->SetX($x);
-        $this->Cell($textWidth,6,$footerText,0,0,'L');
+        // ✅ Nudge right by ~1.5mm while keeping true centering
+        $this->SetX($this->lMargin + 6);
+        $this->Cell($printableWidth, 6, $footerText, 0, 0, 'C');
     }
+
 }
 
 // --------------------------------------------------
@@ -168,7 +156,12 @@ $codexMeta=array(
 //  REGION: DOCUMENT INITIALIZATION
 // --------------------------------------------------
 $pdf=new SkyesoftPDF('P','mm','Letter',true,'UTF-8',false);
-$pdf->setPrintFooter(false); // 🔹 disable TCPDF’s built-in footer globally
+
+$pdf->setPrintHeader(true);
+$pdf->setPrintFooter(true);   // ✅ Re-enable footer rendering hook
+$pdf->setFooterData(array(0,0,0), array(0,0,0)); // ✅ clears TCPDF watermark colors/text
+
+// ✅ Do NOT call setPrintFooter(false) here — already handled in constructor
 
 $pdf->bindContext(array(
     'docTitle'=>$docTitle,
@@ -203,8 +196,8 @@ $pdf->writeHTML($body,true,false,true,false,'');
 // --------------------------------------------------
 $saveDir=$root.'/docs/sheets/';
 if(!is_dir($saveDir)){ $old=umask(0); mkdir($saveDir,0777,true); umask($old); }
-$savePath=$saveDir.'skyesoft_framework_'.$slug.'_v2.3.1.pdf';
+$savePath=$saveDir.'skyesoft_framework_'.$slug.'_v2.3.2.pdf';
 $pdf->Output($savePath,'F');
 
-echo "✅ Skyesoft v2.3.1 Framework saved to: $savePath\n";
+echo "✅ Skyesoft v2.3.2 Framework saved to: $savePath\n";
 echo "🪶 Generated for module: $slug ({$docType})\n";
