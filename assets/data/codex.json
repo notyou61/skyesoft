@@ -248,15 +248,20 @@
       "description": "Defines the official document-type taxonomy recognized by the Skyesoft Codex and rendering systems. Each entry provides a structural and semantic definition used to determine formatting, layout, and doctrinal labeling.",
       "format": "table",
       "items": [
-        { "key": "directive", "type": "Directive", "purpose": "Governing or procedural guidance defining rules, methods, or standards.", "headerExample": "Time Interval Standards Directive" },
-        { "key": "audit", "type": "Audit", "purpose": "System-level or governance review verifying compliance, integrity, or performance of Skyesoft frameworks.", "headerExample": "Temporal Integrity Audit" },
-        { "key": "report", "type": "Report", "purpose": "Analytical or results-oriented summary presenting data, findings, or outcomes.", "headerExample": "Permit Fee Report" },
-        { "key": "survey", "type": "Survey", "purpose": "Observational or visual data capture emphasizing site or condition evidence.", "headerExample": "Photo Survey" },
-        { "key": "bulletin", "type": "Bulletin", "purpose": "Advisory or informational dispatch intended for distribution or awareness.", "headerExample": "Safety Bulletin" },
-        { "key": "incident", "type": "Incident", "purpose": "Record of an event, malfunction, or occurrence requiring investigation or corrective action.", "headerExample": "Service Interruption Incident Report" },
-        { "key": "specification", "type": "Specification", "purpose": "Detailed technical or operational definition governing materials, design, or execution.", "headerExample": "Sign Fabrication Specification" },
-        { "key": "record", "type": "Record", "purpose": "Archival or registry entry capturing amendment, approval, or version history.", "headerExample": "Codex Amendments Record" },
-        { "key": "sheet", "type": "Sheet", "purpose": "Concise reference or informational document summarizing a discrete topic.", "headerExample": "Information Sheet" }
+        { "key": "directive", "type": "directive", "purpose": "Governing or procedural guidance defining rules, methods, or standards.", "headerExample": "Time Interval Standards Directive" },
+        { "key": "audit", "type": "audit", "purpose": "System-level or governance review verifying compliance, integrity, or performance of Skyesoft frameworks.", "headerExample": "Temporal Integrity Audit" },
+        { "key": "report", "type": "report", "purpose": "Analytical or results-oriented summary presenting data, findings, or outcomes.", "headerExample": "Permit Fee Report" },
+        { "key": "survey", "type": "survey", "purpose": "Observational or visual data capture emphasizing site or condition evidence.", "headerExample": "Photo Survey" },
+        { "key": "bulletin", "type": "bulletin", "purpose": "Advisory or informational dispatch intended for distribution or awareness.", "headerExample": "Safety Bulletin" },
+        { "key": "incident", "type": "incident", "purpose": "Record of an event, malfunction, or occurrence requiring investigation or corrective action.", "headerExample": "Service Interruption Incident Report" },
+        { "key": "specification", "type": "specification", "purpose": "Detailed technical or operational definition governing materials, design, or execution.", "headerExample": "Sign Fabrication Specification" },
+        { "key": "record", "type": "record", "purpose": "Archival or registry entry capturing amendment, approval, or version history.", "headerExample": "Codex Amendments Record" },
+        { "key": "sheet", "type": "sheet", "purpose": "Concise reference or informational document summarizing a discrete topic.", "headerExample": "Information Sheet" },
+        { "key": "taxonomy", "type": "taxonomy", "purpose": "Defines classification structures and interrelations within the Codex hierarchy.", "headerExample": "Document Types" },
+        { "key": "summary", "type": "summary", "purpose": "Summative or doctrinal overview referencing multiple Codex layers and their relational logic.", "headerExample": "Skyesoft Document Doctrine Triad" },
+        { "key": "registry", "type": "registry", "purpose": "Registry or archival directive governing amendment tracking, change lineage, and formal recordkeeping.", "headerExample": "Codex Amendments Register" },
+        { "key": "datastream", "type": "datastream", "purpose": "Specifies active or dynamic data channels (e.g., SSE, telemetry) for real-time information flow within Skyesoft systems.", "headerExample": "SSE Stream" },
+        { "key": "systemstandard", "type": "systemstandard", "purpose": "Establishes system-level configuration, code, or procedural standards governing Skyesoft operational frameworks.", "headerExample": "Code Management" }
       ],
       "notes": "All Codex modules must declare a 'type' matching one of the keys above. Renderers concatenate the module title and its type to form standardized headers (e.g., 'Time Interval Standards Directive'). Future document families should extend this registry rather than redefine it."
     }
@@ -275,6 +280,55 @@
     },
     "status": "ratified",
     "effectiveVersion": "v5.6.1"
+  },
+  "folderConventions": {
+    "title": "📂 Folder Conventions Directive",
+    "category": "System Layer",
+    "type": "directive",
+    "tier": 2,
+    "hierarchyOrder": "A-3",
+    "effectiveVersion": "v5.6.3",
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "description": "Defines the standardized folder hierarchy and conventions governing Skyesoft’s operational, doctrinal, and audit code structure.",
+    "format": "table",
+    "items": [
+      {
+        "path": "/api/core/",
+        "classification": "Operational Doctrine Layer",
+        "purpose": "Contains production-level modules, renderers, and core system APIs used by Skyebot and other processes at runtime."
+      },
+      {
+        "path": "/scripts/",
+        "classification": "Procedural Doctrine Layer",
+        "purpose": "Houses command-line utilities, maintenance routines, and ad-hoc executables used by internal staff or system processes."
+      },
+      {
+        "path": "/scripts/audit/",
+        "classification": "Parliamentary Oversight Layer",
+        "purpose": "Reserved for codex-compliance validators, document audits, and meta-governance tests executed under CPAP review."
+      },
+      {
+        "path": "/scripts/testing/",
+        "classification": "Experimental Layer",
+        "purpose": "Used for short-lived tests, proofs of concept, or provisional system experiments prior to doctrinal ratification."
+      },
+      {
+        "path": "/docs/",
+        "classification": "Public Doctrine Layer",
+        "purpose": "Contains human-readable documentation, information sheets, and generated framework outputs for archival or distribution."
+      }
+    ],
+    "notes": "This directive defines the expected folder conventions for all Skyesoft repositories. Audit tools and AI agents use these conventions to automatically locate modules and determine their doctrinal role."
+  },
+  "documentDoctrine": {
+    "title": "📜 Skyesoft Document Doctrine Triad",
+    "category": "System Layer",
+    "type": "summary",
+    "tier": 1,
+    "description": "Defines the unified doctrinal system governing Skyesoft document standards, taxonomy, and folder conventions.",
+    "includes": ["documentStandards", "documentTypes", "folderConventions"],
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "These three directives form the structural foundation for all Skyesoft document generation and governance."
   },
   "temporalIntegrity": {
     "title": "🕰️ Temporal Integrity Audit",
@@ -315,7 +369,7 @@
   "timeIntervalStandards": {
     "title": "⏱️ Time Interval Standards (TIS)",
     "category": "System Layer",
-    "type": "temporal-standard",
+    "type": "directive",
     "subtypes": ["schedule", "time-interval", "work-segment"],
     "actions": ["calculate", "evaluate", "generate-sheet"],
     "relationships": {
@@ -927,7 +981,7 @@
   "sseStream": {
   "title": "🌐 SSE Stream",
   "category": "Adaptive Layer",
-  "type": "data-stream",
+  "type": "datastream",
   "subtypes": ["live-feed", "system-pulse", "context-stream"],
   "actions": ["observe", "generate-sheet", "sync", "describe"],
   "relationships": {
@@ -1125,7 +1179,7 @@
   "codeManagement": {
   "title": "💻 Code Management",
   "category": "System Layer",
-  "type": "system-standard",
+  "type": "systemstandard",
   "subtypes": ["source", "module", "endpoint"],
   "actions": ["read", "describe", "suggest-edit", "generate-docs"],
   "relationships": {

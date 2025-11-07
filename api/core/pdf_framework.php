@@ -2,202 +2,382 @@
 // ======================================================================
 //  FILE: pdf_framework.php
 //  PURPOSE: Skyesoft™ Document Framework (Header, Body, Footer)
-//  VERSION: v2.3.2 (Codex Edition, Restored Footer)
+//  VERSION: v2.4 (Regionalized Codex Edition)
 //  AUTHOR: CPAP-01 Parliamentarian Integration
 //  PHP 5.6 Compatible
 // ======================================================================
 
+#region ERROR-REPORTING
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+#endregion
 
-// --------------------------------------------------
-//  REGION: DEPENDENCIES
-// --------------------------------------------------
+#region DEPENDENCIES
 require_once(__DIR__ . '/../../libs/tcpdf/tcpdf.php');
+#endregion
 
-// --------------------------------------------------
-//  REGION: SKYESOFT PDF CLASS
-// --------------------------------------------------
+// ======================================================================
+//  CLASS DEFINITION
+// ======================================================================
+
+#region CLASS: SkyesoftPDF
 class SkyesoftPDF extends TCPDF {
 
+    #region PROPERTIES
     public $docTitle    = '📄 Untitled Document';
     public $docType     = 'Skyesoft™ Information Sheet';
     public $generatedAt = '';
     public $metaFooter  = '© Christy Signs / Skyesoft, All Rights Reserved | 3145 N 33rd Ave, Phoenix AZ 85017 | (602) 242-4488 | christysigns.com';
     public $codexMeta   = array();
     private $root       = '';
+    #endregion
 
+    #region CONSTRUCTOR
     public function __construct($orientation='P',$unit='mm',$format='Letter',$unicode=true,$encoding='UTF-8',$diskcache=false){
         parent::__construct($orientation,$unit,$format,$unicode,$encoding,$diskcache);
         $this->root = dirname(__DIR__,2);
-        // ✅ Disable TCPDF’s internal footer globally, preserve our custom one
-        parent::setPrintFooter(false);
+        parent::setPrintFooter(false); // disable TCPDF default footer
     }
+    #endregion
 
+    #region CONTEXT-BINDER
     public function bindContext($ctx=array()){
         foreach($ctx as $k=>$v){
             if(property_exists($this,$k)) $this->$k=$v;
         }
     }
+    #endregion
 
-    // --------------------------------------------------
-    //  HEADER
-    // --------------------------------------------------
+    #region HEADER
     public function Header() {
         $logoPath = $this->root . '/assets/images/christyLogo.png';
 
-        $yBase  = 8;
-        $logoW  = 36;
-        $gap    = 2;
+        // --- Layout geometry ---
+        $yBase   = 8;     // top offset
+        $logoW   = 36;    // logo width
+        $gap     = 3;     // gap between logo and text
         $xOffset = $this->lMargin;
 
         // --- Christy Logo ---
-        if (file_exists($logoPath) && is_readable($logoPath)) {
-            // suppress TCPDF missing-image placeholder
-            @$this->Image($logoPath, $xOffset, $yBase, $logoW, 0, 'PNG', '', '', false, 300, '', false, false, 0, false, false, false);
+        if (file_exists($logoPath)) {
+            $this->Image($logoPath, $xOffset, $yBase, $logoW, 0, 'PNG');
         }
 
-        // --- Text geometry ---
-        $textX  = $xOffset + $logoW + $gap;
-        $titleY = $yBase + 2.5;
+        // --- Compute vertical centering relative to logo ---
+        // Estimate logo height proportionally (~1:3.5 ratio)
+        $logoH   = $logoW / 3.5;
+        // Center text block vertically on logo midline
+        $textY   = $yBase + ($logoH / 2) - 4.0; // subtract ~5.5mm to visually center
+
+        $textX = $xOffset + $logoW + $gap;
+
+        // --- Clean Title ---
+        $rawTitle = $this->docTitle;
+        $cleanTitle = preg_replace('/^[^\p{L}\p{N}\(]+/u', '', $rawTitle);
+        $cleanTitle = str_replace("\xEF\xBF\xBD", '', $cleanTitle);
+        $cleanTitle = trim($cleanTitle);
 
         // --- Title ---
         $this->SetFont('helvetica', 'B', 12.5);
         $this->SetTextColor(0, 0, 0);
-        $this->SetXY($textX, $titleY);
-        // Remove emoji if present (prevents ?? fallback)
-        $titleText = preg_replace('/^[\x{1F300}-\x{1FAFF}]\s*/u', '', $this->docTitle);
-        $this->Cell(0, 5.5, $titleText, 0, 1, 'L');
+        $this->SetXY($textX, $textY);
+        $this->Cell(0, 5.5, $cleanTitle, 0, 1, 'L');
 
         // --- Document Type ---
         $this->SetFont('helvetica', '', 9.2);
         $this->SetTextColor(60, 60, 60);
-        $this->SetXY($textX, $titleY + 5.2);
+        $this->SetXY($textX, $textY + 5.0);
         $this->Cell(0, 4.5, $this->docType, 0, 1, 'L');
 
         // --- Timestamp ---
         $this->SetFont('helvetica', '', 7.8);
         $this->SetTextColor(100, 100, 100);
-        $this->SetXY($textX, $titleY + 10.1);
+        $this->SetXY($textX, $textY + 10.0);
         $this->Cell(0, 4, 'Generated ' . $this->generatedAt, 0, 1, 'L');
 
         // --- Divider ---
         $this->SetLineWidth(0.4);
-        $this->Line($this->lMargin, $yBase + 20, $this->getPageWidth() - $this->rMargin, $yBase + 20);
-    }
 
-    // --------------------------------------------------
-    //  FOOTER
-    // --------------------------------------------------
+        // Move divider line lower for cleaner separation
+        $dividerY = $yBase + $logoH + 8; // was +6 — increase for more space
+        $this->Line($this->lMargin, $dividerY, $this->getPageWidth() - $this->rMargin, $dividerY);
+    }
+    #endregion
+
+    #region FOOTER
     public function Footer() {
-        // Parliamentarian §3.3.4 – Page Number Disclosure
         $this->SetY(-15.5);
         $this->SetFont('helvetica','',8);
         $this->SetTextColor(80,80,80);
 
-        // Divider line
-        $this->Line($this->lMargin, $this->GetY(), $this->getPageWidth() - $this->rMargin, $this->GetY());
-        $this->Ln(2.2);
+        // --- Divider line ---
+        $left  = $this->lMargin;
+        $right = $this->getPageWidth() - $this->rMargin;
+        $this->Line($left, $this->GetY(), $right, $this->GetY());
 
-        // Footer text
-        $footerText = 
+        // Increase vertical spacing below divider for symmetry
+        $this->Ln(2.0); // was 2.2 — gives a balanced gap like header divider
+
+        // --- Footer text ---
+        $footerText =
             '© Christy Signs / Skyesoft, All Rights Reserved | ' .
             '3145 N 33rd Ave, Phoenix AZ 85017 | (602) 242-4488 | christysigns.com' .
             ' | Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages();
 
-        // Compute full printable width
         $printableWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
-
-        // ✅ Nudge right by ~1.5mm while keeping true centering
         $this->SetX($this->lMargin + 6);
         $this->Cell($printableWidth, 6, $footerText, 0, 0, 'C');
     }
+    #endregion
 
 }
+#endregion
 
-// --------------------------------------------------
-//  REGION: DETERMINE SLUG
-// --------------------------------------------------
-$slug=null;
-if(php_sapi_name()==='cli'){
-    foreach($argv as $arg){
-        if(strpos($arg,'slug=')===0) $slug=trim(substr($arg,5));
+// ======================================================================
+//  REGION: GENERATED-AT RESOLVER (SSE-AWARE)
+// ======================================================================
+
+#region FUNCTION: resolveGeneratedAtFromSSE
+function resolveGeneratedAtFromSSE($root) {
+    // Candidate SSE snapshot paths
+    $candidates = array(
+        $root . '/assets/data/sse.json',
+        $root . '/assets/data/sseStream.json',
+        $root . '/assets/data/sse_snapshot.json'
+    );
+
+    foreach ($candidates as $path) {
+        if (!file_exists($path)) {
+            continue;
+        }
+
+        $raw = @file_get_contents($path);
+        if ($raw === false) {
+            continue;
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['timeDateArray'])) {
+            continue;
+        }
+
+        $t = $data['timeDateArray'];
+
+        // ✅ Primary: use SSE unix time + timezone when available
+        if (isset($t['currentUnixTime'])) {
+            $ts = (int)$t['currentUnixTime'];
+
+            // Prefer explicit SSE timeZone, else fall back to Codex/Phoenix
+            $tz = 'America/Phoenix';
+            if (!empty($t['timeZone'])) {
+                $tz = $t['timeZone'];
+            } else {
+                $codexPath = $root . '/assets/data/codex.json';
+                if (file_exists($codexPath)) {
+                    $codex = json_decode(file_get_contents($codexPath), true);
+                    if (isset($codex['weatherData']['timeZone'])) {
+                        $tz = $codex['weatherData']['timeZone'];
+                    }
+                }
+            }
+
+            if (function_exists('date_default_timezone_set')) {
+                $oldTz = @date_default_timezone_get();
+                @date_default_timezone_set($tz);
+                $formatted = date('F j, Y • g:i A', $ts);
+                @date_default_timezone_set($oldTz ?: 'UTC');
+                return $formatted;
+            }
+
+            // If we can't change TZ safely, still format using server TZ
+            return date('F j, Y • g:i A', $ts);
+        }
+
+        // ✅ Secondary: compose from SSE human fields
+        if (isset($t['currentDate']) && isset($t['currentLocalTime'])) {
+            return $t['currentDate'] . ' • ' . $t['currentLocalTime'];
+        }
     }
-}elseif(isset($_GET['slug'])){
-    $slug=$_GET['slug'];
+
+    // ✅ Fallback: use Codex / Phoenix as doctrinal default
+    $tz = 'America/Phoenix';
+    $codexPath = $root . '/assets/data/codex.json';
+    if (file_exists($codexPath)) {
+        $codex = json_decode(file_get_contents($codexPath), true);
+        if (isset($codex['weatherData']['timeZone'])) {
+            $tz = $codex['weatherData']['timeZone'];
+        }
+    }
+
+    if (function_exists('date_default_timezone_set')) {
+        $oldTz = @date_default_timezone_get();
+        @date_default_timezone_set($tz);
+        $formatted = date('F j, Y • g:i A');
+        @date_default_timezone_set($oldTz ?: 'UTC');
+        return $formatted;
+    }
+
+    return date('F j, Y • g:i A');
 }
-if(!$slug){
+#endregion
+
+// ======================================================================
+//  MAIN SCRIPT
+// ======================================================================
+
+#region SLUG-DETECTION
+$slug = null;
+if (php_sapi_name() === 'cli') {
+    foreach ($argv as $arg) {
+        if (strpos($arg, 'slug=') === 0) $slug = trim(substr($arg, 5));
+    }
+} elseif (isset($_GET['slug'])) {
+    $slug = $_GET['slug'];
+}
+if (!$slug) {
     echo "❌ Missing slug parameter. Example: php -f api/core/pdf_framework.php slug=documentStandards\n";
     exit;
 }
+#endregion
+
+#region LOAD-CODEX
+$root = dirname(__DIR__, 2);
+$codexPath = $root . '/assets/data/codex.json';
+if (!file_exists($codexPath)) { 
+    echo "❌ Codex not found: $codexPath\n"; 
+    exit; 
+}
+
+$codex = json_decode(file_get_contents($codexPath), true);
+if (!isset($codex[$slug])) { 
+    echo "❌ Module '$slug' not found in Codex.\n"; 
+    exit; 
+}
+
+$module = $codex[$slug];
 
 // --------------------------------------------------
-//  REGION: LOAD CODEX + MODULE
+//  TITLE: Clean emoji and format slug in Title Case
 // --------------------------------------------------
-$root=dirname(__DIR__,2);
-$codexPath=$root.'/assets/data/codex.json';
-if(!file_exists($codexPath)){
-    echo "❌ Codex not found: $codexPath\n"; exit;
+$docTitle = isset($module['title'])
+    ? trim(preg_replace('/^[\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}]\s*/u', '', $module['title']))
+    : trim(ucwords(preg_replace('/([a-z])([A-Z])/', '$1 $2', $slug)));
+
+// --------------------------------------------------
+//  DOC TYPE: Derived dynamically from Codex registry
+// --------------------------------------------------
+$typeKey   = isset($module['type']) ? strtolower(trim($module['type'])) : 'general';
+$familyKey = isset($module['family']) ? strtolower(trim($module['family'])) : '';
+$doctrine  = isset($module['doctrine']) ? strtolower(trim($module['doctrine'])) : '';
+
+// Locate the registry block
+$registryItems = array();
+if (isset($codex['documentStandards']['documentTypesRegistry']['items'])) {
+    $registryItems = $codex['documentStandards']['documentTypesRegistry']['items'];
 }
-$codex=json_decode(file_get_contents($codexPath),true);
-if(!isset($codex[$slug])){
-    echo "❌ Module '$slug' not found in Codex.\n"; exit;
+
+// Default
+$displayLabel = 'Document';
+
+// Search through the registry table for a key match
+foreach ($registryItems as $entry) {
+    if (isset($entry['key']) && strtolower($entry['key']) === $typeKey) {
+        if (isset($entry['type'])) {
+            $displayLabel = $entry['type'];
+            break;
+        }
+    }
 }
-$module=$codex[$slug];
-$docTitle=isset($module['title'])?$module['title']:ucfirst($slug);
-$docType=isset($module['type'])?'Skyesoft™ '.ucfirst($module['type']):'Skyesoft™ Document';
-$family=isset($module['family'])?$module['family']:'general';
-$codexMeta=array(
-    'version'=>isset($codex['documentStandards']['effectiveVersion'])?$codex['documentStandards']['effectiveVersion']:'vUnknown',
-    'reviewedBy'=>isset($codex['documentStandards']['issuedBy'])?$codex['documentStandards']['issuedBy']:'Unverified'
+
+// Fallback: if no match by type, try doctrine
+if ($displayLabel === 'Document' && $doctrine !== '') {
+    foreach ($registryItems as $entry) {
+        if (isset($entry['key']) && strtolower($entry['key']) === $doctrine) {
+            if (isset($entry['type'])) {
+                $displayLabel = $entry['type'];
+                break;
+            }
+        }
+    }
+}
+
+// Combine into Skyesoft format
+$docType = 'Skyesoft™ ' . $displayLabel;
+
+// --------------------------------------------------
+//  FAMILY + METADATA
+// --------------------------------------------------
+$family = isset($module['family']) ? $module['family'] : 'general';
+$codexMeta = array(
+    'version'    => isset($codex['documentStandards']['documentTypesRegistry']['effectiveVersion'])
+                    ? $codex['documentStandards']['documentTypesRegistry']['effectiveVersion']
+                    : 'vUnknown',
+    'reviewedBy' => isset($codex['documentStandards']['documentTypesRegistry']['issuedBy'])
+                    ? $codex['documentStandards']['documentTypesRegistry']['issuedBy']
+                    : 'Unverified'
 );
+#endregion
 
-// --------------------------------------------------
-//  REGION: DOCUMENT INITIALIZATION
-// --------------------------------------------------
-$pdf=new SkyesoftPDF('P','mm','Letter',true,'UTF-8',false);
-
+#region PDF-INITIALIZATION
+$pdf = new SkyesoftPDF('P', 'mm', 'Letter', true, 'UTF-8', false);
 $pdf->setPrintHeader(true);
-$pdf->setPrintFooter(true);   // ✅ Re-enable footer rendering hook
-$pdf->setFooterData(array(0,0,0), array(0,0,0)); // ✅ clears TCPDF watermark colors/text
-
-// ✅ Do NOT call setPrintFooter(false) here — already handled in constructor
+$pdf->setPrintFooter(true);
+$pdf->setFooterData(array(0,0,0), array(0,0,0));
 
 $pdf->bindContext(array(
-    'docTitle'=>$docTitle,
-    'docType'=>$docType,
-    'generatedAt'=>date('F j, Y • g:i A'),
-    'codexMeta'=>$codexMeta
+    'docTitle'    => $docTitle,
+    'docType'     => $docType,
+    'generatedAt' => resolveGeneratedAtFromSSE($root),
+    'codexMeta'   => $codexMeta
 ));
 
 $pdf->SetCreator('Skyesoft™ Codex Engine');
 $pdf->SetAuthor('Skyebot™ System Layer');
 $pdf->SetTitle($docTitle);
-$pdf->SetMargins(15,38,15);
+$pdf->SetMargins(15, 38, 15);
 $pdf->SetHeaderMargin(8);
 $pdf->SetFooterMargin(12);
-$pdf->SetAutoPageBreak(true,20);
+$pdf->SetAutoPageBreak(true, 20);
+#endregion
 
-// --------------------------------------------------
-//  REGION: BODY CONTENT PLACEHOLDER
-// --------------------------------------------------
+#region BODY
 $pdf->AddPage();
-$pdf->SetFont('helvetica','',10.5);
+$pdf->SetFont('helvetica', '', 10.5);
 
-$body=<<<EOD
+$body = <<<EOD
 <p><strong>$docTitle</strong> is a {$family}-class document defined under the <em>{$docType}</em> family.</p>
 <p>This output was generated dynamically from the Codex entry for <code>$slug</code>
 and inherits its doctrinal lineage and metadata automatically.</p>
 EOD;
-$pdf->writeHTML($body,true,false,true,false,'');
 
-// --------------------------------------------------
-//  REGION: OUTPUT
-// --------------------------------------------------
-$saveDir=$root.'/docs/sheets/';
-if(!is_dir($saveDir)){ $old=umask(0); mkdir($saveDir,0777,true); umask($old); }
-$savePath=$saveDir.'skyesoft_framework_'.$slug.'_v2.3.2.pdf';
-$pdf->Output($savePath,'F');
+$pdf->writeHTML($body, true, false, true, false, '');
+#endregion
 
-echo "✅ Skyesoft v2.3.2 Framework saved to: $savePath\n";
+#region OUTPUT
+$saveDir = $root . '/documents/';
+if (!is_dir($saveDir)) { $old = umask(0); mkdir($saveDir, 0777, true); umask($old); }
+
+// Determine context-aware prefix
+$isProjectDoc = preg_match('/(permit|inspection|photo|survey|invoice|report)/i', $slug);
+
+// Clean title & type for file name
+$cleanTitle = preg_replace('/^[^\p{L}\p{N}\(]+/u', '', $docTitle);
+$cleanType  = preg_replace('/[^A-Za-z0-9 ]+/', '', $displayLabel);
+
+// Choose naming pattern
+if ($isProjectDoc && isset($module['jobName']) && isset($module['jobNumber'])) {
+    // For client or job documents
+    $prefix = trim($module['jobName']) . ' # ' . trim($module['jobNumber']);
+    $saveFile = sprintf('%s – %s %s.pdf', $prefix, $cleanTitle, ucfirst($cleanType));
+} else {
+    // For Codex / system documents
+    $saveFile = sprintf('Skyesoft – %s %s.pdf', $cleanTitle, ucfirst($cleanType));
+}
+
+$savePath = $saveDir . $saveFile;
+$pdf->Output($savePath, 'F');
+
+echo "📂 Document directory: $saveDir\n";
+echo "✅ Saved as: $saveFile\n";
 echo "🪶 Generated for module: $slug ({$docType})\n";
+#endregion
