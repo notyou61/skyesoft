@@ -163,28 +163,40 @@ setInterval(() => {
       // #endregion
 
       // #region ⏳ Update Interval Remaining Message
-      const seconds = data?.intervalsArray?.currentDaySecondsRemaining;
-      const label = data?.intervalsArray?.intervalLabel;
-      const dayType = data?.intervalsArray?.dayType;
+      const secondsRaw = data?.intervalsArray?.currentDaySecondsRemaining;
+      let labelRaw = data?.intervalsArray?.intervalLabel;
+      let dayTypeRaw = data?.intervalsArray?.dayType;
 
-      if (seconds !== undefined && label !== undefined && dayType !== undefined) {
+      // Normalize types
+      const seconds = typeof secondsRaw === "string" ? parseInt(secondsRaw, 10) : secondsRaw;
+      const label = typeof labelRaw === "string" ? parseInt(labelRaw, 10) : labelRaw;
+
+      if (!isNaN(seconds) && !isNaN(label)) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
 
-        if (dayType === "Workday") {
-          if (label === 0) {
-            message = `🔜 Workday begins in ${formatted}`;
-          } else if (label === 1) {
-            message = `🔚 Workday ends in ${formatted}`;
-          } else {
-            message = `📆 Next workday begins in ${formatted}`;
-          }
-        } else if (dayType === "Weekend") {
-          message = `🌴 Weekend continues — next workday in ${formatted}`;
-        } else if (dayType === "Company Holiday") {
-          message = `🏢 Office closed — next workday in ${formatted}`;
+        // Core mapping: label describes the interval; seconds = time until that boundary
+        if (dayTypeRaw === "Company Holiday") {
+          message = `🏢 Office closed — next workday begins in ${formatted}`;
+        } else if (dayTypeRaw === "Weekend") {
+          message = `🌴 Weekend — next workday begins in ${formatted}`;
         } else {
-          message = `📆 Next workday begins in ${formatted}`;
+          // Workday / default
+          switch (label) {
+            case 0:
+              // Before Worktime
+              message = `🔜 Workday begins in ${formatted}`;
+              break;
+            case 1:
+              // During Worktime
+              message = `🔚 Workday ends in ${formatted}`;
+              break;
+            case 2:
+            default:
+              // After Worktime
+              message = `📆 Next workday begins in ${formatted}`;
+              break;
+          }
         }
 
         const intervalEl = document.getElementById("intervalRemainingData");
