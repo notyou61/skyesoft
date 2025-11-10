@@ -302,7 +302,7 @@ if ($displayLabel === 'Document' && $doctrine !== '') {
 }
 
 // Combine into Skyesoft format
-$docType = 'Skyesoft™ ' . $displayLabel;
+$docType = 'Skyesoft™ ' . ucfirst($displayLabel);
 
 // --------------------------------------------------
 //  FAMILY + METADATA
@@ -320,60 +320,173 @@ $codexMeta = array(
 
 #region PDF-INITIALIZATION
 $pdf = new SkyesoftPDF('P', 'mm', 'Letter', true, 'UTF-8', false);
+
+// Core print settings
 $pdf->setPrintHeader(true);
 $pdf->setPrintFooter(true);
-$pdf->setFooterData(array(0,0,0), array(0,0,0));
-
-$pdf->bindContext(array(
-    'docTitle'    => $docTitle,
-    'docType'     => $docType,
-    'generatedAt' => resolveGeneratedAtFromSSE($root),
-    'codexMeta'   => $codexMeta
-));
-
-$pdf->SetCreator('Skyesoft™ Codex Engine');
-$pdf->SetAuthor('Skyebot™ System Layer');
-$pdf->SetTitle($docTitle);
+$pdf->setFooterData(array(0, 0, 0), array(0, 0, 0));
+$pdf->setFooterFont(array('helvetica', '', 8));
 $pdf->SetMargins(15, 38, 15);
 $pdf->SetHeaderMargin(8);
 $pdf->SetFooterMargin(12);
 $pdf->SetAutoPageBreak(true, 20);
+
+// Metadata
+$pdf->SetCreator('Skyesoft™ Codex Engine');
+$pdf->SetAuthor('Skyebot™ System Layer');
+$pdf->SetTitle($docTitle);
+
+// Context bind
+$pdf->bindContext(array(
+    'docTitle'    => $docTitle,
+    'docType'     => ucfirst($docType), // ensures “Directive” not “directive”
+    'generatedAt' => resolveGeneratedAtFromSSE($root),
+    'codexMeta'   => $codexMeta
+));
+#endregion
+
+// ======================================================================
+//  REGION: ENRICHMENT + BODY BUILDER + OUTPUT RESOLVER
+// ======================================================================
+
+#region FUNCTION: aiEnrichSection
+function aiEnrichSection($module, $enrichment = 'low', $root = '') {
+    if (!in_array($enrichment, array('medium', 'high'))) return '';
+
+    $title    = isset($module['title']) ? $module['title'] : 'Unnamed Module';
+    $type     = isset($module['type']) ? ucfirst($module['type']) : 'Document';
+    $purpose  = isset($module['purpose']['text']) ? $module['purpose']['text'] : '';
+    $category = isset($module['category']) ? $module['category'] : 'Unspecified Layer';
+
+    $prompt = "You are the Skyesoft Codex Parliamentarian AI. "
+            . "Generate a narrative summary for the {$type} titled '{$title}'. "
+            . "Category: {$category}. Purpose: {$purpose}. ";
+
+    $prompt .= ($enrichment === 'high')
+        ? "Include doctrinal relationships, dependencies, and practical implications using professional, structured language suitable for Codex-class documents."
+        : "Limit to one concise paragraph summarizing context and intent.";
+
+    $apiPath = $root . '/api/askOpenAI.php';
+    if (!file_exists($apiPath)) return '';
+
+    $opts = array(
+        'http' => array(
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode(array('prompt' => $prompt)),
+            'timeout' => 15
+        )
+    );
+
+    $ctx = stream_context_create($opts);
+    $resp = @file_get_contents($apiPath, false, $ctx);
+
+    if ($resp) {
+        $data = json_decode($resp, true);
+        if (!empty($data['response'])) {
+            return "<div class='ai-enrichment'><h2>Doctrinal Commentary</h2><p>"
+                 . htmlspecialchars(trim($data['response'])) . "</p></div>";
+        }
+    }
+    return '';
+}
+#endregion
+
+#region FUNCTION: buildBodyFromCodex
+function buildBodyFromCodex($module, $codex = array(), $root = '') {
+    $html = "";
+
+    $enrichment = isset($module['enrichment'])
+        ? strtolower(trim($module['enrichment']))
+        : 'low';
+
+    $html .= aiEnrichSection($module, $enrichment, $root);
+
+    if (isset($module['purpose']['text']))
+        $html .= "<h2>Purpose</h2><p>{$module['purpose']['text']}</p>";
+
+    if (isset($module['description']))
+        $html .= "<h2>Description</h2><p>{$module['description']}</p>";
+
+    if (isset($module['format']) && $module['format'] === 'table' && isset($module['items'])) {
+        $html .= "<h2>Defined Standards</h2><table border='1' cellpadding='5' cellspacing='0' width='100%'>";
+        $headersPrinted = false;
+        foreach ($module['items'] as $item) {
+            if (!$headersPrinted) {
+                $html .= "<tr style='background-color:#f0f0f0;font-weight:bold'>";
+                foreach (array_keys($item) as $header)
+                    $html .= "<td>" . ucfirst($header) . "</td>";
+                $html .= "</tr>";
+                $headersPrinted = true;
+            }
+            $html .= "<tr>";
+            foreach ($item as $val)
+                $html .= "<td>" . htmlspecialchars($val) . "</td>";
+            $html .= "</tr>";
+        }
+        $html .= "</table>";
+    }
+
+    if (isset($module['notes']))
+        $html .= "<h2>Notes</h2><p>{$module['notes']}</p>";
+
+    return $html ?: "<p>No doctrinal body content defined for this module.</p>";
+}
+#endregion
+
+#region FUNCTION: resolveRepositoryPath
+function resolveRepositoryPath($codex) {
+    $candidates = array(
+        @$codex['documentStandards']['containedModules']['referentialDocumentRecord']['repository']['path'],
+        @$codex['documentStandards']['repository']['path'],
+        '/documents/'
+    );
+    foreach ($candidates as $candidate)
+        if (is_string($candidate) && trim($candidate) !== '')
+            return '/' . ltrim(trim($candidate), '/');
+    return '/documents/';
+}
+#endregion
+
+#region FUNCTION: resolveDocumentOutputPath
+function resolveDocumentOutputPath($root, $codex, $module, $slug, $docTitle, $displayLabel) {
+    $repoPath = resolveRepositoryPath($codex);
+    $saveDir  = rtrim($root . $repoPath, '/') . '/';
+    if (!is_dir($saveDir)) { $old = umask(0); mkdir($saveDir, 0777, true); umask($old); }
+
+    $type = isset($module['type']) ? strtolower($module['type']) : 'document';
+    $naming = array(
+        'report'       => '{entity} # {jobNumber} (WO # {workOrder}) – {title} Report.pdf',
+        'survey'       => '{entity} # {jobNumber} (WO # {workOrder}) – {title} Survey.pdf',
+        'audit'        => 'Skyesoft – {title} Audit.pdf',
+        'directive'    => 'Skyesoft – {title} Directive.pdf',
+        'sheet'        => 'Skyesoft – {title} Information Sheet.pdf',
+        'default'      => 'Skyesoft – {title} {type}.pdf'
+    );
+    $pattern = isset($naming[$type]) ? $naming[$type] : $naming['default'];
+
+    $replacements = array(
+        '{entity}'    => isset($module['entity']) ? trim($module['entity']) : 'Skyesoft',
+        '{jobNumber}' => isset($module['jobNumber']) ? trim($module['jobNumber']) : '0000',
+        '{workOrder}' => isset($module['workOrder']) ? trim($module['workOrder']) : 'N/A',
+        '{title}'     => preg_replace('/^[^\p{L}\p{N}\(]+/u', '', $docTitle),
+        '{type}'      => ucfirst(preg_replace('/[^A-Za-z0-9 ]+/', '', $displayLabel))
+    );
+    $saveFile = str_replace(array_keys($replacements), array_values($replacements), $pattern);
+
+    return array($saveDir, $saveFile);
+}
 #endregion
 
 #region BODY
 $pdf->AddPage();
 $pdf->SetFont('helvetica', '', 10.5);
-
-$body = <<<EOD
-<p><strong>$docTitle</strong> is a {$family}-class document defined under the <em>{$docType}</em> family.</p>
-<p>This output was generated dynamically from the Codex entry for <code>$slug</code>
-and inherits its doctrinal lineage and metadata automatically.</p>
-EOD;
-
+$body = buildBodyFromCodex($module, $codex, $root);
 $pdf->writeHTML($body, true, false, true, false, '');
 #endregion
 
 #region OUTPUT
-$saveDir = $root . '/documents/';
-if (!is_dir($saveDir)) { $old = umask(0); mkdir($saveDir, 0777, true); umask($old); }
-
-// Determine context-aware prefix
-$isProjectDoc = preg_match('/(permit|inspection|photo|survey|invoice|report)/i', $slug);
-
-// Clean title & type for file name
-$cleanTitle = preg_replace('/^[^\p{L}\p{N}\(]+/u', '', $docTitle);
-$cleanType  = preg_replace('/[^A-Za-z0-9 ]+/', '', $displayLabel);
-
-// Choose naming pattern
-if ($isProjectDoc && isset($module['jobName']) && isset($module['jobNumber'])) {
-    // For client or job documents
-    $prefix = trim($module['jobName']) . ' # ' . trim($module['jobNumber']);
-    $saveFile = sprintf('%s – %s %s.pdf', $prefix, $cleanTitle, ucfirst($cleanType));
-} else {
-    // For Codex / system documents
-    $saveFile = sprintf('Skyesoft – %s %s.pdf', $cleanTitle, ucfirst($cleanType));
-}
-
+list($saveDir, $saveFile) = resolveDocumentOutputPath($root, $codex, $module, $slug, $docTitle, $displayLabel);
 $savePath = $saveDir . $saveFile;
 $pdf->Output($savePath, 'F');
 
