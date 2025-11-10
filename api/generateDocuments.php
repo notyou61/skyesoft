@@ -40,28 +40,34 @@ foreach ($envPaths as $envFile) {
 }
 
 // ----------------------------------------------------------------------
-//  STEP 1 – INPUT & METHOD VALIDATION (Unified POST/CLI support)
+//  STEP 1 – INPUT & METHOD VALIDATION (Codex-Compliant, slug-only)
 // ----------------------------------------------------------------------
 $isCli = (php_sapi_name() === 'cli');
 
-// ---- CLI usage example ----
-// php api/generateDocuments.php timeIntervalStandards medium
+// ---- CLI usage ----
+// php api/generateDocuments.php timeIntervalStandards
 if ($isCli) {
     $input = array();
-    if (isset($argv[1])) $input['slug']  = $argv[1];
-    if (isset($argv[2])) $input['level'] = $argv[2];
+    if (isset($argv[1])) {
+        $input['slug'] = trim($argv[1]);
+    }
 } else {
-    // Handle both standard form POSTs and cURL-encoded bodies
+    // Accept both POST bodies and cURL-encoded data
     $raw = file_get_contents('php://input');
     parse_str($raw, $parsed);
     $input = array_merge($_POST, $parsed, $_GET);
-
-    if (!isset($input['slug']) || trim($input['slug']) === '') {
-        http_response_code(400);
-        echo json_encode(array('error' => 'Missing slug parameter.'));
-        exit;
-    }
 }
+
+// ---- Validation ----
+if (!isset($input['slug']) || $input['slug'] === '') {
+    http_response_code(400);
+    echo json_encode(array('error' => 'Missing slug parameter.'));
+    exit;
+}
+
+// Normalize slug (safety)
+$slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $input['slug']);
+
 
 // ----------------------------------------------------------------------
 //  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX
