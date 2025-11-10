@@ -40,38 +40,28 @@ foreach ($envPaths as $envFile) {
 }
 
 // ----------------------------------------------------------------------
-//  STEP 1 – INPUT & METHOD VALIDATION
+//  STEP 1 – INPUT & METHOD VALIDATION (Unified POST/CLI support)
 // ----------------------------------------------------------------------
 $isCli = (php_sapi_name() === 'cli');
 
-if (!$isCli && (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'POST')) {
-    http_response_code(405);
-    echo json_encode(array('error' => 'Only POST requests allowed.'));
-    exit;
-}
-
+// ---- CLI usage example ----
+// php api/generateDocuments.php timeIntervalStandards medium
 if ($isCli) {
-    // CLI usage:
-    // php api/generateDocuments.php timeIntervalStandards medium
     $input = array();
-    if (isset($argv[1])) {
-        $input['slug'] = $argv[1];
-    }
-    if (isset($argv[2])) {
-        $input['enrichment'] = $argv[2];
-    }
+    if (isset($argv[1])) $input['slug']  = $argv[1];
+    if (isset($argv[2])) $input['level'] = $argv[2];
 } else {
-    $rawIn = file_get_contents('php://input');
-    $input = json_decode($rawIn, true);
-}
+    // Handle both standard form POSTs and cURL-encoded bodies
+    $raw = file_get_contents('php://input');
+    parse_str($raw, $parsed);
+    $input = array_merge($_POST, $parsed, $_GET);
 
-if (!is_array($input) || !isset($input['slug'])) {
-    http_response_code(400);
-    echo json_encode(array('error' => 'Missing slug parameter.'));
-    exit;
+    if (!isset($input['slug']) || trim($input['slug']) === '') {
+        http_response_code(400);
+        echo json_encode(array('error' => 'Missing slug parameter.'));
+        exit;
+    }
 }
-
-$slug = trim($input['slug']);
 
 // ----------------------------------------------------------------------
 //  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX
