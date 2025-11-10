@@ -646,13 +646,13 @@ function resolveRepositoryPath($codex) {
 }
 
 // ----------------------------------------------------------------------
-//  STEP 10 – FILE-NAMING (NON-BRITTLE, TYPE-BASED)
+//  STEP 10 – FILE-NAMING (DEDUPLICATED TYPE LABEL)
 // ----------------------------------------------------------------------
 function buildFileName($module, $cleanTitle, $displayLabel) {
-    $type = isset($module['type']) ? strtolower($module['type']) : 'document';
-
-    // Map type -> suffix; avoid double "(TIS)" type bugs; title already includes aliases
+    $type = isset($module['type']) ? strtolower(trim($module['type'])) : 'document';
     $suffix = '';
+
+    // Map type → human label
     if ($type === 'directive') {
         $suffix = 'Directive';
     } elseif ($type === 'audit') {
@@ -665,7 +665,13 @@ function buildFileName($module, $cleanTitle, $displayLabel) {
         $suffix = ucfirst($displayLabel);
     }
 
-    return 'Skyesoft – ' . $cleanTitle . ' ' . $suffix . '.pdf';
+    // 🚫 Prevent double words (e.g., “Audit Audit”)
+    if (stripos($cleanTitle, $suffix) !== false) {
+        $suffix = '';
+    }
+
+    $finalTitle = trim('Skyesoft – ' . $cleanTitle . ' ' . $suffix);
+    return $finalTitle . '.pdf';
 }
 
 // ----------------------------------------------------------------------
