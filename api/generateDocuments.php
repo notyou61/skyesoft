@@ -80,7 +80,7 @@ if ($root === false) {
 }
 
 $codexPath = $root . '/assets/data/codex.json';
-$tcpdfPath = $root . '/libs/tcpdf/tcpdf.php';
+$tcpdfPath = $root . '/libs/tcpdf.php';
 
 if (!file_exists($codexPath)) {
     http_response_code(500);
