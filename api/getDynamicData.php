@@ -694,9 +694,6 @@ $currentTime = date('h:i:s A', $now);
 $currentSeconds = date('G', $now) * 3600 + date('i', $now) * 60 + date('s', $now);
 $currentUnixTime = $now;
 
-$workStart = timeStringToSeconds(WORKDAY_START);
-$workEnd   = timeStringToSeconds(WORKDAY_END);
-
 // 🗓️ Load company holiday list
 $holidays = array();
 if (is_readable(HOLIDAYS_PATH)) {
@@ -715,6 +712,17 @@ if (empty($holidays)) {
         if (isset($codex['timeIntervalStandards']['holidayRegistry']['holidays'])) {
             $holidays = $codex['timeIntervalStandards']['holidayRegistry']['holidays'];
         }
+    }
+}
+
+// Ensure Codex is always loaded for time-interval standards
+if (!isset($codex) || !is_array($codex)) {
+    $codexPath = __DIR__ . '/../assets/data/codex.json';
+    if (file_exists($codexPath)) {
+        $codex = json_decode(file_get_contents($codexPath), true);
+    } else {
+        $codex = [];
+        error_log("⚠️ Codex file not found; time intervals will default to zero.");
     }
 }
 
@@ -804,28 +812,76 @@ if (isset($data['holidays']) && is_array($data['holidays'])) {
 // 🛠 Workday Determination
 $isWorkday = isWorkday($currentDate, isset($data['holidays']) ? $data['holidays'] : array());
 
-// ⏱ Interval Labeling
-$intervalLabel = ($isWorkday && $currentSeconds >= $workStart && $currentSeconds < $workEnd) ? '0' : '1';
+// ================================================================
+//  🕓  Codex Time-Interval Integration (v5.4 TIS)
+// ================================================================
 
-// 🧭 Day Type Mapping
-// 0 = Workday, 1 = Weekend, 2 = Company Holiday
-if ($isCompanyHoliday) {
-    $dayType = '2';
-} elseif (!$isWorkday) {
-    $dayType = '1';
-} else {
-    $dayType = '0';
+// --- Derive Office Worktime from Codex --------------------------
+$workStart = 0; $workEnd = 0;
+if (isset($codex['timeIntervalStandards']['segmentsOffice']['items'])) {
+    foreach ($codex['timeIntervalStandards']['segmentsOffice']['items'] as $segment) {
+        if (strtolower($segment['Interval']) === 'worktime') {
+            list($s, $e) = array_map('trim', preg_split('/\s*[–-]\s*/u', $segment['Hours']));
+            $workStart = timeStringToSeconds($s);
+            $workEnd   = timeStringToSeconds($e);
+            break;
+        }
+    }
 }
 
-// ⏳ Seconds Remaining Calculation
-if ($intervalLabel === '1') {
-    $nextStart = ($isWorkday && $currentSeconds < $workStart)
-        ? strtotime($currentDate . ' ' . WORKDAY_START)
-        : findNextWorkdayStart($currentDate, $holidays);
-    $secondsRemaining = $nextStart - $now;
-} else {
-    $secondsRemaining = $workEnd - $currentSeconds;
+// --- Derive Shop Worktime from Codex (mirrored for SSE payload) ---
+$shopStart = 0; $shopEnd = 0;
+if (isset($codex['timeIntervalStandards']['segmentsShop']['items'])) {
+    foreach ($codex['timeIntervalStandards']['segmentsShop']['items'] as $segment) {
+        if (strtolower($segment['Interval']) === 'worktime') {
+            list($s, $e) = array_map('trim', preg_split('/\s*[–-]\s*/u', $segment['Hours']));
+            $shopStart = timeStringToSeconds($s);
+            $shopEnd   = timeStringToSeconds($e);
+            break;
+        }
+    }
 }
+
+// --- Determine current interval (Office-focused; Shop can be derived similarly if needed) ---
+$currentSeconds = (int)date('G', $now)*3600 + (int)date('i', $now)*60 + (int)date('s', $now);
+
+if ($currentSeconds < $workStart) {
+    $intervalLabel = 0;        // Before Worktime
+    $intervalName  = 'Before Worktime';
+    $secondsRemaining = $workStart - $currentSeconds;
+} elseif ($currentSeconds <= $workEnd) {
+    $intervalLabel = 1;        // Worktime
+    $intervalName  = 'Worktime';
+    $secondsRemaining = max(0, $workEnd - $currentSeconds);
+} else {
+    $intervalLabel = 2;        // After Worktime
+    $intervalName  = 'After Worktime';
+    $secondsRemaining = ($currentDayEndUnix - $now);
+}
+
+// --- Day-type classification -----------------------------------
+$weekday = (int)date('N', $now);
+$dayType = $isCompanyHoliday ? 'Company Holiday'
+          : ($weekday >= 6 ? 'Weekend'
+          : 'Workday');
+
+// --- Assemble interval object ----------------------------------
+$intervalsArray = [
+    'currentDaySecondsRemaining' => max(0, $currentDayEndUnix - $now),
+    'intervalLabel'              => $intervalLabel,
+    'intervalName'               => $intervalName,
+    'dayType'                    => $dayType,
+    'workdayIntervals' => [
+        'office' => [
+            'start' => $workStart,
+            'end'   => $workEnd
+        ],
+        'shop' => [
+            'start' => $shopStart,
+            'end'   => $shopEnd
+        ]
+    ]
+];
 #endregion
 
 #region 🔧 Utility Functions
