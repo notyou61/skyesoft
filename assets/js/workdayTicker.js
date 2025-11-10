@@ -175,29 +175,39 @@ setInterval(() => {
         const formatted = formatDurationPadded(seconds);
         let message = "";
 
-        // Core mapping: label describes the interval; seconds = time until that boundary
-        if (dayTypeRaw === "Company Holiday") {
-          message = `🏢 Office closed — next workday begins in ${formatted}`;
-        } else if (dayTypeRaw === "Weekend") {
-          message = `🌴 Weekend — next workday begins in ${formatted}`;
-        } else {
-          // Workday / default
-          switch (label) {
-            case 0:
-              // Before Worktime
-              message = `🔜 Workday begins in ${formatted}`;
-              break;
-            case 1:
-              // During Worktime
-              message = `🔚 Workday ends in ${formatted}`;
-              break;
-            case 2:
-            default:
-              // After Worktime
-              message = `📆 Next workday begins in ${formatted}`;
-              break;
-          }
+      // #region ⏳ Update Interval Remaining Message (TIS v5.4)
+      const s = data?.intervalsArray?.currentDaySecondsRemaining;
+      const label = Number(data?.intervalsArray?.intervalLabel);
+      const dayType = data?.intervalsArray?.dayType;
+
+      if (!isNaN(s) && !isNaN(label)) {
+        const formatted = formatDurationPadded(s);
+        let message = "";
+
+        switch (label) {
+          case 0: // Before Worktime
+            message = `🔜 Worktime begins in ${formatted}`;
+            break;
+          case 1: // During Worktime
+            message = `🔚 Worktime ends in ${formatted}`;
+            break;
+          case 2: // After Worktime
+          default:
+            message = `📆 Next worktime begins in ${formatted}`;
+            break;
         }
+
+        // Contextual prefix based on dayType
+        if (dayType === "Weekend") {
+          message = `🌴 Weekend — ${message}`;
+        } else if (dayType === "Company Holiday") {
+          message = `🏢 Office closed — ${message}`;
+        }
+
+        const el = document.getElementById("intervalRemainingData");
+        if (el) el.textContent = message;
+      }
+      // #endregion
 
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
