@@ -254,29 +254,55 @@ if (isset($data['holidays']) && is_array($data['holidays'])) {
 
 #region 📁 Constants and File Paths (strict Codex mode)
 
-// Derive Office Workday Start/End dynamically from Codex
-$workdayStart = null;
-$workdayEnd   = null;
+// ======================================================================
+//  📘 STEP: Resolve Office Worktime from Codex (v5.4 Compliant)
+//  PURPOSE: Replace static start/end with dynamic, Codex-governed values
+// ======================================================================
+
+$workdayStart = 0;
+$workdayEnd   = 0;
+$workDuration = 0;
+$workSegmentFound = false;
 
 if (isset($codex['timeIntervalStandards']['segmentsOffice']['items'])
     && is_array($codex['timeIntervalStandards']['segmentsOffice']['items'])) {
 
     foreach ($codex['timeIntervalStandards']['segmentsOffice']['items'] as $segment) {
-        if (isset($segment['Interval']) && strtolower(trim($segment['Interval'])) === 'worktime') {
-            if (isset($segment['Hours'])) {
-                $hours = $segment['Hours']; // e.g. "7:30 AM – 3:30 PM"
-                $parts = preg_split('/–|-/', $hours); // handle en dash or hyphen
-                if (count($parts) == 2) {
-                    $start = trim($parts[0]);
-                    $end   = trim($parts[1]);
-                    $workdayStart = date('H:i', strtotime($start));
-                    $workdayEnd   = date('H:i', strtotime($end));
+        if (isset($segment['Interval']) &&
+            strtolower(trim($segment['Interval'])) === 'worktime' &&
+            !empty($segment['Hours'])) {
+
+            // e.g. "7:30 AM – 3:30 PM" → ["7:30 AM", "3:30 PM"]
+            $rangeParts = preg_split('/\s*[–-]\s*/u', trim($segment['Hours']));
+            if (count($rangeParts) === 2) {
+                list($startStr, $endStr) = $rangeParts;
+
+                if (function_exists('timeStringToSeconds')) {
+                    $workdayStart = timeStringToSeconds($startStr);
+                    $workdayEnd   = timeStringToSeconds($endStr);
+                    $workDuration = $workdayEnd - $workdayStart;
+                    $workSegmentFound = true;
+                } else {
+                    error_log('❌ timeStringToSeconds() undefined when resolving Office Worktime.');
                 }
+            } else {
+                error_log('⚠️ Invalid Hours format for Office Worktime segment: ' . $segment['Hours']);
             }
             break;
         }
     }
+} else {
+    error_log('⚠️ Codex segmentsOffice.items missing or invalid structure.');
 }
+
+// Fallback safeguard (prevents division by zero downstream)
+if (!$workSegmentFound || $workDuration <= 0) {
+    $workdayStart = 7.5 * 3600;   // 7:30 AM
+    $workdayEnd   = 15.5 * 3600;  // 3:30 PM
+    $workDuration = $workdayEnd - $workdayStart;
+    error_log('⚠️ Using default Office Worktime (7:30 AM – 3:30 PM) due to invalid Codex data.');
+}
+
 
 if (!$workdayStart || !$workdayEnd) {
     error_log("🚫 Could not derive Office Workday times from Codex (segmentsOffice)");
