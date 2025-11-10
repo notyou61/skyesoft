@@ -1122,23 +1122,29 @@ if (!label) {
 }
 // 🔁 When the DOM is fully loaded...
 window.addEventListener("DOMContentLoaded", () => {
-  // Console log to indicate script execution
   console.log("🔁 DOM Content Loaded");
-  // 🔽 Load the dynamic version from version.json
-  fetch("/home/notyou64/public_html/data/version.json")
-    .then(res => res.json())
+
+  // 🔽 Load the dynamic version from version.json (web-accessible path)
+  fetch("/skyesoft/data/version.json")
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+      return res.json();
+    })
     .then(data => {
-      const versionElement = document.querySelector('.version');
+      const versionElement = document.querySelector(".version");
       if (versionElement && data.version) {
-        versionElement.textContent = data.version; // ✅ Set dynamically
+        versionElement.textContent = `🔖 Skyesoft • Version: ${data.version}`;
         console.log("🆗 Version loaded:", data.version);
       }
     })
     .catch(err => console.warn("⚠️ Version fetch failed:", err));
+
   // 🌤️ Fetch and display weather on page load
   updateWeatherDisplay();
-  // 🕒 Refresh weather every 15 minutes
+
+  // 🕒 Refresh weather every 15 mSinutes (900 000 ms)
   setInterval(updateWeatherDisplay, 900000);
+
   // 🔄 Rotate bulletin board cards
   rotateCards();
 });
