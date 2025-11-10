@@ -832,8 +832,26 @@ if ($intervalLabel === '1') {
 // Version: Codex v1.5 – Company Holiday Standard
 
 function timeStringToSeconds($timeStr) {
-    list($h, $m) = explode(':', $timeStr);
-    return (int)$h * 3600 + (int)$m * 60;
+    // Normalize spacing and case
+    $timeStr = trim(strtolower($timeStr));
+
+    // Remove any unexpected characters (e.g., unicode dashes, spaces)
+    $timeStr = preg_replace('/[^\d:apm\s]/', '', $timeStr);
+
+    // Use strtotime to handle AM/PM safely
+    $timestamp = strtotime($timeStr);
+
+    if ($timestamp === false) {
+        error_log("⚠️ Invalid time format passed to timeStringToSeconds(): {$timeStr}");
+        return 0;
+    }
+
+    // Extract hours/minutes relative to midnight (not today’s date)
+    $hours = (int)date('G', $timestamp);
+    $minutes = (int)date('i', $timestamp);
+    $seconds = (int)date('s', $timestamp);
+
+    return ($hours * 3600) + ($minutes * 60) + $seconds;
 }
 
 // 🏢 Check if a date is a company holiday
