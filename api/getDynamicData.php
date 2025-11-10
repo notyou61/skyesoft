@@ -1090,13 +1090,27 @@ if (empty($current['error']) &&
     // error_log("☀️ Sunrise UTC: {$sunriseUnix}, Local: {$sunriseLocal}");
     // error_log("🌇 Sunset  UTC: {$sunsetUnix}, Local: {$sunsetLocal}");
 
-    $daytimeSeconds   = $sunsetUnix - $sunriseUnix;
-    $daytimeHours     = floor($daytimeSeconds / $secondsPerHour);
+    // ======================================================================
+    //  🌞 DAYLIGHT CALCULATIONS (Codex v5.4 compliant)
+    //  Prevent division by zero if constants missing or malformed
+    // ======================================================================
+    $secondsPerHour = 3600; // Ensure defined (1 hour = 3600 seconds)
+    $secondsPerDay  = getConst('secondsPerDay', 86400);
+
+    if (!isset($sunriseUnix) || !isset($sunsetUnix) || $sunriseUnix >= $sunsetUnix) {
+        error_log("⚠️ Invalid sunrise/sunset values → using defaults (6:00–18:00)");
+        $sunriseUnix = strtotime('6:00 AM');
+        $sunsetUnix  = strtotime('6:00 PM');
+    }
+
+    $daytimeSeconds   = max(0, $sunsetUnix - $sunriseUnix);
+    $daytimeHours     = round($daytimeSeconds / $secondsPerHour, 2);
     $daytimeMins      = floor(($daytimeSeconds % $secondsPerHour) / 60);
-    $secondsPerDay = getConst('secondsPerDay', 86400);
-    $nighttimeSeconds = $secondsPerDay - $daytimeSeconds;
-    $nighttimeHours   = floor($nighttimeSeconds / $secondsPerHour);
+
+    $nighttimeSeconds = max(0, $secondsPerDay - $daytimeSeconds);
+    $nighttimeHours   = round($nighttimeSeconds / $secondsPerHour, 2);
     $nighttimeMins    = floor(($nighttimeSeconds % $secondsPerHour) / 60);
+
 
     $weatherData = array(
         'temp' => round($current['main']['temp']),
