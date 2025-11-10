@@ -70,7 +70,7 @@ $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $input['slug']);
 
 
 // ----------------------------------------------------------------------
-//  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX
+//  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX  (GoDaddy PHP 5.6 Compatible)
 // ----------------------------------------------------------------------
 $root = realpath(dirname(__DIR__)); // /skyesoft
 if ($root === false) {
@@ -79,9 +79,15 @@ if ($root === false) {
     exit;
 }
 
+// ----------------------------------------------------------------------
+// 2A. Locate Core Paths
+// ----------------------------------------------------------------------
 $codexPath = $root . '/assets/data/codex.json';
-$tcpdfPath = $root . '/libs/tcpdf.php';
+$tcpdfPath = $root . '/libs/tcpdf.php';   // ✅ flat layout confirmed
 
+// ----------------------------------------------------------------------
+// 2B. Validate File Presence
+// ----------------------------------------------------------------------
 if (!file_exists($codexPath)) {
     http_response_code(500);
     echo json_encode(array('error' => 'Codex not found at ' . $codexPath));
@@ -89,20 +95,37 @@ if (!file_exists($codexPath)) {
 }
 if (!file_exists($tcpdfPath)) {
     http_response_code(500);
-    echo json_encode(array('error' => 'TCPDF library missing.'));
+    echo json_encode(array('error' => 'TCPDF library missing at ' . $tcpdfPath));
     exit;
 }
 
 // ----------------------------------------------------------------------
-// TCPDF constant patch for PHP 5.6 scalar restriction (GoDaddy)
+// 2C. Load Environment (.env) for OpenAI API Key  (GoDaddy PHP 5.6)
 // ----------------------------------------------------------------------
-if (version_compare(PHP_VERSION, '7.1.0', '<')) {
-    if (!defined('K_PATH_FONTS')) {
-        $kFonts = __DIR__ . '/../libs/tcpdf/fonts/';
-        define('K_PATH_FONTS', $kFonts);
+$envPaths = array(
+    '/home/notyou64/.env',
+    '/home/notyou64/public_html/skyesoft/.env'
+);
+foreach ($envPaths as $envFile) {
+    if (file_exists($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            if (strpos(trim($line), '=') !== false) {
+                list($name, $value) = explode('=', $line, 2);
+                $name  = trim($name);
+                $value = trim($value);
+                putenv($name . '=' . $value);
+                $_ENV[$name]    = $value;
+                $_SERVER[$name] = $value;
+            }
+        }
+        break; // stop at first valid .env
     }
 }
 
+// ----------------------------------------------------------------------
+// 2D. Load TCPDF and Codex
+// ----------------------------------------------------------------------
 require_once($tcpdfPath);
 
 $rawCodex = file_get_contents($codexPath);
