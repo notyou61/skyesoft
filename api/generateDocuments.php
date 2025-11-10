@@ -93,6 +93,16 @@ if (!file_exists($tcpdfPath)) {
     exit;
 }
 
+// ----------------------------------------------------------------------
+// TCPDF constant patch for PHP 5.6 scalar restriction (GoDaddy)
+// ----------------------------------------------------------------------
+if (version_compare(PHP_VERSION, '7.1.0', '<')) {
+    if (!defined('K_PATH_FONTS')) {
+        $kFonts = __DIR__ . '/../libs/tcpdf/fonts/';
+        define('K_PATH_FONTS', $kFonts);
+    }
+}
+
 require_once($tcpdfPath);
 
 $rawCodex = file_get_contents($codexPath);
