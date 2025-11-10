@@ -1125,7 +1125,7 @@ window.addEventListener("DOMContentLoaded", () => {
   console.log("🔁 DOM Content Loaded");
 
   // 🔽 Load the dynamic version from version.json (web-accessible path)
-  fetch("/skyesoft/data/version.json")
+  fetch("/skyesoft/assets/data/version.json")
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
       return res.json();
