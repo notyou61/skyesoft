@@ -69,7 +69,7 @@ if (!isset($input['slug']) || $input['slug'] === '') {
 $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $input['slug']);
 
 
-// ----------------------------------------------------------------------
+/// ----------------------------------------------------------------------
 //  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX  (GoDaddy PHP 5.6 Compatible)
 // ----------------------------------------------------------------------
 $root = realpath(dirname(__DIR__)); // /skyesoft
@@ -82,8 +82,12 @@ if ($root === false) {
 // ----------------------------------------------------------------------
 // 2A. Locate Core Paths
 // ----------------------------------------------------------------------
-$codexPath = $root . '/assets/data/codex.json';
-$tcpdfPath = $root . '/libs/tcpdf.php';   // ✅ flat layout confirmed
+$codexPath  = $root . '/assets/data/codex.json';
+
+// ✅ Auto-detect TCPDF location (flat or nested)
+$tcpdfFlat  = $root . '/libs/tcpdf.php';
+$tcpdfNested = $root . '/libs/tcpdf/tcpdf.php';
+$tcpdfPath  = file_exists($tcpdfFlat) ? $tcpdfFlat : $tcpdfNested;
 
 // ----------------------------------------------------------------------
 // 2B. Validate File Presence
