@@ -166,14 +166,27 @@ setInterval(() => {
       const seconds = data?.intervalsArray?.currentDaySecondsRemaining;
       const label = data?.intervalsArray?.intervalLabel;
       const dayType = data?.intervalsArray?.dayType;
+
       if (seconds !== undefined && label !== undefined && dayType !== undefined) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
-        switch (`${dayType}-${label}`) {
-          case "0-0": message = `🔚 Workday ends in ${formatted}`; break;
-          case "0-1": message = `🔜 Workday begins in ${formatted}`; break;
-          default:    message = `📆 Next workday begins in ${formatted}`; break;
+
+        if (dayType === "Workday") {
+          if (label === 0) {
+            message = `🔜 Workday begins in ${formatted}`;
+          } else if (label === 1) {
+            message = `🔚 Workday ends in ${formatted}`;
+          } else {
+            message = `📆 Next workday begins in ${formatted}`;
+          }
+        } else if (dayType === "Weekend") {
+          message = `🌴 Weekend continues — next workday in ${formatted}`;
+        } else if (dayType === "Company Holiday") {
+          message = `🏢 Office closed — next workday in ${formatted}`;
+        } else {
+          message = `📆 Next workday begins in ${formatted}`;
         }
+
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
       }
