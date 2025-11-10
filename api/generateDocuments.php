@@ -17,9 +17,11 @@ header('Access-Control-Allow-Headers: Content-Type');
 //  STEP 0 – Load Environment (.env) for GoDaddy PHP 5.6 Compatibility
 // ----------------------------------------------------------------------
 $envPaths = array(
-    __DIR__ . '/../.env',                        // project-level (local dev)
-    '/home/notyou64/.env',                       // account-level (preferred)
-    '/home/notyou64/public_html/skyesoft/.env'   // fallback if copied to webroot
+    __DIR__ . '/.env',                             // local api folder (for quick tests)
+    __DIR__ . '/../.env',                          // project-level (local dev)
+    '/home/notyou64/.env',                         // account-level (confirmed working)
+    '/home/notyou64/secure/.env',                  // alternate secure storage
+    '/home/notyou64/public_html/skyesoft/.env'     // webroot fallback
 );
 
 foreach ($envPaths as $envFile) {
@@ -29,13 +31,15 @@ foreach ($envPaths as $envFile) {
         $line = str_replace("\r", '', trim($line));
         if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
         list($k, $v) = explode('=', $line, 2);
-        $k = trim($k); $v = trim($v);
+        $k = trim($k);
+        $v = trim($v);
         putenv($k . '=' . $v);
         $_ENV[$k] = $v;
         $_SERVER[$k] = $v;
     }
     break; // stop after first valid .env
 }
+
 
 // ----------------------------------------------------------------------
 //  STEP 1 – INPUT & METHOD VALIDATION (Codex-Compliant, slug-only)
@@ -719,5 +723,6 @@ $response = array(
 );
 
 http_response_code(200);
+$response = json_decode(json_encode($response), true); // re-encode to UTF-8 safety
 echo json_encode($response);
 exit;
