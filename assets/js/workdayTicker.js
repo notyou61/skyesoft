@@ -193,7 +193,8 @@ setInterval(() => {
             break;
           case 2: // After Worktime
           default:
-            message = `📆 Next worktime begins in ${formatted}`;
+            //message = `📆 Next worktime begins in ${formatted}`;
+             message = `📆 Next worktime begins in ${formatted}  [label=${label}]`;
             break;
         }
 
