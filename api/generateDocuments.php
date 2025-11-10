@@ -144,6 +144,24 @@ if (!is_array($codex) || !isset($codex[$slug])) {
 $module = $codex[$slug];
 
 // ----------------------------------------------------------------------
+//  STEP 2E – SKYEBOT HEADERS & API KEY VALIDATION
+// ----------------------------------------------------------------------
+// Purpose:
+//   • Load and validate OpenAI API key
+//   • Prevent unauthorized execution if key missing or blank
+// ----------------------------------------------------------------------
+$apiKey = getenv("OPENAI_API_KEY");
+if (!$apiKey || trim($apiKey) === '') {
+    http_response_code(500);
+    echo json_encode(array(
+        "error"   => "❌ API key not found or empty.",
+        "context" => "generateDocuments.php / STEP 2E"
+    ));
+    exit;
+}
+
+
+// ----------------------------------------------------------------------
 //  STEP 3 – DETERMINE ENRICHMENT LEVEL (CODEX-FIRST, NON-BRITTLE)
 // ----------------------------------------------------------------------
 $codexEnrichment = '';
