@@ -6,6 +6,8 @@
 //  AUTHOR: CPAP-01 Parliamentarian Integration
 // ======================================================================
 
+ob_start();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
@@ -21,22 +23,18 @@ $envPaths = array(
 );
 
 foreach ($envPaths as $envFile) {
-    if (file_exists($envFile)) {
-        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos(trim($line), '#') === 0 || strpos(trim($line), '=') === false) continue;
-
-            list($name, $value) = explode('=', $line, 2);
-            $name  = trim($name);
-            $value = trim($value);
-
-            // Populate all standard superglobals
-            putenv($name . '=' . $value);
-            $_ENV[$name]    = $value;
-            $_SERVER[$name] = $value;
-        }
-        break; // stop after first valid .env
+    if (!file_exists($envFile)) continue;
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = str_replace("\r", '', trim($line));
+        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+        list($k, $v) = explode('=', $line, 2);
+        $k = trim($k); $v = trim($v);
+        putenv($k . '=' . $v);
+        $_ENV[$k] = $v;
+        $_SERVER[$k] = $v;
     }
+    break; // stop after first valid .env
 }
 
 // ----------------------------------------------------------------------
@@ -68,8 +66,7 @@ if (!isset($input['slug']) || $input['slug'] === '') {
 // Normalize slug (safety)
 $slug = preg_replace('/[^a-zA-Z0-9_\-]/', '', $input['slug']);
 
-
-/// ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 //  STEP 2 – LOCATE ROOT, LOAD TCPDF & CODEX  (GoDaddy PHP 5.6 Compatible)
 // ----------------------------------------------------------------------
 $root = realpath(dirname(__DIR__)); // /skyesoft
@@ -104,30 +101,6 @@ if (!file_exists($tcpdfPath)) {
 }
 
 // ----------------------------------------------------------------------
-// 2C. Load Environment (.env) for OpenAI API Key  (GoDaddy PHP 5.6)
-// ----------------------------------------------------------------------
-$envPaths = array(
-    '/home/notyou64/.env',
-    '/home/notyou64/public_html/skyesoft/.env'
-);
-foreach ($envPaths as $envFile) {
-    if (file_exists($envFile)) {
-        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos(trim($line), '=') !== false) {
-                list($name, $value) = explode('=', $line, 2);
-                $name  = trim($name);
-                $value = trim($value);
-                putenv($name . '=' . $value);
-                $_ENV[$name]    = $value;
-                $_SERVER[$name] = $value;
-            }
-        }
-        break; // stop at first valid .env
-    }
-}
-
-// ----------------------------------------------------------------------
 // 2D. Load TCPDF and Codex
 // ----------------------------------------------------------------------
 require_once($tcpdfPath);
@@ -152,12 +125,7 @@ $module = $codex[$slug];
 // ----------------------------------------------------------------------
 $apiKey = getenv("OPENAI_API_KEY");
 if (!$apiKey || trim($apiKey) === '') {
-    http_response_code(500);
-    echo json_encode(array(
-        "error"   => "❌ API key not found or empty.",
-        "context" => "generateDocuments.php / STEP 2E"
-    ));
-    exit;
+    $apiKey = 'TEST_MODE';
 }
 
 
@@ -177,7 +145,7 @@ if (isset($input['enrichment']) && is_string($input['enrichment'])) {
 // hierarchy for optional override
 $hierarchy = array('low' => 1, 'medium' => 2, 'high' => 3);
 $codexRank = isset($hierarchy[$codexEnrichment]) ? $hierarchy[$codexEnrichment] : 0;
-$userRank  = isset($hierarchy[$userEnrichment]) ? $userEnrichment ? $hierarchy[$userEnrichment] : 0 : 0;
+$userRank  = isset($hierarchy[$userEnrichment]) ? $hierarchy[$userEnrichment] : 0;
 
 // Doctrine:
 // - If Codex defines enrichment and user does NOT explicitly lower it → use Codex.
@@ -199,7 +167,7 @@ $module['enrichment'] = $enrichment;
 //  STEP 4 – AI ENRICHMENT HELPER
 // ----------------------------------------------------------------------
 function getAIEnrichment($prompt, $apiKey) {
-    if (!$apiKey || $apiKey === 'YOUR_OPENAI_API_KEY') {
+    if (!$apiKey || $apiKey === 'YOUR_OPENAI_API_KEY' || $apiKey === 'TEST_MODE') {
         return "[AI enrichment unavailable – API key not set]";
     }
 
@@ -260,7 +228,7 @@ if (in_array($enrichment, array('medium', 'high'))) {
         $prompt .= "Limit to a concise, professional paragraph.";
     }
 
-    $aiText = getAIEnrichment($prompt, getenv('OPENAI_API_KEY'));
+    $aiText = getAIEnrichment($prompt, $apiKey);
 }
 
 // ----------------------------------------------------------------------
@@ -383,7 +351,7 @@ function buildBodyFromCodex($module, $aiText, $pdf) {
 
     // --- load icon map once (Codex-driven icon registry) ---
     $iconMap = array();
-    $iconMapPath = $root . '/assets/images/icons/iconMap.json';
+    $iconMapPath = $root . '/assets/data/iconMap.json';
     if (file_exists($iconMapPath)) {
         $decoded = json_decode(file_get_contents($iconMapPath), true);
         if (is_array($decoded)) {
@@ -732,23 +700,24 @@ $savePath = $saveDir . $saveFile;
 
 $pdf->Output($savePath, 'F');
 
-echo json_encode(array(
-    'status'       => 'success',
-    'slug'         => $slug,
-    'fileName'     => basename($saveFile),
-    'path'         => $savePath,
-    'aiCommentary' => $aiText,
-    'timestamp'    => date('c')
-));
-
 // ----------------------------------------------------------------------
 //  STEP 12 – JSON RESPONSE
 // ----------------------------------------------------------------------
-echo json_encode(array(
+ob_end_clean();
+
+$response = array(
     'status'       => 'success',
     'slug'         => $slug,
     'fileName'     => basename($saveFile),
-    'path'         => $savePath,
+    'path'         => str_replace($root, '', $savePath),
     'aiCommentary' => $aiText,
-    'timestamp'    => date('c')
-));
+    'timestamp'    => date('c'),
+    'message'      => ($apiKey === 'TEST_MODE'
+                       ? '⚙️ Generated in TEST MODE (no API key).'
+                       : '✅ Document generated successfully.'),
+    'version'      => 'v2.0.0'
+);
+
+http_response_code(200);
+echo json_encode($response);
+exit;
