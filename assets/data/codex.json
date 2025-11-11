@@ -444,6 +444,8 @@
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "target",
+      "format": "text",
       "text": "Audits the Skyesoft system’s temporal cohesion, including interval classification, holiday rollover logic, and SSE stream integrity. Ensures compliance with Time Interval Standards (TIS) and related constitutional doctrines."
     }
   },
