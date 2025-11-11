@@ -249,6 +249,78 @@
     "notes": "Installs Codex self-audit as a standing governance ritual rather than an ad hoc review.",
     "summaryTagline": "The Codex must measure itself as it measures the system — reflection and refinement are acts of governance."
   },
+  "codexValidator": {
+    "title": "🧾 Codex Validator",
+    "category": "System Layer",
+    "type": "utility",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "G-7a",
+    "isSubordinateTo": ["codexStressTestDoctrine"],
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Performs automated schema, icon, and doctrinal validation across all Codex modules. Generates an auditable validation report summarizing compliance and discrepancies relative to the Codex schema."
+    },
+    "validationScope": {
+      "icon": "checklist",
+      "format": "list",
+      "items": [
+        "Schema conformity and required key presence",
+        "Icon and format compliance (per Article I)",
+        "Hierarchy and linkage consistency",
+        "Purpose field presence and structure validation"
+      ]
+    },
+    "output": {
+      "documentType": "report",
+      "namingConvention": "Codex Validation Report – YYYY-MM-DD",
+      "path": "/documents/system/validation/"
+    },
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "This module enforces Codex Article I: Document Formatting Doctrine. Its results feed directly into the Codex Stress Test Doctrine for continuity auditing."
+  },
+  "codexStressTest": {
+    "title": "⚖️ Codex Stress Test",
+    "category": "System Layer",
+    "type": "process",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "G-7b",
+    "isSubordinateTo": ["codexStressTestDoctrine"],
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Executes a full Codex-level stress test that combines the Validator’s schema results with doctrinal integrity scoring. Generates the official Codex Stress Test Report as mandated by CP-STRESS-001."
+    },
+    "methodology": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Invoke Codex Validator",
+        "Aggregate metrics for structureScore, clarityScore, and ontologyHealth",
+        "Render results to PDF via generateDocuments.php",
+        "Log test record in Referential Document Record (once active)"
+      ]
+    },
+    "output": {
+      "documentType": "report",
+      "namingConvention": "Codex Stress Test Report – YYYY-MM-DD",
+      "path": "/documents/system/stress-tests/"
+    },
+    "automation": {
+      "trigger": "cronJob",
+      "frequency": "monthly",
+      "actionChain": [
+        "invokeValidator",
+        "compileMetrics",
+        "generateReport",
+        "registerDocument"
+      ]
+    },
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "Serves as the operational executor of the Codex Stress Test Doctrine (CP-STRESS-001)."
+  },
   "skyesoftConstitution": {
     "title": "🧭 Skyesoft Constitution",
     "category": "System Layer",
