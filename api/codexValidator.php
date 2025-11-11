@@ -69,7 +69,17 @@ $summary = [
 // ---------------------------------------------------------------
 //  STEP 3 – Generate PDF Report
 // ---------------------------------------------------------------
-require_once($root . '/libs/tcpdf.php');
+// ✅ Auto-detect TCPDF location (flat or nested)
+$tcpdfFlat   = $root . '/libs/tcpdf.php';
+$tcpdfNested = $root . '/libs/tcpdf/tcpdf.php';
+$tcpdfPath   = file_exists($tcpdfFlat) ? $tcpdfFlat : $tcpdfNested;
+
+if (!file_exists($tcpdfPath)) {
+    die("TCPDF library not found at expected path: $tcpdfPath\n");
+}
+
+require_once($tcpdfPath);
+
 
 class CodexAuditPDF extends TCPDF {
     public $root;
