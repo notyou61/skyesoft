@@ -892,7 +892,19 @@
         "Archive obsolete or legacy materials under /docs/legacy/",
         "Avoid redundancy between sheets and reports"
       ]
-    }
+    },
+    "paths": {
+      "icon": "link",
+      "format": "object",
+      "data": {
+        "baseDataPath": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/",
+        "codexFile": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codex.json",
+        "validatorLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexValidatorLog.json",
+        "stressTestLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexStressTestLog.json",
+        "governanceCycleLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexGovernanceCycle.json"
+      }
+    },
+    "notes": "These paths define the official storage locations for all Codex governance and audit data on the Skyesoft Office system. All scripts must reference these values through the Codex interpreter rather than hardcoding file paths."
   },
   "coreDatabaseStructure": {
     "title": "🧱 Core Database Structure",
