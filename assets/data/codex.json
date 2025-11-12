@@ -354,12 +354,15 @@
     "title": "📄 Document Standards",
     "category": "System Layer",
     "type": "directive",
+    "status": "ratified",
     "tier": 1,
     "hierarchyOrder": "A",
-    "governs": ["documentTypesRegistry", "metaFooters", "renderDirectives"],
+    "governs": ["documentTypesRegistry", "metaFooters", "renderDirectives", "visualRequirementClause"],
     "dependsOn": ["skyesoftConstitution"],
     "purpose": {
-      "text": "Defines structure, layout, and branding policies governing all Skyesoft documents, ensuring uniform appearance and doctrinal consistency across all document types."
+      "icon": "🎯",
+      "format": "text",
+      "text": "Defines the uniform structure, layout, and branding doctrine governing all Skyesoft documents. Establishes consistency in appearance, metadata, and doctrinal labeling across reports, sheets, and audits."
     },
     "repository": {
       "title": "📁 Skyesoft Documents Repository",
@@ -390,7 +393,38 @@
           "reviewer": "Formal reviewer name or entity",
           "reviewDate": "Human-readable or ISO date of review"
         },
-        "notes": "This meta footer applies only to Information Sheet–class documents. Other document classes employ alternate metadata standards such as operational, audit, or regulatory footers."
+        "notes": "Applies only to Information Sheet–class documents. Other classes employ alternate meta standards such as operational, audit, or regulatory footers."
+      },
+      "visualRequirementClause": {
+        "title": "🧩 Visual Requirement Clause",
+        "category": "System Layer",
+        "type": "directive",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A-2-VRC",
+        "effectiveVersion": "v5.5.3",
+        "issuedBy": "CPAP-01 (Parliamentarian)",
+        "description": "Mandates that all renderable objects within Skyesoft documents must define both an icon and a contentFormat attribute to ensure visual consistency and predictable rendering behavior across all document types.",
+        "format": "table",
+        "table": [
+          { "key": "text", "display": "Paragraph Block", "description": "Static written narrative or explanatory copy.", "icon": "📝" },
+          { "key": "list", "display": "Bulleted / Ordered List", "description": "Sequential or grouped items.", "icon": "📋" },
+          { "key": "table", "display": "Tabular Data", "description": "Structured rows and columns.", "icon": "📊" },
+          { "key": "dynamic", "display": "Live Data Feed", "description": "Auto-updated or variable content sourced from APIs or SSE streams.", "icon": "🔄" },
+          { "key": "other", "display": "Custom / Mixed Content", "description": "Embedded media, diagrams, charts, or code blocks.", "icon": "🧩" }
+        ],
+        "governs": ["documentStandards", "renderDirectives"],
+        "enforcement": {
+          "rules": [
+            "All renderable objects must include an icon field (Unicode or base64 token).",
+            "All objects must include a contentFormat field from the approved list.",
+            "Each object represents a discrete section in the rendered document.",
+            "Section headers display the object's icon alongside its title.",
+            "Validation errors are triggered when either field is missing."
+          ],
+          "validationType": "CP-DOC-2025-A1-Violation"
+        },
+        "notes": "Implements CP-DOC-2025-A1 amendment. Ensures consistent iconography and structural uniformity across all Codex-rendered documents."
       },
       "referentialDocumentRecord": {
         "title": "📑 Referential Document Record Framework",
@@ -437,8 +471,8 @@
             "purpose": "Stores the generated PDF documents referenced in the documentIndex.json registry."
           }
         },
-        "notes": "This framework is not yet active. When implemented, it will serve as the unified record for all Skyesoft-generated documents. Fields are optional by type to ensure scalability and DRY compliance.",
-        "ratificationNote": "Will activate once CRUD-Action linkage is integrated."
+        "notes": "Inactive pending CRUD linkage. Will serve as the unified record for all Skyesoft-generated documents once activated.",
+        "ratificationNote": "To activate upon CRUD-Action integration."
       }
     },
     "documentTypesRegistry": {
@@ -462,19 +496,16 @@
         { "key": "specification", "type": "specification", "purpose": "Detailed technical or operational definition governing materials, design, or execution.", "headerExample": "Sign Fabrication Specification" },
         { "key": "record", "type": "record", "purpose": "Archival or registry entry capturing amendment, approval, or version history.", "headerExample": "Codex Amendments Record" },
         { "key": "sheet", "type": "sheet", "purpose": "Concise reference or informational document summarizing a discrete topic.", "headerExample": "Information Sheet" },
-        { "key": "taxonomy", "type": "taxonomy", "purpose": "Defines classification structures and interrelations within the Codex hierarchy.", "headerExample": "Document Types" },
-        { "key": "summary", "type": "summary", "purpose": "Summative or doctrinal overview referencing multiple Codex layers and their relational logic.", "headerExample": "Skyesoft Document Doctrine Triad" },
-        { "key": "registry", "type": "registry", "purpose": "Registry or archival directive governing amendment tracking, change lineage, and formal recordkeeping.", "headerExample": "Codex Amendments Register" },
-        { "key": "datastream", "type": "datastream", "purpose": "Specifies active or dynamic data channels (e.g., SSE, telemetry) for real-time information flow within Skyesoft systems.", "headerExample": "SSE Stream" },
-        { "key": "systemstandard", "type": "systemstandard", "purpose": "Establishes system-level configuration, code, or procedural standards governing Skyesoft operational frameworks.", "headerExample": "Code Management" }
+        { "key": "registry", "type": "registry", "purpose": "Registry or archival directive governing amendment tracking, change lineage, and formal recordkeeping.", "headerExample": "Codex Amendments Register" }
       ],
-      "notes": "All Codex modules must declare a 'type' matching one of the keys above. Renderers concatenate the module title and its type to form standardized headers (e.g., 'Time Interval Standards Directive'). Future document families should extend this registry rather than redefine it."
+      "notes": "Taxonomy and Summary definitions deprecated per CP-DOC-2025-A1. All Codex modules must declare a 'type' matching one of the remaining keys above."
     }
   },
   "documentTypes": {
     "title": "🧾 Document Types",
     "category": "System Layer",
     "type": "taxonomy",
+    "status": "ratified",
     "tier": 2,
     "hierarchyOrder": "1",
     "isSubordinateTo": ["documentStandards"],
@@ -487,21 +518,23 @@
       "incident",
       "specification",
       "record",
-      "sheet",
-      "datastream",
-      "systemstandard"
+      "sheet"
     ],
     "purpose": {
+      "icon": "🧾",
+      "format": "text",
       "text": "Applies the official document type registry by mapping individual Codex modules to their respective document type classification (e.g., Audit, Report, Survey, Directive). Ensures each operational or governance document inherits its correct doctrinal family from the Document Standards layer."
     },
-    "status": "ratified",
-    "effectiveVersion": "v5.6.1"
+    "effectiveVersion": "v5.6.1",
+    "issuedBy": "CPAP-01 (Parliamentarian)"
   },
   "documentDoctrine": {
     "title": "📜 Skyesoft Document Doctrine Triad",
     "category": "System Layer",
     "type": "summary",
+    "status": "ratified",
     "tier": 1,
+    "effectiveVersion": "v5.5.3",
     "description": "Defines the unified doctrinal system governing Skyesoft document standards, taxonomy, and folder conventions.",
     "includes": ["documentStandards", "documentTypes"],
     "issuedBy": "CPAP-01 (Parliamentarian)",
@@ -511,12 +544,13 @@
     "title": "🕰️ Temporal Integrity Audit",
     "category": "System Layer",
     "type": "audit",
+    "status": "ratified",
     "family": "governance",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
-      "icon": "target",
+      "icon": "🕰️",
       "format": "text",
       "text": "Audits the Skyesoft system’s temporal cohesion, including interval classification, holiday rollover logic, and SSE stream integrity. Ensures compliance with Time Interval Standards (TIS) and related constitutional doctrines."
     }
@@ -525,11 +559,14 @@
     "title": "🏛️ Permit Report",
     "category": "Operations",
     "type": "report",
+    "status": "ratified",
     "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "🏛️",
+      "format": "text",
       "text": "Documents permit acquisition, submittal, and release activity. Summarizes status, fees, and jurisdictional details in standardized format."
     }
   },
@@ -537,35 +574,44 @@
     "title": "📷 Photo Survey",
     "category": "Operations",
     "type": "survey",
+    "status": "ratified",
     "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "📷",
+      "format": "text",
       "text": "Captures photographic documentation of field conditions, sign installations, or site verifications following the Skyesoft survey standard."
     }
   },
   "bulletin": {
-      "title": "⚠️ Safety Bulletin",
-      "category": "Operations",
-      "type": "bulletin",
-      "family": "operations",
-      "tier": 3,
-      "hierarchyOrder": "a",
-      "isSubordinateTo": ["documentTypes"],
-      "purpose": {
-        "text": "Distributes advisories or safety information to field and administrative staff to maintain compliance and safety awareness."
-      }
+    "title": "⚠️ Safety Bulletin",
+    "category": "Operations",
+    "type": "bulletin",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "⚠️",
+      "format": "text",
+      "text": "Distributes advisories or safety information to field and administrative staff to maintain compliance and safety awareness."
+    }
   },
   "incident": {
     "title": "🚨 Incident Report",
     "category": "Operations",
     "type": "incident",
+    "status": "ratified",
     "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "🚨",
+      "format": "text",
       "text": "Records details of accidents, malfunctions, or service interruptions requiring investigation, documentation, and corrective action."
     }
   },
@@ -573,11 +619,14 @@
     "title": "🧰 Fabrication Specification",
     "category": "Operations",
     "type": "specification",
+    "status": "ratified",
     "family": "operations",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "🧰",
+      "format": "text",
       "text": "Defines technical and material standards for sign fabrication, ensuring consistency and code compliance across manufacturing outputs."
     }
   },
@@ -585,11 +634,14 @@
     "title": "📜 Codex Amendments Record",
     "category": "System Layer",
     "type": "record",
+    "status": "ratified",
     "family": "governance",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "📜",
+      "format": "text",
       "text": "Captures formal amendments, approvals, and version lineage of doctrinal changes for archival integrity."
     }
   },
@@ -597,36 +649,15 @@
     "title": "📘 Information Sheet",
     "category": "System Layer",
     "type": "sheet",
+    "status": "ratified",
     "family": "governance",
     "tier": 3,
     "hierarchyOrder": "a",
     "isSubordinateTo": ["documentTypes"],
     "purpose": {
+      "icon": "📘",
+      "format": "text",
       "text": "Provides concise, single-topic references or procedural guidance intended for distribution or inclusion in reports."
-    }
-  },
-  "datastream": {
-    "title": "🌐 SSE Stream",
-    "category": "System Layer",
-    "type": "datastream",
-    "family": "governance",
-    "tier": 3,
-    "hierarchyOrder": "a",
-    "isSubordinateTo": ["documentTypes"],
-    "purpose": {
-      "text": "Defines and monitors Server-Sent Event (SSE) feeds delivering real-time data to Skyesoft dashboards and automation services."
-    }
-  },
-  "systemstandard": {
-    "title": "⚙️ Code Management Standard",
-    "category": "System Layer",
-    "type": "systemstandard",
-    "family": "governance",
-    "tier": 3,
-    "hierarchyOrder": "a",
-    "isSubordinateTo": ["documentTypes"],
-    "purpose": {
-      "text": "Establishes version-control, naming, and maintenance policies governing Skyesoft’s source code and operational scripts."
     }
   },
   "timeIntervalStandards": {
