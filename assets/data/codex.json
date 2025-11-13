@@ -352,7 +352,6 @@
   },
   "documentStandards": {
     "title": "📄 Document Standards",
-    "category": "System Layer",
     "type": "directive",
     "status": "ratified",
     "tier": 1,
@@ -374,7 +373,6 @@
     "containedModules": {
       "metaFooterInformationSheet": {
         "title": "📘 Meta Footer – Information Sheet Doctrine Standard",
-        "category": "Doctrinal Provenance",
         "type": "metaSection",
         "status": "ratified",
         "tier": 2,
@@ -383,127 +381,111 @@
         "issuedBy": "CPAP-01 (Parliamentarian)",
         "appliesTo": ["informationSheet"],
         "implementationReference": "CP-R7-2025, Article IV – Audit Provenance",
-        "description": "Establishes the standardized doctrinal meta footer for all Information Sheet documents. Serves as the closing meta section confirming module source, codex version, amendment lineage, and last parliamentary review.",
+        "description": "Establishes the standardized doctrinal meta footer for all Information Sheet documents.",
         "format": "text",
         "text": "Doctrine Source: {moduleAbbrev} • Codex {codexVersion} • Amendments {amendmentList} • Reviewed by {reviewer} ({reviewDate})",
         "variables": {
           "moduleAbbrev": "Short code for the originating module (e.g., TIS)",
           "codexVersion": "Effective Codex version at time of generation",
-          "amendmentList": "List of applied amendments (comma- or ampersand-separated)",
+          "amendmentList": "List of applied amendments",
           "reviewer": "Formal reviewer name or entity",
-          "reviewDate": "Human-readable or ISO date of review"
+          "reviewDate": "Date of review"
         },
-        "notes": "Applies only to Information Sheet–class documents. Other classes employ alternate meta standards such as operational, audit, or regulatory footers."
+        "notes": "Applies only to Information Sheet–class documents."
       },
       "visualRequirementClause": {
         "title": "🧩 Visual Requirement Clause",
-        "category": "System Layer",
         "type": "directive",
         "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "A-2-VRC",
         "effectiveVersion": "v5.5.3",
         "issuedBy": "CPAP-01 (Parliamentarian)",
-        "description": "Mandates that all renderable objects within Skyesoft documents must define both an icon and a contentFormat attribute to ensure visual consistency and predictable rendering behavior across all document types.",
+        "description": "Mandates icon and contentFormat fields on all renderable objects.",
         "format": "table",
         "table": [
-          { "key": "text", "display": "Paragraph Block", "description": "Static written narrative or explanatory copy.", "icon": "📝" },
-          { "key": "list", "display": "Bulleted / Ordered List", "description": "Sequential or grouped items.", "icon": "📋" },
-          { "key": "table", "display": "Tabular Data", "description": "Structured rows and columns.", "icon": "📊" },
-          { "key": "dynamic", "display": "Live Data Feed", "description": "Auto-updated or variable content sourced from APIs or SSE streams.", "icon": "🔄" },
-          { "key": "other", "display": "Custom / Mixed Content", "description": "Embedded media, diagrams, charts, or code blocks.", "icon": "🧩" }
+          { "key": "text", "display": "Paragraph Block", "description": "Static narrative content.", "icon": "📝" },
+          { "key": "list", "display": "List", "description": "Ordered or unordered items.", "icon": "📋" },
+          { "key": "table", "display": "Tabular Data", "description": "Structured columns and rows.", "icon": "📊" },
+          { "key": "dynamic", "display": "Live Data Feed", "description": "Content sourced from APIs or SSE.", "icon": "🔄" },
+          { "key": "other", "display": "Custom / Mixed Content", "description": "Diagrams, media, or special formatting.", "icon": "🧩" }
         ],
-        "governs": ["documentStandards", "renderDirectives"],
+        "governs": ["renderDirectives"],
         "enforcement": {
           "rules": [
-            "All renderable objects must include an icon field (Unicode or base64 token).",
-            "All objects must include a contentFormat field from the approved list.",
-            "Each object represents a discrete section in the rendered document.",
-            "Section headers display the object's icon alongside its title.",
-            "Validation errors are triggered when either field is missing."
+            "All renderable objects must include an icon.",
+            "All renderable objects must include a contentFormat.",
+            "Each object becomes a section in the final document.",
+            "Section headers display the object's icon.",
+            "Missing fields trigger validation errors."
           ],
           "validationType": "CP-DOC-2025-A1-Violation"
-        },
-        "notes": "Implements CP-DOC-2025-A1 amendment. Ensures consistent iconography and structural uniformity across all Codex-rendered documents."
+        }
       },
       "referentialDocumentRecord": {
         "title": "📑 Referential Document Record Framework",
-        "category": "System Layer",
         "type": "registry",
         "status": "pendingRatification",
         "tier": 2,
         "hierarchyOrder": "A-3",
         "effectiveVersion": "v5.6.5",
         "issuedBy": "CPAP-01 (Parliamentarian)",
-        "description": "Defines the scalable referential record structure that will serve as the Skyesoft Documents Database. Each entry links a generated document to its originating CRUD Action Log via actionID, allowing full reconstruction without redundant storage.",
+        "description": "Defines the file-based documentIndex.json registry for linking documents to CRUD actions.",
         "framework": {
           "baseSchema": {
             "required": [
-              "actionID",
-              "slug",
-              "title",
-              "type",
-              "fileName",
-              "createdBy",
-              "generatedAt",
-              "generatedBy",
-              "codexVersion"
+              "actionID", "slug", "title", "type",
+              "fileName", "createdBy", "generatedAt",
+              "generatedBy", "codexVersion"
             ],
             "optional": [
-              "entity",
-              "workOrder",
-              "inspectionID",
-              "auditScope",
-              "governingClause",
-              "attachments",
-              "notes"
+              "entity", "workOrder", "inspectionID",
+              "auditScope", "governingClause",
+              "attachments", "notes"
             ]
           },
           "storage": {
             "path": "/assets/data/documentIndex.json",
             "format": "json",
             "mode": "append",
-            "notes": "File-based registry acts as a lightweight documents database until database integration is activated."
+            "notes": "Acts as a lightweight document database until SQL integration."
           },
           "repository": {
             "path": "/documents/",
             "classification": "Unified Output Layer",
-            "purpose": "Stores the generated PDF documents referenced in the documentIndex.json registry."
+            "purpose": "Stores referenced PDFs."
           }
         },
-        "notes": "Inactive pending CRUD linkage. Will serve as the unified record for all Skyesoft-generated documents once activated.",
-        "ratificationNote": "To activate upon CRUD-Action integration."
+        "notes": "Will activate after CRUD-action linkage is completed."
       }
     },
     "documentTypesRegistry": {
       "title": "📂 Document Types Registry",
-      "category": "System Layer",
       "type": "registry",
       "status": "ratified",
       "tier": 2,
       "hierarchyOrder": "A-2",
       "effectiveVersion": "v5.6.1",
       "issuedBy": "CPAP-01 (Parliamentarian)",
-      "description": "Defines the official document-type taxonomy recognized by the Skyesoft Codex and rendering systems. Each entry provides a structural and semantic definition used to determine formatting, layout, and doctrinal labeling.",
+      "description": "Defines the official document-type taxonomy.",
       "format": "table",
       "items": [
-        { "key": "directive", "type": "directive", "purpose": "Governing or procedural guidance defining rules, methods, or standards.", "headerExample": "Time Interval Standards Directive" },
-        { "key": "audit", "type": "audit", "purpose": "System-level or governance review verifying compliance, integrity, or performance of Skyesoft frameworks.", "headerExample": "Temporal Integrity Audit" },
-        { "key": "report", "type": "report", "purpose": "Analytical or results-oriented summary presenting data, findings, or outcomes.", "headerExample": "Permit Fee Report" },
-        { "key": "survey", "type": "survey", "purpose": "Observational or visual data capture emphasizing site or condition evidence.", "headerExample": "Photo Survey" },
-        { "key": "bulletin", "type": "bulletin", "purpose": "Advisory or informational dispatch intended for distribution or awareness.", "headerExample": "Safety Bulletin" },
-        { "key": "incident", "type": "incident", "purpose": "Record of an event, malfunction, or occurrence requiring investigation or corrective action.", "headerExample": "Service Interruption Incident Report" },
-        { "key": "specification", "type": "specification", "purpose": "Detailed technical or operational definition governing materials, design, or execution.", "headerExample": "Sign Fabrication Specification" },
-        { "key": "record", "type": "record", "purpose": "Archival or registry entry capturing amendment, approval, or version history.", "headerExample": "Codex Amendments Record" },
-        { "key": "sheet", "type": "sheet", "purpose": "Concise reference or informational document summarizing a discrete topic.", "headerExample": "Information Sheet" },
-        { "key": "registry", "type": "registry", "purpose": "Registry or archival directive governing amendment tracking, change lineage, and formal recordkeeping.", "headerExample": "Codex Amendments Register" }
+        { "key": "directive", "type": "directive", "purpose": "Governing rules and standards.", "headerExample": "Time Interval Standards Directive" },
+        { "key": "audit", "type": "audit", "purpose": "Governance reviews.", "headerExample": "Temporal Integrity Audit" },
+        { "key": "report", "type": "report", "purpose": "Analytical summaries.", "headerExample": "Permit Fee Report" },
+        { "key": "survey", "type": "survey", "purpose": "Observational documentation.", "headerExample": "Photo Survey" },
+        { "key": "bulletin", "type": "bulletin", "purpose": "Advisories and notices.", "headerExample": "Safety Bulletin" },
+        { "key": "incident", "type": "incident", "purpose": "Event/malfunction records.", "headerExample": "Service Incident Report" },
+        { "key": "specification", "type": "specification", "purpose": "Technical definitions.", "headerExample": "Fabrication Specification" },
+        { "key": "record", "type": "record", "purpose": "Archival change logs.", "headerExample": "Codex Amendments Record" },
+        { "key": "sheet", "type": "sheet", "purpose": "Concise reference documents.", "headerExample": "Information Sheet" },
+        { "key": "registry", "type": "registry", "purpose": "Indexing and archival lineage.", "headerExample": "Document Index Register" }
       ],
-      "notes": "Taxonomy and Summary definitions deprecated per CP-DOC-2025-A1. All Codex modules must declare a 'type' matching one of the remaining keys above."
+      "notes": "Taxonomy and Summary types deprecated under CP-DOC-2025-A1."
     }
   },
   "documentTypes": {
     "title": "🧾 Document Types",
-    "category": "System Layer",
     "type": "taxonomy",
     "status": "ratified",
     "tier": 2,
@@ -518,31 +500,30 @@
       "incident",
       "specification",
       "record",
-      "sheet"
+      "sheet",
+      "workInProgress"
     ],
     "purpose": {
       "icon": "🧾",
       "format": "text",
-      "text": "Applies the official document type registry by mapping individual Codex modules to their respective document type classification (e.g., Audit, Report, Survey, Directive). Ensures each operational or governance document inherits its correct doctrinal family from the Document Standards layer."
+      "text": "Applies the official document type registry by mapping each module to its doctrinal document classification."
     },
     "effectiveVersion": "v5.6.1",
     "issuedBy": "CPAP-01 (Parliamentarian)"
   },
   "documentDoctrine": {
     "title": "📜 Skyesoft Document Doctrine Triad",
-    "category": "System Layer",
     "type": "summary",
     "status": "ratified",
     "tier": 1,
     "effectiveVersion": "v5.5.3",
-    "description": "Defines the unified doctrinal system governing Skyesoft document standards, taxonomy, and folder conventions.",
+    "description": "Defines the unified doctrinal system governing document standards, taxonomy, and folder conventions.",
     "includes": ["documentStandards", "documentTypes"],
     "issuedBy": "CPAP-01 (Parliamentarian)",
-    "notes": "These three directives form the structural foundation for all Skyesoft document generation and governance."
+    "notes": "Foundation of all document generation and governance."
   },
   "temporalIntegrity": {
     "title": "🕰️ Temporal Integrity Audit",
-    "category": "System Layer",
     "type": "audit",
     "status": "ratified",
     "family": "governance",
@@ -552,12 +533,11 @@
     "purpose": {
       "icon": "🕰️",
       "format": "text",
-      "text": "Audits the Skyesoft system’s temporal cohesion, including interval classification, holiday rollover logic, and SSE stream integrity. Ensures compliance with Time Interval Standards (TIS) and related constitutional doctrines."
+      "text": "Audits temporal cohesion, interval classification, holiday rollover logic, and SSE integrity."
     }
   },
   "permit": {
     "title": "🏛️ Permit Report",
-    "category": "Operations",
     "type": "report",
     "status": "ratified",
     "family": "operations",
@@ -567,12 +547,11 @@
     "purpose": {
       "icon": "🏛️",
       "format": "text",
-      "text": "Documents permit acquisition, submittal, and release activity. Summarizes status, fees, and jurisdictional details in standardized format."
+      "text": "Documents permit activities including fees, status, and jurisdictional data."
     }
   },
   "photo": {
     "title": "📷 Photo Survey",
-    "category": "Operations",
     "type": "survey",
     "status": "ratified",
     "family": "operations",
@@ -582,12 +561,11 @@
     "purpose": {
       "icon": "📷",
       "format": "text",
-      "text": "Captures photographic documentation of field conditions, sign installations, or site verifications following the Skyesoft survey standard."
+      "text": "Captures photographic documentation of field conditions and installations."
     }
   },
   "bulletin": {
     "title": "⚠️ Safety Bulletin",
-    "category": "Operations",
     "type": "bulletin",
     "status": "ratified",
     "family": "operations",
@@ -597,12 +575,11 @@
     "purpose": {
       "icon": "⚠️",
       "format": "text",
-      "text": "Distributes advisories or safety information to field and administrative staff to maintain compliance and safety awareness."
+      "text": "Distributes safety advisories and compliance notices."
     }
   },
   "incident": {
     "title": "🚨 Incident Report",
-    "category": "Operations",
     "type": "incident",
     "status": "ratified",
     "family": "operations",
@@ -612,12 +589,11 @@
     "purpose": {
       "icon": "🚨",
       "format": "text",
-      "text": "Records details of accidents, malfunctions, or service interruptions requiring investigation, documentation, and corrective action."
+      "text": "Records accidents, malfunctions, and service interruptions."
     }
   },
   "specification": {
     "title": "🧰 Fabrication Specification",
-    "category": "Operations",
     "type": "specification",
     "status": "ratified",
     "family": "operations",
@@ -627,12 +603,11 @@
     "purpose": {
       "icon": "🧰",
       "format": "text",
-      "text": "Defines technical and material standards for sign fabrication, ensuring consistency and code compliance across manufacturing outputs."
+      "text": "Defines technical and material standards for fabrication."
     }
   },
   "record": {
     "title": "📜 Codex Amendments Record",
-    "category": "System Layer",
     "type": "record",
     "status": "ratified",
     "family": "governance",
@@ -642,12 +617,11 @@
     "purpose": {
       "icon": "📜",
       "format": "text",
-      "text": "Captures formal amendments, approvals, and version lineage of doctrinal changes for archival integrity."
+      "text": "Archives amendment lineage and doctrinal changes."
     }
   },
   "sheet": {
     "title": "📘 Information Sheet",
-    "category": "System Layer",
     "type": "sheet",
     "status": "ratified",
     "family": "governance",
@@ -657,7 +631,21 @@
     "purpose": {
       "icon": "📘",
       "format": "text",
-      "text": "Provides concise, single-topic references or procedural guidance intended for distribution or inclusion in reports."
+      "text": "Provides concise procedural or reference information."
+    }
+  },
+  "workInProgress": {
+    "title": "📈 Work In Progress Report",
+    "type": "report",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "📈",
+      "format": "text",
+      "text": "Summarizes progress, roadblocks, and next steps for active jobs or initiatives."
     }
   },
   "timeIntervalStandards": {

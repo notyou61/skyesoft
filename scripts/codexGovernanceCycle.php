@@ -1,90 +1,140 @@
 <?php
 /**
- * Codex Governance Cycle (CP-STRESS-001)
+ * ============================================================
+ *  SKYESOFT CODEX – GOVERNANCE CYCLE ENGINE
+ *  Module: codexGovernanceCycle.php
+ *  Version: v1.3.0
  *
- * Runs the non-destructive governance pipeline:
- *  1. Repository Audit -> api/repositoryAudit.php
- *  2. Codex Validator  -> api/codexValidator.php
- *  3. (Optional) Document generation hooks for audit trail
+ *  Purpose:
+ *    Runs the non-destructive Codex Governance Cycle:
+ *      1) Repository Audit       (/api/repositoryAudit.php)
+ *      2) Codex Validator        (/api/codexValidator.php)
+ *      3) Stress Test Placeholder (HTTP-triggered)
  *
- * Outputs a structured JSON log under:
- *    assets/data/codex-governance-log_YYYYMMDD_HHMMSS.json
+ *  Output:
+ *    /assets/data/codex-governance-log_YYYYMMDD_HHMMSS.json
  *
- * This script DOES NOT auto-edit codex.json.
- * It recommends; humans ratify.
+ *  Behavior:
+ *    • Never modifies codex.json
+ *    • Produces recommendations only
+ *    • Requires human ratification
+ * ============================================================
  */
 
+
+// ------------------------------------------------------------
+//  Resolve Base Directory
+// ------------------------------------------------------------
 $baseDir = realpath(__DIR__ . '/..');
+
 if ($baseDir === false) {
-    fwrite(STDERR, "❌ Unable to resolve base directory.\n");
+    fwrite(STDERR, "❌ ERROR: Unable to resolve base directory.\n");
     exit(1);
 }
 
+
+// ------------------------------------------------------------
+//  Prepare Log Directory
+// ------------------------------------------------------------
 $logDir = $baseDir . '/assets/data';
+
 if (!is_dir($logDir) && !mkdir($logDir, 0775, true)) {
-    fwrite(STDERR, "❌ Unable to create log directory at {$logDir}\n");
+    fwrite(STDERR, "❌ ERROR: Unable to create log directory: {$logDir}\n");
     exit(1);
 }
 
+
+// ------------------------------------------------------------
+//  Build Log File Name
+// ------------------------------------------------------------
 $timestamp   = date('Ymd_His');
 $logFileName = "codex-governance-log_{$timestamp}.json";
-$logFilePath = $logDir . '/' . $logFileName;
+$logFilePath = "{$logDir}/{$logFileName}";
 
+
+// ------------------------------------------------------------
+//  Initialize Output Structure
+// ------------------------------------------------------------
 $results = [
     'meta' => [
         'cycle'       => 'Codex Governance Cycle',
-        'version'     => 'v1.0.0',
+        'version'     => 'v1.3.0',
         'initiatedAt' => date('c'),
-        'baseDir'     => $baseDir,
+        'baseDir'     => $baseDir
     ],
     'steps' => []
 ];
 
+
+// ------------------------------------------------------------
+//  Helper: Execute a Governance Step
+// ------------------------------------------------------------
 function runStep($label, $command)
 {
     $output = [];
-    $exitCode = 0;
-    exec($command . ' 2>&1', $output, $exitCode);
+    $exit   = 0;
+
+    exec($command . ' 2>&1', $output, $exit);
 
     return [
+        'label'    => $label,
         'command'  => $command,
-        'exitCode' => $exitCode,
-        'output'   => $output,
-        'status'   => $exitCode === 0 ? 'ok' : 'error',
+        'exitCode' => $exit,
+        'status'   => ($exit === 0 ? 'ok' : 'error'),
+        'output'   => $output
     ];
 }
 
-// 1) Repository Audit
+
+// ------------------------------------------------------------
+//  STEP 1 – Repository Audit
+// ------------------------------------------------------------
+$repoAudit = $baseDir . '/api/repositoryAudit.php';
+
 $results['steps']['repositoryAudit'] = runStep(
     'repositoryAudit',
-    escapeshellcmd(PHP_BINARY) . ' ' . escapeshellarg($baseDir . '/api/repositoryAudit.php')
+    escapeshellcmd(PHP_BINARY) . ' ' . escapeshellarg($repoAudit)
 );
 
-// 2) Codex Validator
-if (file_exists($baseDir . '/api/codexValidator.php')) {
+
+// ------------------------------------------------------------
+//  STEP 2 – Codex Validator
+// ------------------------------------------------------------
+$validator = $baseDir . '/api/codexValidator.php';
+
+if (file_exists($validator)) {
     $results['steps']['codexValidator'] = runStep(
         'codexValidator',
-        escapeshellcmd(PHP_BINARY) . ' ' . escapeshellarg($baseDir . '/api/codexValidator.php')
+        escapeshellcmd(PHP_BINARY) . ' ' . escapeshellarg($validator)
     );
 } else {
     $results['steps']['codexValidator'] = [
-        'status'  => 'skipped',
-        'reason'  => 'codexValidator.php not found in /api',
-        'command' => null,
+        'status' => 'skipped',
+        'reason' => 'codexValidator.php not found'
     ];
 }
 
-// 3) Placeholder: Stress Test hook (non-fatal if not wired)
+
+// ------------------------------------------------------------
+–  STEP 3 – Deferred Stress Test
+// ------------------------------------------------------------
 $results['steps']['codexStressTest'] = [
     'status' => 'deferred',
-    'note'   => 'Codex Stress Test is invoked via generateDocuments.php slug=codexStressTest in the HTTP layer.'
+    'note'   => 'Run via generateDocuments.php?slug=codexStressTest'
 ];
 
-// Write governance log
+
+// ------------------------------------------------------------
+//  Write Governance Log
+// ------------------------------------------------------------
 file_put_contents(
     $logFilePath,
     json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
 );
 
-echo "✅ Codex Governance Cycle completed.\n";
-echo "   Log written to: assets/data/{$logFileName}\n";
+
+// ------------------------------------------------------------
+//  Output Summary
+// ------------------------------------------------------------
+echo "✅ Codex Governance Cycle complete.\n";
+echo "📄 Log saved to: assets/data/{$logFileName}\n";
