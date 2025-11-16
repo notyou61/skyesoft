@@ -300,7 +300,58 @@
         "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-1",
-        "description": "Formal rules for how the SSE Stream is generated, structured, and consumed across Skyesoft."
+        "description": "Defines the official structure, ordering, membership, and governance rules for the Skyesoft SSE Stream. This standard ensures that all live data emitted by Skyesoft is deterministic, predictable, and fully Codex-controlled.",
+        "dataSource": {
+          "title": { "icon": 52, "text": "SSE Runtime Data Source" },
+          "text": "All non-doctrinal runtime inputs required by the SSE Stream must reside in sseInputs.json. This includes office hours, shop hours, default weather location, geographic coordinates, default sunrise/sunset, and interval label definitions. These are operational inputs — not configuration — and must never include rules, policies, or standards belonging to the Codex.",
+          "file": "assets/data/sseInputs.json"
+        },
+        "preamble": {
+          "title": { "icon": 52, "text": "Preamble — Purpose of the SSE Stream" },
+          "text": "The SSE Stream is Skyesoft’s live operational output — the real-time heartbeat of the system. It provides current time/date state, work interval calculations, weather data, holiday logic, record counts, and Codex context. The Codex defines the structural and ordering rules; sseInputs.json supplies the runtime values needed to compute the output."
+        },
+        "purpose": {
+          "icon": 52,
+          "text": "To guarantee that the SSE Stream remains uniform, deterministic, and governed across the entire Skyesoft ecosystem, eliminating drift and ensuring all consuming modules operate on the same structured live data."
+        },
+        "tiers": {
+          "core": {
+            "title": { "icon": 52, "text": "Tier 1 — Core Live State" },
+            "members": [
+              "timeDateArray",
+              "intervalsArray",
+              "weatherData",
+              "holidays",
+              "recordCounts"
+            ]
+          },
+          "ui": {
+            "title": { "icon": 10, "text": "Tier 2 — User Interaction Layer" },
+            "members": [
+              "uiEvent",
+              "announcements",
+              "siteMeta"
+            ]
+          },
+          "system": {
+            "title": { "icon": 6, "text": "Tier 3 — System Context & Governance" },
+            "members": [
+              "codexContext"
+            ]
+          }
+        },
+        "rules": {
+          "icon": 20,
+          "text": "All SSE output must conform to the Codex-defined tier map and follow strict ordering rules. No module may introduce or remove fields without Codex ratification.",
+          "enforcement": [
+            "All SSE members must appear in tier order: core → ui → system.",
+            "Any missing member must be emitted as an empty object — never omitted.",
+            "New SSE members require Codex approval and must specify a tier.",
+            "All runtime inputs (hours, labels, location, coordinates, daybreak values) must be loaded exclusively from sseInputs.json.",
+            "The Codex cannot duplicate, override, or redefine any sseInputs.json value.",
+            "PHP scripts must never introduce fields outside the tier map."
+          ]
+        }
       },
       "skyebotModule": {
         "title": { "icon": 10, "text": "Skyebot Module Standard" },
