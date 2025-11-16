@@ -1,0 +1,1051 @@
+{
+  "Dewey-Humboldt": {
+    "aliases": [
+      "TOWN OF DEWEY-HUMBOLDT",
+      "DEWEY-HUMBOLDT"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 419145,
+    "incorporation": 2004,
+    "api": null
+  },
+  "Wickenburg": {
+    "aliases": [
+      "TOWN OF WICKENBURG",
+      "WICKENBURG"
+    ],
+    "county": "Maricopa",
+    "type": "Town",
+    "fips": 482740,
+    "incorporation": 1909,
+    "api": null
+  },
+  "Gila Bend": {
+    "aliases": [
+      "TOWN OF GILA BEND",
+      "GILA BEND"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 427050,
+    "incorporation": 1962,
+    "api": null
+  },
+  "Tempe": {
+    "aliases": [
+      "CITY OF TEMPE",
+      "TEMPE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 473000,
+    "incorporation": 1894,
+    "api": null
+  },
+  "Colorado City": {
+    "aliases": [
+      "CITY OF COLORADO CITY",
+      "COLORADO CITY"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 414870,
+    "incorporation": 1985,
+    "api": null
+  },
+  "Fredonia": {
+    "aliases": [
+      "TOWN OF FREDONIA",
+      "FREDONIA"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 425720,
+    "incorporation": 1956,
+    "api": null
+  },
+  "Page": {
+    "aliases": [
+      "CITY OF PAGE",
+      "PAGE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 451810,
+    "incorporation": 1975,
+    "api": null
+  },
+  "Williams": {
+    "aliases": [
+      "CITY OF WILLIAMS",
+      "WILLIAMS"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 483160,
+    "incorporation": 1901,
+    "api": null
+  },
+  "Prescott Valley": {
+    "aliases": [
+      "TOWN OF PRESCOTT VALLEY",
+      "PRESCOTT VALLEY"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 457450,
+    "incorporation": 1978,
+    "api": null
+  },
+  "Coolidge": {
+    "aliases": [
+      "CITY OF COOLIDGE",
+      "COOLIDGE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 415500,
+    "incorporation": 1945,
+    "api": null
+  },
+  "Kingman": {
+    "aliases": [
+      "CITY OF KINGMAN",
+      "KINGMAN"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 437620,
+    "incorporation": 1952,
+    "api": null
+  },
+  "Bullhead City": {
+    "aliases": [
+      "CITY OF BULLHEAD CITY",
+      "BULLHEAD CITY"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 408220,
+    "incorporation": 1984,
+    "api": null
+  },
+  "Flagstaff": {
+    "aliases": [
+      "CITY OF FLAGSTAFF",
+      "FLAGSTAFF"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 423620,
+    "incorporation": null,
+    "api": null
+  },
+  "Winslow": {
+    "aliases": [
+      "CITY OF WINSLOW",
+      "WINSLOW"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 483930,
+    "incorporation": 1900,
+    "api": null
+  },
+  "Holbrook": {
+    "aliases": [
+      "CITY OF HOLBROOK",
+      "HOLBROOK"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 433280,
+    "incorporation": 1917,
+    "api": null
+  },
+  "Clarkdale": {
+    "aliases": [
+      "TOWN OF CLARKDALE",
+      "CLARKDALE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 413890,
+    "incorporation": 1957,
+    "api": null
+  },
+  "Cottonwood": {
+    "aliases": [
+      "CITY OF COTTONWOOD",
+      "COTTONWOOD"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 416410,
+    "incorporation": 1960,
+    "api": null
+  },
+  "Camp Verde": {
+    "aliases": [
+      "TOWN OF CAMP VERDE",
+      "CAMP VERDE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 409690,
+    "incorporation": 1986,
+    "api": null
+  },
+  "Lake Havasu City": {
+    "aliases": [
+      "CITY OF LAKE HAVASU CITY",
+      "LAKE HAVASU CITY"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 439370,
+    "incorporation": 1978,
+    "api": null
+  },
+  "Douglas": {
+    "aliases": [
+      "CITY OF DOUGLAS",
+      "DOUGLAS"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 420050,
+    "incorporation": 1905,
+    "api": null
+  },
+  "Snowflake": {
+    "aliases": [
+      "TOWN OF SNOWFLAKE",
+      "SNOWFLAKE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 467800,
+    "incorporation": 1948,
+    "api": null
+  },
+  "St Johns": {
+    "aliases": [
+      "ST JOHNS"
+    ],
+    "county": null,
+    "type": null,
+    "fips": null,
+    "incorporation": null,
+    "api": null
+  },
+  "Taylor": {
+    "aliases": [
+      "TOWN OF TAYLOR",
+      "TAYLOR"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 472420,
+    "incorporation": 1966,
+    "api": null
+  },
+  "Payson": {
+    "aliases": [
+      "TOWN OF PAYSON",
+      "PAYSON"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 453700,
+    "incorporation": 1973,
+    "api": null
+  },
+  "Springerville": {
+    "aliases": [
+      "TOWN OF SPRINGERVILLE",
+      "SPRINGERVILLE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 468990,
+    "incorporation": 1948,
+    "api": null
+  },
+  "Pinetop-Lakeside": {
+    "aliases": [
+      "TOWN OF PINETOP-LAKESIDE",
+      "PINETOP-LAKESIDE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 455980,
+    "incorporation": 1984,
+    "api": null
+  },
+  "Eagar": {
+    "aliases": [
+      "TOWN OF EAGAR",
+      "EAGAR"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 420960,
+    "incorporation": 1948,
+    "api": null
+  },
+  "Parker": {
+    "aliases": [
+      "TOWN OF PARKER",
+      "PARKER"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 453070,
+    "incorporation": 1948,
+    "api": null
+  },
+  "Cave Creek": {
+    "aliases": [
+      "TOWN OF CAVE CREEK",
+      "CAVE CREEK"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 411300,
+    "incorporation": 1986,
+    "api": null
+  },
+  "Scottsdale": {
+    "aliases": [
+      "CITY OF SCOTTSDALE",
+      "SCOTTSDALE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 465000,
+    "incorporation": 1951,
+    "api": {
+      "endpoint": "https://maps.scottsdaleaz.gov/arcgis/rest/services/OpenData/MapServer/24/query",
+      "modes": [
+        "point"
+      ],
+      "srid": 4326,
+      "outFields": [
+        "full_zoning",
+        "comparable_zoning"
+      ],
+      "responseFields": {
+        "primary": "full_zoning",
+        "secondary": "comparable_zoning"
+      }
+    }
+  },
+  "Carefree": {
+    "aliases": [
+      "TOWN OF CAREFREE",
+      "CAREFREE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 410180,
+    "incorporation": 1984,
+    "api": null
+  },
+  "Quartzsite": {
+    "aliases": [
+      "TOWN OF QUARTZSITE",
+      "QUARTZSITE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 458010,
+    "incorporation": 1989,
+    "api": null
+  },
+  "Star Valley": {
+    "aliases": [
+      "TOWN OF STAR VALLEY",
+      "STAR VALLEY"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 469480,
+    "incorporation": 2005,
+    "api": null
+  },
+  "Fountain Hills": {
+    "aliases": [
+      "TOWN OF FOUNTAIN HILLS",
+      "FOUNTAIN HILLS"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 425300,
+    "incorporation": 1989,
+    "api": null
+  },
+  "Youngtown": {
+    "aliases": [
+      "TOWN OF YOUNGTOWN",
+      "YOUNGTOWN"
+    ],
+    "county": "Maricopa",
+    "type": "Town",
+    "fips": 485400,
+    "incorporation": 1960,
+    "api": null
+  },
+  "Surprise": {
+    "aliases": [
+      "CITY OF SURPRISE",
+      "SURPRISE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 471510,
+    "incorporation": 1960,
+    "api": null
+  },
+  "Paradise Valley": {
+    "aliases": [
+      "TOWN OF PARADISE VALLEY",
+      "PARADISE VALLEY"
+    ],
+    "county": "Maricopa",
+    "type": "Town",
+    "fips": 452930,
+    "incorporation": 1961,
+    "api": null
+  },
+  "Litchfield Park": {
+    "aliases": [
+      "CITY OF LITCHFIELD PARK",
+      "LITCHFIELD PARK"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 441330,
+    "incorporation": 1987,
+    "api": null
+  },
+  "Tolleson": {
+    "aliases": [
+      "CITY OF TOLLESON",
+      "TOLLESON"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 474190,
+    "incorporation": null,
+    "api": null
+  },
+  "Apache Junction": {
+    "aliases": [
+      "CITY OF APACHE JUNCTION",
+      "APACHE JUNCTION"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 402830,
+    "incorporation": 1978,
+    "api": null
+  },
+  "Globe": {
+    "aliases": [
+      "CITY OF GLOBE",
+      "GLOBE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 428030,
+    "incorporation": 1907,
+    "api": null
+  },
+  "Miami": {
+    "aliases": [
+      "TOWN OF MIAMI",
+      "MIAMI"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 446350,
+    "incorporation": 1918,
+    "api": null
+  },
+  "Guadalupe": {
+    "aliases": [
+      "TOWN OF GUADALUPE",
+      "GUADALUPE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 430270,
+    "incorporation": 1975,
+    "api": null
+  },
+  "Jerome": {
+    "aliases": [
+      "TOWN OF JEROME",
+      "JEROME"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 436290,
+    "incorporation": null,
+    "api": null
+  },
+  "Superior": {
+    "aliases": [
+      "TOWN OF SUPERIOR",
+      "SUPERIOR"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 471300,
+    "incorporation": 1976,
+    "api": null
+  },
+  "Maricopa": {
+    "aliases": [
+      "CITY OF MARICOPA",
+      "MARICOPA"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 444410,
+    "incorporation": 2003,
+    "api": null
+  },
+  "Clifton": {
+    "aliases": [
+      "TOWN OF CLIFTON",
+      "CLIFTON"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 414380,
+    "incorporation": 1909,
+    "api": null
+  },
+  "Kearny": {
+    "aliases": [
+      "TOWN OF KEARNY",
+      "KEARNY"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 437200,
+    "incorporation": 1959,
+    "api": null
+  },
+  "Hayden": {
+    "aliases": [
+      "TOWN OF HAYDEN",
+      "HAYDEN"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 432020,
+    "incorporation": 1956,
+    "api": null
+  },
+  "Winkelman": {
+    "aliases": [
+      "TOWN OF WINKELMAN",
+      "WINKELMAN"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 483790,
+    "incorporation": 1949,
+    "api": null
+  },
+  "Safford": {
+    "aliases": [
+      "CITY OF SAFFORD",
+      "SAFFORD"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 462000,
+    "incorporation": 1901,
+    "api": null
+  },
+  "Duncan": {
+    "aliases": [
+      "TOWN OF DUNCAN",
+      "DUNCAN"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 420750,
+    "incorporation": null,
+    "api": null
+  },
+  "Mammoth": {
+    "aliases": [
+      "TOWN OF MAMMOTH",
+      "MAMMOTH"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 443990,
+    "incorporation": 1958,
+    "api": null
+  },
+  "Somerton": {
+    "aliases": [
+      "CITY OF SOMERTON",
+      "SOMERTON"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 468080,
+    "incorporation": 1918,
+    "api": null
+  },
+  "San Luis": {
+    "aliases": [
+      "CITY OF SAN LUIS",
+      "SAN LUIS"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 463470,
+    "incorporation": 1979,
+    "api": null
+  },
+  "Oro Valley": {
+    "aliases": [
+      "TOWN OF ORO VALLEY",
+      "ORO VALLEY"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 451600,
+    "incorporation": 1974,
+    "api": null
+  },
+  "Chino Valley": {
+    "aliases": [
+      "TOWN OF CHINO VALLEY",
+      "CHINO VALLEY"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 412840,
+    "incorporation": 1970,
+    "api": null
+  },
+  "Willcox": {
+    "aliases": [
+      "CITY OF WILLCOX",
+      "WILLCOX"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 483090,
+    "incorporation": 1915,
+    "api": null
+  },
+  "South Tucson": {
+    "aliases": [
+      "CITY OF SOUTH TUCSON",
+      "SOUTH TUCSON"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 468850,
+    "incorporation": 1940,
+    "api": null
+  },
+  "Sahuarita": {
+    "aliases": [
+      "TOWN OF SAHUARITA",
+      "SAHUARITA"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 462140,
+    "incorporation": 1994,
+    "api": null
+  },
+  "Wellton": {
+    "aliases": [
+      "TOWN OF WELLTON",
+      "WELLTON"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 481480,
+    "incorporation": 1970,
+    "api": null
+  },
+  "Benson": {
+    "aliases": [
+      "CITY OF BENSON",
+      "BENSON"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 405770,
+    "incorporation": null,
+    "api": null
+  },
+  "Tombstone": {
+    "aliases": [
+      "CITY OF TOMBSTONE",
+      "TOMBSTONE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 474400,
+    "incorporation": 1881,
+    "api": null
+  },
+  "Sierra Vista": {
+    "aliases": [
+      "CITY OF SIERRA VISTA",
+      "SIERRA VISTA"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 466820,
+    "incorporation": 1956,
+    "api": null
+  },
+  "Huachuca City": {
+    "aliases": [
+      "CITY OF HUACHUCA CITY",
+      "HUACHUCA CITY"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 434120,
+    "incorporation": 1958,
+    "api": null
+  },
+  "Patagonia": {
+    "aliases": [
+      "TOWN OF PATAGONIA",
+      "PATAGONIA"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 453490,
+    "incorporation": 1948,
+    "api": null
+  },
+  "Nogales": {
+    "aliases": [
+      "CITY OF NOGALES",
+      "NOGALES"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 449640,
+    "incorporation": 1893,
+    "api": null
+  },
+  "Bisbee": {
+    "aliases": [
+      "CITY OF BISBEE",
+      "BISBEE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 406260,
+    "incorporation": 1902,
+    "api": null
+  },
+  "Prescott": {
+    "aliases": [
+      "CITY OF PRESCOTT",
+      "PRESCOTT"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 457380,
+    "incorporation": 1883,
+    "api": null
+  },
+  "Thatcher": {
+    "aliases": [
+      "TOWN OF THATCHER",
+      "THATCHER"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 473420,
+    "incorporation": 1899,
+    "api": null
+  },
+  "Tusayan": {
+    "aliases": [
+      "TOWN OF TUSAYAN",
+      "TUSAYAN"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 477490,
+    "incorporation": 2010,
+    "api": null
+  },
+  "Yuma": {
+    "aliases": [
+      "CITY OF YUMA",
+      "YUMA"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 485540,
+    "incorporation": 1914,
+    "api": null
+  },
+  "Tucson": {
+    "aliases": [
+      "CITY OF TUCSON",
+      "TUCSON"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 477000,
+    "incorporation": 1877,
+    "api": null
+  },
+  "Queen Creek": {
+    "aliases": [
+      "TOWN OF QUEEN CREEK",
+      "QUEEN CREEK"
+    ],
+    "county": "Maricopa",
+    "type": "Town",
+    "fips": 458150,
+    "incorporation": 1989,
+    "api": null
+  },
+  "El Mirage": {
+    "aliases": [
+      "CITY OF EL MIRAGE",
+      "EL MIRAGE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 422220,
+    "incorporation": 1951,
+    "api": null
+  },
+  "Casa Grande": {
+    "aliases": [
+      "CITY OF CASA GRANDE",
+      "CASA GRANDE"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 410530,
+    "incorporation": 1915,
+    "api": null
+  },
+  "Show Low": {
+    "aliases": [
+      "CITY OF SHOW LOW",
+      "SHOW LOW"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 466470,
+    "incorporation": 1953,
+    "api": null
+  },
+  "Marana": {
+    "aliases": [
+      "TOWN OF MARANA",
+      "MARANA"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 444270,
+    "incorporation": 1977,
+    "api": null
+  },
+  "Florence": {
+    "aliases": [
+      "TOWN OF FLORENCE",
+      "FLORENCE"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 423760,
+    "incorporation": 1900,
+    "api": null
+  },
+  "Gilbert": {
+    "aliases": [
+      "TOWN OF GILBERT",
+      "GILBERT"
+    ],
+    "county": "Maricopa",
+    "type": "Town",
+    "fips": 427400,
+    "incorporation": 1920,
+    "api": {
+      "endpoint": "https://maps.gilbertaz.gov/arcgis/rest/services/OD/Growth_Development_Maps_1/MapServer/8/query",
+      "modes": [
+        "point"
+      ],
+      "srid": 102100,
+      "requiresProjection": true,
+      "projectionTarget": 102100,
+      "outFields": [
+        "ZCODE",
+        "Description"
+      ],
+      "responseFields": {
+        "primary": "ZCODE",
+        "secondary": "Description"
+      }
+    }
+  },
+  "Glendale": {
+    "aliases": [
+      "CITY OF GLENDALE",
+      "GLENDALE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 427820,
+    "incorporation": 1910,
+    "api": null
+  },
+  "Peoria": {
+    "aliases": [
+      "CITY OF PEORIA",
+      "PEORIA"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 454050,
+    "incorporation": 1954,
+    "api": null
+  },
+  "Eloy": {
+    "aliases": [
+      "CITY OF ELOY",
+      "ELOY"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 422360,
+    "incorporation": 1949,
+    "api": null
+  },
+  "Sedona": {
+    "aliases": [
+      "CITY OF SEDONA",
+      "SEDONA"
+    ],
+    "county": null,
+    "type": "City",
+    "fips": 465350,
+    "incorporation": 1988,
+    "api": null
+  },
+  "Avondale": {
+    "aliases": [
+      "CITY OF AVONDALE",
+      "AVONDALE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 404720,
+    "incorporation": 1946,
+    "api": null
+  },
+  "Goodyear": {
+    "aliases": [
+      "CITY OF GOODYEAR",
+      "GOODYEAR"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 428380,
+    "incorporation": 1946,
+    "api": null
+  },
+  "Pima": {
+    "aliases": [
+      "TOWN OF PIMA",
+      "PIMA"
+    ],
+    "county": null,
+    "type": "Town",
+    "fips": 455560,
+    "incorporation": 1916,
+    "api": null
+  },
+  "Phoenix": {
+    "api": {
+      "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
+      "modes": ["point"], 
+      "srid": 4326,
+      "requiresProjection": false,
+      "outFields": ["ZONING", "GEN_ZONE", "LABEL1"],
+      "responseFields": {
+        "primary": "ZONING",
+        "secondary": "GEN_ZONE",
+        "tertiary": "LABEL1"
+      }
+    }
+  },
+  "Chandler": {
+    "aliases": [
+      "CITY OF CHANDLER",
+      "CHANDLER"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 412000,
+    "incorporation": 1920,
+    "api": null
+  },
+  "Mesa": {
+    "aliases": [
+      "CITY OF MESA",
+      "MESA"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 446000,
+    "incorporation": 1883,
+    "api": {
+      "endpoint": "https://gis.mesaaz.gov/mesaaz/rest/services/Accela/Accela_Base/MapServer/33/query",
+      "modes": [
+        "point"
+      ],
+      "srid": 2868,
+      "requiresProjection": true,
+      "projectionTarget": 2868,
+      "outFields": [
+        "Zoning",
+        "Description"
+      ],
+      "responseFields": {
+        "primary": "Zoning",
+        "secondary": "Description"
+      }
+    }
+  },
+  "Buckeye": {
+    "aliases": [
+      "CITY OF BUCKEYE",
+      "BUCKEYE"
+    ],
+    "county": "Maricopa",
+    "type": "City",
+    "fips": 407940,
+    "incorporation": null,
+    "api": null
+  }
+}
