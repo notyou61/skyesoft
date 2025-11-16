@@ -7,12 +7,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-##############################
-# Logs
-##############################
-logs/
-*.log
-
 # Allow assets/logs/ folder but ignore its log files
 assets/logs/*
 !assets/logs/.gitkeep
@@ -68,3 +62,9 @@ composer.lock
 # Scripts
 ##############################
 scripts/autoComment.js
+
+##############################
+# Logs (keep folder, ignore files)
+##############################
+logs/*
+!logs/.gitkeep
