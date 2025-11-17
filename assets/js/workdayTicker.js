@@ -101,12 +101,6 @@ setInterval(() => {
     .then(res => res.json())
     .then(data => {
         
-      // 🔧 DEBUG PATCH — CONFIRMING ACTIVE WORKDAYTICKER.JS
-        const intervalEl = document.getElementById("intervalRemainingData");
-        if (intervalEl) {
-          intervalEl.textContent = "🔧 DEBUG: Interval Code Running";
-        }
-
       // #region 🧪 Debug Log
       //console.log('uiEvent in polling:', data.uiEvent);
       // User Interface Event Conditional — CRUD-aware with color mapping
@@ -169,63 +163,44 @@ setInterval(() => {
       }
       // #endregion
 
-      // #region ⏳ Update Interval Remaining Message
-      const secondsRaw = data?.intervalsArray?.currentDaySecondsRemaining;
-      let labelRaw = data?.intervalsArray?.intervalCode;
-      let dayTypeRaw = data?.intervalsArray?.dayType;
-
-      // Normalize types
-      const seconds = typeof secondsRaw === "string" ? parseInt(secondsRaw, 10) : secondsRaw;
-      const label = Number(data?.intervalsArray?.intervalCode);
-
-      if (!isNaN(seconds) && !isNaN(label)) {
+      // #region ⏳ Interval Remaining (TIS v6 – Final Codex Block)
+      (function updateIntervalRemaining() {
+        const interval = data?.intervalsArray;
+        const intervalEl = document.getElementById("intervalRemainingData");
+        if (!interval || !intervalEl) return;
+        const seconds = Number(interval.secondsRemainingToInterval);
+        const label = Number(interval.intervalCode);
+        const dayType = interval.dayType;
+        if (isNaN(seconds) || isNaN(label) || !dayType) {
+          intervalEl.textContent = "⏳ Loading…";
+          return;
+        }
         const formatted = formatDurationPadded(seconds);
         let message = "";
-
-        // #region ⏳ Update Interval Remaining Message — CLEAN & CORRECT (TIS v6)
-        const interval = data?.intervalsArray;
-        if (interval) {
-          const seconds = Number(interval.secondsRemainingToInterval);
-          const label   = Number(interval.intervalCode);
-          const dayType = interval.dayType;
-
-          if (!isNaN(seconds) && !isNaN(label)) {
-
-            const formatted = formatDurationPadded(seconds);
-            let message = "";
-
-            // Holiday / weekend overrides
-            if (dayType === "Company Holiday") {
-              message = `🏢 Office closed — next worktime begins in ${formatted}`;
-            }
-            else if (dayType === "Weekend") {
-              message = `🌴 Weekend — next worktime begins in ${formatted}`;
-            }
-            else {
-              // Normal workday intervals
-              switch (label) {
-                case 0:
-                  message = `🔜 Worktime begins in ${formatted}`;
-                  break;
-                case 1:
-                  message = `🔚 Worktime ends in ${formatted}`;
-                  break;
-                case 2:
-                default:
-                  message = `📆 Next worktime begins in ${formatted}`;
-                  break;
-              }
-            }
-
-            const el = document.getElementById("intervalRemainingData");
-            if (el) el.textContent = message;
+        // --- Day Type Overrides (priority 1)
+        if (dayType === "Company Holiday") {
+          message = `🏢 Office closed — next worktime begins in ${formatted}`;
+        }
+        else if (dayType === "Weekend") {
+          message = `🌴 Weekend — next worktime begins in ${formatted}`;
+        }
+        else {
+          // --- Workday logic (priority 2)
+          switch (label) {
+            case 0:
+              message = `🔜 Worktime begins in ${formatted}`;
+              break;
+            case 1:
+              message = `🔚 Worktime ends in ${formatted}`;
+              break;
+            case 2:
+            default:
+              message = `📆 Next worktime begins in ${formatted}`;
+              break;
           }
         }
-        // #endregion
-
-        const intervalEl = document.getElementById("intervalRemainingData");
-        if (intervalEl) intervalEl.textContent = message;
-      }
+        intervalEl.textContent = message;
+      })();
       // #endregion
 
       // #region 🏷️ Version Tag
