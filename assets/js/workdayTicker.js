@@ -100,6 +100,13 @@ setInterval(() => {
   fetch("/skyesoft/api/getDynamicData.php")
     .then(res => res.json())
     .then(data => {
+        
+      // 🔧 DEBUG PATCH — CONFIRMING ACTIVE WORKDAYTICKER.JS
+        const intervalEl = document.getElementById("intervalRemainingData");
+        if (intervalEl) {
+          intervalEl.textContent = "🔧 DEBUG: Interval Code Running";
+        }
+
       // #region 🧪 Debug Log
       //console.log('uiEvent in polling:', data.uiEvent);
       // User Interface Event Conditional — CRUD-aware with color mapping
