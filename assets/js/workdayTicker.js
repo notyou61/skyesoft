@@ -164,7 +164,7 @@ setInterval(() => {
 
       // #region ⏳ Update Interval Remaining Message
       const secondsRaw = data?.intervalsArray?.currentDaySecondsRemaining;
-      let labelRaw = data?.intervalsArray?.intervalLabel;
+      let labelRaw = data?.intervalsArray?.intervalCode;
       let dayTypeRaw = data?.intervalsArray?.dayType;
 
       // Normalize types
