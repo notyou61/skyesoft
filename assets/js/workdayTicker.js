@@ -175,39 +175,39 @@ setInterval(() => {
         const formatted = formatDurationPadded(seconds);
         let message = "";
 
-      // #region ⏳ Update Interval Remaining Message (TIS v5.4)
-      const s = data?.intervalsArray?.currentDaySecondsRemaining;
-      const label = Number(data?.intervalsArray?.intervalLabel);
-      const dayType = data?.intervalsArray?.dayType;
+        // #region ⏳ Update Interval Remaining Message (TIS v5.4)
+        const s = Number(data?.intervalsArray?.secondsRemainingToInterval);
+        const label = Number(data?.intervalsArray?.intervalCode);
+        const dayType = data?.intervalsArray?.dayType;
 
-      if (!isNaN(s) && !isNaN(label)) {
-        const formatted = formatDurationPadded(s);
-        let message = "";
+        if (!isNaN(s) && !isNaN(label)) {
+          const formatted = formatDurationPadded(s);
+          let message = "";
 
-        switch (label) {
-          case 0: // Before Worktime
-            message = `🔜 Worktime begins in ${formatted}`;
-            break;
-          case 1: // During Worktime
-            message = `🔚 Worktime ends in ${formatted}`;
-            break;
-          case 2: // After Worktime
-          default:
-            message = `📆 Next worktime begins in ${formatted}`;
-            break;
+          switch (label) {
+            case 0: // Before Worktime
+              message = `🔜 Worktime begins in ${formatted}`;
+              break;
+            case 1: // During Worktime
+              message = `🔚 Worktime ends in ${formatted}`;
+              break;
+            case 2: // After Worktime
+            default:
+              message = `📆 Next worktime begins in ${formatted}`;
+              break;
+          }
+
+          // Contextual prefix based on dayType
+          if (dayType === "Weekend") {
+            message = `🌴 Weekend — ${message}`;
+          } else if (dayType === "Company Holiday") {
+            message = `🏢 Office closed — ${message}`;
+          }
+
+          const el = document.getElementById("intervalRemainingData");
+          if (el) el.textContent = message;
         }
-
-        // Contextual prefix based on dayType
-        if (dayType === "Weekend") {
-          message = `🌴 Weekend — ${message}`;
-        } else if (dayType === "Company Holiday") {
-          message = `🏢 Office closed — ${message}`;
-        }
-
-        const el = document.getElementById("intervalRemainingData");
-        if (el) el.textContent = message;
-      }
-      // #endregion
+        // #endregion
 
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
