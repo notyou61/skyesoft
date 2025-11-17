@@ -75,16 +75,16 @@ function loadEnvFileCandidates() {
 
     foreach ($candidates as $p) {
         if (!$p || !is_readable($p)) continue;
-
+        // For Each
         foreach (file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
             $trim = trim($line);
             if ($trim === '' || $trim[0] === '#') continue;
-            if (!str_contains($trim, '=')) continue;
+            if (strpos($trim, '=') === false) continue;
 
             list($k, $v) = array_map('trim', explode('=', $trim, 2));
             putenv(strtoupper($k) . '=' . trim($v, "\"' \t"));
         }
-
+        // Break
         break;
     }
 }
