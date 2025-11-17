@@ -353,6 +353,39 @@
           ]
         }
       },
+      "unifiedClientArchitecture": {
+        "title": { "icon": 7, "text": "Unified Client Architecture Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-8",
+        "description": "Defines the governing architecture for all Skyesoft UI pages, ensuring shared modules, consistent behavior, and declarative markup across the portal.",
+        "rules": [
+          "All HTML pages must be declarative only, containing no inline JavaScript.",
+          "All dynamic behavior must be implemented using shared JavaScript modules.",
+          "A single front-end controller (app.js) must manage global state, SSE ingest, login, modal logic, and UI dispatch.",
+          "Weather, DataTables, and Skyebot logic must remain modular and isolated from markup.",
+          "New UI pages must automatically inherit architecture without modifying core modules."
+        ],
+        "sharedModules": [
+          "app.js",
+          "sse.js",
+          "ui.js",
+          "weather.js"
+        ],
+        "pageSpecificModules": {
+          "index": ["skyebot.js"],
+          "board": ["dataTablesSupport.js"]
+        },
+        "pageDetection": {
+          "attribute": "data-page",
+          "values": ["index", "officeBoard", "board-*"]
+        },
+        "compliance": {
+          "test": "Load index.html and officeBoard.html under live SSE with no console errors, identical timing logic, and Codex-compliant modal activation.",
+          "violationCode": "CP-UI-2025-A1"
+        }
+      },
       "skyebotModule": {
         "title": { "icon": 10, "text": "Skyebot Module Standard" },
         "type": "standard",
