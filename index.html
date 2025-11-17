@@ -501,6 +501,10 @@
 
     // #region 🔔 One‑shot UI Event dispatcher (reads + ACKs)
     async function handleOneShotUiEventFromServer() {
+      // 🚫 Prevent UI-events (modal.open, toast.show, route.goto) before login
+      if (!localStorage.getItem("userLoggedIn")) {
+        return;
+      }
       try {
         const res = await fetch('/skyesoft/api/getDynamicData.php', { credentials: 'same-origin' });
         if (!res.ok) return;
