@@ -37,11 +37,24 @@ ini_set('error_log',  $localLog);
 #endregion
 
 #region 🧩 Helper Loading + Env
+
+/**
+ * Skyesoft Helper Layer — A-1 Ultra-Structure
+ * Provides:
+ *   • helpers.php loader
+ *   • envVal() accessor
+ *   • loadEnvFileCandidates() unified .env resolver
+ *   • timeStringToSeconds() converter
+ *   • logCacheEventSimple() lightweight logger
+ */
+
+// Load API-Level Helpers
 $helperPath = realpath(__DIR__ . '/helpers.php');
 if ($helperPath && !in_array($helperPath, get_included_files())) {
     require_once $helperPath;
 }
 
+// Environment Variable Access
 if (!function_exists('envVal')) {
     function envVal($key, $default = null) {
         $v = getenv($key);
@@ -49,42 +62,62 @@ if (!function_exists('envVal')) {
     }
 }
 
+// Unified Environment Loader
 function loadEnvFileCandidates() {
     $candidates = array(
         '/home/notyou64/secure/.env',
         realpath(dirname(__FILE__) . '/../secure/.env'),
         realpath(dirname(__FILE__) . '/../../../secure/.env'),
-        realpath(dirname(dirname(__FILE__)) . '/../.data/.env'),
-        realpath(dirname(__FILE__) . '/../../../.data/.env'),
+        realpath(dirname(__DIR__) . '/.data/.env'),
+        realpath(dirname(__DIR__) . '/secure/.env'),
         realpath('C:/Users/SteveS/Documents/skyesoft/secure/.env')
     );
+
     foreach ($candidates as $p) {
         if (!$p || !is_readable($p)) continue;
-        $lines = file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
+
+        foreach (file($p, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
             $trim = trim($line);
             if ($trim === '' || $trim[0] === '#') continue;
-            if (strpos($trim, '=') === false) continue;
+            if (!str_contains($trim, '=')) continue;
+
             list($k, $v) = array_map('trim', explode('=', $trim, 2));
-            putenv(strtoupper($k) . '=' . trim($v, "\"' "));
+            putenv(strtoupper($k) . '=' . trim($v, "\"' \t"));
         }
+
         break;
     }
 }
 
+// Convert "7:30 AM" → Seconds
 function timeStringToSeconds($timeStr) {
-    $timeStr = trim(strtolower($timeStr));
+    $timeStr = strtolower(trim($timeStr));
     $timeStr = preg_replace('/[^\d:apm\s]/', '', $timeStr);
+
     $ts = strtotime($timeStr);
     if ($ts === false) return 0;
-    return (int)date('G', $ts) * 3600 + (int)date('i', $ts) * 60 + (int)date('s', $ts);
+
+    return
+        (int)date('G', $ts) * 3600 +
+        (int)date('i', $ts) * 60 +
+        (int)date('s', $ts);
 }
 
+// Minimal Cache Logger
 function logCacheEventSimple($key, $status) {
     global $logPath;
-    $log = $logPath ? $logPath . '/cache-events.log' : sys_get_temp_dir() . '/cache-events.log';
-    @file_put_contents($log, date('Y-m-d H:i:s') . " | {$key} : {$status}\n", FILE_APPEND);
+
+    $log = $logPath
+        ? $logPath . '/cache-events.log'
+        : sys_get_temp_dir() . '/cache-events.log';
+
+    @file_put_contents(
+        $log,
+        date('Y-m-d H:i:s') . " | {$key} : {$status}\n",
+        FILE_APPEND
+    );
 }
+
 #endregion
 
 #region 📘 Load Codex (Tier Minimal: meta / constitution / standards / modules)
@@ -160,6 +193,27 @@ $yearDayNumber     = (int)date('z', $nowTs) + 1;
 $timeOfDayDesc      = ($currentHour < 12) ? 'morning' : (($currentHour < 18) ? 'afternoon' : 'evening');
 #endregion
 
+#region ⏱️ Interval Engine (A-1 Ultra Clean)
+$officeStart = timeStringToSeconds($inputs['officeHours']['start']);
+$officeEnd   = timeStringToSeconds($inputs['officeHours']['end']);
+$shopStart   = timeStringToSeconds($inputs['shopHours']['start']);
+$shopEnd     = timeStringToSeconds($inputs['shopHours']['end']);
+
+if ($currentSeconds < $officeStart) {
+    $intervalCode = 0;
+    $intervalName = $inputs['intervalLabels']['beforeWork'];
+} elseif ($currentSeconds <= $officeEnd) {
+    $intervalCode = 1;
+    $intervalName = $inputs['intervalLabels']['work'];
+} else {
+    $intervalCode = 2;
+    $intervalName = $inputs['intervalLabels']['afterWork'];
+}
+
+$isWeekend = ((int)date('N', $nowTs) >= 6);
+$dayType = $isWeekend ? "Weekend" : "Workday";
+#endregion
+
 #region 🕒 Build timeDateArray
 $timeDateArray = array(
     'currentUnixTime'          => $nowTs,
@@ -184,35 +238,50 @@ $timeDateArray = array(
 );
 #endregion
 
-#region ⏱️ Interval Engine (A-1 Ultra Clean)
-$officeStart = timeStringToSeconds($inputs['officeHours']['start']);
-$officeEnd   = timeStringToSeconds($inputs['officeHours']['end']);
-$shopStart   = timeStringToSeconds($inputs['shopHours']['start']);
-$shopEnd     = timeStringToSeconds($inputs['shopHours']['end']);
+#region ⏱️ Interval Countdown Engine (Clean Add-On)
 
-if ($currentSeconds < $officeStart) {
-    $intervalCode = 0;
-    $intervalName = $inputs['intervalLabels']['beforeWork'];
-} elseif ($currentSeconds <= $officeEnd) {
-    $intervalCode = 1;
-    $intervalName = $inputs['intervalLabels']['work'];
+// Determine next interval target based on intervalCode
+if ($intervalCode === 0) {
+    // Before Worktime → next is officeStart
+    $targetSeconds = $officeStart;
+    $targetLabel   = $inputs['intervalLabels']['work'];
+} elseif ($intervalCode === 1) {
+    // Worktime → next is officeEnd
+    $targetSeconds = $officeEnd;
+    $targetLabel   = $inputs['intervalLabels']['afterWork'];
 } else {
-    $intervalCode = 2;
-    $intervalName = $inputs['intervalLabels']['afterWork'];
+    // After Worktime → next is tomorrow officeStart
+    $targetSeconds = $officeStart + 86400;  // next day
+    $targetLabel   = $inputs['intervalLabels']['beforeWork'];
 }
 
-$isWeekend = ((int)date('N', $nowTs) >= 6);
-$dayType = $isWeekend ? "Weekend" : "Workday";
+// Calculate seconds remaining to next interval boundary
+$secondsRemainingToInterval = $targetSeconds - $currentSeconds;
 
+// Convert targetSeconds to "HH:MM" (mod 24 to avoid next-day rollover)
+$targetTime = gmdate("H:i", $targetSeconds % 86400);
+
+#endregion
+
+#region ⏱️ Build intervalsArray (A-1 Clean)
 $intervalsArray = array(
     'currentDaySecondsRemaining' => $secondsRemaining,
     'intervalCode'               => $intervalCode,
     'intervalName'               => $intervalName,
+    'nextIntervalLabel'          => $targetLabel,
+    'secondsRemainingToInterval' => $secondsRemainingToInterval,
+    'targetTime'                 => $targetTime,
     'labels'                     => $inputs['intervalLabels'],
     'dayType'                    => $dayType,
     'workdayIntervals' => array(
-        'office' => array('startSeconds' => $officeStart, 'endSeconds' => $officeEnd),
-        'shop'   => array('startSeconds' => $shopStart,   'endSeconds' => $shopEnd)
+        'office' => array(
+            'startSeconds' => $officeStart,
+            'endSeconds'   => $officeEnd
+        ),
+        'shop' => array(
+            'startSeconds' => $shopStart,
+            'endSeconds'   => $shopEnd
+        )
     )
 );
 #endregion

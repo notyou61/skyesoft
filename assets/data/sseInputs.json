@@ -1,0 +1,35 @@
+{
+  "officeHours": {
+    "start": "7:30 AM",
+    "end": "3:30 PM"
+  },
+  "shopHours": {
+    "start": "6:00 AM",
+    "end": "2:30 PM"
+  },
+  "weather": {
+    "defaultLocation": "Phoenix,US",
+    "latitude": 33.4484,
+    "longitude": -112.0740,
+
+    "defaultSunrise": "6:00 AM",
+    "defaultSunset": "6:00 PM",
+
+    "secondsPerHour": 3600,
+    "secondsPerDay": 86400
+  },
+  "api": {
+    "openWeatherBase": "https://api.openweathermap.org/data/2.5",
+    "timeoutSeconds": 6,
+    "connectTimeoutSeconds": 4
+  },
+  "cache": {
+    "weatherTTL": 900,
+    "holidayTTL": 3600
+  },
+  "intervalLabels": {
+    "beforeWork": "Before Worktime",
+    "work": "Worktime",
+    "afterWork": "After Worktime"
+  }
+}
