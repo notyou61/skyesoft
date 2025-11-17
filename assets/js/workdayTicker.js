@@ -169,7 +169,7 @@ setInterval(() => {
 
       // Normalize types
       const seconds = typeof secondsRaw === "string" ? parseInt(secondsRaw, 10) : secondsRaw;
-      const label = typeof labelRaw === "string" ? parseInt(labelRaw, 10) : labelRaw;
+      const label = Number(data?.intervalsArray?.intervalCode);
 
       if (!isNaN(seconds) && !isNaN(label)) {
         const formatted = formatDurationPadded(seconds);
