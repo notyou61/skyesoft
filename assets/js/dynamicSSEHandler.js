@@ -65,43 +65,44 @@ setInterval(() => {
       // #endregion
 
       // #region ⏳ Update Interval Remaining Message (Codex v6 – Interval Engine)
-      const intervalData =
-        data?.intervalsArray || data?.timeDateArray?.intervalsArray;
+      const intervalData = data?.intervalsArray;
 
-      // Extract correct SSE fields
-      const seconds = Number(intervalData?.secondsRemainingToInterval);
-      const label = Number(intervalData?.intervalCode);
-      const dayType = intervalData?.dayType;
+      if (intervalData) {
+        const seconds = Number(intervalData.secondsRemainingToInterval);
+        const code = Number(intervalData.intervalCode);
+        const dayType = intervalData.dayType;
 
-      if (!isNaN(seconds) && !isNaN(label) && dayType) {
-        const formatted = formatDurationPadded(seconds);
-        let message = "";
+        if (!isNaN(seconds) && !isNaN(code) && dayType) {
+          const formatted = formatDurationPadded(seconds);
+          let message = "";
 
-        // --- Day type overrides ---
-        if (dayType === "Company Holiday") {
-          message = `🏢 Office closed — next worktime begins in ${formatted}`;
-        } else if (dayType === "Weekend") {
-          message = `🌴 Weekend — next worktime begins in ${formatted}`;
-        } else {
-          // --- Workday interval messages ---
-          switch (label) {
-            case 0:
-              message = `🔜 Worktime begins in ${formatted}`;
-              break;
-            case 1:
-              message = `🔚 Worktime ends in ${formatted}`;
-              break;
-            case 2:
-            default:
-              message = `📆 Next worktime begins in ${formatted}`;
-              break;
+          // Holiday / Weekend overrides
+          if (dayType === "Company Holiday") {
+            message = `🏢 Office closed — next worktime begins in ${formatted}`;
+          } else if (dayType === "Weekend") {
+            message = `🌴 Weekend — next worktime begins in ${formatted}`;
+          } else {
+            // Workday logic
+            switch (code) {
+              case 0:
+                message = `🔜 Worktime begins in ${formatted}`;
+                break;
+              case 1:
+                message = `🔚 Worktime ends in ${formatted}`;
+                break;
+              case 2:
+              default:
+                message = `📆 Next worktime begins in ${formatted}`;
+                break;
+            }
           }
-        }
 
-        const intervalEl = document.getElementById("intervalRemainingData");
-        if (intervalEl) intervalEl.textContent = message;
+          const intervalEl = document.getElementById("intervalRemainingData");
+          if (intervalEl) intervalEl.textContent = message;
+        }
       }
       // #endregion
+
 
       // #region 🏷️ Version Tag
       if (data?.siteMeta?.siteVersion) {
