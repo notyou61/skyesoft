@@ -1,0 +1,9 @@
+services:
+  php56:
+    image: php:5.6-apache
+    container_name: skyesoft-php56-1
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+    restart: always

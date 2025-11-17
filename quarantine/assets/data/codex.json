@@ -1,0 +1,1603 @@
+{
+  "codexMeta": {
+    "title": "🎯 Skyesoft Codex Meta",
+    "version": "v5.5.1",
+    "build": "2025.26b",
+    "lastUpdated": "2025-10-30",
+    "ratifiedBy": "CPAP-01 (Parliamentarian)",
+    "category": "System Layer",
+    "enrichment": "light",
+    "governs": [
+      "ontologySchema",
+      "codexAmendments",
+      "codexStressTestDoctrine"
+    ],
+    "description": {
+      "icon": "book",
+      "format": "text",
+      "text": "The Codex Meta governs the format, validation, and enrichment logic for every Skyesoft module. Version 5.5.1 implements the Containment Clause, enabling hierarchical 'containedModules' under governing doctrines."
+    },
+    "schema": {
+      "requiredKeys": ["title", "purpose"],
+      "optionalKeys": [
+        "description",
+        "features",
+        "workflow",
+        "integrations",
+        "rules",
+        "examples",
+        "format",
+        "category",
+        "version",
+        "enrichment"
+      ],
+      "fieldTypes": {
+        "title": "String with emoji prefix",
+        "purpose": "Object {icon, text}",
+        "description": "Object {icon, text}",
+        "features": "Object {icon, items[]}",
+        "workflow": "Object {icon, items[]}",
+        "integrations": "Object {icon, items[]}",
+        "rules": "Object {icon, items[]}",
+        "examples": "Object {icon, items[]}",
+        "format": "String: 'text', 'list', or 'table'",
+        "enrichment": "String: 'none', 'light', 'medium', or 'heavy'"
+      },
+      "notes": "Every module must include 'title' and 'purpose'. The 'enrichment' property determines AI expansion depth. As of v5.5.1, containment and amendment types are formally recognized within the Codex schema."
+    },
+    "implementationNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "The Codex Meta is parsed but excluded from standard report output. It validates structure, applies enrichment rules, and enforces doctrinal integrity for all modules. Ratified under the Containment Clause (V-5.5.0)."
+    }
+  },
+  "ontologySchema": {
+    "title": "🧠 Codex Ontology Schema",
+    "category": "System Layer",
+    "version": "5.5.1",
+    "enrichment": "none",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the universal semantic keys that describe how each Codex module relates to others, enabling AI-driven reasoning, versioned amendments, and context-aware classification without hardcoded logic."
+    },
+    "fields": {
+      "type": {
+        "definition": {
+          "document": "Represents a structured data or narrative record such as a report, sheet, or summary.",
+          "standard": "Defines a doctrine or system-level rule that governs subordinate modules.",
+          "taxonomy": "Classifies and organizes related families of modules under a governing standard.",
+          "specification": "Details the format, structure, and expected behavior of a specific report, sheet, or survey.",
+          "suite": "Groups multiple related modules or subsystems under a shared purpose or process.",
+          "entity": "Defines a discrete organizational unit, contact, or jurisdiction recognized by the system.",
+          "process": "Represents an operational or procedural function (e.g., validation, routing, calculation).",
+          "data-stream": "Describes a dynamic feed or live source of data such as an SSE endpoint.",
+          "registry": "Acts as a ledger for tracking amendments, policies, or other high-level governance data.",
+          "amendment": "Represents a formal rule change, correction, or extension to an existing Codex doctrine."
+        },
+        "example": "document",
+        "reasoningRole": "Allows Skyebot to group and interpret modules by conceptual nature for CRUD and intent routing."
+      },
+      "subtypes": {
+        "definition": "Lists any derivative types under the main type (e.g., sheet, report, summary).",
+        "example": ["sheet", "report", "summary"],
+        "reasoningRole": "Enables recognition that derivative formats such as 'sheet' and 'report' share semantic lineage."
+      },
+      "actions": {
+        "definition": "Verbs or operations the module supports (e.g., generate, create, review).",
+        "example": ["generate", "create", "review"],
+        "reasoningRole": "Used by the Semantic Intent Router to map user verbs to system functions during CRUD operations."
+      },
+      "relationships": {
+        "definition": "Describes how this module connects to others in the Codex Knowledge Graph.",
+        "structure": {
+          "isA": "Parent type or conceptual ancestor.",
+          "partOf": "Layer, suite, or domain it belongs to.",
+          "governs": "Modules governed or influenced by this one.",
+          "dependsOn": "Modules this one requires or references.",
+          "isSubordinateTo": "Indicates hierarchical dependency under another doctrine.",
+          "containedModules": "Introduced by Amendment V-5.5.0 — allows direct containment of submodules inside a governing object.",
+          "aliases": "Alternate names or identifiers used in conversation."
+        },
+        "example": {
+          "isA": "documentStandard",
+          "partOf": "System Layer",
+          "governs": ["permitManagementSuite", "financialControlSuite"],
+          "aliases": ["document rules", "sheet standard"]
+        },
+        "reasoningRole": "Creates relational intelligence — enabling Skyebot to infer intent and hierarchy even when terminology varies."
+      }
+    },
+    "temporalOntology": {
+      "title": "⏳ Temporal Ontology",
+      "category": "Time and Duration Mapping",
+      "version": "1.0",
+      "description": "Defines how Skyebot™ interprets and calculates time-based relationships across all modules using Codex data rather than hardcoded PHP logic.",
+      "mappings": {
+        "universalTemporalFields": [
+          "createdAt",
+          "updatedAt",
+          "submittedDate",
+          "approvedDate",
+          "completedDate",
+          "lastModified",
+          "archivedAt"
+        ],
+        "permitManagementSuite": [
+          "submittedDate",
+          "reviewStartDate",
+          "approvedDate",
+          "finalInspectionDate"
+        ],
+        "financeSuite": [
+          "invoiceDate",
+          "paymentDate",
+          "dueDate"
+        ],
+        "crmSuite": [
+          "contactCreated",
+          "lastInteraction"
+        ]
+      },
+      "notes": "Allows Skyebot to perform temporal reasoning (e.g., 'days since approval', 'time until payment due') without any PHP logic changes."
+    },
+    "scalabilityNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "By defining these fields, Skyebot can interpret meaning directly from Codex data instead of rigid conditionals. Registry and amendment types are now semantically recognized (per v5.5.1 Containment Clause), ensuring automatic inheritance and reasoning consistency."
+    }
+  },
+  "skyesoftOverview": {
+    "title": "📘 Skyesoft Overview",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the mission, structure, and interconnectivity of all Skyesoft modules. It presents the big picture: how Skyesoft unifies project management, AI reasoning, and operational data into one continuous system."
+    },
+    "architectureLayers": {
+      "icon": "puzzle",
+      "format": "table",
+      "items": [
+        { "Layer": "Foundational", "Modules": "Time Interval Standards, Document Standards", "Purpose": "Establish temporal and visual consistency" },
+        { "Layer": "Operational", "Modules": "Attendance, Permit Management", "Purpose": "Support daily workflows" },
+        { "Layer": "Adaptive", "Modules": "AI Integration, SSE Stream", "Purpose": "Provide real-time context and reasoning" }
+      ]
+    },
+    "systemVision": {
+      "icon": "rocket",
+      "format": "list",
+      "items": [
+        "Unify project and administrative data in a single schema",
+        "Enable automation without loss of human oversight",
+        "Make reports self-generating and audit-friendly",
+        "Allow modular AI enrichment for context awareness"
+      ]
+    }
+  },
+  "codexStressTestDoctrine": {
+    "title": "📏 Codex Stress Test Doctrine",
+    "category": "System Layer",
+    "type": "directive",
+    "tier": 2,
+    "hierarchyOrder": "G-7",
+    "amendmentID": "CP-STRESS-001",
+    "description": "Defines the recurring Codex self-audit (Habit 7 – Sharpen the Saw) as a formal governance practice, ensuring periodic stress testing for clarity, consistency, and doctrinal integrity.",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "To require scheduled, automated stress tests of the Skyesoft Codex, evaluating schema conformance, redundancy, ontology coherence, language economy, and governance traceability, with results published as system documents."
+    },
+    "governs": [
+      "codexMeta",
+      "ontologySchema",
+      "codexAmendments",
+      "documentStandards",
+      "referentialDocumentRecord"
+    ],
+    "scheduledBy": "cronJob: codexStressTest",
+    "executionCycle": "monthly",
+    "deliverable": {
+      "documentType": "report",
+      "filePrefix": "codex-stress-test-report",
+      "namingConvention": "Codex Stress Test Report – YYYY-MM-DD",
+      "enrichment": "heavy",
+      "outputPath": "/documents/system/stress-tests/"
+    },
+    "auditRules": {
+      "continuityRule": "Codex validity requires a recorded stress test within the last 90 days.",
+      "transparencyRule": "All stress test reports are indexed in the Referential Document Record.",
+      "integrityRule": "Reports are immutable once generated; they may only be superseded by subsequent runs.",
+      "alertRule": "Failed validation emits an SSE governance alert with AlertTier 'governance'."
+    },
+    "methodology": {
+      "standardsReferenced": [
+        "IEEE 1016-2009",
+        "ISO 704:2022",
+        "FAIR Data Principles",
+        "W3C Ontology Best Practices",
+        "TOGAF 9.2"
+      ],
+      "validationScope": [
+        "schemaConformance",
+        "redundancyDetection",
+        "ontologyCoherence",
+        "languageEconomy",
+        "governanceTraceability"
+      ],
+      "outputFields": [
+        "structureScore",
+        "clarityScore",
+        "redundancyMap",
+        "ontologyHealth",
+        "recommendations"
+      ]
+    },
+    "automation": {
+      "trigger": "cronJob",
+      "frequency": "monthly",
+      "actionChain": [
+        "invokeValidator",
+        "generateSummaryJSON",
+        "renderToHTML",
+        "publishToSSE",
+        "registerInReferentialDocumentRecord"
+      ]
+    },
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "Installs Codex self-audit as a standing governance ritual rather than an ad hoc review.",
+    "summaryTagline": "The Codex must measure itself as it measures the system — reflection and refinement are acts of governance."
+  },
+  "codexValidator": {
+    "title": "🧾 Codex Validator",
+    "category": "System Layer",
+    "type": "utility",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "G-7a",
+    "isSubordinateTo": ["codexStressTestDoctrine"],
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Performs automated schema, icon, and doctrinal validation across all Codex modules. Generates an auditable validation report summarizing compliance and discrepancies relative to the Codex schema."
+    },
+    "validationScope": {
+      "icon": "checklist",
+      "format": "list",
+      "items": [
+        "Schema conformity and required key presence",
+        "Icon and format compliance (per Article I)",
+        "Hierarchy and linkage consistency",
+        "Purpose field presence and structure validation"
+      ]
+    },
+    "output": {
+      "documentType": "report",
+      "namingConvention": "Codex Validation Report – YYYY-MM-DD",
+      "path": "/documents/system/validation/"
+    },
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "This module enforces Codex Article I: Document Formatting Doctrine. Its results feed directly into the Codex Stress Test Doctrine for continuity auditing."
+  },
+  "codexStressTest": {
+    "title": "⚖️ Codex Stress Test",
+    "category": "System Layer",
+    "type": "process",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "G-7b",
+    "isSubordinateTo": ["codexStressTestDoctrine"],
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Executes a full Codex-level stress test that combines the Validator’s schema results with doctrinal integrity scoring. Generates the official Codex Stress Test Report as mandated by CP-STRESS-001."
+    },
+    "methodology": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Invoke Codex Validator",
+        "Aggregate metrics for structureScore, clarityScore, and ontologyHealth",
+        "Render results to PDF via generateDocuments.php",
+        "Log test record in Referential Document Record (once active)"
+      ]
+    },
+    "output": {
+      "documentType": "report",
+      "namingConvention": "Codex Stress Test Report – YYYY-MM-DD",
+      "path": "/documents/system/stress-tests/"
+    },
+    "automation": {
+      "trigger": "cronJob",
+      "frequency": "monthly",
+      "actionChain": [
+        "invokeValidator",
+        "compileMetrics",
+        "generateReport",
+        "registerDocument"
+      ]
+    },
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "Serves as the operational executor of the Codex Stress Test Doctrine (CP-STRESS-001)."
+  },
+  "skyesoftConstitution": {
+    "title": "🧭 Skyesoft Constitution",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines the principles and logical framework that guide all Skyesoft operations. The Constitution ensures that time, structure, and intelligence are always aligned with Christy Signs’ business goals."
+    },
+    "corePrinciples": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Transparency in logic and output",
+        "Consistency in structure and formatting",
+        "Scalability and modularity across components",
+        "Resilience via validation and auditability"
+      ]
+    },
+    "governingFramework": {
+      "icon": "puzzle",
+      "format": "table",
+      "items": [
+        { "Layer": "Foundation", "Scope": "TIS, Document Standards", "Purpose": "Define time and design consistency" },
+        { "Layer": "Core", "Scope": "Permit Management, Attendance", "Purpose": "Ensure workflow alignment" },
+        { "Layer": "Adaptive", "Scope": "AI and SSE Streams", "Purpose": "Enable learning and context adaptation" }
+      ]
+    }
+  },
+  "documentStandards": {
+    "title": "📄 Document Standards",
+    "type": "directive",
+    "status": "ratified",
+    "tier": 1,
+    "hierarchyOrder": "A",
+    "governs": ["documentTypesRegistry", "metaFooters", "renderDirectives", "visualRequirementClause"],
+    "dependsOn": ["skyesoftConstitution"],
+    "purpose": {
+      "icon": "🎯",
+      "format": "text",
+      "text": "Defines the uniform structure, layout, and branding doctrine governing all Skyesoft documents. Establishes consistency in appearance, metadata, and doctrinal labeling across reports, sheets, and audits."
+    },
+    "repository": {
+      "title": "📁 Skyesoft Documents Repository",
+      "path": "/documents/",
+      "classification": "Unified Output Layer",
+      "purpose": "Stores all generated Skyesoft documents including operational reports, audits, surveys, and doctrinal directives.",
+      "notes": "This repository replaces the legacy multi-directory structure. All generated documents must be saved exclusively within /documents to maintain doctrinal integrity and simplify archival indexing."
+    },
+    "containedModules": {
+      "metaFooterInformationSheet": {
+        "title": "📘 Meta Footer – Information Sheet Doctrine Standard",
+        "type": "metaSection",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A-1",
+        "effectiveVersion": "v5.5.2",
+        "issuedBy": "CPAP-01 (Parliamentarian)",
+        "appliesTo": ["informationSheet"],
+        "implementationReference": "CP-R7-2025, Article IV – Audit Provenance",
+        "description": "Establishes the standardized doctrinal meta footer for all Information Sheet documents.",
+        "format": "text",
+        "text": "Doctrine Source: {moduleAbbrev} • Codex {codexVersion} • Amendments {amendmentList} • Reviewed by {reviewer} ({reviewDate})",
+        "variables": {
+          "moduleAbbrev": "Short code for the originating module (e.g., TIS)",
+          "codexVersion": "Effective Codex version at time of generation",
+          "amendmentList": "List of applied amendments",
+          "reviewer": "Formal reviewer name or entity",
+          "reviewDate": "Date of review"
+        },
+        "notes": "Applies only to Information Sheet–class documents."
+      },
+      "visualRequirementClause": {
+        "title": "🧩 Visual Requirement Clause",
+        "type": "directive",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A-2-VRC",
+        "effectiveVersion": "v5.5.3",
+        "issuedBy": "CPAP-01 (Parliamentarian)",
+        "description": "Mandates icon and contentFormat fields on all renderable objects.",
+        "format": "table",
+        "table": [
+          { "key": "text", "display": "Paragraph Block", "description": "Static narrative content.", "icon": "📝" },
+          { "key": "list", "display": "List", "description": "Ordered or unordered items.", "icon": "📋" },
+          { "key": "table", "display": "Tabular Data", "description": "Structured columns and rows.", "icon": "📊" },
+          { "key": "dynamic", "display": "Live Data Feed", "description": "Content sourced from APIs or SSE.", "icon": "🔄" },
+          { "key": "other", "display": "Custom / Mixed Content", "description": "Diagrams, media, or special formatting.", "icon": "🧩" }
+        ],
+        "governs": ["renderDirectives"],
+        "enforcement": {
+          "rules": [
+            "All renderable objects must include an icon.",
+            "All renderable objects must include a contentFormat.",
+            "Each object becomes a section in the final document.",
+            "Section headers display the object's icon.",
+            "Missing fields trigger validation errors."
+          ],
+          "validationType": "CP-DOC-2025-A1-Violation"
+        }
+      },
+      "referentialDocumentRecord": {
+        "title": "📑 Referential Document Record Framework",
+        "type": "registry",
+        "status": "pendingRatification",
+        "tier": 2,
+        "hierarchyOrder": "A-3",
+        "effectiveVersion": "v5.6.5",
+        "issuedBy": "CPAP-01 (Parliamentarian)",
+        "description": "Defines the file-based documentIndex.json registry for linking documents to CRUD actions.",
+        "framework": {
+          "baseSchema": {
+            "required": [
+              "actionID", "slug", "title", "type",
+              "fileName", "createdBy", "generatedAt",
+              "generatedBy", "codexVersion"
+            ],
+            "optional": [
+              "entity", "workOrder", "inspectionID",
+              "auditScope", "governingClause",
+              "attachments", "notes"
+            ]
+          },
+          "storage": {
+            "path": "/assets/data/documentIndex.json",
+            "format": "json",
+            "mode": "append",
+            "notes": "Acts as a lightweight document database until SQL integration."
+          },
+          "repository": {
+            "path": "/documents/",
+            "classification": "Unified Output Layer",
+            "purpose": "Stores referenced PDFs."
+          }
+        },
+        "notes": "Will activate after CRUD-action linkage is completed."
+      }
+    },
+    "documentTypesRegistry": {
+      "title": "📂 Document Types Registry",
+      "type": "registry",
+      "status": "ratified",
+      "tier": 2,
+      "hierarchyOrder": "A-2",
+      "effectiveVersion": "v5.6.1",
+      "issuedBy": "CPAP-01 (Parliamentarian)",
+      "description": "Defines the official document-type taxonomy.",
+      "format": "table",
+      "items": [
+        { "key": "directive", "type": "directive", "purpose": "Governing rules and standards.", "headerExample": "Time Interval Standards Directive" },
+        { "key": "audit", "type": "audit", "purpose": "Governance reviews.", "headerExample": "Temporal Integrity Audit" },
+        { "key": "report", "type": "report", "purpose": "Analytical summaries.", "headerExample": "Permit Fee Report" },
+        { "key": "survey", "type": "survey", "purpose": "Observational documentation.", "headerExample": "Photo Survey" },
+        { "key": "bulletin", "type": "bulletin", "purpose": "Advisories and notices.", "headerExample": "Safety Bulletin" },
+        { "key": "incident", "type": "incident", "purpose": "Event/malfunction records.", "headerExample": "Service Incident Report" },
+        { "key": "specification", "type": "specification", "purpose": "Technical definitions.", "headerExample": "Fabrication Specification" },
+        { "key": "record", "type": "record", "purpose": "Archival change logs.", "headerExample": "Codex Amendments Record" },
+        { "key": "sheet", "type": "sheet", "purpose": "Concise reference documents.", "headerExample": "Information Sheet" },
+        { "key": "registry", "type": "registry", "purpose": "Indexing and archival lineage.", "headerExample": "Document Index Register" }
+      ],
+      "notes": "Taxonomy and Summary types deprecated under CP-DOC-2025-A1."
+    }
+  },
+  "documentTypes": {
+    "title": "🧾 Document Types",
+    "type": "taxonomy",
+    "status": "ratified",
+    "tier": 2,
+    "hierarchyOrder": "1",
+    "isSubordinateTo": ["documentStandards"],
+    "dependsOn": ["documentTypesRegistry"],
+    "governs": [
+      "temporalIntegrity",
+      "permit",
+      "photo",
+      "bulletin",
+      "incident",
+      "specification",
+      "record",
+      "sheet",
+      "workInProgress"
+    ],
+    "purpose": {
+      "icon": "🧾",
+      "format": "text",
+      "text": "Applies the official document type registry by mapping each module to its doctrinal document classification."
+    },
+    "effectiveVersion": "v5.6.1",
+    "issuedBy": "CPAP-01 (Parliamentarian)"
+  },
+  "documentDoctrine": {
+    "title": "📜 Skyesoft Document Doctrine Triad",
+    "type": "summary",
+    "status": "ratified",
+    "tier": 1,
+    "effectiveVersion": "v5.5.3",
+    "description": "Defines the unified doctrinal system governing document standards, taxonomy, and folder conventions.",
+    "includes": ["documentStandards", "documentTypes"],
+    "issuedBy": "CPAP-01 (Parliamentarian)",
+    "notes": "Foundation of all document generation and governance."
+  },
+  "temporalIntegrity": {
+    "title": "🕰️ Temporal Integrity Audit",
+    "type": "audit",
+    "status": "ratified",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "🕰️",
+      "format": "text",
+      "text": "Audits temporal cohesion, interval classification, holiday rollover logic, and SSE integrity."
+    }
+  },
+  "permit": {
+    "title": "🏛️ Permit Report",
+    "type": "report",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "🏛️",
+      "format": "text",
+      "text": "Documents permit activities including fees, status, and jurisdictional data."
+    }
+  },
+  "photo": {
+    "title": "📷 Photo Survey",
+    "type": "survey",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "📷",
+      "format": "text",
+      "text": "Captures photographic documentation of field conditions and installations."
+    }
+  },
+  "bulletin": {
+    "title": "⚠️ Safety Bulletin",
+    "type": "bulletin",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "⚠️",
+      "format": "text",
+      "text": "Distributes safety advisories and compliance notices."
+    }
+  },
+  "incident": {
+    "title": "🚨 Incident Report",
+    "type": "incident",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "🚨",
+      "format": "text",
+      "text": "Records accidents, malfunctions, and service interruptions."
+    }
+  },
+  "specification": {
+    "title": "🧰 Fabrication Specification",
+    "type": "specification",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "🧰",
+      "format": "text",
+      "text": "Defines technical and material standards for fabrication."
+    }
+  },
+  "record": {
+    "title": "📜 Codex Amendments Record",
+    "type": "record",
+    "status": "ratified",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "📜",
+      "format": "text",
+      "text": "Archives amendment lineage and doctrinal changes."
+    }
+  },
+  "sheet": {
+    "title": "📘 Information Sheet",
+    "type": "sheet",
+    "status": "ratified",
+    "family": "governance",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "📘",
+      "format": "text",
+      "text": "Provides concise procedural or reference information."
+    }
+  },
+  "workInProgress": {
+    "title": "📈 Work In Progress Report",
+    "type": "report",
+    "status": "ratified",
+    "family": "operations",
+    "tier": 3,
+    "hierarchyOrder": "a",
+    "isSubordinateTo": ["documentTypes"],
+    "purpose": {
+      "icon": "📈",
+      "format": "text",
+      "text": "Summarizes progress, roadblocks, and next steps for active jobs or initiatives."
+    }
+  },
+  "timeIntervalStandards": {
+    "title": "⏱️ Time Interval Standards (TIS)",
+    "category": "System Layer",
+    "type": "directive",
+    "subtypes": ["schedule", "time-interval", "work-segment"],
+    "actions": ["calculate", "evaluate", "generate-sheet"],
+    "relationships": {
+      "isA": "systemStandard",
+      "partOf": "System Layer",
+      "governs": ["attendanceSuite", "permitManagementSuite"],
+      "dependsOn": ["sseStream"],
+      "aliases": ["TIS", "Time Standards", "Workday Schema"]
+    },
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines workday types and time segments used across scheduling, SLA validation, and AI contextual reasoning. Each day is classified as Workday, Weekend, or Holiday. Time intervals are further divided for Office and Shop environments."
+    },
+    "dayTypes": {
+      "icon": "calendar",
+      "format": "list",
+      "items": ["Workday", "Weekend", "Holiday"]
+    },
+    "segmentsOffice": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Interval": "Before Worktime", "Hours": "12:00 AM – 7:29 AM" },
+        { "Interval": "Worktime", "Hours": "7:30 AM – 3:30 PM" },
+        { "Interval": "After Worktime", "Hours": "3:31 PM – 11:59 PM" }
+      ]
+    },
+    "segmentsShop": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Interval": "Before Worktime", "Hours": "12:00 AM – 5:59 AM" },
+        { "Interval": "Worktime", "Hours": "6:00 AM – 2:00 PM" },
+        { "Interval": "After Worktime", "Hours": "2:01 PM – 11:59 PM" }
+      ]
+    },
+    "holidays": {
+      "icon": "calendar",
+      "format": "dynamic",
+      "source": "sseStream.weatherData.federalHolidaysDynamic",
+      "description": "Holiday data is dynamically sourced from the SSE stream (via federalHolidays.php). Updates automatically reflect new or upcoming federal holidays.",
+      "governs": ["companyHolidaysEngine", "getDynamicData", "holidayRecognition"]
+    },
+    "exclusions": {
+      "icon": "shield",
+      "format": "text",
+      "text": "Weekends and recognized Company Holidays are automatically excluded from all time-sensitive calculations and scheduling routines. Federal holidays are excluded only when they coincide with official company closures as defined in the holidayRegistry."
+    },
+    "holidayRegistry": {
+      "icon": "calendar",
+      "format": "table",
+      "description": "Unified registry of holidays recognized by Skyesoft, including federal, company, cultural, awareness, and novelty observances. Used by the Time Interval Standards to identify non-working or special-context days.",
+      "source": "Codex internal list (static registry; supersedes federalHolidays.php)",
+      "revision": {
+        "version": "1.1",
+        "lastUpdated": "2025-10-28",
+        "author": "System Codex Enrichment",
+        "notes": "Upgraded to multi-category holiday model; holidays may belong to several observance groups."
+      },
+      "categories": {
+        "federal": {
+          "description": "Official U.S. government holidays that may influence permit offices, shipping, and municipal operations.",
+          "workdayImpact": "high",
+          "excludeFromScheduling": true
+        },
+        "company": {
+          "description": "Days when Christy Signs offices are closed or operating on limited hours.",
+          "workdayImpact": "critical",
+          "excludeFromScheduling": true
+        },
+        "cultural": {
+          "description": "Widespread cultural observances that may affect communications, marketing tone, or social relevance but do not close operations.",
+          "workdayImpact": "moderate",
+          "excludeFromScheduling": false
+        },
+        "awareness": {
+          "description": "Global or national awareness days recognized in reporting or AI contextual reasoning (e.g., Earth Day).",
+          "workdayImpact": "low",
+          "excludeFromScheduling": false
+        },
+        "novelty": {
+          "description": "Light-hearted or social media observances used for engagement or contextual commentary (e.g., National Donut Day).",
+          "workdayImpact": "minimal",
+          "excludeFromScheduling": false
+        },
+        "notes": "A holiday may list multiple categories; logic interprets inclusion by intersection."
+      },
+      "holidays": [
+        { "name": "New Year's Day", "rule": "Jan 1", "categories": ["federal", "company"] },
+        { "name": "Martin Luther King Jr. Day", "rule": "Third Monday of Jan", "categories": ["federal"] },
+        { "name": "Presidents' Day", "rule": "Third Monday of Feb", "categories": ["federal"] },
+        { "name": "Memorial Day", "rule": "Last Monday of May", "categories": ["federal", "company"] },
+        { "name": "Juneteenth", "rule": "Jun 19", "categories": ["federal"] },
+        { "name": "Independence Day", "rule": "Jul 4", "categories": ["federal", "company"] },
+        { "name": "Labor Day", "rule": "First Monday of Sep", "categories": ["federal", "company"] },
+        { "name": "Veterans Day", "rule": "Nov 11", "categories": ["federal"] },
+        { "name": "Thanksgiving Day", "rule": "Fourth Thursday of Nov", "categories": ["federal", "company"] },
+        { "name": "Day After Thanksgiving", "rule": "Fourth Friday of Nov", "categories": ["company"] },
+        { "name": "Christmas Eve", "rule": "Dec 24", "categories": ["cultural"] },
+        { "name": "Christmas Day", "rule": "Dec 25", "categories": ["federal", "company"] },
+        { "name": "New Year's Eve", "rule": "Dec 31", "categories": ["cultural"] },
+        { "name": "Cinco de Mayo", "rule": "May 5", "categories": ["cultural"] },
+        { "name": "Mother's Day", "rule": "Second Sunday of May", "categories": ["cultural"] },
+        { "name": "Father's Day", "rule": "Third Sunday of June", "categories": ["cultural"] },
+        { "name": "Halloween", "rule": "Oct 31", "categories": ["cultural"] },
+        { "name": "Earth Day", "rule": "Apr 22", "categories": ["awareness"] },
+        { "name": "Patriot Day", "rule": "Sep 11", "categories": ["awareness"] },
+        { "name": "Pi Day", "rule": "Mar 14", "categories": ["novelty"] },
+        { "name": "Star Wars Day", "rule": "May 4", "categories": ["novelty"] },
+        { "name": "National Donut Day", "rule": "First Friday of Jun", "categories": ["novelty"] },
+        { "name": "Talk Like a Pirate Day", "rule": "Sep 19", "categories": ["novelty"] },
+        { "name": "National Coffee Day", "rule": "Sep 29", "categories": ["novelty"] }
+      ]
+    },
+    "holidayFallbackRules": {
+      "icon": "gear",
+      "format": "object",
+      "description": "Resolves temporal gaps after the last holiday of a calendar year or before the first holiday of a new year.",
+      "data": {
+        "after_last_holiday": {
+          "strategy": "next_year_rollover",
+          "fallback_method": "lookup_first_holiday_next_year",
+          "reasoning": "When no upcoming holiday exists in the current year, Skyebot automatically fetches the first recognized holiday from the next year using Codex holidayRegistry."
+        },
+        "before_first_holiday": {
+          "strategy": "previous_year_anchor",
+          "fallback_method": "lookup_last_holiday_prev_year",
+          "reasoning": "When reasoning backward before the first holiday of a year, Skyebot anchors to the prior year's final recognized holiday."
+        }
+      }
+    },
+    "meta": {
+      "introducedInVersion": "v5.3.9",
+      "maintainedBy": "Temporal Doctrine Suite",
+      "notes": "Ensures continuous holiday mapping across year boundaries; tested under stress suite v3.6."
+    }
+  },
+  "codexAmendments": {
+    "title": "📜 Codex Amendments Register",
+    "category": "System Layer",
+    "type": "registry",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Maintains all ratified Skyesoft™ doctrinal amendments enacted by the Parliamentarian and Codex Council. Each amendment modifies or extends existing system doctrine."
+    },
+    "amendments": {
+      "V550": {
+        "title": "📜 Codex Amendment V-5.5.0 – The Containment Clause",
+        "status": "ratified",
+        "ratifiedOn": "2025-10-30",
+        "appliesTo": ["systemStandard", "taxonomy", "governingDoctrine"],
+        "summary": {
+          "icon": "scale",
+          "format": "text",
+          "text": "Authorizes governing standards to contain subordinate doctrinal modules through the reserved key 'containedModules', thereby permitting hierarchical containment without violating Codex uniformity."
+        },
+        "articles": {
+          "Article I – Definition": {
+            "text": "The property 'containedModules' is a sanctioned structural key in the Codex schema. It may appear only within objects of type 'standard', 'taxonomy', or other designated 'governingDoctrine' types."
+          },
+          "Article II – Scope": {
+            "text": "Contained modules must conform to full Codex object schema and inherit their parent’s doctrinal lineage while retaining unique identifiers."
+          },
+          "Article III – Interpretation": {
+            "text": "Contained modules are subordinate for hierarchy mapping yet remain accessible through the global Codex registry for cross-reference, ensuring recursive and flat access."
+          },
+          "Article IV – Application": {
+            "text": "All foundational doctrines—including Document Standards, Time Interval Standards, and Data Exchange Standards—shall adopt 'containedModules' for direct subordination. Non-governing objects continue to use relational keys such as 'isSubordinateTo' or 'dependsOn'."
+          },
+          "Article V – Transitional Provisions": {
+            "text": "Legacy keys ('submodules', 'tier', 'hierarchyOrder') will be migrated to 'containedModules' by Codex v5.6 while preserving backward compatibility."
+          }
+        },
+        "signatories": [
+          {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
+          {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
+          {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
+        ],
+        "meta": {
+          "introducedInVersion": "v5.5.0",
+          "effectiveVersion": "v5.5.1",
+          "revisionHistory": [
+            {"version": "Draft v5.5.0-RC1", "notes": "Initial definition of containment concept"},
+            {"version": "Ratified v5.5.0", "notes": "Final approval by Parliamentarian CPAP-01"}
+          ]
+        }
+      },
+      "CPR72025": {
+        "title": "📜 Refocus Directive CP-R7-2025 – Doctrine-Centered Rendering Standard",
+        "status": "ratified",
+        "ratifiedOn": "2025-11-03",
+        "appliesTo": ["codeManagement", "generateReports_v7", "documentStandards"],
+        "summary": {
+          "icon": "scale",
+          "format": "text",
+          "text": "Reclassifies report generation as doctrinal translation rather than presentation logic; mandates enrichment hooks, meta-field resolution, and audit provenance in all renderers."
+        },
+        "articles": {
+          "Article I – Separation of Concerns": {
+            "text": "Rendering functions interpret Codex schema only; presentation details are delegated to Document Standards."
+          },
+          "Article II – Meta-Field Resolution": {
+            "text": "Section titles and ordering are derived dynamically from codexMeta schema keys to avoid brittle key maps."
+          },
+          "Article III – Enrichment Hooks": {
+            "text": "Renderers implement applyEnrichmentHints(level) to control verbosity and annotation depth."
+          },
+          "Article IV – Audit Provenance": {
+            "text": "Every render session logs a JSON entry to the Chat History Architecture for traceability."
+          },
+          "Article V – Transitional Provision": {
+            "text": "Existing PHP 5.6 renderers remain compliant under probation until refitted with enrichment and meta-field features (build ≥ 2025.40)."
+          }
+        },
+        "signatories": [
+          {"name": "CPAP-01 (Parliamentarian)", "authority": "Codex Procedural Arbiter"},
+          {"name": "Skyebot System Layer", "authority": "Ratification Executor"},
+          {"name": "Christy Signs Governance Council", "authority": "Corporate Oversight Body"}
+        ],
+        "meta": {
+          "introducedInVersion": "v5.5.2-draft",
+          "effectiveVersion": "v5.5.2",
+          "revisionHistory": [
+            {"version": "Draft v5.5.2-RC1", "notes": "Initial procedural directive drafted by Parliamentarian CPAP-01"},
+            {"version": "Ratified v5.5.2", "notes": "Approved and entered into Amendments Register"}
+          ]
+        }
+      }
+    },
+    "reviews": {
+      "CPR72025": {
+        "reviewedBy": "CPAP-01 (Parliamentarian)",
+        "reviewDate": "2025-11-03",
+        "finding": "no contradictions detected",
+        "notes": "Temporal, thematic, and structural coherence confirmed. Amendment CPR72025 aligns with V550 and codexMeta schema without introducing doctrinal conflict. Verified version continuity (v5.5.2), proper containment linkage, and adherence to Code Management jurisdiction. Recorded under audit reference CP-R7-2025-A1."
+      }
+    }
+  },
+  "fileManagement": {
+    "title": "🗂️ File Management",
+    "category": "System Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "folder",
+      "format": "text",
+      "text": "Establishes unified file handling, naming conventions, and versioning logic for all Skyesoft data structures."
+    },
+    "rules": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Use consistent lowercase filenames with hyphens",
+        "Store active data under /assets/data/",
+        "Archive obsolete or legacy materials under /docs/legacy/",
+        "Avoid redundancy between sheets and reports"
+      ]
+    },
+    "paths": {
+      "icon": "link",
+      "format": "object",
+      "data": {
+        "baseDataPath": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/",
+        "codexFile": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codex.json",
+        "validatorLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexValidatorLog.json",
+        "stressTestLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexStressTestLog.json",
+        "governanceCycleLog": "C:/Users/steve/OneDrive/Documents/skyesoft/assets/data/codexGovernanceCycle.json"
+      }
+    },
+    "notes": "These paths define the official storage locations for all Codex governance and audit data on the Skyesoft Office system. All scripts must reference these values through the Codex interpreter rather than hardcoding file paths."
+  },
+  "coreDatabaseStructure": {
+    "title": "🧱 Core Database Structure",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "puzzle",
+      "format": "text",
+      "text": "Defines how Skyesoft stores entities, locations, contacts, and relationships in JSON and database form."
+    },
+    "features": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Entity": "companies", "Description": "Corporate records (clients, vendors, jurisdictions)" },
+        { "Entity": "contacts", "Description": "Linked individuals associated with entities" },
+        { "Entity": "locations", "Description": "Physical or project addresses linked to entities" },
+        { "Entity": "jobs", "Description": "Active work orders and projects" }
+      ]
+    }
+  },
+  "crudUserInterfaceConvention": {
+    "title": "⚙️ CRUD User Interface Convention",
+    "category": "System Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Establishes the universal design and behavioral standards for all Create, Read, Update, and Delete operations within Skyesoft. Ensures that every data interaction, whether manual or AI-triggered, follows predictable and reversible logic."
+    },
+    "description": {
+      "icon": "book",
+      "format": "text",
+      "text": "The CRUD Convention defines how Skyesoft modules expose editable data to users and AI agents. It governs action prompts, confirmation flows, state visualization, and data persistence across both modal and full-view contexts."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Standardized four-verb model: Create, Read, Update, Delete",
+        "Consistent button color and icon conventions (green = Create, blue = Read, yellow = Update, red = Delete)",
+        "Automatic validation before commit, with reversible undo actions",
+        "Session-linked state control synchronized with SSE Stream",
+        "AI-assisted CRUD reasoning via Skyebot for context-aware edits"
+      ]
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Action": "Create", "Behavior": "Opens modal for data entry; validates required fields before commit" },
+        { "Action": "Read", "Behavior": "Displays record in read-only state with contextual metadata" },
+        { "Action": "Update", "Behavior": "Locks record for edit; version control managed through File Management rules" },
+        { "Action": "Delete", "Behavior": "Triggers confirmation and soft-delete flag; archival handled automatically" }
+      ]
+    },
+    "integrations": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "Dynamic Modal System (Mobile-First Modals)",
+        "Core Database Structure for entity persistence",
+        "Document Standards for visual alignment",
+        "SSE Stream for live synchronization feedback"
+      ]
+    },
+    "rules": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "All CRUD actions must route through Skyebot’s validated API endpoints",
+        "Each operation logs to the System Audit Trail with timestamp and user ID",
+        "Destructive actions require dual confirmation or admin override",
+        "AI-generated modifications must include provenance metadata"
+      ]
+    },
+    "examples": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Module": "Permit Management Suite", "Example": "Create → New Permit Request; Read → Permit Status Viewer" },
+        { "Module": "Attendance Suite", "Example": "Update → Edit Time Log; Delete → Remove Erroneous Entry" },
+        { "Module": "Financial Control Suite", "Example": "Create → New Reimbursement; Read → Ledger Viewer" }
+      ]
+    }
+  },
+  "mobileFirstModals": {
+    "title": "📱 Mobile-First Modals",
+    "category": "System Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Describes Skyesoft’s modal-based interface logic, optimized for mobile and tablet screens. Enables quick contextual interactions without full-page reloads."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Dynamic modal injection with user prompts",
+        "Keyboard-friendly entry for quick tasks",
+        "Adaptive width scaling for mobile browsers"
+      ]
+    }
+  },
+  "attendanceSuite": {
+    "title": "🕒 Attendance Suite",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Tracks employee attendance, scheduling, and time logs integrated with Time Interval Standards and Skyebot awareness."
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Step": "Clock In/Out", "Description": "User action triggers TIS validation and record update" },
+        { "Step": "Review", "Description": "Managers can review daily activity summaries" },
+        { "Step": "Sync", "Description": "Data syncs automatically to skyesoft-data.json" }
+      ]
+    }
+  },
+  "permitManagementSuite": {
+    "title": "📋 Permit Management Suite",
+    "category": "Operational Layer",
+    "enrichment": "heavy",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Automates the sign permit application, payment, and tracking process across multiple jurisdictions."
+    },
+    "workflow": {
+      "icon": "list",
+      "format": "list",
+      "items": [
+        "Initiate permit request with job reference and client details",
+        "Submit application through jurisdictional portal",
+        "Track status, expiration, and fee receipts",
+        "Auto-generate permit summary report with attached receipts"
+      ]
+    }
+  },
+  "financialControlSuite": {
+    "title": "💰 Financial Control Suite",
+    "category": "Operational Layer",
+    "enrichment": "light",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Handles internal reimbursements, petty cash tracking, and AR/AP reporting workflows."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Reimbursement reports auto-populate from receipt uploads",
+        "Mileage, petty cash, and permit fee integration",
+        "PDF export aligned with Document Standards"
+      ]
+    }
+  },
+  "serviceManagementSuite": {
+    "title": "🔧 Service Management Suite",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Manages field service requests, maintenance calls, and status reporting for illuminated signage and installations."
+    },
+    "workflow": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Step": "Request Logged", "Detail": "Client or internal user submits a service ticket" },
+        { "Step": "Dispatch", "Detail": "Technician assigned and notified automatically" },
+        { "Step": "Completion", "Detail": "Work order updated and archived to project history" }
+      ]
+    }
+  },
+  "managementEscalationTrees": {
+    "title": "🌳 Management Escalation Trees",
+    "category": "Operational Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines decision and communication chains within Skyesoft, ensuring accountability and continuity of response."
+    },
+    "rules": {
+      "icon": "list",
+      "format": "list",
+      "items": [
+        "Each suite must define its own escalation logic",
+        "Escalations always follow the role hierarchy first",
+        "Emergency overrides are logged and timestamped"
+      ]
+    }
+  },
+  "skyebotModule": {
+    "title": "🤖 Skyebot Module",
+    "category": "Adaptive Layer",
+    "enrichment": "heavy",
+    "purpose": {
+      "icon": "robot",
+      "format": "text",
+      "text": "Serves as the conversational interface of Skyesoft, interpreting user queries and triggering backend logic, reports, or document creation."
+    },
+    "integrations": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "OpenAI API (askOpenAI.php)",
+        "Dynamic SSE Stream for context awareness",
+        "Codex-driven intent recognition"
+      ]
+    }
+  },
+  "aiIntegration": {
+    "title": "🧠 AI Integration",
+    "category": "Adaptive Layer",
+    "enrichment": "high",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines how Skyebot™ interprets user intent through semantic analysis, real-time data fusion, and contextual recall. The AI Integration layer enables natural, context-aware interaction without rigid syntax or procedural logic."
+    },
+    "systemFlow": {
+      "icon": "diagram",
+      "format": "sections",
+      "sections": {
+        "architecture": [
+          "Semantic Intent Router — interprets user input using Codex, SSE data, and Chat History.",
+          "Codex Semantic Index — anchors reasoning in structured organizational context.",
+          "SSE Context Stream — supplies real-time situational awareness (time, KPIs, weather, system state).",
+          "Chat History Ledger — maintains session memory and recall continuity.",
+          "Report Kernel — generates structured deliverables once intent is resolved."
+        ],
+        "integrationPoints": [
+          "Codex Knowledge Graph — semantic foundation linking all modules.",
+          "CRUD Engine — executes inferred create/read/update/delete actions from natural phrasing.",
+          "Report Kernel — shared rendering component ensuring document standard alignment."
+        ],
+        "pipeline": [
+          "Receive user prompt → Normalize → Load SSE + Codex context.",
+          "Infer intent and confidence → Route → Generate structured or conversational output.",
+          "Log all semantic decisions for audit and traceability."
+        ]
+      }
+    },
+    "functionality": {
+      "icon": "workflow",
+      "format": "list",
+      "items": [
+        "Understands user intent based on phrasing, context, and conversation history rather than keyword matching.",
+        "Recognizes semantic relationships (e.g., 'workday report' → Time Interval Standards) through Codex indexing.",
+        "Adapts tone and depth based on task complexity and recent interactions.",
+        "Prioritizes temporally relevant data from the SSE snapshot for accuracy.",
+        "Attaches actionable CTAs when intent resolves to a valid Codex module or report type."
+      ]
+    },
+    "temporalDoctrine": {
+      "definition": "Defines the unified temporal reasoning framework governing duration inference, comparison, and correction across all modules.",
+      "inheritsFrom": "aiIntegration.temporalReasoning",
+      "includes": [
+        "temporalReasoning",
+        "temporalCorrectionHandling",
+        "temporalGovernance",
+        "temporalResolvers",
+        "temporalComparators"
+      ],
+      "notes": "Collectively known as the Temporal Doctrine Suite (Codex Amendments CPD-03.A–C)."
+    },
+    "temporalReasoning": {
+      "icon": "hourglass",
+      "format": "list",
+      "items": [
+        "Computes durations using timestamp or date fields (e.g., submittedDate, createdAt, lastUpdated).",
+        "Recognizes natural queries such as 'how long ago', 'how many days', 'when was', or 'since when'.",
+        "Uses timeDateArray.currentUnixTime from the SSE stream as the temporal anchor for comparisons.",
+        "Adapts contextual scope: permits → duration in review; holidays → days until next; KPIs → days since update.",
+        "Locates relevant date fields dynamically through Codex ontology relationships, avoiding fixed code paths.",
+        "Returns human-readable intervals ('3 days', '2 weeks', '5 hours') instead of numeric differences.",
+        "Supports both retrospective (elapsed) and prospective (remaining) reasoning."
+      ],
+      "notes": "Enables Skyebot to perform duration and count reasoning without external code. All logic is data-driven via Codex ontology and SSE context."
+    },
+    "temporalCorrectionHandling": {
+      "definition": "Interprets declarative date statements as factual corrections, not philosophical prompts.",
+      "example": "User: 'Friday is 10/31/25' → update internal reference date and re-evaluate intervals.",
+      "reasoningRole": "Prevents misrouting of date assertions into non-temporal modules.",
+      "feedbackBehavior": "Acknowledges corrections gracefully and updates reasoning context in memory.",
+      "updateScope": "Adjusts date anchors across all active temporal modules without domain reassignment."
+    },
+    "temporalGovernance": {
+      "icon": "scales",
+      "format": "table",
+      "definition": "Specifies which modules inherit duration inference from the Temporal Doctrine Suite.",
+      "appliesTo": ["holidays", "permits", "tasks", "invoices", "projects", "attendance", "kpiData"],
+      "reasoningRole": "Ensures all time-aware modules share consistent interval logic without duplication.",
+      "notes": "Expands automatically as new modules register temporal fields (e.g., submittedDate, completedAt, dueDate)."
+    },
+    "temporalResolvers": {
+      "icon": "infinity",
+      "format": "object",
+      "definition": "Declares non-procedural inference patterns that compute dynamic temporal fields (e.g., nextHoliday, daysSincePermitSubmission, hoursUntilWorkdayEnd) directly from Codex and SSE data.",
+      "governance": "Extends temporalGovernance for resolver-free duration inference.",
+      "examples": {
+        "holidays": "Determines upcoming holiday by category (company, federal, cultural) via date comparison.",
+        "permits": "Computes duration between submittedDate and currentUnixTime for status evaluation.",
+        "tasks": "Calculates remaining time until dueDate for urgency ranking.",
+        "kpiData": "Determines time since last KPI update for performance tracking."
+      },
+      "reasoningRole": "Eliminates procedural resolver files. All duration logic is declarative and Codex-driven.",
+      "notes": "Codex Amendment CPD-03.A – Elimination of Procedural Temporal Resolvers."
+    },
+    "temporalComparators": {
+      "definition": "Defines directional temporal logic to distinguish between past and future reasoning.",
+      "operators": ["before", "after", "since", "until"],
+      "mapping": {
+        "prospective": ["until", "in", "till", "to"],
+        "retrospective": ["since", "ago", "before", "earlier"]
+      },
+      "binding": "The Codex Interpreter applies these comparators dynamically to any temporalResolver, determining interval polarity relative to currentUnixTime.",
+      "reasoningRole": "Provides bidirectional inference capability across all governed modules."
+    },
+    "philosophy": {
+      "icon": "compass",
+      "format": "pairedList",
+      "pairs": [
+        {"principle": "Interpret meaning over syntax.", "outcome": "Natural conversation replaces command syntax."},
+        {"principle": "Ground reasoning in Codex and SSE data.", "outcome": "No assumptions without verifiable source context."},
+        {"principle": "Use chat history for continuity.", "outcome": "Maintains memory integrity and contextual awareness."},
+        {"principle": "Preserve auditability.", "outcome": "All actions and inferences remain traceable in the chat ledger."},
+        {"principle": "Deliver structured output when actionable.", "outcome": "Ensures adaptive, self-evolving user experience."}
+      ]
+    },
+    "updateNotes": {
+      "icon": "gear",
+      "format": "text",
+      "text": "As of v5.3.4-DRY, all AI Integration logic operates declaratively through the unified SSE Stream and Temporal Doctrine Suite. Procedural resolvers and redundant schema entries were retired under Parliamentarian Directive CPD-03.C."
+    },
+    "tags": ["semantic-router", "contextual-ai", "skyebot-core", "ai-integration", "codex-architecture"],
+    "version": "5.3.4-DRY",
+    "updated": "2025-10-29"
+  },
+  "sseStream": {
+  "title": "🌐 SSE Stream",
+  "category": "Adaptive Layer",
+  "type": "datastream",
+  "subtypes": ["live-feed", "system-pulse", "context-stream"],
+  "actions": ["observe", "generate-sheet", "sync", "describe"],
+  "relationships": {
+    "isA": "adaptiveModule",
+    "partOf": "Adaptive Layer",
+    "governs": ["aiIntegration", "chatHistoryArchitecture"],
+    "aliases": ["Server-Sent Events", "Skyesoft Stream", "SSE Feed"]
+  },
+  "enrichment": "light",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Provides real-time state data including time, weather, and system status. Acts as the live operational pulse of the Skyesoft system."
+  },
+  "tiers": [
+    {
+      "name": "live-feed",
+      "interval": "1s",
+      "members": ["timeDateArray", "intervalsArray", "recordCounts", "kpiData"]
+    },
+    {
+      "name": "system-pulse",
+      "interval": "5s",
+      "members": ["siteMeta", "deploymentCheck"]
+    },
+    {
+      "name": "context-stream",
+      "interval": "10s",
+      "members": ["weatherData", "codex", "announcements"]
+    }
+  ],
+  "examples": {
+    "icon": "table",
+    "format": "table",
+    "items": [
+      { "Stream": "timeDateArray", "Purpose": "Real-time work interval tracking" },
+      { "Stream": "weatherData", "Purpose": "Dynamic weather injection for context" },
+      { "Stream": "siteMeta", "Purpose": "Deployment and Netlify sync data" }
+    ]
+  },
+  "integrationNotes": {
+    "icon": "link",
+    "format": "text",
+    "text": "The SSE Stream now subsumes the Skyesoft Codex as a live data object. This unification makes the stream the single source of truth for both operational telemetry and organizational logic. All semantic resolution, including Codex module discovery, now occurs directly within the SSE context without secondary loaders."
+  }
+  },
+  "ragFramework": {
+    "title": "📚 RAG Framework",
+    "category": "Adaptive Layer",
+    "enrichment": "medium",
+    "purpose": {
+      "icon": "book",
+      "format": "text",
+      "text": "Defines Skyesoft’s Retrieval-Augmented Generation layer, connecting Codex content, archived reports, and live data into a reasoning network."
+    },
+    "features": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "Codex-aware retrieval queries",
+        "Cross-reference between modules and SSE streams",
+        "Context summarization for AI agents"
+      ]
+    },
+    "integrationPoints": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "semanticResponder",
+        "codex",
+        "sseStream"
+      ]
+    }
+  },
+  "semanticResponder": {
+    "title": "🧭 Semantic Responder",
+    "category": "Adaptive Layer",
+    "enrichment": "medium",
+    "description": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence.",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines Skyebot’s core reasoning system — interpreting natural language semantically to match user intent to Codex modules, SSE data, and CRUD operations without strict keyword dependence."
+    },
+    "architecture": {
+      "icon": "diagram",
+      "format": "list",
+      "items": [
+        "Receives user input and contextual data from the SSE stream.",
+        "Builds a semantic index from Codex modules (titles, purposes, actions, subtypes, aliases).",
+        "Invokes the LLM Router to infer {intent, target, confidence} from natural language.",
+        "If confidence is low, performs token-based semantic fallback (no regex).",
+        "Determines intent type (summary, report, crud, general) using Codex actions and subtypes.",
+        "Routes intent to execution layer: text summarizer, report generator, or CRUD engine.",
+        "Logs all reasoning decisions and results for traceability.",
+        "Maintains full alignment with the AI Integration and RAG Framework layers."
+      ]
+    },
+    "principles": {
+      "icon": "compass",
+      "format": "list",
+      "items": [
+        "Interpret meaning over syntax — understand what is said, not just how it’s said.",
+        "Use Codex and SSE data as the only sources of truth.",
+        "Leverage LLM reasoning to enrich semantic inference while remaining grounded.",
+        "Prefer structure when intent is actionable, conversation when exploratory.",
+        "Ensure all reasoning is auditable via the Chat History Architecture."
+      ]
+    },
+    "outcomes": {
+      "icon": "star",
+      "format": "list",
+      "items": [
+        "Skyebot distinguishes between descriptive and actionable requests.",
+        "Regex-free natural understanding of user language.",
+        "Unified decision-making between Codex, SSE, and LLM reasoning layers.",
+        "Consistent audit logs and confidence scoring for every interpretation."
+      ]
+    },
+    "integrationRevision": {
+      "icon": "compass",
+      "format": "text",
+      "text": "Semantic Responder now treats the SSE Stream as a total semantic field. Every key—timeDateArray, weatherData, codexMeta, or module definition—is discoverable through the same resolver function. This removes hardcoded category checks and enforces DRY semantic inference across all live data."
+    }
+  },
+  "chatHistoryArchitecture": {
+    "title": "💾 Chat History Architecture",
+    "category": "System Layer",
+    "enrichment": "high",
+    "purpose": {
+      "icon": "target",
+      "format": "text",
+      "text": "Defines how Skyebot™ records, recalls, and reasons from prior exchanges. Each message or action is stored as an immutable, timestamped ledger entry, enabling Skyebot to maintain continuity, avoid redundancy, and extrapolate intent based on historical context."
+    },
+    "structure": {
+      "icon": "table",
+      "format": "table",
+      "items": [
+        { "Field": "messageId", "Type": "String", "Description": "Composite of session start time (UNIX) + increment (e.g., 1739432447_4)" },
+        { "Field": "timestamp", "Type": "Integer", "Description": "UNIX time of event for fast sorting and cross-reference" },
+        { "Field": "userId", "Type": "Integer", "Description": "Identifies the actor; 0 = Skyebot™, >0 = Human user, -1 = Anonymous" },
+        { "Field": "message", "Type": "String", "Description": "User input or Skyebot response text" },
+        { "Field": "attachments", "Type": "Array", "Description": "Optional list of attached file objects or paths" },
+        { "Field": "metadata", "Type": "Object", "Description": "Includes IP address, CRUD action key, project, target, and system tags" },
+        { "Field": "index", "Type": "Object", "Description": "Lightweight subset for fast lookups by action, target, or project" }
+      ]
+    },
+    "metadataModel": {
+      "icon": "gear",
+      "format": "list",
+      "items": [
+        "IP address recorded for traceability and audit",
+        "CRUD action logged from actions.json reference table",
+        "System actions such as login and session start treated as Create-type events",
+        "Indexed metadata enables Skyebot to recall and compare recent actions (e.g., detect if an email or report has already been sent)"
+      ]
+    },
+    "integrationPoints": {
+      "icon": "link",
+      "format": "list",
+      "items": [
+        "CRUD User Interface Convention — aligns user actions with audit trail entries",
+        "File Management — manages persistence under /api/data/chat_history/",
+        "Skyebot Module — appends and analyzes events for recall and continuity",
+        "Action Recall & Extrapolation — prevents redundant execution and allows intelligent inference of follow-up tasks"
+      ]
+    },
+    "principles": {
+      "icon": "shield",
+      "format": "list",
+      "items": [
+        "Append-only structure for audit integrity",
+        "Human-readable JSON with atomic writes",
+        "Chronological order preserved via UNIX timestamps",
+        "Session files indexed monthly for scalability",
+        "Short-term context used for reasoning; long-term ledger retained for analytics and provenance"
+      ]
+    },
+    "extrapolationLogic": {
+      "icon": "brain",
+      "format": "list",
+      "items": [
+        "Skyebot queries recent history before executing Create actions to prevent duplication (e.g., repeated emails or reports)",
+        "Pattern matching based on metadata.target and metadata.project identifies related prior actions",
+        "Temporal cutoff (default 24 hours) used to define 'recent' actions for recall",
+        "When ambiguity is detected, Skyebot prompts with options instead of acting blindly"
+      ]
+    },
+    "example": {
+      "icon": "code",
+      "format": "text",
+      "text": "{\n  \"messageId\": \"1739432447_4\",\n  \"timestamp\": 1739432489,\n  \"userId\": 1,\n  \"message\": \"Send zoning report to Paula.\",\n  \"attachments\": [],\n  \"metadata\": {\n    \"ip\": \"73.10.24.120\",\n    \"action\": \"create_email\",\n    \"crud\": \"C\",\n    \"target\": \"Paula Leonard\",\n    \"project\": \"Mesa Zoning\"\n  },\n  \"index\": { \"action\": \"create_email\", \"target\": \"Paula Leonard\", \"project\": \"Mesa Zoning\" }\n}"
+    }
+  },
+  "codeManagement": {
+  "title": "💻 Code Management",
+  "category": "System Layer",
+  "type": "systemstandard",
+  "subtypes": ["source", "module", "endpoint"],
+  "actions": ["read", "describe", "suggest-edit", "generate-docs"],
+  "relationships": {
+    "isA": "systemStandard",
+    "partOf": "System Layer",
+    "dependsOn": ["fileManagement"],
+    "governs": ["getCodeFile", "generateReports", "federalHolidays", "getDynamicData"],
+    "aliases": ["code index", "developer layer", "Skyebot coding interface"]
+  },
+  "enrichment": "medium",
+  "purpose": {
+    "icon": "target",
+    "format": "text",
+    "text": "Defines how Skyebot™ interacts with Skyesoft’s source files — allowing safe read-only inspection, structured documentation, and controlled modification suggestions. It ensures AI access remains auditable, non-destructive, and version-controlled."
+  },
+  "features": {
+    "icon": "gear",
+    "format": "list",
+    "items": [
+      "Central code manifest with file paths and descriptions",
+      "Read-only inspection by default with diff-based editing proposals",
+      "Integration with version control for commit history awareness",
+      "AI documentation generator aligned with Codex formatting"
+    ]
+  },
+  "integrations": {
+    "icon": "link",
+    "format": "list",
+    "items": [
+      "File Management — ensures path integrity and backup safety",
+      "SSE Stream — provides live deployment sync metadata",
+      "AI Integration — enables semantic file comprehension and code commentary",
+      "Chat History Architecture — logs all code interactions for auditability"
+    ]
+  },
+  "rules": {
+    "icon": "shield",
+    "format": "list",
+    "items": [
+      "Skyebot may read any file under /api, /assets, or /scripts but never /config or private credentials.",
+      "All modifications must be confirmed by a human before commit.",
+      "Changes are stored as diffs under /docs/changes/ for traceability.",
+      "Each access is logged with timestamp, file, and user ID."
+    ]
+  },
+  "examples": {
+    "icon": "table",
+    "format": "table",
+    "items": [
+      { "File": "api/getDynamicData.php", "Purpose": "Generates the Skyesoft SSE stream" },
+      { "File": "api/federalHolidays.php", "Purpose": "Returns normalized holiday data" },
+      { "File": "api/generateReports.php", "Purpose": "Creates PDF/HTML information sheets" }
+    ]
+  }
+  },
+  "modules": {
+    "skyesoftGlossary": {
+      "title": "📘 Skyesoft Glossary",
+      "category": "System Layer",
+      "description": "Defines internal shorthand and operational slang used across Skyesoft projects, emphasizing clarity, rhythm, and efficiency in team communication.",
+      "purpose": {
+        "icon": "book",
+        "format": "text",
+        "text": "To unify Skyesoft’s internal terminology — blending technical accuracy with cultural rhythm — so that AI, developers, and staff speak the same language."
+      },
+      "data": {
+        "icon": "sparkle",
+        "format": "table",
+        "content": {
+          "SNPS": "Salt N' Pepa Style — Save it, commit it, push it — clean and confident. The rhythm of progress. 💾➡️🚀",
+          "AIW": "All-In-Wonder — a one-cut command that moves, renames, and runs. Fast hands, no hesitation. ⚡",
+          "TC": "Terminal Command — raw execution from the shell. You type, it happens. 🔧",
+          "TCL": "Terminal Command Line — the full chain, from setup to commit, meant to flow as one move. ⛓️",
+          "LGBAS": "Let's Go Back A Step — the tactical rewind. Step back, recalibrate, then hit again. 🔁",
+          "MTCO": "Measure Twice, Cut Once — the precision creed. Think deep, act once. 🎯",
+          "SOT": "Source of Truth — the file of record, the clean state. All flows return here. 📜",
+          "SSE": "Server-Sent Events — the pulse of the system. Time, weather, KPIs, all alive. 🌐",
+          "Codex": "The master playbook — Skyesoft’s internal library of logic, rhythm, and reason. 📚",
+          "PushIt": "Execute the cycle — save, commit, push, verify. A clean push is the heartbeat of progress. ❤️"
+        }
+      },
+      "features": {
+        "icon": "list",
+        "format": "auto",
+        "source": "data.content"
+      }
+    }
+  },
+  "apiMap": {
+    "base": "https://www.skyelighting.com/skyesoft/",
+    "openai": "https://api.openai.com/v1/",
+    "openWeather": "https://api.openweathermap.org/data/2.5/"
+  },
+  "weatherData": {
+    "title": "🌤️ Weather Data Defaults",
+    "category": "System Layer",
+    "defaultLocation": "Phoenix,US",
+    "latitude": "33.448376",
+    "longitude": "-112.074036"
+  },
+  "kpiData": {
+    "secondsPerDay": 86400,
+    "daysPerYearBase": 365,
+    "morningEndHour": 12,
+    "afternoonEndHour": 17,
+    "defaultTimeout": 10,
+    "openaiMaxTokens": 1500,
+    "httpOk": 200,
+    "minConfidence": 70,
+    "cacheTtlSeconds": 300,
+    "pdfMargins": {
+      "header": 80,
+      "body": 50,
+      "footer": 25
+    }
+  },
+  "ontology": {
+    "envFormatRule": true,
+    "envKeys": [
+      "OPENAI_API_KEY",
+      "WEATHER_API_KEY",
+      "BASE_DATA_PATH",
+      "CODEX_PATH",
+      "ENV_PATH"
+    ]
+  }
+}

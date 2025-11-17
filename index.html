@@ -1,0 +1,563 @@
+<!-- 📁 File: index.html -->
+<!DOCTYPE html>
+<!-- HTML -->
+<html lang="en">
+<!-- #region 🏷️ Head & Styles -->
+<head>
+  <!-- Meta -->
+  <meta charset="utf-8" />
+  <!-- Title -->
+  <title>Skyesoft Portal</title>
+  <!-- Favicon Link -->
+  <link rel="icon" href="https://notyou61.github.io/skyesoft/favicon.ico" type="image/x-icon">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- jQuery (required by DataTables) -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <!-- Style Include-->
+  <link rel="stylesheet" href="assets/css/skyesoft-ui.css">
+</head>
+<!-- #endregion -->
+
+<!-- #region 📝 Body -->
+<body>
+  
+  <!-- #region 🏢 Page Header -->
+  <div class="board-section" id="pageHeader">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="assets/images/christyLogo.png" alt="Christy Signs" style="max-height: 48px;" />
+      <h1 style="font-size: 1.4em;">Skyesoft Portal</h1>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.9em; white-space: nowrap;">
+      <div>🌦️ Weather: <span id="weatherDisplay">N/A</span></div>
+      <div>⏰ Time: <span id="currentTime">--:--:--</span></div>
+      <div>🕒 Interval Remaining: <span id="intervalRemainingData">--</span></div>
+    </div>
+  </div>
+  <!-- #endregion -->
+
+  <!-- #region 📋 Main Dashboard Body -->
+  <main class="board-section" id="pageBody">
+
+    <!-- #region 📝 Body Header -->
+    <div class="bodyHeader" id="bodyHeader" style="font-size: 1.3em; font-weight: bold;">
+      <h2 id="bodyHeaderCopy">🔒 User Log In</h2>
+    </div>
+    <!-- #endregion -->
+
+    <div id="bodyMain">
+      <!-- #region 🗞️ News & Updates Section -->
+      <div class="board-panel news-updates">
+        <h3>🗞️ News & Updates</h3>
+        <ul>
+          <li>✅ Phase 2 dashboard integration underway</li>
+          <li>🧠 AI Prompt logic in development</li>
+          <li>📦 Project Tracker module upcoming</li>
+        </ul>
+      </div>
+      <!-- #endregion -->
+
+      <!-- #region 📊 DataTable Section -->
+      <div class="board-panel" style="margin-top: 16px;">
+        <h3>📋 Project Summary</h3>
+        <table id="projectTable" class="display" style="width:100%">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Status</th>
+              <th>Jurisdiction</th>
+              <th>Last Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Habit Burger #53452</td>
+              <td>Approved</td>
+              <td>City of Mesa</td>
+              <td>06/18/25</td>
+            </tr>
+            <tr>
+              <td>ALC Group Phoenix</td>
+              <td>Scheduled</td>
+              <td>City of Phoenix</td>
+              <td>06/22/25</td>
+            </tr>
+            <!-- Add more rows as needed -->
+          </tbody>
+        </table>
+      </div>
+      <!-- #endregion -->
+
+      <!-- #region 🔑 Login Section -->
+      <div class="login-wrapper">
+        <form class="login-form">
+          <input type="text" placeholder="Username" name="username" required />
+          <input type="password" placeholder="Password" name="password" required />
+          <button type="submit" class="crud1">Log In</button>
+          <div id="loginError" class="error-message"></div>
+        </form>
+      </div>
+      <!-- #endregion -->
+    </div>
+
+    <!-- #region 📎 Page Body Footer -->
+    <div class="bodyFooter" id="bodyFooter" style="font-size: 0.9em; color: #666; padding-top: 8px;">
+      <small>Need access? Contact your supervisor or email support@christysigns.com</small>
+    </div>
+    <!-- #endregion -->
+
+  </main>
+  <!-- #endregion -->
+
+  <!-- #region 🦶 Page Footer -->
+  <div class="board-section" id="pageFooter">
+    <!-- Copyright -->
+    <div>© 2025 Maychris Corporation</div>
+    <!-- Version -->
+    <div class="version">Loading version...</div>
+  </div>
+  <!-- #endregion -->
+
+  <!-- #region ⛅ Weather & Utility Scripts -->
+  <!-- Weather Config -->
+  <script src="assets/js/weatherConfig.js"></script>
+  <!-- Weather Functions -->
+  <script src="assets/js/weather.js"></script>
+  <!-- Markdown Renderer -->
+  <script src="assets/js/marked.min.js"></script>
+  <!-- Dynamic SSE Handler Script -->
+  <script src="assets/js/dynamicSSEHandler.js"></script>
+  <!-- Workday Interval Logic (TIS v6) -->
+  <script src="assets/js/workdayTicker.js"></script>
+  <!-- #endregion -->
+
+  <!-- #region 🤖 Skyebot Modals and Floating Button -->
+  <div id="modals">
+    <!-- #region 🤖 Skyebot Prompt Modal -->
+    <div id="skyebotModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="toggleModal()">×</span>
+        <h3>🤖 Skyebot</h3>
+        <div id="chatLog" class="chat-log"></div>
+        <form id="promptForm" class="chat-form">
+          <textarea id="promptInput" rows="2" placeholder="Type your message..." required></textarea>
+          <div class="form-footer">
+            <div class="file-row">
+              <label for="fileUpload" class="file-label">Choose Files</label>
+              <input type="file" id="fileUpload" multiple onchange="updateFileLabel(this)">
+              <div id="fileInfo" class="file-info">No files selected</div>
+            </div>
+            <div class="button-row">
+              <button type="submit">Send</button>
+              <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- #endregion -->
+    <!-- #region 🤖 Floating Prompt Button -->
+    <button id="floatingChatBtn" onclick="toggleModal()" class="floating-btn" aria-label="Open Skyebot Prompt" style="display:none" >🤖</button>
+    <!-- #endregion -->
+  </div>
+  <!-- #endregion -->
+
+  <!-- #region 📝 Modal Script & UI Management -->
+  <script>
+
+    // #region 🤖 Modal Visibility & Reset
+    function toggleModal() {
+      const modal = document.getElementById("skyebotModal");
+      const isVisible = modal.style.display === "block";
+      // #region 🧹 Modal Reset On Close
+      if (isVisible) {
+        const chatLog = document.getElementById("chatLog");
+        const promptInput = document.getElementById("promptInput");
+        const fileInput = document.getElementById("fileUpload");
+        const fileInfo = document.getElementById("fileInfo");
+        if (chatLog) {
+          chatLog.innerHTML = "";
+          const welcome = document.createElement("div");
+          welcome.className = "chat-entry bot-message";
+          const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          welcome.innerHTML = `<span>🤖 Skyebot [${time}]: Hello! How can I assist you today?</span>`;
+          chatLog.appendChild(welcome);
+        }
+        if (promptInput) promptInput.value = "";
+        if (fileInput) fileInput.value = "";
+        if (fileInfo) fileInfo.textContent = "No files selected";
+      }
+      // #endregion
+      modal.style.display = isVisible ? "none" : "block";
+      document.body.classList.toggle("modal-open", !isVisible);
+    }
+    // #endregion
+
+    // #region 📁 File Input Info
+    function updateFileLabel(input) {
+      const info = document.getElementById("fileInfo");
+      if (!info) return;
+      if (input.files.length === 0) info.textContent = "No files selected";
+      else if (input.files.length === 1) info.textContent = input.files[0].name;
+      else info.textContent = `${input.files.length} files selected`;
+    }
+    // #endregion
+
+    // #region 🖱️ Modal Dismiss On Background Click
+    window.addEventListener("click", function (event) {
+      const modal = document.getElementById("skyebotModal");
+      if (event.target === modal) {
+        modal.style.display = "none";
+        document.body.classList.remove("modal-open");
+      }
+    });
+    // #endregion
+
+    // #region 📊 DataTable Initialization
+    $(document).ready(function () {
+      $('#projectTable').DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        scrollY: '160px',
+        scrollCollapse: true
+      });
+    });
+    // #endregion
+
+    // #region 🔐 Session Manager & Login State
+    document.addEventListener("DOMContentLoaded", async () => {
+      // UI refresh
+      if (typeof window.updateLoginUI === "function") window.updateLoginUI();
+
+      // 🔔 Fire any pending one‑shot UI event (ACK + vanish)
+      try {
+        await handleOneShotUiEventFromServer();
+      } catch (e) {
+        console.warn("uiEvent check failed:", e);
+      }
+    });
+    // #endregion
+
+    // #region 🧹 Clear Chat/File Inputs
+    document.getElementById("clearBtn")?.addEventListener("click", () => {
+      const promptInput = document.getElementById("promptInput");
+      const fileInput = document.getElementById("fileUpload");
+      const fileInfo = document.getElementById("fileInfo");
+      if (promptInput) promptInput.value = "";
+      if (fileInput) fileInput.value = "";
+      if (fileInfo) fileInfo.textContent = "No files selected";
+    });
+    // #endregion
+
+    // #region 💾 Save Structured Chat Log
+    function saveStructuredChatLog() {
+      const entries = [];
+      document.querySelectorAll("#chatLog .chat-entry").forEach(entry => {
+        const text = entry.textContent.trim();
+        const role = entry.classList.contains("user-message") ? "user" : "bot";
+        entries.push({ role, text });
+      });
+      fetch("/skyesoft/api/saveChatLog.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ log: entries })
+      })
+      .then(res => res.json())
+      .then(data => console.log("📝 Chat log saved:", data))
+      .catch(err => console.error("❌ Failed to save chat log:", err));
+    }
+    // #endregion
+
+    // #region 🧮 Format Duration Utility
+    function formatDurationPadded(seconds) {
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const parts = [];
+      if (d > 0) parts.push(`${d}d`);
+      if (h > 0 || d > 0) parts.push(`${String(h).padStart(2, '0')}h`);
+      if (m > 0 || h > 0 || d > 0) parts.push(`${String(m).padStart(2, '0')}m`);
+      parts.push(`${String(s).padStart(2, '0')}s`);
+      return parts.join(" ");
+    }
+    // #endregion
+
+    // #region 🧩 Centralized UI Update (Login/Logout/Modal Fade)
+    window.updateLoginUI = function() {
+      // Console.log('updateLoginUI called');
+      console.log('updateLoginUI: userLoggedIn=', localStorage.getItem('userLoggedIn'), ', cookie=', document.cookie);
+      // login UI and session state management
+      const loginWrapper = document.querySelector('.login-wrapper');
+      const dashboard = document.getElementById('dashboardSection');
+      const newsUpdates = document.querySelector('.news-updates');
+      const projectSummary = document.querySelector("#projectTable")?.closest(".board-panel");
+      const header = document.getElementById("bodyHeaderCopy");
+      const floatingBtn = document.getElementById('floatingChatBtn');
+      const skyebotModal = document.getElementById('skyebotModal');
+      const isLoggedIn = !!localStorage.getItem('userLoggedIn');
+
+      if (isLoggedIn) {
+        if (loginWrapper) loginWrapper.style.display = "none";
+        if (dashboard) dashboard.style.display = "block";
+        if (newsUpdates) newsUpdates.style.display = "block";
+        if (projectSummary) projectSummary.style.display = "block";
+        if (header) header.textContent = "📋 Project Dashboard";
+        if (floatingBtn) floatingBtn.style.display = "block";
+      } else {
+        if (loginWrapper) loginWrapper.style.display = "flex";
+        if (dashboard) dashboard.style.display = "none";
+        if (newsUpdates) newsUpdates.style.display = "none";
+        if (projectSummary) projectSummary.style.display = "none";
+        if (header) header.textContent = "🔒 User Log In";
+        if (floatingBtn) floatingBtn.style.display = "none";
+        // ✨ Close Skyebot modal with fade-out if open
+        if (skyebotModal && skyebotModal.style.display === "block") {
+          skyebotModal.classList.add("fade-out");
+          document.body.classList.remove("modal-open");
+          setTimeout(() => {
+            skyebotModal.style.display = "none";
+            skyebotModal.classList.remove("fade-out");
+          }, 400); // Match your CSS transition duration
+        }
+      }
+      // Add any other session-dependent UI updates here!
+    };
+    // #endregion
+
+    // #region 🏷️ CRUD ActionTypeID Utility
+    /**
+     * Utility: Extracts actionTypeID from button class, e.g., "crud1" => 1
+     * @param {HTMLElement} element - Button element to inspect
+     * @returns {number|null} - The actionTypeID or null if not found
+     */
+    function getCrudActionTypeID(element) {
+      const match = Array.from(element.classList).find(c => c.startsWith('crud'));
+      return match ? parseInt(match.replace('crud', ''), 10) : null;
+    }
+    // #endregion
+
+    // #region 📝 Centralized CRUD Action Logger (ALWAYS live geolocation)
+    /**
+     * Gets the user's current location as a Promise.
+     * @returns {Promise<Object>} - Resolves with { latitude, longitude } or rejects on error.
+     */
+    function getCurrentPositionPromise() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject('Geolocation not supported.');
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve(pos.coords),
+          err => reject(err)
+        );
+      });
+    }
+
+    /**
+     * Fetches Google Place ID for given coordinates using the Google Maps Geocoding API.
+     * @param {number} latitude
+     * @param {number} longitude
+     * @param {string} apiKey
+     * @returns {Promise<string|null>}
+     */
+    async function getGooglePlaceId(latitude, longitude, apiKey) {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        // MTCO log (optional): console.log("Google Geocode API raw response:", data);
+        const placeId = data.results?.find(r => r.place_id)?.place_id;
+        return placeId || "Place ID unavailable";
+      } catch (err) {
+        console.warn("Error fetching Google Place ID:", err);
+        return "Place ID unavailable";
+      }
+    }
+
+    
+    /**
+     * ALWAYS gets current geolocation and place ID before logging an action.
+     * Never uses supplied lat/lon/Place ID. If location is denied/unavailable, logs nulls.
+     * @param {Array} actionsArray - The array to append the new action to.
+     * @param {Object} params - { actionTypeID, contactID, notes }
+     * @param {string} apiKey - Google Maps API key.
+     * @returns {Promise<Object>} - Resolves with the new action object.
+     */
+     async function addAction(actionsArray, params, apiKey) {
+      let latitude = null;
+      let longitude = null;
+      let googlePlaceId = null;
+
+      try {
+        const coords = await getCurrentPositionPromise();
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+        if (apiKey) {
+          googlePlaceId = await getGooglePlaceId(latitude, longitude, apiKey);
+        } else {
+          console.warn("Google Maps API key not provided.");
+        }
+      } catch (err) {
+        console.warn("Location not available or denied:", err);
+      }
+
+      const nextId = actionsArray.length > 0
+        ? Math.max(...actionsArray.map(a => a.actionID)) + 1
+        : 1;
+      const now = Date.now();
+
+      const newAction = {
+        actionID: nextId,
+        actionTypeID: params.actionTypeID,
+        actionContactID: params.contactID,
+        actionNote: params.notes || "",
+        actionGooglePlaceId: googlePlaceId,
+        actionLatitude: latitude,
+        actionLongitude: longitude,
+        actionTimestamp: now
+      };
+
+      actionsArray.push(newAction);
+      console.log("Action added:", newAction);
+      return newAction;
+    }
+    // #endregion
+
+    // #region 🍪 Cookie Utility: getCookie
+    /**
+     * Returns the value of a named cookie, or null if not found.
+     * @param {string} name - Cookie name
+     * @returns {string|null}
+     */
+    function getCookie(name) {
+      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : null;
+    }
+    // #endregion
+  
+    // #region 🔑 Login Form Handler (auth → audit log → UI)
+    document.querySelector(".login-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault(); // Stop default submit
+
+      const form = e.currentTarget;
+      const btn  = e.submitter || document.querySelector(".crud1");
+      const actionTypeID = (typeof getCrudActionTypeID === "function") ? getCrudActionTypeID(btn) : 1;
+
+      // Disable to prevent double-submits
+      if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
+
+      try {
+        // 1) Authenticate with server (adjust field names as needed)
+        const formData = new FormData(form);
+        const authRes = await fetch("/skyesoft/api/login.php", {
+          method: "POST",
+          credentials: "same-origin",
+          body: formData
+        });
+
+        if (!authRes.ok) throw new Error(`HTTP ${authRes.status}`);
+
+        const raw = await authRes.text();
+        let auth;
+        try { auth = JSON.parse(raw); }
+        catch (e) {
+          console.error("Auth raw response (not JSON):", raw);
+          throw new Error("Bad JSON");
+        }
+
+
+        // Expect { success: true, contactID, name, ... }
+        if (auth?.success !== true) {
+          console.warn("Login failed:", auth?.message || auth);
+          alert("Invalid username or password.");
+          return;
+        }
+
+        // Persist minimal client state
+        localStorage.setItem("userLoggedIn", "true");
+        if (auth?.contactID) document.cookie = `skye_contactID=${encodeURIComponent(auth.contactID)}; path=/;`;
+
+        // 2) Audit log only if this was a real login event (ID 1)
+        if (actionTypeID === 1) {
+          const ok = await handleSkyebotAction("login", "User logged in");
+          if (!ok) console.warn("Login action could not be logged.");
+          else console.log("Login action logged.");
+        }
+
+        // 3) UI updates / redirect
+        if (typeof window.updateLoginUI === "function") window.updateLoginUI(true);
+        // window.location.href = "/skyesoft/"; // optional redirect
+
+      } catch (err) {
+        console.error("Login error:", err);
+        alert("Network error during login. Please try again.");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Log In"; }
+      }
+    });
+    // #endregion
+
+    // #region 🔔 One‑shot UI Event dispatcher (reads + ACKs)
+    async function handleOneShotUiEventFromServer() {
+      try {
+        const res = await fetch('/skyesoft/api/getDynamicData.php', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const sseSnapshot = await res.json();
+        if (!sseSnapshot || !sseSnapshot.uiEvent || !sseSnapshot.uiEvent.nonce) return;
+
+        const ev = sseSnapshot.uiEvent;
+        // Central dispatcher
+        switch (ev.event) {
+          case 'modal.open': {
+            const m = document.getElementById(ev.target);
+            if (m) { m.style.display = 'block'; document.body.classList.add('modal-open'); }
+            break;
+          }
+          case 'toast.show':
+            // showToast(ev.payload && ev.payload.text);
+            break;
+          case 'route.goto':
+            if (ev.payload && ev.payload.href) location.href = ev.payload.href;
+            break;
+        }
+
+        // ACK to clear
+        fetch('/skyesoft/api/getDynamicData.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ ackNonce: ev.nonce })
+        }).catch(() => {});
+      } catch {}
+    }
+    // #endregion
+
+    // #region 📍 Resolve Google Place ID from coordinates
+    async function resolvePlaceId(lat, lng) {
+      if (lat == null || lng == null) return null;
+      try {
+        const res = await fetch(`/skyesoft/api/places_reverse.php?lat=${lat}&lng=${lng}`, {
+          credentials: 'same-origin'
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.place_id || null;
+      } catch (err) {
+        console.warn("Failed to resolve Place ID:", err);
+        return null;
+      }
+    }
+    // #endregion
+
+  </script>
+  <!-- #endregion -->
+  
+  <!-- #region 🤖 Skyebot Script -->
+  <script src="assets/js/skyebot.js"></script>
+  <!-- #endregion -->
+
+</body>
+<!-- #endregion -->
+</html>

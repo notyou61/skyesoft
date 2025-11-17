@@ -1,0 +1,576 @@
+/* Skyesoft UI Styles v2025.06.24 */
+/* #region 🔧 Global Reset */
+/* 🔧 Global Reset */
+/* #endregion */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+/* #region 🌐 Base Layout */
+/* 🌐 Base Layout */
+/* #endregion */
+html, body {
+  min-height: 100vh;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+/* #region 📦 Main Content Container */
+/* 📦 Main Content Container */
+/* #endregion */
+.board-section {
+  width: 90vw;
+  max-width: 1200px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 8px 16px;
+}
+/* #region ⬆ Header & Footer */
+/* ⬆ Header & Footer */
+/* #endregion */
+#pageHeader, #pageFooter {
+  flex-shrink: 0;
+}
+/* #region 🧱 Body Section Setup */
+/* 🧱 Body Section Setup */
+/* #endregion */
+#pageBody {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 12px 0;
+  max-height: calc(100vh - 160px);
+  overflow: hidden;
+}
+/* #region 🏷 Header Styling */
+/* 🏷 Header Styling */
+/* #endregion */
+#pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.1em;
+  margin-top: 12px;
+}
+/* #region 📎 Footer Styling */
+/* 📎 Footer Styling */
+/* #endregion */
+#pageFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8em;
+  padding: 6px 12px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+/* #region 🔢 Version Text */
+/* 🔢 Version Text */
+/* #endregion */
+.version {
+  font-size: 0.8em;
+  color: #777;
+}
+/* #region 📋 Section Headers */
+/* 📋 Section Headers */
+/* #endregion */
+#bodyHeader, #bodyFooter {
+  font-weight: bold;
+  font-size: 1em;
+  text-align: left;
+  margin-bottom: 8px;
+}
+/* #region 📄 Main Body Area */
+/* 📄 Main Body Area */
+/* #endregion */
+#bodyMain {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: -4px;
+  padding-top: 0;
+  justify-content: flex-start;
+}
+/* #region 📰 News Panel */
+/* 📰 News Panel */
+/* #endregion */
+#bodyMain > .news-updates:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+/* 📄 Body Header */
+.bodyHeader::after {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin: 4px 0;
+}
+.bodyHeader h2 {
+  margin: 0;
+}
+/* 📄 Body Footer */
+.bodyFooter::before {
+  content: "";
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: #ccc;
+  margin-bottom: 6px;
+}
+/* #region 🔐 Login Form */
+/* 🔐 Login Form */
+/* #endregion */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+/* 📄 Login Form Input */
+.login-form input {
+  padding: 12px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+}
+/* 📄 Login Form Input Focus */
+.login-form input:focus {
+  border-color: #004080;
+  box-shadow: 0 0 5px rgba(0, 64, 128, 0.3);
+}
+/* 📄 Login Form Button */
+.login-form button {
+  padding: 12px;
+  font-size: 1em;
+  font-weight: bold;
+  color: #fff;
+  background: #004080;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+/* 📄 Login Form Button Hover */
+.login-form button:hover {
+  background: #0059b3;
+}
+/* Error Message */
+.error-message {
+  color: red;
+  font-size: 0.9em;
+  text-align: center;
+  margin-top: 8px;
+  min-height: 1.2em;
+  display: block;
+}
+/* 📄 Login Wrapper */
+.login-wrapper {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* #region 🤖 Skyebot Modal */
+/* 🤖 Skyebot Modal */
+/* #endregion */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+/* 📄 Skyebot Modal Content */
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-in-out;
+}
+/* 📄 Skyebot Modal Content H2 */
+.modal-content h2, .modal-content h3 {
+  margin-bottom: 12px;
+  font-size: 1.1em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* #region 📄 Skyebot Modal Textarea */
+/* 📄 Skyebot Modal Textarea */
+/* #endregion */
+.modal-content textarea {
+  width: 100%;
+  height: 80px;
+  resize: vertical;
+  padding: 8px;
+  margin-top: 12px;
+  font-family: inherit;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+/* 📄 Skyebot Modal Textarea Focus */
+.modal-content textarea:focus {
+  border-color: #003366;
+  box-shadow: 0 0 5px rgba(0, 51, 102, 0.3);
+}
+/* 📂 File Input (Hidden) */
+.modal-content input[type="file"] {
+  display: none !important; /* Always hidden */
+}
+/* 📂 File Input Label */
+.file-row .file-label {
+  padding: 6px 12px;
+  background: #003366;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  display: inline-block;
+  text-align: center;
+}
+/* 📂 File Info Display */
+.file-row .file-info {
+  font-size: 0.85em;
+  color: #555;
+  margin-top: 4px;
+  font-style: italic;
+  overflow-wrap: break-word;
+}
+/* 📦 Modal Buttons */
+.modal-content button {
+  padding: 8px 16px;
+  background-color: #003366;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+/* 📦 Modal Buttons Hover */
+.modal-content button:hover {
+  background-color: #0055aa;
+}
+/* 📌 Close Button */
+.close-btn {
+  float: right;
+  font-size: 20px;
+  font-weight: bold;
+  color: #666;
+  cursor: pointer;
+}
+/* #region 🛰️ Floating Action Button */
+/* 🛰️ Floating Action Button */
+/* #endregion */
+.floating-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: #003366;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 14px 18px;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+/* 🛰️ Floating Action Button Hover */
+.floating-btn:hover {
+  background-color: #0055aa;
+}
+/* #region 🎬 Modal Animation */
+/* 🎬 Modal Animation */
+/* #endregion */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* #region 🗞 News Panel */
+/* 🗞 News Panel */
+/* #endregion */
+.news-updates {
+  width: 100%;
+  background: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+/* 🗞 News Updates H3 */
+.news-updates h3 {
+  margin-bottom: 12px;
+  font-size: 1.2em;
+  color: #333;
+}
+/* 🗞 News Updates List */
+.news-updates ul {
+  padding-left: 20px;
+  font-size: 0.95em;
+  color: #333;
+  list-style-type: disc;
+}
+/* 📴 Modal Open State */
+body.modal-open {
+  overflow: hidden;
+}
+/* #region 📊 DataTable Customizations */
+/* 📊 DataTable Customizations */
+/* #endregion */
+#projectTable_wrapper {
+  margin-top: 12px;
+}
+/* #region 🤖 Skyebot Chat Entries */
+/* 🤖 Skyebot Chat Entries */
+/* #endregion */
+.chat-entry {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+/* #region 🧑‍💬 Message Bubble */
+/* 🧑‍💬 Message Bubble */
+/* #endregion */
+.chat-entry span {
+  background: #f0f0f0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  max-width: 100%;
+  word-wrap: break-word;
+  box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.05);
+  display: inline-block;
+}
+/* #region ✏️ Skyebot Prompt Textarea */
+/* ✏️ Skyebot Prompt Textarea */
+/* #endregion */
+#promptInput {
+  width: 100%;
+  min-height: 48px;
+  max-height: 180px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 0.9em;
+  padding: 8px;
+  line-height: 1.4;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fdfdfd;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+/* 📦 Form Footer */
+.chat-form .form-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+/* 📦 Button Row */
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 📦 Button Styles */
+.button-row button {
+  min-width: 100px;
+  flex: 1 1 auto;
+  max-width: 120px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+/* #region 🗑️ Clear Button */
+/* 🗑️ Clear Button */
+/* #endregion */
+.clear-btn {
+  background-color: #eee;
+  color: #333;
+  border: 1px solid #ccc;
+}
+/* 🗑️ Chat Log */
+#chatLog {
+  background-color: #fdfdfd;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 10px;
+  height: 280px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+}
+/* 🗑️ User Message */
+.user-message span {
+  background-color: #007bff;
+  color: white;
+  align-self: flex-end;
+}
+/* #region 🤖 Bot Message */
+/* 🤖 Bot Message */
+/* #endregion */
+.bot-message span {
+  background-color: #e9ecef;
+  color: #222;
+  align-self: flex-start;
+}
+/* #region ⏳ Typing Indicator */
+/* ⏳ Typing Indicator */
+/* #endregion */
+.typing-indicator span {
+  font-style: italic;
+  color: #777;
+}
+/* 📂 File Row */
+.file-row {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+}
+/* 📱 Mobile Adjustments */
+@media (max-width: 600px) {
+  .board-section {
+    width: 95vw;
+    padding: 12px;
+  }
+  .login-form {
+    padding: 16px;
+  }
+}
+/* 📱 Mobile Adjustments for Login Form */
+@media (max-width: 360px) {
+  .file-row .file-label {
+    width: 100%;
+    padding: 8px;
+    font-size: 0.85em;
+  }
+  .file-row .file-info {
+    font-size: 0.8em;
+  }
+  .button-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  .button-row button {
+    width: auto;
+    min-width: 100px;
+  }
+}
+/* ✨ Skyebot Modal: Fade-Out Animation */
+#skyebotModal.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+/* 🤖 Skyebot Modal: Default State */
+#skyebotModal {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+/* 🎉 Animated Emoji Confetti (Skyebot Easter Egg) */
+.skyebot-confetti-emoji {
+  position: absolute;
+  z-index: 9999;
+  font-size: 2em;
+  pointer-events: none;
+  animation: emoji-confetti-fall 2.4s linear forwards;
+}
+@keyframes emoji-confetti-fall {
+  0%   { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { 
+    transform: translateY(var(--confetti-distance, 400px)) scale(0.6) rotate(720deg); 
+    opacity: 0; 
+  }
+}
+/* 🚨 Modal Overlay: covers the whole screen, centers modal */
+#skyeAlertModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  width: 100vw !important;
+  background: rgba(0,0,0,0.2) !important;
+}
+/* 📝 Modal Container: rounded, shadowed box */
+#skyeAlertModalContent {
+  min-width: 340px;
+  max-width: 90vw;
+  padding: 32px 36px 24px 36px;
+  box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
+  background: #fff;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+/* 🏷️ Modal Header: icon + title, colored, flex layout */
+#skyeAlertModalHeader {
+  font-size: 1.3rem;
+  font-weight: bold;
+  padding: 16px 24px 10px 24px;
+  border-bottom: 1px solid #eee;
+  display: flex;          /* allows icon/title spacing */
+  align-items: center;
+  gap: 0.5em;
+}
+/* 📄 Modal Body: main message text */
+#skyeAlertModalBody {
+  font-size: 1rem;
+  padding: 20px 24px 16px 24px;
+}
+/* 🦶 Modal Footer: metadata, small and muted */
+#skyeAlertModalFooter {
+  font-size: 0.93rem;
+  color: #999;
+  padding: 12px 24px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+/* ❌ Close Button: top right, subtle X */
+#skyeAlertModalClose {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.6em;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+/* ✨ Fade-in animation for modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

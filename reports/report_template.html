@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{REPORT_TITLE}}</title>
+  <style>
+    :root {
+      --page-margin: 1in;       /* distance from page edge to content box */
+      --header-height: 1in;     /* visual header height */
+      --footer-height: 0.5in;   /* visual footer height */
+      --content-width: calc(100% - 2 * var(--page-margin));
+      --content-margin: 10px;   /* small margin between header/body and body/footer */
+    }
+
+    /* Fallback first, then var() override */
+    @page {
+      margin: 1in;
+      margin: var(--page-margin);
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Fixed header/footer */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--header-height);
+      background: white;
+      padding-left: var(--page-margin);
+      padding-right: var(--page-margin);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header img { 
+      height: 0.6in; 
+    }
+    .header h1 { 
+      margin: 0; 
+      font-size: 18px; 
+      line-height: 1.2; 
+    }
+    .header h2 { 
+      margin: 2px 0 0 0; 
+      font-size: 14px; 
+      font-weight: normal; 
+      color: #555; 
+    }
+    .header p { 
+      margin: 2px 0 0 0; 
+      font-size: 12px; 
+      color: #555; 
+    }
+
+    .header hr {
+      width: var(--content-width);
+      margin: 0 auto;
+      border: 0;
+      border-top: 2px solid #1f2937;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--footer-height);
+      background: white;
+      padding-left: var(--page-margin);
+      padding-right: var(--page-margin);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
+      line-height: 1.2;
+    }
+    .footer hr {
+      width: var(--content-width);
+      margin: 0 auto;
+      border: 0;
+      border-top: 2px solid #1f2937;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 0;
+    }
+
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+    }
+
+    /* Spacer rows with margin */
+    .header-space {
+      height: calc(var(--header-height) + var(--content-margin));
+    }
+    .footer-space {
+      height: calc(var(--footer-height) + var(--content-margin));
+    }
+
+    /* Body content */
+    .content { 
+      padding: var(--content-margin) 0; 
+      width: var(--content-width); 
+      margin: 0 auto; 
+    }
+    .content section { 
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-before: auto;
+      page-break-before: auto;
+      margin-bottom: 20px;
+    }
+    .content .table { 
+      width: 100%; 
+      margin: 10px 0; 
+      border-collapse: collapse; 
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .content .card { 
+      border: 1px solid #ddd;
+      padding: 10px;
+      background-color: #fafafa;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .content ul { 
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .content h2 { 
+      font-size: 16px; 
+      margin: 20px 0 10px; 
+    }
+    .content p { 
+      font-size: 12px; 
+      line-height: 1.5; 
+      margin: 0 0 10px; 
+    }
+    .content ul { 
+      font-size: 12px; 
+      margin: 0 0 10px; 
+      padding-left: 20px; 
+    }
+    .content th, .content td { 
+      border: 1px solid #ddd; 
+      padding: 8px; 
+      font-size: 12px; 
+      text-align: left; 
+    }
+    .content th { 
+      background-color: #f5f5f5; 
+      font-weight: bold; 
+    }
+
+    @media print {
+      .header, .footer { 
+        position: fixed; 
+      }
+      .content * {
+        display: block !important;
+      }
+      .content section {
+        break-before: auto;
+        page-break-before: auto;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 
+    JSON Schema for AI to populate content:
+    {
+      "reportTitle": "string", // e.g., "Header 1"
+      "secondaryTitle": "string", // AI-inferred, e.g., "Project Summary" based on content
+      "sections": [
+        {
+          "title": "string", // Section header (e.g., "Introduction")
+          "content": [
+            {
+              "type": "paragraph", // Content type: "paragraph", "list", or "table"
+              "data": "string" // Single paragraph text
+            },
+            {
+              "type": "list",
+              "data": ["string"] // Array of list items
+            },
+            {
+              "type": "table",
+              "headers": ["string"], // Array of column headers
+              "rows": [["string"]] // Array of rows, each an array of cell values
+            }
+          ],
+          "class": "string" // Optional: "table" or "card" for styling, omit for default
+        }
+      ],
+      "signOff": {
+        "paragraphs": ["string"], // Array of paragraphs for sign-off
+        "teamName": "string" // e.g., "Project Team"
+      }
+    }
+    Notes:
+    - AI should infer secondaryTitle from report content (e.g., analyze section titles or key terms).
+    - Keep section content concise to fit on a single page; sections will move to the next page if they don't fit.
+    - Use "table" class for table sections, "card" for bordered sections, omit for plain sections.
+    - Ensure content length allows for balanced pagination (e.g., 2-3 sections per page on letter-size paper).
+  -->
+
+  <table role="presentation">
+    <thead>
+      <tr><td><div class="header-space"></div></td></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="content">
+            <!-- AI: Replace with sections array content -->
+            {{SECTIONS}}
+            <section>
+              <h2>Sign-Off</h2>
+              <!-- AI: Replace with signOff.paragraphs content -->
+              {{SIGNOFF_PARAGRAPHS}}
+              <!-- AI: Replace with signOff.teamName content -->
+              <p>Prepared by: {{TEAM_NAME}}<br>
+              Date: <span class="current-date">[Date]</span></p>
+            </section>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr><td><div class="footer-space"></div></td></tr>
+    </tfoot>
+  </table>
+
+  <div class="header">
+    <!-- For VCS portability, use a relative path or base64-encoded image -->
+    <img src="christyLogo.png" alt="Company Logo">
+    <div>
+      <h1 id="report-title">{{REPORT_TITLE}}</h1>
+      <h2 id="secondary-title">{{SECONDARY_TITLE}}</h2>
+      <p>Prepared <span class="current-date">[Date]</span></p>
+    </div>
+    <hr>
+  </div>
+
+  <div class="footer">
+    <hr>
+    <div>Christy Signs | 3145 N 33rd Ave, Phoenix, AZ 85017 | (602) 242-4488 | christysigns.com</div>
+    <div>Copyright 2025 Christy Signs | All Rights Reserved</div>
+  </div>
+
+  <script>
+    // AI: Set the report title and secondary title
+    const reportTitle = "{{REPORT_TITLE}}"; // Replace with AI-generated title, e.g., "Header 1"
+    const secondaryTitle = "{{SECONDARY_TITLE}}"; // Replace with AI-inferred title, e.g., "Project Summary"
+
+    function updateTitleAndDates() {
+      // Update report title
+      const titleElement = document.getElementById('report-title');
+      if (titleElement) {
+        titleElement.textContent = reportTitle;
+      }
+      document.title = reportTitle;
+
+      // Update secondary title
+      const secondaryTitleElement = document.getElementById('secondary-title');
+      if (secondaryTitleElement) {
+        secondaryTitleElement.textContent = secondaryTitle;
+      }
+
+      // Update dates
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      const currentDate = new Date().toLocaleDateString('en-US', options);
+      document.querySelectorAll('.current-date').forEach(element => {
+        element.textContent = currentDate;
+      });
+    }
+
+    // Update titles and dates on page load
+    window.addEventListener('load', updateTitleAndDates);
+
+    // Update titles and dates before printing
+    window.addEventListener('beforeprint', updateTitleAndDates);
+  </script>
+</body>
+</html>

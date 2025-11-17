@@ -1,0 +1,25 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions.askOpenAI]
+  node_bundler = "esbuild"
+  included_files = [
+    "docs/codex/codex.json",
+    "assets/data/version.json"
+  ]
+  external_node_modules = []
+
+[functions.getDynamicData]
+  node_bundler = "esbuild"        # ✅ Required for env var injection
+  included_files = [
+    "assets/data/federal_holidays_dynamic.json"
+  ]
+  external_node_modules = []
+
+[functions.getDeployStatus]
+  node_bundler = "esbuild"        # ✅ Enable env var support
+  external_node_modules = []
+ 

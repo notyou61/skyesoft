@@ -1,0 +1,523 @@
+{
+  "meta": {
+    "title": { "icon": 58, "text": "Skyesoft Codex Meta" },
+    "version": "1.0.0",
+    "purpose": {
+      "icon": 6,
+      "text": "Defines what the Codex is, how it governs Skyesoft, and how AI interacts with human-approved doctrine."
+    },
+    "preamble": {
+      "title": { "icon": 58, "text": "Preamble — Governance Purpose of the Codex" },
+      "text": "The Skyesoft Codex is the governance manual for the system. It tells Skyesoft how to read what comes in, how to decide what should happen next, and how to keep every action within approved bounds. By following the Codex, all parts of the system make decisions the same way, for the same reasons, with no hidden rules."
+    },
+    "principles": {
+      "codexAsInstruction": {
+        "title": { "icon": 6, "text": "Meta Principle — The Codex as Instruction" },
+        "text": "Skyesoft is codex-driven. The SSE provides real-time data, but the Codex defines how modules interpret and present that data."
+      },
+      "dataVsInstruction": {
+        "title": { "icon": 6, "text": "Meta Principle — Data vs. Instruction" },
+        "text": "The SSE provides real-time facts. The Codex defines how facts are used. This separation preserves clarity and safety."
+      },
+      "aiAugmentation": {
+        "title": { "icon": 6, "text": "Meta Principle — AI Augmentation" },
+        "text": "AI may recommend, summarize, validate, and detect inconsistencies—but may not create binding rules or alter Codex doctrine."
+      },
+      "singleSourceOfTruth": {
+        "title": { "icon": 20, "text": "Meta Principle — Single Source of Truth" },
+        "text": "All rules, formatting, and interpretation logic must reside in the Codex. Chat logs, comments, or scripts cannot establish policy."
+      },
+      "iconMapping": {
+        "title": { "icon": 1, "text": "Meta Principle — Icon Mapping" },
+        "text": "All Codex objects must reference icons by numeric ID from iconMap.json. Emoji literals or PNG names are prohibited."
+      },
+      "tierHierarchy": {
+        "title": { "icon": 7, "text": "Meta Principle — Four-Tier Hierarchy" },
+        "text": "The Codex is structured into: Tier 0 Meta, Tier 1 Constitution, Tier 2 Standards, Tier 3 Modules. Tier 2 Standards reside under the 'standards' object; Tier 3 Modules under the 'modules' object."
+      },
+      "structuralConsistency": {
+        "title": { "icon": 7, "text": "Meta Principle — Structural Consistency" },
+        "text": "All Codex-defined structures—icons, keys, schema rules, and tier relationships—must be interpreted exactly as defined. This applies to documents, modules, SSE data, AI actions, and all system outputs."
+      },
+      "renderSpacingStandard": {
+        "title": { "icon": 20, "text": "Meta Principle — Rendering Spacing Standard" },
+        "text": "All Codex text blocks are authored as single-spaced. Render engines must preserve single-spacing unless a Standard explicitly requires otherwise."
+      },
+      "beginWithTheEndInMind": {
+        "title": { "icon": 6, "text": "Meta Principle — Begin With the End in Mind" },
+        "text": "All Codex design, AI behavior, and system development must start from the intended final outcome—accurate documents, reliable operations, and consistent user experience. Every rule and structure must be created with the real-world end-use in mind, ensuring stability, clarity, and long-term maintainability."
+      },
+      "continuousImprovement": {
+        "title": { "icon": 6, "text": "Meta Principle — Continuous Improvement" },
+        "text": "Skyesoft evolves through deliberate refinement. AI may propose optimizations, but any structural improvement requires human approval and Codex-aligned revision."
+      },
+      "metaSupremacy": {
+        "title": { "icon": 58, "text": "Meta Principle — Primacy of the Meta Layer" },
+        "text": "The Meta tier defines the foundation of Skyesoft. Nothing in any other tier may contradict the principles set here. All Standards, Modules, and system behavior must follow the Meta rules first."
+      }
+    }
+  },
+  "constitution": {
+    "title": { "icon": 58, "text": "Skyesoft Codex Constitution" },
+    "version": "1.0.0",
+    "ratifiedBy": "Parliamentarian",
+    "preamble": {
+      "title": { "icon": 58, "text": "Preamble — Purpose of the Constitution" },
+      "text": "This Constitution sets the rules that keep Skyesoft running the same way every time. It creates a clear system for how decisions are made, who approves changes, and how work stays consistent across every part of the platform. The goal is simple: reduce confusion, remove guesswork, and give Skyesoft a stable foundation that anyone can follow and trust."
+    },
+    "articles": {
+      "humanAuthority": {
+        "articleNum": "1",
+        "title": { "icon": 58, "text": "Article I — Human Authority" },
+        "text": "Skyesoft is governed by humans. AI may assist but may not legislate. All changes require explicit human approval."
+      },
+      "codexIsLaw": {
+        "articleNum": "2",
+        "title": { "icon": 58, "text": "Article II — The Codex as Law" },
+        "text": "The Codex governs all Skyesoft behavior. When code and Codex disagree, the Codex prevails."
+      },
+      "systemGovernance": {
+        "articleNum": "3",
+        "title": { "icon": 58, "text": "Article III — Standards Govern Modules" },
+        "text": "Tier 2 Standards define rules. Tier 3 Modules must follow them and cannot override them."
+      },
+      "consistencyDoctrine": {
+        "articleNum": "4",
+        "title": { "icon": 58, "text": "Article IV — Consistency and Uniformity" },
+        "text": "All Skyesoft documents and system behaviors must follow shared visual, structural, and procedural standards."
+      },
+      "parliamentarianAuthority": {
+        "articleNum": "5",
+        "title": { "icon": 58, "text": "Article V — Parliamentarian Authority" },
+        "text": "The Parliamentarian interprets the Codex and resolves contradictions. Rulings clarify doctrine unless marked as amendments."
+      },
+      "archivistRole": {
+        "articleNum": "6",
+        "title": { "icon": 58, "text": "Article VI — The Archivist" },
+        "text": "The Archivist records amendments and rulings. No rule is valid unless archived."
+      },
+      "sseDoctrine": {
+        "articleNum": "7",
+        "title": { "icon": 58, "text": "Article VII — Real-Time Data Doctrine" },
+        "text": "All live data must originate from the SSE stream. Modules may not invent timestamps, weather, or time states."
+      },
+      "noShadowRules": {
+        "articleNum": "8",
+        "title": { "icon": 58, "text": "Article VIII — No Shadow Rules" },
+        "text": "Policies cannot exist outside the Codex. Chat conversations, emails, or code comments do not create rules."
+      },
+      "safeOperation": {
+        "articleNum": "9",
+        "title": { "icon": 58, "text": "Article IX — Safety & Operational Integrity" },
+        "text": "All system behaviors must align with real operational needs. Solutions must be practical, reliable, and suitable for everyday use. Overly academic or untested ideas are prohibited."
+      },
+      "amendmentProcess": {
+        "articleNum": "10",
+        "title": { "icon": 58, "text": "Article X — Amendment Procedure" },
+        "text": "Amendments require: (1) Proposal, (2) Parliamentarian Review, (3) Human Approval, (4) Archivist Recording."
+      }
+    }
+  },
+  "standards": {
+    "framework": {
+      "title": { "icon": 7, "text": "Skyesoft Standards Framework" },
+      "version": "1.0.0",
+      "preamble": {
+        "title": { "icon": 7, "text": "Preamble — Purpose of the Standards Layer" },
+        "text": "Tier 2 Standards give structure to the Constitution by setting clear rules for how Skyesoft operates from day to day. They define the boundaries within which all modules must work—how documents are formed, how information is handled, and how decisions remain steady and predictable. Standards do not create features; they create order. By giving every part of the platform the same rules to follow, this layer keeps Skyesoft consistent, dependable, and governed."
+      },
+      "purpose": {
+        "icon": 20,
+        "text": "The Standards Framework establishes the governing space for all Tier 2 rules. It defines how Standards must be organized, interpreted, and enforced, ensuring every Standard supports constitutional authority and maintains system-wide uniformity."
+      }
+    },
+    "items": {
+      "documentStandards": {
+        "title": { "icon": 20, "text": "Document Standards" },
+        "type": "directive",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A",
+        "governs": [
+          "documentTypesRegistry",
+          "metaFooterInformationSheet",
+          "visualRequirementClause",
+          "referentialDocumentRecord"
+        ],
+        "dependsOn": ["constitution"],
+        "purpose": {
+          "icon": 63,
+          "text": "Defines the uniform structure, layout, spacing, and labeling rules for all Skyesoft documents, including reports, surveys, audits, and information sheets. Ensures every document produced by Skyesoft shares a consistent professional appearance."
+        },
+        "repository": {
+          "title": { "icon": 24, "text": "Skyesoft Documents Repository" },
+          "path": "/documents/",
+          "classification": "Unified Output Layer",
+          "purpose": "All generated PDFs and sheets must be stored within /documents. This ensures accurate indexing, version tracking, and archival continuity.",
+          "notes": "Replaces scattered document locations used before Codex v5.5.x."
+        },
+        "containedModules": {
+          "metaFooterInformationSheet": {
+            "title": { "icon": 2, "text": "Meta Footer — Information Sheet Doctrine" },
+            "type": "metaSection",
+            "status": "ratified",
+            "tier": 2,
+            "hierarchyOrder": "A-1",
+            "effectiveVersion": "v5.5.2",
+            "issuedBy": "Parliamentarian",
+            "appliesTo": ["informationSheet"],
+            "description": "Defines the meta footer that must appear on all Information Sheet documents.",
+            "format": "text",
+            "text": "Doctrine Source: {moduleAbbrev} • Codex {codexVersion} • Amendments {amendmentList} • Reviewed by {reviewer} ({reviewDate})",
+            "variables": {
+              "moduleAbbrev": "Short code identifying the originating module (e.g., TIS).",
+              "codexVersion": "Codex version in effect at time of generation.",
+              "amendmentList": "Comma-separated amendments that affect the document.",
+              "reviewer": "Name of the reviewer or validating entity.",
+              "reviewDate": "Date of the formal review."
+            }
+          },
+          "visualRequirementClause": {
+            "title": { "icon": 68, "text": "Visual Requirement Clause" },
+            "type": "directive",
+            "status": "ratified",
+            "tier": 2,
+            "hierarchyOrder": "A-2-VRC",
+            "effectiveVersion": "v5.5.3",
+            "issuedBy": "Parliamentarian",
+            "description": "Requires all document sections to declare both an icon and a contentFormat. This enables consistent rendering across PDF, HTML, and dashboard display.",
+            "format": "table",
+            "table": [
+              { "key": "text", "display": "Paragraph Block", "description": "Standard narrative content.", "icon": 17 },
+              { "key": "list", "display": "List", "description": "Ordered or unordered bullet items.", "icon": 27 },
+              { "key": "table", "display": "Tabular Data", "description": "Columns and rows for structured info.", "icon": 11 },
+              { "key": "dynamic", "display": "Live Data Feed", "description": "SSE or API-sourced content.", "icon": 52 },
+              { "key": "other", "display": "Custom Content", "description": "Diagrams, media, or special formats.", "icon": 12 }
+            ],
+            "governs": ["renderDirectives"],
+            "enforcement": {
+              "rules": [
+                "All sections must include an icon ID.",
+                "All sections must include a contentFormat key.",
+                "Each object becomes a visible document section.",
+                "Section headers must display the icon.",
+                "Missing fields constitute a formatting violation."
+              ],
+              "violationCode": "CP-DOC-2025-A1"
+            }
+          },
+          "referentialDocumentRecord": {
+            "title": { "icon": 37, "text": "Referential Document Record Framework" },
+            "type": "registry",
+            "status": "pendingRatification",
+            "tier": 2,
+            "hierarchyOrder": "A-3",
+            "effectiveVersion": "v5.6.5",
+            "issuedBy": "Parliamentarian",
+            "description": "Defines the JSON registry schema that links each produced document to its metadata, responsible user, and archival lineage.",
+            "framework": {
+              "baseSchema": {
+                "required": [
+                  "actionID", "slug", "title", "type",
+                  "fileName", "createdBy", "generatedAt",
+                  "generatedBy", "codexVersion"
+                ],
+                "optional": [
+                  "entity", "workOrder", "inspectionID",
+                  "auditScope", "governingClause",
+                  "attachments", "notes"
+                ]
+              },
+              "storage": {
+                "path": "/assets/data/documentIndex.json",
+                "format": "json",
+                "mode": "append",
+                "notes": "Serves as the interim document database until SQL is adopted."
+              },
+              "repository": {
+                "path": "/documents/",
+                "classification": "Unified Output Layer",
+                "purpose": "Central storage location for all referenced PDFs."
+              }
+            }
+          }
+        },
+        "documentTypesRegistry": {
+          "title": { "icon": 24, "text": "Document Types Registry" },
+          "type": "registry",
+          "status": "ratified",
+          "tier": 2,
+          "hierarchyOrder": "A-2",
+          "effectiveVersion": "v5.6.1",
+          "issuedBy": "Parliamentarian",
+          "description": "Defines the official types used for document classification across Skyesoft.",
+          "format": "table",
+          "items": [
+            { "key": "directive", "type": "directive", "purpose": "Governing rules.", "headerExample": "Time Interval Standards Directive" },
+            { "key": "audit", "type": "audit", "purpose": "Governance reviews.", "headerExample": "Temporal Integrity Audit" },
+            { "key": "report", "type": "report", "purpose": "Analytical summaries.", "headerExample": "Permit Fee Report" },
+            { "key": "survey", "type": "survey", "purpose": "Field observations.", "headerExample": "Photo Survey" },
+            { "key": "bulletin", "type": "bulletin", "purpose": "Advisories and notices.", "headerExample": "Safety Bulletin" },
+            { "key": "incident", "type": "incident", "purpose": "Service or malfunction records.", "headerExample": "Service Incident Report" },
+            { "key": "specification", "type": "specification", "purpose": "Technical definitions.", "headerExample": "Fabrication Specification" },
+            { "key": "record", "type": "record", "purpose": "Archival logs.", "headerExample": "Codex Amendment Record" },
+            { "key": "sheet", "type": "sheet", "purpose": "Reference documents.", "headerExample": "Information Sheet" },
+            { "key": "request", "type": "request", "purpose": "Initiating action or approval processes.", "headerExample": "Work Order Request" },
+            { "key": "registry", "type": "registry", "purpose": "Indexing systems.", "headerExample": "Document Index Register" }
+          ],
+          "notes": "Taxonomy and Summary types deprecated by CP-DOC-2025-A1."
+        }
+      },
+      "documentCatalog": {
+        "title": { "icon": 21, "text": "Document Catalog" },
+        "type": "registry",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "A-4",
+        "effectiveVersion": "v5.6.7",
+        "issuedBy": "Parliamentarian",
+        "description": "Defines the official catalog of document outputs produced within Skyesoft. Each entry identifies purpose, classification type, and canonical header text.",
+        "format": "table",
+        "items": [
+          { "key": "photoSurvey", "name": "Photo Survey", "type": "survey", "purpose": "Field observations with photographic documentation.", "headerExample": "Photo Survey" },
+          { "key": "permitFeeReport", "name": "Permit Fee Report", "type": "report", "purpose": "Breakdown of permit costs, review fees, and engineering fees.", "headerExample": "Permit Fee Report" },
+          { "key": "workOrderRequest", "name": "Work Order Request", "type": "request", "purpose": "Initiates fabrication, installation, or administrative tasks.", "headerExample": "Work Order Request" },
+          { "key": "siteInspectionReport", "name": "Site Inspection Report", "type": "report", "purpose": "Observations, measurements, and compliance outcomes at a job site.", "headerExample": "Site Inspection Report" },
+          { "key": "installationSummary", "name": "Installation Summary", "type": "report", "purpose": "Final installation outcomes including materials, validations, and completion notes.", "headerExample": "Installation Summary" },
+          { "key": "complianceAudit", "name": "Compliance Audit", "type": "audit", "purpose": "Evaluation of regulatory, ordinance, and internal compliance.", "headerExample": "Compliance Audit" },
+          { "key": "internalMemo", "name": "Internal Memo", "type": "directive", "purpose": "Internal instructions, clarifications, or policy updates.", "headerExample": "Internal Memo" },
+          { "key": "informationSheet", "name": "Information Sheet", "type": "sheet", "purpose": "Summary reference document.", "headerExample": "Information Sheet" },
+          { "key": "projectOverview", "name": "Project Overview", "type": "report", "purpose": "High-level description of a project, scope, contacts, and location.", "headerExample": "Project Overview" },
+          { "key": "safetyBulletin", "name": "Safety Bulletin", "type": "bulletin", "purpose": "Advisories concerning safety risks and protocols.", "headerExample": "Safety Bulletin" },
+          { "key": "fabricationSpecification", "name": "Fabrication Specification", "type": "specification", "purpose": "Technical dimensions, definitions, and materials.", "headerExample": "Fabrication Specification" },
+          { "key": "incidentReport", "name": "Incident Report", "type": "incident", "purpose": "Record of noteworthy events or service incidents.", "headerExample": "Incident Report" }
+        ],
+        "notes": "Defines the canonical document set for Skyesoft and governs all future template expansion."
+      },
+      "sse": {
+        "title": { "icon": 52, "text": "SSE Standards" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-1",
+        "description": "Defines the official structure, ordering, membership, and governance rules for the Skyesoft SSE Stream. This standard ensures that all live data emitted by Skyesoft is deterministic, predictable, and fully Codex-controlled.",
+        "dataSource": {
+          "title": { "icon": 52, "text": "SSE Runtime Data Source" },
+          "text": "All non-doctrinal runtime inputs required by the SSE Stream must reside in sseInputs.json. This includes office hours, shop hours, default weather location, geographic coordinates, default sunrise/sunset, and interval label definitions. These are operational inputs — not configuration — and must never include rules, policies, or standards belonging to the Codex.",
+          "file": "assets/data/sseInputs.json"
+        },
+        "preamble": {
+          "title": { "icon": 52, "text": "Preamble — Purpose of the SSE Stream" },
+          "text": "The SSE Stream is Skyesoft’s live operational output — the real-time heartbeat of the system. It provides current time/date state, work interval calculations, weather data, holiday logic, record counts, and Codex context. The Codex defines the structural and ordering rules; sseInputs.json supplies the runtime values needed to compute the output."
+        },
+        "purpose": {
+          "icon": 52,
+          "text": "To guarantee that the SSE Stream remains uniform, deterministic, and governed across the entire Skyesoft ecosystem, eliminating drift and ensuring all consuming modules operate on the same structured live data."
+        },
+        "tiers": {
+          "core": {
+            "title": { "icon": 52, "text": "Tier 1 — Core Live State" },
+            "members": [
+              "timeDateArray",
+              "intervalsArray",
+              "weatherData",
+              "holidays",
+              "recordCounts"
+            ]
+          },
+          "ui": {
+            "title": { "icon": 10, "text": "Tier 2 — User Interaction Layer" },
+            "members": [
+              "uiEvent",
+              "announcements",
+              "siteMeta"
+            ]
+          },
+          "system": {
+            "title": { "icon": 6, "text": "Tier 3 — System Context & Governance" },
+            "members": [
+              "codexContext"
+            ]
+          }
+        },
+        "rules": {
+          "icon": 20,
+          "text": "All SSE output must conform to the Codex-defined tier map and follow strict ordering rules. No module may introduce or remove fields without Codex ratification.",
+          "enforcement": [
+            "All SSE members must appear in tier order: core → ui → system.",
+            "Any missing member must be emitted as an empty object — never omitted.",
+            "New SSE members require Codex approval and must specify a tier.",
+            "All runtime inputs (hours, labels, location, coordinates, daybreak values) must be loaded exclusively from sseInputs.json.",
+            "The Codex cannot duplicate, override, or redefine any sseInputs.json value.",
+            "PHP scripts must never introduce fields outside the tier map."
+          ]
+        }
+      },
+      "unifiedClientArchitecture": {
+        "title": { "icon": 7, "text": "Unified Client Architecture Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-8",
+        "description": "Defines the governing architecture for all Skyesoft UI pages, ensuring shared modules, consistent behavior, and declarative markup across the portal.",
+        "rules": [
+          "All HTML pages must be declarative only, containing no inline JavaScript.",
+          "All dynamic behavior must be implemented using shared JavaScript modules.",
+          "A single front-end controller (app.js) must manage global state, SSE ingest, login, modal logic, and UI dispatch.",
+          "Weather, DataTables, and Skyebot logic must remain modular and isolated from markup.",
+          "New UI pages must automatically inherit architecture without modifying core modules."
+        ],
+        "sharedModules": [
+          "app.js",
+          "sse.js",
+          "ui.js",
+          "weather.js"
+        ],
+        "pageSpecificModules": {
+          "index": ["skyebot.js"],
+          "board": ["dataTablesSupport.js"]
+        },
+        "pageDetection": {
+          "attribute": "data-page",
+          "values": ["index", "officeBoard", "board-*"]
+        },
+        "compliance": {
+          "test": "Load index.html and officeBoard.html under live SSE with no console errors, identical timing logic, and Codex-compliant modal activation.",
+          "violationCode": "CP-UI-2025-A1"
+        }
+      },
+      "skyebotModule": {
+        "title": { "icon": 10, "text": "Skyebot Module Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-2",
+        "description": "Defines the required behavior, interaction protocol, and operational constraints for Skyebot as Skyesoft’s primary conversational interface."
+      },
+      "aiIntegration": {
+        "title": { "icon": 30, "text": "AI Integration Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-3",
+        "description": "Specifies rules for contextual reasoning, use of Codex doctrine, and integration of SSE data within AI-driven responses."
+      },
+      "ragFramework": {
+        "title": { "icon": 35, "text": "RAG Framework Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-4",
+        "description": "Defines how Skyesoft connects Codex content, archived documents, and SSE data into a unified retrieval-augmented reasoning layer."
+      },
+      "semanticResponder": {
+        "title": { "icon": 23, "text": "Semantic Responder Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-5",
+        "description": "Governs prompt interpretation, intent routing, semantic clarity, and Codex-aligned reasoning without relying on keyword matching."
+      },
+      "chatHistoryArchitecture": {
+        "title": { "icon": 16, "text": "Chat History Architecture Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-6",
+        "description": "Defines the authoritative structure for message logging, recall logic, audit traceability, and temporal continuity."
+      },
+      "codeManagement": {
+        "title": { "icon": 11, "text": "Code Management Standard" },
+        "type": "standard",
+        "status": "ratified",
+        "tier": 2,
+        "hierarchyOrder": "B-7",
+        "description": "Specifies the rules by which Skyebot interacts with code files, ensuring read-only safety, structured diffs, and controlled version updates."
+      }
+    }
+  },
+  "modules": {
+    "title": { "icon": 6, "text": "Skyesoft Operational Modules" },
+    "version": "1.0.0",
+    "preamble": {
+      "title": { "icon": 6, "text": "Preamble — Purpose of the Modules Layer" },
+      "text": "Tier 3 Modules are the working engines of Skyesoft. They take the rules of the Codex and turn them into real actions—reports, surveys, dashboards, calculations, and daily tools. A module does not debate policy or shape doctrine; its duty is simple: follow the Standards and deliver reliable results. By keeping each module focused on clear tasks, Skyesoft stays practical, organized, and useful to everyone who depends on it."
+    },
+    "purpose": {
+      "icon": 6,
+      "text": "Tier 3 Modules implement functional behavior such as permit reports, photo surveys, TIS, dynamic dashboards, and AI features. Modules must comply with Tier 2 Standards."
+    },
+    "items": {
+      "timeIntervalStandards": {
+        "title": { "icon": 52, "text": "TIS Module (Time Interval Standards)" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["sse", "documentStandards"],
+        "description": "Interprets real-time data from the SSE stream to determine active time phases (before work, worktime, after work, weekend, holiday). Produces outputs for dashboards, documents, and AI reasoning.",
+        "outputs": [],
+        "governs": []
+      },
+      "permitFeeReport": {
+        "title": { "icon": 21, "text": "Permit Fee Report Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["documentStandards", "documentCatalog"],
+        "description": "Generates a standardized Permit Fee Report using uniform document layout rules and Tier 2 formatting requirements.",
+        "outputs": [],
+        "governs": []
+      },
+      "photoSurvey": {
+        "title": { "icon": 21, "text": "Photo Survey Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["documentStandards", "documentCatalog"],
+        "description": "Creates structured Photo Survey documents with floating headers, floating footers, and all required section formatting.",
+        "outputs": [],
+        "governs": []
+      },
+      "dynamicDashboard": {
+        "title": { "icon": 52, "text": "Dynamic Dashboard Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["sse"],
+        "description": "Uses SSE data to provide live updates of time, weather, KPIs, and system state for the Skyesoft Dashboard.",
+        "outputs": [],
+        "governs": []
+      },
+      "skyebotCore": {
+        "title": { "icon": 10, "text": "Skyebot Core Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["aiIntegration", "semanticResponder", "chatHistoryArchitecture"],
+        "description": "Implements the primary conversational capabilities of Skyebot, routing intent, accessing Codex rules, and generating responses in compliance with all Standards.",
+        "outputs": [],
+        "governs": []
+      },
+      "ragEngine": {
+        "title": { "icon": 35, "text": "RAG Engine Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["ragFramework", "documentCatalog"],
+        "description": "Handles retrieval of documents, Codex entries, and archived materials for AI reasoning and user queries.",
+        "outputs": [],
+        "governs": []
+      },
+      "workOrderRequest": {
+        "title": { "icon": 24, "text": "Work Order Request Module" },
+        "type": "module",
+        "status": "draft",
+        "tier": 3,
+        "dependsOn": ["documentStandards", "documentCatalog"],
+        "description": "Generates standardized Work Order Request documents with unified formatting, fields, and metadata.",
+        "outputs": [],
+        "governs": []
+      }
+    }
+  }
+}
