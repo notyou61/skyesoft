@@ -64,32 +64,35 @@ setInterval(() => {
       }
       // #endregion
 
-      // #region ⏳ Update Interval Remaining Message (Codex v5.4 – Worktime-first)
-      const intervalData = data?.timeDateArray?.intervalsArray || data?.intervalsArray;
-      const seconds = intervalData?.currentDaySecondsRemaining;
-      const label = Number(intervalData?.intervalLabel);
+      // #region ⏳ Update Interval Remaining Message (Codex v6 – Interval Engine)
+      const intervalData =
+        data?.intervalsArray || data?.timeDateArray?.intervalsArray;
+
+      // Extract correct SSE fields
+      const seconds = Number(intervalData?.secondsRemainingToInterval);
+      const label = Number(intervalData?.intervalCode);
       const dayType = intervalData?.dayType;
 
       if (!isNaN(seconds) && !isNaN(label) && dayType) {
         const formatted = formatDurationPadded(seconds);
         let message = "";
 
-        // --- Context by Day Type ---
+        // --- Day type overrides ---
         if (dayType === "Company Holiday") {
           message = `🏢 Office closed — next worktime begins in ${formatted}`;
         } else if (dayType === "Weekend") {
           message = `🌴 Weekend — next worktime begins in ${formatted}`;
         } else {
-          // --- Workday Intervals ---
+          // --- Workday interval messages ---
           switch (label) {
-            case 0: // Before Worktime
+            case 0:
               message = `🔜 Worktime begins in ${formatted}`;
               break;
-            case 1: // During Worktime
+            case 1:
               message = `🔚 Worktime ends in ${formatted}`;
               break;
             case 2:
-            default: // After Worktime
+            default:
               message = `📆 Next worktime begins in ${formatted}`;
               break;
           }
@@ -97,9 +100,6 @@ setInterval(() => {
 
         const intervalEl = document.getElementById("intervalRemainingData");
         if (intervalEl) intervalEl.textContent = message;
-
-        // Optional debug
-        // console.log("⏳ Interval Remaining:", { dayType, label, message });
       }
       // #endregion
 
