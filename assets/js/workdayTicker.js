@@ -175,37 +175,44 @@ setInterval(() => {
         const formatted = formatDurationPadded(seconds);
         let message = "";
 
-        // #region ⏳ Update Interval Remaining Message (TIS v5.4)
-        const s = Number(data?.intervalsArray?.secondsRemainingToInterval);
-        const label = Number(data?.intervalsArray?.intervalCode);
-        const dayType = data?.intervalsArray?.dayType;
+        // #region ⏳ Update Interval Remaining Message — CLEAN & CORRECT (TIS v6)
+        const interval = data?.intervalsArray;
+        if (interval) {
+          const seconds = Number(interval.secondsRemainingToInterval);
+          const label   = Number(interval.intervalCode);
+          const dayType = interval.dayType;
 
-        if (!isNaN(s) && !isNaN(label)) {
-          const formatted = formatDurationPadded(s);
-          let message = "";
+          if (!isNaN(seconds) && !isNaN(label)) {
 
-          switch (label) {
-            case 0: // Before Worktime
-              message = `🔜 Worktime begins in ${formatted}`;
-              break;
-            case 1: // During Worktime
-              message = `🔚 Worktime ends in ${formatted}`;
-              break;
-            case 2: // After Worktime
-            default:
-              message = `📆 Next worktime begins in ${formatted}`;
-              break;
+            const formatted = formatDurationPadded(seconds);
+            let message = "";
+
+            // Holiday / weekend overrides
+            if (dayType === "Company Holiday") {
+              message = `🏢 Office closed — next worktime begins in ${formatted}`;
+            }
+            else if (dayType === "Weekend") {
+              message = `🌴 Weekend — next worktime begins in ${formatted}`;
+            }
+            else {
+              // Normal workday intervals
+              switch (label) {
+                case 0:
+                  message = `🔜 Worktime begins in ${formatted}`;
+                  break;
+                case 1:
+                  message = `🔚 Worktime ends in ${formatted}`;
+                  break;
+                case 2:
+                default:
+                  message = `📆 Next worktime begins in ${formatted}`;
+                  break;
+              }
+            }
+
+            const el = document.getElementById("intervalRemainingData");
+            if (el) el.textContent = message;
           }
-
-          // Contextual prefix based on dayType
-          if (dayType === "Weekend") {
-            message = `🌴 Weekend — ${message}`;
-          } else if (dayType === "Company Holiday") {
-            message = `🏢 Office closed — ${message}`;
-          }
-
-          const el = document.getElementById("intervalRemainingData");
-          if (el) el.textContent = message;
         }
         // #endregion
 
