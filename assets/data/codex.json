@@ -115,6 +115,34 @@
         "articleNum": "10",
         "title": { "icon": 58, "text": "Article X — Amendment Procedure" },
         "text": "Amendments require: (1) Proposal, (2) Parliamentarian Review, (3) Human Approval, (4) Archivist Recording."
+      },
+      "automationLimits": {
+        "articleNum": "11",
+        "title": { "icon": 58, "text": "Article XI — Limits of Automation" },
+        "text": "No automated process, scheduled task, cron job, AI action, or system module may alter, extend, override, reinterpret, or nullify Codex doctrine. Automation may assist the Codex but cannot legislate. All doctrinal changes must follow the amendment process defined in Article X."
+      },
+      "automationReview": {
+        "articleNum": "12",
+        "title": { "icon": 58, "text": "Article XII — Automated Review & Proposal Discovery" },
+        "text": "The system may automatically scan the repository, documents, data structures, and module outputs to identify inconsistencies, drift, or emerging patterns that may warrant doctrinal clarification. These automated findings may be presented as suggested proposals but possess no authority. Only humans may adopt or advance a proposal into the amendment process defined in Article X."
+      }
+    },
+    "roles": {
+      "parliamentarian": {
+        "title": { "icon": 6, "text": "Parliamentarian" },
+        "description": "The Parliamentarian is the Codex’s internal judicial function. It interprets doctrine, validates amendments, governs hierarchical order, and determines whether system actions comply with constitutional rules. The Parliamentarian does not exist as a person or external authority; it is a formal role defined within the Codex."
+      },
+      "archivist": {
+        "title": { "icon": 21, "text": "Archivist" },
+        "description": "The Archivist is the record-keeping function of the Codex. It maintains lineage, historical logs, amendment tracking, document registries, repository audits, and all codified system metadata. The Archivist does not exist as an individual; it is a constitutional role operating within the Codex."
+      },
+      "executor": {
+        "title": { "icon": 10, "text": "Executor" },
+        "description": "The Executor carries out operational actions mandated by the Codex, such as scheduled tasks, audits, validations, and system-wide updates. It performs these actions strictly within the constraints defined by the Parliamentarian."
+      },
+      "custodian": {
+        "title": { "icon": 7, "text": "Custodian" },
+        "description": "The Custodian protects the structural and doctrinal purity of the system. It validates Codex documents, ensures schema integrity, and prevents corruption or unauthorized modification of foundational files."
       }
     }
   },
@@ -135,7 +163,6 @@
       "documentStandards": {
         "title": { "icon": 20, "text": "Document Standards" },
         "type": "directive",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "A",
         "governs": [
@@ -160,10 +187,8 @@
           "metaFooterInformationSheet": {
             "title": { "icon": 2, "text": "Meta Footer — Information Sheet Doctrine" },
             "type": "metaSection",
-            "status": "ratified",
             "tier": 2,
             "hierarchyOrder": "A-1",
-            "effectiveVersion": "v5.5.2",
             "issuedBy": "Parliamentarian",
             "appliesTo": ["informationSheet"],
             "description": "Defines the meta footer that must appear on all Information Sheet documents.",
@@ -180,10 +205,8 @@
           "visualRequirementClause": {
             "title": { "icon": 68, "text": "Visual Requirement Clause" },
             "type": "directive",
-            "status": "ratified",
             "tier": 2,
             "hierarchyOrder": "A-2-VRC",
-            "effectiveVersion": "v5.5.3",
             "issuedBy": "Parliamentarian",
             "description": "Requires all document sections to declare both an icon and a contentFormat. This enables consistent rendering across PDF, HTML, and dashboard display.",
             "format": "table",
@@ -209,10 +232,8 @@
           "referentialDocumentRecord": {
             "title": { "icon": 37, "text": "Referential Document Record Framework" },
             "type": "registry",
-            "status": "pendingRatification",
             "tier": 2,
             "hierarchyOrder": "A-3",
-            "effectiveVersion": "v5.6.5",
             "issuedBy": "Parliamentarian",
             "description": "Defines the JSON registry schema that links each produced document to its metadata, responsible user, and archival lineage.",
             "framework": {
@@ -232,7 +253,7 @@
                 "path": "/assets/data/documentIndex.json",
                 "format": "json",
                 "mode": "append",
-                "notes": "Serves as the interim document database until SQL is adopted."
+                "notes": "Serves as the document index used by all modules. SQL adoption, if desired, must be introduced through the amendment process."
               },
               "repository": {
                 "path": "/documents/",
@@ -245,10 +266,8 @@
         "documentTypesRegistry": {
           "title": { "icon": 24, "text": "Document Types Registry" },
           "type": "registry",
-          "status": "ratified",
           "tier": 2,
           "hierarchyOrder": "A-2",
-          "effectiveVersion": "v5.6.1",
           "issuedBy": "Parliamentarian",
           "description": "Defines the official types used for document classification across Skyesoft.",
           "format": "table",
@@ -271,10 +290,8 @@
       "documentCatalog": {
         "title": { "icon": 21, "text": "Document Catalog" },
         "type": "registry",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "A-4",
-        "effectiveVersion": "v5.6.7",
         "issuedBy": "Parliamentarian",
         "description": "Defines the official catalog of document outputs produced within Skyesoft. Each entry identifies purpose, classification type, and canonical header text.",
         "format": "table",
@@ -297,7 +314,6 @@
       "sse": {
         "title": { "icon": 52, "text": "SSE Standards" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-1",
         "description": "Defines the official structure, ordering, membership, and governance rules for the Skyesoft SSE Stream. This standard ensures that all live data emitted by Skyesoft is deterministic, predictable, and fully Codex-controlled.",
@@ -356,7 +372,6 @@
       "unifiedClientArchitecture": {
         "title": { "icon": 7, "text": "Unified Client Architecture Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-8",
         "description": "Defines the governing architecture for all Skyesoft UI pages, ensuring shared modules, consistent behavior, and declarative markup across the portal.",
@@ -386,10 +401,245 @@
           "violationCode": "CP-UI-2025-A1"
         }
       },
+      "repositoryStandard": {
+        "title": { "icon": 67, "text": "Repository Standard" },
+        "tier": 2,
+        "hierarchyOrder": 9,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 0,
+          "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity of structure prevents drift, enforces governance, and ensures that all modules, scripts, and documents operate under a single, predictable architecture. This standard guarantees that Skyesoft remains maintainable, extensible, and aligned with Codex doctrine. No file or directory may exist outside this structure without explicit Codex authorization."
+        },
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term project integrity."
+        },
+        "directives": [
+          "All files must reside within the directories defined in this standard.",
+          "No new top-level directories may be introduced without Codex amendment.",
+          "Directory purpose must remain narrow, focused, and consistent with Codex doctrine.",
+          "Executable logic must be placed only in approved execution directories (api/, assets/js/, modules/, scripts/).",
+          "The repository layout must remain stable across all environments (Home, Office, Server, Deployment)."
+        ],
+        "rules": {
+          "allowedRoots": [
+            "codex/",
+            "assets/",
+            "api/",
+            "documents/",
+            "reports/",
+            "bulletinBoards/",
+            "scripts/",
+            "modules/"
+          ],
+          "disallowed": [
+            "No runtime files may be stored in root.",
+            "No business logic may be stored inside codex/.",
+            "No UI code may appear in api/.",
+            "No server-side code may appear in assets/.",
+            "No temporary or experimental directories may be added without Codex approval."
+          ]
+        },
+        "directories": {
+          "...": "*(unchanged — directory definitions remain as previously provided)*"
+        },
+        "filesystemSchema": {
+          "title": { "icon": 67, "text": "Filesystem Schema Directive" },
+          "type": "structuralSchema",
+          "tier": 2,
+          "hierarchyOrder": "B-9-FS",
+          "description": "Defines the mandatory Skyesoft directory tree, required files, allowed file types, depth limits, and canonical placement rules for all system assets. This schema is the authoritative map used by the System Automation Module to detect drift, orphaned files, missing components, and structural violations.",
+          "rules": {
+            "maxDepth": 3,
+            "allowedExtensions": {
+              "php": ["api", "modules", "scripts"],
+              "js": ["assets/js", "modules"],
+              "css": ["assets/css"],
+              "json": ["assets/data", "codex"],
+              "html": ["bulletinBoards", "documents/templates"],
+              "pdf": ["documents"],
+              "txt": ["assets/data"],
+              "md": ["codex/docs"]
+            },
+            "prohibitedExtensions": [".tmp", ".bak", ".log", ".old", ".zip", ".rar"],
+            "enforcement": [
+              "All directories must match the canonical tree.",
+              "No new top-level directories may be introduced without a Codex amendment.",
+              "Files must appear only in approved directories for their extension.",
+              "Empty directories are prohibited unless explicitly declared as containers.",
+              "All required files must exist unless a Codex amendment states otherwise.",
+              "No module, script, or cron task may create files outside registered paths."
+            ]
+          },
+          "root": {
+            "allowedRoots": [
+              "codex/",
+              "assets/",
+              "api/",
+              "documents/",
+              "reports/",
+              "bulletinBoards/",
+              "scripts/",
+              "modules/"
+            ],
+            "requiredFiles": [
+              "codex/codex.json",
+              "codex/iconMap.json"
+            ],
+            "prohibited": [
+              "No runtime files in root.",
+              "No PHP in root.",
+              "No JS in root.",
+              "No temporary dev folders (test/, tmp/, sandbox/, old/)."
+            ]
+          },
+          "directoryTree": {
+            "codex": {
+              "required": true,
+              "purpose": "Contains the Skyesoft Codex and related metadata.",
+              "children": {
+                "docs": {
+                  "required": true,
+                  "purpose": "Internal governance documents (MTCO, LGBAS, glossary, constitutional notes).",
+                  "allowedExtensions": ["md", "json"]
+                }
+              },
+              "requiredFiles": [
+                "codex.json",
+                "iconMap.json"
+              ]
+            },
+            "assets": {
+              "required": true,
+              "purpose": "Static assets for UI, data, styles, and client behavior.",
+              "children": {
+                "css": {
+                  "purpose": "Unified Skyesoft UI styles.",
+                  "allowedExtensions": ["css"],
+                  "requiredFiles": ["skyesoft-ui.css"]
+                },
+                "js": {
+                  "purpose": "Shared front-end modules.",
+                  "allowedExtensions": ["js"],
+                  "requiredFiles": ["app.js", "sse.js", "ui.js", "weather.js"]
+                },
+                "data": {
+                  "purpose": "Non-doctrinal runtime data sources.",
+                  "allowedExtensions": ["json"],
+                  "requiredFiles": [
+                    "sseInputs.json",
+                    "documentIndex.json"
+                  ]
+                },
+                "images": {
+                  "purpose": "Logos, icons, and document graphics.",
+                  "allowedExtensions": ["png", "jpg", "svg"]
+                }
+              }
+            },
+            "api": {
+              "required": true,
+              "purpose": "Server-side PHP logic for Skyebot, SSE, data fetch, and runtime actions.",
+              "allowedExtensions": ["php"],
+              "requiredFiles": [
+                "getDynamicData.php",
+                "askOpenAI.php",
+                "getWeather.php"
+              ]
+            },
+            "documents": {
+              "required": true,
+              "purpose": "Canonical output layer for generated PDF/HTML documents.",
+              "children": {
+                "templates": {
+                  "purpose": "HTML templates used by modules to generate reports and surveys.",
+                  "allowedExtensions": ["html"],
+                  "requiredFiles": [
+                    "permitFeeReportTemplate.html",
+                    "photoSurveyTemplate.html",
+                    "workOrderRequestTemplate.html"
+                  ]
+                }
+              },
+              "allowedExtensions": ["pdf", "html"]
+            },
+            "reports": {
+              "required": true,
+              "purpose": "System-generated JSON/PDF reports including audits, automation outputs, and SSE integrity checks.",
+              "children": {
+                "automation": {
+                  "purpose": "Cron-generated structural and doctrinal audit files.",
+                  "allowedExtensions": ["json"],
+                  "requiredFiles": [
+                    "dailyRepositoryAudit.json",
+                    "sseIntegrity.json",
+                    "proposals.json"
+                  ]
+                }
+              }
+            },
+            "bulletinBoards": {
+              "required": true,
+              "purpose": "Dynamic and static HTML boards for office, operations, and dashboard content.",
+              "allowedExtensions": ["html"],
+              "children": {
+                "sandbox": {
+                  "purpose": "Development sandbox for UI testing (Codex-governed).",
+                  "allowedExtensions": ["html", "js", "json"],
+                  "requiredFiles": ["officeBoardSandbox.html"]
+                }
+              }
+            },
+            "scripts": {
+              "required": true,
+              "purpose": "Maintenance, indexing, rollover, and temporal testing utilities.",
+              "allowedExtensions": ["php", "js"],
+              "requiredFiles": [
+                "holidayRolloverTester.php",
+                "buildDocumentIndex.php"
+              ]
+            },
+            "modules": {
+              "required": true,
+              "purpose": "Tier 3 functional logic (report generators, AI behavior, SSE utilities).",
+              "children": {
+                "tis": {
+                  "purpose": "Time Interval Standards implementation.",
+                  "allowedExtensions": ["php", "json"],
+                  "requiredFiles": ["tisCore.php", "tisSchema.json"]
+                },
+                "skyebot": {
+                  "purpose": "Conversational engine logic.",
+                  "allowedExtensions": ["php", "js"],
+                  "requiredFiles": ["skyebot.js", "intentRouter.php", "contextManager.php"]
+                },
+                "reports": {
+                  "purpose": "Permit Fee Reports, Photo Surveys, and other document-producing modules.",
+                  "allowedExtensions": ["php", "json"]
+                },
+                "automation": {
+                  "purpose": "Cron tasks (repository audit, SSE verification, amendment discovery).",
+                  "allowedExtensions": ["php"],
+                  "requiredFiles": ["runCronTasks.php"]
+                }
+              }
+            }
+          }
+        },
+        "constraints": {
+          "icon": 50,
+          "text": "All files must serve a defined purpose in Codex doctrine. No duplicate logic, shadow rules, or ungoverned scripts may be introduced. A daily cron job must audit the repository, compare all files and folders against this Repository Standard, and report any non-Codex eccentricities, including unapproved directories, orphaned scripts, drifted files, or structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
+        },
+        "notes": [
+          "This standard supersedes all previous repository assumptions.",
+          "Any deviation from this structure constitutes architectural drift and must be corrected immediately.",
+          "Repository layout is considered part of the Skyesoft Constitution by extension.",
+          "Cron-based validation ensures continuous structural integrity and prevents drift from compounding over time."
+        ]
+      },
       "skyebotModule": {
         "title": { "icon": 10, "text": "Skyebot Module Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-2",
         "description": "Defines the required behavior, interaction protocol, and operational constraints for Skyebot as Skyesoft’s primary conversational interface."
@@ -397,7 +647,6 @@
       "aiIntegration": {
         "title": { "icon": 30, "text": "AI Integration Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-3",
         "description": "Specifies rules for contextual reasoning, use of Codex doctrine, and integration of SSE data within AI-driven responses."
@@ -405,7 +654,6 @@
       "ragFramework": {
         "title": { "icon": 35, "text": "RAG Framework Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-4",
         "description": "Defines how Skyesoft connects Codex content, archived documents, and SSE data into a unified retrieval-augmented reasoning layer."
@@ -413,7 +661,6 @@
       "semanticResponder": {
         "title": { "icon": 23, "text": "Semantic Responder Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-5",
         "description": "Governs prompt interpretation, intent routing, semantic clarity, and Codex-aligned reasoning without relying on keyword matching."
@@ -421,7 +668,6 @@
       "chatHistoryArchitecture": {
         "title": { "icon": 16, "text": "Chat History Architecture Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-6",
         "description": "Defines the authoritative structure for message logging, recall logic, audit traceability, and temporal continuity."
@@ -429,7 +675,6 @@
       "codeManagement": {
         "title": { "icon": 11, "text": "Code Management Standard" },
         "type": "standard",
-        "status": "ratified",
         "tier": 2,
         "hierarchyOrder": "B-7",
         "description": "Specifies the rules by which Skyebot interacts with code files, ensuring read-only safety, structured diffs, and controlled version updates."
@@ -451,72 +696,112 @@
       "timeIntervalStandards": {
         "title": { "icon": 52, "text": "TIS Module (Time Interval Standards)" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["sse", "documentStandards"],
-        "description": "Interprets real-time data from the SSE stream to determine active time phases (before work, worktime, after work, weekend, holiday). Produces outputs for dashboards, documents, and AI reasoning.",
+        "description": "Interprets live SSE data to determine active time phases (before work, worktime, after work, weekend, holiday). Provides normalized time-state outputs for dashboards, documents, and AI reasoning.",
+        "governedBy": ["documentStandards", "sse"],
         "outputs": [],
         "governs": []
       },
       "permitFeeReport": {
         "title": { "icon": 21, "text": "Permit Fee Report Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
-        "description": "Generates a standardized Permit Fee Report using uniform document layout rules and Tier 2 formatting requirements.",
+        "governedBy": ["documentStandards", "documentCatalog"],
+        "description": "Generates standardized Permit Fee Reports using Tier 2 formatting and repository placement rules.",
         "outputs": [],
         "governs": []
       },
       "photoSurvey": {
         "title": { "icon": 21, "text": "Photo Survey Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
-        "description": "Creates structured Photo Survey documents with floating headers, floating footers, and all required section formatting.",
+        "governedBy": ["documentStandards", "documentCatalog"],
+        "description": "Creates floating-header, floating-footer Photo Survey documents with strict section formatting.",
         "outputs": [],
         "governs": []
       },
       "dynamicDashboard": {
         "title": { "icon": 52, "text": "Dynamic Dashboard Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["sse"],
-        "description": "Uses SSE data to provide live updates of time, weather, KPIs, and system state for the Skyesoft Dashboard.",
+        "governedBy": ["sse"],
+        "description": "Uses SSE state to provide real-time dashboard updates (time, weather, KPIs, intervals, and Codex context).",
         "outputs": [],
         "governs": []
       },
       "skyebotCore": {
         "title": { "icon": 10, "text": "Skyebot Core Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["aiIntegration", "semanticResponder", "chatHistoryArchitecture"],
-        "description": "Implements the primary conversational capabilities of Skyebot, routing intent, accessing Codex rules, and generating responses in compliance with all Standards.",
+        "governedBy": ["aiIntegration", "semanticResponder", "chatHistoryArchitecture"],
+        "description": "Implements Skyebot’s core conversational logic, including intent routing, Codex-referenced reasoning, and SSE-aware response generation.",
         "outputs": [],
         "governs": []
       },
       "ragEngine": {
         "title": { "icon": 35, "text": "RAG Engine Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["ragFramework", "documentCatalog"],
-        "description": "Handles retrieval of documents, Codex entries, and archived materials for AI reasoning and user queries.",
+        "governedBy": ["ragFramework", "documentCatalog"],
+        "description": "Retrieves documents, Codex entries, and archived materials to support AI reasoning.",
         "outputs": [],
         "governs": []
       },
       "workOrderRequest": {
         "title": { "icon": 24, "text": "Work Order Request Module" },
         "type": "module",
-        "status": "draft",
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
-        "description": "Generates standardized Work Order Request documents with unified formatting, fields, and metadata.",
+        "governedBy": ["documentStandards", "documentCatalog"],
+        "description": "Generates Work Order Request documents with standardized headers, metadata, and structure.",
         "outputs": [],
         "governs": []
+      },
+      "systemAutomation": {
+        "title": { "icon": 10, "text": "System Automation Module" },
+        "type": "module",
+        "tier": 3,
+        "hierarchyOrder": "C-1",
+        "description": "Implements scheduled scans, repository audits, document indexing, and Codex-governed housekeeping tasks.",
+        "governedBy": [
+          "repositoryStandard",
+          "codeManagement",
+          "documentStandards",
+          "constitution.articles.automationLimits",
+          "constitution.articles.automationReview"
+        ],
+        "dependsOn": [
+          "repositoryStandard",
+          "codeManagement"
+        ],
+        "tasks": {
+          "dailyRepositoryAudit": {
+            "schedule": "0 1 * * *",
+            "description": "Perform a complete structural audit, checking for unapproved directories, orphaned files, drift, and Codex violations.",
+            "output": "/reports/automation/dailyRepositoryAudit.json"
+          },
+          "documentIndexRefresh": {
+            "schedule": "0 */6 * * *",
+            "description": "Rebuild the documentIndex.json by scanning /documents for newly generated PDFs.",
+            "output": "/assets/data/documentIndex.json"
+          },
+          "sseIntegrityCheck": {
+            "schedule": "*/30 * * * *",
+            "description": "Confirm SSE output conforms to the strict tier structure and ordering rules.",
+            "output": "/reports/automation/sseIntegrity.json"
+          },
+          "proposedAmendmentDiscovery": {
+            "schedule": "0 3 * * *",
+            "description": "Scan for recurring inconsistencies or emerging structural patterns and publish suggested proposals. These suggestions have no authority unless advanced by a human.",
+            "output": "/reports/automation/proposals.json"
+          }
+        }
       }
     }
   }

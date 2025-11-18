@@ -70,6 +70,7 @@ logs/*
 !logs/.gitkeep
 
 ##############################
-# Local quarantine — DO NOT VERSION
+# Legacy archive (track folder, ignore contents)
 ##############################
-/quarantine/
+legacy/*
+!legacy/.gitkeep
