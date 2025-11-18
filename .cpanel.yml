@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/notyou64/public_html/skyesoft
+    - /bin/cp -r * $DEPLOYPATH
+    - /bin/cp -r .htaccess $DEPLOYPATH || true
