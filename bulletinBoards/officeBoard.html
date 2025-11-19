@@ -52,7 +52,7 @@
 
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v8.0 – Fully Working Again</div>
+  <div class="version">v8.1 – Fully Working Again</div>
 </div>
 
 <script>
@@ -250,15 +250,31 @@ function updateHighlightsCard(){
   document.getElementById("dayOfYear").textContent=d.dayOfYear;
   document.getElementById("daysRemaining").textContent=d.daysRemaining;
 }
-function autoScrollCardBody(){
-  const c=document.querySelector(".scrollContainer");
-  if(!c)return;
-  c.scrollTop=0;
-  const dist=c.scrollHeight-c.clientHeight;
-  if(dist<=0)return;
-  let pos=0;
-  const timer=setInterval(()=>{pos+=1.5;c.scrollTop=pos;if(pos>=dist)clearInterval(timer);},30);
+//
+function autoScrollCardBody() {
+  const container = document.querySelector(".scrollContainer");
+  if (!container) return;
+
+  container.scrollTop = 0;
+  
+  const dist = container.scrollHeight - container.clientHeight;
+  if (dist <= 0) return;
+
+  const bufferTime = 2000; // Stop early (2 seconds before rotation)
+  const scrollTime = cards[0].duration - bufferTime;
+
+  const step = dist / (scrollTime / 30); // 30ms interval like before
+
+  let pos = 0;
+  const timer = setInterval(() => {
+    pos += step;
+    container.scrollTop = pos;
+
+    // Stop where we reach the end
+    if (pos >= dist) clearInterval(timer);
+  }, 30);
 }
+//
 function rotateCards(){
   const c=cards[cardIndex];
   populateCard(c);
