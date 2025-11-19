@@ -227,6 +227,7 @@ function rotateCards() {
   setTimeout(rotateCards, card.duration);
 }
 
+window.addEventListener("DOMContentLoaded", rotateCards);
 // LIVE SECONDS WITH BLINKING COLON
 function updateSeconds() {
   const now = new Date();
@@ -237,14 +238,6 @@ function updateSeconds() {
     secondsEl.style.opacity = (secs % 2 === 0) ? "1" : "0.3";  // subtle blink
   }
 }
-
-// Start everything
-window.addEventListener("DOMContentLoaded", () => {
-  rotateCards();
-  updateSeconds();          // immediate seconds on load
-  setInterval(updateSeconds, 1000);  // every second
-});
-
 setInterval(updateSeconds, 1000);
 updateSeconds();  // immediate
 </script>
