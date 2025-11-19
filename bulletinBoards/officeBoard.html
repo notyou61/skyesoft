@@ -228,18 +228,6 @@ function rotateCards() {
 }
 
 window.addEventListener("DOMContentLoaded", rotateCards);
-// LIVE SECONDS WITH BLINKING COLON
-function updateSeconds() {
-  const now = new Date();
-  const secs = now.getSeconds().toString().padStart(2, '0');
-  const secondsEl = document.getElementById("secondsDisplay");
-  if (secondsEl) {
-    secondsEl.textContent = `:${secs}`;
-    secondsEl.style.opacity = (secs % 2 === 0) ? "1" : "0.3";  // subtle blink
-  }
-}
-setInterval(updateSeconds, 1000);
-updateSeconds();  // immediate
 </script>
 </body>
 </html>
