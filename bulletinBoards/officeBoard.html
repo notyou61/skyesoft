@@ -57,14 +57,15 @@
 
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v5.0 – Live Clock + Seconds</div>
+  <div class="version">v5.1 – Clock & Countdown Fully Synced</div>
 </div>
 
 <script>
 // ===================================================================
-// LIVE DATA FROM SERVER (every 15s) + LIVE CLOCK & COUNTDOWN EVERY SECOND
+// LIVE DATA + PERFECTLY SYNCED CLOCK & COUNTDOWN (every second)
 // ===================================================================
 let serverData = null;
+let serverTimeOffset = 0;  // difference between server and client time
 
 function loadLiveData() {
   fetch("/skyesoft/api/getDynamicData.php")
@@ -72,7 +73,14 @@ function loadLiveData() {
     .then(d => {
       serverData = d;
 
-      // Update everything from server (weather, forecast, holiday, etc.)
+      // Sync client clock with server time exactly
+      if (d.timeDateArray?.currentUnixTime) {
+        const serverUnix = d.timeDateArray.currentUnixTime * 1000;
+        const clientNow = Date.now();
+        serverTimeOffset = serverUnix - clientNow;
+      }
+
+      // Weather
       if (d.weatherData) {
         const w = d.weatherData;
         const icons = {"01":"☀️","02":"🌤️","03":"⛅","04":"☁️","09":"🌦️","10":"🌧️","11":"⛈️","13":"❄️","50":"🌫️"};
@@ -96,6 +104,7 @@ function loadLiveData() {
         }
       }
 
+      // Holiday
       if (d.holidays) {
         const today = new Date(); today.setHours(0,0,0,0);
         let closest = Infinity, name = "";
@@ -109,80 +118,80 @@ function loadLiveData() {
         if (name) document.getElementById("nextHoliday").textContent = `${name} — in ${closest} day${closest>1?"s":""}`;
       }
 
-      updateCountdown(); // sync countdown with fresh server data
+      // Immediate refresh of clock & countdown
+      updateClockAndCountdown();
     })
     .catch(() => {});
 }
 
-// LIVE CLOCK WITH SECONDS (updates every second)
-function updateClock() {
-  const now = new Date();
-  const hours = now.getHours() % 12 || 12;
-  const mins = now.getMinutes().toString().padStart(2, '0');
-  const secs = now.getSeconds().toString().padStart(2, '0');
-  const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
-  document.getElementById("currentTime").textContent = `${hours}:${mins}:${secs} ${ampm}`;
-}
+// Update both clock and countdown using server-synced time
+function updateClockAndCountdown() {
+  if (!serverData) return;
 
-// ENHANCED INTERVAL COUNTDOWN (every second)
-function updateCountdown() {
-  if (!serverData?.intervalsArray) return;
+  const serverNow = new Date(Date.now() + serverTimeOffset);
+  const hours = serverNow.getHours();
+  const mins = serverNow.getMinutes().toString().padStart(2, '0');
+  const secs = serverNow.getSeconds().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
 
-  const i = serverData.intervalsArray;
-  let sec = Math.max(0, i.secondsRemainingToInterval);
+  document.getElementById("currentTime").textContent = `${displayHours}:${mins}:${secs} ${ampm}`;
 
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
+  // Countdown (uses exact same server time)
+  if (serverData.intervalsArray) {
+    let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
 
-  const el = document.getElementById("intervalRemainingData");
-  if (!el) return;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
 
-  const isWorkday = (i.dayType === "Workday");
+    const el = document.getElementById("intervalRemainingData");
+    const isWorkday = (serverData.intervalsArray.dayType === "Workday");
 
-  let label = "";
-  let emoji = "";
+    let label = "";
+    let emoji = "";
 
-  if (!isWorkday) {
-    label = "Office closed";
-    emoji = "🟦";
-  } else if (i.intervalName === "Worktime") {
-    label = "Workday ends in";
-    emoji = "🟩";
-  } else if (i.intervalName === "Before Worktime") {
-    label = "Workday begins in";
-    emoji = "🟨";
-  } else if (i.intervalName === "After Worktime") {
-    label = "Workday resumes tomorrow";
-    emoji = "🔴";
+    if (!isWorkday) {
+      label = "Office closed";
+      emoji = "🟦";
+    } else if (serverData.intervalsArray.intervalName === "Worktime") {
+      label = "Workday ends in";
+      emoji = "🟩";
+    } else if (serverData.intervalsArray.intervalName === "Before Worktime") {
+      label = "Workday begins in";
+      emoji = "🟨";
+    } else if (serverData.intervalsArray.intervalName === "After Worktime") {
+      label = "Workday resumes tomorrow";
+      emoji = "🔴";
+    }
+
+    let timeText = "";
+    if (label.includes("in")) {
+      if (h > 0) timeText += `${h.toString().padStart(2,'0')}h `;
+      timeText += `${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+    }
+
+    el.textContent = label.includes("in")
+      ? `${emoji} ${label} ${timeText}`
+      : `${emoji} ${label}`;
+
+    // Visual warnings
+    if (serverData.intervalsArray.intervalName === "Worktime" && sec <= 600) {
+      el.style.color = (sec <= 30) ? "red" : "goldenrod";
+    } else {
+      el.style.color = "#000";
+    }
+
+    // Decrease for next tick
+    serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
   }
-
-  let timeText = "";
-  if (label.includes("in")) {
-    if (h > 0) timeText += `${h.toString().padStart(2,'0')}h `;
-    timeText += `${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
-  }
-
-  el.textContent = label.includes("in")
-    ? `${emoji} ${label} ${timeText}`
-    : `${emoji} ${label}`;
-
-  // Visual warnings
-  if (i.intervalName === "Worktime" && sec <= 600) {
-    el.style.color = (sec <= 30) ? "red" : "goldenrod";
-  } else {
-    el.style.color = "#000";
-  }
-
-  serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
 }
 
 // Start everything
 loadLiveData();
-setInterval(loadLiveData, 15000);   // refresh from server
-setInterval(() => { updateClock(); updateCountdown(); }, 1000);  // live clock + countdown every second
-updateClock();   // immediate on load
-updateCountdown();
+setInterval(loadLiveData, 15000);  // refresh from server
+setInterval(updateClockAndCountdown, 1000);  // both clock + countdown every second
+updateClockAndCountdown();
 
 // ===================================================================
 // CARDS + ROTATION
