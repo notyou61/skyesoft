@@ -26,14 +26,9 @@
     .permitTable{width:100%;border-collapse:collapse;table-layout:auto}
     .permitTable thead{position:sticky;top:0;background:#004080;color:#fff;z-index:2}
     .permitTable th,.permitTable td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}
-    .permitTable th:nth-child(1),td:nth-child(1){width:10%}
-    .permitTable th:nth-child(2),td:nth-child(2){width:25%}
-    .permitTable th:nth-child(3),td:nth-child(3){width:25%}
-    .permitTable th:nth-child(4),td:nth-child(4){width:15%}
-    .permitTable th:nth-child(5),td:nth-child(5){width:10%}
-    .permitTable th:nth-child(6),td:nth-child(6){width:15%;white-space:normal}
     .permitTable tr:nth-child(even){background:#f2f2f2}
     .status-ready{color:green;font-weight:bold}
+    .status-review{color:orange;font-weight:bold}
 </style>
 </head>
 <body>
@@ -57,7 +52,7 @@
 
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v5.1 – Clock & Countdown Fully Synced</div>
+  <div class="version">v6.0 — Fully Synced Clock + 37 Permits</div>
 </div>
 
 <script>
@@ -65,7 +60,7 @@
 // LIVE DATA + PERFECTLY SYNCED CLOCK & COUNTDOWN (every second)
 // ===================================================================
 let serverData = null;
-let serverTimeOffset = 0;  // difference between server and client time
+let serverTimeOffset = 0;
 
 function loadLiveData() {
   fetch("/skyesoft/api/getDynamicData.php")
@@ -73,11 +68,10 @@ function loadLiveData() {
     .then(d => {
       serverData = d;
 
-      // Sync client clock with server time exactly
+      // Sync server time exactly
       if (d.timeDateArray?.currentUnixTime) {
         const serverUnix = d.timeDateArray.currentUnixTime * 1000;
-        const clientNow = Date.now();
-        serverTimeOffset = serverUnix - clientNow;
+        serverTimeOffset = serverUnix - Date.now();
       }
 
       // Weather
@@ -118,35 +112,32 @@ function loadLiveData() {
         if (name) document.getElementById("nextHoliday").textContent = `${name} — in ${closest} day${closest>1?"s":""}`;
       }
 
-      // Immediate refresh of clock & countdown
       updateClockAndCountdown();
     })
     .catch(() => {});
 }
 
-// Update both clock and countdown using server-synced time
+// Update both clock and countdown using exact synced server time
 function updateClockAndCountdown() {
   if (!serverData) return;
 
   const serverNow = new Date(Date.now() + serverTimeOffset);
-  const hours = serverNow.getHours();
-  const mins = serverNow.getMinutes().toString().padStart(2, '0');
-  const secs = serverNow.getSeconds().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
+  const h = serverNow.getHours();
+  const m = serverNow.getMinutes().toString().padStart(2, '0');
+  const s = serverNow.getSeconds().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  document.getElementById("currentTime").textContent = `${(h % 12) || 12}:${m}:${s} ${ampm}`;
 
-  document.getElementById("currentTime").textContent = `${displayHours}:${mins}:${secs} ${ampm}`;
-
-  // Countdown (uses exact same server time)
+  // Countdown using the same synced time
   if (serverData.intervalsArray) {
     let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
 
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
+    const hh = Math.floor(sec / 3600).toString().padStart(2, '0');
+    const mm = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+    const ss = (sec % 60).toString().padStart(2, '0');
 
-    const el = document.getElementById("intervalRemainingData");
-    const isWorkday = (serverData.intervalsArray.dayType === "Workday");
+    const i = serverData.intervalsArray;
+    const isWorkday = (i.dayType === "Workday");
 
     let label = "";
     let emoji = "";
@@ -154,35 +145,34 @@ function updateClockAndCountdown() {
     if (!isWorkday) {
       label = "Office closed";
       emoji = "🟦";
-    } else if (serverData.intervalsArray.intervalName === "Worktime") {
+    } else if (i.intervalName === "Worktime") {
       label = "Workday ends in";
       emoji = "🟩";
-    } else if (serverData.intervalsArray.intervalName === "Before Worktime") {
+    } else if (i.intervalName === "Before Worktime") {
       label = "Workday begins in";
       emoji = "🟨";
-    } else if (serverData.intervalsArray.intervalName === "After Worktime") {
+    } else {
       label = "Workday resumes tomorrow";
       emoji = "🔴";
     }
 
     let timeText = "";
     if (label.includes("in")) {
-      if (h > 0) timeText += `${h.toString().padStart(2,'0')}h `;
-      timeText += `${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
+      timeText = `${hh}h ${mm}m ${ss}s`;
     }
 
-    el.textContent = label.includes("in")
+    document.getElementById("intervalRemainingData").textContent = label.includes("in")
       ? `${emoji} ${label} ${timeText}`
       : `${emoji} ${label}`;
 
     // Visual warnings
-    if (serverData.intervalsArray.intervalName === "Worktime" && sec <= 600) {
-      el.style.color = (sec <= 30) ? "red" : "goldenrod";
+    if (i.intervalName === "Worktime" && sec <= 600) {
+      document.getElementById("intervalRemainingData").style.color = (sec <= 30) ? "red" : "goldenrod";
     } else {
-      el.style.color = "#000";
+      document.getElementById("intervalRemainingData").style.color = "#000";
     }
 
-    // Decrease for next tick
+    // Decrease for next second
     serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
   }
 }
@@ -190,19 +180,77 @@ function updateClockAndCountdown() {
 // Start everything
 loadLiveData();
 setInterval(loadLiveData, 15000);  // refresh from server
-setInterval(updateClockAndCountdown, 1000);  // both clock + countdown every second
+setInterval(updateClockAndCountdown, 1000);  // synced clock + countdown every second
 updateClockAndCountdown();
 
 // ===================================================================
 // CARDS + ROTATION
 // ===================================================================
-const cards = [ /* your full 4 cards – unchanged */ ];
+const cards = [
+  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard"><div class="scrollContainer"><table class="permitTable"><thead><tr><th>WO #</th><th>Customer</th><th>Jobsite</th><th>Jurisdiction</th><th>Fee</th><th>Status</th></tr></thead><tbody>
+    <tr><td>26312</td><td>Sun Valley Wellness</td><td>Sun Valley Wellness</td><td>Scottsdale</td><td>$545.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26036</td><td>Switch Electric</td><td>Switch Electric</td><td>Tempe</td><td>$356.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>25674</td><td>Printing Solutions</td><td>Ten Figures</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26335</td><td>U-Haul</td><td>U-Haul (Grand/Bell Rd)</td><td>Surprise</td><td>$154.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26513</td><td>Penchetta Pen & Knife</td><td>Penchetta Pen & Knife</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26216</td><td>Walton Signage</td><td>Bank Of America</td><td>Avondale</td><td>$470.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26630</td><td>Signtech</td><td>Williams Sonoma</td><td>Scottsdale</td><td>$620.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26585</td><td>NRS</td><td>NRS</td><td>Casa Grande</td><td>$254.77</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26606</td><td>Allen Industries, Inc</td><td>Verizon BeMobile</td><td>Goodyear</td><td>$388.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>24741</td><td>Arizona Partners</td><td>Arrowhead Marketplace</td><td>Glendale</td><td>$844.93</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26111</td><td>Identity Sign Builders</td><td>Ferguson</td><td>Scottsdale</td><td>$570.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26927</td><td>Omaha Neon Sign</td><td>Blue Sushi Sake Grill</td><td>Tempe</td><td>$368.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26694</td><td>Gudeng Inc</td><td>Gudeng Inc</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26836</td><td>Yaho</td><td>Yaho</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26877</td><td>Identity Sign Builders</td><td>Ferguson</td><td>Glendale</td><td>$400.22</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26337</td><td>U-Haul</td><td>U-Haul # 00000</td><td>Queen Creek</td><td>$664.60</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26545</td><td>Walton Signage</td><td>Bank Of America</td><td>Scottsdale</td><td>$900.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>25523</td><td>Printing Solutions</td><td>Roosevelt Lake Marina</td><td>Roosevelt Lake</td><td>$699.75</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27071</td><td>Pattison Sign Group</td><td>Stotz Equipment</td><td>Chandler</td><td>$76.68</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27031</td><td>Entera Branding</td><td>Mellow Mushroom #144</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27051</td><td>Sign Resource</td><td>Safeway #209</td><td>Queen Creek</td><td>$414.60</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26889</td><td>Sign Resource</td><td>Bank Of America #AZW-297</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27137</td><td>Everbright</td><td>Habit Burger #53529</td><td>Laveen</td><td>$150.00</td><td class="status-review">Ready To Review</td></tr>
+    <tr><td>27141</td><td>Everbright</td><td>Habit Burger #53527</td><td>Phoenix</td><td>$450.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27142</td><td>Everbright</td><td>Habit Burger #53530</td><td>Phoenix</td><td>$375.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27140</td><td>Everbright</td><td>Habit Burger #53524</td><td>Phoenix</td><td>$450.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27139</td><td>Everbright</td><td>Habit Burger #53510</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27144</td><td>Everbright</td><td>Sherwin Williams #708000</td><td>Mesa</td><td>$101.23</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27135</td><td>Everbright</td><td>Habit Burger #53508</td><td>Tempe</td><td>$647.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27104</td><td>Holiday Inn Express</td><td>Holiday Inn Express</td><td>Tempe</td><td>$368.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27316</td><td>Everbright</td><td>Dunkin Avondale</td><td>Avondale</td><td>$826.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27199</td><td>First Rate Staffing</td><td>First Rate Staffing</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27380</td><td>National Sign & Marketing</td><td>Chick Fil A</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27170</td><td>Everbright</td><td>Great Clips #1554</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
+    <tr><td>27169</td><td>Everbright</td><td>Great Clips #6336</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
+    <tr><td>27171</td><td>Everbright</td><td>Great Clips #1525</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
+    <tr><td>27409</td><td>Vetra of Chandler</td><td>Vetra of Chandler</td><td>Chandler</td><td>$373.19</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>27154</td><td>Everbright</td><td>State Farm - Severiano Torres</td><td>Buckeye</td><td>$660.41</td><td class="status-ready">Ready To Issue</td></tr>
+  </tbody></table></div></div>`,footer:"<small>Updated: 2025-11-19</small>",duration:30000},
+  {header:"<h2>🌅 Today’s Highlights</h2>",body:`
+    <div class="entry">📅 <span id="todaysDate"></span> · Day <span id="dayOfYear"></span> of 365 (<span id="daysRemaining"></span> remaining)</div>
+    <div class="entry">🌄 Sunrise: <span id="sunriseTime">--:--</span> · 🌇 Sunset: <span id="sunsetTime">--:--</span></div>
+    <div class="entry">🕒 Daylight: <span id="daylightTime">-- hrs</span> · 🌌 Night: <span id="nightTime">-- hrs</span></div>
+    <div class="entry">Next Holiday: <span id="nextHoliday">Loading...</span></div>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
+    <div class="entry" id="tipOfTheDay">💡 Tip of the Day: Loading...</div>
+    <div class="entry">Birthdays Today: (none)</div>
+    <div class="entry">Anniversary: Mark – 3 Years!</div>
+    <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
+    <div class="entry forecastRow">
+      <div class="forecastItem"><span id="forecastDay1">Loading...</span></div>
+      <div class="forecastItem"><span id="forecastDay2">Loading...</span></div>
+      <div class="forecastItem"><span id="forecastDay3">Loading...</span></div>
+    </div>`,footer:"<small>Live Data</small>",duration:30000},
+  {header:"<h2>📈 KPI Dashboard</h2>",body:`<div class="entry">Coming Soon…</div>`,footer:"<small>Updated Daily</small>",duration:30000},
+  {header:"<h2>📢 Announcements</h2>",body:`<div class="entry">No announcements posted.</div>`,footer:"<small>Company-Wide</small>",duration:30000}
+];
 
 let cardIndex = 0;
-function populateCard(c) {
-  document.getElementById("bodyHeader").innerHTML = c.header;
-  document.getElementById("bodyMain").innerHTML = `<div class="cardBody">${c.body}</div>`;
-  document.getElementById("bodyFooter").innerHTML = c.footer;
+function populateCard(c){
+  document.getElementById("bodyHeader").innerHTML=c.header;
+  document.getElementById("bodyMain").innerHTML=`<div class="cardBody">${c.body}</div>`;
+  document.getElementById("bodyFooter").innerHTML=c.footer;
 }
 function getLiveDateInfo() {
   const n = new Date();
@@ -217,6 +265,8 @@ function updateHighlightsCard() {
   document.getElementById("todaysDate").textContent = d.formattedDate;
   document.getElementById("dayOfYear").textContent = d.dayOfYear;
   document.getElementById("daysRemaining").textContent = d.daysRemaining;
+  const tip = document.getElementById("tipOfTheDay");
+  if (tip) tip.textContent = "💡 Tip of the Day: “Stay awesome!”";
 }
 function autoScrollCardBody() {
   const c = document.querySelector(".cardBody");
@@ -231,16 +281,15 @@ function autoScrollCardBody() {
     if (pos >= dist) clearInterval(timer);
   }, 30);
 }
-function rotateCards() {
-  const card = cards[cardIndex];
-  populateCard(card);
-  if (cardIndex === 0) setTimeout(autoScrollCardBody, 500);
-  if (cardIndex === 1) setTimeout(updateHighlightsCard, 50);
-  cardIndex = (cardIndex + 1) % cards.length;
-  setTimeout(rotateCards, card.duration);
+function rotateCards(){
+  const c=cards[cardIndex];
+  populateCard(c);
+  if(cardIndex===0) setTimeout(()=>{document.querySelector(".cardBody").scrollTop=0;},200);
+  if(cardIndex===1) setTimeout(updateHighlightsCard,50);
+  cardIndex=(cardIndex+1)%cards.length;
+  setTimeout(rotateCards,c.duration);
 }
-
-window.addEventListener("DOMContentLoaded", rotateCards);
+window.addEventListener("DOMContentLoaded",rotateCards);
 </script>
 </body>
 </html>
