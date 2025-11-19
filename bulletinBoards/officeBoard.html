@@ -52,12 +52,12 @@
 
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v6.0 — Fully Synced Clock + 37 Permits</div>
+  <div class="version">v8.0 – Fully Working Again</div>
 </div>
 
 <script>
 // ===================================================================
-// LIVE DATA + PERFECTLY SYNCED CLOCK & COUNTDOWN (every second)
+// LIVE DATA + SYNCED CLOCK & COUNTDOWN
 // ===================================================================
 let serverData = null;
 let serverTimeOffset = 0;
@@ -67,25 +67,20 @@ function loadLiveData() {
     .then(r => r.json())
     .then(d => {
       serverData = d;
-
-      // Sync server time exactly
       if (d.timeDateArray?.currentUnixTime) {
-        const serverUnix = d.timeDateArray.currentUnixTime * 1000;
-        serverTimeOffset = serverUnix - Date.now();
+        serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
       }
-
-      // Weather
+      updateClockAndCountdown();
+      // Weather + Highlights + Holiday
       if (d.weatherData) {
         const w = d.weatherData;
         const icons = {"01":"☀️","02":"🌤️","03":"⛅","04":"☁️","09":"🌦️","10":"🌧️","11":"⛈️","13":"❄️","50":"🌫️"};
         const emoji = icons[w.icon?.substr(0,2)] || "🌤️";
         document.getElementById("weatherDisplay").textContent = `${emoji} ${w.temp}°F — ${w.description}`;
-
         document.getElementById("sunriseTime").textContent = w.sunrise;
         document.getElementById("sunsetTime").textContent = w.sunset;
         document.getElementById("daylightTime").textContent = w.daytimeHours;
         document.getElementById("nightTime").textContent = w.nighttimeHours;
-
         if (Array.isArray(w.forecast)) {
           w.forecast.slice(0,3).forEach((day,i) => {
             const el = document.getElementById("forecastDay"+(i+1));
@@ -97,8 +92,6 @@ function loadLiveData() {
           });
         }
       }
-
-      // Holiday
       if (d.holidays) {
         const today = new Date(); today.setHours(0,0,0,0);
         let closest = Infinity, name = "";
@@ -111,16 +104,12 @@ function loadLiveData() {
         }
         if (name) document.getElementById("nextHoliday").textContent = `${name} — in ${closest} day${closest>1?"s":""}`;
       }
-
-      updateClockAndCountdown();
     })
     .catch(() => {});
 }
 
-// Update both clock and countdown using exact synced server time
 function updateClockAndCountdown() {
   if (!serverData) return;
-
   const serverNow = new Date(Date.now() + serverTimeOffset);
   const h = serverNow.getHours();
   const m = serverNow.getMinutes().toString().padStart(2, '0');
@@ -128,10 +117,8 @@ function updateClockAndCountdown() {
   const ampm = h >= 12 ? 'PM' : 'AM';
   document.getElementById("currentTime").textContent = `${(h % 12) || 12}:${m}:${s} ${ampm}`;
 
-  // Countdown using the same synced time
   if (serverData.intervalsArray) {
     let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
-
     const hh = Math.floor(sec / 3600).toString().padStart(2, '0');
     const mm = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
     const ss = (sec % 60).toString().padStart(2, '0');
@@ -165,26 +152,23 @@ function updateClockAndCountdown() {
       ? `${emoji} ${label} ${timeText}`
       : `${emoji} ${label}`;
 
-    // Visual warnings
     if (i.intervalName === "Worktime" && sec <= 600) {
       document.getElementById("intervalRemainingData").style.color = (sec <= 30) ? "red" : "goldenrod";
     } else {
       document.getElementById("intervalRemainingData").style.color = "#000";
     }
 
-    // Decrease for next second
     serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
   }
 }
 
-// Start everything
 loadLiveData();
-setInterval(loadLiveData, 15000);  // refresh from server
-setInterval(updateClockAndCountdown, 1000);  // synced clock + countdown every second
+setInterval(loadLiveData, 15000);
+setInterval(updateClockAndCountdown, 1000);
 updateClockAndCountdown();
 
 // ===================================================================
-// CARDS + ROTATION
+// CARDS + ROTATION + FIXED SCROLL
 // ===================================================================
 const cards = [
   {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard"><div class="scrollContainer"><table class="permitTable"><thead><tr><th>WO #</th><th>Customer</th><th>Jobsite</th><th>Jurisdiction</th><th>Fee</th><th>Status</th></tr></thead><tbody>
@@ -252,40 +236,34 @@ function populateCard(c){
   document.getElementById("bodyMain").innerHTML=`<div class="cardBody">${c.body}</div>`;
   document.getElementById("bodyFooter").innerHTML=c.footer;
 }
-function getLiveDateInfo() {
-  const n = new Date();
-  const f = n.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
-  const y = n.getFullYear();
-  const leap = (y%4===0 && (y%100!==0 || y%400===0)) ? 366 : 365;
-  const doy = Math.floor((n - new Date(y,0,0)) / 86400000);
-  return {formattedDate: f, dayOfYear: doy, daysRemaining: leap - doy};
+function getLiveDateInfo(){
+  const n=new Date();
+  const f=n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const y=n.getFullYear();
+  const leap=(y%4===0&&(y%100!==0||y%400===0))?366:365;
+  const doy=Math.floor((n-new Date(y,0,0))/86400000);
+  return{formattedDate:f,dayOfYear:doy,daysRemaining:leap-doy};
 }
-function updateHighlightsCard() {
-  const d = getLiveDateInfo();
-  document.getElementById("todaysDate").textContent = d.formattedDate;
-  document.getElementById("dayOfYear").textContent = d.dayOfYear;
-  document.getElementById("daysRemaining").textContent = d.daysRemaining;
-  const tip = document.getElementById("tipOfTheDay");
-  if (tip) tip.textContent = "💡 Tip of the Day: “Stay awesome!”";
+function updateHighlightsCard(){
+  const d=getLiveDateInfo();
+  document.getElementById("todaysDate").textContent=d.formattedDate;
+  document.getElementById("dayOfYear").textContent=d.dayOfYear;
+  document.getElementById("daysRemaining").textContent=d.daysRemaining;
 }
-function autoScrollCardBody() {
-  const c = document.querySelector(".cardBody");
-  if (!c) return;
-  c.scrollTop = 0;
-  const dist = c.scrollHeight - c.clientHeight;
-  if (dist <= 0) return;
-  let pos = 0;
-  const timer = setInterval(() => {
-    pos += 1.5;
-    c.scrollTop = pos;
-    if (pos >= dist) clearInterval(timer);
-  }, 30);
+function autoScrollCardBody(){
+  const c=document.querySelector(".scrollContainer");
+  if(!c)return;
+  c.scrollTop=0;
+  const dist=c.scrollHeight-c.clientHeight;
+  if(dist<=0)return;
+  let pos=0;
+  const timer=setInterval(()=>{pos+=1.5;c.scrollTop=pos;if(pos>=dist)clearInterval(timer);},30);
 }
 function rotateCards(){
   const c=cards[cardIndex];
   populateCard(c);
-  if(cardIndex===0) setTimeout(()=>{document.querySelector(".cardBody").scrollTop=0;},200);
-  if(cardIndex===1) setTimeout(updateHighlightsCard,50);
+  if(cardIndex===0)setTimeout(autoScrollCardBody,500);
+  if(cardIndex===1)setTimeout(updateHighlightsCard,50);
   cardIndex=(cardIndex+1)%cards.length;
   setTimeout(rotateCards,c.duration);
 }
