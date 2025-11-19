@@ -72,8 +72,8 @@ function loadLiveData() {
     .then(d => {
       serverData = d;
 
-      if (d.timeDateArray?.currentLocalTimeShort) {
-        document.getElementById("currentTime").textContent = d.timeDateArray.currentLocalTimeShort;
+      if (d.timeDateArray?.currentLocalTime) {
+        document.getElementById("currentTime").textContent = d.timeDateArray.currentLocalTime;
       }
 
       if (d.weatherData) {
