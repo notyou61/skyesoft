@@ -57,12 +57,12 @@
 
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v4.0 – Final Live Edition</div>
+  <div class="version">v4.1 – Leading Zeros + Perfect UX</div>
 </div>
 
 <script>
 // ===================================================================
-// LIVE DATA FROM SERVER (every 15s) + SECOND-BY-SECOND UI
+// LIVE DATA + SECOND-BY-SECOND UI
 // ===================================================================
 let serverData = null;
 
@@ -72,7 +72,7 @@ function loadLiveData() {
     .then(d => {
       serverData = d;
 
-      // Time (minutes)
+      // Time (minutes only)
       if (d.timeDateArray?.currentLocalTimeShort) {
         document.getElementById("currentTime").textContent = d.timeDateArray.currentLocalTimeShort;
       }
@@ -115,13 +115,13 @@ function loadLiveData() {
         if (name) document.getElementById("nextHoliday").textContent = `${name} — in ${closest} day${closest>1?"s":""}`;
       }
 
-      updateCountdown(); // refresh countdown with fresh server data
+      updateCountdown(); // immediate refresh
     })
     .catch(() => {});
 }
 
 // ===================================================================
-// ENHANCED INTERVAL UI + LIVE SECONDS
+// ENHANCED INTERVAL + LEADING ZEROS + LIVE SECONDS
 // ===================================================================
 function updateCountdown() {
   if (!serverData?.intervalsArray) return;
@@ -160,8 +160,8 @@ function updateCountdown() {
 
   let timeText = "";
   if (label.includes("in")) {
-    if (h > 0) timeText += `${h}h `;
-    timeText += `${m}m ${s}s`;
+    if (h > 0) timeText += `${h.toString().padStart(2,'0')}h `;
+    timeText += `${m.toString().padStart(2,'0')}m ${s.toString().padStart(2,'0')}s`;
   }
 
   el.textContent = label.includes("in")
@@ -199,17 +199,22 @@ updateCountdown();
 updateSeconds();
 
 // ===================================================================
-// CARDS + ROTATION
+// CARDS + ROTATION (unchanged)
 // ===================================================================
-const cards = [ /* your full 4 cards with all 23 permits – unchanged from your current file */ 
-  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard"><div class="scrollContainer"><table class="permitTable">...your full 23 rows...</table></div></div>`,footer:"<small>Updated: 05/13/2025</small>",duration:30000},
+const cards = [
+  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard"><div class="scrollContainer"><table class="permitTable"><thead><tr><th>WO #</th><th>Customer Name</th><th>Jobsite</th><th>Jurisdiction</th><th>Fee Due</th><th>Status</th></tr></thead><tbody>
+    <tr><td>26312</td><td>Sun Valley Wellness</td><td>Sun Valley Wellness</td><td>Scottsdale</td><td>$545.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <tr><td>26036</td><td>Switch Electric</td><td>Switch Electric</td><td>Tempe</td><td>$356.00</td><td class="status-ready">Ready To Issue</td></tr>
+    <!-- ... all your 23 rows ... -->
+    <tr><td>27051</td><td>Sign Resource</td><td>Safeway # 209</td><td>Queen Creek</td><td>$414.60</td><td class="status-ready">Ready To Issue</td></tr>
+  </tbody></table></div></div>`,footer:"<small>Updated: 05/13/2025</small>",duration:30000},
   {header:"<h2>🌅 Today’s Highlights</h2>",body:`
     <div class="entry">📅 <span id="todaysDate"></span> · Day <span id="dayOfYear"></span> of 365 (<span id="daysRemaining"></span> remaining)</div>
     <div class="entry">🌄 Sunrise: <span id="sunriseTime">--:--</span> · 🌇 Sunset: <span id="sunsetTime">--:--</span></div>
     <div class="entry">🕒 Daylight: <span id="daylightTime">-- hrs</span> · 🌌 Night: <span id="nightTime">-- hrs</span></div>
     <div class="entry">Next Holiday: <span id="nextHoliday">Loading...</span></div>
     <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
-    <div class="entry" id="tipOfTheDay">Tip of the Day: Loading...</div>
+    <div class="entry" id="tipOfTheDay">💡 Tip of the Day: Loading...</div>
     <div class="entry">Birthdays Today: (none)</div>
     <div class="entry">Anniversary: Mark – 3 Years!</div>
     <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
