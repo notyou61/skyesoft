@@ -44,7 +44,7 @@
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:0.9em;white-space:nowrap">
     <div>Weather: <span id="weatherDisplay">Loading...</span></div>
-    <div>Time: <span id="currentTime">--:--</span></div>
+    <div>Time: <div>Time: <span id="currentTime">--:--</span><span id="secondsDisplay" style="font-weight:normal">:--</span></div>
     <div>Interval: <span id="intervalRemainingData">Loading...</span></div>
   </div>
 </div>
@@ -227,7 +227,26 @@ function rotateCards() {
   setTimeout(rotateCards, card.duration);
 }
 
-window.addEventListener("DOMContentLoaded", rotateCards);
+// LIVE SECONDS WITH BLINKING COLON
+function updateSeconds() {
+  const now = new Date();
+  const secs = now.getSeconds().toString().padStart(2, '0');
+  const secondsEl = document.getElementById("secondsDisplay");
+  if (secondsEl) {
+    secondsEl.textContent = `:${secs}`;
+    secondsEl.style.opacity = (secs % 2 === 0) ? "1" : "0.3";  // subtle blink
+  }
+}
+
+// Start everything
+window.addEventListener("DOMContentLoaded", () => {
+  rotateCards();
+  updateSeconds();          // immediate seconds on load
+  setInterval(updateSeconds, 1000);  // every second
+});
+
+setInterval(updateSeconds, 1000);
+updateSeconds();  // immediate
 </script>
 </body>
 </html>
