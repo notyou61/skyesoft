@@ -1,0 +1,173 @@
+[33mcommit 1b33b0ba16cd9ae48971304a1e22a19b5fe59e05[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Steve Skye <steve.skye@skyelighting.com>
+Date:   Wed Jul 16 06:53:56 2025 -0700
+
+    � Home push – final lock for v2025.06.30-final
+
+[1mdiff --git a/api/getDynamicData.php b/api/getDynamicData.php[m
+[1mindex 9b33724..0c2aa7e 100644[m
+[1m--- a/api/getDynamicData.php[m
+[1m+++ b/api/getDynamicData.php[m
+[36m@@ -1,15 +1,29 @@[m
+ <?php[m
+ // 📁 File: api/getDynamicData.php[m
+ [m
+[31m-#region Headers and Timezone[m
+[32m+[m[32m#region 🌱 Load .env Variables (PHP 5.6 Compatible)[m
+[32m+[m[32m$envPath = __DIR__ . '/../../.env';[m
+[32m+[m[32mif (file_exists($envPath)) {[m
+[32m+[m[32m    $envVars = parse_ini_file($envPath, false, INI_SCANNER_RAW);[m
+[32m+[m[32m    if ($envVars !== false) {[m
+[32m+[m[32m        foreach ($envVars as $key => $value) {[m
+[32m+[m[32m            putenv("$key=$value");[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[32m+[m[32m#endregion[m
+[32m+[m
+[32m+[m[32m#region Headers and Timezone 🌐[m
+ header("Access-Control-Allow-Origin: *");[m
+ header("Access-Control-Allow-Headers: Content-Type");[m
+ header("Content-Type: application/json");[m
+[31m-[m
+ date_default_timezone_set("America/Phoenix");[m
+[32m+[m
+[32m+[m[32m// ✅ Declare current time reference[m
+[32m+[m[32m$now = time();[m
+ #endregion[m
+ [m
+[31m-#region Paths and Constants[m
+[32m+[m[32m#region 📁 Paths and Constants[m
+ $holidaysPath = "/home/notyou64/public_html/data/federal_holidays_dynamic.json";[m
+ $dataPath = "/home/notyou64/public_html/data/skyesoft-data.json";[m
+ $versionPath = "/home/notyou64/public_html/data/version.json";[m
+[36m@@ -21,7 +35,7 @@[m [mconst WORKDAY_START = '07:30';[m
+ const WORKDAY_END = '15:30';[m
+ #endregion[m
+ [m
+[31m-// #region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)[m
+[32m+[m[32m#region 🔄 Enhanced Time Breakdown (PHP 5.6 compatible)[m
+ $yearTotalDays = (date("L", $now) ? 366 : 365);[m
+ $yearDayNumber = intval(date("z", $now)) + 1;[m
+ $yearDaysRemaining = $yearTotalDays - $yearDayNumber;[m
+[36m@@ -35,9 +49,9 @@[m [m$dt = new DateTime("now", new DateTimeZone($timeZone));[m
+ $utcOffset = intval($dt->format('Z')) / 3600;[m
+ $currentDayStartUnix = strtotime("today", $now);[m
+ $currentDayEndUnix = strtotime("tomorrow", $now) - 1;[m
+[31m-// #endregion[m
+[32m+[m[32m#endregion[m
+ [m
+[31m-#region Utility Functions[m
+[32m+[m[32m#region 🔧 Utility Functions[m
+ function timeStringToSeconds($timeStr) {[m
+     list($h, $m) = explode(":", $timeStr);[m
+     return $h * 3600 + $m * 60;[m
+[36m@@ -64,7 +78,7 @@[m [mfunction findNextWorkdayStart($startDate, $holidays) {[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Load Data and Holidays[m
+[32m+[m[32m#region 📅 Load Data and Holidays[m
+ $holidays = [];[m
+ if (file_exists($holidaysPath)) {[m
+     $holidaysData = json_decode(file_get_contents($holidaysPath), true);[m
+[36m@@ -72,7 +86,7 @@[m [mif (file_exists($holidaysPath)) {[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Time Calculations[m
+[32m+[m[32m#region ⏳ Time Calculations[m
+ $now = time();[m
+ $currentDate = date("Y-m-d", $now);[m
+ $currentTime = date("h:i:s A", $now);[m
+[36m@@ -98,17 +112,50 @@[m [mif ($intervalLabel === "1") {[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Weather[m
+[31m-$weatherData = ["temp" => null, "icon" => "❓", "description" => "Loading...", "lastUpdatedUnix" => null];[m
+[31m-if (file_exists($weatherPath)) {[m
+[31m-    $weatherCache = json_decode(file_get_contents($weatherPath), true);[m
+[31m-    if ($weatherCache) {[m
+[31m-        $weatherData = $weatherCache;[m
+[32m+[m[32m#region ☁️ Fetch Weather Data (PHP 5.6 Compatible)[m
+[32m+[m[32m// 🔐 Uses OpenWeatherMap API with hardcoded location "Phoenix,US"[m
+[32m+[m[32m$weatherApiKey = getenv("WEATHER_API_KEY");[m
+[32m+[m[32m$weatherLocation = "Phoenix,US";  // 👈 Hardcoded location[m
+[32m+[m[32m$weatherData = array([m
+[32m+[m[32m    "temp" => null,[m
+[32m+[m[32m    "icon" => "❓",[m
+[32m+[m[32m    "description" => "Loading...",[m
+[32m+[m[32m    "lastUpdatedUnix" => null[m
+[32m+[m[32m);[m
+[32m+[m[32m// 🔍 DEBUG: Test if API key is being picked up[m
+[32m+[m[32m$testWeatherKey = getenv("WEATHER_API_KEY");[m
+[32m+[m[32mif (!$testWeatherKey) {[m
+[32m+[m[32m    echo json_encode(["error" => "❌ WEATHER_API_KEY not found in environment."]);[m
+[32m+[m[32m    exit;[m
+[32m+[m[32m} else {[m
+[32m+[m[32m    echo json_encode(["success" => "✅ WEATHER_API_KEY loaded", "value" => $testWeatherKey]);[m
+[32m+[m[32m    exit;[m
+[32m+[m[32m}[m
+[32m+[m[32m// Attempt to fetch weather data[m
+[32m+[m[32mif ($weatherApiKey) {[m
+[32m+[m[32m    $weatherUrl = "https://api.openweathermap.org/data/2.5/weather?q=" . urlencode($weatherLocation) . "&appid={$weatherApiKey}&units=imperial";[m
+[32m+[m[32m    $weatherJson = @file_get_contents($weatherUrl);[m
+[32m+[m[32m    if ($weatherJson !== false) {[m
+[32m+[m[32m        $weather = json_decode($weatherJson, true);[m
+[32m+[m[32m        if (isset($weather['main']['temp']) && isset($weather['weather'][0]['description'])) {[m
+[32m+[m[32m            $weatherData = array([m
+[32m+[m[32m                "temp" => $weather['main']['temp'],[m
+[32m+[m[32m                "icon" => $weather['weather'][0]['icon'],[m
+[32m+[m[32m                "description" => $weather['weather'][0]['description'],[m
+[32m+[m[32m                "lastUpdatedUnix" => time()[m
+[32m+[m[32m            );[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            $weatherData['description'] = "Incomplete data";[m
+[32m+[m[32m        }[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m        $weatherData['description'] = "API call failed";[m
+     }[m
+[32m+[m[32m} else {[m
+[32m+[m[32m    $weatherData['description'] = "Missing API key";[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Record Counts[m
+[32m+[m[32m#region 📊 Record Counts[m
+ $recordCounts = ["actions"=>0,"entities"=>0,"locations"=>0,"contacts"=>0,"orders"=>0,"permits"=>0,"notes"=>0,"tasks"=>0];[m
+ if (file_exists($dataPath)) {[m
+     $data = json_decode(file_get_contents($dataPath), true);[m
+[36m@@ -118,7 +165,7 @@[m [mif (file_exists($dataPath)) {[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Version Metadata[m
+[32m+[m[32m#region 🛰️ Version Metadata[m
+ $version = [[m
+     "cronCount" => 0,[m
+     "aiQueryCount" => 0,[m
+[36m@@ -134,7 +181,7 @@[m [mif (file_exists($versionPath)) {[m
+ }[m
+ #endregion[m
+ [m
+[31m-#region Response[m
+[32m+[m[32m#region 📤 Response[m
+ $response = [[m
+     "timeDateArray" => array([m
+         "currentUnixTime" => $currentUnixTime,[m
+[36m@@ -204,6 +251,6 @@[m [m$response = [[m
+ ];[m
+ #endregion[m
+ [m
+[31m-#region Output[m
+[32m+[m[32m#region 🟢 Output[m
+ echo json_encode($response);[m
+ #endregion[m
+[1mdiff --git a/skyesoft b/skyesoft[m
+[1mnew file mode 160000[m
+[1mindex 0000000..1009486[m
+[1m--- /dev/null[m
+[1m+++ b/skyesoft[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m[32mSubproject commit 1009486620fe013a779653d14cec0f319c47dd46[m

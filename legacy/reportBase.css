@@ -1,0 +1,95 @@
+/* reportBase.css – Skyesoft PDF Report Styling v1.0 */
+/* ✅ TCPDF-safe colors, ✅ No background images, ✅ Professional print layout */
+
+body {
+  font-family: Arial, sans-serif;
+  color: #111;
+  font-size: 10.2pt;
+  line-height: 1.45;
+  margin: 12pt;
+}
+
+h1 {
+  font-size: 16pt;
+  font-weight: bold;
+  color: #003366;
+  margin-bottom: 8pt;
+}
+
+/* Section titles: let inline block draw the line */
+h2 {
+  font-size: 12.5pt;
+  font-weight: bold;
+  color: #003366;
+  margin: 0;             /* no extra top/bottom here */
+  padding: 0;
+  line-height: 1.05;
+  border-bottom: none;   /* critical: do NOT draw a second line */
+}
+
+hr {
+  border: none;
+  border-top: 0.75pt solid #666;
+  margin: 6pt 0;
+}
+
+p {
+  margin: 4pt 0 9pt 0;
+}
+
+ul {
+  margin: 4pt 0 9pt 14pt;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 6pt 0 10pt 0;
+  font-size: 9.8pt;
+}
+
+th {
+  background-color: #f2f2f2;
+  border: 0.6pt solid #777;
+  padding: 4pt;
+  text-align: left;
+  font-weight: bold;
+}
+
+td {
+  border: 0.6pt solid #777;
+  padding: 4pt;
+}
+
+.tis-header {
+    display: flex;
+    align-items: center;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+}
+
+.tis-icon-wrap {
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    line-height: 1;
+}
+
+.tis-icon {
+    height: 16px;
+    width: auto;
+    margin-top: -2px; /* ✅ raised alignment */
+}
+
+.tis-emoji {
+    font-size: 16px;
+    margin-top: -2px; /* ✅ aligns visually with header text */
+}
+
+h2 {
+    font-size: 12.5pt;
+    font-weight: bold;
+    margin: 0;
+    padding: 0;
+    border-bottom: 0.5pt solid #999;
+}

@@ -1,0 +1,235 @@
+// 📁 File: assets/js/workdayTicker.js
+
+let lastUiEventId = null; // At top-level for dedupe
+let skyeAlertModalTimeout = null; // For modal auto-hide
+
+// 🟢 Dynamically inject Skye Alert Modal if not present
+if (!document.getElementById('skyeAlertModal')) {
+  const modal = document.createElement('div');
+  modal.id = 'skyeAlertModal';
+  modal.style.display = 'none';
+  modal.innerHTML = `
+    <div id="skyeAlertModalContent">
+      <div id="skyeAlertModalHeader"></div>
+      <div id="skyeAlertModalBody"></div>
+      <div id="skyeAlertModalFooter"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// 🟢 Modal Functions: Show & Hide
+function showSkyeAlertModal(event) {
+  // Set header (icon + title)
+  const header = document.getElementById("skyeAlertModalHeader");
+  if (header) header.innerHTML = `${event.icon ? event.icon : ""} ${event.title ? event.title : ""}`;
+
+  // Set body (main message)
+  const body = document.getElementById("skyeAlertModalBody");
+  if (body) body.textContent = event.message || "";
+
+  // Set footer (optional: user/time/source)
+  const footer = document.getElementById("skyeAlertModalFooter");
+  if (footer) {
+    const user = event.user ? `User: ${event.user}` : "";
+    const time = event.time
+      ? `Time: ${new Date(event.time * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })}`
+      : "";
+    const source = event.source ? `Source: ${event.source}` : "";
+    footer.textContent = [user, time, source].filter(Boolean).join(" • ");
+  }
+
+  // Set modal background color if present
+  const modalContent = document.getElementById("skyeAlertModalContent");
+  if (event.color && modalContent) modalContent.style.borderTop = `5px solid ${event.color}`;
+  else if (modalContent) modalContent.style.borderTop = "";
+
+  // Show modal
+  const modal = document.getElementById("skyeAlertModal");
+  if (modal) {
+    modal.style.display = "flex";
+    modal.style.opacity = "1";
+  }
+
+  // Auto-hide after durationSec (default: 8s)
+  clearTimeout(skyeAlertModalTimeout);
+  const duration = (event.durationSec && !isNaN(event.durationSec))
+    ? parseInt(event.durationSec) * 1000
+    : 8000;
+  skyeAlertModalTimeout = setTimeout(hideSkyeAlertModal, duration);
+}
+
+function hideSkyeAlertModal() {
+  const modal = document.getElementById("skyeAlertModal");
+  if (!modal) return;
+  modal.style.opacity = "0";
+  setTimeout(() => { modal.style.display = "none"; }, 400); // matches CSS transition
+}
+
+//#region 🧮 Format Duration (DD HH MM SS Padded – No leading zero on days)
+function formatDurationPadded(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const dayPart = d > 0 ? `${d}d ` : "";
+  const hourPart = `${String(h).padStart(2, '0')}h`;
+  const minutePart = `${String(m).padStart(2, '0')}m`;
+  const secondPart = `${String(s).padStart(2, '0')}s`;
+  return `${dayPart}${hourPart} ${minutePart} ${secondPart}`.trim();
+}
+//#endregion
+
+//#region 🌤️ Weather Emoji Helper
+function getWeatherEmoji(iconCode) {
+  if (!iconCode) return "❓";
+  if (iconCode.startsWith("01")) return "☀️";
+  if (iconCode.startsWith("02")) return "🌤️";
+  if (iconCode.startsWith("03")) return "⛅";
+  if (iconCode.startsWith("04")) return "☁️";
+  if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️";
+  if (iconCode.startsWith("11")) return "⛈️";
+  if (iconCode.startsWith("13")) return "❄️";
+  if (iconCode.startsWith("50")) return "🌫️";
+  return "❓";
+}
+//#endregion
+
+//#region 🔁 Poll Every Second for Dynamic Data
+setInterval(() => {
+  fetch("/skyesoft/api/getDynamicData.php")
+    .then(res => res.json())
+    .then(data => {
+        
+      // #region 🧪 Debug Log
+      //console.log('uiEvent in polling:', data.uiEvent);
+      // User Interface Event Conditional — CRUD-aware with color mapping
+      if (data && data.uiEvent && data.uiEvent.actionTypeID) {
+        let eventId = data.uiEvent.id ?? data.uiEvent.time;
+
+        if (eventId && eventId !== lastUiEventId) {
+          console.log('uiEvent in polling:', eventId);
+          lastUiEventId = eventId;
+
+          // 🗺️ CRUD → Color mapping
+          const crudColorMap = {
+            Create: "#28a745", // Green
+            Read:   "#17a2b8", // Teal
+            Update: "#ffc107", // Yellow/Amber
+            Delete: "#dc3545"  // Red
+          };
+
+          // Determine color from actionCRUDType or fallback
+          const actionColor = crudColorMap[data.uiEvent.actionCRUDType] || "#6c757d"; // Default gray
+
+          // Base modal payload
+          const modalPayload = {
+            icon: data.uiEvent.icon || "",
+            title: data.uiEvent.actionName || "System Event",
+            message: data.uiEvent.actionDescription || "",
+            color: actionColor,
+            durationSec: data.uiEvent.durationSec || 5,
+            user: data.uiEvent.user,
+            time: data.uiEvent.time,
+            source: data.uiEvent.source || "System"
+          };
+
+          // Optional overrides for known actionTypeIDs
+          switch (data.uiEvent.actionTypeID) {
+            case 1: // Login
+              modalPayload.icon = "✅";
+              modalPayload.title = "Login Successful";
+              modalPayload.message = data.uiEvent.actionDescription || "User logged into the system.";
+              break;
+
+            case 2: // Logout
+              modalPayload.icon = "👋";
+              modalPayload.title = "Logged Out";
+              modalPayload.message = data.uiEvent.actionDescription || "User logged out of the system.";
+              break;
+
+            // No default case needed — color & text already handled by mapping
+          }
+
+          showSkyeAlertModal(modalPayload);
+        }
+      }
+      // #endregion
+
+      // #region ⏰ Update Time Display
+      if (data?.timeDateArray?.currentLocalTime) {
+        const timeEl = document.getElementById("currentTime");
+        if (timeEl) timeEl.textContent = data.timeDateArray.currentLocalTime;
+      }
+      // #endregion
+
+      // #region ⏳ Interval Remaining (TIS v6 – Final Codex Block)
+      (function updateIntervalRemaining() {
+        const interval = data?.intervalsArray;
+        const intervalEl = document.getElementById("intervalRemainingData");
+        if (!interval || !intervalEl) return;
+        const seconds = Number(interval.secondsRemainingToInterval);
+        const label = Number(interval.intervalCode);
+        const dayType = interval.dayType;
+        if (isNaN(seconds) || isNaN(label) || !dayType) {
+          intervalEl.textContent = "⏳ Loading…";
+          return;
+        }
+        const formatted = formatDurationPadded(seconds);
+        let message = "";
+        // --- Day Type Overrides (priority 1)
+        if (dayType === "Company Holiday") {
+          message = `🏢 Office closed — next worktime begins in ${formatted}`;
+        }
+        else if (dayType === "Weekend") {
+          message = `🌴 Weekend — next worktime begins in ${formatted}`;
+        }
+        else {
+          // --- Workday logic (priority 2)
+          switch (label) {
+            case 0:
+              message = `🔜 Worktime begins in ${formatted}`;
+              break;
+            case 1:
+              message = `🔚 Worktime ends in ${formatted}`;
+              break;
+            case 2:
+            default:
+              message = `📆 Next worktime begins in ${formatted}`;
+              break;
+          }
+        }
+        intervalEl.textContent = message;
+      })();
+      // #endregion
+
+      // #region 🏷️ Version Tag
+      if (data?.siteMeta?.siteVersion) {
+        const versionEl = document.querySelector(".version");
+        if (versionEl) {
+          versionEl.textContent = `🔖 Skyesoft • Version: ${data.siteMeta.siteVersion}`;
+        }
+      }
+      // #endregion
+
+      // #region 🌦️ Update Weather Display
+      if (
+        typeof data?.weatherData?.temp === "number" &&
+        data.weatherData.description
+      ) {
+        const tempEl = document.getElementById("weatherTemp");
+        const descEl = document.getElementById("weatherDesc");
+        const iconEl = document.getElementById("weatherIcon");
+        if (tempEl) tempEl.textContent = `${Math.round(data.weatherData.temp)}°F`;
+        if (descEl) descEl.textContent = data.weatherData.description;
+        if (iconEl) iconEl.textContent = getWeatherEmoji(data.weatherData.icon);
+      }
+      // #endregion
+    })
+    // #region ❌ Handle Fetch Errors
+    .catch(err => {
+      console.error("❌ Polling Error:", err);
+    });
+  // #endregion
+}, 1000);
+//#endregion
