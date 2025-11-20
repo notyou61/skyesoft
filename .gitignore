@@ -70,7 +70,8 @@ logs/*
 !logs/.gitkeep
 
 ##############################
-# Legacy archive (track folder, ignore contents)
+# Legacy archive (tracked)
 ##############################
-legacy/*
-!legacy/.gitkeep
+# Track the entire legacy folder
+!legacy/
+!legacy/**
