@@ -1,9 +1,9 @@
 <?php
 // ======================================================================
-//  FILE: repositoryAuditor.php
-//  PURPOSE: Full Codex Repository Auditor (Phase 1 Governance)
-//  VERSION: v1.2.0
-//  AUTHOR: Parliamentarian CPAP-01
+//  FILE: repositoryAuditor.php (PHP 5.6 Compatible)
+//  PURPOSE: Skyesoft Codex v2.0 Repository Auditor
+//  VERSION: v2.0.0-PHP56
+//  AUTHOR: CPAP-01 (Adjusted for PHP 5.6)
 // ======================================================================
 
 error_reporting(E_ALL);
@@ -12,188 +12,190 @@ ini_set('display_errors', 1);
 header('Content-Type: application/json');
 
 // ---------------------------------------------------------------
-//  STEP 1 – Resolve Root Paths
+// STEP 1 – Root Paths
 // ---------------------------------------------------------------
 $root = realpath(dirname(__DIR__));
-$codexJson = $root . '/assets/data/codex.json';
+$codexPath = $root . '/codex/codex.json';
 
-if (!file_exists($codexJson)) {
-    echo json_encode(["error" => "Codex not found. Expected: /assets/data/codex.json"]);
+if (!file_exists($codexPath)) {
+    echo json_encode(array("error" => "Codex not found at codex/codex.json"));
     exit;
 }
 
-$codex = json_decode(file_get_contents($codexJson), true);
+$codex = json_decode(file_get_contents($codexPath), true);
+
+if (!isset($codex["standards"]["items"]["repositoryStandard"])) {
+    echo json_encode(array("error" => "repositoryStandard missing from Codex"));
+    exit;
+}
+
+$repoStandard = $codex["standards"]["items"]["repositoryStandard"];
+$schema = isset($repoStandard["filesystemSchema"]) ? $repoStandard["filesystemSchema"] : null;
+
+if (!$schema) {
+    echo json_encode(array("error" => "filesystemSchema missing from Codex"));
+    exit;
+}
 
 // ---------------------------------------------------------------
-//  STEP 2 – Define Repository Standards
+// STEP 2 – Extract Codex v2.0 Rules
 // ---------------------------------------------------------------
+$allowedRootsRaw = $schema["root"]["allowedRoots"];
+$allowedRoots = array();
 
-// Canonical Codex root directories
-$allowedRoots = [
-    'api',
-    'assets',
-    'bulletinBoards',
-    'legacy',
-    'libs',
-    'logs',
-    'modules',
-    'reports',
-    'scripts',
-    'secure',
-    'codex'
-];
+foreach ($allowedRootsRaw as $r) {
+    $allowedRoots[] = rtrim($r, '/');
+}
 
-// Roots that should be ignored completely (dependency / build)
-$ignoreRoots = [
-    'node_modules',
-    'vendor'
-];
-
-// Allowed single files in repository root
-$allowedRootFiles = [
-    '.gitignore',
-    'README.md',
-    'composer.lock',
-    'config.php',
-    'index.html',
-    'package.json',
-    'package-lock.json'
-];
-
-// Codex-required subdirectories
-$requiredSubdirs = [
+// required directories actually used by Skyesoft
+$requiredSubdirs = array(
     'assets/css',
     'assets/js',
     'assets/data',
     'assets/images',
-    'documents/templates',
-    'modules/tis',
-    'modules/skyebot',
-    'modules/reports',
-    'modules/automation'
-];
-
-// Forbidden extensions
-$forbiddenExtensions = ['.bak', '.tmp', '.old', '.orig'];
-
-// Legacy / obsolete name patterns
-$obsoletePatterns = [
-    'codexTemporalStress',
-    'validateTemporal',
-    'codexFullTest',
-    'generateVersion',
-    'generate-changelog',
-    'post-commit',
-    'test_',
-    'experimental'
-];
-
-// ---------------------------------------------------------------
-//  STEP 3 – Scan Repository
-// ---------------------------------------------------------------
-$iterator = new RecursiveIteratorIterator(
-    new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+    'modules/reports'
 );
 
-$obsolete      = [];
-$misplaced     = [];
-$forbidden     = [];
-$missingDirs   = [];
-$unexpectedRootFiles = [];
+$allowedExtensions   = isset($schema["rules"]["allowedExtensions"]) ? $schema["rules"]["allowedExtensions"] : array();
+$prohibitedExtensions = isset($schema["rules"]["prohibitedExtensions"]) ? $schema["rules"]["prohibitedExtensions"] : array();
+$allowedRootFiles = isset($schema["root"]["allowedRootFiles"]) ? $schema["root"]["allowedRootFiles"] : array();
+
+// max directory depth
+$maxDepth = isset($schema["rules"]["maxDepth"]) ? $schema["rules"]["maxDepth"] : 3;
 
 // ---------------------------------------------------------------
-//  STEP 4 – Check Required Directories
+// STEP 3 – Prepare Scan
+// ---------------------------------------------------------------
+$iterator = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+    RecursiveIteratorIterator::SELF_FIRST
+);
+
+$unexpectedRootFiles = array();
+$misplacedFiles = array();
+$forbiddenFiles = array();
+$missingDirs = array();
+$depthViolations = array();
+$extensionViolations = array();
+
+// ---------------------------------------------------------------
+// STEP 4 – Required Directory Checks
 // ---------------------------------------------------------------
 foreach ($requiredSubdirs as $dir) {
-    if (!is_dir($root . '/' . $dir)) {
+    if (!is_dir($root . "/" . $dir)) {
         $missingDirs[] = $dir;
     }
 }
 
 // ---------------------------------------------------------------
-//  STEP 5 – Analyze Every File
+// STEP 5 – Scan Files
 // ---------------------------------------------------------------
 foreach ($iterator as $file) {
 
     $full = $file->getPathname();
     $rel  = str_replace($root . '/', '', $full);
 
-    // Skip .git internals immediately
-    if (strpos($rel, '.git') === 0) continue;
+    // skip git internals
+    if (strpos($rel, '.git/') === 0) continue;
 
-    $parts = explode('/', $rel);
-    $top = $parts[0];
+    // skip vendor and node_modules
+    if (strpos($rel, 'node_modules/') === 0) continue;
+    if (strpos($rel, 'vendor/') === 0) continue;
 
-    // Skip ignored roots entirely
-    if (in_array($top, $ignoreRoots)) {
-        continue;
+    // ---------------------
+    // Depth violation check
+    // ---------------------
+    if (substr_count($rel, '/') > $maxDepth) {
+        $depthViolations[] = $rel;
     }
 
-    // -----------------------
-    // Root-level file check
-    // -----------------------
-    if (count($parts) == 1) {
+    // ---------------------
+    // Unexpected files in root
+    // ---------------------
+    if (strpos($rel, '/') === false) {
         if (!in_array($rel, $allowedRootFiles)) {
             $unexpectedRootFiles[] = $rel;
         }
         continue;
     }
 
-    // -----------------------
-    // Check allowed root folders
-    // -----------------------
-    if (!in_array($top, $allowedRoots)) {
-        $misplaced[] = $rel;
-        continue;
+    // ---------------------
+    // Misplaced root folder
+    // ---------------------
+    $rootFolder = explode('/', $rel);
+    $rootFolder = $rootFolder[0];
+
+    if (!in_array($rootFolder, $allowedRoots)) {
+        $misplacedFiles[] = $rel;
     }
 
-    // -----------------------
+    // ---------------------
     // Forbidden extensions
-    // -----------------------
-    foreach ($forbiddenExtensions as $ext) {
-        if (str_ends_with($rel, $ext)) {
-            $forbidden[] = $rel;
+    // ---------------------
+    foreach ($prohibitedExtensions as $ext) {
+        $len = strlen($ext);
+        if (substr($rel, -$len) === $ext) {
+            $forbiddenFiles[] = $rel;
         }
     }
 
-    // -----------------------
-    // Obsolete pattern detection
-    // -----------------------
-    foreach ($obsoletePatterns as $pattern) {
-        if (stripos($rel, $pattern) !== false) {
-            $obsolete[] = $rel;
+    // ---------------------
+    // Allowed extension rules
+    // ---------------------
+    $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+
+    if (isset($allowedExtensions[$ext])) {
+
+        $valid = false;
+
+        foreach ($allowedExtensions[$ext] as $dirPrefix) {
+            // must be inside correct folder
+            if (strpos($rel, $dirPrefix . '/') === 0) {
+                $valid = true;
+                break;
+            }
+        }
+
+        if (!$valid) {
+            $extensionViolations[] = $rel;
         }
     }
 }
 
 // ---------------------------------------------------------------
-//  STEP 6 – Build Audit JSON
+// STEP 6 – Generate Audit File
 // ---------------------------------------------------------------
-$audit = [
+$audit = array(
     "date" => date('c'),
-    "obsoleteFiles"  => array_values(array_unique($obsolete)),
-    "misplacedFiles" => array_values(array_unique($misplaced)),
-    "forbiddenFiles" => array_values(array_unique($forbidden)),
     "unexpectedRootFiles" => array_values(array_unique($unexpectedRootFiles)),
-    "missingRequiredDirectories" => array_values(array_unique($missingDirs)),
-    "summary" => [
-        "obsoleteCount"  => count($obsolete),
-        "misplacedCount" => count($misplaced),
-        "forbiddenCount" => count($forbidden),
-        "unexpectedRootFileCount" => count($unexpectedRootFiles),
-        "missingDirCount" => count($missingDirs)
-    ]
-];
+    "misplacedFiles" => array_values(array_unique($misplacedFiles)),
+    "forbiddenFiles" => array_values(array_unique($forbiddenFiles)),
+    "missingRequiredDirs" => array_values(array_unique($missingDirs)),
+    "depthViolations" => array_values(array_unique($depthViolations)),
+    "extensionViolations" => array_values(array_unique($extensionViolations)),
+    "summary" => array(
+        "unexpectedRootCount" => count($unexpectedRootFiles),
+        "misplacedCount" => count($misplacedFiles),
+        "forbiddenCount" => count($forbiddenFiles),
+        "missingDirCount" => count($missingDirs),
+        "depthViolations" => count($depthViolations),
+        "extensionViolations" => count($extensionViolations)
+    )
+);
 
+// ---------------------------------------------------------------
+// STEP 7 – Save JSON Audit
+// ---------------------------------------------------------------
 $savePath = $root . '/assets/data/repositoryAudit.json';
 file_put_contents($savePath, json_encode($audit, JSON_PRETTY_PRINT));
 
 // ---------------------------------------------------------------
-//  STEP 7 – Output
+// STEP 8 – Output Response
 // ---------------------------------------------------------------
-echo json_encode([
+echo json_encode(array(
     "status" => "success",
-    "message" => "Repository audit completed.",
+    "message" => "Repository audit completed under Codex v2.0 (PHP 5.6).",
     "output" => "assets/data/repositoryAudit.json",
-    "summary" => $audit['summary']
-]);
+    "summary" => $audit["summary"]
+));
+?>

@@ -171,46 +171,26 @@ updateClockAndCountdown();
 // CARDS + ROTATION + FIXED SCROLL
 // ===================================================================
 const cards = [
-  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard"><div class="scrollContainer"><table class="permitTable"><thead><tr><th>WO #</th><th>Customer</th><th>Jobsite</th><th>Jurisdiction</th><th>Fee</th><th>Status</th></tr></thead><tbody>
-    <tr><td>26312</td><td>Sun Valley Wellness</td><td>Sun Valley Wellness</td><td>Scottsdale</td><td>$545.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26036</td><td>Switch Electric</td><td>Switch Electric</td><td>Tempe</td><td>$356.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>25674</td><td>Printing Solutions</td><td>Ten Figures</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26335</td><td>U-Haul</td><td>U-Haul (Grand/Bell Rd)</td><td>Surprise</td><td>$154.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26513</td><td>Penchetta Pen & Knife</td><td>Penchetta Pen & Knife</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26216</td><td>Walton Signage</td><td>Bank Of America</td><td>Avondale</td><td>$470.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26630</td><td>Signtech</td><td>Williams Sonoma</td><td>Scottsdale</td><td>$620.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26585</td><td>NRS</td><td>NRS</td><td>Casa Grande</td><td>$254.77</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26606</td><td>Allen Industries, Inc</td><td>Verizon BeMobile</td><td>Goodyear</td><td>$388.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>24741</td><td>Arizona Partners</td><td>Arrowhead Marketplace</td><td>Glendale</td><td>$844.93</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26111</td><td>Identity Sign Builders</td><td>Ferguson</td><td>Scottsdale</td><td>$570.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26927</td><td>Omaha Neon Sign</td><td>Blue Sushi Sake Grill</td><td>Tempe</td><td>$368.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26694</td><td>Gudeng Inc</td><td>Gudeng Inc</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26836</td><td>Yaho</td><td>Yaho</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26877</td><td>Identity Sign Builders</td><td>Ferguson</td><td>Glendale</td><td>$400.22</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26337</td><td>U-Haul</td><td>U-Haul # 00000</td><td>Queen Creek</td><td>$664.60</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26545</td><td>Walton Signage</td><td>Bank Of America</td><td>Scottsdale</td><td>$900.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>25523</td><td>Printing Solutions</td><td>Roosevelt Lake Marina</td><td>Roosevelt Lake</td><td>$699.75</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27071</td><td>Pattison Sign Group</td><td>Stotz Equipment</td><td>Chandler</td><td>$76.68</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27031</td><td>Entera Branding</td><td>Mellow Mushroom #144</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27051</td><td>Sign Resource</td><td>Safeway #209</td><td>Queen Creek</td><td>$414.60</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>26889</td><td>Sign Resource</td><td>Bank Of America #AZW-297</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27137</td><td>Everbright</td><td>Habit Burger #53529</td><td>Laveen</td><td>$150.00</td><td class="status-review">Ready To Review</td></tr>
-    <tr><td>27141</td><td>Everbright</td><td>Habit Burger #53527</td><td>Phoenix</td><td>$450.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27142</td><td>Everbright</td><td>Habit Burger #53530</td><td>Phoenix</td><td>$375.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27140</td><td>Everbright</td><td>Habit Burger #53524</td><td>Phoenix</td><td>$450.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27139</td><td>Everbright</td><td>Habit Burger #53510</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27144</td><td>Everbright</td><td>Sherwin Williams #708000</td><td>Mesa</td><td>$101.23</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27135</td><td>Everbright</td><td>Habit Burger #53508</td><td>Tempe</td><td>$647.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27104</td><td>Holiday Inn Express</td><td>Holiday Inn Express</td><td>Tempe</td><td>$368.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27316</td><td>Everbright</td><td>Dunkin Avondale</td><td>Avondale</td><td>$826.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27199</td><td>First Rate Staffing</td><td>First Rate Staffing</td><td>Phoenix</td><td>$225.00</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27380</td><td>National Sign & Marketing</td><td>Chick Fil A</td><td>Glendale</td><td>$200.11</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27170</td><td>Everbright</td><td>Great Clips #1554</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
-    <tr><td>27169</td><td>Everbright</td><td>Great Clips #6336</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
-    <tr><td>27171</td><td>Everbright</td><td>Great Clips #1525</td><td>Phoenix</td><td>$225.00</td><td class="status-review">Ready To Review</td></tr>
-    <tr><td>27409</td><td>Vetra of Chandler</td><td>Vetra of Chandler</td><td>Chandler</td><td>$373.19</td><td class="status-ready">Ready To Issue</td></tr>
-    <tr><td>27154</td><td>Everbright</td><td>State Farm - Severiano Torres</td><td>Buckeye</td><td>$660.41</td><td class="status-ready">Ready To Issue</td></tr>
-  </tbody></table></div></div>`,footer:"<small>Updated: 2025-11-19</small>",duration:30000},
+  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard">
+        <div class="scrollContainer">
+          <table class="permitTable">
+            <thead>
+              <tr>
+                <th>WO #</th>
+                <th>Customer</th>
+                <th>Jobsite</th>
+                <th>Jurisdiction</th>
+                <th>Fee</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="permitTableBody">
+              <tr><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`
+,footer:"<small>Updated: 2025-11-19</small>",duration:30000},
   {header:"<h2>🌅 Today’s Highlights</h2>",body:`
     <div class="entry">📅 <span id="todaysDate"></span> · Day <span id="dayOfYear"></span> of 365 (<span id="daysRemaining"></span> remaining)</div>
     <div class="entry">🌄 Sunrise: <span id="sunriseTime">--:--</span> · 🌇 Sunset: <span id="sunsetTime">--:--</span></div>
@@ -274,11 +254,69 @@ function autoScrollCardBody() {
     if (pos >= dist) clearInterval(timer);
   }, 30);
 }
-//
+// Load permit data
+async function loadPermitData() {
+  try {
+    const res = await fetch("../assets/data/activePermits.json");
+    const json = await res.json();
+    const tbody = document.getElementById("permitTableBody");
+
+    if (!json.activePermits || !Array.isArray(json.activePermits)) {
+      tbody.innerHTML = `<tr><td colspan="6">Error: No permit data</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = json.activePermits.map(p => `
+      <tr>
+        <td>${p.wo}</td>
+        <td>${p.customer}</td>
+        <td>${p.jobsite}</td>
+        <td>${p.jurisdiction}</td>
+        <td>$${p.fee.toFixed(2)}</td>
+        <td class="${p.status.includes('Review') ? 'status-review' : 'status-ready'}">${p.status}</td>
+      </tr>
+    `).join("");
+
+  } catch (err) {
+    document.getElementById("permitTableBody").innerHTML =
+      `<tr><td colspan="6">Error loading permit data</td></tr>`;
+  }
+}
+// Load version info
+async function loadOfficeBoardVersion() {
+  try {
+    const res = await fetch("../api/getVersions.php");
+    const v = await res.json();
+
+    const mod = v.modules?.officeBoard;
+    if (!mod) return;
+
+    const versionEl = document.getElementById("officeBoardVersion");
+    const updatedEl = document.getElementById("officeBoardUpdated");
+
+    if (versionEl) versionEl.textContent = mod.version || "v?";
+    if (updatedEl) updatedEl.textContent = mod.lastModified || "Unknown";
+
+  } catch (err) {
+    const versionEl = document.getElementById("officeBoardVersion");
+    const updatedEl = document.getElementById("officeBoardUpdated");
+
+    if (versionEl) versionEl.textContent = "Error";
+    if (updatedEl) updatedEl.textContent = "Unavailable";
+  }
+}
+// Rotate Cards
 function rotateCards(){
   const c=cards[cardIndex];
   populateCard(c);
-  if(cardIndex===0)setTimeout(autoScrollCardBody,500);
+  // Card Index Conditional Actions
+  if (cardIndex === 0) {
+    setTimeout(loadPermitData, 50);
+    setTimeout(loadPermitUpdatedDate, 60);
+    setTimeout(loadOfficeBoardVersion, 80);
+    setTimeout(autoScrollCardBody, 500);
+  }
+  // Card Index Conditional Actions
   if(cardIndex===1)setTimeout(updateHighlightsCard,50);
   cardIndex=(cardIndex+1)%cards.length;
   setTimeout(rotateCards,c.duration);
