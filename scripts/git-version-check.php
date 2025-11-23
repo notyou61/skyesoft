@@ -1,20 +1,15 @@
 <?php
 // =====================================================================
 // Skyesoft Version Engine
-// git-version-check.php
-// PHP 5.6 compatible
-//
+// git-version-check.php (PHP 5.6 Compatible)
+// ---------------------------------------------------------------------
 // Purpose:
 //   • Reads version-map.json
 //   • Reads existing versions.json
-//   • Automatically increments versions according to mapping rules
-//   • Outputs updated structure back into versions.json
-//
-// Notes:
-//   • GoDaddy shared hosting cannot run 'git' or shell_exec.
-//     Therefore versioning is driven by mapping + timestamps only.
-//
-// =====================================================================
+//   • Automatically increments versions based on timestamps
+//   • Handles sourceFile as STRING or ARRAY safely
+//   • Outputs updated versions.json
+// ---------------------------------------------------------------------
 
 // ---------------------------------------------------------------
 // Helper: Load JSON safely
@@ -27,27 +22,20 @@ function loadJsonSafe($path) {
 }
 
 // ---------------------------------------------------------------
-// Paths
+// Helper: Normalize string OR array into array
 // ---------------------------------------------------------------
-$rootPath = realpath(dirname(__DIR__));
-$dataPath = $rootPath . '/assets/data';
-
-$mapPath   = $dataPath . '/version-map.json';
-$verPath   = $dataPath . '/versions.json';
-
-// Load files
-$map   = loadJsonSafe($mapPath);
-$vers  = loadJsonSafe($verPath);
-
-// ---------------------------------------------------------------
-// Safety Defaults
-// ---------------------------------------------------------------
-if (!isset($vers['modules']) || !is_array($vers['modules'])) {
-    $vers['modules'] = array();
+function normalizeFileList($input) {
+    if (is_string($input)) {
+        return array($input);
+    }
+    if (is_array($input)) {
+        return $input;
+    }
+    return array(); // fallback
 }
 
 // ---------------------------------------------------------------
-// Helper: Increment version (semantic versioning)
+// Helper: Increment semantic version
 // ---------------------------------------------------------------
 function bumpVersion($v) {
     if (!$v || !is_string($v)) return "1.0.0";
@@ -59,10 +47,28 @@ function bumpVersion($v) {
     $minor = intval($parts[1]);
     $patch = intval($parts[2]);
 
-    // Simple patch bump (Codex v1 rule — increment least disruptive unit)
+    // Codex rule: bump patch
     $patch++;
 
     return $major . "." . $minor . "." . $patch;
+}
+
+// ---------------------------------------------------------------
+// Paths
+// ---------------------------------------------------------------
+$rootPath = realpath(dirname(__DIR__));
+$dataPath = $rootPath . '/assets/data';
+
+$mapPath  = $dataPath . '/version-map.json';
+$verPath  = $dataPath . '/versions.json';
+
+// Load JSON
+$map  = loadJsonSafe($mapPath);
+$vers = loadJsonSafe($verPath);
+
+// Ensure module bucket exists
+if (!isset($vers['modules']) || !is_array($vers['modules'])) {
+    $vers['modules'] = array();
 }
 
 // ---------------------------------------------------------------
@@ -70,51 +76,64 @@ function bumpVersion($v) {
 // ---------------------------------------------------------------
 if (isset($map['modules']) && is_array($map['modules'])) {
 
-    foreach ($map['modules'] as $moduleName => $fileList) {
+    foreach ($map['modules'] as $moduleName => $fileDef) {
 
-        // Ensure module exists
+        // Normalize source file list (string OR array)
+        $fileList = normalizeFileList($fileDef);
+
+        // Ensure module entry exists
         if (!isset($vers['modules'][$moduleName])) {
             $vers['modules'][$moduleName] = array(
-                "version" => "1.0.0",
+                "version"     => "1.0.0",
                 "lastUpdated" => null
             );
         }
 
-        // Determine last updated timestamp from mapped files
         $latestTs = 0;
+        $latestPath = null;
 
+        // Find latest modification time across all mapped files
         foreach ($fileList as $file) {
-            $fullPath = $rootPath . '/' . ltrim($file, '/');
 
-            if (file_exists($fullPath)) {
-                $ts = filemtime($fullPath);
-                if ($ts > $latestTs) $latestTs = $ts;
+            if (!is_string($file)) continue;
+
+            $clean = ltrim($file, '/');
+            $full  = $rootPath . '/' . $clean;
+
+            if (file_exists($full)) {
+                $ts = filemtime($full);
+                if ($ts > $latestTs) {
+                    $latestTs  = $ts;
+                    $latestPath = $clean;
+                }
             }
         }
 
-        // If never updated, initialize
+        // Initialize lastUpdated if null
         if ($vers['modules'][$moduleName]['lastUpdated'] === null) {
             $vers['modules'][$moduleName]['lastUpdated'] = $latestTs;
         }
 
-        // If updated since last run → bump version
+        // If file updated since last run → bump version
         if ($latestTs > $vers['modules'][$moduleName]['lastUpdated']) {
+
             $vers['modules'][$moduleName]['version'] =
                 bumpVersion($vers['modules'][$moduleName]['version']);
+
             $vers['modules'][$moduleName]['lastUpdated'] = $latestTs;
         }
     }
 }
 
 // ---------------------------------------------------------------
-// Update overall Codex version (if present)
+// Update Codex version (based on codex.json)
 // ---------------------------------------------------------------
 if (!isset($vers['codex'])) {
     $vers['codex'] = array("version" => "1.0.0", "lastUpdated" => null);
 }
 
-// Treat codex.json as single source of truth
 $codexPath = $dataPath . '/codex.json';
+
 if (file_exists($codexPath)) {
     $ts = filemtime($codexPath);
 
@@ -130,7 +149,7 @@ if (file_exists($codexPath)) {
 }
 
 // ---------------------------------------------------------------
-// Save Updated versions.json
+// SAVE UPDATED versions.json
 // ---------------------------------------------------------------
 @file_put_contents(
     $verPath,
