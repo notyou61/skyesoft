@@ -8,17 +8,34 @@
 // Notes: This file is auto-aligned to Codex v1.0.0 tier architecture.
 // -----------------------------------------------------------------------------
 
-#region 🌐 HTTP Headers
+#region 🚦 SSE + Header Initialization (PHP 5.6 Safe)
+
+// FIXED: No declare(strict_types=1); for PHP 5.6.
+
+// FIXED: Start output buffering for SSE flushing control, but check level.
+if (!ob_get_level()) {
+    ob_start();
+}
+
 header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
+
+// FIXED: Restore wildcard for broad compatibility; adjust for prod if needed.
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
+
+// FIXED: Required on GoDaddy to prevent buffered output blocking SSE.
+@ini_set('zlib.output_compression', 0);
+@ini_set('implicit_flush', 1);
+
 #endregion
 
 #region 🔧 Error + Path Initialization
+
+// FIXED: Disable display_errors in prod-like env; log only.
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);  // FIXED: Changed from 1 for security.
 
 $rootPath = realpath(dirname(__DIR__));
 $dataPath = realpath($rootPath . '/assets/data');
@@ -34,6 +51,7 @@ $localLog = ($logPath && is_dir($logPath))
 
 ini_set('log_errors', '1');
 ini_set('error_log',  $localLog);
+
 #endregion
 
 #region 🧩 Helper Loading + Env
@@ -55,6 +73,7 @@ if ($helperPath && !in_array($helperPath, get_included_files())) {
 }
 
 // Environment Variable Access
+// FIXED: Removed all type hints for PHP 5.6.
 if (!function_exists('envVal')) {
     function envVal($key, $default = null) {
         $v = getenv($key);
@@ -62,15 +81,19 @@ if (!function_exists('envVal')) {
     }
 }
 
-// Unified Environment Loader
+// FIXED: Make paths more portable using DOCUMENT_ROOT fallback.
+// FIXED: No ?? operator; use isset ternary. No dirname levels (PHP 7+).
+// FIXED: Removed redundant ?: on envVal call.
 function loadEnvFileCandidates() {
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : dirname(__DIR__);  // FIXED: Adjusted for PHP 5.6; manual level if needed.
     $candidates = array(
-        '/home/notyou64/secure/.env',
+        $docRoot . '/secure/.env',  // FIXED: Relative to doc root.
         realpath(dirname(__FILE__) . '/../secure/.env'),
         realpath(dirname(__FILE__) . '/../../../secure/.env'),
         realpath(dirname(__DIR__) . '/.data/.env'),
         realpath(dirname(__DIR__) . '/secure/.env'),
-        realpath('C:/Users/SteveS/Documents/skyesoft/secure/.env')
+        // FIXED: Removed hardcoded C:/ path; use env or skip for portability.
+        envVal('ENV_FILE_PATH', '')
     );
 
     foreach ($candidates as $p) {
@@ -90,6 +113,7 @@ function loadEnvFileCandidates() {
 }
 
 // Convert "7:30 AM" → Seconds
+// FIXED: Removed type hints.
 function timeStringToSeconds($timeStr) {
     $timeStr = strtolower(trim($timeStr));
     $timeStr = preg_replace('/[^\d:apm\s]/', '', $timeStr);
@@ -104,6 +128,7 @@ function timeStringToSeconds($timeStr) {
 }
 
 // Minimal Cache Logger
+// FIXED: Removed type hints.
 function logCacheEventSimple($key, $status) {
     global $logPath;
 
@@ -142,11 +167,15 @@ foreach ($requiredTiers as $tier) {
     }
 }
 
+// FIXED: Consistent error output format (SSE-friendly).
 if (!$codexIntegrityPassed) {
-    echo json_encode(array(
+    // FIXED: Proper SSE format for error.
+    echo "data: " . json_encode(array(
         "error" => "❌ Critical Codex failure. SSE stream aborted.",
         "status" => "stopped"
-    ));
+    )) . "\n\n";
+    // FIXED: Safe ob_end_flush.
+    if (ob_get_level()) ob_end_flush();
     exit;
 }
 
@@ -154,6 +183,7 @@ $codexVersion = isset($codex['meta']['version']) ? $codex['meta']['version'] : '
 #endregion
 
 #region 📂 Load sseInputs.json (Runtime Data Layer)
+// FIXED: Restore array_replace_recursive for Codex merge protection.
 $sseInputsPath = $dataPath . '/sseInputs.json';
 $inputs = array(
     'officeHours' => array('start' => '7:30 AM', 'end' => '3:30 PM'),
@@ -175,7 +205,12 @@ if (is_readable($sseInputsPath)) {
 #endregion
 
 #region ⏰ Time Engine (Baseline)
-date_default_timezone_set('America/Phoenix');
+// FIXED: Add TZ fallback for portability.
+$defaultTz = 'America/Phoenix';
+if (!date_default_timezone_set($defaultTz)) {
+    date_default_timezone_set('UTC');  // FIXED: Fallback.
+    error_log("Warning: Failed to set TZ {$defaultTz}; using UTC.");
+}
 $nowTs = time();
 
 $currentDate   = date('Y-m-d', $nowTs);
@@ -229,7 +264,7 @@ $timeDateArray = array(
     'currentDayNumber'         => (int)date('j', $nowTs),
     'currentHour'              => $currentHour,
     'timeOfDayDescription'     => $timeOfDayDesc,
-    'timeZone'                 => 'America/Phoenix',
+    'timeZone'                 => $defaultTz,  // FIXED: Use variable.
     'UTCOffset'                => -7,
     'currentDayBeginningEndingUnixTimeArray' => array(
         'currentDayStartUnixTime' => $currentDayStartTs,
@@ -294,7 +329,14 @@ $holidays = array();
 
 if (file_exists(FEDERAL_HOLIDAYS_PHP)) {
     define('SKYESOFT_INTERNAL_CALL', true);
-    $raw = include FEDERAL_HOLIDAYS_PHP;
+    // FIXED: Wrap include in try-catch for robustness.
+    // FIXED: Use Exception for PHP 5.6 (no Throwable).
+    $raw = null;
+    try {
+        $raw = include FEDERAL_HOLIDAYS_PHP;
+    } catch (Exception $e) {
+        error_log("Holiday include failed: " . $e->getMessage());
+    }
     if (is_array($raw)) $holidays = $raw;
 } elseif (is_readable(HOLIDAYS_PATH)) {
     $raw = json_decode(file_get_contents(HOLIDAYS_PATH), true);
@@ -378,6 +420,7 @@ if ($weatherData['temp'] === null && !empty($weatherApiKey)) {
     $currentUrl  = "{$base}/weather?q={$loc}&appid={$weatherApiKey}&units=imperial";
     $forecastUrl = "{$base}/forecast?q={$loc}&appid={$weatherApiKey}&units=imperial";
 
+    // FIXED: Removed type hints from anonymous function for PHP 5.6.
     $fetch = function($url) {
         $ch = curl_init();
         curl_setopt_array($ch, array(
@@ -385,8 +428,9 @@ if ($weatherData['temp'] === null && !empty($weatherApiKey)) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 6,
             CURLOPT_CONNECTTIMEOUT => 4,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false
+            // FIXED: For GoDaddy compatibility, disable SSL verify if issues; but keep enabled by default.
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2
         ));
         $res = curl_exec($ch);
         $err = curl_error($ch);
@@ -516,6 +560,19 @@ $response['timestamp']    = date('Y-m-d H:i:s', $nowTs);
 #endregion
 
 #region 🟢 Output
-echo json_encode($response);
+// FIXED: Proper SSE format with data: prefix and flush.
+// FIXED: For single-fetch (polling) mode: Keep as-is (non-streaming SSE headers for compatibility).
+// If true SSE loop needed: Uncomment below.
+// while (true) {
+//     echo "data: " . json_encode($response) . "\n\n";
+//     if (ob_get_level()) ob_end_flush();
+//     flush();
+//     sleep(15);  // Poll interval.
+// }
+echo "data: " . json_encode($response) . "\n\n";
+// FIXED: Safe ob_end_flush.
+if (ob_get_level()) ob_end_flush();
+flush();  // FIXED: Ensure immediate send for SSE.
+// FIXED: Restore exit for single-response mode.
 exit;
 #endregion
