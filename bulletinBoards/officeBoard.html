@@ -383,9 +383,14 @@ const cards = [
 let cardIndex = 0;
 
 function populateCard(c){
-  safeSet("bodyHeader", c.header);
+  // HEADER
+  const headerEl = document.getElementById("bodyHeader");
+  if (headerEl) headerEl.innerHTML = c.header;
+  // BODY
   document.getElementById("bodyMain").innerHTML = `<div class="cardBody">${c.body}</div>`;
-  safeSet("bodyFooter", c.footer);
+  // FOOTER
+  const footerEl = document.getElementById("bodyFooter");
+  if (footerEl) footerEl.innerHTML = c.footer;
 }
 
 function autoScrollActivePermits() {
