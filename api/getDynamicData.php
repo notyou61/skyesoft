@@ -513,6 +513,19 @@ if (isset($codex['standards']['sse']['tiers'])) {
 }
 #endregion
 
+#region 📦 Load versions.json into SSE
+$versionsPath = $dataPath . '/versions.json';
+$versionData = array();
+
+if (file_exists($versionsPath)) {
+    $rawV = file_get_contents($versionsPath);
+    $decodedV = json_decode($rawV, true);
+    if (is_array($decodedV)) {
+        $versionData = $decodedV;
+    }
+}
+#endregion
+
 #region 🧠 codexContext (A-1 Final)
 $codexContext = array(
     'version'       => $codexVersion,
@@ -555,6 +568,7 @@ foreach ($codexTiers as $tier => $def) {
     }
 }
 
+$response['versions'] = $versionData;
 $response['codexVersion'] = $codexVersion;
 $response['timestamp']    = date('Y-m-d H:i:s', $nowTs);
 #endregion

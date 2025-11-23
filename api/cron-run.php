@@ -1,40 +1,63 @@
 <?php
-// =====================================================================
-// Skyesoft Cron Runner
-// Executes once per minute via GoDaddy cron
-// Calls: scripts/git-version-check.php
-// PHP 5.6 safe
-// =====================================================================
+// ======================================================================
+// Skyesoft — Cron Runner
+// Executes git-version-check.php safely
+// Outputs ONLY JSON (no warnings, no HTML)
+// ======================================================================
 
-// Disable output buffering (required for cron)
-if (function_exists('ob_end_clean')) { @ob_end_clean(); }
+// Prevent any accidental warnings from breaking JSON
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ob_clean();
 
-// Set correct paths
-$root = realpath(__DIR__ . '/..');         // /skyesoft/api/..
-$scripts = $root . '/scripts';             // /skyesoft/scripts
-$data    = $root . '/assets/data';         // /skyesoft/assets/data
+header('Content-Type: application/json');
 
-$versionScript = $scripts . '/git-version-check.php';
+// --------------------------------------------------------------
+// Resolve paths
+// --------------------------------------------------------------
+$rootPath = realpath(dirname(__DIR__));
+$scriptPath = $rootPath . '/scripts/git-version-check.php';
 
-// Validate existence
-if (!file_exists($versionScript)) {
-    header('Content-Type: application/json');
-    echo json_encode(array(
+// --------------------------------------------------------------
+// Safety checks
+// --------------------------------------------------------------
+if (!file_exists($scriptPath)) {
+    echo json_encode([
         "success" => false,
-        "error"   => "git-version-check.php missing",
-        "path"    => $versionScript
-    ));
+        "cron"    => "error",
+        "message" => "git-version-check.php not found",
+        "path"    => $scriptPath
+    ]);
     exit;
 }
 
-// Execute the version update logic
-$result = include $versionScript;
+// --------------------------------------------------------------
+// Execute git-version-check.php as safe include
+// --------------------------------------------------------------
+$result = include $scriptPath;
 
-// If script returned output, forward it
-header('Content-Type: application/json');
-echo json_encode(array(
+// If include returned non-array due to warning → sanitize
+if (!is_array($result)) {
+    $result = [
+        "success" => false,
+        "error"   => "git-version-check.php returned invalid data"
+    ];
+}
+
+// --------------------------------------------------------------
+// Log Cron Events
+// --------------------------------------------------------------
+$logPath = $rootPath . "/logs/version-events.log";
+$logMsg  = date('Y-m-d H:i:s') . " — Cron executed\n";
+@file_put_contents($logPath, $logMsg, FILE_APPEND);
+
+// --------------------------------------------------------------
+// Output clean JSON
+// --------------------------------------------------------------
+echo json_encode([
     "success" => true,
     "cron"    => "executed",
     "result"  => $result
-));
+], JSON_PRETTY_PRINT);
+
 exit;
