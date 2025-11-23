@@ -159,7 +159,7 @@
         "text": "The Standards Framework establishes the governing space for all Tier 2 rules. It defines how Standards must be organized, interpreted, and enforced, ensuring every Standard supports constitutional authority and maintains system-wide uniformity."
       }
     },
-    "items": {
+    "items": {      
       "documentStandards": {
         "title": { "icon": 20, "text": "Document Standards" },
         "type": "directive",
@@ -635,6 +635,57 @@
           "Any deviation from this structure constitutes architectural drift and must be corrected immediately.",
           "Repository layout is considered part of the Skyesoft Constitution by extension.",
           "Cron-based validation ensures continuous structural integrity and prevents drift from compounding over time."
+        ]
+      },
+      "versionGovernance": {
+        "title": { "icon": 67, "text": "Version Governance Standard" },
+        "type": "standard",
+        "tier": 2,
+        "hierarchyOrder": "B-10",
+        "description": "Defines Skyesoft’s official versioning rules, module lineage tracking, and system-wide metadata governance. All version declarations, including modules, Codex, SSE, dashboards, and APIs, must follow this standard.",
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure consistent, authoritative versioning across all Skyesoft components. Prevent silent behavioral drift, enforce semantic version structure, and maintain an auditable history of system evolution."
+        },
+        "governs": [
+          "assets/data/versions.json",
+          "api/getVersions.php",
+          "system.versionContext"
+        ],
+        "dependsOn": ["constitution", "repositoryStandard"],
+        "rules": [
+          "All modules must declare version metadata inside versions.json.",
+          "Module versions must follow semantic format: MAJOR.MINOR.PATCH.",
+          "All version changes require Parliamentarian validation and Archivist recording.",
+          "No module may silently update its version outside of an approved process.",
+          "The system must expose a unified, read-only version endpoint via getVersions.php.",
+          "Repository audits must verify version coherence between code, Codex, and versions.json.",
+          "The Codex version must be listed as the root version element in versions.json.",
+          "The SSE must include codexContext.version sourced exclusively from versions.json."
+        ],
+        "schema": {
+          "codex": ["version", "lastUpdate", "notes"],
+          "system": ["siteVersion", "deployTime", "commitHash", "state"],
+          "modules": {
+            "requiredFields": ["version", "lastModified", "notes"],
+            "optionalFields": ["sourceFile", "governs", "dependsOn"]
+          }
+        },
+        "apiRequirements": {
+          "endpoint": "api/getVersions.php",
+          "mustReturn": ["success", "data.codex", "data.system", "data.modules"],
+          "mustNotReturn": ["filepaths outside Repository Standard", "debug info"]
+        },
+        "archivistDuties": [
+          "Record all version increments.",
+          "Index module lineage changes.",
+          "Verify semantic versioning compliance.",
+          "Maintain historical version logs."
+        ],
+        "parliamentarianDuties": [
+          "Validate version standard compliance.",
+          "Approve new modules before version assignment.",
+          "Interpret conflicts between code and versions.json."
         ]
       },
       "skyebotModule": {

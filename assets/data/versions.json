@@ -1,0 +1,41 @@
+{
+  "codex": {
+    "version": "5.3.1",
+    "lastUpdate": "2025-11-21 14:50",
+    "notes": "Codex governance expansion; Version Parliament established as Tier-2 Standard; repository and UI rules aligned."
+  },
+  "system": {
+    "siteVersion": "v0.0.4",
+    "deployTime": "2025-07-18 13:41:06",
+    "commitHash": "e45503b",
+    "state": "live",
+    "deployIsLive": true,
+    "lastDeployNote": "Home update: fix version display [patch]"
+  },
+  "modules": {
+    "officeBoard": {
+      "version": "v8.2.0",
+      "lastModified": "2025-11-21 14:58",
+      "sourceFile": "bulletinBoards/officeBoard.html",
+      "notes": "JSON-driven Active Permits; auto scrolling; version footer; SSE-ready structure."
+    },
+    "activePermits": {
+      "version": "v1.0.1",
+      "lastModified": "2025-11-21 14:57",
+      "sourceFile": "assets/data/activePermits.json",
+      "notes": "Converted from spreadsheet to JSON; governed by Version Parliament; consumed by OfficeBoard."
+    },
+    "sse": {
+      "version": "v3.4.0",
+      "lastModified": "2025-11-15 09:22",
+      "sourceFile": "api/getDynamicData.php",
+      "notes": "Improved holiday + interval sync; supports OfficeBoard 8.x timing logic; adheres to SSE Tier rules."
+    },
+    "skyebot": {
+      "version": "v7.1.0",
+      "lastModified": "2025-11-20 16:10",
+      "sourceFile": "modules/skyebot/",
+      "notes": "Updated intent parser; timezone logic; stability improvements; Codex-aligned system context."
+    }
+  }
+}
