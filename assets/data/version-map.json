@@ -1,0 +1,48 @@
+{
+  "modules": {
+    "officeBoard": {
+      "paths": [
+        "bulletinBoards/officeBoard.html",
+        "api/getDynamicData.php",
+        "assets/data/activePermits.json"
+      ],
+      "versionKey": "modules.officeBoard.version"
+    },
+    "activePermits": {
+      "paths": [
+        "assets/data/activePermits.json"
+      ],
+      "versionKey": "modules.activePermits.version"
+    },
+    "sseEngine": {
+      "paths": [
+        "api/getDynamicData.php",
+        "api/helpers.php",
+        "api/federalHolidays.php"
+      ],
+      "versionKey": "modules.sse.version"
+    },
+    "skyebot": {
+      "paths": [
+        "modules/skyebot/",
+        "modules/skyebot/*",
+        "api/askOpenAI.php"
+      ],
+      "versionKey": "modules.skyebot.version"
+    },
+    "system": {
+      "paths": [
+        ".env",
+        "assets/data/skyesoft-data.json",
+        "assets/data/version.json"
+      ],
+      "versionKey": "system.siteVersion"
+    },
+    "codex": {
+      "paths": [
+        "assets/data/codex.json"
+      ],
+      "versionKey": "codex.version"
+    }
+  }
+}

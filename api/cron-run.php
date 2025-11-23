@@ -1,77 +1,40 @@
 <?php
-// ======================================================================
-// Skyesoft Cron Engine — Version 1.0
-// Purpose: Periodically refresh cached data required by SSE + dashboard
-// PHP 5.6 compatible
-// ======================================================================
+// =====================================================================
+// Skyesoft Cron Runner
+// Executes once per minute via GoDaddy cron
+// Calls: scripts/git-version-check.php
+// PHP 5.6 safe
+// =====================================================================
 
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+// Disable output buffering (required for cron)
+if (function_exists('ob_end_clean')) { @ob_end_clean(); }
 
-$root = realpath(dirname(__DIR__));
-$dataPath = $root . '/assets/data';
+// Set correct paths
+$root = realpath(__DIR__ . '/..');         // /skyesoft/api/..
+$scripts = $root . '/scripts';             // /skyesoft/scripts
+$data    = $root . '/assets/data';         // /skyesoft/assets/data
 
-// -------------------------------------------------------
-// 1) Load getDynamicData.php (non-SSE mode)
-// -------------------------------------------------------
-$dynamicApi = $root . '/api/getDynamicData.php';
+$versionScript = $scripts . '/git-version-check.php';
 
-if (!file_exists($dynamicApi)) {
-    error_log("CRON ERROR: getDynamicData.php not found");
+// Validate existence
+if (!file_exists($versionScript)) {
+    header('Content-Type: application/json');
+    echo json_encode(array(
+        "success" => false,
+        "error"   => "git-version-check.php missing",
+        "path"    => $versionScript
+    ));
     exit;
 }
 
-// Run the file but capture output
-ob_start();
-include $dynamicApi;
-$data = ob_get_clean();
+// Execute the version update logic
+$result = include $versionScript;
 
-// If output begins with "data:" (SSE format), trim it
-if (strpos($data, "data:") === 0) {
-    $data = trim(substr($data, 5));
-}
-
-// Try to decode JSON
-$json = json_decode($data, true);
-
-// -------------------------------------------------------
-// 2) If decode failed, log and exit
-// -------------------------------------------------------
-if (!is_array($json)) {
-    error_log("CRON ERROR: Invalid JSON from getDynamicData");
-    exit;
-}
-
-// -------------------------------------------------------
-// 3) Save a heartbeat file for dashboard auto-refresh
-// -------------------------------------------------------
-$heartbeatFile = $dataPath . "/cron_heartbeat.json";
-file_put_contents(
-    $heartbeatFile,
-    json_encode(
-        array(
-            "lastRunUnix" => time(),
-            "lastRun"     => date('Y-m-d H:i:s'),
-            "status"      => "ok"
-        ),
-        JSON_PRETTY_PRINT
-    )
-);
-
-// -------------------------------------------------------
-// 4) Cleanup/reset ephemeral sections if needed
-// -------------------------------------------------------
-$mainDataPath = $dataPath . '/skyesoft-data.json';
-if (file_exists($mainDataPath)) {
-    $mainData = json_decode(file_get_contents($mainDataPath), true);
-    if (!is_array($mainData)) $mainData = array();
-
-    // Reset uiEvent if stuck
-    if (isset($mainData['uiEvent']) && $mainData['uiEvent'] !== null) {
-        $mainData['uiEvent'] = null;
-        file_put_contents($mainDataPath, json_encode($mainData, JSON_PRETTY_PRINT));
-    }
-}
-
-// Done
+// If script returned output, forward it
+header('Content-Type: application/json');
+echo json_encode(array(
+    "success" => true,
+    "cron"    => "executed",
+    "result"  => $result
+));
 exit;
