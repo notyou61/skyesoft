@@ -143,21 +143,25 @@ function safeSet(id, value) {
 // ===================================================================
 // LOAD VERSION DATA (Codex Standard B-10)
 // ===================================================================
-async function loadVersionFooter() {
+function updateVersionFooterFromSSE(d) {
   try {
-    const res = await fetch("/skyesoft/api/getVersions.php");
-    const json = await res.json();
-    if (!json.success) return;
+    if (!d.versions) {
+      safeSet("versionFooter", "Version info unavailable");
+      return;
+    }
 
-    const vb = json.data.modules.officeBoard.version;
-    const vp = json.data.modules.activePermits.version;
-    const codex = json.data.codex.version;
+    const v = d.versions;
+
+    const vb = v.modules.officeBoard.version;
+    const vp = v.modules.activePermits.version;
+    const codex = v.codex.version;
 
     safeSet("versionFooter", `OfficeBoard ${vb} • ActivePermits ${vp} • Codex ${codex}`);
   } catch (e) {
     safeSet("versionFooter", "Version info unavailable");
   }
 }
+
 
 // ===================================================================
 // LIVE DATA LOAD (SSE-like fetch)
@@ -169,14 +173,16 @@ function loadLiveData() {
   fetch("/skyesoft/api/getDynamicData.php")
     .then(r => r.json())
     .then(d => {
+      // STORE FOR GLOBAL ACCESS
       serverData = d;
-
+      // VERSION FOOTER
+      updateVersionFooterFromSSE(d);
+      // TIME SYNC
       if (d?.timeDateArray?.currentUnixTime) {
         serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
       }
-
+      // CLOCK UPDATE
       updateClock();
-
       // WEATHER
       if (d.weatherData) {
         const w = d.weatherData;
@@ -434,7 +440,6 @@ function rotateCards() {
 // START
 // ===================================================================
 loadLiveData();
-loadVersionFooter();
 
 setInterval(loadLiveData, 15000);
 setInterval(updateClock, 1000);
