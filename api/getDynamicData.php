@@ -559,20 +559,17 @@ $response['codexVersion'] = $codexVersion;
 $response['timestamp']    = date('Y-m-d H:i:s', $nowTs);
 #endregion
 
-#region 🟢 Output
-// FIXED: Proper SSE format with data: prefix and flush.
-// FIXED: For single-fetch (polling) mode: Keep as-is (non-streaming SSE headers for compatibility).
-// If true SSE loop needed: Uncomment below.
-// while (true) {
-//     echo "data: " . json_encode($response) . "\n\n";
-//     if (ob_get_level()) ob_end_flush();
-//     flush();
-//     sleep(15);  // Poll interval.
-// }
-echo "data: " . json_encode($response) . "\n\n";
-// FIXED: Safe ob_end_flush.
-if (ob_get_level()) ob_end_flush();
-flush();  // FIXED: Ensure immediate send for SSE.
-// FIXED: Restore exit for single-response mode.
+#region 🟢 Output — JSON for fetch() compatibility
+if (!headers_sent()) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-cache');
+}
+
+echo json_encode($response);
+
+if (ob_get_level()) {
+    ob_end_flush();
+}
+flush();
 exit;
 #endregion
