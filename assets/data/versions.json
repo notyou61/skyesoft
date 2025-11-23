@@ -17,7 +17,8 @@
       "version": "v8.2.0",
       "lastModified": "2025-11-21 14:58",
       "sourceFile": "bulletinBoards/officeBoard.html",
-      "notes": "JSON-driven Active Permits; auto scrolling; version footer; SSE-ready structure."
+      "notes": "JSON-driven Active Permits; auto scrolling; version footer; SSE-ready structure.",
+      "lastUpdated": 1763915173
     },
     "activePermits": {
       "version": "v1.0.1",
