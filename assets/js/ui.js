@@ -1,38 +1,106 @@
-/* #region UI Helpers */
+/* ============================================================
+   #region SAFE DOM HELPERS
+============================================================ */
+function safeSet(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+/* #endregion */
 
-window.safeSet = function (id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-};
+/* ============================================================
+   #region HIGHLIGHTS + DATE HELPERS
+============================================================ */
+function getDateInfo() {
+  const n = new Date();
+  const f = n.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  });
+  const y = n.getFullYear();
+  const leap = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
+  const doy = Math.floor((n - new Date(y, 0, 0)) / 86400000);
 
-window.populateCard = function(card) {
-    const headerEl = document.getElementById("bodyHeader");
-    const bodyEl   = document.getElementById("bodyMain");
-    const footerEl = document.getElementById("bodyFooter");
+  return { formattedDate: f, dayOfYear: doy, daysRemaining: leap - doy };
+}
 
-    if (headerEl) headerEl.innerHTML = card.header;
-    if (bodyEl)   bodyEl.innerHTML   = `<div class="cardBody">${card.body}</div>`;
-    if (footerEl) footerEl.innerHTML = card.footer;
-};
+function updateHighlightsCard() {
+  const d = getDateInfo();
+  safeSet("todaysDate", d.formattedDate);
+  safeSet("dayOfYear", d.dayOfYear);
+  safeSet("daysRemaining", d.daysRemaining);
+}
+/* #endregion */
 
-window.autoScrollPermits = function(durationMs) {
-    const container = document.querySelector(".scrollContainer");
-    if (!container) return;
+/* ============================================================
+   #region PERMIT DATA LOADER
+============================================================ */
+async function loadPermitData() {
+  try {
+    const r = await fetch("/skyesoft/assets/data/activePermits.json");
+    const j = await r.json();
+    const tb = document.getElementById("permitTableBody");
 
-    container.scrollTop = 0;
-    const dist = container.scrollHeight - container.clientHeight;
-    if (dist <= 0) return;
+    if (!tb) return;
+    if (!j.activePermits) {
+      tb.innerHTML = `<tr><td colspan="6">Error: no data</td></tr>`;
+      return;
+    }
 
-    const buffer = 2000;
-    const scrollTime = durationMs - buffer;
-    const step = dist / (scrollTime / 30);
-    let pos = 0;
+    tb.innerHTML = j.activePermits.map(p => `
+      <tr>
+        <td>${p.wo}</td>
+        <td>${p.customer}</td>
+        <td>${p.jobsite}</td>
+        <td>${p.jurisdiction}</td>
+        <td>$${p.fee.toFixed(2)}</td>
+        <td class="${p.status.includes("Review") ? "status-review" : "status-ready"}">
+          ${p.status}
+        </td>
+      </tr>
+    `).join("");
 
-    const timer = setInterval(() => {
-        pos += step;
-        container.scrollTop = pos;
-        if (pos >= dist) clearInterval(timer);
-    }, 30);
-};
+  } catch (e) {
+    // silent fallback
+  }
+}
+/* #endregion */
 
+/* ============================================================
+   #region AUTO SCROLL — FULL LEGACY RESTORE
+============================================================ */
+function autoScrollActivePermits() {
+  const c = document.querySelector(".scrollContainer");
+  if (!c) return;
+
+  c.scrollTop = 0;
+  const dist = c.scrollHeight - c.clientHeight;
+
+  if (dist <= 0) return;
+
+  const buffer = 2000;
+  const scrollTime = cards[0].duration - buffer;
+  const step = dist / (scrollTime / 30);
+  let pos = 0;
+
+  const t = setInterval(() => {
+    pos += step;
+    c.scrollTop = pos;
+    if (pos >= dist) clearInterval(t);
+  }, 30);
+}
+/* #endregion */
+
+/* ============================================================
+   #region CARD POPULATION
+============================================================ */
+function populateCard(card) {
+  const h = document.getElementById("bodyHeader");
+  const b = document.getElementById("bodyMain");
+  const f = document.getElementById("bodyFooter");
+
+  if (h) h.innerHTML = card.header;
+  b.innerHTML = `<div class="cardBody">${card.body}</div>`;
+  if (f) f.innerHTML = card.footer;
+}
 /* #endregion */

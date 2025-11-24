@@ -1,106 +1,148 @@
-/* #region Main Controller */
-
+/* ============================================================
+   #region GLOBALS
+============================================================ */
+let serverData = null;
+let serverTimeOffset = 0;
 let cardIndex = 0;
+/* #endregion */
 
-function updateClock() {
-    if (!serverData) return;
-
-    const now = new Date(Date.now() + serverTimeOffset);
-    const h = now.getHours();
-    const m = now.getMinutes().toString().padStart(2,'0');
-    const s = now.getSeconds().toString().padStart(2,'0');
-    const am = (h>=12 ? "PM" : "AM");
-
-    safeSet("currentTime", `${(h%12)||12}:${m}:${s} ${am}`);
-
-    if (serverData.intervalsArray) {
-        let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
-        const hh = Math.floor(sec/3600).toString().padStart(2,'0');
-        const mm = Math.floor((sec%3600)/60).toString().padStart(2,'0');
-        const ss = (sec%60).toString().padStart(2,'0');
-
-        const i = serverData.intervalsArray;
-        let label="", emoji="";
-
-        if (i.dayType !== "Workday") { label="Office closed"; emoji="🟦"; }
-        else if (i.intervalName === "Worktime") { label="Workday ends in"; emoji="🟩"; }
-        else if (i.intervalName === "Before Worktime") { label="Workday begins in"; emoji="🟨"; }
-        else { label="Workday resumes tomorrow"; emoji="🔴"; }
-
-        const msg = label.includes("in")
-            ? `${emoji} ${label} ${hh}h ${mm}m ${ss}s`
-            : `${emoji} ${label}`;
-
-        safeSet("intervalRemainingData", msg);
-
-        serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
+/* ============================================================
+   #region VERSION FOOTER
+============================================================ */
+function updateVersionFooterFromSSE(d) {
+  try {
+    if (!d.versions) {
+      safeSet("versionFooter", "Version info unavailable");
+      return;
     }
+
+    const v = d.versions;
+    const vb = v.modules.officeBoard.version;
+    const vp = v.modules.activePermits.version;
+    const cx = v.codex.version;
+
+    safeSet("versionFooter", `OfficeBoard ${vb} • ActivePermits ${vp} • Codex ${cx}`);
+  } catch {
+    safeSet("versionFooter", "Version info unavailable");
+  }
 }
+/* #endregion */
 
-async function loadPermitData() {
-    try {
-        const r = await fetch("/skyesoft/assets/data/activePermits.json");
-        const j = await r.json();
-        const tbody = document.getElementById("permitTableBody");
-        if (!tbody) return;
+/* ============================================================
+   #region LIVE DATA LOADER
+============================================================ */
+function loadLiveData() {
+  fetch("/skyesoft/api/getDynamicData.php")
+    .then(r => r.json())
+    .then(d => {
+      serverData = d;
 
-        if (!j.activePermits) {
-            tbody.innerHTML = `<tr><td colspan="6">Error: no data found</td></tr>`;
-            return;
+      updateVersionFooterFromSSE(d);
+
+      // TIME
+      if (d?.timeDateArray?.currentUnixTime) {
+        serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
+      }
+      updateClock();
+
+      // WEATHER
+      if (d.weatherData) {
+        renderWeatherBlock(d.weatherData);
+      }
+
+      // HOLIDAYS
+      if (d.holidays) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        let closest = Infinity;
+        let name = "";
+
+        for (let ds in d.holidays) {
+          const hd = new Date(ds);
+          if (hd >= today) {
+            const diff = Math.ceil((hd - today) / 86400000);
+            if (diff < closest) {
+              closest = diff;
+              name = d.holidays[ds];
+            }
+          }
         }
 
-        tbody.innerHTML = j.activePermits.map(p => `
-          <tr>
-            <td>${p.wo}</td>
-            <td>${p.customer}</td>
-            <td>${p.jobsite}</td>
-            <td>${p.jurisdiction}</td>
-            <td>$${p.fee.toFixed(2)}</td>
-            <td class="${p.status.includes("Review")?"status-review":"status-ready"}">
-              ${p.status}
-            </td>
-          </tr>
-        `).join("");
+        safeSet("nextHoliday", `${name} — in ${closest} day${closest>1?"s":""}`);
+      }
+    });
+}
+/* #endregion */
 
-    } catch {
-        safeSet("permitTableBody", `<tr><td colspan="6">Error loading permit data</td></tr>`);
+/* ============================================================
+   #region CLOCK
+============================================================ */
+function updateClock() {
+  if (!serverData) return;
+
+  const now = new Date(Date.now() + serverTimeOffset);
+  const h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const s = now.getSeconds().toString().padStart(2,'0');
+  const am = h >= 12 ? "PM":"AM";
+
+  safeSet("currentTime", `${(h%12)||12}:${m}:${s} ${am}`);
+
+  // INTERVALS
+  if (serverData.intervalsArray) {
+    let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
+    const hh = Math.floor(sec/3600).toString().padStart(2,'0');
+    const mm = Math.floor((sec%3600)/60).toString().padStart(2,'0');
+    const ss = (sec%60).toString().padStart(2,'0');
+
+    const i = serverData.intervalsArray;
+    let msg="", emoji="";
+
+    if (i.dayType !== "Workday") {
+      msg = "Office closed"; emoji = "🟦";
+    } else if (i.intervalName === "Worktime") {
+      msg = `Workday ends in ${hh}h ${mm}m ${ss}s`; emoji = "🟩";
+    } else if (i.intervalName === "Before Worktime") {
+      msg = `Workday begins in ${hh}h ${mm}m ${ss}s`; emoji = "🟨";
+    } else {
+      msg = "Workday resumes tomorrow"; emoji = "🔴";
     }
+
+    safeSet("intervalRemainingData", `${emoji} ${msg}`);
+    serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
+  }
 }
+/* #endregion */
 
-function updateHighlights() {
-    const n = new Date();
-    const f = n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    const y = n.getFullYear();
-    const leap = (y%4===0 && (y%100!==0 || y%400===0)) ? 366 : 365;
-    const doy = Math.floor((n-new Date(y,0,0))/86400000);
-
-    safeSet("todaysDate", f);
-    safeSet("dayOfYear", doy);
-    safeSet("daysRemaining", leap - doy);
-}
-
+/* ============================================================
+   #region CARD ROTATION
+============================================================ */
 function rotateCards() {
-    const card = SKYECARDS[cardIndex];
-    populateCard(card);
+  const c = cards[cardIndex];
+  populateCard(c);
 
-    if (card.id === "activePermits") {
-        setTimeout(loadPermitData, 20);
-        setTimeout(() => autoScrollPermits(card.duration), 400);
-    }
+  if (cardIndex === 0) {
+    setTimeout(loadPermitData, 50);
+    setTimeout(autoScrollActivePermits, 500);
+  }
 
-    if (card.id === "todaysHighlights") {
-        setTimeout(updateHighlights, 20);
-    }
+  if (cardIndex === 1) {
+    setTimeout(updateHighlightsCard, 50);
+  }
 
-    cardIndex = (cardIndex+1) % SKYECARDS.length;
-    setTimeout(rotateCards, card.duration);
+  cardIndex = (cardIndex + 1) % cards.length;
+  setTimeout(rotateCards, c.duration);
 }
+/* #endregion */
 
+/* ============================================================
+   #region INIT
+============================================================ */
 window.addEventListener("DOMContentLoaded", () => {
-    loadLiveData();
-    setInterval(loadLiveData, 15000);
-    setInterval(updateClock, 1000);
-    rotateCards();
+  rotateCards();
+  loadLiveData();
+  setInterval(loadLiveData, 15000);
+  setInterval(updateClock, 1000);
 });
-
 /* #endregion */
