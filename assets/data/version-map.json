@@ -1,0 +1,30 @@
+{
+  "modules": {
+    "officeBoard": [
+      "bulletinBoards/officeBoard.html",
+      "api/getDynamicData.php",
+      "assets/data/activePermits.json"
+    ],
+    "activePermits": [
+      "assets/data/activePermits.json"
+    ],
+    "sseEngine": [
+      "api/getDynamicData.php",
+      "api/helpers.php",
+      "api/federalHolidays.php"
+    ],
+    "skyebot": [
+      "modules/skyebot/",
+      "modules/skyebot/*",
+      "api/askOpenAI.php"
+    ],
+    "system": [
+      ".env",
+      "assets/data/skyesoft-data.json",
+      "assets/data/version.json"
+    ],
+    "codex": [
+      "assets/data/codex.json"
+    ]
+  }
+}

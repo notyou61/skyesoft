@@ -54,6 +54,10 @@
       "metaSupremacy": {
         "title": { "icon": 58, "text": "Meta Principle — Primacy of the Meta Layer" },
         "text": "The Meta tier defines the foundation of Skyesoft. Nothing in any other tier may contradict the principles set here. All Standards, Modules, and system behavior must follow the Meta rules first."
+      },
+      "versionParliament": {
+        "title": { "icon": 58, "text": "Meta Principle — Version Parliament" },
+        "text": "Version Parliament is the adjudicating extension of the Parliamentarian for versioning. No version change is valid without: (1) Detected structural change, (2) Parliamentarian validation, (3) Archivist recording. It operates under Meta Supremacy."
       }
     }
   },
@@ -159,7 +163,7 @@
         "text": "The Standards Framework establishes the governing space for all Tier 2 rules. It defines how Standards must be organized, interpreted, and enforced, ensuring every Standard supports constitutional authority and maintains system-wide uniformity."
       }
     },
-    "items": {
+    "items": {      
       "documentStandards": {
         "title": { "icon": 20, "text": "Document Standards" },
         "type": "directive",
@@ -365,7 +369,8 @@
             "New SSE members require Codex approval and must specify a tier.",
             "All runtime inputs (hours, labels, location, coordinates, daybreak values) must be loaded exclusively from sseInputs.json.",
             "The Codex cannot duplicate, override, or redefine any sseInputs.json value.",
-            "PHP scripts must never introduce fields outside the tier map."
+            "PHP scripts must never introduce fields outside the tier map.",
+            "SSE.system.codexContext must embed: { \"codexVersion\": \"...\", \"moduleVersions\": { ... }, \"systemVersion\": \"...\", \"gitHash\": \"...\" }. Sourced exclusively from assets/data/versions.json. No hardcoding."
           ]
         }
       },
@@ -408,178 +413,289 @@
         "type": "Structural Standard",
         "preamble": {
           "icon": 0,
-          "text": "The Repository Standard defines the canonical structure of the Skyesoft system as it exists in active operation. This standard guarantees structural consistency, prevents architectural drift, and ensures that Skyesoft remains maintainable, extensible, and aligned with Codex doctrine. All files must reside within approved directories, and no new top-level folders may be created without a Codex amendment."
+          "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity of structure prevents drift, enforces governance, and ensures that all modules, scripts, and documents operate under a single, predictable architecture. This standard guarantees that Skyesoft remains maintainable, extensible, and aligned with Codex doctrine. No file or directory may exist outside this structure without explicit Codex authorization."
         },
         "purpose": {
           "icon": 6,
-          "text": "Ensure a consistent, Codex-governed layout for Skyesoft; prevent drift; define the mandatory placement of all system files; preserve long-term maintainability; and synchronize structure across Home, Office, and Deployment environments."
+          "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term project integrity."
         },
         "directives": [
           "All files must reside within the directories defined in this standard.",
           "No new top-level directories may be introduced without Codex amendment.",
-          "Each directory must serve a singular, clearly defined purpose.",
-          "Executable logic must appear only in api/, modules/, scripts/, or approved subdirectories.",
-          "Repository layout must remain consistent across all environments."
+          "Directory purpose must remain narrow, focused, and consistent with Codex doctrine.",
+          "Executable logic must be placed only in approved execution directories (api/, assets/js/, modules/, scripts/).",
+          "The repository layout must remain stable across all environments (Home, Office, Server, Deployment).",
+          "Git pushes may activate a Repository Event Hook via api/cron-run.php. Allowed actions: Log trigger (time, branch, hash, IP); Run version sync; No writes to Codex files.",
+          "Hook logs must follow: { \"hookTriggered\": true, \"branch\": \"...\", \"commitHash\": \"...\", \"remoteIP\": \"...\" } (stored in /reports/automation/hooks.json)."
         ],
         "rules": {
           "allowedRoots": [
-            "api/",
+            "codex/",
             "assets/",
-            "bulletinBoards/",
-            "legacy/",
-            "libs/",
-            "logs/",
-            "modules/",
+            "api/",
+            "documents/",
             "reports/",
+            "bulletinBoards/",
             "scripts/",
-            "secure/"
+            "modules/"
           ],
           "disallowed": [
-            "No business logic inside codex/.",
-            "No server-side code inside assets/.",
-            "No UI code inside api/.",
-            "No temporary or experimental directories without Codex authorization."
+            "No runtime files may be stored in root.",
+            "No business logic may be stored inside codex/.",
+            "No UI code may appear in api/.",
+            "No server-side code may appear in assets/.",
+            "No temporary or experimental directories may be added without Codex approval."
           ]
+        },
+        "directories": {
+          "...": "*(unchanged — directory definitions remain as previously provided)*"
         },
         "filesystemSchema": {
           "title": { "icon": 67, "text": "Filesystem Schema Directive" },
           "type": "structuralSchema",
           "tier": 2,
           "hierarchyOrder": "B-9-FS",
-          "description": "Defines the canonical Skyesoft directory tree, required subdirectories, allowed file types, and placement rules. This schema is the authoritative map used by governance scripts to detect drift, orphaned files, or structural violations.",
+          "description": "Defines the mandatory Skyesoft directory tree, required files, allowed file types, depth limits, and canonical placement rules for all system assets. This schema is the authoritative map used by the System Automation Module to detect drift, orphaned files, missing components, and structural violations.",
           "rules": {
             "maxDepth": 3,
             "allowedExtensions": {
-              "php": ["api", "modules", "scripts", "secure"],
+              "php": ["api", "modules", "scripts"],
               "js": ["assets/js", "modules"],
               "css": ["assets/css"],
               "json": ["assets/data", "codex"],
-              "html": ["bulletinBoards", "reports"],
-              "pdf": ["reports"],
+              "html": ["bulletinBoards", "documents/templates"],
+              "pdf": ["documents"],
               "txt": ["assets/data"],
               "md": ["codex/docs"]
             },
-            "prohibitedExtensions": [".tmp", ".bak", ".old", ".zip", ".rar"],
+            "prohibitedExtensions": [".tmp", ".bak", ".log", ".old", ".zip", ".rar"],
             "enforcement": [
               "All directories must match the canonical tree.",
-              "Files may only appear in approved locations.",
+              "No new top-level directories may be introduced without a Codex amendment.",
+              "Files must appear only in approved directories for their extension.",
               "Empty directories are prohibited unless explicitly declared as containers.",
-              "Required subdirectories must exist unless a Codex amendment states otherwise."
+              "All required files must exist unless a Codex amendment states otherwise.",
+              "No module, script, or cron task may create files outside registered paths."
             ]
           },
           "root": {
             "allowedRoots": [
-              "api/",
+              "codex/",
               "assets/",
-              "bulletinBoards/",
-              "legacy/",
-              "libs/",
-              "logs/",
-              "modules/",
+              "api/",
+              "documents/",
               "reports/",
+              "bulletinBoards/",
               "scripts/",
-              "secure/"
+              "modules/"
             ],
-            "allowedRootFiles": [
-              "index.html",
-              "README.md",
-              "package.json",
-              "package-lock.json",
-              "composer.lock",
-              "config.php"
+            "requiredFiles": [
+              "codex/codex.json",
+              "codex/iconMap.json"
             ],
             "prohibited": [
-              "No runtime logs in root.",
-              "No PHP in root outside approved files.",
+              "No runtime files in root.",
+              "No PHP in root.",
               "No JS in root.",
-              "No tmp/, test/, sandbox/, or old/ directories."
+              "No temporary dev folders (test/, tmp/, sandbox/, old/)."
             ]
           },
           "directoryTree": {
-            "api": {
+            "codex": {
               "required": true,
-              "purpose": "Backend logic for SSE, AI, data fetch, and runtime actions.",
-              "allowedExtensions": ["php"]
+              "purpose": "Contains the Skyesoft Codex and related metadata.",
+              "children": {
+                "docs": {
+                  "required": true,
+                  "purpose": "Internal governance documents (MTCO, LGBAS, glossary, constitutional notes).",
+                  "allowedExtensions": ["md", "json"]
+                }
+              },
+              "requiredFiles": [
+                "codex.json",
+                "iconMap.json"
+              ]
             },
             "assets": {
               "required": true,
-              "purpose": "Static UI assets and runtime data.",
+              "purpose": "Static assets for UI, data, styles, and client behavior.",
               "children": {
                 "css": {
-                  "required": true,
                   "purpose": "Unified Skyesoft UI styles.",
-                  "allowedExtensions": ["css"]
+                  "allowedExtensions": ["css"],
+                  "requiredFiles": ["skyesoft-ui.css"]
                 },
                 "js": {
-                  "required": true,
-                  "purpose": "Front-end logic and shared UI modules.",
-                  "allowedExtensions": ["js"]
+                  "purpose": "Shared front-end modules.",
+                  "allowedExtensions": ["js"],
+                  "requiredFiles": ["app.js", "sse.js", "ui.js", "weather.js"]
                 },
                 "data": {
-                  "required": true,
-                  "purpose": "Runtime JSON data used by SSE and modules.",
-                  "allowedExtensions": ["json"]
+                  "purpose": "Non-doctrinal runtime data sources.",
+                  "allowedExtensions": ["json"],
+                  "requiredFiles": [
+                    "sseInputs.json",
+                    "documentIndex.json"
+                  ]
                 },
                 "images": {
-                  "required": true,
                   "purpose": "Logos, icons, and document graphics.",
                   "allowedExtensions": ["png", "jpg", "svg"]
                 }
               }
             },
-            "bulletinBoards": {
+            "api": {
               "required": true,
-              "purpose": "OfficeBoard, dashboards, and HTML UI displays.",
-              "allowedExtensions": ["html"]
+              "purpose": "Server-side PHP logic for Skyebot, SSE, data fetch, and runtime actions.",
+              "allowedExtensions": ["php"],
+              "requiredFiles": [
+                "getDynamicData.php",
+                "askOpenAI.php",
+                "getWeather.php"
+              ]
             },
-            "legacy": {
-              "required": false,
-              "purpose": "Archived or deprecated files. Must not contain active logic."
-            },
-            "libs": {
-              "required": false,
-              "purpose": "External libraries (TCPDF, Parsedown, etc.)."
-            },
-            "logs": {
-              "required": false,
-              "purpose": "System and AI logs. Non-public runtime storage."
-            },
-            "modules": {
+            "documents": {
               "required": true,
-              "purpose": "Tier 3 function modules (reports, transformation, pipelines).",
+              "purpose": "Canonical output layer for generated PDF/HTML documents.",
               "children": {
-                "reports": {
-                  "required": true,
-                  "purpose": "Permit Fee Reports and other document generators.",
-                  "allowedExtensions": ["php", "json"]
+                "templates": {
+                  "purpose": "HTML templates used by modules to generate reports and surveys.",
+                  "allowedExtensions": ["html"],
+                  "requiredFiles": [
+                    "permitFeeReportTemplate.html",
+                    "photoSurveyTemplate.html",
+                    "workOrderRequestTemplate.html"
+                  ]
                 }
-              }
+              },
+              "allowedExtensions": ["pdf", "html"]
             },
             "reports": {
               "required": true,
-              "purpose": "Generated PDF/HTML documents produced by Skyesoft.",
-              "allowedExtensions": ["pdf", "html"]
+              "purpose": "System-generated JSON/PDF reports including audits, automation outputs, and SSE integrity checks.",
+              "children": {
+                "automation": {
+                  "purpose": "Cron-generated structural and doctrinal audit files.",
+                  "allowedExtensions": ["json"],
+                  "requiredFiles": [
+                    "dailyRepositoryAudit.json",
+                    "sseIntegrity.json",
+                    "proposals.json"
+                  ]
+                }
+              }
+            },
+            "bulletinBoards": {
+              "required": true,
+              "purpose": "Dynamic and static HTML boards for office, operations, and dashboard content.",
+              "allowedExtensions": ["html"],
+              "children": {
+                "sandbox": {
+                  "purpose": "Development sandbox for UI testing (Codex-governed).",
+                  "allowedExtensions": ["html", "js", "json"],
+                  "requiredFiles": ["officeBoardSandbox.html"]
+                }
+              }
             },
             "scripts": {
               "required": true,
-              "purpose": "Maintenance tools and governance utilities.",
-              "allowedExtensions": ["php", "js"]
+              "purpose": "Maintenance, indexing, rollover, and temporal testing utilities.",
+              "allowedExtensions": ["php", "js"],
+              "requiredFiles": [
+                "holidayRolloverTester.php",
+                "buildDocumentIndex.php"
+              ]
             },
-            "secure": {
-              "required": false,
-              "purpose": "Protected storage, sessions, and sensitive runtime utilities."
+            "modules": {
+              "required": true,
+              "purpose": "Tier 3 functional logic (report generators, AI behavior, SSE utilities).",
+              "children": {
+                "tis": {
+                  "purpose": "Time Interval Standards implementation.",
+                  "allowedExtensions": ["php", "json"],
+                  "requiredFiles": ["tisCore.php", "tisSchema.json"]
+                },
+                "skyebot": {
+                  "purpose": "Conversational engine logic.",
+                  "allowedExtensions": ["php", "js"],
+                  "requiredFiles": ["skyebot.js", "intentRouter.php", "contextManager.php"]
+                },
+                "reports": {
+                  "purpose": "Permit Fee Reports, Photo Surveys, and other document-producing modules.",
+                  "allowedExtensions": ["php", "json"]
+                },
+                "automation": {
+                  "purpose": "Cron tasks (repository audit, SSE verification, amendment discovery).",
+                  "allowedExtensions": ["php"],
+                  "requiredFiles": ["runCronTasks.php"]
+                }
+              }
             }
           }
         },
         "constraints": {
           "icon": 50,
-          "text": "All files must serve a defined purpose. No duplicate logic or shadow directories may be introduced. Governance tools must validate the repository nightly to detect drift or unauthorized changes."
+          "text": "All files must serve a defined purpose in Codex doctrine. No duplicate logic, shadow rules, or ungoverned scripts may be introduced. A daily cron job must audit the repository, compare all files and folders against this Repository Standard, and report any non-Codex eccentricities, including unapproved directories, orphaned scripts, drifted files, or structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
         },
         "notes": [
-          "This amendment supersedes all previous repository assumptions.",
-          "Any deviation from this structure constitutes architectural drift.",
-          "The Repository Standard is part of the Skyesoft Constitution.",
-          "SSE, Skyebot, and report pipelines rely on this structure for stability."
+          "This standard supersedes all previous repository assumptions.",
+          "Any deviation from this structure constitutes architectural drift and must be corrected immediately.",
+          "Repository layout is considered part of the Skyesoft Constitution by extension.",
+          "Cron-based validation ensures continuous structural integrity and prevents drift from compounding over time."
+        ]
+      },
+      "versionGovernance": {
+        "title": { "icon": 67, "text": "Version Governance Standard" },
+        "type": "standard",
+        "tier": 2,
+        "hierarchyOrder": "B-10",
+        "description": "Defines Skyesoft’s official versioning rules, module lineage tracking, and system-wide metadata governance. All version declarations, including modules, Codex, SSE, dashboards, and APIs, must follow this standard.",
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure consistent, authoritative versioning across all Skyesoft components. Prevent silent behavioral drift, enforce semantic version structure, and maintain an auditable history of system evolution."
+        },
+        "governs": [
+          "assets/data/versions.json",
+          "api/getVersions.php",
+          "system.versionContext"
+        ],
+        "dependsOn": ["constitution", "repositoryStandard"],
+        "rules": [
+          "All modules must declare version metadata inside versions.json.",
+          "Module versions must follow semantic format: MAJOR.MINOR.PATCH.",
+          "All version changes require Parliamentarian validation and Archivist recording.",
+          "No module may silently update its version outside of an approved process.",
+          "The system must expose a unified, read-only version endpoint via getVersions.php.",
+          "Repository audits must verify version coherence between code, Codex, and versions.json.",
+          "The Codex version must be listed as the root version element in versions.json.",
+          "The SSE must include codexContext.version sourced exclusively from versions.json.",
+          "Git commit hash must be read server-side via a Codex-approved script (e.g., scripts/git-version-check.php). This script must output: { \"latestCommitHash\": \"...\", \"latestCommitTime\": \"...\", \"latestCommitMessage\": \"...\" }. Cron tasks may log this data but cannot modify Codex doctrine.",
+          "Any Git-triggered inference requires Parliamentarian review (Article V).",
+          "Deployments must produce: { \"deployState\": \"live\", \"deployTime\": \"YYYY-MM-DDTHH:MM:SSZ\", \"commitHash\": \"...\", \"versions\": { ... } }. SSE must expose this under siteMeta.deploy. Confirmation via scripts/deploy-verify.php."
+        ],
+        "schema": {
+          "codex": ["version", "lastUpdate", "notes"],
+          "system": ["siteVersion", "deployTime", "commitHash", "state"],
+          "modules": {
+            "requiredFields": ["version", "lastModified", "notes", "sourceFile", "governedBy", "dependsOn", "changeNotes"],
+            "optionalFields": []
+          }
+        },
+        "apiRequirements": {
+          "endpoint": "api/getVersions.php",
+          "mustReturn": ["success", "data.codex", "data.system", "data.modules"],
+          "mustNotReturn": ["filepaths outside Repository Standard", "debug info"]
+        },
+        "archivistDuties": [
+          "Record all version increments.",
+          "Index module lineage changes.",
+          "Verify semantic versioning compliance.",
+          "Maintain historical version logs."
+        ],
+        "parliamentarianDuties": [
+          "Validate version standard compliance.",
+          "Approve new modules before version assignment.",
+          "Interpret conflicts between code and versions.json."
         ]
       },
       "skyebotModule": {
@@ -623,57 +739,6 @@
         "tier": 2,
         "hierarchyOrder": "B-7",
         "description": "Specifies the rules by which Skyebot interacts with code files, ensuring read-only safety, structured diffs, and controlled version updates."
-      },
-      "versionParliament": {
-        "title": { "icon": 67, "text": "Version Parliament Standard" },
-        "type": "standard",
-        "tier": 2,
-        "hierarchyOrder": "B-10",
-        "description": "Defines the unified, Codex-governed registry of all system version metadata. Ensures every module, UI page, SSE function, and API script reads from a single authoritative source of truth.",
-        "purpose": {
-          "icon": 6,
-          "text": "Prevent drift, duplication, and conflicting version data by enforcing that all version metadata resides in one canonical file governed by Codex doctrine."
-        },
-        "governs": [
-          "versions.json",
-          "getVersions.php",
-          "module version reporting",
-          "UI footer metadata",
-          "SSE siteMeta version fields"
-        ],
-        "rules": {
-          "icon": 20,
-          "text": "All Skyesoft version metadata must be stored exclusively in versions.json and retrieved through Codex-approved accessors.",
-          "enforcement": [
-            "No HTML file may hardcode a version string.",
-            "No module may maintain its own version file.",
-            "All version updates must go through versions.json.",
-            "Any new module must register its version entry before deployment.",
-            "versions.json changes do not create doctrine; they record operational state."
-          ]
-        },
-        "registrySchema": {
-          "required": [
-            "codex",
-            "system",
-            "modules"
-          ],
-          "optional": [
-            "pipelines",
-            "ui",
-            "archives"
-          ],
-          "description": "Defines canonical grouping of version metadata into codex, system, and module categories."
-        },
-        "file": {
-          "path": "assets/data/versions.json",
-          "format": "json",
-          "notes": "This file is the authoritative registry of all module versions, deployment metadata, and system state."
-        },
-        "api": {
-          "endpoint": "/api/getVersions.php",
-          "purpose": "Provides unified access to version metadata for SSE, dashboards, OfficeBoard, and Skyebot."
-        }
       }
     }
   },
@@ -695,7 +760,9 @@
         "tier": 3,
         "dependsOn": ["sse", "documentStandards"],
         "description": "Interprets live SSE data to determine active time phases (before work, worktime, after work, weekend, holiday). Provides normalized time-state outputs for dashboards, documents, and AI reasoning.",
-        "governedBy": ["documentStandards", "sse"]
+        "governedBy": ["documentStandards", "sse"],
+        "outputs": [],
+        "governs": []
       },
       "permitFeeReport": {
         "title": { "icon": 21, "text": "Permit Fee Report Module" },
@@ -703,7 +770,9 @@
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
         "governedBy": ["documentStandards", "documentCatalog"],
-        "description": "Generates standardized Permit Fee Reports using Tier 2 formatting and repository placement rules."
+        "description": "Generates standardized Permit Fee Reports using Tier 2 formatting and repository placement rules.",
+        "outputs": [],
+        "governs": []
       },
       "photoSurvey": {
         "title": { "icon": 21, "text": "Photo Survey Module" },
@@ -711,7 +780,9 @@
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
         "governedBy": ["documentStandards", "documentCatalog"],
-        "description": "Creates floating-header, floating-footer Photo Survey documents with strict section formatting."
+        "description": "Creates floating-header, floating-footer Photo Survey documents with strict section formatting.",
+        "outputs": [],
+        "governs": []
       },
       "dynamicDashboard": {
         "title": { "icon": 52, "text": "Dynamic Dashboard Module" },
@@ -719,7 +790,9 @@
         "tier": 3,
         "dependsOn": ["sse"],
         "governedBy": ["sse"],
-        "description": "Uses SSE state to provide real-time dashboard updates (time, weather, KPIs, intervals, and Codex context)."
+        "description": "Uses SSE state to provide real-time dashboard updates (time, weather, KPIs, intervals, and Codex context).",
+        "outputs": [],
+        "governs": []
       },
       "skyebotCore": {
         "title": { "icon": 10, "text": "Skyebot Core Module" },
@@ -727,7 +800,9 @@
         "tier": 3,
         "dependsOn": ["aiIntegration", "semanticResponder", "chatHistoryArchitecture"],
         "governedBy": ["aiIntegration", "semanticResponder", "chatHistoryArchitecture"],
-        "description": "Implements Skyebot’s core conversational logic, including intent routing, Codex-referenced reasoning, and SSE-aware response generation."
+        "description": "Implements Skyebot’s core conversational logic, including intent routing, Codex-referenced reasoning, and SSE-aware response generation.",
+        "outputs": [],
+        "governs": []
       },
       "ragEngine": {
         "title": { "icon": 35, "text": "RAG Engine Module" },
@@ -735,7 +810,9 @@
         "tier": 3,
         "dependsOn": ["ragFramework", "documentCatalog"],
         "governedBy": ["ragFramework", "documentCatalog"],
-        "description": "Retrieves documents, Codex entries, and archived materials to support AI reasoning."
+        "description": "Retrieves documents, Codex entries, and archived materials to support AI reasoning.",
+        "outputs": [],
+        "governs": []
       },
       "workOrderRequest": {
         "title": { "icon": 24, "text": "Work Order Request Module" },
@@ -743,7 +820,9 @@
         "tier": 3,
         "dependsOn": ["documentStandards", "documentCatalog"],
         "governedBy": ["documentStandards", "documentCatalog"],
-        "description": "Generates Work Order Request documents with standardized headers, metadata, and structure."
+        "description": "Generates Work Order Request documents with standardized headers, metadata, and structure.",
+        "outputs": [],
+        "governs": []
       },
       "systemAutomation": {
         "title": { "icon": 10, "text": "System Automation Module" },

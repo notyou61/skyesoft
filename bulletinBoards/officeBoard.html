@@ -3,40 +3,22 @@
 <head>
 <meta charset="utf-8"/>
 <title>Office Bulletin Board</title>
+
 <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon">
-<style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100vh;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;background-size:cover;display:flex;flex-direction:column;align-items:center}
-    .board-section{width:90vw;max-width:1200px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:8px 16px}
-    #pageHeader,#pageFooter{flex-shrink:0}
-    #pageBody{flex-grow:1;display:flex;flex-direction:column;justify-content:space-between;margin:12px 0;max-height:calc(100vh - 160px);overflow:hidden}
-    #pageHeader{display:flex;justify-content:space-between;align-items:center;font-size:1.1em;margin-top:12px}
-    #bodyHeader,#bodyFooter{font-weight:bold;font-size:1em;text-align:left;margin-bottom:8px}
-    #bodyMain{flex-grow:1;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;margin-top:-4px}
-    .entry{margin:6px 0;font-size:1.05em}
-    #pageFooter{display:flex;justify-content:space-between;align-items:center;font-size:0.8em;padding:6px 12px;background:#fff;margin-bottom:12px}
-    .cardBody{overflow-y:auto;max-height:60vh;flex-grow:1;padding-top:0;margin-top:0}
-    .bodyHeader::after{content:"";display:block;height:2px;width:100%;background:#ccc;margin-top:6px}
-    .bodyFooter::before{content:"";display:block;height:2px;width:100%;background:#ccc;margin-bottom:6px}
-    .version{font-size:0.8em;color:#777}
-    .forecastRow{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .forecastItem{flex:1;font-size:0.8rem;min-width:200px;background:#f9f9f9;padding:10px;border-radius:8px;margin:4px 0}
-    .permitCard{max-height:500px;overflow:hidden;width:100%}
-    .scrollContainer{max-height:400px;overflow-y:auto;position:relative;width:100%}
-    .permitTable{width:100%;border-collapse:collapse;table-layout:auto}
-    .permitTable thead{position:sticky;top:0;background:#004080;color:#fff;z-index:2}
-    .permitTable th,.permitTable td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left}
-    .permitTable tr:nth-child(even){background:#f2f2f2}
-    .status-ready{color:green;font-weight:bold}
-    .status-review{color:orange;font-weight:bold}
-</style>
+<link rel="stylesheet" href="/skyesoft/assets/css/officeBoard.css"><!-- optional if you later extract CSS -->
+
 </head>
 <body>
+
+<!-- =========================================================== -->
+<!-- HEADER -->
+<!-- =========================================================== -->
 <div class="board-section" id="pageHeader">
   <div style="display:flex;align-items:center;gap:16px">
     <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height:48px">
     <h1 style="font-size:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Office Bulletin Board</h1>
   </div>
+
   <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:0.9em;white-space:nowrap">
     <div>Weather: <span id="weatherDisplay">Loading...</span></div>
     <div>Time: <span id="currentTime">--:--:--</span></div>
@@ -44,284 +26,31 @@
   </div>
 </div>
 
+<!-- =========================================================== -->
+<!-- BODY -->
+<!-- =========================================================== -->
 <div class="board-section" id="pageBody">
   <div class="bodyHeader" id="bodyHeader"></div>
   <div id="bodyMain"></div>
   <div class="bodyFooter" id="bodyFooter"></div>
 </div>
 
+<!-- =========================================================== -->
+<!-- FOOTER -->
+<!-- =========================================================== -->
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
-  <div class="version">v8.1 – Fully Working Again</div>
+  <div class="version" id="versionFooter">v8.3 — Loading…</div>
 </div>
 
-<script>
-// ===================================================================
-// LIVE DATA + SYNCED CLOCK & COUNTDOWN
-// ===================================================================
-let serverData = null;
-let serverTimeOffset = 0;
+<!-- =========================================================== -->
+<!-- JS MODULES (NEW ARCHITECTURE) -->
+<!-- =========================================================== -->
+<script src="/skyesoft/assets/js/cards.js"></script>
+<script src="/skyesoft/assets/js/ui.js"></script>
+<script src="/skyesoft/assets/js/weather.js"></script>
+<script src="/skyesoft/assets/js/sse.js"></script>
+<script src="/skyesoft/assets/js/app.js"></script>
 
-function loadLiveData() {
-  fetch("/skyesoft/api/getDynamicData.php")
-    .then(r => r.json())
-    .then(d => {
-      serverData = d;
-      if (d.timeDateArray?.currentUnixTime) {
-        serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
-      }
-      updateClockAndCountdown();
-      // Weather + Highlights + Holiday
-      if (d.weatherData) {
-        const w = d.weatherData;
-        const icons = {"01":"☀️","02":"🌤️","03":"⛅","04":"☁️","09":"🌦️","10":"🌧️","11":"⛈️","13":"❄️","50":"🌫️"};
-        const emoji = icons[w.icon?.substr(0,2)] || "🌤️";
-        document.getElementById("weatherDisplay").textContent = `${emoji} ${w.temp}°F — ${w.description}`;
-        document.getElementById("sunriseTime").textContent = w.sunrise;
-        document.getElementById("sunsetTime").textContent = w.sunset;
-        document.getElementById("daylightTime").textContent = w.daytimeHours;
-        document.getElementById("nightTime").textContent = w.nighttimeHours;
-        if (Array.isArray(w.forecast)) {
-          w.forecast.slice(0,3).forEach((day,i) => {
-            const el = document.getElementById("forecastDay"+(i+1));
-            if (el) {
-              const emoji = icons[day.icon?.substr(0,2)] || "🌤️";
-              const desc = day.description.charAt(0).toUpperCase() + day.description.slice(1);
-              el.innerHTML = `<strong>📅 ${day.date}</strong><br>${emoji} ${desc}<br>High ${day.high}°F / Low ${day.low}°F | 💧 ${day.precip}% | 💨 ${day.wind} mph`;
-            }
-          });
-        }
-      }
-      if (d.holidays) {
-        const today = new Date(); today.setHours(0,0,0,0);
-        let closest = Infinity, name = "";
-        for (let ds in d.holidays) {
-          const hd = new Date(ds);
-          if (hd >= today) {
-            const diff = Math.ceil((hd - today) / 86400000);
-            if (diff < closest) { closest = diff; name = d.holidays[ds]; }
-          }
-        }
-        if (name) document.getElementById("nextHoliday").textContent = `${name} — in ${closest} day${closest>1?"s":""}`;
-      }
-    })
-    .catch(() => {});
-}
-
-function updateClockAndCountdown() {
-  if (!serverData) return;
-  const serverNow = new Date(Date.now() + serverTimeOffset);
-  const h = serverNow.getHours();
-  const m = serverNow.getMinutes().toString().padStart(2, '0');
-  const s = serverNow.getSeconds().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  document.getElementById("currentTime").textContent = `${(h % 12) || 12}:${m}:${s} ${ampm}`;
-
-  if (serverData.intervalsArray) {
-    let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
-    const hh = Math.floor(sec / 3600).toString().padStart(2, '0');
-    const mm = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
-    const ss = (sec % 60).toString().padStart(2, '0');
-
-    const i = serverData.intervalsArray;
-    const isWorkday = (i.dayType === "Workday");
-
-    let label = "";
-    let emoji = "";
-
-    if (!isWorkday) {
-      label = "Office closed";
-      emoji = "🟦";
-    } else if (i.intervalName === "Worktime") {
-      label = "Workday ends in";
-      emoji = "🟩";
-    } else if (i.intervalName === "Before Worktime") {
-      label = "Workday begins in";
-      emoji = "🟨";
-    } else {
-      label = "Workday resumes tomorrow";
-      emoji = "🔴";
-    }
-
-    let timeText = "";
-    if (label.includes("in")) {
-      timeText = `${hh}h ${mm}m ${ss}s`;
-    }
-
-    document.getElementById("intervalRemainingData").textContent = label.includes("in")
-      ? `${emoji} ${label} ${timeText}`
-      : `${emoji} ${label}`;
-
-    if (i.intervalName === "Worktime" && sec <= 600) {
-      document.getElementById("intervalRemainingData").style.color = (sec <= 30) ? "red" : "goldenrod";
-    } else {
-      document.getElementById("intervalRemainingData").style.color = "#000";
-    }
-
-    serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
-  }
-}
-
-loadLiveData();
-setInterval(loadLiveData, 15000);
-setInterval(updateClockAndCountdown, 1000);
-updateClockAndCountdown();
-
-// ===================================================================
-// CARDS + ROTATION + FIXED SCROLL
-// ===================================================================
-const cards = [
-  {header:"<h2>📋 Active Permits</h2>",body:`<div class="permitCard">
-        <div class="scrollContainer">
-          <table class="permitTable">
-            <thead>
-              <tr>
-                <th>WO #</th>
-                <th>Customer</th>
-                <th>Jobsite</th>
-                <th>Jurisdiction</th>
-                <th>Fee</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="permitTableBody">
-              <tr><td colspan="6">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>`
-,footer:"<small>Updated: 2025-11-19</small>",duration:30000},
-  {header:"<h2>🌅 Today’s Highlights</h2>",body:`
-    <div class="entry">📅 <span id="todaysDate"></span> · Day <span id="dayOfYear"></span> of 365 (<span id="daysRemaining"></span> remaining)</div>
-    <div class="entry">🌄 Sunrise: <span id="sunriseTime">--:--</span> · 🌇 Sunset: <span id="sunsetTime">--:--</span></div>
-    <div class="entry">🕒 Daylight: <span id="daylightTime">-- hrs</span> · 🌌 Night: <span id="nightTime">-- hrs</span></div>
-    <div class="entry">Next Holiday: <span id="nextHoliday">Loading...</span></div>
-    <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
-    <div class="entry" id="tipOfTheDay">💡 Tip of the Day: Loading...</div>
-    <div class="entry">Birthdays Today: (none)</div>
-    <div class="entry">Anniversary: Mark – 3 Years!</div>
-    <hr style="margin:12px 0;border:none;border-top:1px solid #ccc">
-    <div class="entry forecastRow">
-      <div class="forecastItem"><span id="forecastDay1">Loading...</span></div>
-      <div class="forecastItem"><span id="forecastDay2">Loading...</span></div>
-      <div class="forecastItem"><span id="forecastDay3">Loading...</span></div>
-    </div>`,footer:"<small>Live Data</small>",duration:30000},
-  {header:"<h2>📈 KPI Dashboard</h2>",body:`<div class="entry">Coming Soon…</div>`,footer:"<small>Updated Daily</small>",duration:30000},
-  {header:"<h2>📢 Announcements</h2>",body:`<div class="entry">No announcements posted.</div>`,footer:"<small>Company-Wide</small>",duration:30000}
-];
-
-let cardIndex = 0;
-function populateCard(c){
-  document.getElementById("bodyHeader").innerHTML=c.header;
-  document.getElementById("bodyMain").innerHTML=`<div class="cardBody">${c.body}</div>`;
-  document.getElementById("bodyFooter").innerHTML=c.footer;
-}
-function getLiveDateInfo(){
-  const n=new Date();
-  const f=n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  const y=n.getFullYear();
-  const leap=(y%4===0&&(y%100!==0||y%400===0))?366:365;
-  const doy=Math.floor((n-new Date(y,0,0))/86400000);
-  return{formattedDate:f,dayOfYear:doy,daysRemaining:leap-doy};
-}
-function updateHighlightsCard(){
-  const d=getLiveDateInfo();
-  document.getElementById("todaysDate").textContent=d.formattedDate;
-  document.getElementById("dayOfYear").textContent=d.dayOfYear;
-  document.getElementById("daysRemaining").textContent=d.daysRemaining;
-}
-//
-function autoScrollCardBody() {
-  const container = document.querySelector(".scrollContainer");
-  if (!container) return;
-
-  container.scrollTop = 0;
-  
-  const dist = container.scrollHeight - container.clientHeight;
-  if (dist <= 0) return;
-
-  const bufferTime = 2000; // Stop early (2 seconds before rotation)
-  const scrollTime = cards[0].duration - bufferTime;
-
-  const step = dist / (scrollTime / 30); // 30ms interval like before
-
-  let pos = 0;
-  const timer = setInterval(() => {
-    pos += step;
-    container.scrollTop = pos;
-
-    // Stop where we reach the end
-    if (pos >= dist) clearInterval(timer);
-  }, 30);
-}
-// Load permit data
-async function loadPermitData() {
-  try {
-    const res = await fetch("../assets/data/activePermits.json");
-    const json = await res.json();
-    const tbody = document.getElementById("permitTableBody");
-
-    if (!json.activePermits || !Array.isArray(json.activePermits)) {
-      tbody.innerHTML = `<tr><td colspan="6">Error: No permit data</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = json.activePermits.map(p => `
-      <tr>
-        <td>${p.wo}</td>
-        <td>${p.customer}</td>
-        <td>${p.jobsite}</td>
-        <td>${p.jurisdiction}</td>
-        <td>$${p.fee.toFixed(2)}</td>
-        <td class="${p.status.includes('Review') ? 'status-review' : 'status-ready'}">${p.status}</td>
-      </tr>
-    `).join("");
-
-  } catch (err) {
-    document.getElementById("permitTableBody").innerHTML =
-      `<tr><td colspan="6">Error loading permit data</td></tr>`;
-  }
-}
-// Load version info
-async function loadOfficeBoardVersion() {
-  try {
-    const res = await fetch("../api/getVersions.php");
-    const v = await res.json();
-
-    const mod = v.modules?.officeBoard;
-    if (!mod) return;
-
-    const versionEl = document.getElementById("officeBoardVersion");
-    const updatedEl = document.getElementById("officeBoardUpdated");
-
-    if (versionEl) versionEl.textContent = mod.version || "v?";
-    if (updatedEl) updatedEl.textContent = mod.lastModified || "Unknown";
-
-  } catch (err) {
-    const versionEl = document.getElementById("officeBoardVersion");
-    const updatedEl = document.getElementById("officeBoardUpdated");
-
-    if (versionEl) versionEl.textContent = "Error";
-    if (updatedEl) updatedEl.textContent = "Unavailable";
-  }
-}
-// Rotate Cards
-function rotateCards(){
-  const c=cards[cardIndex];
-  populateCard(c);
-  // Card Index Conditional Actions
-  if (cardIndex === 0) {
-    setTimeout(loadPermitData, 50);
-    setTimeout(loadPermitUpdatedDate, 60);
-    setTimeout(loadOfficeBoardVersion, 80);
-    setTimeout(autoScrollCardBody, 500);
-  }
-  // Card Index Conditional Actions
-  if(cardIndex===1)setTimeout(updateHighlightsCard,50);
-  cardIndex=(cardIndex+1)%cards.length;
-  setTimeout(rotateCards,c.duration);
-}
-window.addEventListener("DOMContentLoaded",rotateCards);
-</script>
 </body>
 </html>
