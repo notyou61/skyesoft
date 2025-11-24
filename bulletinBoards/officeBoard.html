@@ -66,19 +66,22 @@
         margin-top:-6px;
     }
 
-    /* PERMIT TABLE */
-    .scrollContainer {
-        max-height:480px;
-        overflow-y:auto;
-        width:100%;
-        position:relative;
+    /* NON-STATUS COLUMNS — truncate with ellipsis */
+    .permitTable td:not(:last-child),
+    .permitTable th:not(:last-child) {
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        max-width:1px;
     }
 
-    .permitTable {
-        width:100%;
-        border-collapse:collapse;
-        table-layout:auto;
-        font-size:1.0em;
+    /* STATUS COLUMN — do not truncate, do not wrap */
+    .permitTable td:last-child,
+    .permitTable th:last-child {
+        white-space:nowrap;
+        overflow:visible;
+        text-overflow:unset;
+        max-width:none;
     }
 
     /* BLUE STICKY HEADER — restored */
@@ -117,6 +120,7 @@
 
     .version { color:#777; }
 </style>
+
 
 </head>
 <body>
