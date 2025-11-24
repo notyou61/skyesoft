@@ -111,7 +111,7 @@ function autoScrollActivePermits(durationMs) {
 // ===============================================================
 
 // #region Card Array Import Support
-let cards = [];   // this will be populated by cards.js
+//let cards = [];   // this will be populated by cards.js
 let cardIndex = 0;
 // #endregion
 
