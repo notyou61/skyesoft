@@ -1,106 +1,142 @@
-/* ============================================================
-   #region SAFE DOM HELPERS
-============================================================ */
-function safeSet(id, v) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = v;
+// ===============================================================
+//  UI UTILITIES  (Legacy Behavior Restored)
+// ===============================================================
+
+// #region Safe DOM
+function safeSet(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
 }
-/* #endregion */
+// #endregion
 
-/* ============================================================
-   #region HIGHLIGHTS + DATE HELPERS
-============================================================ */
+
+// ===============================================================
+//  DATE / HIGHLIGHTS
+// ===============================================================
+
+// #region Date Info Block
 function getDateInfo() {
-  const n = new Date();
-  const f = n.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
-  const y = n.getFullYear();
-  const leap = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
-  const doy = Math.floor((n - new Date(y, 0, 0)) / 86400000);
+    const n = new Date();
+    const f = n.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
 
-  return { formattedDate: f, dayOfYear: doy, daysRemaining: leap - doy };
+    const year = n.getFullYear();
+    const doy = Math.floor((n - new Date(year, 0, 0)) / 86400000);
+    const leap = (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 366 : 365;
+
+    return {
+        formattedDate: f,
+        dayOfYear: doy,
+        daysRemaining: leap - doy
+    };
 }
 
 function updateHighlightsCard() {
-  const d = getDateInfo();
-  safeSet("todaysDate", d.formattedDate);
-  safeSet("dayOfYear", d.dayOfYear);
-  safeSet("daysRemaining", d.daysRemaining);
+    const d = getDateInfo();
+    safeSet("todaysDate", d.formattedDate);
+    safeSet("dayOfYear", d.dayOfYear);
+    safeSet("daysRemaining", d.daysRemaining);
 }
-/* #endregion */
+// #endregion
 
-/* ============================================================
-   #region PERMIT DATA LOADER
-============================================================ */
+
+
+// ===============================================================
+//  PERMIT TABLE — LOAD + SCROLL
+// ===============================================================
+
+// #region Load Active Permits (JSON)
 async function loadPermitData() {
-  try {
-    const r = await fetch("/skyesoft/assets/data/activePermits.json");
-    const j = await r.json();
-    const tb = document.getElementById("permitTableBody");
+    try {
+        const res = await fetch("/skyesoft/assets/data/activePermits.json");
+        const json = await res.json();
+        const tbody = document.getElementById("permitTableBody");
+        if (!tbody) return;
 
-    if (!tb) return;
-    if (!j.activePermits) {
-      tb.innerHTML = `<tr><td colspan="6">Error: no data</td></tr>`;
-      return;
+        if (!json.activePermits) {
+            tbody.innerHTML = `<tr><td colspan="6">Error: no data found</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = json.activePermits.map(p => `
+            <tr>
+                <td>${p.wo}</td>
+                <td>${p.customer}</td>
+                <td>${p.jobsite}</td>
+                <td>${p.jurisdiction}</td>
+                <td>$${p.fee.toFixed(2)}</td>
+                <td class="${p.status.includes("Review") ? "status-review" : "status-ready"}">${p.status}</td>
+            </tr>
+        `).join("");
+
+    } catch (e) {
+        safeSet("permitTableBody", `<tr><td colspan="6">Error loading permit data</td></tr>`);
     }
-
-    tb.innerHTML = j.activePermits.map(p => `
-      <tr>
-        <td>${p.wo}</td>
-        <td>${p.customer}</td>
-        <td>${p.jobsite}</td>
-        <td>${p.jurisdiction}</td>
-        <td>$${p.fee.toFixed(2)}</td>
-        <td class="${p.status.includes("Review") ? "status-review" : "status-ready"}">
-          ${p.status}
-        </td>
-      </tr>
-    `).join("");
-
-  } catch (e) {
-    // silent fallback
-  }
 }
-/* #endregion */
+// #endregion
 
-/* ============================================================
-   #region AUTO SCROLL — FULL LEGACY RESTORE
-============================================================ */
-function autoScrollActivePermits() {
-  const c = document.querySelector(".scrollContainer");
-  if (!c) return;
 
-  c.scrollTop = 0;
-  const dist = c.scrollHeight - c.clientHeight;
+// #region Timed Auto-Scroll (Legacy Behavior)
+function autoScrollActivePermits(durationMs) {
+    const container = document.querySelector(".scrollContainer");
+    if (!container) return;
 
-  if (dist <= 0) return;
+    container.scrollTop = 0;
 
-  const buffer = 2000;
-  const scrollTime = cards[0].duration - buffer;
-  const step = dist / (scrollTime / 30);
-  let pos = 0;
+    const dist = container.scrollHeight - container.clientHeight;
+    if (dist <= 0) return;
 
-  const t = setInterval(() => {
-    pos += step;
-    c.scrollTop = pos;
-    if (pos >= dist) clearInterval(t);
-  }, 30);
+    // Legacy: stop scrolling ~2 seconds before card changes
+    const buffer = 2000;
+    const scrollTime = Math.max(500, durationMs - buffer);
+
+    const step = dist / (scrollTime / 30);
+    let pos = 0;
+
+    const t = setInterval(() => {
+        pos += step;
+        container.scrollTop = pos;
+        if (pos >= dist) clearInterval(t);
+    }, 30);
 }
-/* #endregion */
+// #endregion
 
-/* ============================================================
-   #region CARD POPULATION
-============================================================ */
+
+
+// ===============================================================
+//  CARD DISPLAY ENGINE
+// ===============================================================
+
+// #region Card Array Import Support
+let cards = [];   // this will be populated by cards.js
+let cardIndex = 0;
+// #endregion
+
+
+// #region Populate Card
 function populateCard(card) {
-  const h = document.getElementById("bodyHeader");
-  const b = document.getElementById("bodyMain");
-  const f = document.getElementById("bodyFooter");
+    const headerEl = document.getElementById("bodyHeader");
+    const mainEl = document.getElementById("bodyMain");
+    const footerEl = document.getElementById("bodyFooter");
 
-  if (h) h.innerHTML = card.header;
-  b.innerHTML = `<div class="cardBody">${card.body}</div>`;
-  if (f) f.innerHTML = card.footer;
+    if (headerEl) headerEl.innerHTML = card.header;
+    if (mainEl)   mainEl.innerHTML   = `<div class="cardBody">${card.body}</div>`;
+    if (footerEl) footerEl.innerHTML = card.footer;
 }
-/* #endregion */
+// #endregion
+
+
+
+// ===============================================================
+//  EXPORTS
+// ===============================================================
+window.UI = {
+    safeSet,
+    loadPermitData,
+    autoScrollActivePermits,
+    populateCard,
+    updateHighlightsCard
+};

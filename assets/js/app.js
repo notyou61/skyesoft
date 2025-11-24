@@ -1,148 +1,177 @@
-/* ============================================================
-   #region GLOBALS
-============================================================ */
+// ===============================================================
+//  LIVE DATA + ROTATION ENGINE (Legacy Behavior Restored)
+// ===============================================================
+
+// #region Global State
 let serverData = null;
 let serverTimeOffset = 0;
-let cardIndex = 0;
-/* #endregion */
+let cardTimer = null;
+// #endregion
 
-/* ============================================================
-   #region VERSION FOOTER
-============================================================ */
-function updateVersionFooterFromSSE(d) {
-  try {
-    if (!d.versions) {
-      safeSet("versionFooter", "Version info unavailable");
-      return;
-    }
 
-    const v = d.versions;
-    const vb = v.modules.officeBoard.version;
-    const vp = v.modules.activePermits.version;
-    const cx = v.codex.version;
 
-    safeSet("versionFooter", `OfficeBoard ${vb} • ActivePermits ${vp} • Codex ${cx}`);
-  } catch {
-    safeSet("versionFooter", "Version info unavailable");
-  }
-}
-/* #endregion */
-
-/* ============================================================
-   #region LIVE DATA LOADER
-============================================================ */
+// ===============================================================
+//  LIVE DATA LOADER (SSE-like)
+// ===============================================================
 function loadLiveData() {
-  fetch("/skyesoft/api/getDynamicData.php")
-    .then(r => r.json())
-    .then(d => {
-      serverData = d;
+    fetch("/skyesoft/api/getDynamicData.php")
+        .then(r => r.json())
+        .then(d => {
+            serverData = d;
 
-      updateVersionFooterFromSSE(d);
+            updateVersionFooter(d);
+            syncClockOffset(d);
+            updateWeather(d);
+            updateInterval(d);
+        })
+        .catch(() => {});
+}
 
-      // TIME
-      if (d?.timeDateArray?.currentUnixTime) {
-        serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
-      }
-      updateClock();
 
-      // WEATHER
-      if (d.weatherData) {
-        renderWeatherBlock(d.weatherData);
-      }
-
-      // HOLIDAYS
-      if (d.holidays) {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-
-        let closest = Infinity;
-        let name = "";
-
-        for (let ds in d.holidays) {
-          const hd = new Date(ds);
-          if (hd >= today) {
-            const diff = Math.ceil((hd - today) / 86400000);
-            if (diff < closest) {
-              closest = diff;
-              name = d.holidays[ds];
-            }
-          }
+// #region Version Footer
+function updateVersionFooter(d) {
+    try {
+        if (!d.versions) {
+            UI.safeSet("versionFooter", "Version info unavailable");
+            return;
         }
 
-        safeSet("nextHoliday", `${name} — in ${closest} day${closest>1?"s":""}`);
-      }
-    });
+        const v = d.versions;
+        const vb = v.modules.officeBoard.version;
+        const vp = v.modules.activePermits.version;
+        const codex = v.codex.version;
+
+        UI.safeSet("versionFooter", `OfficeBoard ${vb} • Permits ${vp} • Codex ${codex}`);
+    } catch {
+        UI.safeSet("versionFooter", "Version info unavailable");
+    }
 }
-/* #endregion */
+// #endregion
 
-/* ============================================================
-   #region CLOCK
-============================================================ */
+
+
+// ===============================================================
+//  CLOCK SYNC + REAL-TIME UPDATE
+// ===============================================================
+function syncClockOffset(d) {
+    if (d?.timeDateArray?.currentUnixTime) {
+        serverTimeOffset =
+            (d.timeDateArray.currentUnixTime * 1000) - Date.now();
+    }
+}
+
 function updateClock() {
-  if (!serverData) return;
+    if (!serverData) return;
 
-  const now = new Date(Date.now() + serverTimeOffset);
-  const h = now.getHours();
-  const m = now.getMinutes().toString().padStart(2,'0');
-  const s = now.getSeconds().toString().padStart(2,'0');
-  const am = h >= 12 ? "PM":"AM";
+    const now = new Date(Date.now() + serverTimeOffset);
+    const hh = now.getHours();
+    const mm = now.getMinutes().toString().padStart(2,"0");
+    const ss = now.getSeconds().toString().padStart(2,"0");
+    const am = (hh >= 12 ? "PM" : "AM");
 
-  safeSet("currentTime", `${(h%12)||12}:${m}:${s} ${am}`);
+    UI.safeSet("currentTime", `${(hh % 12) || 12}:${mm}:${ss} ${am}`);
+}
 
-  // INTERVALS
-  if (serverData.intervalsArray) {
-    let sec = Math.max(0, serverData.intervalsArray.secondsRemainingToInterval);
-    const hh = Math.floor(sec/3600).toString().padStart(2,'0');
-    const mm = Math.floor((sec%3600)/60).toString().padStart(2,'0');
-    const ss = (sec%60).toString().padStart(2,'0');
+setInterval(updateClock, 1000);
+// ===============================================================
 
-    const i = serverData.intervalsArray;
-    let msg="", emoji="";
 
-    if (i.dayType !== "Workday") {
-      msg = "Office closed"; emoji = "🟦";
-    } else if (i.intervalName === "Worktime") {
-      msg = `Workday ends in ${hh}h ${mm}m ${ss}s`; emoji = "🟩";
-    } else if (i.intervalName === "Before Worktime") {
-      msg = `Workday begins in ${hh}h ${mm}m ${ss}s`; emoji = "🟨";
+
+// ===============================================================
+//  WEATHER & FORECAST
+// ===============================================================
+function updateWeather(d) {
+    if (!d.weatherData) return;
+
+    const w = d.weatherData;
+    const icons = {
+        "01":"☀️","02":"🌤️","03":"⛅",
+        "04":"☁️","09":"🌦️","10":"🌧️",
+        "11":"⛈️","13":"❄️","50":"🌫️"
+    };
+
+    const emoji = icons[w.icon?.substring(0,2)] || "🌤️";
+    UI.safeSet("weatherDisplay", `${emoji} ${w.temp}°F — ${w.description}`);
+}
+// ===============================================================
+
+
+
+// ===============================================================
+//  INTERVAL COUNTDOWN
+// ===============================================================
+function updateInterval(d) {
+    if (!d.intervalsArray) return;
+
+    let sec = d.intervalsArray.secondsRemainingToInterval;
+    if (sec == null) return;
+
+    let name = d.intervalsArray.intervalName;
+    let day  = d.intervalsArray.dayType;
+
+    let emoji="", label="";
+
+    if (day !== "Workday") {
+        emoji="🟦"; label="Office closed";
+    } else if (name === "Worktime") {
+        emoji="🟩"; label="Workday ends in";
+    } else if (name === "Before Worktime") {
+        emoji="🟨"; label="Workday begins in";
     } else {
-      msg = "Workday resumes tomorrow"; emoji = "🔴";
+        emoji="🔴"; label="Workday resumes tomorrow";
     }
 
-    safeSet("intervalRemainingData", `${emoji} ${msg}`);
-    serverData.intervalsArray.secondsRemainingToInterval = sec - 1;
-  }
-}
-/* #endregion */
+    if (label.includes("in")) {
+        const hh = Math.floor(sec/3600).toString().padStart(2,'0');
+        const mm = Math.floor((sec%3600)/60).toString().padStart(2,'0');
+        const ss = (sec%60).toString().padStart(2,'0');
+        UI.safeSet("intervalRemainingData", `${emoji} ${label} ${hh}h ${mm}m ${ss}s`);
+    } else {
+        UI.safeSet("intervalRemainingData", `${emoji} ${label}`);
+    }
 
-/* ============================================================
-   #region CARD ROTATION
-============================================================ */
+    d.intervalsArray.secondsRemainingToInterval = Math.max(0, sec - 1);
+}
+// ===============================================================
+
+
+
+
+// ===============================================================
+//  CARD ROTATION ENGINE  (Legacy)
+// ===============================================================
 function rotateCards() {
-  const c = cards[cardIndex];
-  populateCard(c);
+    if (!Array.isArray(cards) || cards.length === 0) return;
 
-  if (cardIndex === 0) {
-    setTimeout(loadPermitData, 50);
-    setTimeout(autoScrollActivePermits, 500);
-  }
+    const c = cards[cardIndex];
+    UI.populateCard(c);
 
-  if (cardIndex === 1) {
-    setTimeout(updateHighlightsCard, 50);
-  }
+    // Active Permits
+    if (cardIndex === 0) {
+        setTimeout(UI.loadPermitData, 50);
+        setTimeout(() => UI.autoScrollActivePermits(c.duration), 600);
+    }
 
-  cardIndex = (cardIndex + 1) % cards.length;
-  setTimeout(rotateCards, c.duration);
+    // Highlights
+    if (cardIndex === 1) {
+        setTimeout(UI.updateHighlightsCard, 80);
+    }
+
+    cardIndex = (cardIndex + 1) % cards.length;
+
+    if (cardTimer) clearTimeout(cardTimer);
+    cardTimer = setTimeout(rotateCards, c.duration);
 }
-/* #endregion */
+// ===============================================================
 
-/* ============================================================
-   #region INIT
-============================================================ */
+
+
+
+// ===============================================================
+//  INITIALIZATION
+// ===============================================================
 window.addEventListener("DOMContentLoaded", () => {
-  rotateCards();
-  loadLiveData();
-  setInterval(loadLiveData, 15000);
-  setInterval(updateClock, 1000);
+    loadLiveData();
+    setInterval(loadLiveData, 15000);
+    rotateCards();
 });
-/* #endregion */
