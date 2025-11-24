@@ -54,6 +54,10 @@
       "metaSupremacy": {
         "title": { "icon": 58, "text": "Meta Principle — Primacy of the Meta Layer" },
         "text": "The Meta tier defines the foundation of Skyesoft. Nothing in any other tier may contradict the principles set here. All Standards, Modules, and system behavior must follow the Meta rules first."
+      },
+      "versionParliament": {
+        "title": { "icon": 58, "text": "Meta Principle — Version Parliament" },
+        "text": "Version Parliament is the adjudicating extension of the Parliamentarian for versioning. No version change is valid without: (1) Detected structural change, (2) Parliamentarian validation, (3) Archivist recording. It operates under Meta Supremacy."
       }
     }
   },
@@ -365,7 +369,8 @@
             "New SSE members require Codex approval and must specify a tier.",
             "All runtime inputs (hours, labels, location, coordinates, daybreak values) must be loaded exclusively from sseInputs.json.",
             "The Codex cannot duplicate, override, or redefine any sseInputs.json value.",
-            "PHP scripts must never introduce fields outside the tier map."
+            "PHP scripts must never introduce fields outside the tier map.",
+            "SSE.system.codexContext must embed: { \"codexVersion\": \"...\", \"moduleVersions\": { ... }, \"systemVersion\": \"...\", \"gitHash\": \"...\" }. Sourced exclusively from assets/data/versions.json. No hardcoding."
           ]
         }
       },
@@ -419,7 +424,9 @@
           "No new top-level directories may be introduced without Codex amendment.",
           "Directory purpose must remain narrow, focused, and consistent with Codex doctrine.",
           "Executable logic must be placed only in approved execution directories (api/, assets/js/, modules/, scripts/).",
-          "The repository layout must remain stable across all environments (Home, Office, Server, Deployment)."
+          "The repository layout must remain stable across all environments (Home, Office, Server, Deployment).",
+          "Git pushes may activate a Repository Event Hook via api/cron-run.php. Allowed actions: Log trigger (time, branch, hash, IP); Run version sync; No writes to Codex files.",
+          "Hook logs must follow: { \"hookTriggered\": true, \"branch\": \"...\", \"commitHash\": \"...\", \"remoteIP\": \"...\" } (stored in /reports/automation/hooks.json)."
         ],
         "rules": {
           "allowedRoots": [
@@ -661,14 +668,17 @@
           "The system must expose a unified, read-only version endpoint via getVersions.php.",
           "Repository audits must verify version coherence between code, Codex, and versions.json.",
           "The Codex version must be listed as the root version element in versions.json.",
-          "The SSE must include codexContext.version sourced exclusively from versions.json."
+          "The SSE must include codexContext.version sourced exclusively from versions.json.",
+          "Git commit hash must be read server-side via a Codex-approved script (e.g., scripts/git-version-check.php). This script must output: { \"latestCommitHash\": \"...\", \"latestCommitTime\": \"...\", \"latestCommitMessage\": \"...\" }. Cron tasks may log this data but cannot modify Codex doctrine.",
+          "Any Git-triggered inference requires Parliamentarian review (Article V).",
+          "Deployments must produce: { \"deployState\": \"live\", \"deployTime\": \"YYYY-MM-DDTHH:MM:SSZ\", \"commitHash\": \"...\", \"versions\": { ... } }. SSE must expose this under siteMeta.deploy. Confirmation via scripts/deploy-verify.php."
         ],
         "schema": {
           "codex": ["version", "lastUpdate", "notes"],
           "system": ["siteVersion", "deployTime", "commitHash", "state"],
           "modules": {
-            "requiredFields": ["version", "lastModified", "notes"],
-            "optionalFields": ["sourceFile", "governs", "dependsOn"]
+            "requiredFields": ["version", "lastModified", "notes", "sourceFile", "governedBy", "dependsOn", "changeNotes"],
+            "optionalFields": []
           }
         },
         "apiRequirements": {
