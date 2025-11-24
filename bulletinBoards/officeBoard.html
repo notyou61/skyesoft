@@ -66,21 +66,40 @@
         margin-top:-6px;
     }
 
+    /* TABLE FULL WIDTH WITH FIXED LAYOUT FOR SPANNING ROWS */
+    .permitTable {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+
+    /* COLUMN WIDTHS TO ENSURE FULL SPAN AND BALANCED TRUNCATION */
+    .permitTable th:nth-child(1),
+    .permitTable td:nth-child(1) { width: 8%; } /* WO # */
+    .permitTable th:nth-child(2),
+    .permitTable td:nth-child(2) { width: 22%; } /* Customer */
+    .permitTable th:nth-child(3),
+    .permitTable td:nth-child(3) { width: 22%; } /* Job Site */
+    .permitTable th:nth-child(4),
+    .permitTable td:nth-child(4) { width: 20%; } /* Jurisdiction */
+    .permitTable th:nth-child(5),
+    .permitTable td:nth-child(5) { width: 8%; } /* Fee */
+    .permitTable th:nth-child(6),
+    .permitTable td:nth-child(6) { width: 20%; } /* Status */
+
     /* NON-STATUS BODY CELLS — truncate with ellipsis */
     .permitTable td:not(:last-child) {
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
-        max-width:1px;
     }
 
-    /* STATUS COLUMN — do not truncate, do not wrap */
+    /* STATUS COLUMN — do not truncate, allow full visibility */
     .permitTable td:last-child,
     .permitTable th:last-child {
         white-space:nowrap;
         overflow:visible;
         text-overflow:unset;
-        max-width:none;
     }
 
     /* BLUE STICKY HEADER — restored */
@@ -119,7 +138,6 @@
 
     .version { color:#777; }
 </style>
-
 
 </head>
 <body>
