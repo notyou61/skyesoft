@@ -1,177 +1,146 @@
-// ===============================================================
-//  LIVE DATA + ROTATION ENGINE (Legacy Behavior Restored)
-// ===============================================================
+//#region App Engine
+// ====================================================================
+// Skyesoft OfficeBoard — Rotation, Live Data, Scroll Engine
+// ====================================================================
 
-// #region Global State
-let serverData = null;
-let serverTimeOffset = 0;
-let cardTimer = null;
-// #endregion
+var cardIndex = 0;
+var serverData = null;
+var serverTimeOffset = 0;
 
+// =======================================================
+// Load the current card's HTML
+// =======================================================
+function loadCard(id) {
+    var c = Cards[id];
 
+    UI.safeSet("bodyHeader", c.header);
+    UI.safeSet("bodyMain", '<div class="cardBody">' + c.body + '</div>');
+    UI.safeSet("bodyFooter", c.footer);
+}
 
-// ===============================================================
-//  LIVE DATA LOADER (SSE-like)
-// ===============================================================
+// =======================================================
+// Auto Scroll — Dynamic speed
+// =======================================================
+function autoScrollActivePermits() {
+
+    var m = UI.getScrollMetrics();
+    var dist = m.dist;
+
+    if (dist <= 0) return;
+
+    var total = Cards.durations.permits;
+    var scrollTime = total - 2000; // scroll finishes 2 sec early
+
+    var step = dist / (scrollTime / 30);
+    var pos = 0;
+
+    var container = document.querySelector(".scrollContainer");
+    if (!container) return;
+
+    container.scrollTop = 0;
+
+    var timer = setInterval(function () {
+        pos += step;
+        container.scrollTop = pos;
+
+        if (pos >= dist) {
+            clearInterval(timer);
+        }
+    }, 30);
+}
+
+// =======================================================
+// Rotation Engine
+// =======================================================
+function rotate() {
+    var cardId = Cards.order[cardIndex];
+
+    loadCard(cardId);
+
+    if (cardId === "permits") {
+        setTimeout(loadPermits, 50);
+        setTimeout(autoScrollActivePermits, 500);
+    }
+
+    if (cardId === "highlights") {
+        setTimeout(updateHighlights, 50);
+    }
+
+    cardIndex = (cardIndex + 1) % Cards.order.length;
+    setTimeout(rotate, Cards.durations[cardId]);
+}
+
+// =======================================================
+// Permits
+// =======================================================
+function loadPermits() {
+    fetch("/skyesoft/assets/data/activePermits.json")
+        .then(function (r) { return r.json(); })
+        .then(function (json) {
+            UI.renderPermits(json);
+        });
+}
+
+// =======================================================
+// Highlights
+// =======================================================
+function updateHighlights() {
+    var info = getDateInfo();
+    UI.safeSet("todaysDate", info.formattedDate);
+    UI.safeSet("dayOfYear", info.dayOfYear);
+    UI.safeSet("daysRemaining", info.daysRemaining);
+}
+
+function getDateInfo() {
+    var n = new Date();
+    var f = n.toLocaleDateString('en-US',
+        { weekday: 'long', month: 'long', day:'numeric' }
+    );
+    var y = n.getFullYear();
+    var leap = (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 366 : 365;
+    var doy = Math.floor((n - new Date(y,0,0)) / 86400000);
+
+    return { formattedDate: f, dayOfYear: doy, daysRemaining: leap - doy };
+}
+
+// =======================================================
+// Live Data / Clock / Interval
+// =======================================================
 function loadLiveData() {
     fetch("/skyesoft/api/getDynamicData.php")
-        .then(r => r.json())
-        .then(d => {
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
             serverData = d;
 
-            updateVersionFooter(d);
-            syncClockOffset(d);
-            updateWeather(d);
-            updateInterval(d);
-        })
-        .catch(() => {});
-}
+            if (d.timeDateArray && d.timeDateArray.currentUnixTime) {
+                serverTimeOffset = (d.timeDateArray.currentUnixTime * 1000) - Date.now();
+            }
 
-
-// #region Version Footer
-function updateVersionFooter(d) {
-    try {
-        if (!d.versions) {
-            UI.safeSet("versionFooter", "Version info unavailable");
-            return;
-        }
-
-        const v = d.versions;
-        const vb = v.modules.officeBoard.version;
-        const vp = v.modules.activePermits.version;
-        const codex = v.codex.version;
-
-        UI.safeSet("versionFooter", `OfficeBoard ${vb} • Permits ${vp} • Codex ${codex}`);
-    } catch {
-        UI.safeSet("versionFooter", "Version info unavailable");
-    }
-}
-// #endregion
-
-
-
-// ===============================================================
-//  CLOCK SYNC + REAL-TIME UPDATE
-// ===============================================================
-function syncClockOffset(d) {
-    if (d?.timeDateArray?.currentUnixTime) {
-        serverTimeOffset =
-            (d.timeDateArray.currentUnixTime * 1000) - Date.now();
-    }
+            updateClock();
+        });
 }
 
 function updateClock() {
     if (!serverData) return;
 
-    const now = new Date(Date.now() + serverTimeOffset);
-    const hh = now.getHours();
-    const mm = now.getMinutes().toString().padStart(2,"0");
-    const ss = now.getSeconds().toString().padStart(2,"0");
-    const am = (hh >= 12 ? "PM" : "AM");
+    var now = new Date(Date.now() + serverTimeOffset);
+    var h = now.getHours();
+    var m = ("" + now.getMinutes()).replace(/^(\d)$/, "0$1");
+    var s = ("" + now.getSeconds()).replace(/^(\d)$/, "0$1");
+    var am = (h >= 12 ? "PM" : "AM");
 
-    UI.safeSet("currentTime", `${(hh % 12) || 12}:${mm}:${ss} ${am}`);
+    UI.safeSet("currentTime", ((h % 12) || 12) + ":" + m + ":" + s + " " + am);
 }
 
-setInterval(updateClock, 1000);
-// ===============================================================
-
-
-
-// ===============================================================
-//  WEATHER & FORECAST
-// ===============================================================
-function updateWeather(d) {
-    if (!d.weatherData) return;
-
-    const w = d.weatherData;
-    const icons = {
-        "01":"☀️","02":"🌤️","03":"⛅",
-        "04":"☁️","09":"🌦️","10":"🌧️",
-        "11":"⛈️","13":"❄️","50":"🌫️"
-    };
-
-    const emoji = icons[w.icon?.substring(0,2)] || "🌤️";
-    UI.safeSet("weatherDisplay", `${emoji} ${w.temp}°F — ${w.description}`);
-}
-// ===============================================================
-
-
-
-// ===============================================================
-//  INTERVAL COUNTDOWN
-// ===============================================================
-function updateInterval(d) {
-    if (!d.intervalsArray) return;
-
-    let sec = d.intervalsArray.secondsRemainingToInterval;
-    if (sec == null) return;
-
-    let name = d.intervalsArray.intervalName;
-    let day  = d.intervalsArray.dayType;
-
-    let emoji="", label="";
-
-    if (day !== "Workday") {
-        emoji="🟦"; label="Office closed";
-    } else if (name === "Worktime") {
-        emoji="🟩"; label="Workday ends in";
-    } else if (name === "Before Worktime") {
-        emoji="🟨"; label="Workday begins in";
-    } else {
-        emoji="🔴"; label="Workday resumes tomorrow";
-    }
-
-    if (label.includes("in")) {
-        const hh = Math.floor(sec/3600).toString().padStart(2,'0');
-        const mm = Math.floor((sec%3600)/60).toString().padStart(2,'0');
-        const ss = (sec%60).toString().padStart(2,'0');
-        UI.safeSet("intervalRemainingData", `${emoji} ${label} ${hh}h ${mm}m ${ss}s`);
-    } else {
-        UI.safeSet("intervalRemainingData", `${emoji} ${label}`);
-    }
-
-    d.intervalsArray.secondsRemainingToInterval = Math.max(0, sec - 1);
-}
-// ===============================================================
-
-
-
-
-// ===============================================================
-//  CARD ROTATION ENGINE  (Legacy)
-// ===============================================================
-function rotateCards() {
-    if (!Array.isArray(cards) || cards.length === 0) return;
-
-    const c = cards[cardIndex];
-    UI.populateCard(c);
-
-    // Active Permits
-    if (cardIndex === 0) {
-        setTimeout(UI.loadPermitData, 50);
-        setTimeout(() => UI.autoScrollActivePermits(c.duration), 600);
-    }
-
-    // Highlights
-    if (cardIndex === 1) {
-        setTimeout(UI.updateHighlightsCard, 80);
-    }
-
-    cardIndex = (cardIndex + 1) % cards.length;
-
-    if (cardTimer) clearTimeout(cardTimer);
-    cardTimer = setTimeout(rotateCards, c.duration);
-}
-// ===============================================================
-
-
-
-
-// ===============================================================
-//  INITIALIZATION
-// ===============================================================
-window.addEventListener("DOMContentLoaded", () => {
+// =======================================================
+// Start
+// =======================================================
+window.addEventListener("DOMContentLoaded", function () {
     loadLiveData();
+    rotate();
+
     setInterval(loadLiveData, 15000);
-    rotateCards();
+    setInterval(updateClock, 1000);
 });
+
+//#endregion
