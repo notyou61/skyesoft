@@ -4,19 +4,23 @@
 <meta charset="utf-8"/>
 <title>Office Bulletin Board</title>
 
+<!-- #region ASSETS -->
 <link rel="icon" href="/skyesoft/assets/images/favicon.ico" type="image/x-icon">
-<link rel="stylesheet" href="/skyesoft/assets/css/officeBoard.css"><!-- optional if you later extract CSS -->
+<link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
+<!-- #endregion ASSETS -->
 
 </head>
 <body>
 
-<!-- =========================================================== -->
-<!-- HEADER -->
-<!-- =========================================================== -->
+<!-- #region HEADER -->
 <div class="board-section" id="pageHeader">
   <div style="display:flex;align-items:center;gap:16px">
-    <img alt="Christy Signs" src="/skyesoft/assets/images/christyLogo.png" style="max-height:48px">
-    <h1 style="font-size:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Office Bulletin Board</h1>
+    <img alt="Christy Signs"
+         src="/skyesoft/assets/images/christyLogo.png"
+         style="max-height:48px">
+    <h1 style="font-size:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+      Office Bulletin Board
+    </h1>
   </div>
 
   <div style="display:flex;flex-direction:column;align-items:flex-end;font-size:0.9em;white-space:nowrap">
@@ -25,32 +29,30 @@
     <div>Interval: <span id="intervalRemainingData">Loading...</span></div>
   </div>
 </div>
+<!-- #endregion HEADER -->
 
-<!-- =========================================================== -->
-<!-- BODY -->
-<!-- =========================================================== -->
+<!-- #region BODY -->
 <div class="board-section" id="pageBody">
   <div class="bodyHeader" id="bodyHeader"></div>
   <div id="bodyMain"></div>
   <div class="bodyFooter" id="bodyFooter"></div>
 </div>
+<!-- #endregion BODY -->
 
-<!-- =========================================================== -->
-<!-- FOOTER -->
-<!-- =========================================================== -->
+<!-- #region FOOTER -->
 <div class="board-section" id="pageFooter">
   <div>© 2025 Maychris Corporation</div>
   <div class="version" id="versionFooter">v8.3 — Loading…</div>
 </div>
+<!-- #endregion FOOTER -->
 
-<!-- =========================================================== -->
-<!-- JS MODULES (NEW ARCHITECTURE) -->
-<!-- =========================================================== -->
+<!-- #region JAVASCRIPT MODULES -->
 <script src="/skyesoft/assets/js/cards.js"></script>
 <script src="/skyesoft/assets/js/ui.js"></script>
 <script src="/skyesoft/assets/js/weather.js"></script>
 <script src="/skyesoft/assets/js/sse.js"></script>
 <script src="/skyesoft/assets/js/app.js"></script>
+<!-- #endregion JAVASCRIPT MODULES -->
 
 </body>
 </html>
