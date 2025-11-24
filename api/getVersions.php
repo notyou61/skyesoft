@@ -1,53 +1,95 @@
 <?php
-// ======================================================================
-// Skyesoft API Endpoint: getVersions.php
-// Provides Codex-governed version metadata to UI, SSE, and modules.
-// PHP 5.6 compatible — no cURL, no modern features.
-// ======================================================================
+/**
+ * getVersions.php — Skyesoft Version Engine (Codex-Compliant)
+ * Version: 2.0.0
+ * Tier: 1 (API)
+ * Governed By: Codex:Tier1, Version Parliament, Repository Standard
+ */
 
-// 1. Define the path to versions.json (Repository Standard B-9)
-$versionsFile = __DIR__ . '/../assets/data/versions.json';
+#region Headers
+header("Content-Type: application/json");
+#endregion
 
-// 2. Fail safely if file not found
-if (!file_exists($versionsFile)) {
-    header('Content-Type: application/json');
+#region Logging Utility
+function logVersionError($message) {
+    $logFile = __DIR__ . '/../logs/version-errors.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $entry = "[" . $timestamp . "] " . $message . "\n";
+    file_put_contents($logFile, $entry, FILE_APPEND);
+}
+#endregion
+
+#region LoadVersions
+$versionsPath = __DIR__ . '/../assets/data/versions.json';
+
+if (!file_exists($versionsPath)) {
+    logVersionError("versions.json missing at expected path.");
+
     echo json_encode(array(
-        "success" => false,
-        "error" => "versions.json not found",
-        "file" => $versionsFile
+        "status" => "error",
+        "message" => "versions.json not found",
+        "data" => array()
     ));
     exit;
 }
 
-// 3. Attempt to read the file
-$json = @file_get_contents($versionsFile);
+$jsonData = file_get_contents($versionsPath);
+$versions = json_decode($jsonData, true);
 
-// If reading failed, emit error
-if ($json === false) {
-    header('Content-Type: application/json');
+if (!is_array($versions)) {
+    logVersionError("versions.json failed JSON decode.");
+
     echo json_encode(array(
-        "success" => false,
-        "error" => "Unable to read versions.json"
+        "status" => "error",
+        "message" => "versions.json decode error",
+        "data" => array()
     ));
     exit;
 }
+#endregion
 
-// 4. Attempt to decode JSON
-$data = json_decode($json, true);
+#region SchemaRequirements
+$requiredTop = array("system", "codex", "modules");
+$requiredModule = array(
+    "module", "version", "tier", "category",
+    "governedBy", "dependsOn", "changeNotes", "updated"
+);
 
-if (!is_array($data)) {
-    header('Content-Type: application/json');
-    echo json_encode(array(
-        "success" => false,
-        "error" => "Invalid JSON in versions.json"
-    ));
-    exit;
+foreach ($requiredTop as $key) {
+    if (!array_key_exists($key, $versions)) {
+        logVersionError("Missing required top-level key '$key'.");
+
+        echo json_encode(array(
+            "status" => "error",
+            "message" => "versions.json missing key: $key",
+            "data" => array()
+        ));
+        exit;
+    }
 }
+#endregion
 
-// 5. Success — emit Codex-governed version metadata
-header('Content-Type: application/json');
+#region ValidateModules
+foreach ($versions["modules"] as $index => $mod) {
+    foreach ($requiredModule as $reqField) {
+        if (!array_key_exists($reqField, $mod)) {
+            logVersionError("Module[$index] missing field '$reqField'.");
+
+            echo json_encode(array(
+                "status"  => "error",
+                "message" => "Module missing field: $reqField",
+                "index"   => $index
+            ));
+            exit;
+        }
+    }
+}
+#endregion
+
+#region Output
 echo json_encode(array(
-    "success" => true,
-    "data" => $data
-));
-exit;
+    "status"  => "ok",
+    "message" => "Schema validated",
+    "data"    => $versions
+), JSON_PRETTY_PRINT);
+#endregion
