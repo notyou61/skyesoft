@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "creationDate": "2025-11-25",
+    "lastUpdate": "2025-11-26",
+    "currentVersion": "1.1.0",
+    "title": "Skyesoft Rebuild Roadmap",
+    "description": "Execution roadmap aligned with Codex v1.1.0 governance, repository standardization, and new semantic AI architecture."
+  },
+  "phases": [
+    {
+      "id": "phase0",
+      "name": "Codex + Sovereignty Foundation",
+      "status": "complete",
+      "tasks": [
+        "Codex upgraded to v1.1.0 with Meta, Constitution, Tier-2 Standards, and Tier-3 Modules",
+        "Document Engine created; legacy individual document modules removed",
+        "Repository Standard ratified (canonical directory structure, camelCase enforcement)",
+        "Semantic Responder Standard approved",
+        "RAG Framework Standard approved",
+        "AI Integration Standard approved",
+        "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
+        "Parliamentarian Review logic created and embedded into askOpenAI.php",
+        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)"
+      ],
+      "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
+    },
+    {
+    "id": "phase1",
+    "name": "Repository + UI Infrastructure Alignment",
+    "status": "in-progress",
+    "tasks": [
+        "Restructure the on-server repository to match the Repository Standard (Tier 2)",
+        "Ensure all filenames use camelCase; remove disallowed directories/files",
+        "Deploy Codex v1.1.0, iconMap.json, prefixRegistry.json, intentMatrix.json, promptTemplates.json",
+        "Publish canonical SSE inputs: getDynamicData.php, getVersions.php, documentIndex.json, versions.json",
+        "Enforce that Codex files remain immutable except by amendment",
+        "Restore index.html and officeBoard.html under Unified Client Architecture Standard",
+        "Deploy shared JS modules: app.js, sse.js, ui.js, weather.js, skyebot.js",
+        "Implement versionContext propagation through getVersions.php per Version Governance Standard",
+        "Initialize Document Engine directory structure with templates and bindings (no document-specific modules)",
+        "Activate repositoryAuditor.php for daily structural checks"
+    ],
+    "output": "Skyesoft repository, UI, Codex, and SSE pipeline are structurally compliant with Codex v1.1.0"
+    },
+    {
+      "id": "phase2",
+      "name": "Live SSE + Dashboard Integration",
+      "status": "pending",
+      "tasks": [
+        "Implement real-time SSE stream with full Tier-2 compliance",
+        "Dashboard uses only SSE for time, weather, holiday, TIS state, versionContext",
+        "Add SSE stale-signal warnings",
+        "Activate sseIntegrityChecker.php to validate SSE health"
+      ],
+      "output": "Office Board becomes a fully real-time operational display"
+    },
+    {
+      "id": "phase3",
+      "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
+      "status": "pending",
+      "tasks": [
+        "Skyebot parses email signatures and prompts to create new contacts",
+        "Prevent duplication of entity, location, or contact entries",
+        "Store new items in JSON interim database following Prefix Registry",
+        "Document Engine generates confirmation sheets when needed"
+      ],
+      "output": "AI-powered semantic contact creation"
+    },
+    {
+      "id": "phase4",
+      "name": "Database Migration (JSON → SQL)",
+      "status": "pending",
+      "tasks": [
+        "Design SQLite schema for entities, locations, contacts, permits, and documents",
+        "Migrate JSON into SQL with Referential Integrity",
+        "Office Board metrics use SQL instead of JSON"
+      ],
+      "output": "Unified, relational Skyesoft data layer"
+    },
+    {
+      "id": "phase5",
+      "name": "Document Engine Activation",
+      "status": "pending",
+      "tasks": [
+        "Activate Document Engine (single module for all document types)",
+        "Use Document Catalog for permitFeeReport, photoSurvey, workOrderRequest, etc.",
+        "Add metadata indexing & lineage tracking into documentIndex.json",
+        "Floating header/footer rendering restored for all document types"
+      ],
+      "output": "Professional-grade document automation via one unified engine"
+    }
+  ],
+  "summaryTimeline": [
+    { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
+    { "phase": 1, "result": "Repository + UI architecture online" },
+    { "phase": 2, "result": "Real-time SSE dashboard operational" },
+    { "phase": 3, "result": "AI-driven business automation begins" },
+    { "phase": 4, "result": "SQL backbone ensures long-term stability" },
+    { "phase": 5, "result": "Document Engine consolidates operations" }
+  ]
+}

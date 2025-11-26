@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "creationDate": "2025-11-25",
+    "lastUpdate": "2025-11-27",
+    "currentVersion": "1.2.0",
+    "title": "Skyesoft Rebuild Roadmap",
+    "description": "Execution roadmap aligned with Codex v1.1.0 governance, Repository Standard compliance, PHP 8 migration, SSE revival, and Skyebot semantic AI architecture."
+  },
+  "phases": [
+    {
+      "id": "phase0",
+      "name": "Codex + Sovereignty Foundation",
+      "status": "complete",
+      "tasks": [
+        "Codex upgraded to v1.1.0 with Meta, Constitution, Tier-2 Standards, and Tier-3 Modules",
+        "Document Engine created; legacy individual document modules removed",
+        "Repository Standard ratified (canonical directory structure, camelCase enforcement)",
+        "Semantic Responder Standard approved",
+        "RAG Framework Standard approved",
+        "AI Integration Standard approved",
+        "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
+        "Parliamentarian Review logic created and embedded into askOpenAI.php",
+        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)"
+      ],
+      "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
+    },
+    {
+      "id": "phase1",
+      "name": "Repository + UI Infrastructure Alignment",
+      "status": "in-progress",
+      "tasks": [
+        "Upgrade server environment from PHP 5.6 to PHP 8.x on GoDaddy",
+        "Deploy Codex-compliant folder structure to server (no legacy directories)",
+        "Upload Codex v1.1.0 + meta files including roadmap.json and roadmapDetailed.json",
+        "Upload mandatory static data: iconMap.json, prefixRegistry.json, intentMatrix.json, promptTemplates.json",
+        "Upload updated PHP 8 versions of: getDynamicData.php, getVersions.php, cronRun.php",
+        "Verify SSE output under PHP 8 using Codex validation rules",
+        "Restore index.html and officeBoard.html under Unified Client Architecture Standard",
+        "Deploy shared JS modules: app.js, sse.js, ui.js, weather.js, skyebot.js",
+        "Ensure versionContext appears correctly through getVersions.php",
+        "Initialize Document Engine directory structure with empty templates and placeholder bindings",
+        "Activate repositoryAuditor.php for daily structural checks"
+      ],
+      "output": "Server upgraded, repository deployed, and UI framework restored under PHP 8 with full Codex alignment"
+    },
+    {
+      "id": "phase2",
+      "name": "Live SSE + Dashboard Integration",
+      "status": "pending",
+      "tasks": [
+        "Implement real-time SSE stream with full Tier-2 compliance on production",
+        "Ensure dashboard uses SSE exclusively for: time, weather, holiday, TIS state, versionContext",
+        "Confirm TIS transitions based on holidayRegistry.json and SSE day-of-week",
+        "Confirm weather updates follow caching rules in operationalConfig",
+        "Add stale-signal warnings for SSE delays > 5 seconds",
+        "Activate sseIntegrityChecker.php to validate SSE health and schema",
+        "Validate officeBoard.html under live stream: no console errors, timing identical across environments"
+      ],
+      "output": "Office Board becomes a fully real-time operational display governed by Codex and powered by SSE"
+    },
+    {
+      "id": "phase3",
+      "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
+      "status": "pending",
+      "tasks": [
+        "Skyebot parses email signatures and user prompts into structured contact data",
+        "Enforce Prefix Registry for ENT-, LOC-, and DOC- identifiers",
+        "Prevent duplication of entity, location, or contact records based on Codex rules",
+        "Store new contacts in JSON interim database until SQL migration (Phase 4)",
+        "Integrate RAG retrieval from Codex and skyesoft-data.json for context alignment",
+        "Use Document Engine to generate contact confirmation sheets when applicable",
+        "Ensure Parliamentarian validates all write-side actions before allowing storage"
+      ],
+      "output": "AI-powered semantic contact creation with prefix-controlled identity management"
+    },
+    {
+      "id": "phase4",
+      "name": "Database Migration (JSON → SQL)",
+      "status": "pending",
+      "tasks": [
+        "Design SQLite schema for entities, locations, contacts, permits, and documents",
+        "Include entity type definitions: company, jurisdiction, client, vendor",
+        "Enforce referential integrity for all links: entity → location → contact",
+        "Migrate JSON records into SQL in canonical order: entities → locations → contacts → documents",
+        "Define SQL-based lineage tracking for Document Engine outputs",
+        "Update officeBoard and backend modules to read SQL instead of JSON for metrics",
+        "Validate that database serves as the unified SOT for structured data"
+      ],
+      "output": "Unified, relational Skyesoft data layer with strict referential integrity"
+    },
+    {
+      "id": "phase5",
+      "name": "Document Engine Activation",
+      "status": "pending",
+      "tasks": [
+        "Activate Document Engine as the single module for all document types",
+        "Implement render pipeline for HTML/PDF creation using Tier-2 Document Standards",
+        "Bind Document Catalog entries: permitFeeReport, photoSurvey, workOrderRequest, etc.",
+        "Add document lineage indexing into documentIndex.json and SQL (once Phase 4 is complete)",
+        "Restore floating header/footer and spacing doctrine for all documents",
+        "Migrate any legacy templates or fragments into Codex-aligned templates",
+        "Confirm that all new documents follow: icon rules, spacing rules, section semantics"
+      ],
+      "output": "Professional-grade, Codex-governed document automation via one unified engine"
+    }
+  ],
+  "summaryTimeline": [
+    { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
+    { "phase": 1, "result": "PHP 8 upgrade + Repository + UI architecture online" },
+    { "phase": 2, "result": "Real-time SSE dashboard operational" },
+    { "phase": 3, "result": "AI-driven business automation begins" },
+    { "phase": 4, "result": "SQL backbone ensures long-term stability" },
+    { "phase": 5, "result": "Document Engine consolidates operations" }
+  ]
+}
