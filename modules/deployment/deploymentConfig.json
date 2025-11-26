@@ -1,0 +1,22 @@
+{
+  "allowedFolders": [
+    "api",
+    "assets",
+    "bulletinBoards",
+    "codex",
+    "modules",
+    "reports",
+    "scripts"
+  ],
+  "exclude": [
+    ".well-known",
+    "logs",
+    "backups",
+    ".rollback",
+    "skyesoft-legacy"
+  ],
+  "entryFile": "index.html",
+  "backupRetention": 5,
+  "sourceRoot": "/home/notyou64/repositories/skyesoft",
+  "targetRoot": "/home/notyou64/public_html/skyesoft"
+}
