@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "codexVersion": "1.1.0",
+    "objectType": "prefixRegistry",
+    "objectKey": "prefixRegistry",
+    "generatedBy": "Skyesoft System",
+    "generatedOn": "SSE:timeDateArray",
+    "checksum": "auto",
+    "notes": ""
+  },
+  "prefixes": [
+    { "key": "LOC", "category": "locations", "description": "Site identifiers", "example": "LOC-001" },
+    { "key": "ENT", "category": "entities", "description": "Business entities", "example": "ENT-001" },
+    { "key": "DOC", "category": "documents", "description": "Generated documents", "example": "DOC-001" },
+    { "key": "MOD", "category": "modules", "description": "Module identifiers", "example": "MOD-001" }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "codexVersion": "1.1.0",
+    "objectType": "versionRegistry",
+    "objectKey": "versions",
+    "generatedBy": "Skyesoft System",
+    "generatedOn": "SSE:timeDateArray",
+    "checksum": "auto"
+  },
+  "codex": {
+    "version": "1.1.0",
+    "lastUpdated": "SSE:timeDateArray",
+    "notes": "Codex restructured with unified modules and documentEngine implementation."
+  },
+  "system": {
+    "siteVersion": "0.1.0",
+    "deployTime": "SSE:timeDateArray",
+    "commitHash": "pending",
+    "state": "development"
+  },
+  "modules": []
+}
