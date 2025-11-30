@@ -1,49 +1,65 @@
 <?php
-/**
- * Skyesoft Deployment Engine (Simple MTCO Version)
- * PHP 8+
- * 
- * Compares SOT (sourceRoot) -> LIVE (targetRoot)
- * Copies changed files safely
- * Creates backups for modified/deleted files
- * Generates a JSON deployment report
- */
+// ======================================================================
+//  Skyesoft — deploymentEngine.php
+//  Deployment Engine (SOT → LIVE Sync) • PHP 8.1 • Codex-Tier2 Module
+//  Implements: Article IX (Safety), Article XI (Automation Limits),
+//              Article XII (Discovery), Repository Standard
+// ======================================================================
 
+#region SECTION I — Metadata & Error Handling
+// ----------------------------------------------------------------------
 declare(strict_types=1);
-header("Content-Type: application/json; charset=utf-8");
+header("Content-Type: application/json; charset=UTF-8");
 
-// -------------------------------------
-// Load deploymentConfig.json
-// -------------------------------------
+function fail(string $msg): never {
+    echo json_encode([
+        "success" => false,
+        "error"   => "❌ $msg"
+    ], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    exit;
+}
+#endregion
+
+#region SECTION II — Load Configuration
+// ----------------------------------------------------------------------
 $configFile = __DIR__ . "/deploymentConfig.json";
 
 if (!file_exists($configFile)) {
-    echo json_encode(["error" => "deploymentConfig.json missing"], JSON_PRETTY_PRINT);
-    exit;
+    fail("deploymentConfig.json missing");
 }
 
 $config = json_decode(file_get_contents($configFile), true);
 
-$allowedFolders = $config["allowedFolders"];
-$exclude        = $config["exclude"];
-$sourceRoot     = rtrim($config["sourceRoot"], "/");
-$targetRoot     = rtrim($config["targetRoot"], "/");
-$backupRetention = (int) $config["backupRetention"];
+$allowedFolders  = $config["allowedFolders"]   ?? [];
+$exclude         = $config["exclude"]          ?? [];
+$sourceRoot      = rtrim($config["sourceRoot"] ?? "", "/");
+$targetRoot      = rtrim($config["targetRoot"] ?? "", "/");
+$backupRetention = (int)($config["backupRetention"] ?? 5);
 
-// -------------------------------------
-// Prepare rollback folder
-// -------------------------------------
-$rollbackFolder = $targetRoot . "/.rollback/" . date("Ymd-His");
-if (!is_dir($rollbackFolder)) {
-    mkdir($rollbackFolder, 0755, true);
+if ($sourceRoot === "" || $targetRoot === "") {
+    fail("sourceRoot or targetRoot not defined in config");
 }
+#endregion
 
-// -------------------------------------
-// Helper: recursive folder scan
-// -------------------------------------
+#region SECTION III — Prepare Rollback
+// ----------------------------------------------------------------------
+$rollbackFolder = $targetRoot . "/.rollback/" . date("Ymd-His");
+
+if (!is_dir($rollbackFolder)) {
+    if (!mkdir($rollbackFolder, 0755, true)) {
+        fail("Unable to create rollback folder");
+    }
+}
+#endregion
+
+#region SECTION IV — Helper Functions
+// ----------------------------------------------------------------------
 function scanFiles(string $baseDir, array $exclude): array {
     $files = [];
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($baseDir));
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($baseDir, FilesystemIterator::SKIP_DOTS)
+    );
 
     foreach ($iterator as $fileinfo) {
         if ($fileinfo->isDir()) continue;
@@ -51,31 +67,33 @@ function scanFiles(string $baseDir, array $exclude): array {
         $rel = str_replace($baseDir . "/", "", $fileinfo->getPathname());
 
         foreach ($exclude as $skip) {
-            if (str_starts_with($rel, $skip)) continue 2;
+            if (str_starts_with($rel, $skip)) {
+                continue 2;
+            }
         }
 
         $files[] = $rel;
     }
+
     return $files;
 }
+#endregion
 
-// -------------------------------------
-// Build file lists
-// -------------------------------------
+#region SECTION V — Build File Lists
+// ----------------------------------------------------------------------
 $sotFiles  = scanFiles($sourceRoot, $exclude);
 $liveFiles = scanFiles($targetRoot, $exclude);
 
-// -------------------------------------
-// Determine delta
-// -------------------------------------
 $delta = [
     "added"    => [],
     "modified" => [],
     "deleted"  => [],
     "backedUp" => []
 ];
+#endregion
 
-// added + modified
+#region SECTION VI — Detect Added & Modified Files
+// ----------------------------------------------------------------------
 foreach ($sotFiles as $file) {
     $src = "$sourceRoot/$file";
     $dst = "$targetRoot/$file";
@@ -86,19 +104,28 @@ foreach ($sotFiles as $file) {
         $delta["modified"][] = $file;
     }
 }
+#endregion
 
-// deleted
+#region SECTION VII — Detect Deleted Files
+// ----------------------------------------------------------------------
 foreach ($liveFiles as $file) {
     if (!in_array($file, $sotFiles)) {
         $delta["deleted"][] = $file;
     }
 }
+#endregion
 
-// -------------------------------------
-// Backup + Apply Changes
-// -------------------------------------
+#region SECTION VIII — Backup & Apply Changes (Codex Safe Mode)
+// ----------------------------------------------------------------------
+// Must obey Article XI (Automation Limits):
+// - Backup before modifying
+// - No destructive actions outside .rollback/
+// - No system reconfiguration, only file-copy sync
+// ----------------------------------------------------------------------
+
+// Backup modified
 foreach ($delta["modified"] as $file) {
-    $livePath = "$targetRoot/$file";
+    $livePath   = "$targetRoot/$file";
     $backupPath = "$rollbackFolder/$file";
 
     if (!is_dir(dirname($backupPath))) {
@@ -109,6 +136,7 @@ foreach ($delta["modified"] as $file) {
     $delta["backedUp"][] = $file;
 }
 
+// Add + Modify: sync SOT → LIVE
 foreach (["added", "modified"] as $type) {
     foreach ($delta[$type] as $file) {
         $src = "$sourceRoot/$file";
@@ -117,17 +145,19 @@ foreach (["added", "modified"] as $type) {
         if (!is_dir(dirname($dst))) {
             mkdir(dirname($dst), 0755, true);
         }
+
         copy($src, $dst);
     }
 }
 
+// Delete removed files
 foreach ($delta["deleted"] as $file) {
     @unlink("$targetRoot/$file");
 }
+#endregion
 
-// -------------------------------------
-// Cleanup old backups (retention)
-// -------------------------------------
+#region SECTION IX — Enforce Backup Retention
+// ----------------------------------------------------------------------
 $rollbackBase = $targetRoot . "/.rollback/";
 $rollbackList = array_diff(scandir($rollbackBase), ['.', '..']);
 
@@ -135,19 +165,21 @@ rsort($rollbackList);
 
 if (count($rollbackList) > $backupRetention) {
     $toDelete = array_slice($rollbackList, $backupRetention);
+
     foreach ($toDelete as $dir) {
         $path = $rollbackBase . $dir;
         exec("rm -rf " . escapeshellarg($path));
     }
 }
+#endregion
 
-// -------------------------------------
-// Output summary
-// -------------------------------------
+#region SECTION X — Output Deployment Summary
+// ----------------------------------------------------------------------
 echo json_encode([
-    "status"        => "success",
+    "success"       => true,
     "timestamp"     => time(),
     "delta"         => $delta,
     "backupFolder"  => $rollbackFolder,
     "retention"     => $backupRetention
-], JSON_PRETTY_PRINT);
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+#endregion

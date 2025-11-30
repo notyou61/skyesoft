@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <!-- #region META & TITLE -->
+    <meta charset="utf-8">
+    <title>Office Bulletin Board</title>
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico">
+    <!-- #endregion -->
+
+    <!-- #region STYLESHEETS -->
+    <link rel="stylesheet" href="/assets/css/skyesoft-ui.css">
+    <!-- #endregion -->
+
+</head>
+
+<body data-page="officeBoard">
+
+<!-- #region PAGE HEADER -->
+<div id="pageHeader" class="board-section">
+
+    <div class="logoRow">
+        <img src="/assets/images/christyLogo.png" class="logo">
+        <h1>Office Bulletin Board</h1>
+    </div>
+
+    <div class="headerStatusBlock">
+        <div class="hsb-item">
+            <img src="/assets/images/icons/weather.png" class="hsb-icon">
+            <span class="hsb-label">Weather:</span>
+            <span id="headerWeather">--</span>
+        </div>
+
+        <div class="hsb-item">
+            <img src="/assets/images/icons/clock.png" class="hsb-icon">
+            <span class="hsb-label">Time:</span>
+            <span id="headerTime">--:--:--</span>
+        </div>
+
+        <div class="hsb-item">
+            <img src="/assets/images/icons/hourglass.png" class="hsb-icon">
+            <span class="hsb-label">Interval:</span>
+            <span id="headerInterval">--</span>
+        </div>
+    </div>
+
+</div>
+<!-- #endregion -->
+
+<!-- #region PAGE BODY -->
+<div id="pageBody" class="board-section">
+
+    <div id="cardHeader"></div>
+    <div id="cardMain"></div>
+    <div id="cardFooter"></div>
+
+</div>
+<!-- #endregion -->
+
+<!-- #region PAGE FOOTER -->
+<div id="pageFooter" class="board-section">
+    <div>© 2025 Maychris Corporation</div>
+    <div id="versionFooter">v0.0.0</div>
+</div>
+<!-- #endregion -->
+
+<!-- #region SCRIPTS -->
+<script src="../assets/js/app.js?v=2025.11.30a"></script>
+<script src="../assets/js/sse.js?v=2025.11.30a"></script>
+<script src="../assets/js/pages/officeBoard.js?v=2025.11.30a"></script>
+<!-- #endregion -->
+
+</body>
+</html>

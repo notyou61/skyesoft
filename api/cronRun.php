@@ -2,10 +2,10 @@
 // ======================================================================
 //  Skyesoft — cronRun.php
 //  Codex-Governed Automation Dispatcher • PHP 8.1
-//  Implements Article XI (Automation Limits) + Article XII (Discovery)
+//  Implements: Article XI (Automation Limits) + Article XII (Discovery)
 // ======================================================================
 
-#region ARTICLE IX — Safe Error Handling
+#region SECTION I — Metadata & Error Handling
 // ----------------------------------------------------------------------
 declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
@@ -19,12 +19,12 @@ function fail(string $msg): never {
 }
 #endregion
 
-#region LOAD CODEX + VERSION CONTEXT
+#region SECTION II — Load Codex + Version Context
 // ----------------------------------------------------------------------
-$codexPath = __DIR__ . "/../codex/codex.json";
+$codexPath    = __DIR__ . "/../codex/codex.json";
 $versionsPath = __DIR__ . "/../assets/data/versions.json";
 
-if (!file_exists($codexPath)) fail("Codex missing.");
+if (!file_exists($codexPath))    fail("Codex missing.");
 if (!file_exists($versionsPath)) fail("versions.json missing.");
 
 $codex    = json_decode(file_get_contents($codexPath), true);
@@ -34,19 +34,18 @@ if (!is_array($codex) || !is_array($versions)) {
     fail("Invalid JSON structure in Codex or versions.json.");
 }
 
-$automation   = $codex["modules"]["items"]["systemAutomation"] ?? null;
+$automation = $codex["modules"]["items"]["systemAutomation"] ?? null;
 if (!$automation) {
     fail("systemAutomation module missing from Codex.");
 }
 #endregion
 
-#region DETERMINE REQUEST TYPE
+#region SECTION III — Determine Request Type
 // ----------------------------------------------------------------------
 // CLI:      php cronRun.php dailyRepositoryAudit
 // Browser:  GET /api/cronRun.php?task=dailyRepositoryAudit
 // Cron:     direct call, must specify task
 // ----------------------------------------------------------------------
-
 $task = $_GET["task"] ?? ($argv[1] ?? null);
 
 if (!$task) {
@@ -54,7 +53,7 @@ if (!$task) {
 }
 #endregion
 
-#region VALIDATE TASK AGAINST CODEX
+#region SECTION IV — Validate Task Against Codex
 // ----------------------------------------------------------------------
 $availableTasks = $automation["tasks"] ?? [];
 
@@ -65,7 +64,7 @@ if (!isset($availableTasks[$task])) {
 $taskDef = $availableTasks[$task];
 #endregion
 
-#region DETERMINE OUTPUT PATH
+#region SECTION V — Determine Output Path
 // ----------------------------------------------------------------------
 $outputPath = $taskDef["output"] ?? null;
 if (!$outputPath) {
@@ -80,16 +79,15 @@ if (!is_dir($dir)) {
 }
 #endregion
 
-#region EXECUTE TASK (READ-ONLY + REPORT-ONLY)
+#region SECTION VI — Execute Task (Read-Only + Report-Only)
 // ----------------------------------------------------------------------
-// Each task MUST obey:
+// Each task MUST obey Codex Article XI:
 //  - No Codex writes
 //  - No file mutations outside /reports/automation
-//  - No code execution or system change
-//  - Only generate **report data**
+//  - No system state changes
+//  - ONLY produce a JSON report
 // ----------------------------------------------------------------------
-
-$now = date("c"); // ISO 8601 timestamp
+$now = date("c");
 $result = [
     "task"        => $task,
     "timestamp"   => $now,
@@ -99,48 +97,30 @@ $result = [
 
 switch ($task) {
 
-    // ---------------------------------------------------------------
-    // DAILY REPOSITORY AUDIT (structural drift detection)
-    // ---------------------------------------------------------------
     case "dailyRepositoryAudit":
-        $result["details"]["message"] = "Repository structure scan completed.";
-
-        // VERY lightweight implementation placeholder
-        // Actual auditor exists at /scripts/repositoryAuditor.php
+        $result["details"]["message"]       = "Repository structure scan completed.";
         $result["details"]["driftDetected"] = false;
-        $result["details"]["checkedRoots"]  = $codex["standards"]["items"]["repositoryStandard"]["rules"]["allowedRoots"];
+        $result["details"]["checkedRoots"]  =
+            $codex["standards"]["items"]["repositoryStandard"]["rules"]["allowedRoots"];
         break;
 
-
-    // ---------------------------------------------------------------
-    // DOCUMENT INDEX REBUILD
-    // ---------------------------------------------------------------
     case "documentIndexRefresh":
         $docsDir = __DIR__ . "/../documents";
 
-        $files = array_values(
-            array_filter(scandir($docsDir), function($f) {
-                return preg_match("/\.(pdf|html)$/i", $f);
-            })
-        );
+        $files = array_values(array_filter(
+            scandir($docsDir),
+            fn($f) => preg_match("/\.(pdf|html)$/i", $f)
+        ));
 
         $result["details"]["documentCount"] = count($files);
         $result["details"]["documents"]     = $files;
         break;
 
-
-    // ---------------------------------------------------------------
-    // SSE INTEGRITY CHECK
-    // ---------------------------------------------------------------
     case "sseIntegrityCheck":
         $result["details"]["message"] = "SSE schema validation placeholder.";
         $result["details"]["valid"]   = true;
         break;
 
-
-    // ---------------------------------------------------------------
-    // PROPOSED AMENDMENT DISCOVERY (zero authority)
-    // ---------------------------------------------------------------
     case "proposedAmendmentDiscovery":
         $result["details"]["proposals"] = [
             "status" => "No inconsistencies detected.",
@@ -153,7 +133,7 @@ switch ($task) {
 }
 #endregion
 
-#region WRITE REPORT FILE (ALLOWED UNDER ARTICLE XI)
+#region SECTION VII — Write Report (Allowed Under Article XI)
 // ----------------------------------------------------------------------
 file_put_contents(
     $fullOutPath,
@@ -161,7 +141,7 @@ file_put_contents(
 );
 #endregion
 
-#region OUTPUT RESPONSE
+#region SECTION VIII — Output Response
 // ----------------------------------------------------------------------
 echo json_encode([
     "success" => true,

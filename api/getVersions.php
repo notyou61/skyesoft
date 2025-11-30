@@ -2,9 +2,10 @@
 // ======================================================================
 //  Skyesoft — getVersions.php
 //  Version Governance Provider • PHP 8 • Codex 1.1.0
+//  Implements: Article IX (Error Handling), Version Governance Standard
 // ======================================================================
 
-#region ARTICLE IX — Safe Error Handling
+#region SECTION I — Metadata & Error Handling
 // ----------------------------------------------------------------------
 declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
@@ -18,7 +19,7 @@ function fail(string $msg): never {
 }
 #endregion
 
-#region LOAD CODEX
+#region SECTION II — Load Codex (Authority Layer)
 // ----------------------------------------------------------------------
 $codexPath = __DIR__ . "/../codex/codex.json";
 
@@ -34,7 +35,7 @@ if (!is_array($codex)) {
 $codexVersion = $codex["meta"]["version"] ?? "unknown";
 #endregion
 
-#region LOAD versions.json (Authoritative SOT)
+#region SECTION III — Load versions.json (Authoritative SOT)
 // ----------------------------------------------------------------------
 $versionsPath = __DIR__ . "/../assets/data/versions.json";
 
@@ -48,25 +49,25 @@ if (!is_array($versions) || !isset($versions["system"])) {
 }
 #endregion
 
-#region BUILD MODULE VERSION MATRIX
+#region SECTION IV — Build Module Version Matrix
 // ----------------------------------------------------------------------
 $modules = [];
 
 if (isset($versions["modules"]) && is_array($versions["modules"])) {
     foreach ($versions["modules"] as $mod) {
         $modules[] = [
-            "id"          => $mod["id"]          ?? "unknown",
-            "version"     => $mod["version"]     ?? "0.0.0",
-            "lastModified"=> $mod["lastModified"]?? null,
-            "governedBy"  => $mod["governedBy"]  ?? [],
-            "dependsOn"   => $mod["dependsOn"]   ?? [],
-            "changeNotes" => $mod["changeNotes"] ?? ""
+            "id"           => $mod["id"]           ?? "unknown",
+            "version"      => $mod["version"]      ?? "0.0.0",
+            "lastModified" => $mod["lastModified"] ?? null,
+            "governedBy"   => $mod["governedBy"]   ?? [],
+            "dependsOn"    => $mod["dependsOn"]    ?? [],
+            "changeNotes"  => $mod["changeNotes"]  ?? ""
         ];
     }
 }
 #endregion
 
-#region COMPOSE RESPONSE PAYLOAD
+#region SECTION V — Compose Response Payload
 // ----------------------------------------------------------------------
 $response = [
     "success" => true,
@@ -88,7 +89,7 @@ $response = [
 ];
 #endregion
 
-#region OUTPUT
+#region SECTION VI — Output
 // ----------------------------------------------------------------------
 echo json_encode($response, JSON_UNESCAPED_SLASHES);
 exit;

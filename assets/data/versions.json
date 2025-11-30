@@ -1,22 +1,14 @@
 {
-  "meta": {
-    "codexVersion": "1.1.0",
-    "objectType": "versionRegistry",
-    "objectKey": "versions",
-    "generatedBy": "Skyesoft System",
-    "generatedOn": "SSE:timeDateArray",
-    "checksum": "auto"
-  },
   "codex": {
     "version": "1.1.0",
-    "lastUpdated": "SSE:timeDateArray",
-    "notes": "Codex restructured with unified modules and documentEngine implementation."
+    "lastUpdated": "2025-11-25",
+    "notes": "Local test"
   },
   "system": {
-    "siteVersion": "0.1.0",
-    "deployTime": "SSE:timeDateArray",
-    "commitHash": "pending",
-    "state": "development"
+    "siteVersion": "2025.11.27",
+    "deployTime": "2025-11-27T09:00:00-07:00",
+    "commitHash": "local-dev",
+    "state": "dev"
   },
   "modules": []
 }

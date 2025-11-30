@@ -1,0 +1,227 @@
+/* #region Global Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+/* #endregion */
+
+/* #region Base Layout */
+html, body {
+    min-height: 100vh;
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: url('/assets/images/background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+/* #endregion */
+
+/* #region Board Wrapper Sections */
+.board-section {
+    width: 90vw;
+    max-width: 1200px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 18px;
+    margin-top: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+}
+/* #endregion */
+
+/* #region Page Header */
+/* Header overall alignment */
+#pageHeader {
+    display: flex;
+    justify-content: space-between;  /* left / right */
+    align-items: center;             /* vertical centering */
+    padding: 12px 16px;              /* improved spacing */
+    gap: 20px;                       /* spacing between the two blocks */
+}
+
+.logoRow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logoRow h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    line-height: 1.1;
+}
+
+.logo {
+    height: 52px;
+}
+
+/* Header Status Block also centered vertically */
+/* HEADER STATUS BLOCK (HSB) */
+/* ============================================
+   HEADER STATUS BLOCK — Legacy Tight Layout
+   ============================================ */
+.headerStatusBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    white-space: nowrap;
+    font-size: 0.90em;
+    gap: 1px;                 /* ultra-tight vertical spacing */
+    padding-right: 4px;
+}
+
+/* Each row (Weather / Time / Interval) */
+.hsb-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 20px;             /* uniform row height */
+    line-height: 20px;        /* text exactly centered */
+    gap: 4px;                 /* space between icon + text */
+    white-space: nowrap;
+}
+
+/* Icons */
+.hsb-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    display: block;           /* removes inline baseline wobble */
+}
+
+/* “Weather:” / “Time:” / “Interval:” */
+.hsb-label {
+    font-weight: 600;
+    color: #333;
+    line-height: 20px;         /* ensures perfect alignment */
+}
+
+/* Dynamic values */
+#headerWeather,
+#headerTime,
+#headerInterval {
+    line-height: 20px;
+    display: inline-block;     /* locks vertical alignment */
+}
+
+/* #endregion */
+
+/* #region Page Body */
+#pageBody {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    margin-top: 12px;
+}
+/* #endregion */
+
+/* #region Card System (Legacy Look) */
+.card {
+    background: #f6f6f6;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.06);
+    min-height: 240px;
+    display: none; /* Only the active card shows */
+    flex-direction: column;
+}
+
+.card.active {
+    display: flex;
+}
+
+.bodyHeader {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #ccc;
+}
+
+.bodyFooter {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 2px solid #ccc;
+    min-height: 12px;
+}
+/* #endregion */
+
+/* #region Permit Table */
+.scrollContainer {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.permitTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+.permitTable th {
+    background: #e6e6e6;
+    font-weight: bold;
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ccc;
+}
+
+.permitTable td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #ddd;
+}
+/* #endregion */
+
+/* #region Placeholder Blocks (Cards 2, 3, 4) */
+.placeholderBlock {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #555;
+    text-align: center;
+}
+
+.comingSoon {
+    font-size: 1.4em;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.comingSoonNote {
+    font-size: 0.95em;
+    opacity: 0.7;
+}
+/* #endregion */
+
+/* #region Page Footer */
+#pageFooter {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    padding: 6px 12px;
+    margin-bottom: 10px;
+}
+/* #endregion */
+
+/* #region Mobile Tweaks */
+@media (max-width: 600px) {
+    .board-section {
+        width: 95vw;
+    }
+    .logo {
+        height: 42px;
+    }
+    .permitTable th,
+    .permitTable td {
+        font-size: 0.85em;
+        padding: 4px 6px;
+    }
+}
+/* #endregion */

@@ -1,191 +1,241 @@
 <?php
+declare(strict_types=1);
+
 // ======================================================================
 //  Skyesoft — getDynamicData.php
-//  SSE Provider • PHP 8 • Codex 1.1.0 Compliant
+//  Version: 1.0.0
+//  Last Updated: 2025-11-29
+//  Codex Tier: 4 — Backend Module
+//  Provides: TIS + Weather + KPI + Permits + Announcements + Site Meta
+//  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
-#region ARTICLE IX — System Integrity: Safe Error Handling
-// ----------------------------------------------------------------------
-declare(strict_types=1);
-header("Content-Type: application/json; charset=UTF-8");
-
-function safeError(string $msg) {
-    echo json_encode([
-        "error" => "❌ $msg"
-    ], JSON_UNESCAPED_SLASHES);
-    exit;
-}
+#region SECTION 0 — Dependencies
+require_once __DIR__ . '/../modules/holidayInterpreter.php';
 #endregion
 
-#region LOAD CODEX (Tier 0–3)
-// ----------------------------------------------------------------------
-$codexPath = __DIR__ . "/../codex/codex.json";
+#region SECTION 1 — Registry Loading
+$root = dirname(__DIR__);
 
-if (!file_exists($codexPath)) {
-    safeError("Codex file missing at codex/codex.json");
-}
-
-$codex = json_decode(file_get_contents($codexPath), true);
-if (!is_array($codex)) {
-    safeError("Codex file unreadable or invalid JSON.");
-}
-#endregion
-
-#region LOAD HOLIDAY REGISTRY
-// ----------------------------------------------------------------------
-$holidayPath = __DIR__ . "/../assets/data/holidayRegistry.json";
-
-if (!file_exists($holidayPath)) {
-    safeError("Holiday registry missing at assets/data/holidayRegistry.json");
-}
-
-$holidayData = json_decode(file_get_contents($holidayPath), true);
-if (!is_array($holidayData) || !isset($holidayData["holidayRegistry"]["holidays"])) {
-    safeError("Holiday registry structure invalid.");
-}
-
-$holidays = $holidayData["holidayRegistry"]["holidays"];
-#endregion
-
-#region SSE TIMESTAMP BLOCK
-// ----------------------------------------------------------------------
-$now = new DateTime("now", new DateTimeZone("America/Phoenix"));
-
-$timeDateArray = [
-    "iso"      => $now->format(DateTime::ATOM),
-    "date"     => $now->format("Y-m-d"),
-    "time"     => $now->format("H:i:s"),
-    "weekday"  => $now->format("l"),
-    "month"    => $now->format("F"),
-    "year"     => $now->format("Y")
+$paths = [
+    "codex"          => $root . "/codex/codex.json",
+    "versions"       => $root . "/assets/data/versions.json",
+    "holiday"        => $root . "/assets/data/holidayRegistry.json",
+    "systemRegistry" => $root . "/assets/data/systemRegistry.json",
+    "kpi"            => $root . "/assets/data/kpi.json",
+    "permits"        => $root . "/assets/data/activePermits.json",
+    "announcements"  => $root . "/assets/data/announcements.json",
 ];
+
+foreach ($paths as $key => $path) {
+    if (!file_exists($path)) {
+        throw new RuntimeException("Missing {$key} at {$path}");
+    }
+}
+
+$codex          = json_decode(file_get_contents($paths["codex"]), true);
+$versions       = json_decode(file_get_contents($paths["versions"]), true);
+$systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
+
+$kpiFull           = json_decode(file_get_contents($paths["kpi"]), true);
+$activePermitsFull = json_decode(file_get_contents($paths["permits"]), true);
+$announcementsFull = json_decode(file_get_contents($paths["announcements"]), true);
+
+$tz = new DateTimeZone("America/Phoenix");
 #endregion
 
-#region HOLIDAY RESOLVER
-// ----------------------------------------------------------------------
-function isHoliday(DateTime $date, array $holidays): ?array
+#region SECTION 2 — Weather Configuration
+$envPathPrimary = $root . "/secure/.env";
+$envPathLocal   = $root . "/secure/env.local";
+
+if (file_exists($envPathPrimary)) {
+    $env = parse_ini_file($envPathPrimary);
+} elseif (file_exists($envPathLocal)) {
+    $env = parse_ini_file($envPathLocal);
+} else {
+    throw new RuntimeException("Missing WEATHER env file");
+}
+
+$weatherKey = $env["WEATHER_API_KEY"] ?? null;
+if (!$weatherKey) {
+    throw new RuntimeException("Missing WEATHER_API_KEY");
+}
+
+$lat    = (float)$systemRegistry["weather"]["latitude"];
+$lon    = (float)$systemRegistry["weather"]["longitude"];
+$baseOW = $systemRegistry["api"]["openWeatherBase"];
+
+$currentWeather  = null;
+$lastWeatherUnix = 0;
+#endregion
+
+#region SECTION 3 — Public Helper Functions
+
+function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
 {
-    $month   = strtolower($date->format("M"));
-    $day     = intval($date->format("d"));
+    $nowUnix = (int)$dt->format("U");
+    $weekday = (int)$dt->format("N");
 
-    foreach ($holidays as $h) {
+    // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
+    $holidayState = resolveHolidayState($holidayPath, $dt);
+    $isHoliday = $holidayState["isHoliday"];
 
-        // --- Fixed dates (jan-01, dec-25, etc.) ---
-        if (preg_match('/^([a-z]{3})-(\d{2})$/', $h["dateRule"], $m)) {
-            if ($month === strtolower($m[1]) && $day === intval($m[2])) {
-                return $h;
-            }
-        }
-
-        // --- Nth weekday (third-monday-january, etc.) ---
-        if (str_contains($h["dateRule"], "-monday") ||
-            str_contains($h["dateRule"], "-thursday") ||
-            str_contains($h["dateRule"], "-friday")) {
-
-            [$ordinal, $weekdayRule, $monthRule] = explode("-", $h["dateRule"]);
-
-            if (strtolower($monthRule) !== strtolower($date->format("F"))) {
-                continue;
-            }
-
-            $firstOfMonth  = new DateTime($date->format("Y") . "-" . date("m", strtotime($monthRule)) . "-01");
-            $targetCount   = [
-                "first"  => 1,
-                "second" => 2,
-                "third"  => 3,
-                "fourth" => 4,
-                "last"   => 5
-            ][$ordinal] ?? null;
-
-            if (!$targetCount) continue;
-
-            $cursor = clone $firstOfMonth;
-            $match  = 0;
-
-            while ($cursor->format("n") === $firstOfMonth->format("n")) {
-                if (strtolower($cursor->format("l")) === $weekdayRule) {
-                    $match++;
-                    if ($match === $targetCount || $ordinal === "last") {
-                        if ($cursor->format("Y-m-d") === $date->format("Y-m-d")) {
-                            return $h;
-                        }
-                    }
-                }
-                $cursor->modify("+1 day");
-            }
-        }
-
-        // --- Easter Sunday (computus) ---
-        if ($h["dateRule"] === "computus") {
-            $y = intval($date->format("Y"));
-            $e = easter_date($y);
-            $eDT = (new DateTime())->setTimestamp($e);
-            if ($eDT->format("Y-m-d") === $date->format("Y-m-d")) return $h;
-        }
-
-        // --- Good Friday (two-days-before-easter) ---
-        if ($h["dateRule"] === "two-days-before-easter") {
-            $y = intval($date->format("Y"));
-            $e = easter_date($y);
-            $gfDT = (new DateTime())->setTimestamp($e)->modify("-2 days");
-            if ($gfDT->format("Y-m-d") === $date->format("Y-m-d")) return $h;
-        }
+    if ($isHoliday) {
+        $calendarType = "holiday";
+    } elseif ($weekday >= 6) {
+        $calendarType = "weekend";
+    } else {
+        $calendarType = "workday";
     }
 
-    return null;
+    // --- Office Hours (HH:MM from registry) ---
+    list($startH, $startM) = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["start"]));
+    list($endH, $endM)     = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["end"]));
+
+    $workStartSecs = $startH * 3600 + $startM * 60;
+    $workEndSecs   = $endH   * 3600 + $endM   * 60;
+    $nowSecs       = (int)$dt->format("G") * 3600 + (int)$dt->format("i") * 60 + (int)$dt->format("s");
+
+    // --- Compute Next Valid Work Start (skip weekends/holidays) ---
+    $next = clone $dt;
+    if ($nowSecs >= $workEndSecs) {
+        $next->modify("+1 day");
+    }
+    $next->setTime($startH, $startM, 0);
+
+    while (true) {
+        $w = (int)$next->format("N");
+        $h = resolveHolidayState($holidayPath, $next)["isHoliday"];
+        if ($h || $w >= 6) {
+            $next->modify("+1 day");
+            $next->setTime($startH, $startM, 0);
+            continue;
+        }
+        break;
+    }
+
+    $nextUnix = (int)$next->format("U");
+    $secondsToNextWork = max(0, $nextUnix - $nowUnix);
+
+    // =============================================================
+    // Determine Interval Key & End Time
+    // =============================================================
+    if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
+        $intervalKey = "worktime";
+        $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
+        $intervalEndUnix   = (clone $dt)->setTime($endH, $endM, 0)->format("U");
+        $secondsRemaining   = max(0, $intervalEndUnix - $nowUnix);
+    } elseif ($nowSecs < $workStartSecs && $calendarType === "workday") {
+        $intervalKey = "beforeWork";
+        $intervalEndUnix   = (clone $dt)->setTime($startH, $startM, 0)->format("U");
+        $intervalStartUnix = $nowUnix;
+        $secondsRemaining = max(0, $intervalEndUnix - $nowUnix);
+    } elseif ($calendarType === "workday") {
+        $intervalKey = "afterWork";
+        $intervalStartUnix = $nowUnix;
+        $intervalEndUnix   = $nextUnix;
+        $secondsRemaining  = $secondsToNextWork;
+    } else {
+        // Weekend or Holiday
+        $intervalKey = $calendarType; // "weekend" or "holiday"
+        $intervalStartUnix = $nowUnix;
+        $intervalEndUnix   = $nextUnix;
+        $secondsRemaining = $secondsToNextWork;
+    }
+
+    return [
+        "calendarType" => $calendarType,
+        "currentInterval" => [
+            "key" => $intervalKey,
+            "intervalStartUnix" => $intervalStartUnix,
+            "intervalEndUnix" => $intervalEndUnix,
+            "secondsIntoInterval" => max(0, $nowUnix - $intervalStartUnix),
+            "secondsRemainingInterval" => $secondsRemaining,
+            "source" => "TIS"
+        ],
+        "timeDateArray" => [
+            "currentUnixTime" => $nowUnix,
+            "currentLocalTime" => $dt->format("h:i:s A"),
+            "currentLocalTimeShort" => $dt->format("g:i A"),
+            "currentDate" => $dt->format("Y-m-d"),
+            "currentMonthNumber" => (int)$dt->format("n"),
+            "currentWeekdayNumber" => $weekday,
+            "currentDayNumber" => (int)$dt->format("j")
+        ],
+        "holidayState" => $holidayState
+    ];
 }
 
-$holidayMatch = isHoliday($now, $holidays);
-#endregion
-
-#region TIME INTERVAL STANDARD (TIS)
-// ----------------------------------------------------------------------
-function resolveInterval(DateTime $dt, ?array $holiday): string
+function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
 {
-    $dow  = strtolower($dt->format("l"));
-    $hour = intval($dt->format("H"));
-
-    if ($dow === "saturday" || $dow === "sunday") return "weekend";
-    if ($holiday !== null) return "holiday";
-    if ($hour >= 8 && $hour < 17) return "worktime";
-    if ($hour < 8) return "beforeWork";
-    return "afterWork";
+    $dt = new DateTime('@' . time());
+    $dt->setTimezone($tz);
+    return buildTimeContext($dt, $systemRegistry, $holidayPath);
 }
 
-$currentInterval = resolveInterval($now, $holidayMatch);
+function getWeatherCached(int $now, string $baseOW, float $lat, float $lon, string $key): array
+{
+    global $currentWeather, $lastWeatherUnix;
+
+    if ($currentWeather !== null && ($now - $lastWeatherUnix) < 600) {
+        return $currentWeather;
+    }
+
+    $json = json_decode(@file_get_contents(
+        "{$baseOW}/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}"
+    ), true);
+
+    $currentWeather = [
+        "temp" => $json["main"]["temp"] ?? null,
+        "condition" => $json["weather"][0]["description"] ?? null,
+        "icon" => $json["weather"][0]["icon"] ?? null,
+        "sunrise" => isset($json["sys"]["sunrise"]) ? date("g:i A", $json["sys"]["sunrise"]) : null,
+        "sunset" => isset($json["sys"]["sunset"]) ? date("g:i A", $json["sys"]["sunset"]) : null,
+        "source" => "openweathermap"
+    ];
+
+    $lastWeatherUnix = $now;
+    return $currentWeather;
+}
 #endregion
 
-#region WEATHER PROVIDER BLOCK (placeholder)
-// ----------------------------------------------------------------------
-$weather = [
-    "tempF"     => null,
-    "condition" => null,
-    "source"    => "pending-provider"
-];
-// #endregion
+#region SECTION 4 — Build Time Context + Weather + Final Payload
 
+// Compute time context
+$timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
 
+// Weather snapshot
+$now = time();
+$weather = getWeatherCached(
+    $now,
+    $systemRegistry["api"]["openWeatherBase"],
+    $systemRegistry["weather"]["latitude"],
+    $systemRegistry["weather"]["longitude"],
+    $weatherKey
+);
 
-// #region SITE META BLOCK (deployment, versions)
-// ----------------------------------------------------------------------
-$siteMeta = [
-    "deployment" => "local",
-    "notes"      => "Integrate getVersions.php next"
+// Package SSE payload
+$payload = [
+    "systemRegistry"     => $systemRegistry,
+    "calendarType"       => $timeContext["calendarType"],
+    "currentInterval"    => $timeContext["currentInterval"],
+    "timeDateArray"      => $timeContext["timeDateArray"],
+    "holidayState"       => $timeContext["holidayState"],
+    "weather"            => $weather,
+    "kpiFull"            => $kpiFull,
+    "activePermitsFull"  => $activePermitsFull,
+    "announcementsFull"  => $announcementsFull,
+    "siteMeta"           => [
+        "siteVersion" => $versions["siteVersion"] ?? "unknown"
+    ]
 ];
 #endregion
 
-#region SSE OUTPUT ASSEMBLY
-// ----------------------------------------------------------------------
-echo json_encode([
-    "timestamp"        => $now->getTimestamp(),
-    "timeDateArray"    => $timeDateArray,
-    "currentInterval"  => $currentInterval,
-    "holiday"          => $holidayMatch ?: null,
-    "weather"          => $weather,
-    "siteMeta"         => $siteMeta,
-    "pulse"            => "ok",
-    "connectionStatus" => "active"
-], JSON_UNESCAPED_SLASHES);
+#region SECTION 5 — Output for SSE (Flush every update)
+echo "data: " . json_encode($payload) . "\n\n";
+@ob_flush();
+flush();
+#endregion
 
-exit;
+#region SECTION END — No Output / No Headers / No Exit
 #endregion

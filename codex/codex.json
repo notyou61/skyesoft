@@ -587,35 +587,217 @@
           "Cron-based validation ensures continuous structural integrity and prevents drift from compounding over time."
         ]
       },
+      "structuralCodeStandard": {
+        "title": {
+          "icon": 67,
+          "text": "Structural Code Standard"
+        },
+        "tier": 2,
+        "hierarchyOrder": 12,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 0,
+          "text": "The Structural Code Standard establishes the mandatory format, header requirements, folding regions, and visual conventions for all Skyesoft source files, regardless of language. Its purpose is to ensure consistency, maintainability, editor-navigation support, and Codex-aligned traceability across the entire codebase. All modules, APIs, UI scripts, and deployment logic must adhere to this structural doctrine."
+        },
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure a unified structural identity across all code files; enhance readability and maintainability; enforce Codex-governed folding regions; define mandatory header blocks; and support MTCO/Constitutional traceability."
+        },
+        "headerFormat": {
+          "title": {
+            "icon": 11,
+            "text": "File Header Requirements"
+          },
+          "description": "Every code file must open with a standardized banner block that conveys purpose, technology, and Codex authority.",
+          "rules": [
+            "Headers must appear at the top of the file, preceding all executable code.",
+            "Headers must include: filename, module description, technology/language version, and governing Codex Standards.",
+            "Header separators must use a consistent glyph line of 69–75 characters.",
+            "Header may include one optional icon sourced from iconMap.json.",
+            "No imports, declarations, or executable code may appear before the header.",
+            "Header must visually match Skyesoft standard as used in cronRun.php."
+          ],
+          "example": "// ======================================================================\n//  Skyesoft — <filename>\n//  <Module Purpose>\n//  Codex-Governed Module • PHP 8.3\n//  Implements: Structural Code Standard\n// ======================================================================"
+        },
+        "foldingRegions": {
+          "title": {
+            "icon": 44,
+            "text": "Folding Region Requirements"
+          },
+          "description": "All executable code must be contained inside language-appropriate folding regions.",
+          "coreSections": [
+            "SECTION I — Metadata & Error Handling",
+            "SECTION II — Configuration Loading",
+            "SECTION III — Helpers & Utilities",
+            "SECTION IV — Core Logic",
+            "SECTION V — Output, Response, or Rendering"
+          ],
+          "rules": [
+            "Minimum of three regions required per file.",
+            "No executable code may exist outside a defined region.",
+            "Region titles must use SECTION-based naming.",
+            "Regions may nest but no deeper than two levels.",
+            "Blank line separation between regions is mandatory.",
+            "Region titles may include icons (optional)."
+          ],
+          "languageMappings": {
+            "php": {
+              "start": "#region <Title>",
+              "end": "#endregion",
+              "notes": "Region titles must use SECTION naming; constitutional ARTICLE terminology must not be used."
+            },
+            "javascript": {
+              "start": "// #region <Title>",
+              "end": "// #endregion",
+              "notes": "Regions must remain bundler-safe and non-invasive."
+            },
+            "html": {
+              "start": "<!-- #region <Title> -->",
+              "end": "<!-- #endregion -->",
+              "notes": "Regions must be placed so as not to break markup structure."
+            },
+            "css": {
+              "start": "/* #region <Title> */",
+              "end": "/* #endregion */",
+              "notes": "Regions placed at rule or group boundaries."
+            },
+            "json": {
+              "start": "// #region <Title>",
+              "end": "// #endregion",
+              "notes": "Permitted only in non-production JSON; must be stripped before deployment."
+            },
+            "shell": {
+              "start": "# ---- REGION: <Title> ----",
+              "end": "# ---- END REGION: <Title> ----",
+              "notes": "Classic shell comment-based folding pattern."
+            }
+          }
+        },
+        "errorHandling": {
+          "title": {
+            "icon": 50,
+            "text": "Error Handling Standard"
+          },
+          "description": "Defines mandatory failure patterns for Codex-governed modules.",
+          "rules": [
+            "All PHP API/automation modules must implement a fail() function.",
+            "Error messages must use the ❌ icon for clarity.",
+            "fail() must return structured JSON and terminate execution immediately.",
+            "No stack traces may be exposed in production mode."
+          ],
+          "example": "function fail(string $msg): never {\n    echo json_encode([\n        \"success\": false,\n        \"error\": \"❌ $msg\"\n    ]);\n    exit;\n}"
+        },
+        "formatting": {
+          "title": {
+            "icon": 20,
+            "text": "Formatting Convention"
+          },
+          "rules": [
+            "Indentation must use 4 spaces—tabs are prohibited.",
+            "Line length should remain under 120 characters.",
+            "No trailing whitespace allowed.",
+            "All files must use LF (Unix) line endings.",
+            "camelCase required for variables, functions, and filenames.",
+            "PascalCase reserved only for classes/types.",
+            "Banner width consistent across all languages (69–75 characters)."
+          ]
+        },
+        "visualConventions": {
+          "title": {
+            "icon": 68,
+            "text": "Visual Element Requirements"
+          },
+          "rules": [
+            "Header separators must use '=' or '─' glyph sets.",
+            "Region subdivisions may use light dividers (e.g., // ----------------------------------------------------------------------).",
+            "Icons must be sourced exclusively from iconMap.json.",
+            "Maximum 1 icon per header or region title unless justified."
+          ]
+        },
+        "validation": {
+          "enforcedBy": "modules/codeValidator.php",
+          "frequency": "on-commit",
+          "action": "Reject non-conforming code files; log violations"
+        },
+        "notes": [
+          "This Standard applies to all languages in the Skyesoft codebase.",
+          "Legacy files must be upgraded before Phase 3 deployment.",
+          "This Standard supersedes all previous style guidelines.",
+          "Any deviation requires formal Codex amendment."
+        ]
+      },
       "unifiedClientArchitecture": {
         "title": {
           "icon": 7,
-          "text": "Unified Client Architecture Standard"
+          "text": "Unified Client Architecture Standard (v2)"
         },
-        "type": "standard",
+        "type": "Structural Standard",
         "tier": 2,
         "hierarchyOrder": 4,
-        "description": "Defines the governing architecture for all Skyesoft UI pages, ensuring shared modules, consistent behavior, and declarative markup across the portal.",
-        "rules": [
-          "All HTML pages must be declarative only, containing no inline JavaScript.",
-          "All dynamic behavior must be implemented using shared JavaScript modules.",
-          "A single front-end controller (app.js) must manage global state, SSE ingest, login, modal logic, and UI dispatch.",
-          "Weather, DataTables, and Skyebot logic must remain modular and isolated from markup.",
-          "New UI pages must automatically inherit architecture without modifying core modules."
-        ],
-        "sharedModules": [
-          "app.js",
-          "sse.js",
-          "ui.js",
-          "weather.js"
-        ],
-        "pageSpecificModules": {
-          "index": [
-            "skyebot.js"
-          ],
-          "board": [
-            "dataTablesSupport.js"
-          ]
+        "description": "Defines the governing architecture for all Skyesoft UI pages, enforcing declarative HTML, minimal file surface, strict separation of concerns, and Codex-aligned behavioral modules.",
+        "preamble": {
+          "purpose": "To establish a simplified, stable, and enforceable client-side architecture for the Skyesoft system, ensuring clarity, maintainability, and compliance with core Codex Meta Principles.",
+          "motivation": "Historical UI drift, inline scripting, and module fragmentation risks necessitate a clearly defined, minimal-entropy, unified architecture."
+        },
+        "requirements": {
+          "htmlStructure": {
+            "description": "All HTML files must be declarative-only, with no embedded behavior or styling.",
+            "rules": [
+              "HTML files shall contain no <script> blocks.",
+              "HTML files shall contain no <style> blocks.",
+              "HTML files shall contain no inline JavaScript attributes (e.g., onclick).",
+              "Minor inline style attributes for layout are permitted but discouraged.",
+              "Each page shall include a data-page attribute on the <body> element."
+            ]
+          },
+
+          "fileLayout": {
+            "description": "The UI layer shall consist of a minimal and fixed set of files, forming the complete behavioral and visual surface of the system.",
+            "allowedFiles": [
+              "/assets/js/app.js",
+              "/assets/js/sse.js",
+              "/assets/js/pages/<pageName>.js",
+              "/assets/css/skyesoft-ui.css"
+            ],
+            "rules": [
+              "No additional JavaScript files shall be introduced without Codex amendment.",
+              "All page-specific behavior shall exist exclusively within its corresponding file under /assets/js/pages/.",
+              "All system-wide logic shall be isolated into app.js and sse.js."
+            ]
+          },
+
+          "javascriptArchitecture": {
+            "description": "All dynamic behavior shall follow strict separation of concerns and uniform initialization.",
+            "rules": [
+              "app.js shall act as the global front-end controller and router.",
+              "app.js shall read the data-page attribute to load the correct page controller.",
+              "sse.js shall manage all SSE or polling connections.",
+              "No page script may directly open an SSE connection.",
+              "All SSE events must be dispatched through sse.js or app.js.",
+              "Each page controller shall export a single initialization function invoked by app.js.",
+              "All card systems, scroll engines, data tables, clocks, weather updates, interval timers, and page-specific logic shall reside within that page's JS file."
+            ]
+          },
+
+          "styling": {
+            "description": "All UI styling must originate from a single authoritative stylesheet.",
+            "rules": [
+              "skyesoft-ui.css shall be the exclusive Single Source of Truth for all UI styling.",
+              "No additional CSS files may be added without Codex amendment.",
+              "No inline CSS or embedded <style> blocks are permitted.",
+              "UI components shall be styled via classes whenever practical."
+            ]
+          },
+
+          "metaCompliance": {
+            "description": "All UI architecture shall adhere to Tier 0 Meta Principles.",
+            "rules": [
+              "No Shadow Rules — all behavior and styling derive from explicit files.",
+              "Single Source of Truth — styles and scripts originate only from their designated locations.",
+              "Minimal Complexity — no microfiles or unnecessary fragmentation.",
+              "Structural Unity — all pages share identical layout, primitives, and initialization patterns."
+            ]
+          }
         },
         "pageDetection": {
           "attribute": "data-page",
@@ -625,9 +807,91 @@
             "board-*"
           ]
         },
-        "compliance": {
-          "test": "Load index.html and officeBoard.html under live SSE with no console errors, identical timing logic, and Codex-compliant modal activation.",
+        "enforcement": {
+          "tools": [
+            "repositoryAuditor",
+            "codexGovernanceCycle",
+            "codexTemporalStressTest"
+          ],
+          "rules": [
+            "Any commit introducing additional JS files shall be flagged for review.",
+            "Inline JavaScript or CSS constitutes a Codex violation.",
+            "HTML missing a data-page attribute shall be marked non-compliant.",
+            "SSE logic found outside sse.js shall be rejected.",
+            "app.js must initialize exactly one page controller based on data-page."
+          ],
           "violationCode": "CP-UI-2025-A1"
+        }
+      },
+      "headerStatusBlockStandard": {
+        "title": { "icon": 68, "text": "Header Status Block Standard (HSB-X)" },
+        "tier": 2,
+        "hierarchyOrder": 4.1,
+        "type": "UI/UX Standard",
+        "preamble": {
+          "text": "Defines the canonical structure, spacing, alignment, and behavior for the Header Status Block (HSB) used across all Skyesoft pages. Ensures consistent real-time display of weather, time, and interval state sourced from the SSE."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "Provide a unified, legacy-aligned, compact header block with strict vertical spacing and icon-based representation."
+        },
+        "rules": [
+          "The HSB must appear on all dashboards and real-time UI pages.",
+          "The HSB must consist of a vertical stack of .hsb-item rows, each using icon + label + dynamic value.",
+          "All HSB rows must have equal height using fixed metrics defined in skyesoft-ui.css.",
+          "Icons must use numeric iconMap.json IDs, not inline emoji.",
+          "HSB must consume real-time values exclusively from SSE payloads.",
+          "No page may invent weather, time, or interval data; all fields must map to SSE values."
+        ],
+        "structure": {
+          "html": "<div class=\"headerStatusBlock\"><div class=\"hsb-item\"><img class=\"hsb-icon\"><span class=\"hsb-label\"></span><span></span></div></div>",
+          "css": "HSB rows must use fixed height, non-wrapping text, aligned icons, and vertically consistent spacing.",
+          "javascript": "Page controllers must bind DOM references to headerWeather, headerTime, and headerInterval."
+        },
+        "validation": {
+          "enforcedBy": "repositoryAuditor.php",
+          "frequency": "on-commit",
+          "action": "Report spacing, structure, or icon violations"
+        }
+      },
+      "smartIntervalFormatting": {
+        "title": { "icon": 52, "text": "Smart Interval Formatting Standard (STF-X)" },
+        "tier": 2,
+        "hierarchyOrder": 4.2,
+        "type": "Functional Standard",
+        "preamble": {
+          "text": "Defines the mandatory formatting rules for interval countdown displays derived from TIS output. Prevents zero-leading artifacts, ensures readable time displays, and aligns interval labels with Skyesoft UX expectations."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "Ensure all interval countdowns follow consistent, human-friendly formatting rules without misleading zero-valued units."
+        },
+        "rules": [
+          "If days > 0, display days, hours, minutes, and seconds using padded values (DDd HHh MMm SSs).",
+          "If days = 0 and hours > 0, omit days and display hours + padded minutes and seconds (Hh MMm SSs).",
+          "If hours = 0, omit hours and display only minutes and padded seconds (Mm SSs).",
+          "Display must never show leading zero units such as 00h or 00d.",
+          "Interval labels must be title-cased based on TIS output (e.g., worktime → Worktime).",
+          "UI must not modify TIS logic—only the formatting of its numerical output."
+        ],
+        "dependentModules": [
+          "timeIntervalStandards",
+          "dynamicDashboard"
+        ],
+        "uiBehavior": {
+          "examples": [
+            "02d 00h 04m 09s",
+            "01h 04m 09s",
+            "04m 09s"
+          ],
+          "invalidExamples": [
+            "00h 04m 09s",
+            "00d 01h 04m 09s"
+          ]
+        },
+        "validation": {
+          "enforcedBy": "modules/automation/sseIntegrityChecker.php",
+          "action": "Flag non-compliant interval output"
         }
       },
       "versionGovernance": {
@@ -658,7 +922,9 @@
           "versions.json is the sole source of truth for Skyesoft version metadata.",
           "The Codex version is the root authority and defines dependency compatibility.",
           "The SSE must expose current version context sourced exclusively from versions.json.",
-          "Repository audits must ensure consistency between Codex and versions.json."
+          "Repository audits must ensure consistency between Codex and versions.json.",
+          "Pulse uptime must be calculated as the difference between current SSE time and system.deployTime stored in versions.json. Process uptime, PHP runtime clocks, or non-version-based counters are prohibited as primary uptime sources.",
+          "If deployTime is missing or malformed, SSE must fall back to the current timestamp and mark uptime as zero without synthesizing assumptions."
         ],
         "schema": {
           "codex": [
@@ -973,6 +1239,79 @@
           "text": "Any alternate transport (WebSockets, polling, hybrid streaming) requires formal Codex amendment."
         }
       },
+      "holidayInterpretation": {
+        "title": {
+          "icon": 52,
+          "text": "Holiday Interpretation Standard"
+        },
+        "tier": 2,
+        "hierarchyOrder": 16,
+        "type": "Structural Standard",
+        "preamble": {
+          "text": "Defines how holidayRegistry.json may express date rules and how such rules are expanded into concrete ISO-8601 dates without brittleness. Ensures all holiday detection is governed solely by registry data and approved date-pattern logic."
+        },
+        "rules": [
+          "All holidays must originate exclusively from holidayRegistry.json.",
+          "Allowed date rule formats: fixed-date, weekday-instance, computus, offset-from-fixed, and anchor-relative.",
+          "Date rules must not be guessed, inferred from culture, or silently added.",
+          "Any new rule pattern requires a Codex amendment.",
+          "The TIS Module must compute holiday dates strictly from the registry and these patterns."
+        ],
+        "supportedPatterns": {
+          "fixedDate": "YYYY-MM-DD",
+          "weekdayInstance": "e.g., '4th Thursday of November'",
+          "computus": "Easter date computation per Western Gregorian algorithm",
+          "offsetFixed": "e.g., '1 day after 2025-01-01'",
+          "anchorRelative": "e.g., 'Monday after 4th Thursday of November'"
+        },
+        "validation": {
+          "enforcedBy": "modules/automation/sseIntegrityChecker.php",
+          "action": "Verify that all generated holiday dates match registry-approved rule syntax"
+        },
+        "notes": [
+          "This standard governs interpretation only; holidayRegistry.json remains the SOT for definitions.",
+          "No hardcoded holidays may appear in any module."
+        ]
+      },
+      "weatherCacheStandard": {
+        "title": {
+          "icon": 44,
+          "text": "Weather Cache Standard"
+        },
+        "tier": 2,
+        "hierarchyOrder": 17,
+        "type": "Functional Standard",
+        "preamble": {
+          "text": "Specifies the mandatory caching behavior for weather lookups. Ensures SSE performance, API reliability, and consistent UI refresh cadence."
+        },
+        "rules": [
+          "Weather cache file must be stored at assets/data/weatherCache.json.",
+          "Cache refresh interval must be at least 10 minutes unless overridden by operationalConfig.",
+          "If weather API fails, the last known cached value must be used (staleness warning after 20 minutes).",
+          "Cache file must store: timestamp, rawResponse, normalized fields, provider, and source metadata.",
+          "UI may not call the weather API independently; SSE is the single source of truth."
+        ],
+        "schema": {
+          "type": "object",
+          "properties": {
+            "timestamp": { "type": "string" },
+            "weather": { "type": "object" },
+            "provider": { "type": "string" }
+          }
+        },
+        "validation": {
+          "enforcedBy": "modules/automation/sseIntegrityChecker.php",
+          "metrics": [
+            "cache freshness",
+            "missing fields",
+            "staleness threshold"
+          ]
+        },
+        "notes": [
+          "Weather caching aligns with SSE Standard source-of-truth requirements.",
+          "Over-polling external APIs is prohibited unless Codex-amended."
+        ]
+      },
       "skyebotModule": {
         "title": {
           "icon": 10,
@@ -1274,46 +1613,50 @@
         "type": "module",
         "tier": 3,
         "hierarchyOrder": 1,
-        "description": "Computes Time Interval States (TIS) using live SSE time data and the holidayRegistry. Determines whether the system is in before-work, worktime, after-work, weekend, or holiday mode. Outputs a normalized, Codex-governed time-state structure consumed by dashboards, documents, and Skyebot.",
+        "description": "Computes Time Interval States (TIS) using SSE time data, operational work schedules, and the holidayRegistry. Produces the canonical interval classification (beforeWork, worktime, afterWork, weekend, holiday) used across dashboards, Skyebot, and document logic.",
         "dependsOn": [
           "sseStandard",
-          "documentStandard",
-          "holidayRegistry"
+          "holidayRegistry",
+          "documentStandard"
         ],
         "governedBy": [
           "sseStandard",
-          "documentStandard",
-          "holidayRegistry"
+          "holidayRegistry",
+          "documentStandard"
         ],
         "governs": [
           "intervalCalculationLogic",
           "holidayResolutionLogic",
-          "workPhaseDeterminationLogic"
+          "workPhaseDeterminationLogic",
+          "calendarDayTypeLogic"
         ],
         "inputs": [
           "SSE:timeDateArray",
-          "SSE:dayOfWeek",
           "assets/data/holidayRegistry.json",
-          "operationalConfig:workHours"
+          "systemRegistry.schedule",
+          "systemRegistry.labels.intervals"
         ],
         "outputs": [
           "/reports/timeIntervals/currentState.json"
         ],
         "outputSchema": {
           "currentInterval": "beforeWork | worktime | afterWork | weekend | holiday",
-          "startTime": "ISO-8601",
-          "endTime": "ISO-8601",
+          "calendarType": "workday | holiday | weekend",
+          "intervalStartUnix": "number",
+          "intervalEndUnix": "number",
+          "secondsIntoInterval": "number",
+          "secondsRemainingInterval": "number",
           "isHoliday": "boolean",
           "holidayKey": "string|null",
           "holidayName": "string|null",
-          "source": "SSE + holidayRegistry"
+          "source": "TIS + holidayRegistry"
         },
         "notes": [
-          "Holiday detection relies exclusively on holidayRegistry.json.",
-          "No holidays may be invented, modified, or assumed without amendment.",
-          "Weekend classification uses SSE dayOfWeek (Saturday, Sunday).",
-          "Work intervals come from operationalConfig defined in getDynamicData.php.",
-          "TIS must not guess, interpolate, or infer beyond Codex doctrine."
+          "Weekend classification is determined exclusively from SSE weekdayNumber (Saturday/Sunday).",
+          "Holidays derive strictly from holidayRegistry.json. No inferred or ad hoc holidays permitted.",
+          "Work intervals are determined solely by systemRegistry.schedule.",
+          "calendarType is independent of intervalType: a holiday may still be in the 'worktime' interval clock if the schedule matches.",
+          "TIS cannot guess, interpolate, or infer data beyond Codex doctrine; if data is missing or ambiguous, TIS must fail explicitly."
         ]
       },
       "dynamicDashboard": {
