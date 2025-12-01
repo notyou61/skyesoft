@@ -20,29 +20,36 @@
 <!-- #region PAGE HEADER -->
 <div id="pageHeader" class="board-section">
 
+    <!-- LOGO / TITLE -->
     <div class="logoRow">
-        <img src="/assets/images/christyLogo.png" class="logo">
+        <img src="/assets/images/christyLogo.png" class="logo" alt="Christy Signs">
         <h1>Office Bulletin Board</h1>
     </div>
 
+    <!-- HEADER STATUS BLOCK (HSB) -->
     <div class="headerStatusBlock">
+
+        <!-- WEATHER -->
         <div class="hsb-item">
             <img src="/assets/images/icons/weather.png" class="hsb-icon">
             <span class="hsb-label">Weather:</span>
-            <span id="headerWeather">--</span>
+            <span id="headerWeather" class="hsb-value">--°F – --</span>
         </div>
 
+        <!-- TIME -->
         <div class="hsb-item">
-            <img src="/assets/images/icons/clock.png" class="hsb-icon">
+            <img src="/assets/images/icons/clock.png" class="hsb-icon" alt="">
             <span class="hsb-label">Time:</span>
-            <span id="headerTime">--:--:--</span>
+            <span id="headerTime" class="hsb-value">--:--:--</span>
         </div>
 
+        <!-- INTERVAL -->
         <div class="hsb-item">
-            <img src="/assets/images/icons/hourglass.png" class="hsb-icon">
+            <img src="/assets/images/icons/hourglass.png" class="hsb-icon" alt="">
             <span class="hsb-label">Interval:</span>
-            <span id="headerInterval">--</span>
+            <span id="headerInterval" class="hsb-value">--</span>
         </div>
+
     </div>
 
 </div>
@@ -52,61 +59,107 @@
 <div id="pageBody" class="board-section">
 
     <!-- #region CARD — ACTIVE PERMITS -->
-    <section id="cardActivePermits" class="board-card" style="display:none;">
-        <header class="cardTitle"><h2>Active Permits</h2></header>
+    <div id="cardActivePermits" class="board-card" style="display:none;">
 
-        <div id="permitScrollWrap" class="permit-scroll-wrap">
-            <table class="permitTable">
-                <thead>
-                    <tr>
-                        <th>WO</th>
-                        <th>Customer</th>
-                        <th>Jobsite</th>
-                        <th>Jurisdiction</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+        <!-- Card Header -->
+        <header class="cardHeader">
+            <h2>Active Permits</h2>
+        </header>
 
-                <tbody id="permitTableBody">
-                    <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
-                </tbody>
-            </table>
+        <!-- Header Divider -->
+        <div class="cardBodyDivider"></div>
+
+        <!-- Card Body -->
+        <div class="cardBody">
+            <div class="scrollContainer">
+                <table class="permitTable">
+                    <thead>
+                        <tr>
+                            <th>WO</th>
+                            <th>Customer</th>
+                            <th>Jobsite</th>
+                            <th>Jurisdiction</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="permitTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center;">Loading…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </section>
+
+        <!-- Footer Divider -->
+        <div class="cardFooterDivider"></div>
+
+        <!-- Card Footer -->
+        <footer class="cardFooter" id="permitFooter"></footer>
+
+    </div>
     <!-- #endregion -->
 
     <!-- #region CARD — TODAY'S HIGHLIGHTS -->
-    <section id="cardHighlights" class="board-card" style="display:none;">
-        <header class="cardTitle"><h2>Today's Highlights</h2></header>
+    <div id="cardHighlights" class="card" style="display:none;">
 
-        <ul class="highlights-list">
-            <li>Date: <span id="hlDate">Loading…</span></li>
-            <li>Day of Year: <span id="hlDayOfYear">Loading…</span></li>
-            <li>Days Remaining: <span id="hlDaysRemain">Loading…</span></li>
-            <li>Sunrise: <span id="hlSunrise">Loading…</span></li>
-            <li>Sunset: <span id="hlSunset">Loading…</span></li>
-            <li>Daylight Hours: <span id="hlDayHours">Loading…</span></li>
-            <li>Next Holiday: <span id="hlNextHoliday">Loading…</span></li>
-            <li>3-Day Forecast: <span id="hlForecast">Loading…</span></li>
-        </ul>
-    </section>
+        <div class="cardHeader">Today's Highlights</div>
+        <hr class="cardDivider">
+
+        <div class="cardBody">
+            <ul class="highlights-list">
+                <li>Date: <span id="hlDate">Loading…</span></li>
+                <li>Day of Year: <span id="hlDayOfYear">Loading…</span></li>
+                <li>Days Remaining: <span id="hlDaysRemain">Loading…</span></li>
+                <li>Sunrise: <span id="hlSunrise">Loading…</span></li>
+                <li>Sunset: <span id="hlSunset">Loading…</span></li>
+                <li>Daylight Hours: <span id="hlDayHours">Loading…</span></li>
+                <li>Next Holiday: <span id="hlNextHoliday">Loading…</span></li>
+                <li>3-Day Forecast: <span id="hlForecast">Loading…</span></li>
+            </ul>
+        </div>
+
+        <hr class="cardDivider">
+        <div class="cardFooter" id="highlightsFooter">Loading…</div>
+
+    </div>
     <!-- #endregion -->
+
 
     <!-- #region CARD — KPI DASHBOARD -->
-    <section id="cardKPI" class="board-card" style="display:none;">
-        <header class="cardTitle"><h2>KPI Dashboard</h2></header>
-        <div class="kpi-placeholder">Coming Soon…</div>
-    </section>
+    <div id="cardKPI" class="card" style="display:none;">
+
+        <div class="cardHeader">KPI Dashboard</div>
+        <hr class="cardDivider">
+
+        <div class="cardBody">
+            <div class="kpi-placeholder">Coming Soon…</div>
+        </div>
+
+        <hr class="cardDivider">
+        <div class="cardFooter" id="kpiFooter">Loading…</div>
+
+    </div>
     <!-- #endregion -->
 
-    <!-- #region CARD — ANNOUNCEMENTS -->
-    <section id="cardAnnouncements" class="board-card" style="display:none;">
-        <header class="cardTitle"><h2>Announcements</h2></header>
 
-        <ul id="announcementList" class="announcement-list">
-            <li>No announcements posted.</li>
-        </ul>
-    </section>
+    <!-- #region CARD — ANNOUNCEMENTS -->
+    <div id="cardAnnouncements" class="card" style="display:none;">
+
+        <div class="cardHeader">Announcements</div>
+        <hr class="cardDivider">
+
+        <div class="cardBody">
+            <ul id="announcementList" class="announcement-list">
+                <li>No announcements posted.</li>
+            </ul>
+        </div>
+
+        <hr class="cardDivider">
+        <div class="cardFooter" id="announcementsFooter">Loading…</div>
+
+    </div>
     <!-- #endregion -->
 
 </div>

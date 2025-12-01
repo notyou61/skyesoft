@@ -6,7 +6,6 @@
 // ======================================================================
 
 #region SECTION I — Metadata & Error Handling
-// ----------------------------------------------------------------------
 declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
@@ -20,7 +19,7 @@ function fail(string $msg): never {
 #endregion
 
 #region SECTION II — Load Codex (Authority Layer)
-// ----------------------------------------------------------------------
+
 $codexPath = __DIR__ . "/../codex/codex.json";
 
 if (!file_exists($codexPath)) {

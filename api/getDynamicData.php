@@ -37,9 +37,9 @@ $codex          = json_decode(file_get_contents($paths["codex"]), true);
 $versions       = json_decode(file_get_contents($paths["versions"]), true);
 $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
 
-$kpiFull           = json_decode(file_get_contents($paths["kpi"]), true);
-$activePermitsFull = json_decode(file_get_contents($paths["permits"]), true);
-$announcementsFull = json_decode(file_get_contents($paths["announcements"]), true);
+$kpi            = json_decode(file_get_contents($paths["kpi"]), true);
+$activePermits  = json_decode(file_get_contents($paths["permits"]), true);
+$announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
@@ -214,27 +214,38 @@ $weather = getWeatherCached(
     $weatherKey
 );
 
-// Package SSE payload
+// ------------------------------------------------------------
+// FINAL PAYLOAD — Always flat + always normalized
+// ------------------------------------------------------------
 $payload = [
-    "systemRegistry"     => $systemRegistry,
-    "calendarType"       => $timeContext["calendarType"],
-    "currentInterval"    => $timeContext["currentInterval"],
-    "timeDateArray"      => $timeContext["timeDateArray"],
-    "holidayState"       => $timeContext["holidayState"],
-    "weather"            => $weather,
-    "kpiFull"            => $kpiFull,
-    "activePermitsFull"  => $activePermitsFull,
-    "announcementsFull"  => $announcementsFull,
-    "siteMeta"           => [
+    "systemRegistry"  => $systemRegistry,
+    "calendarType"    => $timeContext["calendarType"],
+    "currentInterval" => $timeContext["currentInterval"],
+    "timeDateArray"   => $timeContext["timeDateArray"],
+    "holidayState"    => $timeContext["holidayState"],
+    "weather"         => $weather,
+
+    // KPI — already normalized
+    "kpi"             => $kpi,
+
+    // ACTIVE PERMITS — force flatten
+    "activePermits"   => $activePermits["activePermits"] ?? [],
+
+    // ANNOUNCEMENTS — force flatten
+    "announcements"   => $announcements["announcements"] ?? [],
+
+    "siteMeta"        => [
         "siteVersion" => $versions["siteVersion"] ?? "unknown"
     ]
 ];
+
 #endregion
 
 #region SECTION 5 — Output for SSE (Flush every update)
-echo "data: " . json_encode($payload) . "\n\n";
-@ob_flush();
-flush();
+//echo "data: " . json_encode($payload) . "\n\n";
+//@ob_flush();
+//flush();
+return $payload;
 #endregion
 
 #region SECTION END — No Output / No Headers / No Exit

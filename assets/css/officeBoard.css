@@ -1,3 +1,11 @@
+/* #region Card Dividers */
+.cardBodyDivider,
+.cardFooterDivider {
+    border-bottom: 2px solid #ccc;
+    margin: 10px 0;
+}
+/* #endregion */
+
 /* #region Card Containers */
 .board-card {
     display: none; /* rotation controlled by JS */
@@ -6,35 +14,61 @@
     padding: 16px;
     box-shadow: 0 3px 8px rgba(0,0,0,0.10);
     min-height: 360px;
+    display: flex;
     flex-direction: column;
 }
 
-.cardTitle h2 {
+/* Proper container styling for the header section */
+.cardHeader {
+    padding-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Title styling */
+.cardHeader h2 {
     font-size: 1.45rem;
     font-weight: 700;
-    margin-bottom: 10px;
+    margin: 0;
 }
 /* #endregion */
 
-/* #region Active Permits Card (Fixed Height Scroll) */
-.permit-scroll-wrap {
+/* #region Active Permits — Fixed Window Scroll */
+
+/* 
+   FIXED 420px window (viewport-independent)  
+   This is the visible window the scroll must pass through.
+*/
+.cardBody {
+    height: 420px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 
+   This is the actual scrollable area.
+   AutoScroll engine scrolls scrollContainer.scrollTop → max over time.
+*/
+.scrollContainer {
     flex-grow: 1;
-
-    /* NEW — fixed height window for scrolling */
-    height: calc(100vh - 340px);
-
     overflow-y: auto;
     overflow-x: hidden;
+    padding-right: 6px;
 
-    margin-top: 6px;
-    padding-right: 4px;
+    /* Smooth visual scroll (JS movement still precise) */
+    scroll-behavior: smooth;
+
+    /* Cleaner scrollbars */
+    scrollbar-width: thin;
 }
 
-.permit-table td,
-.permit-table th {
+/* Table text rules */
+.permitTable th,
+.permitTable td {
     white-space: nowrap;
 }
-
 /* #endregion */
 
 /* #region Highlights Card */
@@ -44,7 +78,6 @@
     line-height: 1.7;
     margin-top: 10px;
 }
-
 .highlights-list li {
     padding: 3px 0;
 }
@@ -70,7 +103,6 @@
     line-height: 1.6;
     padding-left: 2px;
 }
-
 .announcement-list li {
     padding: 6px 4px;
     border-bottom: 1px solid #eee;
@@ -84,8 +116,8 @@
         padding: 14px;
     }
 
-    .permit-table th,
-    .permit-table td {
+    .permitTable th,
+    .permitTable td {
         font-size: 0.85em;
         padding: 5px 6px;
     }

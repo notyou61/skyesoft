@@ -860,33 +860,42 @@
         "hierarchyOrder": 4.2,
         "type": "Functional Standard",
         "preamble": {
-          "text": "Defines the mandatory formatting rules for interval countdown displays derived from TIS output. Prevents zero-leading artifacts, ensures readable time displays, and aligns interval labels with Skyesoft UX expectations."
+          "text": "Defines the mandatory formatting rules for interval countdown displays derived from TIS output. Ensures consistent padded formatting, prevents display of empty leading units, and aligns interval text with Skyesoft UX expectations."
         },
         "purpose": {
           "icon": 20,
-          "text": "Ensure all interval countdowns follow consistent, human-friendly formatting rules without misleading zero-valued units."
+          "text": "Ensure all interval countdowns follow consistent, human-friendly formatting while omitting empty leading units and retaining padded numeric values."
         },
         "rules": [
-          "If days > 0, display days, hours, minutes, and seconds using padded values (DDd HHh MMm SSs).",
-          "If days = 0 and hours > 0, omit days and display hours + padded minutes and seconds (Hh MMm SSs).",
-          "If hours = 0, omit hours and display only minutes and padded seconds (Mm SSs).",
-          "Display must never show leading zero units such as 00h or 00d.",
-          "Interval labels must be title-cased based on TIS output (e.g., worktime → Worktime).",
-          "UI must not modify TIS logic—only the formatting of its numerical output."
+          "All numeric units (days, hours, minutes, seconds) must use padded values when under 10.",
+          "Empty leading units must never be displayed (no 00d, 00h, or 00m).",
+          "If days > 0, show days, hours, minutes, and seconds (DDd HHh MMm SSs).",
+          "If days = 0 and hours > 0, show hours, minutes, and seconds (HHh MMm SSs).",
+          "If hours = 0 and minutes > 0, show minutes and seconds (MMm SSs).",
+          "If minutes = 0, show seconds only (SSs).",
+          "Seconds must be padded even when displayed alone (e.g., 09s).",
+          "At least one unit must always be displayed (seconds minimum).",
+          "Interval labels must follow the HSB-X rules (Next-Event phrasing) if used in the header."
         ],
         "dependentModules": [
           "timeIntervalStandards",
-          "dynamicDashboard"
+          "dynamicDashboard",
+          "headerStatusBlockStandard"
         ],
         "uiBehavior": {
           "examples": [
-            "02d 00h 04m 09s",
-            "01h 04m 09s",
-            "04m 09s"
+            "04d 03h 02m 09s",
+            "01d 00h 04m 09s",
+            "05h 06m 41s",
+            "06m 41s",
+            "09s"
           ],
           "invalidExamples": [
-            "00h 04m 09s",
-            "00d 01h 04m 09s"
+            "00d 05h 06m 41s",
+            "00h 06m 41s",
+            "00m 41s",
+            "41s (without padding)",
+            "6m 7s"
           ]
         },
         "validation": {

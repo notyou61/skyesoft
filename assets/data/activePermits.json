@@ -7,7 +7,6 @@
     "description": "Active permit records used by OfficeBoard KPI and Active Permits card.",
     "recordCount": 45
   },
-
   "activePermits": [
     { "wo": 26312, "customer": "Sun Valley Wellness", "jobsite": "Sun Valley Wellness", "jurisdiction": "Scottsdale", "fee": 545.00, "status": "Ready To Issue" },
     { "wo": 26036, "customer": "Switch Electric", "jobsite": "Switch Electric", "jurisdiction": "Tempe", "fee": 356.00, "status": "Ready To Issue" },
