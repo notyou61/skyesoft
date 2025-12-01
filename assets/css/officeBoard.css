@@ -1,0 +1,97 @@
+/* #region Card Containers */
+.board-card {
+    display: none; /* rotation controlled by JS */
+    background: #f7f7f7;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.10);
+    min-height: 360px;
+    flex-direction: column;
+}
+
+.cardTitle h2 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+/* #endregion */
+
+/* #region Active Permits Card (Fixed Height Scroll) */
+.permit-scroll-wrap {
+    flex-grow: 1;
+
+    /* NEW — fixed height window for scrolling */
+    height: calc(100vh - 340px);
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    margin-top: 6px;
+    padding-right: 4px;
+}
+
+.permit-table td,
+.permit-table th {
+    white-space: nowrap;
+}
+
+/* #endregion */
+
+/* #region Highlights Card */
+.highlights-list {
+    list-style: none;
+    font-size: 1.06em;
+    line-height: 1.7;
+    margin-top: 10px;
+}
+
+.highlights-list li {
+    padding: 3px 0;
+}
+/* #endregion */
+
+/* #region KPI Placeholder */
+.kpi-placeholder {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #666;
+}
+/* #endregion */
+
+/* #region Announcements */
+.announcement-list {
+    list-style: none;
+    margin-top: 10px;
+    font-size: 1.05em;
+    line-height: 1.6;
+    padding-left: 2px;
+}
+
+.announcement-list li {
+    padding: 6px 4px;
+    border-bottom: 1px solid #eee;
+}
+/* #endregion */
+
+/* #region Mobile Tweaks */
+@media (max-width: 600px) {
+
+    .board-card {
+        padding: 14px;
+    }
+
+    .permit-table th,
+    .permit-table td {
+        font-size: 0.85em;
+        padding: 5px 6px;
+    }
+
+    .announcement-list li {
+        font-size: 0.95em;
+    }
+}
+/* #endregion */

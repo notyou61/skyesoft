@@ -10,6 +10,7 @@
 
     <!-- #region STYLESHEETS -->
     <link rel="stylesheet" href="/assets/css/skyesoft-ui.css">
+    <link rel="stylesheet" href="/assets/css/officeBoard.css">
     <!-- #endregion -->
 
 </head>
@@ -50,9 +51,63 @@
 <!-- #region PAGE BODY -->
 <div id="pageBody" class="board-section">
 
-    <div id="cardHeader"></div>
-    <div id="cardMain"></div>
-    <div id="cardFooter"></div>
+    <!-- #region CARD — ACTIVE PERMITS -->
+    <section id="cardActivePermits" class="board-card" style="display:none;">
+        <header class="cardTitle"><h2>Active Permits</h2></header>
+
+        <div id="permitScrollWrap" class="permit-scroll-wrap">
+            <table class="permitTable">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Customer</th>
+                        <th>Jobsite</th>
+                        <th>Jurisdiction</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="permitTableBody">
+                    <tr><td colspan="5" style="text-align:center;">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <!-- #endregion -->
+
+    <!-- #region CARD — TODAY'S HIGHLIGHTS -->
+    <section id="cardHighlights" class="board-card" style="display:none;">
+        <header class="cardTitle"><h2>Today's Highlights</h2></header>
+
+        <ul class="highlights-list">
+            <li>Date: <span id="hlDate">Loading…</span></li>
+            <li>Day of Year: <span id="hlDayOfYear">Loading…</span></li>
+            <li>Days Remaining: <span id="hlDaysRemain">Loading…</span></li>
+            <li>Sunrise: <span id="hlSunrise">Loading…</span></li>
+            <li>Sunset: <span id="hlSunset">Loading…</span></li>
+            <li>Daylight Hours: <span id="hlDayHours">Loading…</span></li>
+            <li>Next Holiday: <span id="hlNextHoliday">Loading…</span></li>
+            <li>3-Day Forecast: <span id="hlForecast">Loading…</span></li>
+        </ul>
+    </section>
+    <!-- #endregion -->
+
+    <!-- #region CARD — KPI DASHBOARD -->
+    <section id="cardKPI" class="board-card" style="display:none;">
+        <header class="cardTitle"><h2>KPI Dashboard</h2></header>
+        <div class="kpi-placeholder">Coming Soon…</div>
+    </section>
+    <!-- #endregion -->
+
+    <!-- #region CARD — ANNOUNCEMENTS -->
+    <section id="cardAnnouncements" class="board-card" style="display:none;">
+        <header class="cardTitle"><h2>Announcements</h2></header>
+
+        <ul id="announcementList" class="announcement-list">
+            <li>No announcements posted.</li>
+        </ul>
+    </section>
+    <!-- #endregion -->
 
 </div>
 <!-- #endregion -->
@@ -65,9 +120,9 @@
 <!-- #endregion -->
 
 <!-- #region SCRIPTS -->
-<script src="../assets/js/app.js?v=2025.11.30a"></script>
-<script src="../assets/js/sse.js?v=2025.11.30a"></script>
-<script src="../assets/js/pages/officeBoard.js?v=2025.11.30a"></script>
+<script src="/assets/js/app.js?v=2025.12.01a"></script>
+<script src="/assets/js/sse.js?v=2025.12.01a"></script>
+<script src="/assets/js/pages/officeBoard.js?v=2025.12.01a"></script>
 <!-- #endregion -->
 
 </body>

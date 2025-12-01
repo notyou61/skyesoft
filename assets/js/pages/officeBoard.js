@@ -1,9 +1,9 @@
 /* Skyesoft — officeBoard.js
-   Office Bulletin Board Page Controller (Tier-4 Documentation)
-   DOM Bindings • Header Status UI • Permit Table Renderer • SSE Handler
+   Office Bulletin Board Controller (Static Card Version)
+   Fully matches officeBoard.html (<section> based layout)
 */
 
-// #region SMART INTERVAL FORMATTER (STF)
+/* #region SMART INTERVAL FORMATTER (STF) */
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
 
@@ -16,124 +16,183 @@ function formatSmartInterval(totalSeconds) {
     const minutes = Math.floor(sec / 60);
     const seconds = sec % 60;
 
-    const out = [];
+    const parts = [];
 
-    // CASE 1 — Days present → show all units, even 00h
     if (days > 0) {
-        out.push(`${days}d`);
-        out.push(`${String(hours).padStart(2,"0")}h`);
-        out.push(`${String(minutes).padStart(2,"0")}m`);
-        out.push(`${String(seconds).padStart(2,"0")}s`);
-        return out.join(" ");
+        parts.push(`${days}d`);
+        parts.push(`${String(hours).padStart(2, "0")}h`);
+        parts.push(`${String(minutes).padStart(2, "0")}m`);
+        parts.push(`${String(seconds).padStart(2, "0")}s`);
+        return parts.join(" ");
     }
 
-    // CASE 2 — Hours present → show h, mm, ss
     if (hours > 0) {
-        out.push(`${hours}h`);
-        out.push(`${String(minutes).padStart(2,"0")}m`);
-        out.push(`${String(seconds).padStart(2,"0")}s`);
-        return out.join(" ");
+        parts.push(`${hours}h`);
+        parts.push(`${String(minutes).padStart(2, "0")}m`);
+        parts.push(`${String(seconds).padStart(2, "0")}s`);
+        return parts.join(" ");
     }
 
-    // CASE 3 — <1 hour → mm ss
-    out.push(`${minutes}m`);
-    out.push(`${String(seconds).padStart(2,"0")}s`);
-    return out.join(" ");
+    parts.push(`${minutes}m`);
+    parts.push(`${String(seconds).padStart(2, "0")}s`);
+    return parts.join(" ");
 }
-// #endregion
+/* #endregion */
 
-// #region PAGE CONTROLLER
+
+/* #region PAGE CONTROLLER */
 window.SkyOfficeBoard = {
 
-    // #region DOM CACHE
+    /* #region DOM CACHE */
     dom: {
         weatherDisplay: null,
         timeDisplay: null,
         intervalDisplay: null,
+        versionFooter: null,
         permitTableBody: null,
-        versionFooter: null
+
+        // Card wrapper elements
+        cardActivePermits: null,
+        cardHighlights: null,
+        cardKPI: null,
+        cardAnnouncements: null
     },
-    // #endregion
+    /* #endregion */
 
-    // #region INIT
+
+    /* #region ROTATION CONFIG */
+    rotation: {
+        index: 0,
+        duration: 30000,
+        timer: null,
+        cards: ["activePermits", "highlights", "kpi", "announcements"]
+    },
+    /* #endregion */
+
+
+    /* #region INIT */
     init: function () {
-        console.log("📋 OfficeBoard initialized");
 
+        console.log("📋 OfficeBoard initialized (STATIC CARD VERSION)");
+
+        // Header fields
         this.dom.weatherDisplay  = document.getElementById("headerWeather");
         this.dom.timeDisplay     = document.getElementById("headerTime");
         this.dom.intervalDisplay = document.getElementById("headerInterval");
-
-        this.dom.permitTableBody = document.getElementById("permitTableBody");
         this.dom.versionFooter   = document.getElementById("versionFooter");
-    },
-    // #endregion
-    
 
-    // #region HEADER RENDER
+        // Static card containers
+        this.dom.cardActivePermits = document.getElementById("cardActivePermits");
+        this.dom.cardHighlights    = document.getElementById("cardHighlights");
+        this.dom.cardKPI           = document.getElementById("cardKPI");
+        this.dom.cardAnnouncements = document.getElementById("cardAnnouncements");
+
+        // Table body
+        this.dom.permitTableBody = document.getElementById("permitTableBody");
+
+        // Start card rotation
+        this.showCard(0);
+        this.startRotation();
+    },
+    /* #endregion */
+
+
+    /* #region CARD ROTATION */
+    startRotation: function () {
+
+        if (this.rotation.timer)
+            clearInterval(this.rotation.timer);
+
+        this.rotation.timer = setInterval(() => {
+            this.rotation.index =
+                (this.rotation.index + 1) % this.rotation.cards.length;
+
+            this.showCard(this.rotation.index);
+        }, this.rotation.duration);
+    },
+
+    showCard: function (index) {
+
+        const key = this.rotation.cards[index];
+
+        // Hide all first
+        this.dom.cardActivePermits.style.display = "none";
+        this.dom.cardHighlights.style.display    = "none";
+        this.dom.cardKPI.style.display           = "none";
+        this.dom.cardAnnouncements.style.display = "none";
+
+        switch (key) {
+            case "activePermits":
+                this.dom.cardActivePermits.style.display = "block";
+                break;
+
+            case "highlights":
+                this.dom.cardHighlights.style.display = "block";
+                break;
+
+            case "kpi":
+                this.dom.cardKPI.style.display = "block";
+                break;
+
+            case "announcements":
+                this.dom.cardAnnouncements.style.display = "block";
+                break;
+        }
+    },
+    /* #endregion */
+
+
+    /* #region HEADER UPDATES */
     updateHeader: function (payload) {
 
-        // ---------------------------------------------------------
         // TIME
-        // ---------------------------------------------------------
         if (payload.timeDateArray && this.dom.timeDisplay) {
-            const t = payload.timeDateArray.currentLocalTime ?? "--:--:--";
-            this.dom.timeDisplay.textContent = t;
+            this.dom.timeDisplay.textContent =
+                payload.timeDateArray.currentLocalTime ?? "--:--:--";
         }
 
-        // ---------------------------------------------------------
-        // INTERVAL — Smart Interval Format
-        // ---------------------------------------------------------
+        // INTERVAL
         if (payload.currentInterval && this.dom.intervalDisplay) {
             const iv = payload.currentInterval;
+            const formatted = formatSmartInterval(iv.secondsRemainingInterval);
 
-            const name = iv.name ?? iv.key ?? "";
-            const totalSeconds = iv.secondsRemainingInterval ?? 0;
-
-            // STF Format
-            const formatted = formatSmartInterval(totalSeconds);
-
-            // Title-case interval name
-            const prettyName = name
-                .toString()
+            const pretty = (iv.key ?? "")
                 .toLowerCase()
                 .replace(/^\w/, c => c.toUpperCase());
 
-            this.dom.intervalDisplay.textContent =
-                `${prettyName} • ${formatted}`;
+            this.dom.intervalDisplay.textContent = `${pretty} • ${formatted}`;
         }
 
-        // ---------------------------------------------------------
         // WEATHER
-        // ---------------------------------------------------------
         if (payload.weather && this.dom.weatherDisplay) {
-            const w      = payload.weather;
-            const tempF  = Math.round(w.temp ?? 0);
-            const icon   = w.icon ?? "";
-            const cond   = w.condition ?? "";
-            const iconUrl = `https://openweathermap.org/img/wn/${icon}.png`;
+            const w = payload.weather;
+            const icon = `https://openweathermap.org/img/wn/${w.icon}.png`;
 
             this.dom.weatherDisplay.innerHTML = `
-                <img src="${iconUrl}" alt="${cond}"
-                    class="hsb-weather-icon"
-                    style="height:26px;vertical-align:middle;margin-right:6px;">
-                <span>${tempF}°F</span>
+                <img src="${icon}" class="hsb-weather-icon" alt="">
+                <span>${Math.round(w.temp)}°F</span>
             `;
         }
     },
-    // #endregion
+    /* #endregion */
 
 
-    // #region PERMIT TABLE RENDER
+    /* #region PERMIT TABLE RENDER */
     updatePermitTable: function (activePermits) {
 
-        if (!this.dom.permitTableBody) return;
-        this.dom.permitTableBody.innerHTML = "";
+        this._latestActivePermits = activePermits;
+        const body = this.dom.permitTableBody;
+
+        if (!body) return;
+
+        body.innerHTML = "";
 
         if (!activePermits || activePermits.length === 0) {
-            this.dom.permitTableBody.innerHTML =
-                `<tr><td colspan="5"
-                    style="text-align:center;color:#777">
-                    No active permits</td></tr>`;
+            body.innerHTML = `
+                <tr><td colspan="5" style="text-align:center;color:#777;">
+                    No active permits
+                </td></tr>
+            `;
             return;
         }
 
@@ -151,35 +210,61 @@ window.SkyOfficeBoard = {
             frag.appendChild(tr);
         });
 
-        this.dom.permitTableBody.appendChild(frag);
+        body.appendChild(frag);
     },
-    // #endregion
+    /* #endregion */
 
 
-    // #region FOOTER RENDER
+    /* #region ANNOUNCEMENTS RENDER */
+    updateAnnouncements: function (arr) {
+
+        const list = document.getElementById("announcementList");
+        if (!list) return;
+
+        if (!arr || arr.length === 0) {
+            list.innerHTML = `<li>No announcements posted.</li>`;
+            return;
+        }
+
+        list.innerHTML = arr
+            .map(a => `<li><strong>${a.title}</strong>: ${a.message}</li>`)
+            .join("");
+    },
+    /* #endregion */
+
+
+    /* #region FOOTER */
     updateFooter: function (payload) {
-        if (!this.dom.versionFooter || !payload.siteMeta) return;
-
-        this.dom.versionFooter.textContent =
-            `v${payload.siteMeta.siteVersion ?? "0.0.0"}`;
+        if (payload.siteMeta && this.dom.versionFooter) {
+            this.dom.versionFooter.textContent =
+                `v${payload.siteMeta.siteVersion ?? "0.0.0"}`;
+        }
     },
-    // #endregion
+    /* #endregion */
 
 
-    // #region SSE ROUTING
+    /* #region SSE ROUTING */
     onSSE: function (payload) {
+
         this.updateHeader(payload);
 
-        if (payload.activePermits)
-            this.updatePermitTable(payload.activePermits);
+        // Correct Active Permits feed
+        if (payload.activePermitsFull && payload.activePermitsFull.activePermits) {
+            this.updatePermitTable(payload.activePermitsFull.activePermits);
+        }
+
+        if (payload.announcementsFull) {
+            this.updateAnnouncements(payload.announcementsFull.announcements);
+        }
 
         this.updateFooter(payload);
     }
-    // #endregion
+    /* #endregion */
 
 };
-// #endregion
+/* #endregion */
 
-// #region REGISTER PAGE
+
+/* #region REGISTER PAGE */
 window.SkyeApp.registerPage("officeBoard", window.SkyOfficeBoard);
-// #endregion
+/* #endregion */
