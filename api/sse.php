@@ -10,18 +10,21 @@ declare(strict_types=1);
 //  getDynamicData.php MUST return $payload (array).
 // ======================================================================
 
-#region SECTION 1 — SSE Headers
+#region SECTION 0 — SSE Headers
 header("Content-Type: text/event-stream");
 header("Cache-Control: no-cache");
 header("Connection: keep-alive");
 header("X-Accel-Buffering: no");  // Prevent proxy buffering
 #endregion
 
+#region SECTION 1 — PHP Runtime Controls (No Timeout, No Abort)
+set_time_limit(0);          // Disable 30-second timeout
+ignore_user_abort(true);     // Continue even if client disconnects
+#endregion
 
 #region SECTION 2 — Loop Initialization
 $lastSecond = null;
 #endregion
-
 
 #region SECTION 3 — SSE 1 Hz Continuous Loop
 while (true) {

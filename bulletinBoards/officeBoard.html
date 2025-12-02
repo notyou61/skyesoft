@@ -71,8 +71,11 @@
 
         <!-- Card Body -->
         <div class="cardBody">
-            <div class="scrollContainer">
+
+            <!-- FIXED SCROLL WRAPPER (MUST BE VALID) -->
+            <div id="permitScrollWrap" class="scrollContainer">
                 <table class="permitTable">
+
                     <thead>
                         <tr>
                             <th>WO</th>
@@ -83,13 +86,16 @@
                         </tr>
                     </thead>
 
+                    <!-- CLEAN, VALID TBODY -->
                     <tbody id="permitTableBody">
                         <tr>
                             <td colspan="5" style="text-align:center;">Loading…</td>
                         </tr>
                     </tbody>
+
                 </table>
             </div>
+            <!-- END permitScrollWrap -->
         </div>
 
         <!-- Footer Divider -->

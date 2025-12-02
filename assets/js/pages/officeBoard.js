@@ -3,43 +3,52 @@
    Fully matches officeBoard.html (<section> based layout)
 */
 
-/* #region SMART INTERVAL FORMATTER (STF-X) */
+/* #region SMART INTERVAL FORMATTER (STF-X Compliant) */
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
 
-    const days    = Math.floor(sec / 86400);
-    sec          %= 86400;
+    const days = Math.floor(sec / 86400);
+    sec %= 86400;
 
-    const hours   = Math.floor(sec / 3600);
-    sec          %= 3600;
+    const hours = Math.floor(sec / 3600);
+    sec %= 3600;
 
     const minutes = Math.floor(sec / 60);
     const seconds = sec % 60;
 
     const parts = [];
 
+    // --- DAYS PRESENT ---
     if (days > 0) {
-        parts.push(`${String(days)}d`);
-        parts.push(`${String(hours).padStart(2, "0")}h`);
+        parts.push(`${days}d`);
+
+        // STF-X RULE: never show 00h when days > 0
+        if (hours > 0) {
+            parts.push(`${String(hours).padStart(2, "0")}h`);
+        }
+
         parts.push(`${String(minutes).padStart(2, "0")}m`);
         parts.push(`${String(seconds).padStart(2, "0")}s`);
         return parts.join(" ");
     }
 
+    // --- HOURS PRESENT (no days) ---
     if (hours > 0) {
-        parts.push(`${String(hours).padStart(2, "0")}h`);
+        parts.push(`${hours}h`);
         parts.push(`${String(minutes).padStart(2, "0")}m`);
         parts.push(`${String(seconds).padStart(2, "0")}s`);
         return parts.join(" ");
     }
 
+    // --- MINUTES PRESENT ---
     if (minutes > 0) {
-        parts.push(`${String(minutes).padStart(2, "0")}m`);
+        parts.push(`${minutes}m`);
         parts.push(`${String(seconds).padStart(2, "0")}s`);
         return parts.join(" ");
     }
 
-    return `${String(seconds).padStart(2, "0")}s`;
+    // --- SECONDS ONLY ---
+    return `${seconds}s`;
 }
 /* #endregion */
 
@@ -71,48 +80,109 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-    /* #region AUTOSCROLL ENGINE (ASC-X Standard) */
+    /* #region AUTOSCROLL ENGINE (ASC-X: Stable Rotation Edition) */
     autoScroll: {
         timer: null,
+        currentEl: null,
         isRunning: false,
+        pendingRestart: false,
 
-        start(scrollEl, cardDurationMs) {
-            if (!scrollEl) return;
+        FPS: 60,
+        
+        // Start auto-scroll on element over totalDurationMs
+        start(el, totalDurationMs = 30000) {
 
-            const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
-            if (maxScroll <= 0) return; // no scrolling needed
-
-            // End 2 seconds before rotation switch
-            const usableDuration = Math.max(1000, cardDurationMs - 2000);
-
+            if (!el) return;
             this.stop();
 
-            this.isRunning = true;
-            const startTime = performance.now();
+            const scrollHeight = el.scrollHeight;
+            const clientHeight = el.clientHeight;
+            const maxScroll = scrollHeight - clientHeight;
 
-            const step = (now) => {
+            if (maxScroll <= 0) return;
+
+            // --- HARD-CODED SCROLL FRACTION (tune this) ---
+            // Example: scroll finishes in 70% of the card duration
+            const scrollFraction = 0.70; // <-- tweak this number (0.5–0.8)
+            const scrollTimeMs = totalDurationMs * scrollFraction;
+
+            const numFrames = Math.max(1, Math.ceil(scrollTimeMs * this.FPS / 1000));
+            const speed = maxScroll / numFrames;
+
+            // Reset to top on fresh start
+            el.scrollTop = 0;
+            this.currentEl = el;
+            this.isRunning = true;
+
+            const step = () => {
                 if (!this.isRunning) return;
 
-                const elapsed = now - startTime;
-                const t = Math.min(1, elapsed / usableDuration); // 0 → 1
+                const currentMax = el.scrollHeight - el.clientHeight;
 
-                // Ease-out cubic
-                const eased = 1 - Math.pow(1 - t, 3);
-
-                scrollEl.scrollTop = eased * maxScroll;
-
-                if (t < 1) {
-                    this.timer = requestAnimationFrame(step);
+                // Stop cleanly at bottom; do not restart
+                if (el.scrollTop + speed >= currentMax) {
+                    el.scrollTop = currentMax;
+                    this.isRunning = false;
+                    return;
                 }
+
+                el.scrollTop += speed;
+                this.timer = requestAnimationFrame(step);
             };
 
             this.timer = requestAnimationFrame(step);
         },
 
+        // Stop auto-scroll
         stop() {
-            this.isRunning = false;
-            if (this.timer) cancelAnimationFrame(this.timer);
+            if (this.timer) {
+                cancelAnimationFrame(this.timer);
+            }
             this.timer = null;
+            this.isRunning = false;
+        },
+
+        flagRestart() {
+            this.pendingRestart = true;
+        }
+    },
+    /* #endregion */
+
+
+    /* #region PATCH: Card Rotation Reset */
+    showCard: function (index) {
+        this.autoScroll.stop();
+
+        const key = this.rotation.cards[index];
+
+        this.dom.cardActivePermits.style.display = "none";
+        this.dom.cardHighlights.style.display    = "none";
+        this.dom.cardKPI.style.display           = "none";
+        this.dom.cardAnnouncements.style.display = "none";
+
+        switch (key) {
+            case "activePermits":
+                this.dom.cardActivePermits.style.display = "block";
+
+                // Always start fresh when switching to permit card
+                requestAnimationFrame(() => {
+                    if (this.dom.permitScroll) {
+                        this.autoScroll.start(this.dom.permitScroll, this.rotation.duration);
+                    }
+                });
+                break;
+
+            case "highlights":
+                this.dom.cardHighlights.style.display = "block";
+                break;
+
+            case "kpi":
+                this.dom.cardKPI.style.display = "block";
+                break;
+
+            case "announcements":
+                this.dom.cardAnnouncements.style.display = "block";
+                break;
         }
     },
     /* #endregion */
@@ -120,22 +190,35 @@ window.SkyOfficeBoard = {
     /* #region INIT */
     init: function () {
 
-        this.dom.weatherDisplay  = document.getElementById("headerWeather");
-        this.dom.timeDisplay     = document.getElementById("headerTime");
-        this.dom.intervalDisplay = document.getElementById("headerInterval");
-        this.dom.versionFooter   = document.getElementById("versionFooter");
+        // --- DOM REFERENCES ---
+        this.dom.weatherDisplay     = document.getElementById("headerWeather");
+        this.dom.timeDisplay        = document.getElementById("headerTime");
+        this.dom.intervalDisplay    = document.getElementById("headerInterval");
+        this.dom.versionFooter      = document.getElementById("versionFooter");
 
-        this.dom.cardActivePermits = document.getElementById("cardActivePermits");
-        this.dom.cardHighlights    = document.getElementById("cardHighlights");
-        this.dom.cardKPI           = document.getElementById("cardKPI");
-        this.dom.cardAnnouncements = document.getElementById("cardAnnouncements");
+        this.dom.cardActivePermits  = document.getElementById("cardActivePermits");
+        this.dom.cardHighlights     = document.getElementById("cardHighlights");
+        this.dom.cardKPI            = document.getElementById("cardKPI");
+        this.dom.cardAnnouncements  = document.getElementById("cardAnnouncements");
 
-        this.dom.permitTableBody = document.getElementById("permitTableBody");
-        this.dom.permitScroll = document.querySelector("#cardActivePermits .scrollContainer");
+        this.dom.permitTableBody    = document.getElementById("permitTableBody");
+        this.dom.permitScroll       = document.getElementById("permitScrollWrap");
 
+        console.log("permitScroll:", this.dom.permitScroll);
+
+        // --- FIRST CARD & ROTATION ---
         this.showCard(0);
         this.startRotation();
 
+        console.log("Rotation initialized");
+
+        // --- Track data readiness & changes ---
+        this._scrollStarted = false;
+        this._hasPermitData = false;
+        this._dataChanged = false;
+        this.prevPermitLength = 0;
+
+        // --- If SSE already delivered once (page refresh) ---
         if (window.SkyeApp.lastSSE) {
             this.onSSE(window.SkyeApp.lastSSE);
         }
@@ -144,21 +227,24 @@ window.SkyOfficeBoard = {
 
     /* #region CARD ROTATION */
     startRotation: function () {
-        if (this.rotation.timer)
+        if (this.rotation.timer) {
             clearInterval(this.rotation.timer);
+        }
 
         this.rotation.timer = setInterval(() => {
             this.rotation.index =
                 (this.rotation.index + 1) % this.rotation.cards.length;
 
+            console.log("🔄 Rotating to card:", this.rotation.cards[this.rotation.index]);
+
             this.showCard(this.rotation.index);
         }, this.rotation.duration);
     },
-    
+
     // Stop auto-scroll when changing cards
     showCard: function (index) {
 
-        // ✅ ASC-X compliant: stop scrolling immediately on card switch
+        // Hard stop autoscroll BEFORE anything else
         this.autoScroll.stop();
 
         const key = this.rotation.cards[index];
@@ -169,17 +255,18 @@ window.SkyOfficeBoard = {
         this.dom.cardKPI.style.display           = "none";
         this.dom.cardAnnouncements.style.display = "none";
 
+        // Show only the selected card
         switch (key) {
             case "activePermits":
                 this.dom.cardActivePermits.style.display = "block";
 
-                // ✅ Start fresh scroll when Active Permits becomes visible
-                if (this.dom.permitScroll) {
-                    this.autoScroll.start(
-                        this.dom.permitScroll,
-                        this.rotation.duration
-                    );
-                }
+                // Reset change flag on new cycle (forces fresh start)
+                this._dataChanged = true;
+
+                // Conditional start: algo handles no-data gracefully
+                requestAnimationFrame(() => {
+                    this.autoScroll.start(this.dom.permitScroll, this.rotation.duration);
+                });
                 break;
 
             case "highlights":
@@ -264,8 +351,27 @@ window.SkyOfficeBoard = {
                 </tr>
             `;
             if (footer) footer.textContent = "No permits found";
+
+            this._hasPermitData = false;
+            if (this.prevPermitLength !== 0) {
+                this._dataChanged = true;  // Empty is a change
+            }
+            this.prevPermitLength = 0;
             return;
         }
+
+        const currentLength = activePermits.length;
+        const lengthChanged = currentLength !== this.prevPermitLength;
+
+        // Mark as having data
+        this._hasPermitData = true;
+
+        if (lengthChanged) {
+            this._dataChanged = true;
+            console.log(`Permit data changed: ${this.prevPermitLength} → ${currentLength} rows`);
+        }
+
+        this.prevPermitLength = currentLength;
 
         const sorted = [...activePermits].sort((a, b) =>
             (parseInt(a.wo) || 0) - (parseInt(b.wo) || 0)
@@ -289,6 +395,11 @@ window.SkyOfficeBoard = {
 
         if (footer) {
             footer.textContent = `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
+        }
+
+        // During active scroll: log but no action (reflow handled)
+        if (this.dom.permitScroll && this.autoScroll.isRunning) {
+            console.log("Data updated mid-scroll; continuing (reflow handled per-frame)");
         }
     },
     /* #endregion */
@@ -332,14 +443,29 @@ window.SkyOfficeBoard = {
         try {
             if (Array.isArray(payload.activePermits)) {
 
-                // Update table rows
+                // Update table rows & footer (may cause reflow mid-scroll)
                 this.updatePermitTable(payload.activePermits);
 
-                // Recalc + restart auto-scroll ONLY if this card is visible
-                this.autoScroll.start(
-                    this.dom.permitScroll,
-                    this.rotation.duration
-                );
+                // --- Initial kickoff ONLY if no prior data & visible ---
+                if (!this._scrollStarted && this._hasPermitData && this.dom.cardActivePermits.style.display !== "none") {
+                    this._scrollStarted = true;
+                    console.log("Initial scroll kickoff after first data");
+                    requestAnimationFrame(() => {
+                        if (this.dom.permitScroll) {
+                            this.autoScroll.start(this.dom.permitScroll, this.rotation.duration);
+                        }
+                    });
+                } else if (this._hasPermitData && !this.autoScroll.isRunning && this.dom.cardActivePermits.style.display !== "none" && this._dataChanged) {
+                    // Restart ONLY during linger IF data actually changed (prevents frequent resets)
+                    console.log("Restart scroll during linger (data changed)");
+                    this._dataChanged = false;  // Reset flag after handling
+                    requestAnimationFrame(() => {
+                        if (this.dom.permitScroll) {
+                            this.autoScroll.start(this.dom.permitScroll, this.rotation.duration);
+                        }
+                    });
+                }
+                // Active scroll: update data silently (algo handles reflow via per-frame max recalc)
             }
         } catch (err) {
             console.error("updatePermitTable failed:", err);

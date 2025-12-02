@@ -70,132 +70,137 @@ $lastWeatherUnix = 0;
 #endregion
 
 #region SECTION 3 — Public Helper Functions
+if (!function_exists('buildTimeContext')) {
+    function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
+    {
+        $nowUnix = (int)$dt->format("U");
+        $weekday = (int)$dt->format("N");
 
-function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
-{
-    $nowUnix = (int)$dt->format("U");
-    $weekday = (int)$dt->format("N");
+        // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
+        $holidayState = resolveHolidayState($holidayPath, $dt);
+        $isHoliday = $holidayState["isHoliday"];
 
-    // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
-    $holidayState = resolveHolidayState($holidayPath, $dt);
-    $isHoliday = $holidayState["isHoliday"];
-
-    if ($isHoliday) {
-        $calendarType = "holiday";
-    } elseif ($weekday >= 6) {
-        $calendarType = "weekend";
-    } else {
-        $calendarType = "workday";
-    }
-
-    // --- Office Hours (HH:MM from registry) ---
-    list($startH, $startM) = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["start"]));
-    list($endH, $endM)     = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["end"]));
-
-    $workStartSecs = $startH * 3600 + $startM * 60;
-    $workEndSecs   = $endH   * 3600 + $endM   * 60;
-    $nowSecs       = (int)$dt->format("G") * 3600 + (int)$dt->format("i") * 60 + (int)$dt->format("s");
-
-    // --- Compute Next Valid Work Start (skip weekends/holidays) ---
-    $next = clone $dt;
-    if ($nowSecs >= $workEndSecs) {
-        $next->modify("+1 day");
-    }
-    $next->setTime($startH, $startM, 0);
-
-    while (true) {
-        $w = (int)$next->format("N");
-        $h = resolveHolidayState($holidayPath, $next)["isHoliday"];
-        if ($h || $w >= 6) {
-            $next->modify("+1 day");
-            $next->setTime($startH, $startM, 0);
-            continue;
+        if ($isHoliday) {
+            $calendarType = "holiday";
+        } elseif ($weekday >= 6) {
+            $calendarType = "weekend";
+        } else {
+            $calendarType = "workday";
         }
-        break;
+
+        // --- Office Hours (HH:MM from registry) ---
+        list($startH, $startM) = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["start"]));
+        list($endH, $endM)     = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["end"]));
+
+        $workStartSecs = $startH * 3600 + $startM * 60;
+        $workEndSecs   = $endH   * 3600 + $endM   * 60;
+        $nowSecs       = (int)$dt->format("G") * 3600 + (int)$dt->format("i") * 60 + (int)$dt->format("s");
+
+        // --- Compute Next Valid Work Start (skip weekends/holidays) ---
+        $next = clone $dt;
+        if ($nowSecs >= $workEndSecs) {
+            $next->modify("+1 day");
+        }
+        $next->setTime($startH, $startM, 0);
+
+        while (true) {
+            $w = (int)$next->format("N");
+            $h = resolveHolidayState($holidayPath, $next)["isHoliday"];
+            if ($h || $w >= 6) {
+                $next->modify("+1 day");
+                $next->setTime($startH, $startM, 0);
+                continue;
+            }
+            break;
+        }
+
+        $nextUnix = (int)$next->format("U");
+        $secondsToNextWork = max(0, $nextUnix - $nowUnix);
+
+        // =============================================================
+        // Determine Interval Key & End Time
+        // =============================================================
+        if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
+            $intervalKey = "worktime";
+            $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
+            $intervalEndUnix   = (clone $dt)->setTime($endH, $endM, 0)->format("U");
+            $secondsRemaining   = max(0, $intervalEndUnix - $nowUnix);
+        } elseif ($nowSecs < $workStartSecs && $calendarType === "workday") {
+            $intervalKey = "beforeWork";
+            $intervalEndUnix   = (clone $dt)->setTime($startH, $startM, 0)->format("U");
+            $intervalStartUnix = $nowUnix;
+            $secondsRemaining = max(0, $intervalEndUnix - $nowUnix);
+        } elseif ($calendarType === "workday") {
+            $intervalKey = "afterWork";
+            $intervalStartUnix = $nowUnix;
+            $intervalEndUnix   = $nextUnix;
+            $secondsRemaining  = $secondsToNextWork;
+        } else {
+            // Weekend or Holiday
+            $intervalKey = $calendarType; // "weekend" or "holiday"
+            $intervalStartUnix = $nowUnix;
+            $intervalEndUnix   = $nextUnix;
+            $secondsRemaining = $secondsToNextWork;
+        }
+
+        return [
+            "calendarType" => $calendarType,
+            "currentInterval" => [
+                "key" => $intervalKey,
+                "intervalStartUnix" => $intervalStartUnix,
+                "intervalEndUnix" => $intervalEndUnix,
+                "secondsIntoInterval" => max(0, $nowUnix - $intervalStartUnix),
+                "secondsRemainingInterval" => $secondsRemaining,
+                "source" => "TIS"
+            ],
+            "timeDateArray" => [
+                "currentUnixTime" => $nowUnix,
+                "currentLocalTime" => $dt->format("h:i:s A"),
+                "currentLocalTimeShort" => $dt->format("g:i A"),
+                "currentDate" => $dt->format("Y-m-d"),
+                "currentMonthNumber" => (int)$dt->format("n"),
+                "currentWeekdayNumber" => $weekday,
+                "currentDayNumber" => (int)$dt->format("j")
+            ],
+            "holidayState" => $holidayState
+        ];
     }
-
-    $nextUnix = (int)$next->format("U");
-    $secondsToNextWork = max(0, $nextUnix - $nowUnix);
-
-    // =============================================================
-    // Determine Interval Key & End Time
-    // =============================================================
-    if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
-        $intervalKey = "worktime";
-        $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
-        $intervalEndUnix   = (clone $dt)->setTime($endH, $endM, 0)->format("U");
-        $secondsRemaining   = max(0, $intervalEndUnix - $nowUnix);
-    } elseif ($nowSecs < $workStartSecs && $calendarType === "workday") {
-        $intervalKey = "beforeWork";
-        $intervalEndUnix   = (clone $dt)->setTime($startH, $startM, 0)->format("U");
-        $intervalStartUnix = $nowUnix;
-        $secondsRemaining = max(0, $intervalEndUnix - $nowUnix);
-    } elseif ($calendarType === "workday") {
-        $intervalKey = "afterWork";
-        $intervalStartUnix = $nowUnix;
-        $intervalEndUnix   = $nextUnix;
-        $secondsRemaining  = $secondsToNextWork;
-    } else {
-        // Weekend or Holiday
-        $intervalKey = $calendarType; // "weekend" or "holiday"
-        $intervalStartUnix = $nowUnix;
-        $intervalEndUnix   = $nextUnix;
-        $secondsRemaining = $secondsToNextWork;
-    }
-
-    return [
-        "calendarType" => $calendarType,
-        "currentInterval" => [
-            "key" => $intervalKey,
-            "intervalStartUnix" => $intervalStartUnix,
-            "intervalEndUnix" => $intervalEndUnix,
-            "secondsIntoInterval" => max(0, $nowUnix - $intervalStartUnix),
-            "secondsRemainingInterval" => $secondsRemaining,
-            "source" => "TIS"
-        ],
-        "timeDateArray" => [
-            "currentUnixTime" => $nowUnix,
-            "currentLocalTime" => $dt->format("h:i:s A"),
-            "currentLocalTimeShort" => $dt->format("g:i A"),
-            "currentDate" => $dt->format("Y-m-d"),
-            "currentMonthNumber" => (int)$dt->format("n"),
-            "currentWeekdayNumber" => $weekday,
-            "currentDayNumber" => (int)$dt->format("j")
-        ],
-        "holidayState" => $holidayState
-    ];
 }
 
-function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
-{
-    $dt = new DateTime('@' . time());
-    $dt->setTimezone($tz);
-    return buildTimeContext($dt, $systemRegistry, $holidayPath);
+if (!function_exists('getTimeContext')) {
+    function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
+    {
+        $dt = new DateTime('@' . time());
+        $dt->setTimezone($tz);
+        return buildTimeContext($dt, $systemRegistry, $holidayPath);
+    }
 }
 
-function getWeatherCached(int $now, string $baseOW, float $lat, float $lon, string $key): array
-{
-    global $currentWeather, $lastWeatherUnix;
+if (!function_exists('getWeatherCached')) {
+    function getWeatherCached(int $now, string $baseOW, float $lat, float $lon, string $key): array
+    {
+        global $currentWeather, $lastWeatherUnix;
 
-    if ($currentWeather !== null && ($now - $lastWeatherUnix) < 600) {
+        if ($currentWeather !== null && ($now - $lastWeatherUnix) < 600) {
+            return $currentWeather;
+        }
+
+        $json = json_decode(@file_get_contents(
+            "{$baseOW}/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}"
+        ), true);
+
+        $currentWeather = [
+            "temp"      => $json["main"]["temp"] ?? null,
+            "condition" => $json["weather"][0]["description"] ?? null,
+            "icon"      => $json["weather"][0]["icon"] ?? null,
+            "sunrise"   => isset($json["sys"]["sunrise"]) ? date("g:i A", $json["sys"]["sunrise"]) : null,
+            "sunset"    => isset($json["sys"]["sunset"]) ? date("g:i A", $json["sys"]["sunset"]) : null,
+            "source"    => "openweathermap"
+        ];
+
+        $lastWeatherUnix = $now;
         return $currentWeather;
     }
-
-    $json = json_decode(@file_get_contents(
-        "{$baseOW}/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}"
-    ), true);
-
-    $currentWeather = [
-        "temp" => $json["main"]["temp"] ?? null,
-        "condition" => $json["weather"][0]["description"] ?? null,
-        "icon" => $json["weather"][0]["icon"] ?? null,
-        "sunrise" => isset($json["sys"]["sunrise"]) ? date("g:i A", $json["sys"]["sunrise"]) : null,
-        "sunset" => isset($json["sys"]["sunset"]) ? date("g:i A", $json["sys"]["sunset"]) : null,
-        "source" => "openweathermap"
-    ];
-
-    $lastWeatherUnix = $now;
-    return $currentWeather;
 }
 #endregion
 

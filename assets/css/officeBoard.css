@@ -62,6 +62,8 @@
 
     /* Cleaner scrollbars */
     scrollbar-width: thin;
+
+    max-height: 360px; /* <<< REQUIRED */
 }
 
 /* Table text rules */
