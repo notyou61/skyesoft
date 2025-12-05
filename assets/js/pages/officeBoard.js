@@ -80,37 +80,54 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-    /* #region AUTOSCROLL ENGINE (ASC-X: Stable Rotation Edition) */
+    /* #region AUTOSCROLL ENGINE (ASC-V: Dynamic 95% Completion Algorithm) */
     autoScroll: {
         timer: null,
         currentEl: null,
         isRunning: false,
-        pendingRestart: false,
 
         FPS: 60,
-        
-        // Start auto-scroll on element over totalDurationMs
-        start(el, totalDurationMs = 30000) {
 
+        start(el, totalDurationMs = 30000) {
             if (!el) return;
+
             this.stop();
 
             const scrollHeight = el.scrollHeight;
             const clientHeight = el.clientHeight;
-            const maxScroll = scrollHeight - clientHeight;
+            const distance = scrollHeight - clientHeight;
 
-            if (maxScroll <= 0) return;
+            // No scroll required
+            if (distance <= 0) {
+                console.log("ASC-V: No scroll needed (content fits).");
+                return;
+            }
 
-            // --- HARD-CODED SCROLL FRACTION (tune this) ---
-            // Example: scroll finishes in 70% of the card duration
-            const scrollFraction = 0.70; // <-- tweak this number (0.5–0.8)
-            const scrollTimeMs = totalDurationMs * scrollFraction;
+            /* ------------------------------------------------------
+            ASC-V (Dynamic Velocity)
+            • Scroll must finish by 95% of card interval
+            • Linger takes the remaining 5%
+            • Speed adjusts based on distance + duration only
+            ------------------------------------------------------ */
 
-            const numFrames = Math.max(1, Math.ceil(scrollTimeMs * this.FPS / 1000));
-            const speed = maxScroll / numFrames;
+            const P = 0.95;                        // finish by 95% of interval
+            const scrollTimeMs = totalDurationMs * P;
 
-            // Reset to top on fresh start
+            const frames = Math.max(
+                1,
+                Math.round(scrollTimeMs / (1000 / this.FPS))
+            );
+
+            const speed = distance / frames;       // px per frame
+
+            console.log(
+                `ASC-V: distance=${distance}px, frames=${frames}, `
+                + `speed=${speed.toFixed(3)} px/frame`
+            );
+
+            // Reset to top
             el.scrollTop = 0;
+
             this.currentEl = el;
             this.isRunning = true;
 
@@ -119,7 +136,7 @@ window.SkyOfficeBoard = {
 
                 const currentMax = el.scrollHeight - el.clientHeight;
 
-                // Stop cleanly at bottom; do not restart
+                // Clean stop at bottom (linger begins automatically)
                 if (el.scrollTop + speed >= currentMax) {
                     el.scrollTop = currentMax;
                     this.isRunning = false;
@@ -133,21 +150,13 @@ window.SkyOfficeBoard = {
             this.timer = requestAnimationFrame(step);
         },
 
-        // Stop auto-scroll
         stop() {
-            if (this.timer) {
-                cancelAnimationFrame(this.timer);
-            }
+            if (this.timer) cancelAnimationFrame(this.timer);
             this.timer = null;
             this.isRunning = false;
-        },
-
-        flagRestart() {
-            this.pendingRestart = true;
         }
     },
     /* #endregion */
-
 
     /* #region PATCH: Card Rotation Reset */
     showCard: function (index) {

@@ -1,10 +1,10 @@
 {
   "meta": {
     "creationDate": "2025-11-25",
-    "lastUpdate": "2025-11-27",
-    "currentVersion": "1.2.0",
+    "lastUpdate": "2025-12-06",
+    "currentVersion": "1.3.0",
     "title": "Skyesoft Rebuild Roadmap",
-    "description": "Execution roadmap aligned with Codex v1.1.0 governance, Repository Standard compliance, PHP 8 migration, SSE revival, and Skyebot semantic AI architecture."
+    "description": "Execution roadmap aligned with Codex v1.1.0 governance, Repository Standard compliance, PHP 8 migration, SSE revival, Skyebot semantic AI architecture, and new UI preparation (Office Board polish, index page creation, Codex Page Registry)."
   },
   "phases": [
     {
@@ -20,10 +20,12 @@
         "AI Integration Standard approved",
         "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
         "Parliamentarian Review logic created and embedded into askOpenAI.php",
-        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)"
+        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)",
+        "Codex Page Registry framework approved (all UI pages must be registered)"
       ],
       "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
     },
+
     {
       "id": "phase1",
       "name": "Repository + UI Infrastructure Alignment",
@@ -36,13 +38,17 @@
         "Upload updated PHP 8 versions of: getDynamicData.php, getVersions.php, cronRun.php",
         "Verify SSE output under PHP 8 using Codex validation rules",
         "Restore index.html and officeBoard.html under Unified Client Architecture Standard",
+        "Polish officeBoard.html for production readiness (scroll engine, header block, layout, Codex UI rules)",
+        "Create new index.html with HSB, navigation, and Codex visual standards",
+        "Create pageRegistry.json and register all active UI pages",
         "Deploy shared JS modules: app.js, sse.js, ui.js, weather.js, skyebot.js",
         "Ensure versionContext appears correctly through getVersions.php",
         "Initialize Document Engine directory structure with empty templates and placeholder bindings",
         "Activate repositoryAuditor.php for daily structural checks"
       ],
-      "output": "Server upgraded, repository deployed, and UI framework restored under PHP 8 with full Codex alignment"
+      "output": "Server upgraded, repository deployed, UI framework restored and modernized under PHP 8 with full Codex alignment"
     },
+
     {
       "id": "phase2",
       "name": "Live SSE + Dashboard Integration",
@@ -54,10 +60,11 @@
         "Confirm weather updates follow caching rules in operationalConfig",
         "Add stale-signal warnings for SSE delays > 5 seconds",
         "Activate sseIntegrityChecker.php to validate SSE health and schema",
-        "Validate officeBoard.html under live stream: no console errors, timing identical across environments"
+        "Validate officeBoard.html under live stream: no console errors, accurate scroll completion timing, and consistent display across environments"
       ],
       "output": "Office Board becomes a fully real-time operational display governed by Codex and powered by SSE"
     },
+
     {
       "id": "phase3",
       "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
@@ -73,6 +80,7 @@
       ],
       "output": "AI-powered semantic contact creation with prefix-controlled identity management"
     },
+
     {
       "id": "phase4",
       "name": "Database Migration (JSON → SQL)",
@@ -88,6 +96,7 @@
       ],
       "output": "Unified, relational Skyesoft data layer with strict referential integrity"
     },
+
     {
       "id": "phase5",
       "name": "Document Engine Activation",
@@ -106,10 +115,10 @@
   ],
   "summaryTimeline": [
     { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
-    { "phase": 1, "result": "PHP 8 upgrade + Repository + UI architecture online" },
+    { "phase": 1, "result": "Repository & UI architecture aligned under PHP 8, Office Board polished, index page created, Page Registry activated" },
     { "phase": 2, "result": "Real-time SSE dashboard operational" },
-    { "phase": 3, "result": "AI-driven business automation begins" },
-    { "phase": 4, "result": "SQL backbone ensures long-term stability" },
-    { "phase": 5, "result": "Document Engine consolidates operations" }
+    { "phase": 3, "result": "AI-driven business automation begins (Skyebot contact intake)" },
+    { "phase": 4, "result": "SQL backbone ensures long-term structured data integrity" },
+    { "phase": 5, "result": "Document Engine consolidates all document generation under Codex standards" }
   ]
 }

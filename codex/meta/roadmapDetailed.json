@@ -1,10 +1,10 @@
 {
   "meta": {
     "creationDate": "2025-11-25",
-    "lastUpdate": "2025-11-26",
-    "currentVersion": "1.1.0",
+    "lastUpdate": "2025-12-06",
+    "currentVersion": "1.2.0",
     "title": "Skyesoft Rebuild Roadmap",
-    "description": "Execution roadmap aligned with Codex v1.1.0 governance, repository standardization, and new semantic AI architecture."
+    "description": "Execution roadmap aligned with Codex v1.1.0 governance, Repository Standard compliance, semantic AI architecture, and the new UI readiness initiative (Office Board polish, index page creation, and Codex Page Registry activation)."
   },
   "phases": [
     {
@@ -20,27 +20,31 @@
         "AI Integration Standard approved",
         "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
         "Parliamentarian Review logic created and embedded into askOpenAI.php",
-        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)"
+        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)",
+        "Codex Page Registry requirement approved (all UI pages must be inventoried and registered)"
       ],
       "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
     },
     {
-    "id": "phase1",
-    "name": "Repository + UI Infrastructure Alignment",
-    "status": "in-progress",
-    "tasks": [
+      "id": "phase1",
+      "name": "Repository + UI Infrastructure Alignment",
+      "status": "in-progress",
+      "tasks": [
         "Restructure the on-server repository to match the Repository Standard (Tier 2)",
         "Ensure all filenames use camelCase; remove disallowed directories/files",
         "Deploy Codex v1.1.0, iconMap.json, prefixRegistry.json, intentMatrix.json, promptTemplates.json",
         "Publish canonical SSE inputs: getDynamicData.php, getVersions.php, documentIndex.json, versions.json",
         "Enforce that Codex files remain immutable except by amendment",
         "Restore index.html and officeBoard.html under Unified Client Architecture Standard",
+        "Polish officeBoard.html for production readiness (scroll timing, layout, HSB alignment)",
+        "Create new index.html with header/status block and Codex UI standards",
+        "Create and upload pageRegistry.json (inventory of all UI pages with purpose and Codex alignment)",
         "Deploy shared JS modules: app.js, sse.js, ui.js, weather.js, skyebot.js",
         "Implement versionContext propagation through getVersions.php per Version Governance Standard",
         "Initialize Document Engine directory structure with templates and bindings (no document-specific modules)",
         "Activate repositoryAuditor.php for daily structural checks"
-    ],
-    "output": "Skyesoft repository, UI, Codex, and SSE pipeline are structurally compliant with Codex v1.1.0"
+      ],
+      "output": "Skyesoft repository, UI, Codex, and SSE pipeline are structurally compliant with Codex v1.1.0"
     },
     {
       "id": "phase2",
@@ -54,6 +58,7 @@
       ],
       "output": "Office Board becomes a fully real-time operational display"
     },
+
     {
       "id": "phase3",
       "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
@@ -92,7 +97,7 @@
   ],
   "summaryTimeline": [
     { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
-    { "phase": 1, "result": "Repository + UI architecture online" },
+    { "phase": 1, "result": "Repository + UI architecture online, Office Board polished, index page created, Page Registry established" },
     { "phase": 2, "result": "Real-time SSE dashboard operational" },
     { "phase": 3, "result": "AI-driven business automation begins" },
     { "phase": 4, "result": "SQL backbone ensures long-term stability" },
