@@ -1,0 +1,1378 @@
+{
+    "meta": {
+        "title": "Skyesoft Repository Inventory",
+        "generated": "2025-12-07 15:34:23",
+        "mode": "index",
+        "description": "Auto-generated canonical manifest of filesystem structure."
+    },
+    "items": [
+        {
+            "id": "INV-0000",
+            "path": "\/",
+            "type": "dir",
+            "category": "root",
+            "tier": "Tier-2",
+            "purpose": "Repository root",
+            "status": "active"
+        },
+        {
+            "id": "INV-0001",
+            "path": "\/.nojekyll",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0143",
+            "path": "\/README.md",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0002",
+            "path": "\/api",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0003",
+            "path": "\/api\/askOpenAI.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0004",
+            "path": "\/api\/cronRun.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0005",
+            "path": "\/api\/getDynamicData.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0006",
+            "path": "\/api\/getKPI.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0007",
+            "path": "\/api\/getVersions.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0008",
+            "path": "\/api\/sse.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0009",
+            "path": "\/assets",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0010",
+            "path": "\/assets\/css",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0011",
+            "path": "\/assets\/css\/officeBoard.css",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0012",
+            "path": "\/assets\/css\/skyesoft-ui.css",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0013",
+            "path": "\/assets\/data",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0014",
+            "path": "\/assets\/data\/activePermits.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0015",
+            "path": "\/assets\/data\/announcements.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0016",
+            "path": "\/assets\/data\/holidayRegistry.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0017",
+            "path": "\/assets\/data\/iconMap.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0018",
+            "path": "\/assets\/data\/intentMatrix.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0019",
+            "path": "\/assets\/data\/kpi.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0020",
+            "path": "\/assets\/data\/prefixRegistry.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0021",
+            "path": "\/assets\/data\/promptTemplates.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0022",
+            "path": "\/assets\/data\/systemRegistry.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0023",
+            "path": "\/assets\/data\/versions.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0024",
+            "path": "\/assets\/images",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0025",
+            "path": "\/assets\/images\/background.jpg",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0026",
+            "path": "\/assets\/images\/christyLogo.jpg",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0027",
+            "path": "\/assets\/images\/christyLogo.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0028",
+            "path": "\/assets\/images\/favicon.ico",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0029",
+            "path": "\/assets\/images\/icons",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0030",
+            "path": "\/assets\/images\/icons\/barChart.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0031",
+            "path": "\/assets\/images\/icons\/blueBook.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0032",
+            "path": "\/assets\/images\/icons\/bolt.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0033",
+            "path": "\/assets\/images\/icons\/book.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0034",
+            "path": "\/assets\/images\/icons\/books.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0035",
+            "path": "\/assets\/images\/icons\/brain.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0036",
+            "path": "\/assets\/images\/icons\/bricks.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0037",
+            "path": "\/assets\/images\/icons\/briefcase.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0038",
+            "path": "\/assets\/images\/icons\/calendar.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0039",
+            "path": "\/assets\/images\/icons\/camera.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0040",
+            "path": "\/assets\/images\/icons\/clipboard.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0041",
+            "path": "\/assets\/images\/icons\/clock.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0042",
+            "path": "\/assets\/images\/icons\/clockface.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0043",
+            "path": "\/assets\/images\/icons\/code.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0044",
+            "path": "\/assets\/images\/icons\/compass.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0045",
+            "path": "\/assets\/images\/icons\/database.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0046",
+            "path": "\/assets\/images\/icons\/dayEnd.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0048",
+            "path": "\/assets\/images\/icons\/dayStart.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0047",
+            "path": "\/assets\/images\/icons\/daylight.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0049",
+            "path": "\/assets\/images\/icons\/document.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0050",
+            "path": "\/assets\/images\/icons\/downArrow.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0051",
+            "path": "\/assets\/images\/icons\/flashingLight.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0052",
+            "path": "\/assets\/images\/icons\/floppyDisk.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0053",
+            "path": "\/assets\/images\/icons\/folder.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0054",
+            "path": "\/assets\/images\/icons\/gear.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0055",
+            "path": "\/assets\/images\/icons\/graduationCap.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0056",
+            "path": "\/assets\/images\/icons\/holiday.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0057",
+            "path": "\/assets\/images\/icons\/hourglass.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0059",
+            "path": "\/assets\/images\/icons\/inProgress.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0058",
+            "path": "\/assets\/images\/icons\/information.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0060",
+            "path": "\/assets\/images\/icons\/integration.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0061",
+            "path": "\/assets\/images\/icons\/lightbulb.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0062",
+            "path": "\/assets\/images\/icons\/link.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0063",
+            "path": "\/assets\/images\/icons\/live.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0064",
+            "path": "\/assets\/images\/icons\/mantleClock.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0065",
+            "path": "\/assets\/images\/icons\/megaphone.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0066",
+            "path": "\/assets\/images\/icons\/memo.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0067",
+            "path": "\/assets\/images\/icons\/mobilePhone.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0068",
+            "path": "\/assets\/images\/icons\/moneybag.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0069",
+            "path": "\/assets\/images\/icons\/network.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0070",
+            "path": "\/assets\/images\/icons\/nighttime.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0071",
+            "path": "\/assets\/images\/icons\/notes.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0072",
+            "path": "\/assets\/images\/icons\/openFolder.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0073",
+            "path": "\/assets\/images\/icons\/owner.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0074",
+            "path": "\/assets\/images\/icons\/palette.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0075",
+            "path": "\/assets\/images\/icons\/partlyCloudy.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0076",
+            "path": "\/assets\/images\/icons\/pen.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0077",
+            "path": "\/assets\/images\/icons\/pencil.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0078",
+            "path": "\/assets\/images\/icons\/pin.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0079",
+            "path": "\/assets\/images\/icons\/plug.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0080",
+            "path": "\/assets\/images\/icons\/property.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0081",
+            "path": "\/assets\/images\/icons\/puzzle.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0082",
+            "path": "\/assets\/images\/icons\/receipt.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0083",
+            "path": "\/assets\/images\/icons\/robot.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0084",
+            "path": "\/assets\/images\/icons\/rocket.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0085",
+            "path": "\/assets\/images\/icons\/ruler.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0086",
+            "path": "\/assets\/images\/icons\/scales.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0087",
+            "path": "\/assets\/images\/icons\/scroll.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0088",
+            "path": "\/assets\/images\/icons\/shield.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0089",
+            "path": "\/assets\/images\/icons\/stopwatch.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0090",
+            "path": "\/assets\/images\/icons\/sunrise.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0091",
+            "path": "\/assets\/images\/icons\/sunset.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0092",
+            "path": "\/assets\/images\/icons\/table.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0093",
+            "path": "\/assets\/images\/icons\/target.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0094",
+            "path": "\/assets\/images\/icons\/temple.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0095",
+            "path": "\/assets\/images\/icons\/tools.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0096",
+            "path": "\/assets\/images\/icons\/tree.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0097",
+            "path": "\/assets\/images\/icons\/trophy.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0098",
+            "path": "\/assets\/images\/icons\/upArrow.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0099",
+            "path": "\/assets\/images\/icons\/user.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0100",
+            "path": "\/assets\/images\/icons\/users.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0101",
+            "path": "\/assets\/images\/icons\/warning.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0102",
+            "path": "\/assets\/images\/icons\/weather.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0103",
+            "path": "\/assets\/images\/icons\/workman.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0104",
+            "path": "\/assets\/images\/icons\/workmanVest.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0105",
+            "path": "\/assets\/images\/icons\/wrench.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0106",
+            "path": "\/assets\/images\/skyebot-icon.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0107",
+            "path": "\/assets\/images\/user-icon.png",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0108",
+            "path": "\/assets\/js",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0109",
+            "path": "\/assets\/js\/app.js",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0110",
+            "path": "\/assets\/js\/pages",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0111",
+            "path": "\/assets\/js\/pages\/officeBoard.js",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0112",
+            "path": "\/assets\/js\/sse.js",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0113",
+            "path": "\/audit-report.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0114",
+            "path": "\/bulletinBoards",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0115",
+            "path": "\/bulletinBoards\/officeBoard.html",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0116",
+            "path": "\/codex",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0117",
+            "path": "\/codex\/codex.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0118",
+            "path": "\/codex\/constitution",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0119",
+            "path": "\/codex\/constitution\/README.md",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0120",
+            "path": "\/codex\/meta",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0121",
+            "path": "\/codex\/meta\/README.md",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0122",
+            "path": "\/codex\/meta\/repositoryInventory.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0123",
+            "path": "\/codex\/meta\/roadmap.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0124",
+            "path": "\/codex\/meta\/roadmapDetailed.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0125",
+            "path": "\/codex\/modules",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0126",
+            "path": "\/codex\/modules\/README.md",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0127",
+            "path": "\/codex\/standards",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0128",
+            "path": "\/codex\/standards\/README.md",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0129",
+            "path": "\/documents",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0130",
+            "path": "\/modules",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0131",
+            "path": "\/modules\/automation",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0132",
+            "path": "\/modules\/automation\/aiValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0133",
+            "path": "\/modules\/automation\/codeValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0134",
+            "path": "\/modules\/automation\/historyValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0135",
+            "path": "\/modules\/automation\/ragValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0136",
+            "path": "\/modules\/automation\/semanticValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0137",
+            "path": "\/modules\/automation\/skyebotValidator.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0138",
+            "path": "\/modules\/automation\/sseIntegrityChecker.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0139",
+            "path": "\/modules\/deployment",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0140",
+            "path": "\/modules\/deployment\/deploymentConfig.json",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0141",
+            "path": "\/modules\/deployment\/deploymentEngine.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0142",
+            "path": "\/modules\/holidayInterpreter.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0144",
+            "path": "\/reports",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0145",
+            "path": "\/reports\/automation",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0146",
+            "path": "\/reports\/chat",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0147",
+            "path": "\/reports\/rag",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0148",
+            "path": "\/scripts",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0149",
+            "path": "\/scripts\/repositoryAuditor.php",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0150",
+            "path": "\/secure",
+            "type": "dir",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        },
+        {
+            "id": "INV-0151",
+            "path": "\/secure\/env.local",
+            "type": "file",
+            "category": "auto-indexed",
+            "tier": "unassigned",
+            "purpose": "auto-generated placeholder",
+            "status": "active"
+        }
+    ]
+}
