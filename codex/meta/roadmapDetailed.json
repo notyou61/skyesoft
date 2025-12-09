@@ -1,10 +1,10 @@
 {
   "meta": {
     "creationDate": "2025-11-25",
-    "lastUpdate": "2025-12-06",
-    "currentVersion": "1.2.0",
+    "lastUpdate": "2025-12-09",
+    "currentVersion": "1.3.0",
     "title": "Skyesoft Rebuild Roadmap",
-    "description": "Execution roadmap aligned with Codex v1.1.0 governance, Repository Standard compliance, semantic AI architecture, and the new UI readiness initiative (Office Board polish, index page creation, and Codex Page Registry activation)."
+    "description": "Roadmap aligned with Codex governance, Repository Inventory (RNV) standards, camelCase conventions, semantic AI architecture, and the Unified Client Framework (Office Board + Index Page + Page Registry)."
   },
   "phases": [
     {
@@ -12,95 +12,96 @@
       "name": "Codex + Sovereignty Foundation",
       "status": "complete",
       "tasks": [
-        "Codex upgraded to v1.1.0 with Meta, Constitution, Tier-2 Standards, and Tier-3 Modules",
-        "Document Engine created; legacy individual document modules removed",
-        "Repository Standard ratified (canonical directory structure, camelCase enforcement)",
-        "Semantic Responder Standard approved",
-        "RAG Framework Standard approved",
+        "Codex upgraded with Constitution, Meta, Tier-2 Standards, and Tier-3 Modules",
+        "Document Engine architecture ratified; legacy module fragmentation removed",
+        "Repository Standard adopted (canonical directory structure + naming enforcement)",
+        "Semantic Responder Standard and RAG Framework approved",
         "AI Integration Standard approved",
-        "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
-        "Parliamentarian Review logic created and embedded into askOpenAI.php",
-        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)",
-        "Codex Page Registry requirement approved (all UI pages must be inventoried and registered)"
+        "Skyebot constitutional prompt schema finalized",
+        "Parliamentarian Review logic embedded into askOpenAI.php",
+        "Deployment sovereignty reaffirmed — Skyesoft runs solely on skyelighting.com",
+        "Codex UI Page Registry requirement approved",
+        "RNV Identifier Standard adopted for Repository Inventory"
       ],
-      "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
+      "output": "Codex structural foundation finalized — the system’s constitutional layer is stable"
     },
     {
       "id": "phase1",
       "name": "Repository + UI Infrastructure Alignment",
       "status": "in-progress",
       "tasks": [
-        "Restructure the on-server repository to match the Repository Standard (Tier 2)",
-        "Ensure all filenames use camelCase; remove disallowed directories/files",
-        "Deploy Codex v1.1.0, iconMap.json, prefixRegistry.json, intentMatrix.json, promptTemplates.json",
-        "Publish canonical SSE inputs: getDynamicData.php, getVersions.php, documentIndex.json, versions.json",
-        "Enforce that Codex files remain immutable except by amendment",
-        "Restore index.html and officeBoard.html under Unified Client Architecture Standard",
-        "Polish officeBoard.html for production readiness (scroll timing, layout, HSB alignment)",
-        "Create new index.html with header/status block and Codex UI standards",
-        "Create and upload pageRegistry.json (inventory of all UI pages with purpose and Codex alignment)",
+        "Synchronize repository with canonical structure defined in Repository Standard",
+        "Enforce camelCase naming across all files and directories",
+        "Deploy Codex, iconMap.json, prefixRegistry.json, intentMatrix.json, promptTemplates.json",
+        "Publish Tier-2 SSE documents: getDynamicData.php, getVersions.php, documentIndex.json, versions.json",
+        "Ensure Codex files remain immutable except via amendment",
+        "Restore index.html and officeBoard.html under the Unified Client Framework",
+        "Polish officeBoard.html (layout, transitions, header status block alignment)",
+        "Create new index.html following Codex UI standards",
+        "Create and publish pageRegistry.json (complete UI inventory with semantic purpose)",
         "Deploy shared JS modules: app.js, sse.js, ui.js, weather.js, skyebot.js",
-        "Implement versionContext propagation through getVersions.php per Version Governance Standard",
-        "Initialize Document Engine directory structure with templates and bindings (no document-specific modules)",
-        "Activate repositoryAuditor.php for daily structural checks"
+        "Propagate versionContext via getVersions.php under Version Governance Standard",
+        "Initialize Document Engine structure (templates, schema, binding rules)",
+        "Activate repositoryAuditor.php for compliance checks (RNV validation, camelCase checks, JSON meta verification)",
+
+        "Create Prefix Registry Standard (PRF) under Codex governance, defining all 3-letter system prefixes (RNV, DOC, INV, JOB, EST, SUR, CNT, ENT, LOC, PRM, UPG, etc.) and their allocation rules"
       ],
-      "output": "Skyesoft repository, UI, Codex, and SSE pipeline are structurally compliant with Codex v1.1.0"
+      "output": "Repository, UI, Codex, RNV, and SSE pipeline aligned with Codex governance"
     },
     {
       "id": "phase2",
       "name": "Live SSE + Dashboard Integration",
       "status": "pending",
       "tasks": [
-        "Implement real-time SSE stream with full Tier-2 compliance",
-        "Dashboard uses only SSE for time, weather, holiday, TIS state, versionContext",
-        "Add SSE stale-signal warnings",
-        "Activate sseIntegrityChecker.php to validate SSE health"
+        "Implement full real-time SSE stream following Tier-2 SSE Standard",
+        "Dashboard consumes only SSE (time, weather, holiday, TIS state, versionContext)",
+        "Add stale-signal and degraded-SSE health indicators",
+        "Enable sseIntegrityChecker.php and integrate reports into audit pipeline"
       ],
-      "output": "Office Board becomes a fully real-time operational display"
+      "output": "Office Board becomes a fully real-time, Codex-compliant operational display"
     },
-
     {
       "id": "phase3",
-      "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
+      "name": "Skyebot Contact Intake (Semantic + RAG-driven)",
       "status": "pending",
       "tasks": [
-        "Skyebot parses email signatures and prompts to create new contacts",
-        "Prevent duplication of entity, location, or contact entries",
-        "Store new items in JSON interim database following Prefix Registry",
-        "Document Engine generates confirmation sheets when needed"
+        "Skyebot interprets email signatures and freeform prompts using semantic parsing",
+        "Prevent duplicate contacts, entities, and locations via Codex identity rules",
+        "Store new contacts using Prefix Registry governance",
+        "Document Engine auto-generates confirmation documents when needed"
       ],
-      "output": "AI-powered semantic contact creation"
+      "output": "AI-powered semantic contact creation integrated into the operational workflow"
     },
     {
       "id": "phase4",
       "name": "Database Migration (JSON → SQL)",
       "status": "pending",
       "tasks": [
-        "Design SQLite schema for entities, locations, contacts, permits, and documents",
-        "Migrate JSON into SQL with Referential Integrity",
-        "Office Board metrics use SQL instead of JSON"
+        "Design SQLite schema (entities, locations, contacts, permits, documents)",
+        "Migrate JSON objects into SQL tables under Referential Integrity",
+        "Replace JSON reads for Office Board metrics with SQL queries"
       ],
-      "output": "Unified, relational Skyesoft data layer"
+      "output": "Centralized relational data layer stabilizes long-term operations"
     },
     {
       "id": "phase5",
       "name": "Document Engine Activation",
       "status": "pending",
       "tasks": [
-        "Activate Document Engine (single module for all document types)",
+        "Activate Document Engine as the unified generator for all document types",
         "Use Document Catalog for permitFeeReport, photoSurvey, workOrderRequest, etc.",
-        "Add metadata indexing & lineage tracking into documentIndex.json",
-        "Floating header/footer rendering restored for all document types"
+        "Add metadata indexing + lineage tracking to documentIndex.json",
+        "Restore floating header/footer rendering for all document types"
       ],
-      "output": "Professional-grade document automation via one unified engine"
+      "output": "Professional-grade document automation across all Skyesoft operations"
     }
   ],
   "summaryTimeline": [
-    { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
-    { "phase": 1, "result": "Repository + UI architecture online, Office Board polished, index page created, Page Registry established" },
+    { "phase": 0, "result": "Codex foundation complete" },
+    { "phase": 1, "result": "Repository + UI unified; RNV + naming + SSE ready" },
     { "phase": 2, "result": "Real-time SSE dashboard operational" },
-    { "phase": 3, "result": "AI-driven business automation begins" },
-    { "phase": 4, "result": "SQL backbone ensures long-term stability" },
-    { "phase": 5, "result": "Document Engine consolidates operations" }
+    { "phase": 3, "result": "Semantic AI automation active" },
+    { "phase": 4, "result": "SQL migration complete" },
+    { "phase": 5, "result": "Document Engine fully deployed" }
   ]
 }

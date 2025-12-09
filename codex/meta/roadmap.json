@@ -25,7 +25,6 @@
       ],
       "output": "Codex v1.1.0 finalized — the system's constitutional backbone is complete"
     },
-
     {
       "id": "phase1",
       "name": "Repository + UI Infrastructure Alignment",
@@ -48,7 +47,6 @@
       ],
       "output": "Server upgraded, repository deployed, UI framework restored and modernized under PHP 8 with full Codex alignment"
     },
-
     {
       "id": "phase2",
       "name": "Live SSE + Dashboard Integration",
@@ -64,7 +62,6 @@
       ],
       "output": "Office Board becomes a fully real-time operational display governed by Codex and powered by SSE"
     },
-
     {
       "id": "phase3",
       "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
@@ -80,7 +77,6 @@
       ],
       "output": "AI-powered semantic contact creation with prefix-controlled identity management"
     },
-
     {
       "id": "phase4",
       "name": "Database Migration (JSON → SQL)",
@@ -96,7 +92,6 @@
       ],
       "output": "Unified, relational Skyesoft data layer with strict referential integrity"
     },
-
     {
       "id": "phase5",
       "name": "Document Engine Activation",

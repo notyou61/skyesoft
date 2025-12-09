@@ -646,7 +646,7 @@
           "Moves and renames require inventory updates.",
           "Files cannot “drift” from their declared location.",
           "Require daily auditor validation of registered vs actual FS state.",
-          "Inventory IDs must follow the canonical format INV-### and be assigned sequentially in the order items are registered. IDs are permanent once assigned, may not be reused, and renaming or moving a file does not alter its ID. Any change to the ID assignment protocol requires a formal Codex amendment."
+          "Inventory IDs must follow the canonical format RNV-### and be assigned sequentially in the order items are registered. IDs are permanent once assigned, may not be reused, and renaming or moving a file does not alter its ID. Any change to the ID assignment protocol requires a formal Codex amendment."
         ],
         "schema": {
           "type": "object",
@@ -657,14 +657,46 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "id": { "type": "string", "pattern": "^INV-[0-9]{3}$" },
-                  "path": { "type": "string" },
-                  "type": { "type": "string", "enum": ["file", "dir"] },
-                  "category": { "type": "string" },
-                  "tier": { "type": "string", "enum": ["Tier-0", "Tier-1", "Tier-2", "Tier-3", "Legacy"] },
-                  "purpose": { "type": "string" },
-                  "status": { "type": "string", "enum": ["active", "deprecated", "planned"] },
-                  "notes": { "type": "string" }
+                  "id": {
+                      "type": "string",
+                      "pattern": "^RNV-[0-9]{4}$",
+                      "description": "Permanent Repository Inventory Identifier (RNV). Four-digit sequential index. Immutable once assigned."
+                  },
+                  "name": {
+                      "type": "string",
+                      "description": "Canonical basename of the file or directory derived from the path. Must always reflect the actual filesystem name."
+                  },
+                  "path": {
+                      "type": "string",
+                      "description": "Full repository-relative path beginning with '/'."
+                  },
+                  "type": {
+                      "type": "string",
+                      "enum": ["file", "dir"],
+                      "description": "Filesystem node type."
+                  },
+                  "category": {
+                      "type": "string",
+                      "description": "Codex classification of the item (auto-indexed, root, structural, etc.)."
+                  },
+                  "tier": {
+                      "type": "string",
+                      "enum": ["Tier-0", "Tier-1", "Tier-2", "Tier-3", "Legacy"],
+                      "description": "Codex governance tier to which this file or directory belongs."
+                  },
+                  "purpose": {
+                      "type": "string",
+                      "description": "Human-readable explanation of the file or directory's role within the system."
+                  },
+                  "status": {
+                      "type": "string",
+                      "enum": ["active", "deprecated", "planned"],
+                      "description": "Lifecycle state of the item within the repository."
+                  },
+                  "notes": {
+                      "type": "string",
+                      "description": "Optional freeform notes for maintainers or auditors."
+                  }
                 },
                 "required": ["id", "path", "type", "tier", "purpose"]
               }
@@ -822,6 +854,86 @@
           "Any deviation requires formal Codex amendment.",
           "Mismatch between structural header and declared purpose in repositoryInventory.json constitutes a Codex violation."
         ]
+      },
+      "prefixRegistryStandard": {
+        "title": { "icon": 74, "text": "Prefix Registry Standard (PRF)" },
+        "tier": "Tier-2",
+        "version": "1.0.0",
+        "preamble": {
+          "icon": 74,
+          "text": "The Prefix Registry Standard defines how Skyesoft assigns and governs all three-letter system prefixes used for permanent identifiers. This ensures uniqueness, prevents namespace collisions, and establishes governance over the formation and lifecycle of all prefixed identifiers across the platform."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "PRF ensures that every identifier prefix is registered, unique, semantically meaningful, and governed by clear allocation rules. The Standard establishes how prefixes are created, amended, and retired across all Skyesoft subsystems."
+        },
+        "rules": [
+          {
+            "rule": "PRF-0001",
+            "text": "All system identifiers must begin with a three-letter uppercase prefix followed by a hyphen and a sequential numeric component (e.g., RNV-0042)."
+          },
+          {
+            "rule": "PRF-0002",
+            "text": "No two prefixes may represent the same functional domain. Every prefix must be uniquely registered in prefixRegistry.json before use."
+          },
+          {
+            "rule": "PRF-0003",
+            "text": "Each prefix must have a clearly defined domain and purpose describing what category of identifiers it governs (e.g., RNV for repository inventory records, DOC for document engine artifacts)."
+          },
+          {
+            "rule": "PRF-0004",
+            "text": "Prefix registry entries must include fields: prefix, domain, description, status."
+          },
+          {
+            "rule": "PRF-0005",
+            "text": "The prefix PRF itself must appear in prefixRegistry.json under the 'system' category, representing governance of the Prefix Registry Standard."
+          },
+          {
+            "rule": "PRF-0006",
+            "text": "Any new prefix proposal must include justification, domain definition, conflict analysis, and Codex Parliament approval before adoption."
+          },
+          {
+            "rule": "PRF-0007",
+            "text": "Retired prefixes must remain in the registry with status = 'deprecated' to preserve historical lineage."
+          }
+        ],
+        "registeredPrefixes": [
+          { 
+            "key": "PRF", 
+            "category": "system", 
+            "description": "Prefix Registry governance prefix.", 
+            "example": "PRF-001" 
+          },
+          { 
+            "key": "LOC", 
+            "category": "locations", 
+            "description": "Site and facility identifiers.", 
+            "example": "LOC-001" 
+          },
+          { 
+            "key": "ENT", 
+            "category": "entities", 
+            "description": "Business entities and records.", 
+            "example": "ENT-045" 
+          },
+          { 
+            "key": "DOC", 
+            "category": "documents", 
+            "description": "Generated document IDs.", 
+            "example": "DOC-112" 
+          },
+          { 
+            "key": "MOD", 
+            "category": "modules", 
+            "description": "Operational module instances.", 
+            "example": "MOD-007" 
+          }
+        ],
+        "registryFile": {
+          "path": "assets/data/prefixRegistry.json",
+          "description": "Single Source of Truth for all system prefixes governed under PRF."
+        },
+        "output": "A unified, conflict-free prefix architecture that ensures identifier consistency, traceability, and governance across all Skyesoft systems."
       },
       "unifiedClientArchitecture": {
         "title": {
