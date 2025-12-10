@@ -959,7 +959,6 @@
               "Each page shall include a data-page attribute on the <body> element."
             ]
           },
-
           "fileLayout": {
             "description": "The UI layer shall consist of a minimal and fixed set of files, forming the complete behavioral and visual surface of the system.",
             "allowedFiles": [
@@ -974,7 +973,6 @@
               "All system-wide logic shall be isolated into app.js and sse.js."
             ]
           },
-
           "javascriptArchitecture": {
             "description": "All dynamic behavior shall follow strict separation of concerns and uniform initialization.",
             "rules": [
@@ -987,7 +985,6 @@
               "All card systems, scroll engines, data tables, clocks, weather updates, interval timers, and page-specific logic shall reside within that page's JS file."
             ]
           },
-
           "styling": {
             "description": "All UI styling must originate from a single authoritative stylesheet.",
             "rules": [
@@ -997,7 +994,6 @@
               "UI components shall be styled via classes whenever practical."
             ]
           },
-
           "metaCompliance": {
             "description": "All UI architecture shall adhere to Tier 0 Meta Principles.",
             "rules": [
