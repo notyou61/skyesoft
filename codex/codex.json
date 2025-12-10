@@ -856,84 +856,55 @@
         ]
       },
       "prefixRegistryStandard": {
-        "title": { "icon": 74, "text": "Prefix Registry Standard (PRF)" },
-        "tier": "Tier-2",
-        "version": "1.0.0",
-        "preamble": {
-          "icon": 74,
-          "text": "The Prefix Registry Standard defines how Skyesoft assigns and governs all three-letter system prefixes used for permanent identifiers. This ensures uniqueness, prevents namespace collisions, and establishes governance over the formation and lifecycle of all prefixed identifiers across the platform."
-        },
-        "purpose": {
-          "icon": 20,
-          "text": "PRF ensures that every identifier prefix is registered, unique, semantically meaningful, and governed by clear allocation rules. The Standard establishes how prefixes are created, amended, and retired across all Skyesoft subsystems."
-        },
-        "rules": [
-          {
-            "rule": "PRF-0001",
-            "text": "All system identifiers must begin with a three-letter uppercase prefix followed by a hyphen and a sequential numeric component (e.g., RNV-0042)."
+          "title": { "icon": 74, "text": "Prefix Registry Standard (PRF)" },
+          "tier": "Tier-2",
+          "version": "1.1.0",
+          "preamble": {
+            "icon": 74,
+            "text": "The Prefix Registry Standard defines how Skyesoft assigns and governs all three-letter system prefixes used for permanent identifiers. This ensures uniqueness, prevents namespace collisions, and establishes governance over the formation, lifecycle, and purpose of all prefixed identifiers across the platform, including operational error codes (ERR) used to classify structural and validation anomalies."
           },
-          {
-            "rule": "PRF-0002",
-            "text": "No two prefixes may represent the same functional domain. Every prefix must be uniquely registered in prefixRegistry.json before use."
+          "purpose": {
+            "icon": 20,
+            "text": "PRF ensures that every identifier prefix is registered, unique, semantically meaningful, and governed by clear allocation rules. The Standard establishes how prefixes are created, validated, amended, and retained across all Skyesoft subsystems."
           },
-          {
-            "rule": "PRF-0003",
-            "text": "Each prefix must have a clearly defined domain and purpose describing what category of identifiers it governs (e.g., RNV for repository inventory records, DOC for document engine artifacts)."
+          "rules": [
+            {
+              "rule": "PRF-0001",
+              "text": "All system identifiers must begin with a three-letter uppercase prefix followed by a hyphen and a four-digit sequential numeric component (e.g., RNV-0042)."
+            },
+            {
+              "rule": "PRF-0002",
+              "text": "No two prefixes may represent the same functional domain. Every prefix must be uniquely registered in prefixRegistry.json before use."
+            },
+            {
+              "rule": "PRF-0003",
+              "text": "Each prefix must have a clearly defined domain and description specifying what category of identifiers it governs (e.g., RNV for repository inventory, DOC for documents)."
+            },
+            {
+              "rule": "PRF-0004",
+              "text": "Prefix registry entries must include the fields: prefix, domain, description, example."
+            },
+            {
+              "rule": "PRF-0005",
+              "text": "The prefix PRF itself must appear in prefixRegistry.json under the 'governance' domain, representing control and authority over the Prefix Registry Standard."
+            },
+            {
+              "rule": "PRF-0006",
+              "text": "Any new prefix proposal must include justification, defined domain, conflict analysis, and approval through Codex Parliament governance before adoption."
+            },
+            {
+              "rule": "PRF-0007",
+              "text": "Retired prefixes must remain in prefixRegistry.json with an appropriate notation in the description field to preserve historical lineage."
+            }
+          ],
+          "registeredPrefixes": {
+            "reference": "See assets/data/prefixRegistry.json — authoritative Single Source of Truth (SOT). The Codex no longer stores local prefix lists to prevent drift."
           },
-          {
-            "rule": "PRF-0004",
-            "text": "Prefix registry entries must include fields: prefix, domain, description, status."
+          "registryFile": {
+            "path": "assets/data/prefixRegistry.json",
+            "description": "Single Source of Truth for all system prefixes governed under PRF. All Skyesoft subsystems must load and validate against this file."
           },
-          {
-            "rule": "PRF-0005",
-            "text": "The prefix PRF itself must appear in prefixRegistry.json under the 'system' category, representing governance of the Prefix Registry Standard."
-          },
-          {
-            "rule": "PRF-0006",
-            "text": "Any new prefix proposal must include justification, domain definition, conflict analysis, and Codex Parliament approval before adoption."
-          },
-          {
-            "rule": "PRF-0007",
-            "text": "Retired prefixes must remain in the registry with status = 'deprecated' to preserve historical lineage."
-          }
-        ],
-        "registeredPrefixes": [
-          { 
-            "key": "PRF", 
-            "category": "system", 
-            "description": "Prefix Registry governance prefix.", 
-            "example": "PRF-001" 
-          },
-          { 
-            "key": "LOC", 
-            "category": "locations", 
-            "description": "Site and facility identifiers.", 
-            "example": "LOC-001" 
-          },
-          { 
-            "key": "ENT", 
-            "category": "entities", 
-            "description": "Business entities and records.", 
-            "example": "ENT-045" 
-          },
-          { 
-            "key": "DOC", 
-            "category": "documents", 
-            "description": "Generated document IDs.", 
-            "example": "DOC-112" 
-          },
-          { 
-            "key": "MOD", 
-            "category": "modules", 
-            "description": "Operational module instances.", 
-            "example": "MOD-007" 
-          }
-        ],
-        "registryFile": {
-          "path": "assets/data/prefixRegistry.json",
-          "description": "Single Source of Truth for all system prefixes governed under PRF."
-        },
-        "output": "A unified, conflict-free prefix architecture that ensures identifier consistency, traceability, and governance across all Skyesoft systems."
+          "output": "A unified, conflict-free prefix architecture ensuring identifier consistency, traceability, semantic clarity, and governance across all Skyesoft systems."
       },
       "unifiedClientArchitecture": {
         "title": {
@@ -1798,6 +1769,121 @@
           "frequency": "per-review",
           "action": "Block writes; escalate approvals"
         }
+      },
+      "Error Governance Standard": {
+      "title": { "icon": 50, "text": "Error Governance Standard (EGS)" },
+      "tier": 2,
+      "hierarchyOrder": 18,
+      "type": "Structural Standard",
+      "preamble": {
+        "icon": 50,
+        "text": "EGS defines how Skyesoft detects, classifies, records, and resolves structural and operational errors. It ensures that all failures—whether from structural drift, missing files, prefix violations, syntax issues, or runtime faults—are handled consistently, transparently, and without ambiguity. All error information must be preserved permanently to maintain historical and forensic integrity."
+      },
+      "purpose": {
+        "icon": 20,
+        "text": "Provide a unified, Codex-governed system for tracking anomalies across Skyesoft. Ensure that errors are always logged, never overwritten, never erased, and always traceable to their cause. Maintain a permanent, chronological record of operational health."
+      },
+      "storage": {
+        "registryFile": "assets/data/errorRegistry.json",
+        "auditLogFile": "assets/data/repositoryAudit.json",
+        "description": "Both the canonical registry and the chronological audit log are stored together within the data SOT to prevent drift."
+      },
+      "timeStandard": {
+        "format": "unix_epoch_integer",
+        "description": "All timestamps must be stored as UNIX epoch integers (seconds). Human-friendly formatting is permitted only for UI rendering."
+      },
+      "errorTypes": {
+        "description": "Every error must belong to exactly one governed classification.",
+        "types": [
+          { "key": "structural_validation", "description": "Unapproved files, unexpected directories, missing items, drift." },
+          { "key": "prefix_mismatch", "description": "Unknown, deprecated, or misaligned prefix usage." },
+          { "key": "inventory_mismatch", "description": "File present on disk but missing from repositoryInventory.json, or vice versa." },
+          { "key": "syntax_error", "description": "Malformed JSON, invalid Codex structures, corrupted SOT files." },
+          { "key": "dependency_error", "description": "Missing modules, unresolved references, broken linkages." },
+          { "key": "runtime_error", "description": "Execution anomalies during cronRun or getDynamicData processes." },
+          { "key": "policy_violation", "description": "Violations of governance, structural mandates, or naming standards." }
+        ]
+      },
+      "lifecycle": {
+        "states": [
+          { "key": "active", "description": "New or ongoing error." },
+          { "key": "troubleshooting", "description": "Error acknowledged; corrective steps underway." },
+          { "key": "resolved", "description": "Error corrected; retained permanently for lineage." }
+        ],
+        "rules": [
+          "Errors may never be deleted.",
+          "Status transitions must be logged in repositoryAudit.json.",
+          "Resolved errors remain permanently in errorRegistry.json."
+        ]
+      },
+      "errorObjectSchema": {
+        "id": "ERR-00001 style identifier",
+        "schema": {
+          "id": { "type": "string", "pattern": "^ERR-[0-9]{5}$" },
+          "name": { "type": "string" },
+          "timestamp": { "type": "integer" },
+          "type": { "type": "string" },
+          "description": { "type": "string" },
+          "suggestedSolution": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "troubleshooting", "resolved"] },
+          "lastAction": { "type": "string" }
+        }
+      },
+      "registryRules": {
+        "description": "errorRegistry.json is the Single Source of Truth (SOT) for error records.",
+        "rules": [
+          "ERR IDs must increment sequentially starting at ERR-00001.",
+          "No ERR ID may ever be reused.",
+          "Only Cron (via cronRun.php) may modify this file.",
+          "Every resolved error remains permanently for lineage."
+        ]
+      },
+      "auditLog": {
+        "description": "Every occurrence of an error—new, recurring, or transitioning—must append a log entry.",
+        "schema": {
+          "timestamp": "UNIX epoch integer",
+          "errorId": "ERR-#####",
+          "status": "active|troubleshooting|resolved",
+          "name": "Short descriptor",
+          "type": "errorTypes.key",
+          "message": "Narrative contextual message"
+        },
+        "rules": [
+          "Log is append-only.",
+          "Log entries must never be removed or edited.",
+          "Log and Registry must remain consistent."
+        ]
+      },
+      "detection": {
+        "enforcedBy": "api/cronRun.php",
+        "rules": [
+          "cronRun.php must detect structural violations and anomalies.",
+          "cronRun.php must classify errors using errorTypes.",
+          "cronRun.php must generate new ERR entries when encountering new anomalies.",
+          "cronRun.php must append every event to repositoryAudit.json.",
+          "cronRun.php must never modify Codex, prefixRegistry.json, or repositoryInventory.json."
+        ]
+      },
+      "uiIntegration": {
+        "optional": true,
+        "description": "UI may display errorState but is not required during Phase 1.",
+        "ssePayload": {
+          "latest": "ERR-#####",
+          "activeCount": "integer",
+          "timestamp": "UNIX epoch"
+        },
+        "rules": [
+          "Only cronRun.php and getDynamicData.php may update SSE errorState.",
+          "UI must not compute its own error state."
+        ]
+      },
+      "notes": [
+        "EGS v2.0 eliminates the outdated Sentinel model.",
+        "Cron + Registry + Audit Log form the simplified backbone.",
+        "All error data lives in assets/data to match SOT structure.",
+        "Future versions may reintroduce notifications or UI dashboards.",
+        "This version fully aligns with MTCO, SSE discipline, and your current codebase."
+      ]
       }
     }
   },
