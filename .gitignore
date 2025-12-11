@@ -1,0 +1,37 @@
+# === Skyesoft Codex-Governed .gitignore ===
+
+# Node modules (never committed)
+node_modules/
+
+# Runtime logs and caches
+assets/data/weatherCache.json
+
+# These SOT files must exist in the repo, but future content changes should be ignored.
+# To make this work:
+# 1. Create the files
+# 2. Add them with `git add -f`
+# 3. Commit once
+# 4. Future changes will be ignored because they're listed here.
+assets/data/errorRegistry.json
+assets/data/repositoryAudit.json
+
+# Generated reports
+reports/**/*.json
+
+# Generated documents
+documents/*.pdf
+documents/*.html
+
+# Environment and configuration
+.env
+.env.local
+
+# System-specific temp files
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+
+# IDE artifacts
+.vscode/
+.idea/

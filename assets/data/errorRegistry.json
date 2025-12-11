@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "objectType": "errorRegistry",
+    "generatedBy": "Skyesoft System",
+    "generatedOn": "SSE:timeDateArray.currentLocalTime",
+    "notes": "Permanent historical ledger governed by EGS. Entries cannot be removed."
+  },
+  "errors": []
+}
