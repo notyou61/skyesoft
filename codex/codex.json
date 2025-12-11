@@ -1932,6 +1932,84 @@
           "This standard ensures anti-tamper guarantees without blockchain overhead.",
           "Parliamentarian and Archivist roles interpret MIS results but never alter SOT files."
         ]
+      },
+      "systemInitializationStandard": {
+        "title": { "icon": 68, "text": "System Initialization Standard (SIS)" },
+        "tier": 2,
+        "hierarchyOrder": 20,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 68,
+          "text": "SIS defines the mandatory procedure for establishing Skyesoft’s canonical baseline at the moment of official launch. All Sources of Truth (SOT) must begin from an empty, production-cleansed state. Development artifacts, test data, placeholder values, and legacy drift are prohibited from persisting into operational lifecycle history."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "Ensure Skyesoft enters its governed operational lifecycle with a clean, deterministic, and cryptographically verifiable starting point. SIS prevents corruption of lineage, protects structural integrity, and guarantees that historical records reflect true operational activity only."
+        },
+        "governs": [
+          "assets/data/errorRegistry.json",
+          "assets/data/repositoryAudit.json",
+          "assets/data/versions.json",
+          "assets/data/repositoryInventory.json",
+          "codex/meta/merkleTree.json",
+          "codex/meta/merkleRoot.txt"
+        ],
+        "initializationRules": {
+          "description": "Required actions prior to declaring Skyesoft ‘launched’.",
+          "rules": [
+            "All SOT files must be purged of non-production data before launch.",
+            "errorRegistry.json must be reset to an empty array [].",
+            "repositoryAudit.json must be reset to an empty array [].",
+            "versions.json must contain only Codex-defined structural keys with no activity data.",
+            "repositoryInventory.json must be regenerated using repositoryAuditor.php in MODE A.",
+            "merkleTree.json and merkleRoot.txt must be regenerated immediately after Codex freeze.",
+            "All placeholder or test 'ERR-*' entries must be removed permanently before launch.",
+            "MIS must verify as valid immediately after initialization."
+          ]
+        },
+        "launchDeclaration": {
+          "description": "Defines the mandatory first entry of the operational audit log.",
+          "schema": {
+            "timestamp": "UNIX epoch integer",
+            "event": "system_launch",
+            "message": "Skyesoft official operational lifecycle began",
+            "id": "ERR-LAUNCH"
+          },
+          "rules": [
+            "Sentinel must write a Launch Declaration entry to repositoryAudit.json after initialization.",
+            "ERR-LAUNCH is not an error; it is a constitutional marker and must never repeat.",
+            "ERR-LAUNCH may not be deleted or edited; it is the genesis event of system lineage."
+          ]
+        },
+        "merkleRules": {
+          "description": "MIS interaction at initialization.",
+          "rules": [
+            "After SIS purge and Codex freeze, a fresh Merkle Tree and Merkle Root must be generated.",
+            "This Merkle Root becomes the canonical baseline for all future MIS verification.",
+            "No MIS discrepancies may exist at the moment of launch."
+          ]
+        },
+        "immutabilityRules": {
+          "description": "Defines SIS permanence.",
+          "rules": [
+            "Once launch occurs, SIS may never be re-run.",
+            "Post-launch SOT files may not be wiped, reset, or reinitialized.",
+            "All operational history must remain permanent and append-only."
+          ]
+        },
+        "uiIntegration": {
+          "optional": true,
+          "description": "UI systems may visually indicate initialization state.",
+          "rules": [
+            "SSE may expose system.isInitialized = true|false.",
+            "UI components must not infer initialization; they must read state from SOT only."
+          ]
+        },
+        "notes": [
+          "SIS ensures that Skyesoft begins with a clean, immutable genesis state.",
+          "All subsequent audits, Merkle checks, and EGS error lineage depend on SIS correctness.",
+          "This standard prevents development noise from contaminating operational history."
+        ]
       }
     }
   },

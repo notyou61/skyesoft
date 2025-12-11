@@ -94,6 +94,25 @@
         "Restore floating header/footer rendering for all document types"
       ],
       "output": "Professional-grade document automation across all Skyesoft operations"
+    },
+    {
+      "id": "phase6",
+      "name": "System Initialization Standard (SIS)",
+      "status": "pending",
+      "tasks": [
+        "Purge all non-production JSON files: test contacts, sample entities, dummy permit data",
+        "Reset skyesoft-data.json to empty canonical structures for ENT-, LOC-, CNT- records",
+        "Initialize SOT files: errorRegistry.json (empty), repositoryAudit.json (empty list), versions.json (baseline version context)",
+        "Run MIS Stage 1: full merkleBuild.php recursive hash generation",
+        "Run MIS Stage 2: merkleVerify.php to lock integrity before launch",
+        "Run repositoryAuditor.php to validate: RNV rules, canonical paths, camelCase naming, Codex amendment protections",
+        "Initialize SSE runtime: verify getDynamicData.php and getVersions.php operate with zero state",
+        "Perform first live SSE push test using sse.php",
+        "Create and finalize pageRegistry.json including index.html, officeBoard.html, modal pages, and internal endpoints",
+        "Activate Skyebot runtime: parliamentarian check, semantic NLU shell, RAG indexing",
+        "Generate System Initialization Certificate (SIC) written to codex/meta as proof-of-start"
+      ],
+      "output": "Skyesoft boots into its official operational state — clean, verified, integrity-locked, and ready for production AI workflows."
     }
   ],
   "summaryTimeline": [
@@ -102,6 +121,7 @@
     { "phase": 2, "result": "Real-time SSE dashboard operational" },
     { "phase": 3, "result": "Semantic AI automation active" },
     { "phase": 4, "result": "SQL migration complete" },
-    { "phase": 5, "result": "Document Engine fully deployed" }
+    { "phase": 5, "result": "Document Engine fully deployed" },
+    { "phase": 6, "result": "System Initialization Standard complete; clean SOT activated; MIS locked into production mode" }
   ]
 }

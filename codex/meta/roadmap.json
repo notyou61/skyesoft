@@ -106,6 +106,22 @@
         "Confirm that all new documents follow: icon rules, spacing rules, section semantics"
       ],
       "output": "Professional-grade, Codex-governed document automation via one unified engine"
+    },
+    {
+      "id": "phase6",
+      "name": "System Initialization Standard (SIS)",
+      "status": "pending",
+      "tasks": [
+        "Prepare clean environment for first launch (remove test and legacy JSON data)",
+        "Initialize mandatory SOT files: errorRegistry.json, repositoryAudit.json, versions.json",
+        "Run initial MIS cycle: merkleBuild → merkleVerify",
+        "Execute zero-state repositoryAuditor.php to confirm structural compliance",
+        "Initialize SSE system: getDynamicData.php, getVersions.php, sse.php health check",
+        "Register all active UI pages in pageRegistry.json",
+        "Run Skyebot initialization routine (Parliamentarian, prompt engine, RAG layer)",
+        "Generate System Initialization Certificate (SIC) stored under codex/meta/"
+      ],
+      "output": "Skyesoft enters canonical operational state with clean data, verified SOT, validated structure, and initialized live systems."
     }
   ],
   "summaryTimeline": [
@@ -114,6 +130,7 @@
     { "phase": 2, "result": "Real-time SSE dashboard operational" },
     { "phase": 3, "result": "AI-driven business automation begins (Skyebot contact intake)" },
     { "phase": 4, "result": "SQL backbone ensures long-term structured data integrity" },
-    { "phase": 5, "result": "Document Engine consolidates all document generation under Codex standards" }
+    { "phase": 5, "result": "Document Engine consolidates all document generation under Codex standards" },
+    { "phase": 6, "result": "System Initialization Standard: clean SOT state, MIS locked, Auditor/Sentinel active, SSE initialized, Skyesoft enters production readiness"}
   ]
 }
