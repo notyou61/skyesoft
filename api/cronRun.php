@@ -1,152 +1,151 @@
 <?php
 // ======================================================================
 //  Skyesoft — cronRun.php
-//  Codex-Governed Automation Dispatcher • PHP 8.1
-//  Implements: Article XI (Automation Limits) + Article XII (Discovery)
+//  Automation Governor (Codex Article XI + EGS v4)
+//  PHP 8.1+ • Strict Typing
+//  Role: Execute automation tasks and orchestrate Auditor → Sentinel
+//  Forbidden:
+//     • No mutation of Codex, Merkle Tree, Merkle Root
+//     • No MIS logic executed here — Auditor handles MIS detection
 // ======================================================================
 
-#region SECTION I — Metadata & Error Handling
-// ----------------------------------------------------------------------
 declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
-function fail(string $msg): never {
+// ======================================================================
+//  SECTION I — Fail Handler
+// ======================================================================
+function cronFail(string $msg): never {
     echo json_encode([
         "success" => false,
+        "role"    => "cron",
         "error"   => "❌ $msg"
     ], JSON_UNESCAPED_SLASHES);
     exit;
 }
-#endregion
 
-#region SECTION II — Load Codex + Version Context
-// ----------------------------------------------------------------------
-$codexPath    = __DIR__ . "/../codex/codex.json";
-$versionsPath = __DIR__ . "/../assets/data/versions.json";
+// ======================================================================
+//  SECTION II — Resolve Paths
+// ======================================================================
+$root          = dirname(__DIR__);
+$codexPath     = $root . "/codex/codex.json";
+$auditorPath   = $root . "/scripts/auditor.php";
+$sentinelPath  = $root . "/scripts/sentinel.php";
+$versionsPath  = $root . "/assets/data/versions.json";
 
-if (!file_exists($codexPath))    fail("Codex missing.");
-if (!file_exists($versionsPath)) fail("versions.json missing.");
+// Verify required files exist
+foreach ([
+    "Codex"          => $codexPath,
+    "Auditor"        => $auditorPath,
+    "Sentinel"       => $sentinelPath,
+    "versions.json"  => $versionsPath
+] as $label => $path) {
+    if (!file_exists($path)) cronFail("$label missing at $path");
+}
 
-$codex    = json_decode(file_get_contents($codexPath), true);
+// ======================================================================
+//  SECTION III — Load Codex & Determine Task
+// ======================================================================
+$codex = json_decode(file_get_contents($codexPath), true);
 $versions = json_decode(file_get_contents($versionsPath), true);
 
 if (!is_array($codex) || !is_array($versions)) {
-    fail("Invalid JSON structure in Codex or versions.json.");
+    cronFail("Invalid JSON in Codex or versions.json.");
 }
 
-$automation = $codex["modules"]["items"]["systemAutomation"] ?? null;
+$automation = $codex["modules"]["items"]["systemAutomation"]["tasks"] ?? null;
+
 if (!$automation) {
-    fail("systemAutomation module missing from Codex.");
+    cronFail("systemAutomation.tasks missing from Codex.");
 }
-#endregion
 
-#region SECTION III — Determine Request Type
-// ----------------------------------------------------------------------
-// CLI:      php cronRun.php dailyRepositoryAudit
-// Browser:  GET /api/cronRun.php?task=dailyRepositoryAudit
-// Cron:     direct call, must specify task
-// ----------------------------------------------------------------------
+// Determine requested task
 $task = $_GET["task"] ?? ($argv[1] ?? null);
 
-if (!$task) {
-    fail("No automation task specified.");
-}
-#endregion
+if (!$task) cronFail("No task specified.");
+if (!isset($automation[$task])) cronFail("Unknown task '$task'.");
 
-#region SECTION IV — Validate Task Against Codex
-// ----------------------------------------------------------------------
-$availableTasks = $automation["tasks"] ?? [];
+// ======================================================================
+//  SECTION IV — Execute Auditor (Detection Only)
+// ======================================================================
+$auditorOutput = shell_exec("php " . escapeshellarg($auditorPath));
 
-if (!isset($availableTasks[$task])) {
-    fail("Unknown task '$task'. Task not defined in systemAutomation module.");
-}
+if (!$auditorOutput) cronFail("Auditor produced no output.");
 
-$taskDef = $availableTasks[$task];
-#endregion
+$auditorJson = json_decode($auditorOutput, true);
 
-#region SECTION V — Determine Output Path
-// ----------------------------------------------------------------------
-$outputPath = $taskDef["output"] ?? null;
-if (!$outputPath) {
-    fail("Task definition missing output path.");
+if (!is_array($auditorJson) || !isset($auditorJson["findings"])) {
+    cronFail("Auditor output invalid.");
 }
 
-$fullOutPath = __DIR__ . "/.." . $outputPath;
+// ======================================================================
+//  SECTION V — Forward Findings to Sentinel (Processing)
+// ======================================================================
 
-$dir = dirname($fullOutPath);
-if (!is_dir($dir)) {
-    fail("Output directory missing: $dir");
+// Normalize Auditor findings
+$inner = $auditorJson["findings"]["findings"]
+    ?? $auditorJson["findings"]
+    ?? [];
+
+$normalized = array_map(function($f) {
+    if (isset($f["description"])) {
+        $f["description"] = preg_replace("/\r?\n/", " ", $f["description"]);
+    }
+    return $f;
+}, is_array($inner) ? $inner : []);
+
+// Build payload
+$sentinelPayload = json_encode([
+    "findings" => $normalized
+], JSON_UNESCAPED_SLASHES);
+
+// ----------------------------------------------------------------------
+// Windows-safe input transport: TEMP FILE
+// ----------------------------------------------------------------------
+$tmpFile = tempnam(sys_get_temp_dir(), "sky_");
+file_put_contents($tmpFile, $sentinelPayload);
+
+$sentinelCmd = "php " . escapeshellarg($sentinelPath) . " " . escapeshellarg($tmpFile);
+
+$sentinelOutput = shell_exec($sentinelCmd);
+unlink($tmpFile); // Cleanup
+
+if (!$sentinelOutput) {
+    cronFail("Sentinel produced no output.");
 }
-#endregion
 
-#region SECTION VI — Execute Task (Read-Only + Report-Only)
-// ----------------------------------------------------------------------
-// Each task MUST obey Codex Article XI:
-//  - No Codex writes
-//  - No file mutations outside /reports/automation
-//  - No system state changes
-//  - ONLY produce a JSON report
-// ----------------------------------------------------------------------
-$now = date("c");
-$result = [
-    "task"        => $task,
-    "timestamp"   => $now,
-    "success"     => true,
-    "details"     => []
+$sentinelJson = json_decode($sentinelOutput, true);
+
+if (!is_array($sentinelJson)) {
+    cronFail("Sentinel returned invalid JSON.");
+}
+
+// ======================================================================
+//  SECTION VI — Automation Run Report (Codex Requirement)
+// ======================================================================
+$report = [
+    "timestamp" => time(),
+    "task"      => $task,
+    "auditor"   => $auditorJson,
+    "sentinel"  => $sentinelJson
 ];
 
-switch ($task) {
+$reportDir = $root . "/reports/automation";
+if (!is_dir($reportDir)) mkdir($reportDir, 0777, true);
 
-    case "dailyRepositoryAudit":
-        $result["details"]["message"]       = "Repository structure scan completed.";
-        $result["details"]["driftDetected"] = false;
-        $result["details"]["checkedRoots"]  =
-            $codex["standards"]["items"]["repositoryStandard"]["rules"]["allowedRoots"];
-        break;
-
-    case "documentIndexRefresh":
-        $docsDir = __DIR__ . "/../documents";
-
-        $files = array_values(array_filter(
-            scandir($docsDir),
-            fn($f) => preg_match("/\.(pdf|html)$/i", $f)
-        ));
-
-        $result["details"]["documentCount"] = count($files);
-        $result["details"]["documents"]     = $files;
-        break;
-
-    case "sseIntegrityCheck":
-        $result["details"]["message"] = "SSE schema validation placeholder.";
-        $result["details"]["valid"]   = true;
-        break;
-
-    case "proposedAmendmentDiscovery":
-        $result["details"]["proposals"] = [
-            "status" => "No inconsistencies detected.",
-            "notes"  => "System stable."
-        ];
-        break;
-
-    default:
-        fail("Task recognized but not implemented.");
-}
-#endregion
-
-#region SECTION VII — Write Report (Allowed Under Article XI)
-// ----------------------------------------------------------------------
 file_put_contents(
-    $fullOutPath,
-    json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    "$reportDir/{$task}.json",
+    json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
 );
-#endregion
 
-#region SECTION VIII — Output Response
-// ----------------------------------------------------------------------
+// ======================================================================
+//  SECTION VII — Output
+// ======================================================================
 echo json_encode([
-    "success" => true,
-    "task"    => $task,
-    "output"  => $outputPath
-], JSON_UNESCAPED_SLASHES);
+    "success"  => true,
+    "role"     => "cron",
+    "task"     => $task,
+    "report"   => $report
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
 exit;
-#endregion

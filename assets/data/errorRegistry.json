@@ -1,9 +1,31 @@
 {
-  "meta": {
-    "objectType": "errorRegistry",
-    "generatedBy": "Skyesoft System",
-    "generatedOn": "SSE:timeDateArray.currentLocalTime",
-    "notes": "Permanent historical ledger governed by EGS. Entries cannot be removed."
-  },
-  "errors": []
+    "meta": {
+        "objectType": "errorRegistry",
+        "generatedBy": "Skyesoft System",
+        "generatedOn": "SSE:timeDateArray.currentLocalTime",
+        "notes": "Permanent historical ledger governed by EGS. Entries cannot be removed."
+    },
+    "errors": [],
+    "0": {
+        "id": "ERR-00001",
+        "name": "Auditor Stub",
+        "timestamp": 1765478409,
+        "type": "runtime_error",
+        "description": "Auditor executed, MIS verified, but structural rules not yet implemented.",
+        "details": [],
+        "suggestedSolution": "Pending review",
+        "status": "active",
+        "lastAction": "created"
+    },
+    "1": {
+        "id": "ERR-00002",
+        "name": "Auditor Stub",
+        "timestamp": 1765478548,
+        "type": "runtime_error",
+        "description": "Auditor executed, MIS verified, but structural rules not yet implemented.",
+        "details": [],
+        "suggestedSolution": "Pending review",
+        "status": "active",
+        "lastAction": "created"
+    }
 }

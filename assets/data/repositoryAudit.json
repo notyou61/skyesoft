@@ -1,9 +1,25 @@
 {
-  "meta": {
-    "objectType": "repositoryAuditLog",
-    "generatedBy": "Skyesoft System",
-    "generatedOn": "SSE:timeDateArray.currentLocalTime",
-    "notes": "Chronological append-only audit log for all repository anomalies detected by cron."
-  },
-  "entries": []
+    "meta": {
+        "objectType": "repositoryAuditLog",
+        "generatedBy": "Skyesoft System",
+        "generatedOn": "SSE:timeDateArray.currentLocalTime",
+        "notes": "Chronological append-only audit log for all repository anomalies detected by cron."
+    },
+    "entries": [],
+    "0": {
+        "timestamp": 1765478409,
+        "errorId": "ERR-00001",
+        "status": "active",
+        "name": "Auditor Stub",
+        "type": "runtime_error",
+        "message": "Auditor executed, MIS verified, but structural rules not yet implemented."
+    },
+    "1": {
+        "timestamp": 1765478548,
+        "errorId": "ERR-00002",
+        "status": "active",
+        "name": "Auditor Stub",
+        "type": "runtime_error",
+        "message": "Auditor executed, MIS verified, but structural rules not yet implemented."
+    }
 }

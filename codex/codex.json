@@ -428,41 +428,33 @@
         "type": "Structural Standard",
         "preamble": {
           "icon": 0,
-          "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity of structure prevents drift, enforces governance, and ensures that all modules, scripts, and documents operate under a single, predictable architecture. This standard guarantees that Skyesoft remains maintainable, extensible, and aligned with Codex doctrine. No file or directory may exist outside this structure without explicit Codex authorization."
+          "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, enforces governance, and ensures long-term maintainability. No file or directory may exist outside this structure without explicit Codex authorization."
         },
         "purpose": {
           "icon": 6,
-          "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term project integrity."
+          "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term integrity."
         },
         "namingRules": {
-          "title": {
-            "icon": 11,
-            "text": "File Naming Enforcement"
-          },
-          "directive": "All filenames across the repository must use camelCase naming convention.",
+          "title": { "icon": 11, "text": "File Naming Enforcement" },
+          "directive": "All filenames across the repository must use camelCase.",
           "rules": [
             "No spaces, underscores, or PascalCase allowed in filenames.",
-            "All JSON, JS, PHP, HTML, CSS, and image asset files must use camelCase.",
-            "File extensions must remain lowercase (e.g., .json, .php, .js, .html).",
-            "Any filename not conforming must be renamed during repository restructure.",
-            "Any naming exception requires a formal Codex amendment."
-          ],
-          "ruleDescription": "Filenames and directories must use camelCase as the enforced naming convention to maintain consistency and prevent architectural drift."
+            "JSON, JS, PHP, HTML, CSS, and asset files must use camelCase.",
+            "File extensions must remain lowercase.",
+            "Any naming exception requires a Codex amendment."
+          ]
         },
         "directives": [
-          "All files must reside within the directories defined in this standard.",
+          "All files must reside within approved directories defined in this standard.",
           "No new top-level directories may be introduced without Codex amendment.",
-          "Directory purpose must remain narrow, focused, and consistent with Codex doctrine.",
-          "Executable logic must be placed only in approved execution directories (api/, assets/js/, modules/, scripts/).",
-          "The repository layout must remain stable across all environments (Home, Office, Server, Deployment).",
-          "Git pushes may activate a Repository Event Hook via api/cron-run.php. Allowed actions: Log trigger (time, branch, hash, IP); Run version sync; No writes to Codex files.",
-          "Hook logs must follow: { \"hookTriggered\": true, \"branch\": \"...\", \"commitHash\": \"...\", \"remoteIP\": \"...\" } (stored in /reports/automation/hooks.json).",
-          "Every filesystem item must have a declared category and purpose matching its directory.",
-          "Repositories may not contain identically named files in separate directories if they serve overlapping functional domains and would cause module ambiguity.",
+          "Directory purpose must remain narrow and consistent.",
+          "Executable logic must reside only in api/, assets/js/, modules/, or scripts/.",
           "Each directory must publish its allowed file categories in repositoryInventory.json.",
-          "No duplicate names anywhere within the same directory tree.",
-          "A directory cannot contain undeclared file categories.",
-          "All filesystem items must appear in repositoryInventory.json."
+          "All filesystem items must appear in repositoryInventory.json.",
+          "No duplicate filenames within the same directory tree.",
+          "assets/data/errorRegistry.json and assets/data/repositoryAudit.json must always exist as SOT files.",
+          "scripts/auditor.php is the only constitutional execution script required under EGS v2.0.",
+          "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the Merkle root is stored in meta.codexMerkleRoot."
         ],
         "rules": {
           "allowedRoots": [
@@ -477,7 +469,7 @@
           ],
           "disallowed": [
             "No runtime files may be stored in root.",
-            "No business logic may be stored inside codex/.",
+            "No business logic may exist inside codex/.",
             "No UI code may appear in api/.",
             "No server-side code may appear in assets/.",
             "No temporary or experimental directories may be added without Codex approval."
@@ -485,24 +477,12 @@
         },
         "directories": {
           "codex": {
-            "subdirs": [
-              "meta",
-              "constitution",
-              "standards",
-              "modules"
-            ],
-            "files": [
-              "codex.json"
-            ],
+            "subdirs": ["meta", "constitution", "standards", "modules"],
+            "files": ["codex.json"],
             "description": "Core governance files."
           },
           "assets": {
-            "subdirs": [
-              "js",
-              "css",
-              "data",
-              "images"
-            ],
+            "subdirs": ["js", "css", "data", "images"],
             "files": [
               "iconMap.json",
               "prefixRegistry.json",
@@ -517,48 +497,33 @@
             "files": [
               "getDynamicData.php",
               "getVersions.php",
-              "cron-run.php",
+              "cronRun.php",
               "askOpenAI.php"
             ],
             "description": "Server-side endpoints."
           },
           "documents": {
             "subdirs": [],
-            "files": [
-              "*.pdf",
-              "*.html"
-            ],
+            "files": ["*.pdf", "*.html"],
             "description": "Generated output documents."
           },
           "reports": {
-            "subdirs": [
-              "automation",
-              "chat",
-              "rag"
-            ],
-            "files": [
-              "*.json"
-            ],
+            "subdirs": ["automation", "chat", "rag"],
+            "files": ["*.json"],
             "description": "Audit and log reports."
           },
           "bulletinBoards": {
             "subdirs": [],
-            "files": [
-              "officeBoard.html"
-            ],
+            "files": ["officeBoard.html"],
             "description": "Public-facing boards."
           },
           "scripts": {
             "subdirs": [],
-            "files": [
-              "repositoryAuditor.php"
-            ],
-            "description": "Scheduled tasks."
+            "files": ["auditor.php"],
+            "description": "Execution scripts for audits and analysis."
           },
           "modules": {
-            "subdirs": [
-              "automation"
-            ],
+            "subdirs": ["automation"],
             "files": [
               "sseIntegrityChecker.php",
               "skyebotValidator.php",
@@ -576,37 +541,20 @@
           "properties": {
             "root": {
               "type": "array",
-              "items": {
-                "type": "string"
-              },
+              "items": { "type": "string" },
               "description": "Allowed top-level directories."
-            },
-            "file": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "pattern": "^[a-z]+(?:[A-Z][a-z]+)*\\.(json|php|js|html|css)$"
-                },
-                "path": {
-                  "type": "string"
-                }
-              }
             }
           },
-          "required": [
-            "root"
-          ]
+          "required": ["root"]
         },
         "constraints": {
           "icon": 50,
-          "text": "All files must serve a defined purpose in Codex doctrine. No duplicate logic, shadow rules, or ungoverned scripts may be introduced. A daily cron job must audit the repository, compare all files and folders against this Repository Standard, and report any non-Codex eccentricities, including unapproved directories, orphaned scripts, drifted files, or structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
+          "text": "A daily cron job must audit the repository, compare all files and folders against Codex doctrine, and report any structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
         },
         "notes": [
-          "This standard supersedes all previous repository assumptions.",
-          "Any deviation from this structure constitutes architectural drift and must be corrected immediately.",
-          "Repository layout is considered part of the Skyesoft Constitution by extension.",
-          "Cron-based validation ensures continuous structural integrity and prevents drift from compounding over time."
+          "This standard supersedes all prior repository assumptions.",
+          "Any deviation constitutes architectural drift.",
+          "MIS ensures Codex integrity is cryptographically verifiable."
         ]
       },
       "repositoryInventoryStandard": {
@@ -1770,120 +1718,220 @@
           "action": "Block writes; escalate approvals"
         }
       },
-      "Error Governance Standard": {
-      "title": { "icon": 50, "text": "Error Governance Standard (EGS)" },
-      "tier": 2,
-      "hierarchyOrder": 18,
-      "type": "Structural Standard",
-      "preamble": {
-        "icon": 50,
-        "text": "EGS defines how Skyesoft detects, classifies, records, and resolves structural and operational errors. It ensures that all failures—whether from structural drift, missing files, prefix violations, syntax issues, or runtime faults—are handled consistently, transparently, and without ambiguity. All error information must be preserved permanently to maintain historical and forensic integrity."
-      },
-      "purpose": {
-        "icon": 20,
-        "text": "Provide a unified, Codex-governed system for tracking anomalies across Skyesoft. Ensure that errors are always logged, never overwritten, never erased, and always traceable to their cause. Maintain a permanent, chronological record of operational health."
-      },
-      "storage": {
-        "registryFile": "assets/data/errorRegistry.json",
-        "auditLogFile": "assets/data/repositoryAudit.json",
-        "description": "Both the canonical registry and the chronological audit log are stored together within the data SOT to prevent drift."
-      },
-      "timeStandard": {
-        "format": "unix_epoch_integer",
-        "description": "All timestamps must be stored as UNIX epoch integers (seconds). Human-friendly formatting is permitted only for UI rendering."
-      },
-      "errorTypes": {
-        "description": "Every error must belong to exactly one governed classification.",
-        "types": [
-          { "key": "structural_validation", "description": "Unapproved files, unexpected directories, missing items, drift." },
-          { "key": "prefix_mismatch", "description": "Unknown, deprecated, or misaligned prefix usage." },
-          { "key": "inventory_mismatch", "description": "File present on disk but missing from repositoryInventory.json, or vice versa." },
-          { "key": "syntax_error", "description": "Malformed JSON, invalid Codex structures, corrupted SOT files." },
-          { "key": "dependency_error", "description": "Missing modules, unresolved references, broken linkages." },
-          { "key": "runtime_error", "description": "Execution anomalies during cronRun or getDynamicData processes." },
-          { "key": "policy_violation", "description": "Violations of governance, structural mandates, or naming standards." }
-        ]
-      },
-      "lifecycle": {
-        "states": [
-          { "key": "active", "description": "New or ongoing error." },
-          { "key": "troubleshooting", "description": "Error acknowledged; corrective steps underway." },
-          { "key": "resolved", "description": "Error corrected; retained permanently for lineage." }
+      "errorGovernanceStandard": {
+        "title": { "icon": 50, "text": "Error Governance Standard (EGS)" },
+        "tier": 2,
+        "hierarchyOrder": 18,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 50,
+          "text": "EGS defines how Skyesoft detects, classifies, records, and preserves structural and operational errors. The Auditor discovers anomalies, Cron processes them into governed ERR entries, and AI advisory roles (Parliamentarian, Archivist) provide non-executing doctrinal and historical insight. All errors are permanent, immutable, and part of Skyesoft’s constitutional record."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "Provide a unified Codex-governed framework ensuring that errors are always detected, classified, logged, never overwritten, and permanently preserved. Maintain system integrity through strict separation of detection (Auditor), processing (Cron), and advisory interpretation (AI roles)."
+        },
+        "governs": [
+          "scripts/auditor.php",
+          "api/cronRun.php",
+          "assets/data/errorRegistry.json",
+          "assets/data/repositoryAudit.json",
+          "assets/data/parliamentarianPrompt.json",
+          "assets/data/archivistPrompt.json"
         ],
-        "rules": [
-          "Errors may never be deleted.",
-          "Status transitions must be logged in repositoryAudit.json.",
-          "Resolved errors remain permanently in errorRegistry.json."
-        ]
-      },
-      "errorObjectSchema": {
-        "id": "ERR-00001 style identifier",
-        "schema": {
-          "id": { "type": "string", "pattern": "^ERR-[0-9]{5}$" },
-          "name": { "type": "string" },
-          "timestamp": { "type": "integer" },
-          "type": { "type": "string" },
-          "description": { "type": "string" },
-          "suggestedSolution": { "type": "string" },
-          "status": { "type": "string", "enum": ["active", "troubleshooting", "resolved"] },
-          "lastAction": { "type": "string" }
-        }
-      },
-      "registryRules": {
-        "description": "errorRegistry.json is the Single Source of Truth (SOT) for error records.",
-        "rules": [
-          "ERR IDs must increment sequentially starting at ERR-00001.",
-          "No ERR ID may ever be reused.",
-          "Only Cron (via cronRun.php) may modify this file.",
-          "Every resolved error remains permanently for lineage."
-        ]
-      },
-      "auditLog": {
-        "description": "Every occurrence of an error—new, recurring, or transitioning—must append a log entry.",
-        "schema": {
-          "timestamp": "UNIX epoch integer",
-          "errorId": "ERR-#####",
-          "status": "active|troubleshooting|resolved",
-          "name": "Short descriptor",
-          "type": "errorTypes.key",
-          "message": "Narrative contextual message"
+        "storage": {
+          "registryFile": "assets/data/errorRegistry.json",
+          "auditLogFile": "assets/data/repositoryAudit.json",
+          "description": "The canonical error registry and chronological audit log. Both files must always exist and may never be deleted."
         },
-        "rules": [
-          "Log is append-only.",
-          "Log entries must never be removed or edited.",
-          "Log and Registry must remain consistent."
-        ]
-      },
-      "detection": {
-        "enforcedBy": "api/cronRun.php",
-        "rules": [
-          "cronRun.php must detect structural violations and anomalies.",
-          "cronRun.php must classify errors using errorTypes.",
-          "cronRun.php must generate new ERR entries when encountering new anomalies.",
-          "cronRun.php must append every event to repositoryAudit.json.",
-          "cronRun.php must never modify Codex, prefixRegistry.json, or repositoryInventory.json."
-        ]
-      },
-      "uiIntegration": {
-        "optional": true,
-        "description": "UI may display errorState but is not required during Phase 1.",
-        "ssePayload": {
-          "latest": "ERR-#####",
-          "activeCount": "integer",
-          "timestamp": "UNIX epoch"
+        "timeStandard": {
+          "format": "unix_epoch_integer",
+          "description": "All timestamps must use UNIX epoch (seconds). Human-friendly formatting is permitted only for UI surfaces."
         },
-        "rules": [
-          "Only cronRun.php and getDynamicData.php may update SSE errorState.",
-          "UI must not compute its own error state."
+        "errorTypes": {
+          "description": "Each error must belong to exactly one governed category.",
+          "types": [
+            { "key": "structural_validation", "description": "Unapproved files, missing SOT files, unexpected directories, drift." },
+            { "key": "prefix_mismatch", "description": "Unknown, deprecated, or misaligned prefix usage (PRF violation)." },
+            { "key": "inventory_mismatch", "description": "Filesystem vs repositoryInventory.json mismatch." },
+            { "key": "syntax_error", "description": "Malformed JSON, corrupted data files, invalid schemas." },
+            { "key": "dependency_error", "description": "Missing modules, unresolved references." },
+            { "key": "runtime_error", "description": "Execution anomalies inside auditor.php or cronRun.php." },
+            { "key": "policy_violation", "description": "Violations of Codex rules, structural mandates, naming standards, or MIS mismatches." }
+          ]
+        },
+        "lifecycle": {
+          "states": [
+            { "key": "active", "description": "A newly detected or unresolved error." },
+            { "key": "troubleshooting", "description": "Corrective action underway." },
+            { "key": "resolved", "description": "Error corrected; permanently preserved for lineage." }
+          ],
+          "rules": [
+            "Errors may never be deleted.",
+            "All state transitions must append an entry to repositoryAudit.json.",
+            "Resolved errors remain permanently in errorRegistry.json."
+          ]
+        },
+        "errorObjectSchema": {
+          "description": "All ERR entries must follow this schema.",
+          "schema": {
+            "id": { "type": "string", "pattern": "^ERR-[0-9]{5}$" },
+            "name": { "type": "string" },
+            "timestamp": { "type": "integer" },
+            "type": { "type": "string" },
+            "description": { "type": "string" },
+            "suggestedSolution": { "type": "string" },
+            "status": { "type": "string", "enum": ["active", "troubleshooting", "resolved"] },
+            "lastAction": { "type": "string" }
+          }
+        },
+        "registryRules": {
+          "description": "errorRegistry.json is the Single Source of Truth (SOT) for all ERR entries.",
+          "rules": [
+            "ERR IDs must increment sequentially starting at ERR-00001.",
+            "No ERR ID may ever be reused.",
+            "Only cronRun.php may modify this file.",
+            "Resolved errors must remain for historical lineage."
+          ]
+        },
+        "auditLog": {
+          "description": "repositoryAudit.json captures every occurrence, recurrence, or lifecycle transition.",
+          "schema": {
+            "timestamp": "UNIX epoch integer",
+            "errorId": "ERR-#####",
+            "status": "active|troubleshooting|resolved",
+            "name": "Short descriptor",
+            "type": "errorTypes.key",
+            "message": "Narrative contextual message"
+          },
+          "rules": [
+            "Log is append-only and immutable.",
+            "Entries may never be edited or removed.",
+            "Registry and log must remain consistent."
+          ]
+        },
+        "detection": {
+          "enforcedBy": "scripts/auditor.php",
+          "rules": [
+            "auditor.php must detect structural violations, drift, SOT absence, and MIS mismatches.",
+            "auditor.php must classify findings using errorTypes.",
+            "auditor.php must output raw findings only and must never mutate SOT.",
+            "auditor.php must not assign ERR IDs."
+          ]
+        },
+        "processing": {
+          "enforcedBy": "api/cronRun.php",
+          "rules": [
+            "cronRun.php must receive raw findings from auditor.php.",
+            "cronRun.php must assign ERR identifiers using PRF governance.",
+            "cronRun.php must update errorRegistry.json.",
+            "cronRun.php must append all events to repositoryAudit.json.",
+            "cronRun.php may update SSE errorState via getDynamicData.php."
+          ]
+        },
+        "uiIntegration": {
+          "optional": true,
+          "description": "UI surfaces may display errorState but must never compute it locally.",
+          "ssePayload": {
+            "latest": "ERR-#####",
+            "activeCount": "integer",
+            "timestamp": "UNIX epoch"
+          },
+          "rules": [
+            "Only cronRun.php and getDynamicData.php may update SSE errorState.",
+            "UI must remain passive and strictly Codex-aligned."
+          ]
+        },
+        "notes": [
+          "Parliamentarian and Archivist are AI advisory roles only and may not mutate SOT.",
+          "EGS v4 removes Sentinel entirely and consolidates mutation authority under Cron.",
+          "All structural and error data resides in assets/data to support the SOT model.",
+          "MIS integration allows cryptographic verification of Codex integrity."
         ]
       },
-      "notes": [
-        "EGS v2.0 eliminates the outdated Sentinel model.",
-        "Cron + Registry + Audit Log form the simplified backbone.",
-        "All error data lives in assets/data to match SOT structure.",
-        "Future versions may reintroduce notifications or UI dashboards.",
-        "This version fully aligns with MTCO, SSE discipline, and your current codebase."
-      ]
+      "merkleIntegrityStandard": {
+        "title": { "icon": 50, "text": "Merkle Integrity Standard (MIS)" },
+        "tier": 2,
+        "hierarchyOrder": 19,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 50,
+          "text": "MIS defines the cryptographic mechanism used to verify that the Codex remains unchanged over time. A Merkle Tree generates a tamper-proof integrity root that enables rapid drift detection, safe external archiving, and absolute verification without exposing Codex content."
+        },
+        "purpose": {
+          "icon": 20,
+          "text": "Provide a cryptographically strong and tamper-proof method for validating the integrity of the Codex. Prevent unauthorized edits, accidental corruption, or silent architectural drift by comparing the live Merkle Root of the Codex with the stored, governed root."
+        },
+        "files": {
+          "tree": "codex/meta/merkleTree.json",
+          "root": "codex/meta/merkleRoot.txt",
+          "rules": [
+            "Both files must always exist.",
+            "Both files are SOT for Merkle validation.",
+            "Neither file may be deleted or replaced without formal Codex amendment.",
+            "Only Codex amendment procedures may regenerate the Merkle Tree or Merkle Root."
+          ]
+        },
+        "hashing": {
+          "algorithm": "SHA-256",
+          "format": "hexstring",
+          "rules": [
+            "Leaf hashes must reflect exact byte-accurate content of codex.json chunks.",
+            "Internal node hashes are computed by concatenating sorted child hashes, then hashing again.",
+            "Whitespace normalization, reformatting, or reserialization is forbidden.",
+            "Hashing must operate on deterministic JSON objects, not on file lines."
+          ]
+        },
+        "chunkingRules": {
+          "method": "object-key deterministic chunking",
+          "rules": [
+            "The Codex must be chunked by top-level objects: meta, constitution, standards, modules.",
+            "Each Tier is recursively chunked by its immediate child objects.",
+            "Chunks must be processed in lexicographic key order.",
+            "Chunk boundaries must be based on JSON structure, not text layout."
+          ]
+        },
+        "registryRules": {
+          "rules": [
+            "merkleTree.json stores the full Merkle Tree (leaf and internal node hashes).",
+            "merkleRoot.txt stores only the final root hash.",
+            "Both files are append-only when regenerated via Codex amendment.",
+            "Merkle roots may not be updated automatically by any automation process."
+          ]
+        },
+        "auditorIntegration": {
+          "enforcedBy": "scripts/auditor.php",
+          "rules": [
+            "Auditor must recompute the Merkle Root from codex.json at runtime.",
+            "Auditor must compare the recomputed root to merkleRoot.txt.",
+            "If mismatch occurs, Auditor must emit a finding of type 'policy_violation' with details.",
+            "Auditor must never regenerate or modify merkleRoot.txt or merkleTree.json."
+          ]
+        },
+        "cronIntegration": {
+          "enforcedBy": "api/cronRun.php",
+          "rules": [
+            "Cron must process Auditor findings related to MIS mismatches.",
+            "Cron must create ERR entries in errorRegistry.json for all MIS mismatches.",
+            "Cron must append corresponding entries to repositoryAudit.json.",
+            "Cron must not regenerate the Merkle Tree or Merkle Root; only amendments may do so."
+          ]
+        },
+        "externalArchiving": {
+          "description": "External storage of the Merkle Root is encouraged to enable long-term verification.",
+          "rules": [
+            "merkleRoot.txt may be stored externally (e.g., printed, emailed, uploaded off-system).",
+            "External storage does not expose internal Codex content.",
+            "External Merkle Roots may only be used for comparison—not modification."
+          ]
+        },
+        "notes": [
+          "MIS enables perfect integrity verification while exposing no Codex content.",
+          "A Merkle Tree cannot reconstruct the Codex; it validates integrity only.",
+          "MIS integrates with EGS through policy_violation errors on mismatched roots.",
+          "This standard ensures anti-tamper guarantees without blockchain overhead.",
+          "Parliamentarian and Archivist roles interpret MIS results but never alter SOT files."
+        ]
       }
     }
   },
@@ -2082,52 +2130,69 @@
         "hierarchyOrder": 6
       },
       "systemAutomation": {
-        "title": {
-          "icon": 10,
-          "text": "System Automation Module"
+        "title": { "icon": 52, "text": "System Automation Framework" },
+        "tier": 2,
+        "hierarchyOrder": 20,
+        "type": "Operational Standard",
+        "preamble": {
+          "icon": 52,
+          "text": "Defines how Skyesoft executes Codex-governed automation tasks. Under EGS v4, all mutation authority flows through cronRun.php. Auditor performs detection only; Sentinel is fully retired."
         },
-        "type": "module",
-        "tier": 3,
-        "hierarchyOrder": 8,
-        "description": "Implements scheduled scans, repository audits, document indexing, and Codex-governed housekeeping tasks.",
-        "governedBy": [
-          "repositoryStandard",
-          "codeManagement",
-          "documentStandard",
-          "constitution.articles.automationLimits",
-          "constitution.articles.automationReview"
-        ],
-        "dependsOn": [
-          "repositoryStandard",
-          "codeManagement"
-        ],
         "tasks": {
           "dailyRepositoryAudit": {
-            "schedule": "0 1 * * *",
-            "description": "Perform a complete structural audit, checking for unapproved directories, orphaned files, drift, and Codex violations.",
+            "description": "Runs repository auditor and processes any findings.",
+            "executor": "api/cronRun.php",
             "output": "/reports/automation/dailyRepositoryAudit.json"
           },
           "documentIndexRefresh": {
-            "schedule": "0 */6 * * *",
-            "description": "Rebuild the documentIndex.json by scanning /documents for newly generated PDFs.",
-            "output": "/assets/data/documentIndex.json"
+            "description": "Rebuilds document index from documents/ root.",
+            "executor": "api/cronRun.php",
+            "output": "/reports/automation/documentIndexRefresh.json"
           },
           "sseIntegrityCheck": {
-            "schedule": "*/30 * * * *",
-            "description": "Confirm SSE output conforms to the strict tier structure and ordering rules.",
-            "output": "/reports/automation/sseIntegrity.json"
+            "description": "Validates SSE metadata structures.",
+            "executor": "api/cronRun.php",
+            "output": "/reports/automation/sseIntegrityCheck.json"
           },
           "proposedAmendmentDiscovery": {
-            "schedule": "0 3 * * *",
-            "description": "Scan for recurring inconsistencies or emerging structural patterns and publish suggested proposals. These suggestions have no authority unless advanced by a human.",
-            "output": "/reports/automation/proposals.json"
+            "description": "Scans for structural inconsistencies and hints of drift.",
+            "executor": "api/cronRun.php",
+            "output": "/reports/automation/proposedAmendmentDiscovery.json"
           }
         },
-        "outputs": [
-          "/reports/automation/summary.json"
-        ],
-        "governs": [
-          "cronExecutionLogic"
+        "rules": [
+          "Only cronRun.php may execute automation tasks.",
+          "auditor.php is invoked for structural detection only.",
+          "cronRun.php performs all processing, classification, and EGS integration.",
+          "No automation task may modify the Codex.",
+          "All automation results must be written to reports/automation/"
+        ]
+      },
+      "governanceRoles": {
+        "title": { "icon": 40, "text": "AI Governance Roles" },
+        "tier": 2,
+        "hierarchyOrder": 21,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 40,
+          "text": "Defines the doctrine responsibilities of Skyesoft's non-executing AI roles. These roles provide oversight, interpretation, and historical continuity but perform no mutations. Sentinel is removed under EGS v4."
+        },
+        "roles": {
+          "parliamentarian": {
+            "description": "Interprets Codex doctrine, resolves ambiguities, and identifies when amendments are required.",
+            "file": "assets/data/parliamentarianPrompt.json",
+            "mutationsAllowed": false
+          },
+          "archivist": {
+            "description": "Maintains historical context, lineage, and continuity across amendments.",
+            "file": "assets/data/archivistPrompt.json",
+            "mutationsAllowed": false
+          }
+        },
+        "rules": [
+          "AI roles may not modify Codex or SOT files.",
+          "AI roles act only as interpretive and advisory layers.",
+          "All authoritative execution flows through cronRun.php under EGS v4."
         ]
       }
     }
