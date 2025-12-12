@@ -21,5 +21,21 @@
         "name": "Auditor Stub",
         "type": "runtime_error",
         "message": "Auditor executed, MIS verified, but structural rules not yet implemented."
+    },
+    "2": {
+        "timestamp": 1765562302,
+        "errorId": "ERR-00003",
+        "status": "active",
+        "name": "Codex Drift Detected",
+        "type": "policy_violation",
+        "message": "Computed Merkle root does not match stored root."
+    },
+    "3": {
+        "timestamp": 1765562302,
+        "errorId": "ERR-00004",
+        "status": "active",
+        "name": "Auditor Stub",
+        "type": "runtime_error",
+        "message": "Auditor executed, MIS verified, but structural rules not yet implemented."
     }
 }

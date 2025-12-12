@@ -1525,6 +1525,16 @@
             "purpose": "auto-generated placeholder",
             "status": "active",
             "name": "env.local"
+        },
+        {
+            "id": "RNV-0152",
+            "path": "/codex/meta/repositoryAuditResults.json",
+            "type": "file",
+            "category": "system-state",
+            "tier": "Tier-2",
+            "purpose": "Canonical persisted snapshot of the latest repository audit results, consumed by automation, AI narrative generation, and reporting.",
+            "status": "active",
+            "name": "repositoryAuditResults.json"
         }
     ]
 }
