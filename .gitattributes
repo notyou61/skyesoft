@@ -1,0 +1,6 @@
+# Enforce LF for all governed text artifacts
+*.json  text eol=lf
+*.php   text eol=lf
+*.js    text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
