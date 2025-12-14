@@ -2207,6 +2207,11 @@
         "tier": 2,
         "hierarchyOrder": 20,
         "type": "Structural Standard",
+        "status": {
+          "phase": "pre-launch",
+          "wip": true,
+          "description": "System Initialization Standard is defined but inactive during Codex work-in-progress. SIS may not be executed, enforced, or simulated until Codex doctrine is stabilized and an official launch decision is explicitly declared by a human authority."
+        },
         "preamble": {
           "icon": 68,
           "text": "SIS defines the mandatory procedure for establishing Skyesoft’s canonical baseline at the moment of official launch. All Sources of Truth (SOT) must begin from an empty, production-cleansed state. Development artifacts, test data, placeholder values, and legacy drift are prohibited from persisting into operational lifecycle history."
@@ -2215,6 +2220,7 @@
           "icon": 20,
           "text": "Ensure Skyesoft enters its governed operational lifecycle with a clean, deterministic, and cryptographically verifiable starting point. SIS prevents corruption of lineage, protects structural integrity, and guarantees that historical records reflect true operational activity only."
         },
+        "scope": "Entire Skyesoft system at the moment of official launch",
         "governs": [
           "assets/data/errorRegistry.json",
           "assets/data/repositoryAudit.json",
@@ -2226,6 +2232,7 @@
         "initializationRules": {
           "description": "Required actions prior to declaring Skyesoft ‘launched’.",
           "rules": [
+            "SIS must not be executed while Codex is in WIP, draft, or pre-ratification status.",
             "All SOT files must be purged of non-production data before launch.",
             "errorRegistry.json must be reset to an empty array [].",
             "repositoryAudit.json must be reset to an empty array [].",
@@ -2275,9 +2282,187 @@
           ]
         },
         "notes": [
-          "SIS ensures that Skyesoft begins with a clean, immutable genesis state.",
-          "All subsequent audits, Merkle checks, and EGS error lineage depend on SIS correctness.",
+          "This standard is intentionally dormant during Codex work-in-progress.",
+          "SIS authority is prospective and activates only upon explicit human declaration of system launch.",
+          "All subsequent audits, Merkle checks, and EGS error lineage depend on correct SIS execution.",
           "This standard prevents development noise from contaminating operational history."
+        ]
+      },
+      "codexAuditStandard": {
+        "title": { "icon": 67, "text": "Codex Audit Standard"},
+        "tier": 2,
+        "hierarchyOrder": 5,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 0,
+          "text": "The Codex Audit Standard establishes the official, repeatable, non-legislative method for reviewing the integrity, coherence, authority alignment, enforceability, and long-term durability of the entire Codex. It provides a governed framework for identifying contradictions, gaps, weak doctrine, and drift risks without altering doctrine or creating binding rules."
+        },
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure systematic, adversarial review of Codex doctrine across all tiers, producing traceable artifacts that support deliberate human-led improvement while preserving Meta Supremacy, Human Authority, and No Shadow Rules."
+        },
+        "scope": "Entire Codex (all tiers and derived enforcement mechanisms)",
+        "principles": [
+          {
+            "key": "nonLegislative",
+            "text": "Audits may identify issues but must not alter doctrine."
+          },
+          {
+            "key": "humanAdjudicated",
+            "text": "All findings require Parliamentarian interpretation before any amendment."
+          },
+          {
+            "key": "minimalIntervention",
+            "text": "Recommendations must be surgical, not creative."
+          },
+          {
+            "key": "adversarialPosture",
+            "text": "Audits assume misuse, misinterpretation, fatigue, automation error, and partial failure."
+          },
+          {
+            "key": "traceabilityFirst",
+            "text": "Every finding must reference exact Codex locations involved."
+          }
+        ],
+        "requiredArtifacts": {
+          "auditChecklist": {
+            "title": "Codex Audit Checklist",
+            "purpose": "Ensure systematic coverage of all governance dimensions.",
+            "path": "codex/meta/audit/codexAuditChecklist.json",
+            "domains": [
+              "tierBoundaryEnforcement",
+              "authorityClarity",
+              "enforcementFeasibility",
+              "stateTransitionCoverage",
+              "automationLimitsCompliance",
+              "languageDeterminism",
+              "amendmentTraceability"
+            ],
+            "rules": [
+              "Checklist items must be binary (PASS or FLAG).",
+              "Narrative commentary is prohibited in the checklist.",
+              "Checklist completion is mandatory before issuing findings."
+            ]
+          },
+          "contradictionRegister": {
+            "title": "Contradiction Register",
+            "purpose": "Identify doctrinal conflicts that could compel incompatible behavior.",
+            "path": "codex/meta/audit/contradictionRegister.json",
+            "requiredFields": [
+              "ruleARef",
+              "ruleBRef",
+              "contradictionType",
+              "severity",
+              "recommendedAction"
+            ],
+            "allowedTypes": [
+              "direct",
+              "conditional",
+              "priorityAmbiguity"
+            ],
+            "severityLevels": [
+              "blocking",
+              "latent",
+              "informational"
+            ],
+            "notes": [
+              "Absence of contradictions must be explicitly recorded.",
+              "Priority ambiguity constitutes a contradiction."
+            ]
+          },
+          "weakDoctrineRegister": {
+            "title": "Weak Doctrine Register",
+            "purpose": "Identify valid but structurally fragile doctrine.",
+            "path": "codex/meta/audit/weakDoctrineRegister.json",
+            "weaknessClasses": [
+              "vagueLanguage",
+              "overloadedSections",
+              "mixedPolicyAndImplementation",
+              "unenforceableMandates",
+              "undefinedFallbackBehavior"
+            ],
+            "rules": [
+              "Weak doctrine is not an error.",
+              "Weak doctrine must not be removed without replacement.",
+              "Strengthening recommendations must preserve original intent."
+            ]
+          },
+          "driftRedundancyMap": {
+            "title": "Drift & Redundancy Map",
+            "purpose": "Detect entropy, duplication, and long-term interpretive risk.",
+            "path": "codex/meta/audit/driftRedundancyMap.json",
+            "driftIndicators": [
+              "duplicateConcepts",
+              "overlappingRulesAcrossTiers",
+              "historicalArtifacts",
+              "terminologyDivergence"
+            ],
+            "rules": [
+              "Redundancy is permitted only if intentional and declared.",
+              "Undeclared redundancy must be flagged."
+            ]
+          }
+        },
+        "methodology": {
+          "model": "LGBAS",
+          "steps": [
+            {
+              "step": "Look",
+              "description": "Read doctrine adversarially, assuming misuse."
+            },
+            {
+              "step": "Gap",
+              "description": "Identify states where the system must act without guidance."
+            },
+            {
+              "step": "Bind",
+              "description": "Trace authority, enforcement, and scope."
+            },
+            {
+              "step": "Amend",
+              "description": "Propose minimal corrective actions only."
+            },
+            {
+              "step": "Seal",
+              "description": "Record findings without silent fixes."
+            }
+          ]
+        },
+        "output": {
+          "recordedBy": "Archivist",
+          "findingClasses": [
+            "informational",
+            "advisory",
+            "blocking"
+          ],
+          "notes": [
+            "No finding is binding without formal amendment.",
+            "Audits must not silently modify doctrine."
+          ]
+        },
+        "prohibitions": [
+          "silentDoctrinalEdits",
+          "automatedAmendments",
+          "retroactiveJustification",
+          "combinedAuditAndAmendment",
+          "optimizingEleganceOverClarity"
+        ],
+        "successCriteria": [
+          "All four canonical artifacts are produced.",
+          "No unresolved blocking contradictions remain.",
+          "Weak doctrine is cataloged, not erased.",
+          "Drift risks are visible and traceable.",
+          "Human authority remains intact."
+        ],
+        "litmusTest": "Could a tired human or a dumb machine follow this rule correctly, every time, without guessing?",
+        "validation": {
+          "enforcedBy": null,
+          "frequency": "on-version-change or human-initiated",
+          "action": "Produce artifacts only; no auto-amendment"
+        },
+        "notes": [
+          "This standard is non-binding until ratified via Article X amendment process.",
+          "Artifact paths are reserved under Repository Standard; files must be created as empty templates post-ratification."
         ]
       }
     }
