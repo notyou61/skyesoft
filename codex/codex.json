@@ -1987,6 +1987,114 @@
           "action": "Block writes; escalate approvals"
         }
       },
+      "artifactHeaderStandard": {
+        "title": { "icon": 67, "text": "Artifact Header Standard" },
+        "tier": 2,
+        "hierarchyOrder": 16,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 0,
+          "text": "This standard defines the mandatory header requirements for all governed artifacts within the Codex and the Skyesoft operational system. It establishes a uniform declaration of identity, authority boundaries, scope, and constraints, independent of artifact format or execution context."
+        },
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure every governed artifact explicitly declares its role, authority, versioning, and prohibitions in a consistent, inspectable manner to support governance, auditability, and long-term system integrity."
+        },
+        "scope": {
+          "governedArtifacts": [
+            "JSON data artifacts",
+            "Executable source files (PHP, JavaScript, etc.)",
+            "Configuration files",
+            "Documentation artifacts",
+            "Generated reports and audit outputs"
+          ],
+          "exclusions": [
+            "Third-party vendor files",
+            "Transient cache files",
+            "Binary assets without embedded metadata support"
+          ]
+        },
+        "coreHeaderFields": [
+          "name",
+          "version",
+          "lastUpdated",
+          "codexTier",
+          "role",
+          "scope",
+          "authorityBoundary",
+          "allowedActions",
+          "forbiddenActions"
+        ],
+        "timeStandard": {
+          "format": "unix_epoch_seconds_integer",
+          "source": "Error Governance Standard (EGS)"
+        },
+        "formatMappings": {
+          "json": {
+            "representation": "top-level meta object",
+            "required": true,
+            "example": {
+              "meta": {
+                "name": "repositoryInventory",
+                "version": "1.0.0",
+                "lastUpdated": 1734739200,
+                "codexTier": 2,
+                "role": "Canonical repository manifest",
+                "authorityBoundary": "declarative-only",
+                "allowedActions": ["read", "validate"],
+                "forbiddenActions": ["mutate", "promote"]
+              }
+            }
+          },
+          "php": {
+            "representation": "structured comment header",
+            "required": true,
+            "rules": [
+              "Header must appear at the top of the file",
+              "Header must be human-readable and machine-parsable",
+              "Prohibitions must be explicitly listed for executable files"
+            ]
+          },
+
+          "javascript": {
+            "representation": "structured comment header",
+            "required": true
+          },
+
+          "markdown": {
+            "representation": "front-matter or top-of-file header",
+            "required": true
+          },
+
+          "html": {
+            "representation": "top-level comment header",
+            "required": true
+          }
+        },
+        "governanceRules": [
+          "All governed artifacts must declare a header appropriate to their format.",
+          "Headers describe intent and constraints but do not grant authority.",
+          "Absence of a required header constitutes a structural violation.",
+          "Headers must not be silently altered by automation.",
+          "Header updates require the same governance level as the artifact itself."
+        ],
+        "auditability": {
+          "auditedBy": "Codex Audit Standard",
+          "traceability": "Headers must allow unambiguous attribution of role and authority.",
+          "automationUse": "Automation may read headers but must not infer permissions beyond what is declared."
+        },
+        "prohibitions": [
+          "Implicit authority without declaration",
+          "Format-specific headers that omit required semantic fields",
+          "Using headers to override Codex doctrine",
+          "Using headers as executable configuration"
+        ],
+        "notes": [
+          "This standard unifies previously implicit header practices across artifact types.",
+          "Format-specific representations must preserve semantic equivalence of required fields.",
+          "This standard is structural and non-legislative."
+        ]
+      },
       "errorGovernanceStandard": {
         "title": { "icon": 50, "text": "Error Governance Standard (EGS)" },
         "tier": 2,
@@ -2014,8 +2122,28 @@
           "description": "The canonical error registry and chronological audit log. Both files must always exist and may never be deleted."
         },
         "timeStandard": {
-          "format": "unix_epoch_integer",
-          "description": "All timestamps must use UNIX epoch (seconds). Human-friendly formatting is permitted only for UI surfaces."
+          "format": "unix_epoch_seconds_integer",
+          "description": "All timestamps stored, transmitted, or logged by Skyesoft must be UNIX epoch time expressed as an integer number of seconds since 1970-01-01T00:00:00Z. Milliseconds, ISO-8601 strings, locale-formatted dates, or floating-point representations are prohibited in all non-UI artifacts.",
+          "scope": [
+            "errorRegistry.json",
+            "repositoryAudit.json",
+            "repositoryInventory.json",
+            "versions.json",
+            "SSE payloads",
+            "automation reports",
+            "chat history logs",
+            "module outputs"
+          ],
+          "uiException": {
+            "allowed": true,
+            "rule": "Human-readable date/time formatting is permitted only at render time in UI layers and must derive directly from UNIX epoch values without mutation."
+          },
+          "prohibitions": [
+            "ISO-8601 timestamps outside UI rendering",
+            "JavaScript Date objects stored directly",
+            "Mixed seconds/milliseconds representations",
+            "Synthetic or inferred timestamps"
+          ]
         },
         "errorTypes": {
           "description": "Each error must belong to exactly one governed category.",
