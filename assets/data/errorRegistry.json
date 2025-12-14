@@ -175,5 +175,49 @@
         "suggestedSolution": "Pending review",
         "status": "active",
         "lastAction": "created"
+    },
+    "4": {
+        "id": "ERR-00005",
+        "timestamp": 1765669143,
+        "type": "repository_integrity",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root.",
+        "merkleRoot": "c6ddddd7d217c614ccac9ae4ff2a8cd587214bc3f8be08021a078e5480b322f5",
+        "status": "active",
+        "lastAction": "created"
+    },
+    "5": {
+        "id": "ERR-00006",
+        "timestamp": 1765669206,
+        "type": "repository_integrity",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root.",
+        "merkleRoot": "c6ddddd7d217c614ccac9ae4ff2a8cd587214bc3f8be08021a078e5480b322f5",
+        "status": "active",
+        "lastAction": "created"
+    },
+    "6": {
+        "id": "ERR-00007",
+        "timestamp": 1765669372,
+        "type": "repository_integrity",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root.",
+        "merkleRoot": "c6ddddd7d217c614ccac9ae4ff2a8cd587214bc3f8be08021a078e5480b322f5",
+        "status": "active",
+        "lastAction": "created"
+    },
+    "7": {
+        "id": "ERR-00008",
+        "timestamp": 1765670515,
+        "type": "repository_integrity",
+        "code": "MERKLE_VERIFY_ERROR",
+        "path": null,
+        "message": "Missing file during verification: test.txt",
+        "merkleRoot": "7b4fd9dad5876b5173e891ce3123cc9fa3e203ffefdab8fb8cf5ed4a2045d093",
+        "status": "active",
+        "lastAction": "created"
     }
 }

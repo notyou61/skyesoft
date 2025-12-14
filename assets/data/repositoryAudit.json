@@ -37,5 +37,33 @@
         "name": "Auditor Stub",
         "type": "runtime_error",
         "message": "Auditor executed, MIS verified, but structural rules not yet implemented."
+    },
+    "4": {
+        "timestamp": 1765669143,
+        "errorId": "ERR-00005",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root."
+    },
+    "5": {
+        "timestamp": 1765669206,
+        "errorId": "ERR-00006",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root."
+    },
+    "6": {
+        "timestamp": 1765669372,
+        "errorId": "ERR-00007",
+        "code": "MERKLE_MISMATCH",
+        "path": null,
+        "message": "Computed Merkle root does not match stored root."
+    },
+    "7": {
+        "timestamp": 1765670515,
+        "errorId": "ERR-00008",
+        "code": "MERKLE_VERIFY_ERROR",
+        "path": null,
+        "message": "Missing file during verification: test.txt"
     }
 }

@@ -441,7 +441,8 @@
             "No spaces, underscores, or PascalCase allowed in filenames.",
             "JSON, JS, PHP, HTML, CSS, and asset files must use camelCase.",
             "File extensions must remain lowercase.",
-            "Any naming exception requires a Codex amendment."
+            "Any naming exception requires a Codex amendment.",
+            "Dotfiles and widely recognized industry-standard filenames (e.g. .gitignore, README.md, LICENSE) are exempt from camelCase enforcement."
           ]
         },
         "directives": [
@@ -454,8 +455,46 @@
           "No duplicate filenames within the same directory tree.",
           "assets/data/errorRegistry.json and assets/data/repositoryAudit.json must always exist as SOT files.",
           "scripts/auditor.php is the only constitutional execution script required under EGS v2.0.",
-          "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the Merkle root is stored in meta.codexMerkleRoot."
+          "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the canonical Merkle root is stored in /codex/meta/merkleRoot.txt and is updated only during explicit canonical state promotion."
         ],
+        "inventoryClassification": {
+          "title": { "icon": 42, "text": "Repository Inventory Classification" },
+          "description": "Defines the authoritative category vocabulary and lifecycle rules for items declared in repositoryInventory.json.",
+          "categoryRules": {
+            "allowedCategories": [
+              "root",
+              "structural",
+              "execution",
+              "configuration",
+              "system-registry",
+              "system-state",
+              "asset",
+              "content",
+              "documentation",
+              "security"
+            ],
+            "placeholderCategory": "auto-indexed",
+            "rules": [
+              "Every filesystem item must declare a category.",
+              "The category must be one of the allowedCategories values.",
+              "The placeholder category auto-indexed is permitted only prior to System Initialization Standard (SIS).",
+              "After SIS, auto-indexed is forbidden and constitutes audit failure.",
+              "Category reflects functional role, not sensitivity or secrecy."
+            ]
+          },
+          "tierRules": {
+            "placeholderTier": "unassigned",
+            "rules": [
+              "Tier may be unassigned prior to SIS.",
+              "All Tier-2 and above items must have an assigned tier after SIS."
+            ]
+          },
+          "purposeRules": [
+            "Every file must declare a human-readable purpose.",
+            "Auto-generated placeholder purposes are permitted pre-SIS only.",
+            "Purpose must describe why the file exists, not how it is generated."
+          ]
+        },
         "rules": {
           "allowedRoots": [
             "codex/",
@@ -564,51 +603,133 @@
         "type": "Structural Standard",
         "preamble": {
           "icon": 0,
-          "text": "The Repository Inventory Standard defines the canonical manifest for all files and directories that exist within the Skyesoft repository. While the Repository Standard establishes structure and rules, the Inventory Standard documents the actual, real-world contents of the system. This creates a complete, auditable SOT (Single Source of Truth) for every file and directory."
+          "text": "The Repository Inventory Standard defines the canonical, exhaustive manifest of all files and directories that exist within the Skyesoft repository. While the Repository Standard prescribes structure and rules, the Inventory Standard records the factual, real-world state of the filesystem. Together, they establish an auditable Single Source of Truth (SOT) for repository awareness, governance, and integrity."
         },
         "purpose": {
           "icon": 6,
-          "text": "Ensure that every file and directory in Skyesoft is intentional, documented, auditable, and governed by Codex doctrine. Prevent drift, ghost files, orphaned modules, or untracked assets."
+          "text": "Ensure that every file and directory in Skyesoft is intentional, visible, governed, and auditable. Prevent filesystem drift, ghost files, orphaned modules, undocumented automation artifacts, or untracked assets."
         },
         "inventoryFile": {
           "path": "codex/meta/repositoryInventory.json",
-          "description": "The canonical manifest of all files and directories."
+          "description": "Canonical manifest enumerating every file and directory present in the repository, regardless of integrity participation."
+        },
+        "integrityDoctrine": {
+          "description": "Inventory awareness and Merkle integrity are related but distinct concerns. All files and directories MUST be inventoried for governance and visibility. Only selected items participate in Merkle hashing to avoid recursive self-inclusion while preserving full auditability.",
+          "integrityScopes": {
+            "MERKLE_INCLUDED": "Item participates in Merkle leaf generation and contributes to the repository integrity root.",
+            "MERKLE_EXCLUDED": "Item is fully inventoried, classified, and governed, but intentionally excluded from Merkle hashing."
+          },
+          "canonicalMerkleExcludedArtifacts": [
+            "/codex/meta/repositoryInventory.json",
+            "/codex/meta/merkleTree.json",
+            "/codex/meta/merkleRoot.txt"
+          ]
+        },
+        "inventoryUpdateDoctrine": {
+          "title": { "icon": 52, "text": "Inventory Update & Canonical Promotion Doctrine" },
+          "description": "Defines the mandatory procedure for updating repositoryInventory.json and promoting a new canonical repository state so that audits and integrity verification remain valid and meaningful.",
+          "principles": [
+            "The repository inventory represents the declared reality of the filesystem.",
+            "Updating the inventory is a deliberate, state-changing act.",
+            "Audits and integrity verification must operate against a declared canonical state.",
+            "Canonical promotion is an authorized human-governed operation and MUST NOT be initiated automatically."
+          ],
+          "canonicalUpdateProcess": {
+            "step1_inventoryRebuild": {
+              "name": "Inventory Declaration",
+              "actor": "scripts/repositoryInventoryBuilder.php",
+              "effect": "Rebuilds repositoryInventory.json to reflect the intended and current filesystem state.",
+              "notes": [
+                "All files and directories MUST be inventoried, including Merkle-excluded artifacts.",
+                "This step declares repository reality but does not yet establish integrity."
+              ]
+            },
+            "step2_integrityCommit": {
+              "name": "Canonical Integrity Commitment",
+              "actor": "scripts/merkleBuild.php",
+              "effect": "Generates and writes a new merkleRoot.txt based on the declared inventory.",
+              "artifacts": [
+                "/codex/meta/merkleRoot.txt",
+                "/codex/meta/merkleTree.json (optional)"
+              ],
+              "notes": [
+                "Writing merkleRoot.txt constitutes promotion of a new canonical repository state.",
+                "This step cryptographically commits the declared inventory as authoritative."
+              ]
+            },
+            "step3_verification": {
+              "name": "Post-Promotion Verification",
+              "actor": "scripts/merkleVerify.php",
+              "effect": "Verifies the current repository state against the promoted Merkle root.",
+              "notes": [
+                "Verification MUST be performed only after integrity commitment.",
+                "Verification against a pre-promotion Merkle root is expected to fail."
+              ]
+            }
+          },
+          "auditSemantics": {
+            "prePromotion": [
+              "Merkle verification failures prior to integrity commitment SHALL NOT be treated as drift.",
+              "Audits during this phase are informational only."
+            ],
+            "postPromotion": [
+              "Merkle verification MUST pass.",
+              "Any failure after promotion indicates unauthorized modification, corruption, or drift."
+            ]
+          },
+          "sentinelContract": {
+            "description": "Sentinel consumes only finalized auditor payloads.",
+            "acceptedPayload": {
+              "status": ["PASS", "FAIL"],
+              "errors": "array"
+            },
+            "notes": [
+              "Sentinel MUST NOT evaluate verification output during inventory rebuild or integrity promotion phases.",
+              "Sentinel interpretation of FAIL is valid only after canonical promotion is complete.",
+              "Sentinel acceptance confirms alignment with the current promoted canonical state."
+            ]
+          }
+        },
+        "canonicalStateDoctrine": {
+          "description": "A repository inventory rebuild followed by Merkle root generation constitutes an explicit declaration of a new canonical repository state.",
+          "rules": [
+            "Building a new repository inventory is a state-changing act.",
+            "Generating a new Merkle root hashes the declared repository reality.",
+            "Promotion of the generated Merkle root confirms the new canonical state.",
+            "Merkle verification against a pre-promotion root is expected to fail and SHALL NOT be treated as drift.",
+            "After promotion, Merkle verification MUST pass; failure indicates unauthorized modification."
+          ]
         },
         "automationArtifacts": {
           "repositoryAuditResults": {
             "path": "/codex/meta/repositoryAuditResults.json",
             "type": "systemStateSnapshot",
-            "tier": 3,
+            "tier": "Tier-3",
             "generatedBy": "scripts/repositoryAuditor.php",
-            "trigger": "cron",
-            "frequency": "continuous (minute-based cron or on-demand)",
+            "trigger": "cron-or-on-demand",
+            "frequency": "continuous",
             "lifecycle": "overwrite",
             "binding": false,
             "sisScope": "pre",
-            "description": "Canonical machine-generated snapshot of the most recent repository audit. Records factual filesystem-to-inventory alignment results only. Contains no interpretation, enforcement, or historical persistence guarantees beyond the latest execution."
+            "description": "Machine-generated snapshot of the most recent repository audit. Records factual alignment between filesystem and inventory only. Contains no interpretation or historical guarantees beyond the latest execution."
           }
         },
         "rules": [
-          "Every file and directory must appear exactly once in repositoryInventory.json.",
-          "All filesystem items (files and directories) are required to be registered; no exceptions.",
-          "No unregistered file may exist anywhere in the repository.",
-          "Each inventory item must declare: id, path, type, category, tier, purpose, and status.",
-          "All directories must declare their allowed categories of files.",
-          "File and directory names must be globally unique within their respective directories; duplicate names are prohibited.",
-          "No two inventory items may reference the same path, and no item may shadow another item due to naming collision.",
-          "Removal, renaming, or addition of any file or directory requires updating repositoryInventory.json.",
-          "Legacy files must be explicitly marked as 'deprecated' and retained only with Codex justification.",
-          "repositoryAuditor.php must validate the Inventory daily and flag any unregistered, duplicated, renamed, moved, or drifted items.",
-          "No duplicate names at the same level.",
-          "No shadowing items.",
-          "No two items pointing to the same path.",
-          "No untracked additions allowed.",
-          "Each directory must declare which categories of files it is permitted to contain.",
-          "repositoryAuditor.php must enforce directory category declarations.",
-          "Moves and renames require inventory updates.",
-          "Files cannot “drift” from their declared location.",
-          "Require daily auditor validation of registered vs actual FS state.",
-          "Inventory IDs must follow the canonical format RNV-### and be assigned sequentially in the order items are registered. IDs are permanent once assigned, may not be reused, and renaming or moving a file does not alter its ID. Any change to the ID assignment protocol requires a formal Codex amendment."
+          "Every file and directory present in the repository MUST appear exactly once in repositoryInventory.json.",
+          "No unregistered filesystem item may exist anywhere in the repository.",
+          "Inventory inclusion is mandatory regardless of Merkle participation.",
+          "Each inventory item MUST declare: id, name, path, type, category, tier, purpose, status, and integrityScope.",
+          "integrityScope controls Merkle hashing only and does not affect inventory visibility or governance.",
+          "No two inventory items may reference the same path.",
+          "No duplicate names are permitted within the same directory.",
+          "No inventory item may shadow another due to naming collision.",
+          "Moves, renames, additions, or removals REQUIRE an inventory update.",
+          "Inventory IDs are permanent and immutable once assigned.",
+          "Legacy files MUST be explicitly marked as deprecated and justified by Codex doctrine.",
+          "Directories MUST declare which file categories they are permitted to contain.",
+          "repositoryAuditor.php MUST validate inventory-to-filesystem alignment and enforce directory category constraints.",
+          "Merkle-excluded artifacts MUST still be inventoried, classified, audited, and monitored.",
+          "repositoryAuditor.php MUST flag any unregistered, duplicated, drifted, moved, or misclassified item."
         ],
         "schema": {
           "type": "object",
@@ -620,47 +741,48 @@
                 "type": "object",
                 "properties": {
                   "id": {
-                      "type": "string",
-                      "pattern": "^RNV-[0-9]{4}$",
-                      "description": "Permanent Repository Inventory Identifier (RNV). Four-digit sequential index. Immutable once assigned."
+                    "type": "string",
+                    "pattern": "^RNV-[0-9]{4}$",
+                    "description": "Permanent Repository Inventory Identifier. Immutable once assigned."
                   },
                   "name": {
-                      "type": "string",
-                      "description": "Canonical basename of the file or directory derived from the path. Must always reflect the actual filesystem name."
+                    "type": "string",
+                    "description": "Canonical basename derived from the filesystem."
                   },
                   "path": {
-                      "type": "string",
-                      "description": "Full repository-relative path beginning with '/'."
+                    "type": "string",
+                    "description": "Repository-relative absolute path beginning with '/'."
                   },
                   "type": {
-                      "type": "string",
-                      "enum": ["file", "dir"],
-                      "description": "Filesystem node type."
+                    "type": "string",
+                    "enum": ["file", "dir"]
                   },
                   "category": {
-                      "type": "string",
-                      "description": "Codex classification of the item (auto-indexed, root, structural, etc.)."
+                    "type": "string",
+                    "description": "Codex classification of the item."
                   },
                   "tier": {
-                      "type": "string",
-                      "enum": ["Tier-0", "Tier-1", "Tier-2", "Tier-3", "Legacy"],
-                      "description": "Codex governance tier to which this file or directory belongs."
+                    "type": "string",
+                    "enum": ["Tier-0", "Tier-1", "Tier-2", "Tier-3", "Legacy"]
+                  },
+                  "integrityScope": {
+                    "type": "string",
+                    "enum": ["MERKLE_INCLUDED", "MERKLE_EXCLUDED"],
+                    "description": "Controls participation in Merkle hashing."
                   },
                   "purpose": {
-                      "type": "string",
-                      "description": "Human-readable explanation of the file or directory's role within the system."
+                    "type": "string",
+                    "description": "Human-readable explanation of the item's role."
                   },
                   "status": {
-                      "type": "string",
-                      "enum": ["active", "deprecated", "planned"],
-                      "description": "Lifecycle state of the item within the repository."
+                    "type": "string",
+                    "enum": ["active", "deprecated", "planned"]
                   },
                   "notes": {
-                      "type": "string",
-                      "description": "Optional freeform notes for maintainers or auditors."
+                    "type": "string"
                   }
                 },
-                "required": ["id", "path", "type", "tier", "purpose"]
+                "required": ["id", "name", "path", "type", "tier", "integrityScope", "purpose", "status"]
               }
             }
           }
@@ -668,12 +790,13 @@
         "validation": {
           "enforcedBy": "scripts/repositoryAuditor.php",
           "frequency": "daily-or-on-commit",
-          "action": "Flag missing files, unregistered files, unexpected directory contents, or Codex violations."
+          "action": "Flag missing files, unregistered files, integrity scope violations, directory category violations, or Codex breaches."
         },
         "notes": [
-          "The Inventory acts as the factual ledger of the system.",
-          "Skyebot uses this manifest to reason about the repository.",
-          "Structural changes require updates to both the Repository Standard and the Inventory Standard."
+          "The Inventory is the system’s factual ledger.",
+          "Merkle integrity is derived from, but not identical to, inventory awareness.",
+          "Sentinel and Skyebot reason from this manifest as the authoritative repository truth.",
+          "Structural changes require coordinated updates to both the Repository Standard and the Inventory Standard."
         ]
       },
       "structuralCodeStandard": {

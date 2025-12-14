@@ -9,9 +9,9 @@
         "deployTime": "2025-11-27T09:00:00-07:00",
         "commitHash": "local-dev",
         "state": "dev",
-        "latestError": "ERR-00004",
-        "activeErrors": 4,
-        "errorTimestamp": 1765562302
+        "latestError": "ERR-00008",
+        "activeErrors": 8,
+        "errorTimestamp": 1765670515
     },
     "modules": []
 }

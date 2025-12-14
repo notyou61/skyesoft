@@ -1,152 +1,181 @@
 <?php
+declare(strict_types=1);
+
 // ======================================================================
 //  Skyesoft — sentinel.php
-//  Role: ERR Processor (EGS v4)
-//  PHP 8.1+ • Strict Typing
+//  Role: Integrity Event Registrar (EGS v4.1)
+//  PHP 8.3+ • Strict Typing
+//
 //  Responsibility:
-//     • Receive Auditor findings
-//     • Assign ERR IDs sequentially
-//     • Append to errorRegistry.json (SOT)
-//     • Append to repositoryAudit.json (SOT)
-//     • Update SSE errorState (optional UI support)
+//   • Consume repositoryAuditor output
+//   • Assign ERR IDs deterministically
+//   • Append to errorRegistry.json (SOT)
+//   • Append to repositoryAudit.json (SOT)
+//   • Update SSE system error state (optional)
+//
 //  Forbidden:
-//     • NO modification of Codex or Merkle files
-//     • NO regeneration of Merkle Tree or Root
+//   • NO filesystem scans
+//   • NO Codex mutation
+//   • NO Merkle generation or verification
 // ======================================================================
 
-declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
-// ROOT REQUIRED BEFORE ANY PATH CALL
 $root = dirname(__DIR__);
 
-// ----------------------------------------------------------------------
-// SECTION I — Fail Handler
-// ----------------------------------------------------------------------
-function fail(string $msg): never {
+#region SECTION 0 — Fail Handler
+function sentinelFail(string $msg): never {
     echo json_encode([
         "success" => false,
         "role"    => "sentinel",
         "error"   => "❌ $msg"
-    ], JSON_UNESCAPED_SLASHES);
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+#endregion SECTION 0 — Fail Handler
+
+#region SECTION I — Load Input (Auditor Output)
+
+// Read all STDIN
+$raw = stream_get_contents(STDIN);
+
+// CLI temp file
+if (!$raw && !empty($argv[1]) && file_exists($argv[1])) {
+    $raw = file_get_contents($argv[1]);
+}
+
+// CLI inline JSON
+if (!$raw && !empty($argv[1])) {
+    $raw = $argv[1];
+}
+
+if (!$raw) {
+    sentinelFail("No auditor payload received.");
+}
+
+// -----------------------------
+// Normalize and extract JSON
+// -----------------------------
+
+// Remove BOM + trim
+$clean = preg_replace('/^\xEF\xBB\xBF/', '', trim($raw));
+
+// Extract ALL JSON objects
+preg_match_all('/\{(?:[^{}]|(?R))*\}/s', $clean, $matches);
+
+if (empty($matches[0])) {
+    sentinelFail("No JSON object found in auditor payload.");
+}
+
+// Use the LAST JSON object (canonical auditor output)
+$json = end($matches[0]);
+
+$data = json_decode($json, true);
+
+if (!is_array($data) || !isset($data["status"], $data["errors"])) {
+    sentinelFail("Invalid auditor payload. Expected { status, errors }.");
+}
+
+$errors = $data["errors"];
+
+// PASS with no errors
+if (!is_array($errors) || empty($errors)) {
+    echo json_encode([
+        "success" => true,
+        "role"    => "sentinel",
+        "message" => "No errors to process."
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// ======================================================================
-//  SECTION II — Load Inputs (Supports: stdin, CLI file, CLI JSON)
-// ======================================================================
+#endregion SECTION I — Load Input
 
-$rawInput = file_get_contents("php://input");
+#region SECTION II — Load SOT Files
 
-// Case 1: stdin (Linux/Mac servers)
-if ($rawInput && trim($rawInput) !== "") {
-    $data = json_decode($rawInput, true);
+$registryPath = "$root/assets/data/errorRegistry.json";
+$auditPath    = "$root/assets/data/repositoryAudit.json";
+$versionsPath = "$root/assets/data/versions.json";
+$merklePath   = "$root/codex/meta/merkleRoot.txt";
 
-// Case 2: CLI with temp file (Windows-safe)
-} elseif (!empty($argv[1]) && file_exists($argv[1])) {
-    $rawInput = file_get_contents($argv[1]);
-    $data = json_decode($rawInput, true);
-
-// Case 3: CLI direct JSON
-} elseif (!empty($argv[1])) {
-    $data = json_decode($argv[1], true);
-
-// Case 4: no input
-} else {
-    fail("No input provided via STDIN, temp file, or CLI JSON.");
+foreach ([$registryPath, $auditPath] as $path) {
+    if (!file_exists($path)) {
+        sentinelFail(basename($path) . " missing.");
+    }
 }
-
-if (!is_array($data) || !isset($data["findings"])) {
-    fail("Invalid or missing 'findings' from Auditor.");
-}
-
-$findings = $data["findings"];
-
-
-$findings = $data["findings"];
-
-// ----------------------------------------------------------------------
-// SECTION III — Load SOT Files
-// ----------------------------------------------------------------------
-
-// Resolve repository root (required for building SOT paths)
-$root = dirname(__DIR__);
-
-$registryPath = $root . "/assets/data/errorRegistry.json";
-$auditPath    = $root . "/assets/data/repositoryAudit.json";
-$sseMetaPath  = $root . "/assets/data/versions.json";
-
-if (!file_exists($registryPath)) fail("errorRegistry.json missing.");
-if (!file_exists($auditPath))    fail("repositoryAudit.json missing.");
 
 $registry = json_decode(file_get_contents($registryPath), true);
 $audit    = json_decode(file_get_contents($auditPath), true);
 
-if (!is_array($registry)) fail("Invalid errorRegistry.json");
-if (!is_array($audit))    fail("Invalid repositoryAudit.json");
-
-// ----------------------------------------------------------------------
-// SECTION IV — Next ERR ID Generator
-// ----------------------------------------------------------------------
-function nextERRid(array $registry): string {
-    if (empty($registry)) return "ERR-00001";
-
-    $last = end($registry);
-    $id = $last["id"] ?? null;
-
-    if (!$id || !preg_match("/^ERR-([0-9]{5})$/", $id, $m)) {
-        return "ERR-00001"; // fallback for malformed
-    }
-
-    $num = intval($m[1]) + 1;
-    return "ERR-" . str_pad((string)$num, 5, "0", STR_PAD_LEFT);
+if (!is_array($registry) || !is_array($audit)) {
+    sentinelFail("Corrupt SOT file detected.");
 }
 
-// ----------------------------------------------------------------------
-// SECTION V — Process Findings
-// ----------------------------------------------------------------------
-$newErrors = [];
+#endregion SECTION II — Load SOT Files
+
+#region SECTION III — ERR ID Generator
+
+function nextERRid(array $registry): string {
+    if (empty($registry)) {
+        return "ERR-00001";
+    }
+
+    $lastId = end($registry)["id"] ?? "ERR-00000";
+
+    if (!preg_match("/ERR-(\d{5})/", $lastId, $m)) {
+        return "ERR-00001";
+    }
+
+    $next = (int)$m[1] + 1;
+    return "ERR-" . str_pad((string)$next, 5, "0", STR_PAD_LEFT);
+}
+
+#endregion SECTION III — ERR ID Generator
+
+#region SECTION IV — Capture Merkle Context (Optional)
+
+$merkleRoot = file_exists($merklePath)
+    ? trim((string)file_get_contents($merklePath))
+    : null;
+
+#endregion SECTION IV — Merkle Context
+
+#region SECTION V — Process Auditor Errors
+
 $timestamp = time();
+$newErrors = [];
 
-foreach ($findings as $f) {
-
-    // classification safety
-    $type = $f["type"] ?? "policy_violation";
-    $name = $f["name"] ?? "Unnamed Error";
-    $desc = $f["description"] ?? "No description";
+foreach ($errors as $e) {
 
     $errId = nextERRid($registry);
 
-    // Build ERR object
     $err = [
-        "id"               => $errId,
-        "name"             => $name,
-        "timestamp"        => $timestamp,
-        "type"             => $type,
-        "description"      => $desc,
-        "details"          => $f["details"] ?? [],
-        "suggestedSolution"=> "Pending review",
-        "status"           => "active",
-        "lastAction"       => "created"
+        "id"         => $errId,
+        "timestamp"  => $timestamp,
+        "type"       => "repository_integrity",
+        "code"       => $e["code"] ?? "UNKNOWN",
+        "path"       => $e["path"] ?? null,
+        "message"    => $e["message"] ?? "Unspecified integrity error",
+        "merkleRoot" => $merkleRoot,
+        "status"     => "active",
+        "lastAction" => "created"
     ];
 
-    $registry[] = $err;
+    $registry[]  = $err;
     $newErrors[] = $err;
 
-    // Append audit log entry
     $audit[] = [
         "timestamp" => $timestamp,
         "errorId"   => $errId,
-        "status"    => "active",
-        "name"      => $name,
-        "type"      => $type,
-        "message"   => $desc
+        "code"      => $err["code"],
+        "path"      => $err["path"],
+        "message"   => $err["message"]
     ];
 }
 
-// ----------------------------------------------------------------------
-// SECTION VI — Persist SOT Updates
-// ----------------------------------------------------------------------
+#endregion SECTION V — Process Auditor Errors
+
+#region SECTION VI — Persist SOT
+
 file_put_contents(
     $registryPath,
     json_encode($registry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
@@ -157,33 +186,39 @@ file_put_contents(
     json_encode($audit, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
 );
 
-// ----------------------------------------------------------------------
-// SECTION VII — Optional: Update SSE Error State
-// ----------------------------------------------------------------------
-if (file_exists($sseMetaPath)) {
-    $versions = json_decode(file_get_contents($sseMetaPath), true);
+#endregion SECTION VI — Persist SOT
+
+#region SECTION VII — Optional SSE State Update
+
+if (file_exists($versionsPath)) {
+
+    $versions = json_decode(file_get_contents($versionsPath), true);
 
     if (is_array($versions)) {
-        $versions["system"]["latestError"]   = $newErrors[count($newErrors) - 1]["id"] ?? null;
-        $versions["system"]["activeErrors"]  =
-            count(array_filter($registry, fn($e) => ($e["status"] ?? null) === "active"));
-        $versions["system"]["errorTimestamp"]= $timestamp;
+        $versions["system"]["activeErrors"] = count(
+            array_filter($registry, fn($e) => ($e["status"] ?? "") === "active")
+        );
+        $versions["system"]["latestError"]    = end($newErrors)["id"] ?? null;
+        $versions["system"]["errorTimestamp"] = $timestamp;
 
         file_put_contents(
-            $sseMetaPath,
+            $versionsPath,
             json_encode($versions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
     }
 }
 
-// ----------------------------------------------------------------------
-// SECTION VIII — Output
-// ----------------------------------------------------------------------
+#endregion SECTION VII — Optional SSE State Update
+
+#region SECTION VIII — Output
+
 echo json_encode([
     "success" => true,
     "role"    => "sentinel",
-    "processedErrors" => $newErrors,
-    "count"            => count($newErrors)
+    "count"   => count($newErrors),
+    "errors"  => $newErrors
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 exit;
+
+#endregion SECTION VIII — Output

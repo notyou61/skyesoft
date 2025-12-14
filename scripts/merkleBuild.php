@@ -1,102 +1,127 @@
 <?php
+declare(strict_types=1);
+
 // ======================================================================
 //  Skyesoft — merkleBuild.php
-//  MIS Builder (Codex Integrity Generator • Full Recursive Mode)
-//  PHP 8.1+ • Strict Typing
+//  Tier: 3 — Integrity Builder (MIS)
+//  PHP 8.3+ • Strict Typing
+//
+//  Responsibility:
+//   • Read authoritative repositoryInventory.json
+//   • Hash active filesystem files
+//   • Generate deterministic Merkle Tree
+//   • Persist merkleTree.json and merkleRoot.txt
+//
+//  Forbidden:
+//   • NO inventory generation
+//   • NO Codex mutation
 // ======================================================================
 
-declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
-// ----------------------------------------------------------------------
-// Fail Helper
-// ----------------------------------------------------------------------
-function fail(string $msg): never {
+#region SECTION 0 — Fail Handler
+
+function merkleFail(string $msg): never {
     echo json_encode([
         "success" => false,
-        "error"   => $msg
-    ], JSON_UNESCAPED_SLASHES);
+        "role"    => "merkleBuild",
+        "error"   => "❌ $msg"
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// ----------------------------------------------------------------------
-// Load Codex
-// ----------------------------------------------------------------------
-$root = dirname(__DIR__);
-$codexPath = $root . "/codex/codex.json";
-$treePath  = $root . "/codex/meta/merkleTree.json";
-$rootPath  = $root . "/codex/meta/merkleRoot.txt";
+#endregion SECTION 0 — Fail Handler
 
-if (!file_exists($codexPath)) fail("Codex missing.");
+#region SECTION I — Resolve Repository Paths
 
-$raw = file_get_contents($codexPath);
-$codex = json_decode($raw, true);
+$root = realpath(__DIR__ . "/..");
+$root = rtrim(str_replace("\\", "/", (string)$root), "/");
 
-if (!is_array($codex)) fail("Codex JSON invalid.");
+$inventoryPath = $root . "/codex/meta/repositoryInventory.json";
+$treePath      = $root . "/codex/meta/merkleTree.json";
+$rootPath      = $root . "/codex/meta/merkleRoot.txt";
 
-// ======================================================================
-// FULL RECURSIVE CHUNKER (MIS Option A)
-// ======================================================================
-function recursiveChunks(mixed $node, string $path = ""): array {
-    $chunks = [];
-
-    // Leaf node (scalar)
-    if (!is_array($node)) {
-        $chunks[$path] = hash("sha256", json_encode($node, JSON_UNESCAPED_SLASHES));
-        return $chunks;
-    }
-
-    // Object or array → recurse keys
-    ksort($node); // MIS rule: lexicographic order
-
-    foreach ($node as $key => $value) {
-        $childPath = $path === "" ? $key : "$path.$key";
-        $chunks += recursiveChunks($value, $childPath);
-    }
-
-    return $chunks;
+if (!$root || !is_dir($root)) {
+    merkleFail("Unable to resolve repository root.");
 }
 
-// ======================================================================
-// BUILD LEAVES
-// ======================================================================
-$leaves = recursiveChunks($codex);
+#endregion SECTION I — Resolve Repository Paths
 
-// ----------------------------------------------------------------------
-// Build Internal Nodes (deterministic binary merkle layering)
-// ----------------------------------------------------------------------
-function buildMerkleTree(array $hashes): array {
+#region SECTION II — Load Inventory (Authoritative)
 
-    // Convert to simple numeric array of hashes
-    $layer = array_values($hashes);
-    $layers = [$layer];
-
-    while (count($layer) > 1) {
-        $next = [];
-
-        for ($i = 0; $i < count($layer); $i += 2) {
-            $left  = $layer[$i];
-            $right = $layer[$i + 1] ?? $layer[$i]; // duplicate if odd count
-
-            $next[] = hash("sha256", $left . $right);
-        }
-
-        $layer = $next;
-        $layers[] = $layer;
-    }
-
-    return [
-        "root"  => $layer[0],
-        "layers"=> $layers
-    ];
+if (!file_exists($inventoryPath)) {
+    merkleFail("repositoryInventory.json missing.");
 }
 
-$tree = buildMerkleTree($leaves);
-$rootHash = $tree["root"];
+$inventory = json_decode(file_get_contents($inventoryPath), true);
 
-// ======================================================================
-// WRITE OUTPUT FILES (Codex SOT)
-// ======================================================================
+if (!is_array($inventory) || !isset($inventory["items"])) {
+    merkleFail("Invalid repositoryInventory.json structure.");
+}
+
+#endregion SECTION II — Load Inventory
+
+#region SECTION III — Build Leaf Hashes (MATCHES merkleVerify.php)
+
+$leaves = [];
+
+foreach ($inventory["items"] as $item) {
+
+    if (($item["status"] ?? "") !== "active") continue;
+    if (($item["type"] ?? "") !== "file") continue;
+
+    // Codex integrity doctrine
+    if (($item["integrityScope"] ?? "MERKLE_INCLUDED") !== "MERKLE_INCLUDED") {
+        continue;
+    }
+
+    $relPath  = ltrim((string)$item["path"], "/");
+    $fullPath = $root . "/" . $relPath;
+
+    if (!file_exists($fullPath)) {
+        merkleFail("Missing file during Merkle build: {$relPath}");
+    }
+
+    $contentHash = hash_file("sha256", $fullPath);
+    $leafHash    = hash("sha256", $relPath . ":" . $contentHash);
+
+    $leaves[$relPath] = $leafHash;
+}
+
+// Deterministic ordering (MIS rule)
+ksort($leaves);
+
+#endregion SECTION III
+
+#region SECTION IV — Build Merkle Tree (CANONICAL)
+
+$layer  = array_values($leaves);
+$layers = [];
+$layers[] = $layer;
+
+while (count($layer) > 1) {
+
+    $next = [];
+
+    for ($i = 0; $i < count($layer); $i += 2) {
+        $left  = $layer[$i];
+        $right = $layer[$i + 1] ?? $left; // duplicate last if odd
+        $next[] = hash("sha256", $left . $right);
+    }
+
+    $layers[] = $next;
+    $layer    = $next;
+}
+
+$merkleRoot = $layer[0] ?? null;
+
+if (!$merkleRoot) {
+    merkleFail("Unable to compute Merkle root.");
+}
+
+#endregion SECTION IV
+
+#region SECTION V — Persist Merkle Artifacts (SOT)
 
 file_put_contents(
     $treePath,
@@ -104,22 +129,24 @@ file_put_contents(
         "generated" => time(),
         "algo"      => "sha256",
         "leafCount" => count($leaves),
-        "root"      => $rootHash,
-        "leaves"    => $leaves,
-        "layers"    => $tree["layers"]
+        "root"      => $merkleRoot,
+        "layers"    => $layers
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
 );
 
-file_put_contents($rootPath, $rootHash);
+file_put_contents($rootPath, $merkleRoot);
 
-// ======================================================================
-// Output
-// ======================================================================
+#endregion SECTION V — Persist Merkle Artifacts
+
+#region SECTION VI — Output
+
 echo json_encode([
     "success"   => true,
-    "message"   => "Merkle Tree generated (Full Recursive Mode).",
+    "role"      => "merkleBuild",
     "leafCount" => count($leaves),
-    "root"      => $rootHash
+    "root"      => $merkleRoot
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 exit;
+
+#endregion SECTION VI — Output
