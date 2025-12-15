@@ -1,9 +1,9 @@
 {
-    "auditId": "AUD-20251215-200011",
+    "auditId": "AUD-20251215-222020",
     "auditDate": "2025-12-15",
-    "executedAt": 1765828811,
-    "executedAtHuman": "2025-12-15T20:00:11+00:00",
-    "codexSnapshot": "merkleRoot:20b5ac80419c52fe4e767c93cdbbab85920d442bcc32a9aba66080e6d7959af6",
+    "executedAt": 1765837220,
+    "executedAtHuman": "2025-12-15T22:20:20+00:00",
+    "codexSnapshot": "merkleRoot:63b22f8306b0266f5c5e3212c2ce740deac32164d14058a668a12d480216060e",
     "methodReference": "Hybrid: deterministic structural checks + optional AI adversarial advisory",
     "overallDetermination": "Sound",
     "determinationStatus": "Sealed",
@@ -12,5 +12,39 @@
     "findingsOrNoneStatement": "No governed findings identified.",
     "coverageStatement": "Full Codex reviewed under literal and universal assumptions.",
     "aiAdvisoryStatus": "enabled (no candidates)",
-    "environment": "production"
+    "environment": "production",
+    "documentMeta": {
+        "documentType": "audit",
+        "catalogKey": "complianceAudit",
+        "title": "Codex Audit Report",
+        "icon": 67,
+        "renderIntent": "pdf",
+        "authority": "derived-view",
+        "notes": "Metadata exists solely to support document rendering and indexing."
+    },
+    "reportNarrative": {
+        "executiveSummary": {
+            "icon": 29,
+            "contentFormat": "paragraph",
+            "authority": "advisory",
+            "text": "This audit confirms that the Codex is doctrinally sound at the time of assessment. No contradictions, authority ambiguities, or universality violations were identified under literal execution assumptions."
+        },
+        "methodologyOverview": {
+            "icon": 6,
+            "contentFormat": "bullets",
+            "authority": "advisory",
+            "items": [
+                "Deterministic validation of Codex structure and tier integrity",
+                "Adversarial review under literal and non-human execution assumptions",
+                "Binary determination of doctrinal soundness",
+                "Human-governed review and sealing"
+            ]
+        },
+        "interpretationNotes": {
+            "icon": 63,
+            "contentFormat": "paragraph",
+            "authority": "advisory",
+            "text": "This narrative is explanatory only and carries no governance authority. All determinations and findings are defined exclusively in the governed audit fields."
+        }
+    }
 }

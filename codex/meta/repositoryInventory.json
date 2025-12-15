@@ -1,7 +1,7 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": "2025-12-15T17:30:15+00:00",
+        "generatedAt": "2025-12-15T21:06:28+00:00",
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
@@ -1793,6 +1793,17 @@
         },
         {
             "id": "RNV-0162",
+            "path": "/scripts/runCodexAudit.php",
+            "type": "file",
+            "category": "execution",
+            "tier": "Tier-3",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "runCodexAudit.php"
+        },
+        {
+            "id": "RNV-0163",
             "path": "/scripts/sentinel.php",
             "type": "file",
             "category": "execution",
@@ -1803,7 +1814,7 @@
             "name": "sentinel.php"
         },
         {
-            "id": "RNV-0163",
+            "id": "RNV-0164",
             "path": "/secure",
             "type": "dir",
             "category": "root",
@@ -1814,7 +1825,7 @@
             "name": "secure"
         },
         {
-            "id": "RNV-0164",
+            "id": "RNV-0165",
             "path": "/secure/env.local",
             "type": "file",
             "category": "security",

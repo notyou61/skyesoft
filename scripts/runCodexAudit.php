@@ -16,6 +16,7 @@ $envLocalPath = __DIR__ . '/../secure/env.local';
 
 if (file_exists($envLocalPath)) {
     $lines = file($envLocalPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
     foreach ($lines as $line) {
         if (str_starts_with(trim($line), '#')) continue;
         if (!str_contains($line, '=')) continue;
@@ -136,6 +137,93 @@ PROMPT;
     return is_array($decoded) ? $decoded : [];
 }
 
+function generateReportNarrative(array $auditRecord): array {
+    $apiUrl = 'http://localhost/skyesoft/api/askOpenAI.php';
+
+    $prompt = <<<PROMPT
+You are operating under the Skyesoft Semantic Responder Standard.
+
+This task is governed by the following Standing Orders, which you must obey:
+- Codex-First Reasoning
+- Fact vs Interpretation Separation
+- No Speculation or Hallucination
+- Non-Override Rule
+- Design Inference (Advisory Only)
+
+You are provided a canonical Codex Audit Record as JSON.
+This record contains governed facts and determinations. You must not alter, reinterpret, soften, or restate those results.
+
+Your task is NOT to explain the audit outcome.
+
+Your task IS to explain the Codex doctrines that define how such an audit is evaluated and interpreted.
+
+Specifically:
+- Describe the Codex principles that govern structural integrity, tier hierarchy, and universality.
+- Explain how those principles are assessed during a Codex audit.
+- Clarify, in Codex terms, what it means for an audit to be “Sound” or “Not Sound” without justifying or rephrasing the result.
+- Distinguish clearly between governed facts (the audit record) and advisory explanation (your narrative).
+
+You must NOT:
+- Introduce findings
+- Recommend changes or remedies
+- Speculate about future behavior
+- Add authority beyond explanation
+- Repeat or paraphrase the determination itself
+
+This narrative is advisory only and exists to support human understanding and document rendering (e.g., PDF).
+
+You must generate content ONLY for the following sections:
+
+1. Executive Summary  
+   Explain the Codex framework that governs audit evaluation and determination meaning.
+
+2. Methodology Overview  
+   Explain, at a conceptual level, how Codex doctrine is evaluated (structure, tiers, universality), not what this audit found.
+
+3. Interpretation Notes  
+   Clarify how readers should interpret audit records versus Codex authority and governance.
+
+Tone:
+- Professional
+- Neutral
+- Precise
+- Non-instructional
+
+Assume this text will be rendered into a formal PDF report.
+
+Return VALID JSON ONLY in the following structure:
+
+{
+  "executiveSummary": "...",
+  "methodologyOverview": "...",
+  "interpretationNotes": "..."
+}
+PROMPT;
+
+    $payload = json_encode([
+        'query'   => $prompt,
+        'context' => json_encode($auditRecord, JSON_UNESCAPED_SLASHES)
+    ]);
+
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 60
+    ]);
+
+    $response = curl_exec($ch);
+    if ($response === false) return [];
+
+    $outer = json_decode($response, true);
+    $text  = $outer['response'] ?? '';
+
+    $decoded = json_decode($text, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
 #endregion
 
 #region SECTION 3 — Initialization
@@ -144,7 +232,7 @@ $codexPath  = __DIR__ . '/../codex/codex.json';
 $auditOut   = __DIR__ . '/../codex/meta/codexAudit.json';
 $merklePath = __DIR__ . '/../codex/meta/merkleRoot.txt';
 
-$executedAt = time();                 // ✅ Canonical Unix time
+$executedAt = time();
 $now        = date('Y-m-d');
 $auditId    = 'AUD-' . date('Ymd-His');
 
@@ -218,22 +306,82 @@ $determinationStatus = (
 #region SECTION 9 — Canonical Audit Record Assembly
 
 $auditRecord = [
+    // ------------------------------------------------------------------
+    // Canonical Audit Identity (governed)
+    // ------------------------------------------------------------------
     "auditId"              => $auditId,
     "auditDate"            => $now,
-    "executedAt"           => $executedAt, // ✅ Canonical time
-    "executedAtHuman"      => gmdate('c', $executedAt), // non-authoritative
+    "executedAt"           => $executedAt,
+    "executedAtHuman"      => gmdate('c', $executedAt),
     "codexSnapshot"        => "merkleRoot:{$merkleRoot}",
     "methodReference"      => "Hybrid: deterministic structural checks + optional AI adversarial advisory",
     "overallDetermination" => $determination,
     "determinationStatus"  => $determinationStatus,
-    "findings"             => $findings,
-    "aiCandidateFindings"  => $aiCandidates,
+
+    // ------------------------------------------------------------------
+    // Findings (governed)
+    // ------------------------------------------------------------------
+    "findings"                => $findings,
+    "aiCandidateFindings"     => $aiCandidates,
     "findingsOrNoneStatement" => empty($findings)
         ? "No governed findings identified."
         : "Governed findings present.",
-    "coverageStatement"    => "Full Codex reviewed under literal and universal assumptions.",
-    "aiAdvisoryStatus"     => $aiStatus,
-    "environment"          => APP_ENV
+
+    "coverageStatement" => "Full Codex reviewed under literal and universal assumptions.",
+    "aiAdvisoryStatus"  => $aiStatus,
+    "environment"       => APP_ENV,
+
+    // ------------------------------------------------------------------
+    // Document Standard — Metadata (non-governing)
+    // ------------------------------------------------------------------
+    "documentMeta" => [
+        "documentType" => "audit",
+        "catalogKey"   => "complianceAudit",
+        "title"        => "Codex Audit Report",
+        "icon"         => 67,
+        "renderIntent" => "pdf",
+        "authority"    => "derived-view",
+        "notes"        => "Metadata exists solely to support document rendering and indexing."
+    ],
+
+    // ------------------------------------------------------------------
+    // Document Standard — Narrative Sections (advisory, static)
+    // ------------------------------------------------------------------
+    "reportNarrative" => [
+        "executiveSummary" => [
+            "icon"          => 29,
+            "contentFormat" => "paragraph",
+            "authority"     => "advisory",
+            "text"          =>
+                ($determination === "Sound")
+                ? "This audit confirms that the Codex is doctrinally sound at the time of assessment. "
+                  . "No contradictions, authority ambiguities, or universality violations were identified "
+                  . "under literal execution assumptions."
+                : "This audit identified blocking doctrinal issues that prevent safe and universal "
+                  . "operation of the Codex as authored."
+        ],
+
+        "methodologyOverview" => [
+            "icon"          => 6,
+            "contentFormat" => "bullets",
+            "authority"     => "advisory",
+            "items"         => [
+                "Deterministic validation of Codex structure and tier integrity",
+                "Adversarial review under literal and non-human execution assumptions",
+                "Binary determination of doctrinal soundness",
+                "Human-governed review and sealing"
+            ]
+        ],
+
+        "interpretationNotes" => [
+            "icon"          => 63,
+            "contentFormat" => "paragraph",
+            "authority"     => "advisory",
+            "text"          =>
+                "This narrative is explanatory only and carries no governance authority. "
+              . "All determinations and findings are defined exclusively in the governed audit fields."
+        ]
+    ]
 ];
 
 file_put_contents(
