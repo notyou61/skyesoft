@@ -2576,7 +2576,7 @@
           "optimizingEleganceOverClarity"
         ],
         "successCriteria": [
-          "All four canonical artifacts are produced.",
+          "A Codex Audit produces one canonical Audit Record, from which governed views and summaries may be derived.",
           "No unresolved blocking contradictions remain.",
           "Weak doctrine is cataloged, not erased.",
           "Drift risks are visible and traceable.",
@@ -2591,6 +2591,128 @@
         "notes": [
           "This standard is non-binding until ratified via Article X amendment process.",
           "Artifact paths are reserved under Repository Standard; files must be created as empty templates post-ratification."
+        ]
+      },
+      "codexAuditReportStandard": {
+        "title": { "icon": 67, "text": "Codex Audit Report Standard" },
+        "tier": 2,
+        "hierarchyOrder": 17,
+        "type": "Structural Standard",
+        "preamble": {
+          "icon": 0,
+          "text": "The Codex Audit Report Standard defines the canonical, non-legislative summary artifact produced after completion of a Codex Audit. It provides a deterministic, human-readable and machine-consumable representation of audit outcomes without restating doctrine or performing amendments."
+        },
+        "purpose": {
+          "icon": 6,
+          "text": "Ensure every completed Codex audit produces a single governed summary object suitable for rendering into reports (PDF, email, archive) while preserving traceability, human authority, and non-executive posture."
+        },
+        "scope": "All Codex audits conducted under the Codex Audit Standard",
+        "principles": [
+          {
+            "key": "summaryOnly",
+            "text": "The audit report summarizes findings but must not restate doctrine or raw audit artifacts."
+          },
+          {
+            "key": "nonLegislative",
+            "text": "Audit reports do not amend, override, or interpret Codex doctrine."
+          },
+          {
+            "key": "traceabilityPreserved",
+            "text": "All reported results must reference canonical audit artifacts."
+          },
+          {
+            "key": "renderSafe",
+            "text": "The report object must be suitable for deterministic rendering without inference."
+          }
+        ],
+        "requiredArtifact": {
+          "name": "Codex Audit Report",
+          "path": "codex/meta/audit/auditReport.json",
+          "description": "The canonical summary object representing the outcome of a completed Codex audit."
+        },
+        "requiredFields": {
+          "meta": {
+            "description": "Artifact identity and authority declaration.",
+            "required": [
+              "name",
+              "version",
+              "generatedAt",
+              "codexTier",
+              "authorityBoundary",
+              "allowedActions",
+              "forbiddenActions"
+            ]
+          },
+          "auditSummary": {
+            "required": [
+              "auditId",
+              "model",
+              "scope",
+              "status",
+              "sealedAt",
+              "performedBy"
+            ]
+          },
+          "results": {
+            "required": [
+              "overallStatus",
+              "blockingFindings",
+              "advisoryFindings",
+              "informationalFindings"
+            ]
+          },
+          "artifactCounts": {
+            "required": [
+              "checklistFlags",
+              "contradictions",
+              "weakDoctrineEntries",
+              "driftIndicators"
+            ]
+          },
+          "references": {
+            "description": "Paths to canonical audit artifacts.",
+            "required": [
+              "checklist",
+              "contradictions",
+              "weakDoctrine",
+              "driftMap"
+            ]
+          }
+        },
+        "governanceRules": [
+          "Exactly one audit report may exist per completed audit.",
+          "Audit reports may only be generated after the audit is sealed.",
+          "Audit reports are read-only and immutable once generated.",
+          "Audit reports must not contain executable logic.",
+          "Absence of findings must be explicitly recorded."
+        ],
+        "timeStandard": {
+          "format": "unix_epoch_seconds_integer",
+          "source": "Error Governance Standard (EGS)"
+        },
+        "renderingGuidance": {
+          "description": "Non-binding guidance for downstream renderers.",
+          "rules": [
+            "Rendering systems may not infer findings not explicitly present.",
+            "Section ordering must follow declared structure.",
+            "Human-readable formatting is permitted only at render time."
+          ]
+        },
+        "prohibitions": [
+          "Embedding raw doctrine text",
+          "Embedding checklist item detail",
+          "Silent modification of audit results",
+          "Using audit reports as amendment proposals"
+        ],
+        "validation": {
+          "enforcedBy": null,
+          "frequency": "per audit completion",
+          "action": "Generate summary artifact only; no mutation"
+        },
+        "notes": [
+          "This standard enables deterministic PDF and archival reporting.",
+          "Audit reports are governance artifacts but not Sources of Truth.",
+          "This standard introduces no new enforcement authority."
         ]
       }
     }
