@@ -1,0 +1,16 @@
+{
+    "auditId": "AUD-20251215-200011",
+    "auditDate": "2025-12-15",
+    "executedAt": 1765828811,
+    "executedAtHuman": "2025-12-15T20:00:11+00:00",
+    "codexSnapshot": "merkleRoot:20b5ac80419c52fe4e767c93cdbbab85920d442bcc32a9aba66080e6d7959af6",
+    "methodReference": "Hybrid: deterministic structural checks + optional AI adversarial advisory",
+    "overallDetermination": "Sound",
+    "determinationStatus": "Sealed",
+    "findings": [],
+    "aiCandidateFindings": [],
+    "findingsOrNoneStatement": "No governed findings identified.",
+    "coverageStatement": "Full Codex reviewed under literal and universal assumptions.",
+    "aiAdvisoryStatus": "enabled (no candidates)",
+    "environment": "production"
+}

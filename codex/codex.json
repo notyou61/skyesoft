@@ -100,6 +100,29 @@
           "text": "Meta Principle - Version Parliament"
         },
         "text": "Version Parliament is the adjudicating extension of the Parliamentarian for versioning. No version change is valid without: (1) Detected structural change, (2) Parliamentarian validation, (3) Archivist recording. It operates under Meta Supremacy."
+      },
+      "universalityPrinciple": {
+        "title": { "icon": 12, "text": "Codex Universality Principle" },
+        "preamble": {
+          "text": "The Codex operates under a presumption of universal applicability."
+        },
+        "rule": "All Codex rules apply globally across the system unless an explicit exception is declared within the Codex.",
+        "requirements": [
+          "Exceptions must be explicit, not inferred.",
+          "Exceptions must declare scope, authority, and precedence.",
+          "Silence does not imply exemption.",
+          "Local interpretation may not override universality."
+        ],
+        "auditImplications": [
+          "Audits must assume universality unless an exception is cited.",
+          "Claims of non-applicability require citation."
+        ],
+        "prohibitions": [
+          "Implicit carve-outs",
+          "Contextual assumptions of exemption",
+          "Unwritten operational exceptions"
+        ],
+        "litmusTest": "If this rule were ignored here, where is the explicit Codex exception that permits it?"
       }
     },
     "changelog": [
@@ -2417,302 +2440,170 @@
         ]
       },
       "codexAuditStandard": {
-        "title": { "icon": 67, "text": "Codex Audit Standard"},
+        "title": {
+          "icon": 67,
+          "text": "Codex Audit Standard"
+        },
         "tier": 2,
         "hierarchyOrder": 5,
         "type": "Structural Standard",
         "preamble": {
           "icon": 0,
-          "text": "The Codex Audit Standard establishes the official, repeatable, non-legislative method for reviewing the integrity, coherence, authority alignment, enforceability, and long-term durability of the entire Codex. It provides a governed framework for identifying contradictions, gaps, weak doctrine, and drift risks without altering doctrine or creating binding rules."
+          "text": "A Codex Audit is a formal, point-in-time assessment of Codex Doctrinal Soundness.\n\nThe audit evaluates whether the Codex, as written at a specific moment, can govern the system safely, consistently, and universally without contradiction, implicit assumptions, or reliance on unwritten rules.\n\nThe audit presumes the Codex is valid unless proven otherwise. Findings arise only where doctrine cannot be applied literally, where rules compel incompatible outcomes, where authority is ambiguous, or where governed actions require inference to execute correctly.\n\nAll Codex rules are presumed universally applicable unless an explicit Codex exception is cited. Silence does not constitute exemption.\n\nThe audit is conducted under adversarial assumptions, including misuse, misinterpretation, automation error, fatigue, partial failure, and literal execution by non-human actors.\n\nThe audit does not evaluate desirability, optimization, elegance, or future potential. It evaluates only whether the Codex, as authored, is doctrinally sound and safe to operate at the time of assessment.\n\nAudit findings are non-legislative. No doctrine is altered by an audit. All findings require explicit human adjudication and governed amendment to take effect."
         },
         "purpose": {
           "icon": 6,
-          "text": "Ensure systematic, adversarial review of Codex doctrine across all tiers, producing traceable artifacts that support deliberate human-led improvement while preserving Meta Supremacy, Human Authority, and No Shadow Rules."
+          "text": "Establish the governed method for periodic assessment of Doctrinal Soundness, producing traceable records of Codex health without legislative effect."
         },
-        "scope": "Entire Codex (all tiers and derived enforcement mechanisms)",
+        "scope": "Entire Codex (all tiers and derived mechanisms)",
         "principles": [
-          {
-            "key": "nonLegislative",
-            "text": "Audits may identify issues but must not alter doctrine."
-          },
-          {
-            "key": "humanAdjudicated",
-            "text": "All findings require Parliamentarian interpretation before any amendment."
-          },
-          {
-            "key": "minimalIntervention",
-            "text": "Recommendations must be surgical, not creative."
-          },
-          {
-            "key": "adversarialPosture",
-            "text": "Audits assume misuse, misinterpretation, fatigue, automation error, and partial failure."
-          },
-          {
-            "key": "traceabilityFirst",
-            "text": "Every finding must reference exact Codex locations involved."
-          }
+          { "key": "presumptionOfValidity", "text": "The Codex is presumed sound unless doctrine as written proves otherwise." },
+          { "key": "literalInterpretation", "text": "Rules are evaluated exactly as authored; no inference permitted." },
+          { "key": "universality", "text": "Rules apply universally unless explicitly excepted in the Codex." },
+          { "key": "adversarialPosture", "text": "Assume misuse, fatigue, automation error, and literal non-human execution." },
+          { "key": "pointInTime", "text": "Assessment reflects the Codex state at audit date only." },
+          { "key": "nonLegislative", "text": "Audits record findings only; no alteration of doctrine." }
         ],
-        "requiredArtifacts": {
-          "auditChecklist": {
-            "title": "Codex Audit Checklist",
-            "purpose": "Ensure systematic coverage of all governance dimensions.",
-            "path": "codex/meta/audit/codexAuditChecklist.json",
-            "domains": [
-              "tierBoundaryEnforcement",
-              "authorityClarity",
-              "enforcementFeasibility",
-              "stateTransitionCoverage",
-              "automationLimitsCompliance",
-              "languageDeterminism",
-              "amendmentTraceability"
-            ],
-            "rules": [
-              "Checklist items must be binary (PASS or FLAG).",
-              "Narrative commentary is prohibited in the checklist.",
-              "Checklist completion is mandatory before issuing findings."
-            ]
+        "method": "Adversarial review using Willis Carrier problem-solving: locate issue (narrative + citation), analyze cause, propose remedy (or explicit none).",
+        "outputs": {
+          "canonicalRecord": {
+            "path": "codex/meta/codexAudit.json",
+            "description": "The single canonical Codex Audit Record representing the most recent sealed assessment."
           },
-          "contradictionRegister": {
-            "title": "Contradiction Register",
-            "purpose": "Identify doctrinal conflicts that could compel incompatible behavior.",
-            "path": "codex/meta/audit/contradictionRegister.json",
-            "requiredFields": [
-              "ruleARef",
-              "ruleBRef",
-              "contradictionType",
-              "severity",
-              "recommendedAction"
-            ],
-            "allowedTypes": [
-              "direct",
-              "conditional",
-              "priorityAmbiguity"
-            ],
-            "severityLevels": [
-              "blocking",
-              "latent",
-              "informational"
-            ],
-            "notes": [
-              "Absence of contradictions must be explicitly recorded.",
-              "Priority ambiguity constitutes a contradiction."
-            ]
-          },
-          "weakDoctrineRegister": {
-            "title": "Weak Doctrine Register",
-            "purpose": "Identify valid but structurally fragile doctrine.",
-            "path": "codex/meta/audit/weakDoctrineRegister.json",
-            "weaknessClasses": [
-              "vagueLanguage",
-              "overloadedSections",
-              "mixedPolicyAndImplementation",
-              "unenforceableMandates",
-              "undefinedFallbackBehavior"
-            ],
-            "rules": [
-              "Weak doctrine is not an error.",
-              "Weak doctrine must not be removed without replacement.",
-              "Strengthening recommendations must preserve original intent."
-            ]
-          },
-          "driftRedundancyMap": {
-            "title": "Drift & Redundancy Map",
-            "purpose": "Detect entropy, duplication, and long-term interpretive risk.",
-            "path": "codex/meta/audit/driftRedundancyMap.json",
-            "driftIndicators": [
-              "duplicateConcepts",
-              "overlappingRulesAcrossTiers",
-              "historicalArtifacts",
-              "terminologyDivergence"
-            ],
-            "rules": [
-              "Redundancy is permitted only if intentional and declared.",
-              "Undeclared redundancy must be flagged."
-            ]
+          "derivedReports": {
+            "path": "reports/audit/",
+            "description": "Non-authoritative rendered artifacts (PDF, email, etc.) derived from the canonical record."
           }
         },
-        "methodology": {
-          "model": "LGBAS",
-          "steps": [
-            {
-              "step": "Look",
-              "description": "Read doctrine adversarially, assuming misuse."
-            },
-            {
-              "step": "Gap",
-              "description": "Identify states where the system must act without guidance."
-            },
-            {
-              "step": "Bind",
-              "description": "Trace authority, enforcement, and scope."
-            },
-            {
-              "step": "Amend",
-              "description": "Propose minimal corrective actions only."
-            },
-            {
-              "step": "Seal",
-              "description": "Record findings without silent fixes."
-            }
-          ]
-        },
-        "output": {
-          "recordedBy": "Archivist",
-          "findingClasses": [
-            "informational",
-            "advisory",
-            "blocking"
-          ],
-          "notes": [
-            "No finding is binding without formal amendment.",
-            "Audits must not silently modify doctrine."
-          ]
-        },
-        "prohibitions": [
-          "silentDoctrinalEdits",
-          "automatedAmendments",
-          "retroactiveJustification",
-          "combinedAuditAndAmendment",
-          "optimizingEleganceOverClarity"
-        ],
-        "successCriteria": [
-          "A Codex Audit produces one canonical Audit Record, from which governed views and summaries may be derived.",
-          "No unresolved blocking contradictions remain.",
-          "Weak doctrine is cataloged, not erased.",
-          "Drift risks are visible and traceable.",
-          "Human authority remains intact."
-        ],
-        "litmusTest": "Could a tired human or a dumb machine follow this rule correctly, every time, without guessing?",
         "validation": {
           "enforcedBy": null,
-          "frequency": "on-version-change or human-initiated",
-          "action": "Produce artifacts only; no auto-amendment"
+          "frequency": "Human-initiated or on version change",
+          "action": "Record assessment only"
+        },
+        "auditDetermination": {
+          "title": { "icon": 67, "text": "Audit Determination" },
+          "definition": "An Audit Determination is the formal, point-in-time declaration of whether the Codex, as authored at the time of assessment, is doctrinally sound and safe to operate under literal, universal, non-inferential application.",
+          "allowedValues": [
+            "Sound",
+            "Not Sound"
+          ],
+          "rules": [
+            "Determination is based solely on Codex doctrine as written.",
+            "Any blocking finding requires a determination of Not Sound.",
+            "Advisory or informational findings alone do not invalidate Soundness.",
+            "Determination does not imply desirability, optimization, or approval of future changes.",
+            "Determination must be explicit; silence is invalid."
+          ],
+          "prohibitions": [
+            "Graduated scores",
+            "Probabilistic language",
+            "Implicit determinations",
+            "Editorial qualifiers"
+          ]
         },
         "notes": [
-          "This standard is non-binding until ratified via Article X amendment process.",
-          "Artifact paths are reserved under Repository Standard; files must be created as empty templates post-ratification."
+          "Doctrinal Soundness: the condition in which Codex rules are non-contradictory, complete for governed actions, authority-clear, enforceable, and resistant to drift or misuse.",
+          "Pending formal ratification via governed amendment process."
         ]
       },
-      "codexAuditReportStandard": {
-        "title": { "icon": 67, "text": "Codex Audit Report Standard" },
+      "codexAuditRecordStandard": {
+        "title": { "icon": 67, "text": "Codex Audit Record Standard" },
         "tier": 2,
         "hierarchyOrder": 17,
         "type": "Structural Standard",
         "preamble": {
           "icon": 0,
-          "text": "The Codex Audit Report Standard defines the canonical, non-legislative summary artifact produced after completion of a Codex Audit. It provides a deterministic, human-readable and machine-consumable representation of audit outcomes without restating doctrine or performing amendments."
+          "text": "A Codex Audit Record is the single canonical artifact produced by a completed Codex Audit.\n\nIt is a point-in-time, non-legislative record stating whether the Codex is doctrinally sound at the time of assessment and documenting any findings that prevent literal, universal, and safe application of Codex doctrine.\n\nThe Audit Record is authoritative for audit results. All summaries, reports, PDFs, emails, and presentations are derived views and hold no independent governance authority."
         },
         "purpose": {
           "icon": 6,
-          "text": "Ensure every completed Codex audit produces a single governed summary object suitable for rendering into reports (PDF, email, archive) while preserving traceability, human authority, and non-executive posture."
+          "text": "Define the minimum required structure and authority boundaries of the canonical Codex Audit Record."
         },
         "scope": "All Codex audits conducted under the Codex Audit Standard",
         "principles": [
-          {
-            "key": "summaryOnly",
-            "text": "The audit report summarizes findings but must not restate doctrine or raw audit artifacts."
-          },
-          {
-            "key": "nonLegislative",
-            "text": "Audit reports do not amend, override, or interpret Codex doctrine."
-          },
-          {
-            "key": "traceabilityPreserved",
-            "text": "All reported results must reference canonical audit artifacts."
-          },
-          {
-            "key": "renderSafe",
-            "text": "The report object must be suitable for deterministic rendering without inference."
-          }
+          { "key": "singleCanonicalRecord", "text": "Each Codex Audit produces exactly one canonical Audit Record." },
+          { "key": "nonLegislative", "text": "Audit Records do not amend, override, or reinterpret Codex doctrine." },
+          { "key": "pointInTime", "text": "Audit Records reflect Codex state at the moment of sealing only." },
+          { "key": "universalityPresumed", "text": "All findings assume Codex universality unless an explicit exception is cited." },
+          { "key": "renderDerived", "text": "Rendered reports are views, not Sources of Truth." },
+          { "key": "canonicalStateArtifact", "text": "The Codex Audit Record represents the single current canonical audit state. Upon sealing of a new audit, it supersedes any prior Audit Record."}
         ],
-        "requiredArtifact": {
-          "name": "Codex Audit Report",
-          "path": "codex/meta/audit/auditReport.json",
-          "description": "The canonical summary object representing the outcome of a completed Codex audit."
+        "requiredDeclarations": {
+          "description": "A Codex Audit Record must contain the following declarations in some explicit form:",
+          "required": [
+            "auditId",
+            "auditDate",
+            "codexSnapshot",
+            "methodReference",
+            "overallDetermination",
+            "findingsOrNoneStatement",
+            "coverageStatement"
+          ],
+          "rule": "These declarations must be explicitly present and unambiguous, regardless of representation format."
         },
-        "requiredFields": {
-          "meta": {
-            "description": "Artifact identity and authority declaration.",
-            "required": [
-              "name",
-              "version",
-              "generatedAt",
-              "codexTier",
-              "authorityBoundary",
-              "allowedActions",
-              "forbiddenActions"
-            ]
-          },
-          "auditSummary": {
-            "required": [
-              "auditId",
-              "model",
-              "scope",
-              "status",
-              "sealedAt",
-              "performedBy"
-            ]
-          },
-          "results": {
-            "required": [
-              "overallStatus",
-              "blockingFindings",
-              "advisoryFindings",
-              "informationalFindings"
-            ]
-          },
-          "artifactCounts": {
-            "required": [
-              "checklistFlags",
-              "contradictions",
-              "weakDoctrineEntries",
-              "driftIndicators"
-            ]
-          },
-          "references": {
-            "description": "Paths to canonical audit artifacts.",
-            "required": [
-              "checklist",
-              "contradictions",
-              "weakDoctrine",
-              "driftMap"
-            ]
-          }
-        },
-        "governanceRules": [
-          "Exactly one audit report may exist per completed audit.",
-          "Audit reports may only be generated after the audit is sealed.",
-          "Audit reports are read-only and immutable once generated.",
-          "Audit reports must not contain executable logic.",
-          "Absence of findings must be explicitly recorded."
-        ],
-        "timeStandard": {
-          "format": "unix_epoch_seconds_integer",
-          "source": "Error Governance Standard (EGS)"
-        },
-        "renderingGuidance": {
-          "description": "Non-binding guidance for downstream renderers.",
-          "rules": [
-            "Rendering systems may not infer findings not explicitly present.",
-            "Section ordering must follow declared structure.",
-            "Human-readable formatting is permitted only at render time."
+        "findingsModel": {
+          "description": "Findings, if present, must follow a structured problem-solving model.",
+          "requiredElements": [
+            "narrative description",
+            "exact Codex citation",
+            "cause analysis",
+            "proposed remedy or explicit no-action determination"
+          ],
+          "severityClasses": [
+            "blocking",
+            "advisory",
+            "informational"
           ]
         },
+        "absenceRequirement": {
+          "description": "Absence of issues is itself a governed statement.",
+          "rule": "Where no contradictions, weaknesses, or drift risks are identified, the Audit Record must state this explicitly."
+        },
+        "immutability": {
+          "rule": "Once sealed, an Audit Record is immutable.",
+          "note": "Corrections require a new audit."
+        },
+        "supersession": {
+          "rule": "Sealing a new Codex Audit Record supersedes the prior record as the single current canonical audit state.",
+          "archivePolicy": "Prior records may be archived for historical reference but hold no governance authority once superseded."
+        },
+        "derivedArtifacts": {
+          "description": "Derived artifacts are non-authoritative renderings of a sealed Codex Audit Record.",
+          "permittedForms": [
+            "PDF report",
+            "email summary",
+            "dashboard view",
+            "presentation"
+          ],
+          "authorityRule": "Derived artifacts possess no independent governance authority and must defer entirely to the canonical Codex Audit Record.",
+          "constraints": [
+            "No new findings may be introduced",
+            "No interpretation, inference, or editorial judgment may be added",
+            "No omissions may alter the meaning or scope of the canonical record",
+            "Summarization is permitted only when faithful and lossless"
+          ],
+          "immutabilityRule": "Any change to the underlying Audit Record requires regeneration of all derived artifacts."
+        },
         "prohibitions": [
-          "Embedding raw doctrine text",
-          "Embedding checklist item detail",
-          "Silent modification of audit results",
-          "Using audit reports as amendment proposals"
+          "Multiple canonical audit records for the same audit",
+          "Embedding raw Codex doctrine within the Audit Record or derived artifacts",
+          "Silent modification after sealing",
+          "Treating rendered output as authoritative",
+          "Using Audit Records or derived artifacts as amendment proposals"
         ],
         "validation": {
           "enforcedBy": null,
           "frequency": "per audit completion",
-          "action": "Generate summary artifact only; no mutation"
+          "action": "Record only"
+        },
+        "canonicalLocation": {
+          "path": "codex/meta/codexAudit.json",
+          "rule": "This path always contains the most recent sealed Codex Audit Record."
         },
         "notes": [
-          "This standard enables deterministic PDF and archival reporting.",
-          "Audit reports are governance artifacts but not Sources of Truth.",
-          "This standard introduces no new enforcement authority."
+          "This standard governs authority and structure, not visual or stylistic formatting.",
+          "Rendering systems may evolve independently provided they do not violate authority boundaries.",
+          "Audit identity is fixed by file location. Temporal data such as audit date or sequence belongs inside the record, not in filenames."
         ]
       }
     }
