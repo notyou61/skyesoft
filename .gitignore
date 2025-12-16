@@ -35,3 +35,7 @@ Thumbs.db
 # IDE artifacts
 .vscode/
 .idea/secure/
+
+# Sensitive local-only directory (never committed)
+secure
+secure/
