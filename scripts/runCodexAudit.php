@@ -175,7 +175,34 @@ This narrative is advisory only and exists to support human understanding and do
 You must generate content ONLY for the following sections:
 
 1. Executive Summary  
-   Explain the Codex framework that governs audit evaluation and determination meaning.
+
+Write this section for a non-technical manager or stakeholder.
+
+Assume the reader:
+- Is not a programmer
+- Is not familiar with Skyesoft internals
+- Has not read the Codex
+
+Language rules:
+- Use plain English
+- Use short sentences
+- Avoid jargon and formal governance language
+- Explain “Sound” in everyday terms
+
++ Use different sentence structures than previous runs when possible, without changing meaning.
+
+Content rules:
+- Explain what was reviewed
+- Explain what “Sound” means
+- Explain what this result does NOT mean (not finished, not final)
+- Explain why this audit result is sufficient at this stage
+
+You must:
+- Base all statements only on the audit record
+- Avoid recommendations
+- Avoid future-looking statements
+- Avoid reassurance or persuasion
+
 
 2. Methodology Overview  
    Explain, at a conceptual level, how Codex doctrine is evaluated (structure, tiers, universality), not what this audit found.
@@ -303,7 +330,11 @@ $determinationStatus = (
 
 #endregion
 
-#region SECTION 9 — Canonical Audit Record Assembly
+#region SECTION 9 — Canonical Audit Record Assembly (Canonical First)
+
+// ------------------------------------------------------------------
+// Phase A — Assemble canonical audit record (NO narrative yet)
+// ------------------------------------------------------------------
 
 $auditRecord = [
     // ------------------------------------------------------------------
@@ -342,47 +373,60 @@ $auditRecord = [
         "renderIntent" => "pdf",
         "authority"    => "derived-view",
         "notes"        => "Metadata exists solely to support document rendering and indexing."
-    ],
-
-    // ------------------------------------------------------------------
-    // Document Standard — Narrative Sections (advisory, static)
-    // ------------------------------------------------------------------
-    "reportNarrative" => [
-        "executiveSummary" => [
-            "icon"          => 29,
-            "contentFormat" => "paragraph",
-            "authority"     => "advisory",
-            "text"          =>
-                ($determination === "Sound")
-                ? "This audit confirms that the Codex is doctrinally sound at the time of assessment. "
-                  . "No contradictions, authority ambiguities, or universality violations were identified "
-                  . "under literal execution assumptions."
-                : "This audit identified blocking doctrinal issues that prevent safe and universal "
-                  . "operation of the Codex as authored."
-        ],
-
-        "methodologyOverview" => [
-            "icon"          => 6,
-            "contentFormat" => "bullets",
-            "authority"     => "advisory",
-            "items"         => [
-                "Deterministic validation of Codex structure and tier integrity",
-                "Adversarial review under literal and non-human execution assumptions",
-                "Binary determination of doctrinal soundness",
-                "Human-governed review and sealing"
-            ]
-        ],
-
-        "interpretationNotes" => [
-            "icon"          => 63,
-            "contentFormat" => "paragraph",
-            "authority"     => "advisory",
-            "text"          =>
-                "This narrative is explanatory only and carries no governance authority. "
-              . "All determinations and findings are defined exclusively in the governed audit fields."
-        ]
     ]
 ];
+
+// ------------------------------------------------------------------
+// Phase B — Generate advisory narrative FROM canonical record
+// ------------------------------------------------------------------
+
+$reportNarrativeAI = $aiEnabled
+    ? generateReportNarrative($auditRecord)
+    : [];
+
+// ------------------------------------------------------------------
+// Phase C — Attach advisory narrative (non-governing)
+// ------------------------------------------------------------------
+
+$auditRecord["reportNarrative"] = [
+    "executiveSummary" => [
+        "icon"          => 29,
+        "contentFormat" => "paragraphs",
+        "authority"     => "advisory",
+        "text"          => $reportNarrativeAI['executiveSummary']
+            ?? [
+                "This audit confirms that the rules governing Skyesoft are logically sound at this stage.",
+                "This means the rules don’t contradict each other, and they can be followed without needing to guess how to apply them.",
+                "However, this audit does not mean the system is complete or final — it simply means the current rules make sense and are in a workable state right now.",
+                "At this point, the audit confirms the rules can be followed as written without internal conflicts."
+            ]
+    ],
+
+    "methodologyOverview" => [
+        "icon"          => 6,
+        "contentFormat" => "bullets",
+        "authority"     => "advisory",
+        "items"         => [
+            "Checked that all required Codex sections are present",
+            "Verified rules do not contradict each other",
+            "Confirmed rules can be followed without hidden assumptions",
+            "Recorded a clear pass or fail result"
+        ]
+    ],
+
+    "interpretationNotes" => [
+        "icon"          => 63,
+        "contentFormat" => "paragraph",
+        "authority"     => "advisory",
+        "text"          =>
+            "This section explains the audit in plain language only. "
+          . "The audit result itself is defined by the governed fields above."
+    ]
+];
+
+// ------------------------------------------------------------------
+// Persist audit record
+// ------------------------------------------------------------------
 
 file_put_contents(
     $auditOut,
@@ -403,7 +447,9 @@ echo json_encode([
     "aiStatus" => $aiStatus,
     "status"   => $determinationStatus,
     "path"     => $auditOut,
-    "next"     => "Human review required before sealing and commit."
+    "next" => ($determinationStatus === "Sealed")
+    ? "Audit sealed. Ready for commit."
+    : "Human review required before sealing and commit."
 ], JSON_PRETTY_PRINT);
 
 #endregion
