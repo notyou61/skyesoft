@@ -173,83 +173,91 @@
         },
         "text": "The Codex governs all Skyesoft behavior. When code and Codex disagree, the Codex prevails. Skyesoft shall operate solely within the skyelighting.com domain and on approved GoDaddy infrastructure. No external platform or service shall be referenced, embedded, relied upon, or required unless explicitly authorized through the formal amendment process."
       },
-      "systemGovernance": {
+      "intentSeparatedDataArchitecture": {
         "articleNum": "3",
         "title": {
           "icon": 58,
-          "text": "Article III - Standards Govern Modules"
+          "text": "Article III - Intent-Separated Data Architecture"
+        },
+        "text": "Skyesoft shall organize and govern all data according to intent rather than format, feature, or consuming module. Data that defines system truth, records events, supports document creation or presentation, or enables runtime execution must remain separated by purpose. No data artifact may assume authority or permanence outside its intended role unless explicitly authorized through the formal amendment process."
+      },
+      "systemGovernance": {
+        "articleNum": "4",
+        "title": {
+          "icon": 58,
+          "text": "Article IV - Standards Govern Modules"
         },
         "text": "Tier 2 Standards define rules. Tier 3 Modules must follow them and cannot override them."
       },
       "consistencyDoctrine": {
-        "articleNum": "4",
+        "articleNum": "5",
         "title": {
           "icon": 58,
-          "text": "Article IV - Consistency and Uniformity"
+          "text": "Article V - Consistency and Uniformity"
         },
         "text": "All Skyesoft documents and system behaviors must follow shared visual, structural, and procedural standards."
       },
       "parliamentarianAuthority": {
-        "articleNum": "5",
+        "articleNum": "6",
         "title": {
           "icon": 58,
-          "text": "Article V - Parliamentarian Authority"
+          "text": "Article VI - Parliamentarian Authority"
         },
         "text": "The Parliamentarian interprets the Codex and resolves contradictions. Rulings clarify doctrine unless marked as amendments."
       },
       "archivistRole": {
-        "articleNum": "6",
+        "articleNum": "7",
         "title": {
           "icon": 58,
-          "text": "Article VI - The Archivist"
+          "text": "Article VII - The Archivist"
         },
         "text": "The Archivist records amendments and rulings. No rule is valid unless archived."
       },
       "sseDoctrine": {
-        "articleNum": "7",
+        "articleNum": "8",
         "title": {
           "icon": 58,
-          "text": "Article VII - Real-Time Data Doctrine"
+          "text": "Article VIII - Real-Time Data Doctrine"
         },
         "text": "All live data must originate from the SSE stream. Modules may not invent timestamps, weather, or time states."
       },
       "noShadowRules": {
-        "articleNum": "8",
+        "articleNum": "9",
         "title": {
           "icon": 58,
-          "text": "Article VIII - No Shadow Rules"
+          "text": "Article IX - No Shadow Rules"
         },
         "text": "Policies cannot exist outside the Codex. Chat conversations, emails, or code comments do not create rules."
       },
       "safeOperation": {
-        "articleNum": "9",
+        "articleNum": "10",
         "title": {
           "icon": 58,
-          "text": "Article IX - Safety & Operational Integrity"
+          "text": "Article X - Safety & Operational Integrity"
         },
         "text": "All system behaviors must align with real operational needs. Solutions must be practical, reliable, and suitable for everyday use. Overly academic or untested ideas are prohibited."
       },
       "amendmentProcess": {
-        "articleNum": "10",
+        "articleNum": "11",
         "title": {
           "icon": 58,
-          "text": "Article X - Amendment Procedure"
+          "text": "Article XI - Amendment Procedure"
         },
         "text": "Amendments require: (1) Proposal, (2) Parliamentarian Review, (3) Human Approval, (4) Archivist Recording."
       },
       "automationLimits": {
-        "articleNum": "11",
+        "articleNum": "12",
         "title": {
           "icon": 58,
-          "text": "Article XI - Limits of Automation"
+          "text": "Article XII - Limits of Automation"
         },
         "text": "No automated process, scheduled task, cron job, AI action, or system module may alter, extend, override, reinterpret, or nullify Codex doctrine. Automation may assist the Codex but cannot legislate. All doctrinal changes must follow the amendment process defined in Article X."
       },
       "automationReview": {
-        "articleNum": "12",
+        "articleNum": "13",
         "title": {
           "icon": 58,
-          "text": "Article XII - Automated Review & Proposal Discovery"
+          "text": "Article XIII - Automated Review & Proposal Discovery"
         },
         "text": "The system may automatically scan the repository, documents, data structures, and module outputs to identify inconsistencies, drift, or emerging patterns that may warrant doctrinal clarification. These automated findings may be presented as suggested proposals but possess no authority. Only humans may adopt or advance a proposal into the amendment process defined in Article X."
       }
@@ -1428,6 +1436,11 @@
             "key": "installationSummary",
             "name": "Installation Summary",
             "type": "report"
+          },
+          {
+            "key": "codexAudit",
+            "name": "Codex Audit",
+            "type": "audit"
           },
           {
             "key": "complianceAudit",
