@@ -1,7 +1,7 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": "2025-12-15T21:06:28+00:00",
+        "generatedAt": "2025-12-16T17:04:34+00:00",
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
@@ -1551,6 +1551,28 @@
         },
         {
             "id": "RNV-0140",
+            "path": "/documents/templates",
+            "type": "dir",
+            "category": "documentation",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "templates"
+        },
+        {
+            "id": "RNV-0141",
+            "path": "/documents/templates/documentTemplate.html",
+            "type": "file",
+            "category": "documentation",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "documentTemplate.html"
+        },
+        {
+            "id": "RNV-0142",
             "path": "/modules",
             "type": "dir",
             "category": "root",
@@ -1561,7 +1583,7 @@
             "name": "modules"
         },
         {
-            "id": "RNV-0141",
+            "id": "RNV-0143",
             "path": "/modules/automation",
             "type": "dir",
             "category": "execution",
@@ -1572,7 +1594,7 @@
             "name": "automation"
         },
         {
-            "id": "RNV-0142",
+            "id": "RNV-0144",
             "path": "/modules/automation/aiValidator.php",
             "type": "file",
             "category": "execution",
@@ -1583,7 +1605,7 @@
             "name": "aiValidator.php"
         },
         {
-            "id": "RNV-0143",
+            "id": "RNV-0145",
             "path": "/modules/automation/codeValidator.php",
             "type": "file",
             "category": "execution",
@@ -1594,7 +1616,7 @@
             "name": "codeValidator.php"
         },
         {
-            "id": "RNV-0144",
+            "id": "RNV-0146",
             "path": "/modules/automation/historyValidator.php",
             "type": "file",
             "category": "execution",
@@ -1605,7 +1627,7 @@
             "name": "historyValidator.php"
         },
         {
-            "id": "RNV-0145",
+            "id": "RNV-0147",
             "path": "/modules/automation/ragValidator.php",
             "type": "file",
             "category": "execution",
@@ -1616,7 +1638,7 @@
             "name": "ragValidator.php"
         },
         {
-            "id": "RNV-0146",
+            "id": "RNV-0148",
             "path": "/modules/automation/semanticValidator.php",
             "type": "file",
             "category": "execution",
@@ -1627,7 +1649,7 @@
             "name": "semanticValidator.php"
         },
         {
-            "id": "RNV-0147",
+            "id": "RNV-0149",
             "path": "/modules/automation/skyebotValidator.php",
             "type": "file",
             "category": "execution",
@@ -1638,7 +1660,7 @@
             "name": "skyebotValidator.php"
         },
         {
-            "id": "RNV-0148",
+            "id": "RNV-0150",
             "path": "/modules/automation/sseIntegrityChecker.php",
             "type": "file",
             "category": "execution",
@@ -1649,7 +1671,7 @@
             "name": "sseIntegrityChecker.php"
         },
         {
-            "id": "RNV-0149",
+            "id": "RNV-0151",
             "path": "/modules/deployment",
             "type": "dir",
             "category": "execution",
@@ -1660,7 +1682,7 @@
             "name": "deployment"
         },
         {
-            "id": "RNV-0150",
+            "id": "RNV-0152",
             "path": "/modules/deployment/deploymentConfig.json",
             "type": "file",
             "category": "execution",
@@ -1671,7 +1693,7 @@
             "name": "deploymentConfig.json"
         },
         {
-            "id": "RNV-0151",
+            "id": "RNV-0153",
             "path": "/modules/deployment/deploymentEngine.php",
             "type": "file",
             "category": "execution",
@@ -1682,7 +1704,7 @@
             "name": "deploymentEngine.php"
         },
         {
-            "id": "RNV-0152",
+            "id": "RNV-0154",
             "path": "/modules/holidayInterpreter.php",
             "type": "file",
             "category": "execution",
@@ -1693,7 +1715,7 @@
             "name": "holidayInterpreter.php"
         },
         {
-            "id": "RNV-0153",
+            "id": "RNV-0155",
             "path": "/reports",
             "type": "dir",
             "category": "root",
@@ -1704,7 +1726,7 @@
             "name": "reports"
         },
         {
-            "id": "RNV-0154",
+            "id": "RNV-0156",
             "path": "/reports/automation",
             "type": "dir",
             "category": "system-state",
@@ -1715,7 +1737,7 @@
             "name": "automation"
         },
         {
-            "id": "RNV-0155",
+            "id": "RNV-0157",
             "path": "/reports/automation/dailyRepositoryAudit.json",
             "type": "file",
             "category": "system-state",
@@ -1726,7 +1748,7 @@
             "name": "dailyRepositoryAudit.json"
         },
         {
-            "id": "RNV-0156",
+            "id": "RNV-0158",
             "path": "/scripts",
             "type": "dir",
             "category": "root",
@@ -1737,7 +1759,7 @@
             "name": "scripts"
         },
         {
-            "id": "RNV-0157",
+            "id": "RNV-0159",
             "path": "/scripts/auditor.php",
             "type": "file",
             "category": "execution",
@@ -1748,7 +1770,18 @@
             "name": "auditor.php"
         },
         {
-            "id": "RNV-0158",
+            "id": "RNV-0160",
+            "path": "/scripts/generateDocument.php",
+            "type": "file",
+            "category": "execution",
+            "tier": "Tier-3",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "generateDocument.php"
+        },
+        {
+            "id": "RNV-0161",
             "path": "/scripts/merkleBuild.php",
             "type": "file",
             "category": "execution",
@@ -1759,7 +1792,7 @@
             "name": "merkleBuild.php"
         },
         {
-            "id": "RNV-0159",
+            "id": "RNV-0162",
             "path": "/scripts/merkleBuilder.php",
             "type": "file",
             "category": "execution",
@@ -1770,7 +1803,7 @@
             "name": "merkleBuilder.php"
         },
         {
-            "id": "RNV-0160",
+            "id": "RNV-0163",
             "path": "/scripts/merkleVerify.php",
             "type": "file",
             "category": "execution",
@@ -1781,7 +1814,7 @@
             "name": "merkleVerify.php"
         },
         {
-            "id": "RNV-0161",
+            "id": "RNV-0164",
             "path": "/scripts/repositoryInventoryBuilder.php",
             "type": "file",
             "category": "execution",
@@ -1792,7 +1825,7 @@
             "name": "repositoryInventoryBuilder.php"
         },
         {
-            "id": "RNV-0162",
+            "id": "RNV-0165",
             "path": "/scripts/runCodexAudit.php",
             "type": "file",
             "category": "execution",
@@ -1803,7 +1836,7 @@
             "name": "runCodexAudit.php"
         },
         {
-            "id": "RNV-0163",
+            "id": "RNV-0166",
             "path": "/scripts/sentinel.php",
             "type": "file",
             "category": "execution",
@@ -1814,7 +1847,7 @@
             "name": "sentinel.php"
         },
         {
-            "id": "RNV-0164",
+            "id": "RNV-0167",
             "path": "/secure",
             "type": "dir",
             "category": "root",
@@ -1825,7 +1858,7 @@
             "name": "secure"
         },
         {
-            "id": "RNV-0165",
+            "id": "RNV-0168",
             "path": "/secure/env.local",
             "type": "file",
             "category": "security",

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{documentTitle}}</title>
+
+  <style>
+    /* PAGE SETUP */
+    @page {
+      margin: 0.75in 0.5in 0.75in 0.5in;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* HEADER */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 0.75in;
+    }
+
+    /* FOOTER */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 0.5in;
+      font-size: 9pt;
+    }
+
+    /* CONTENT */
+    main {
+      margin-top: 0.9in;
+      margin-bottom: 0.7in;
+    }
+
+    .section {
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .section-header .icon {
+      margin-right: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  {{headerContent}}
+</header>
+
+<footer>
+  {{footerContent}}
+</footer>
+
+<main>
+  {{documentBody}}
+</main>
+
+</body>
+</html>
