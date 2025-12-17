@@ -313,6 +313,129 @@
       }
     },
     "items": {
+      "dataIntentStandard": {
+        "title": {
+          "icon": 42,
+          "text": "Data Intent Classification Standard"
+        },
+        "tier": 2,
+        "type": "Structural Standard",
+        "version": "1.0.0",
+        "preamble": {
+          "icon": 7,
+          "text": "This Standard operationalizes the constitutional requirement that informational data in Skyesoft is governed by intent rather than format, location, or consuming module. It establishes a uniform framework for classifying governed informational artifacts—excluding structural UI components and execution scaffolding—by defining their authority, longevity, and permissible flows to prevent silent role drift and ambiguity."
+        },
+        "scope": {
+          "text": "Governs all governed artifacts within the Skyesoft repository, meaning any file or directory that is intentionally managed by the Codex — including what rules it must follow, who may change it, how it evolves over time, and how it is audited."
+        },
+        "conceptualModel": {
+          "name": "Intent Domain Matrix",
+          "axes": {
+            "authority": {
+              "high": "Artifact defines or participates in system truth.",
+              "low": "Artifact defers to truth defined elsewhere."
+            },
+            "longevity": {
+              "persistent": "Artifact is intended to persist across executions or system lifetimes.",
+              "ephemeral": "Artifact exists only to support current operation and may be discarded."
+            }
+          },
+          "quadrants": {
+            "highAuthorityPersistent": "Authoritative",
+            "highAuthorityEphemeral": "RuntimeEphemeral",
+            "lowAuthorityPersistent": "RecordOrDocumentSource",
+            "lowAuthorityEphemeral": "DerivedOutput"
+          }
+        },
+        "intentDomains": {
+          "authoritative": {
+            "description": "Artifacts that define system truth and to which all other artifacts must defer.",
+            "authority": "high",
+            "longevity": "persistent",
+            "rules": [
+              "May not be derived from other artifacts.",
+              "May only be modified through governed processes.",
+              "Conflicts are resolved in favor of this domain."
+            ]
+          },
+          "record": {
+            "description": "Artifacts that record events, observations, or history without defining truth.",
+            "authority": "low",
+            "longevity": "persistent",
+            "rules": [
+              "Must not be rewritten to alter history.",
+              "Append-only unless explicitly governed otherwise.",
+              "May not override authoritative artifacts."
+            ]
+          },
+          "documentSource": {
+            "description": "Artifacts that provide structured input for generating documents or reports.",
+            "authority": "low",
+            "longevity": "persistent",
+            "rules": [
+              "May be revised prior to regeneration.",
+              "Must never be treated as authoritative truth.",
+              "May feed only derived outputs."
+            ]
+          },
+          "derivedOutput": {
+            "description": "Artifacts that exist solely as rendered views for human consumption.",
+            "authority": "low",
+            "longevity": "ephemeral",
+            "rules": [
+              "May be deleted and regenerated freely.",
+              "Must never be used as an input source.",
+              "Loss does not constitute data loss."
+            ]
+          },
+          "runtimeEphemeral": {
+            "description": "Artifacts that exist only to support live system operation.",
+            "authority": "high",
+            "longevity": "ephemeral",
+            "rules": [
+              "May be overwritten freely.",
+              "Must not persist as records or truth.",
+              "Must not be promoted to authoritative or record domains."
+            ]
+          }
+        },
+        "flowConstraints": {
+          "permitted": [
+            "authoritative -> record",
+            "authoritative -> runtimeEphemeral",
+            "record -> derivedOutput",
+            "documentSource -> derivedOutput",
+            "runtimeEphemeral -> derivedOutput"
+          ],
+          "prohibited": [
+            "derivedOutput -> any",
+            "runtimeEphemeral -> authoritative",
+            "record -> authoritative",
+            "derivedOutput -> record"
+          ]
+        },
+        "requirements": [
+          "Each governed artifact must belong to exactly one intent domain.",
+          "Intent must not be inferred from file format or directory location.",
+          "Rendered outputs must never become sources of truth.",
+          "Persistent artifacts must declare their authority explicitly."
+        ],
+        "enforcement": {
+          "auditedBy": "repositoryAuditor",
+          "violationSeverity": "structural",
+          "notes": "Intent violations must be resolved through governance, not workaround."
+        },
+        "relationships": {
+          "references": [
+            "repositoryStandard",
+            "repositoryInventoryStandard",
+            "documentStandard",
+            "errorGovernanceStandard",
+            "merkleIntegrityStandard"
+          ],
+          "governedBy": "constitution.articleIII"
+        }
+      },
       "namingConvention": {
         "title": { "icon": 11, "text": "Naming Convention Standard" },
         "tier": 2,
