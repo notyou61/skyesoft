@@ -345,6 +345,30 @@
             "highAuthorityEphemeral": "RuntimeEphemeral",
             "lowAuthorityPersistent": "RecordOrDocumentSource",
             "lowAuthorityEphemeral": "DerivedOutput"
+          },
+          "structureNote": {
+            "text": "The Intent Domain Matrix is intended to map directly to physical data organization. Each quadrant corresponds to a distinct data folder, ensuring that artifact authority and longevity are reinforced by filesystem structure. This alignment is deliberate and exists to provide predictable paths, reduce ambiguity, and prevent accidental role mixing."
+          },
+          "canonicalFolders": {
+            "root": "/data",
+            "folders": {
+              "authoritative": {
+                "path": "/data/authoritative",
+                "purpose": "Persistent artifacts that define or participate in system truth."
+              },
+              "runtime": {
+                "path": "/data/runtime",
+                "purpose": "Ephemeral artifacts that represent live, authoritative system state and may be freely overwritten."
+              },
+              "records": {
+                "path": "/data/records",
+                "purpose": "Persistent artifacts that record events, observations, or history without defining truth."
+              },
+              "derived": {
+                "path": "/data/derived",
+                "purpose": "Ephemeral artifacts generated solely for human consumption, safe to regenerate, and never used as input sources."
+              }
+            }
           }
         },
         "intentDomains": {
