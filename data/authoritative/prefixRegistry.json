@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "codexVersion": "1.1.0",
+    "objectType": "prefixRegistry",
+    "objectKey": "prefixRegistry",
+    "generatedBy": "Skyesoft System",
+    "generatedOn": "SSE:timeDateArray.currentLocalTime",
+    "checksum": "auto",
+    "notes": "This file is the Single Source of Truth (SOT) for all Skyesoft prefixes. All prefixes must comply with the Prefix Registry Framework (PRF) rules PRF-0001 through PRF-0007. No prefixes may be added, modified, or removed except through Codex governance."
+  },
+  "prefixes": [
+    {
+      "prefix": "PRF",
+      "domain": "governance",
+      "description": "Prefix Registry governance, rules, and constitutional oversight.",
+      "example": "PRF-0001"
+    },
+    {
+      "prefix": "RNV",
+      "domain": "repositoryInventory",
+      "description": "Canonical file and directory identifiers within the Repository Inventory.",
+      "example": "RNV-0001"
+    },
+      {
+      "prefix": "ENT",
+      "domain": "entities",
+      "description": "Companies, clients, vendors, or jurisdictions recognized by the system.",
+      "example": "ENT-0001"
+    },
+    {
+      "prefix": "LOC",
+      "domain": "locations",
+      "description": "Physical or virtual locations, including sites, offices, and jurisdictions.",
+      "example": "LOC-0001"
+    },
+    {
+      "prefix": "CNT",
+      "domain": "contacts",
+      "description": "Contact identifiers including clients, staff, vendors, and individuals.",
+      "example": "CNT-0001"
+    },
+    {
+      "prefix": "JOB",
+      "domain": "jobOrders",
+      "description": "Job orders, production tasks, and operational work instructions.",
+      "example": "JOB-0001"
+    },
+    {
+      "prefix": "EST",
+      "domain": "estimates",
+      "description": "Estimate, quote, and pricing request identifiers.",
+      "example": "EST-0001"
+    },
+        {
+      "prefix": "INV",
+      "domain": "invoices",
+      "description": "Invoice identifiers used for billing, accounting, and financial tracking.",
+      "example": "INV-0001"
+    },
+    {
+      "prefix": "SUR",
+      "domain": "surveys",
+      "description": "Site surveys, field measurements, and verification records.",
+      "example": "SUR-0001"
+    },
+    {
+      "prefix": "DOC",
+      "domain": "documents",
+      "description": "All system-generated documents, memos, letters, zoning reports, and records.",
+      "example": "DOC-0001"
+    },
+    {
+      "prefix": "MOD",
+      "domain": "modules",
+      "description": "Codex modules, components, engines, and structural logic units.",
+      "example": "MOD-0001"
+    },
+    {
+      "prefix": "PER",
+      "domain": "permits",
+      "description": "Permit identifiers for building, electric, and sign permits tracked in Skyesoft.",
+      "example": "PER-0001"
+    },
+    {
+    "prefix": "ERR",
+    "domain": "errors",
+    "description": "Codified structural and validation error identifiers used by the Skyesoft audit system.",
+    "example": "ERR-0001"
+    }
+  ]
+}
