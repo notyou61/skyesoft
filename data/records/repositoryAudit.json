@@ -65,5 +65,26 @@
         "code": "MERKLE_VERIFY_ERROR",
         "path": null,
         "message": "Missing file during verification: test.txt"
+    },
+    "8": {
+        "timestamp": 1766070837,
+        "errorId": "ERR-00001",
+        "code": "MERKLE_VERIFY_ERROR",
+        "path": null,
+        "message": "repositoryInventory.json missing."
+    },
+    "9": {
+        "timestamp": 1766071136,
+        "errorId": "ERR-00002",
+        "code": "MERKLE_VERIFY_ERROR",
+        "path": null,
+        "message": "repositoryInventory.json missing."
+    },
+    "10": {
+        "timestamp": 1766072237,
+        "errorId": "ERR-00003",
+        "code": "MERKLE_VERIFY_ERROR",
+        "path": null,
+        "message": "repositoryInventory.json missing."
     }
 }

@@ -466,17 +466,89 @@
         "hierarchyOrder": 1,
         "type": "Structural Standard",
         "preamble": {
-          "text": "Naming conventions ensure clarity, consistency, and predictable system behavior. Skyesoft-controlled identifiers follow camelCase, while globally recognized industry-standard filenames retain their universal forms."
+          "text": "Naming conventions ensure clarity, consistency, and predictable system behavior. Skyesoft governs naming only where filenames or identifiers carry semantic, executable, or doctrinal authority. The primary objective is uniformity within defined categories, while respecting dominant industry conventions elsewhere. JSON files receive dedicated classification due to their central role in data, configuration, and doctrinal representation."
         },
-        "rules": [
-          "camelCase is mandatory for all Skyesoft-controlled filenames, variables, functions, JSON properties, and database identifiers.",
-          "Directories must also use camelCase.",
+        "principles": [
+          "Consistency within a category is more important than enforcing a single global naming style.",
+          "Strict naming rules apply only where identifiers encode behavior, authority, or doctrine.",
+          "Presentation, configuration, and generated artifacts follow industry conventions unless explicitly governed.",
+          "The Codex avoids stylistic micromanagement outside semantically critical domains.",
+          "JSON classification reflects semantic authority: canonical registries are treated as code-adjacent doctrine with the highest protection; non-doctrinal data and generated records receive minimal governance."
+        ],
+        "definitions": {
+          "category": "A logical grouping of artifacts sharing purpose and semantic role (e.g., PHP modules, canonical registries, static assets, configuration files). Naming consistency is evaluated within categories, not across unrelated artifact types.",
+          "semanticAuthority": "A property of files whose names identify executable logic, canonical system truth, or Codex-governed doctrine."
+        },
+        "semanticRoles": {
+          "executableSource": {
+            "description": "Files that are executed, imported, or autoloaded by the system.",
+            "rules": [
+              "PHP classes must use PascalCase filenames matching the class name (PSR-4).",
+              "Non-class PHP and JavaScript modules should use camelCase filenames.",
+              "Internal identifiers (variables, functions, methods) must use camelCase."
+            ]
+          },
+          "canonicalRegistries": {
+            "description": "JSON files that define named, authoritative system registries or maps used as sources of truth across Skyesoft. These are treated as code-adjacent doctrine.",
+            "authority": "Doctrinal (code-adjacent)",
+            "rules": [
+              "Filenames must use camelCase.",
+              "Filenames must end with a semantic suffix such as Registry.json, Map.json, or Index.json.",
+              "JSON keys within registries must use camelCase."
+            ],
+            "examples": [
+              "holidayRegistry.json",
+              "iconMap.json",
+              "prefixRegistry.json"
+            ],
+            "notes": [
+              "Canonical registries are governed artifacts.",
+              "Filename consistency is mandatory.",
+              "Subject to full governance audit."
+            ]
+          },
+          "canonicalDataAndConfig": {
+            "description": "JSON or configuration files that store structured data, datasets, or non-doctrinal configuration.",
+            "authority": "Operational (configurable)",
+            "rules": [
+              "kebab-case or snake_case filenames are permitted.",
+              "Consistency within the category is required."
+            ],
+            "examples": [
+              "dynamic-data.json",
+              "error-registry.json"
+            ],
+            "notes": [
+              "No doctrinal weight.",
+              "May be mutable via configured processes."
+            ]
+          },
+          "staticAssets": {
+            "description": "Presentation-layer artifacts such as CSS, images, fonts, and media.",
+            "rules": [
+              "Follow dominant industry conventions (typically kebab-case).",
+              "camelCase is not required or enforced."
+            ]
+          },
+          "generatedRecords": {
+            "description": "Runtime-generated files such as logs, audit outputs, reports, or JSON records.",
+            "authority": "Transient (non-doctrinal)",
+            "rules": [
+              "Naming is not governed by this standard."
+            ],
+            "examples": [
+              "audit-report.json"
+            ],
+            "notes": [
+              "Typically timestamped or namespaced by process."
+            ]
+          }
+        },
+        "generalRules": [
+          "Directories within Codex-governed scopes must follow a consistent naming convention within their category.",
           "File extensions must always be lowercase.",
-          "Hyphens and underscores are prohibited in Skyesoft-controlled filenames.",
-          "PascalCase is reserved for classes or types only.",
-          "Image assets must use camelCase (e.g., skyebotIcon.png).",
-          "CSS files must use camelCase (e.g., skyesoftUi.css).",
-          "Industry-standard filenames are exempt from the camelCase rule."
+          "All JSON files must use .json lowercase extension.",
+          "Industry-standard and ecosystem-defined filenames are exempt from all Skyesoft naming constraints."
         ],
         "industryExceptions": [
           "README.md",
@@ -487,43 +559,48 @@
           ".gitattributes",
           ".editorconfig",
           ".env",
-          ".htaccess"
+          ".htaccess",
+          ".nojekyll",
+          "package.json",
+          "composer.json"
         ],
         "examples": {
           "valid": [
-            "officeBoard.html",
-            "dynamicData.json",
-            "prefixRegistry.json",
+            "officeBoard.php",
             "getDynamicData.php",
-            "skyesoftUi.css",
-            "skyebotIcon.png",
-            "README.md",
-            ".gitignore"
+            "holidayRegistry.json",
+            "iconMap.json",
+            "dynamic-data.json",
+            "error-registry.json",
+            "main-layout.css",
+            "skyebot-icon.png",
+            "audit-report.json",
+            "README.md"
           ],
           "invalid": [
-            "OfficeBoard.HTML",
-            "dynamic_data.JSON",
-            "skyesoft-ui.css",
-            "skyebot-icon.png",
-            "GetDynamicData.PHP"
+            "OfficeBoard.PHP",
+            "holiday-registry.json",
+            "icon_map.json",
+            "get_dynamic_data.php alongside camelCase siblings"
           ]
         },
         "violations": {
           "classification": {
-            "minor": "Non-compliant casing but correct directory location.",
-            "major": "Naming outside allowed rules OR filename blocking module resolution.",
-            "constitutional": "Naming that misrepresents module intent or violates Codex authority."
+            "minor": "Inconsistent naming within a category without functional impact.",
+            "major": "Mixed conventions causing ambiguity or breaking resolution or autoloading.",
+            "constitutional": "Naming that misrepresents semantic authority, doctrinal scope, or Codex governance."
           }
         },
         "validation": {
           "enforcedBy": "repositoryAuditor.php",
-          "frequency": "daily-or-on-commit",
-          "action": "Report non-compliant Skyesoft-controlled filenames; ignore industry-standard exceptions."
+          "frequency": "Operational (detect gross inconsistencies and misclassifications) and Governance (full doctrinal evaluation)",
+          "action": "Flag violations only within semantically governed categories; ignore non-governed artifacts."
         },
         "notes": [
-          "Industry-standard filenames are globally recognized and must not be altered.",
-          "Legacy files must be renamed before Phase 2 activation.",
-          "Any structural naming exception outside this list requires formal Codex amendment."
+          "File-type–specific rules are introduced only where filenames themselves carry semantic authority.",
+          "Consistency is evaluated per category, not globally.",
+          "JSON classification determines authority, mutability, and audit depth.",
+          "Any expansion of governed scope or new classifications requires a formal Codex amendment."
         ]
       },
       "prefixRegistry": {
@@ -2599,171 +2676,78 @@
           "This standard prevents development noise from contaminating operational history."
         ]
       },
-      "codexAuditStandard": {
-        "title": {
-          "icon": 67,
-          "text": "Codex Audit Standard"
-        },
+      "operationalAuditStandard": {
+        "title": { "icon": 67, "text": "Operational Audit Standard" },
         "tier": 2,
         "hierarchyOrder": 5,
         "type": "Structural Standard",
         "preamble": {
-          "icon": 0,
-          "text": "A Codex Audit is a formal, point-in-time assessment of Codex Doctrinal Soundness.\n\nThe audit evaluates whether the Codex, as written at a specific moment, can govern the system safely, consistently, and universally without contradiction, implicit assumptions, or reliance on unwritten rules.\n\nThe audit presumes the Codex is valid unless proven otherwise. Findings arise only where doctrine cannot be applied literally, where rules compel incompatible outcomes, where authority is ambiguous, or where governed actions require inference to execute correctly.\n\nAll Codex rules are presumed universally applicable unless an explicit Codex exception is cited. Silence does not constitute exemption.\n\nThe audit is conducted under adversarial assumptions, including misuse, misinterpretation, automation error, fatigue, partial failure, and literal execution by non-human actors.\n\nThe audit does not evaluate desirability, optimization, elegance, or future potential. It evaluates only whether the Codex, as authored, is doctrinally sound and safe to operate at the time of assessment.\n\nAudit findings are non-legislative. No doctrine is altered by an audit. All findings require explicit human adjudication and governed amendment to take effect."
+          "text": "An Operational Audit is a lightweight, repeatable system check designed to detect runtime violations, integrity drift, configuration errors, or state inconsistencies as they occur.\n\nOperational Audits prioritize timeliness and safety over exhaustiveness. They exist to surface problems early, not to evaluate doctrine."
         },
         "purpose": {
-          "icon": 6,
-          "text": "Establish the governed method for periodic assessment of Doctrinal Soundness, producing traceable records of Codex health without legislative effect."
+          "text": "Provide continuous monitoring of system health, integrity, and governed expectations during normal operation."
         },
-        "scope": "Entire Codex (all tiers and derived mechanisms)",
-        "principles": [
-          { "key": "presumptionOfValidity", "text": "The Codex is presumed sound unless doctrine as written proves otherwise." },
-          { "key": "literalInterpretation", "text": "Rules are evaluated exactly as authored; no inference permitted." },
-          { "key": "universality", "text": "Rules apply universally unless explicitly excepted in the Codex." },
-          { "key": "adversarialPosture", "text": "Assume misuse, fatigue, automation error, and literal non-human execution." },
-          { "key": "pointInTime", "text": "Assessment reflects the Codex state at audit date only." },
-          { "key": "nonLegislative", "text": "Audits record findings only; no alteration of doctrine." }
+        "scope": [
+          "Repository state vs declared inventory",
+          "Merkle integrity status",
+          "Critical configuration presence",
+          "Execution invariants required for safe operation"
         ],
-        "method": "Adversarial review using Willis Carrier problem-solving: locate issue (narrative + citation), analyze cause, propose remedy (or explicit none).",
+        "principles": [
+          { "key": "nonDoctrinal", "text": "Operational Audits do not evaluate Codex doctrine itself." },
+          { "key": "continuous", "text": "Operational Audits may be run frequently and automatically." },
+          { "key": "failFast", "text": "Violations are reported immediately when detected." },
+          { "key": "nonLegislative", "text": "Operational Audits have no authority to alter system state or doctrine." },
+          { "key": "readOnlyExecution", "text": "Audits operate in read-only mode and must not mutate system state." }
+        ],
+        "execution": {
+          "trigger": "Automated (cron or system scheduler)",
+          "frequency": "High (e.g., every minute)",
+          "executor": "repositoryAuditor.php"
+        },
         "outputs": {
-          "canonicalRecord": {
-            "path": "codex/meta/codexAudit.json",
-            "description": "The single canonical Codex Audit Record representing the most recent sealed assessment."
-          },
-          "derivedReports": {
-            "path": "reports/audit/",
-            "description": "Non-authoritative rendered artifacts (PDF, email, etc.) derived from the canonical record."
-          }
-        },
-        "validation": {
-          "enforcedBy": null,
-          "frequency": "Human-initiated or on version change",
-          "action": "Record assessment only"
-        },
-        "auditDetermination": {
-          "title": { "icon": 67, "text": "Audit Determination" },
-          "definition": "An Audit Determination is the formal, point-in-time declaration of whether the Codex, as authored at the time of assessment, is doctrinally sound and safe to operate under literal, universal, non-inferential application.",
-          "allowedValues": [
-            "Sound",
-            "Not Sound"
-          ],
-          "rules": [
-            "Determination is based solely on Codex doctrine as written.",
-            "Any blocking finding requires a determination of Not Sound.",
-            "Advisory or informational findings alone do not invalidate Soundness.",
-            "Determination does not imply desirability, optimization, or approval of future changes.",
-            "Determination must be explicit; silence is invalid."
-          ],
-          "prohibitions": [
-            "Graduated scores",
-            "Probabilistic language",
-            "Implicit determinations",
-            "Editorial qualifiers"
-          ]
+          "behavior": "Emit status, violations, and alerts as system events.",
+          "authority": "No canonical governance record is produced."
         },
         "notes": [
-          "Doctrinal Soundness: the condition in which Codex rules are non-contradictory, complete for governed actions, authority-clear, enforceable, and resistant to drift or misuse.",
-          "Pending formal ratification via governed amendment process."
+          "Operational Audits may produce logs or alerts but do not create authoritative audit records.",
+          "Operational Audits may short-circuit or degrade gracefully under system load.",
+          "Operational Audits are executed as a distinct audit mode within a single governed auditor implementation."
         ]
       },
-      "codexAuditRecordStandard": {
-        "title": { "icon": 67, "text": "Codex Audit Record Standard" },
+      "governanceAuditStandard": {
+        "title": { "icon": 67, "text": "Governance Audit Standard" },
         "tier": 2,
-        "hierarchyOrder": 17,
+        "hierarchyOrder": 6,
         "type": "Structural Standard",
         "preamble": {
-          "icon": 0,
-          "text": "A Codex Audit Record is the single canonical artifact produced by a completed Codex Audit.\n\nIt is a point-in-time, non-legislative record stating whether the Codex is doctrinally sound at the time of assessment and documenting any findings that prevent literal, universal, and safe application of Codex doctrine.\n\nThe Audit Record is authoritative for audit results. All summaries, reports, PDFs, emails, and presentations are derived views and hold no independent governance authority."
+          "text": "A Governance Audit is a formal, point-in-time assessment of Codex Doctrinal Soundness.\n\nIt evaluates whether the Codex, as authored at the time of assessment, can be applied literally, universally, and safely without contradiction, ambiguity, or reliance on inference."
         },
         "purpose": {
-          "icon": 6,
-          "text": "Define the minimum required structure and authority boundaries of the canonical Codex Audit Record."
+          "text": "Determine whether the Codex itself remains fit to govern the system."
         },
-        "scope": "All Codex audits conducted under the Codex Audit Standard",
+        "scope": "Entire Codex (all tiers)",
         "principles": [
-          { "key": "singleCanonicalRecord", "text": "Each Codex Audit produces exactly one canonical Audit Record." },
-          { "key": "nonLegislative", "text": "Audit Records do not amend, override, or reinterpret Codex doctrine." },
-          { "key": "pointInTime", "text": "Audit Records reflect Codex state at the moment of sealing only." },
-          { "key": "universalityPresumed", "text": "All findings assume Codex universality unless an explicit exception is cited." },
-          { "key": "renderDerived", "text": "Rendered reports are views, not Sources of Truth." },
-          { "key": "canonicalStateArtifact", "text": "The Codex Audit Record represents the single current canonical audit state. Upon sealing of a new audit, it supersedes any prior Audit Record."}
+          { "key": "presumptionOfValidity", "text": "The Codex is presumed sound unless proven otherwise." },
+          { "key": "literalInterpretation", "text": "Doctrine is evaluated exactly as written." },
+          { "key": "universality", "text": "Rules apply universally unless explicitly excepted." },
+          { "key": "adversarialPosture", "text": "Assume misuse, automation error, fatigue, and literal execution by non-human actors." },
+          { "key": "nonLegislative", "text": "Audits do not modify doctrine." },
+          { "key": "readOnlyExecution", "text": "Audits operate in read-only mode and must not mutate system state." }
         ],
-        "requiredDeclarations": {
-          "description": "A Codex Audit Record must contain the following declarations in some explicit form:",
-          "required": [
-            "auditId",
-            "auditDate",
-            "codexSnapshot",
-            "methodReference",
-            "overallDetermination",
-            "findingsOrNoneStatement",
-            "coverageStatement"
-          ],
-          "rule": "These declarations must be explicitly present and unambiguous, regardless of representation format."
+        "execution": {
+          "trigger": "Scheduled or human-initiated",
+          "frequency": "Low (e.g., daily at midnight or on version change)",
+          "executor": "repositoryAuditor.php"
         },
-        "findingsModel": {
-          "description": "Findings, if present, must follow a structured problem-solving model.",
-          "requiredElements": [
-            "narrative description",
-            "exact Codex citation",
-            "cause analysis",
-            "proposed remedy or explicit no-action determination"
-          ],
-          "severityClasses": [
-            "blocking",
-            "advisory",
-            "informational"
-          ]
-        },
-        "absenceRequirement": {
-          "description": "Absence of issues is itself a governed statement.",
-          "rule": "Where no contradictions, weaknesses, or drift risks are identified, the Audit Record must state this explicitly."
-        },
-        "immutability": {
-          "rule": "Once sealed, an Audit Record is immutable.",
-          "note": "Corrections require a new audit."
-        },
-        "supersession": {
-          "rule": "Sealing a new Codex Audit Record supersedes the prior record as the single current canonical audit state.",
-          "archivePolicy": "Prior records may be archived for historical reference but hold no governance authority once superseded."
-        },
-        "derivedArtifacts": {
-          "description": "Derived artifacts are non-authoritative renderings of a sealed Codex Audit Record.",
-          "permittedForms": [
-            "PDF report",
-            "email summary",
-            "dashboard view",
-            "presentation"
-          ],
-          "authorityRule": "Derived artifacts possess no independent governance authority and must defer entirely to the canonical Codex Audit Record.",
-          "constraints": [
-            "No new findings may be introduced",
-            "No interpretation, inference, or editorial judgment may be added",
-            "No omissions may alter the meaning or scope of the canonical record",
-            "Summarization is permitted only when faithful and lossless"
-          ],
-          "immutabilityRule": "Any change to the underlying Audit Record requires regeneration of all derived artifacts."
-        },
-        "prohibitions": [
-          "Multiple canonical audit records for the same audit",
-          "Embedding raw Codex doctrine within the Audit Record or derived artifacts",
-          "Silent modification after sealing",
-          "Treating rendered output as authoritative",
-          "Using Audit Records or derived artifacts as amendment proposals"
-        ],
-        "validation": {
-          "enforcedBy": null,
-          "frequency": "per audit completion",
-          "action": "Record only"
-        },
-        "canonicalLocation": {
-          "path": "codex/meta/codexAudit.json",
-          "rule": "This path always contains the most recent sealed Codex Audit Record."
+        "outputs": {
+          "behavior": "Produce a single point-in-time determination of doctrinal soundness.",
+          "authority": "Governance significance; record defined elsewhere."
         },
         "notes": [
-          "This standard governs authority and structure, not visual or stylistic formatting.",
-          "Rendering systems may evolve independently provided they do not violate authority boundaries.",
-          "Audit identity is fixed by file location. Temporal data such as audit date or sequence belongs inside the record, not in filenames."
+          "Governance Audits are exhaustive, not continuous.",
+          "Governance Audits may require human review before sealing.",
+          "Governance Audits are executed using the same auditor implementation under a distinct governance mode."
         ]
       }
     }
