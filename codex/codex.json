@@ -788,19 +788,19 @@
           "text": "Ensure that every file and directory in Skyesoft is intentional, visible, governed, and auditable. Prevent filesystem drift, ghost files, orphaned modules, undocumented automation artifacts, or untracked assets."
         },
         "inventoryFile": {
-          "path": "codex/meta/repositoryInventory.json",
-          "description": "Canonical manifest enumerating every file and directory present in the repository, regardless of integrity participation."
+          "path": "data/records/repositoryInventory.json",
+          "description": "Canonical manifest enumerating every file and directory present in the repository, regardless of integrity participation. This file is a governed record, not a Codex artifact."
         },
         "integrityDoctrine": {
-          "description": "Inventory awareness and Merkle integrity are related but distinct concerns. All files and directories MUST be inventoried for governance and visibility. Only selected items participate in Merkle hashing to avoid recursive self-inclusion while preserving full auditability.",
+          "description": "Inventory awareness and Merkle integrity are related but distinct concerns. All files and directories MUST be inventoried for governance and visibility. Only selected items participate in Merkle hashing to avoid recursive self-inclusion while preserving full auditability. Integrity artifacts are records and MUST NOT reside within the Codex domain.",
           "integrityScopes": {
             "MERKLE_INCLUDED": "Item participates in Merkle leaf generation and contributes to the repository integrity root.",
             "MERKLE_EXCLUDED": "Item is fully inventoried, classified, and governed, but intentionally excluded from Merkle hashing."
           },
           "canonicalMerkleExcludedArtifacts": [
-            "/codex/meta/repositoryInventory.json",
-            "/codex/meta/merkleTree.json",
-            "/codex/meta/merkleRoot.txt"
+            "/data/records/repositoryInventory.json",
+            "/data/records/merkleTree.json",
+            "/data/records/merkleRoot.txt"
           ]
         },
         "inventoryUpdateDoctrine": {
