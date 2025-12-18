@@ -1,7 +1,7 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": "2025-12-16T17:04:34+00:00",
+        "generatedAt": "2025-12-18T15:07:34+00:00",
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
@@ -187,171 +187,6 @@
         },
         {
             "id": "RNV-0016",
-            "path": "/assets/data",
-            "type": "dir",
-            "category": "asset",
-            "tier": "unassigned",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "data"
-        },
-        {
-            "id": "RNV-0017",
-            "path": "/assets/data/activePermits.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "activePermits.json"
-        },
-        {
-            "id": "RNV-0018",
-            "path": "/assets/data/announcements.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "announcements.json"
-        },
-        {
-            "id": "RNV-0019",
-            "path": "/assets/data/archivistPrompt.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "archivistPrompt.json"
-        },
-        {
-            "id": "RNV-0020",
-            "path": "/assets/data/errorRegistry.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "errorRegistry.json"
-        },
-        {
-            "id": "RNV-0021",
-            "path": "/assets/data/holidayRegistry.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "holidayRegistry.json"
-        },
-        {
-            "id": "RNV-0022",
-            "path": "/assets/data/iconMap.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "iconMap.json"
-        },
-        {
-            "id": "RNV-0023",
-            "path": "/assets/data/intentMatrix.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "intentMatrix.json"
-        },
-        {
-            "id": "RNV-0024",
-            "path": "/assets/data/kpi.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "kpi.json"
-        },
-        {
-            "id": "RNV-0025",
-            "path": "/assets/data/parliamentarianPrompt.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "parliamentarianPrompt.json"
-        },
-        {
-            "id": "RNV-0026",
-            "path": "/assets/data/prefixRegistry.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "prefixRegistry.json"
-        },
-        {
-            "id": "RNV-0027",
-            "path": "/assets/data/promptTemplates.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "promptTemplates.json"
-        },
-        {
-            "id": "RNV-0028",
-            "path": "/assets/data/repositoryAudit.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "repositoryAudit.json"
-        },
-        {
-            "id": "RNV-0029",
-            "path": "/assets/data/systemRegistry.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "systemRegistry.json"
-        },
-        {
-            "id": "RNV-0030",
-            "path": "/assets/data/versions.json",
-            "type": "file",
-            "category": "system-registry",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "versions.json"
-        },
-        {
-            "id": "RNV-0031",
             "path": "/assets/images",
             "type": "dir",
             "category": "asset",
@@ -362,7 +197,7 @@
             "name": "images"
         },
         {
-            "id": "RNV-0032",
+            "id": "RNV-0017",
             "path": "/assets/images/background.jpg",
             "type": "file",
             "category": "asset",
@@ -373,7 +208,7 @@
             "name": "background.jpg"
         },
         {
-            "id": "RNV-0033",
+            "id": "RNV-0018",
             "path": "/assets/images/christyLogo.jpg",
             "type": "file",
             "category": "asset",
@@ -384,7 +219,7 @@
             "name": "christyLogo.jpg"
         },
         {
-            "id": "RNV-0034",
+            "id": "RNV-0019",
             "path": "/assets/images/christyLogo.png",
             "type": "file",
             "category": "asset",
@@ -395,7 +230,7 @@
             "name": "christyLogo.png"
         },
         {
-            "id": "RNV-0035",
+            "id": "RNV-0020",
             "path": "/assets/images/favicon.ico",
             "type": "file",
             "category": "asset",
@@ -406,7 +241,7 @@
             "name": "favicon.ico"
         },
         {
-            "id": "RNV-0036",
+            "id": "RNV-0021",
             "path": "/assets/images/icons",
             "type": "dir",
             "category": "asset",
@@ -417,7 +252,7 @@
             "name": "icons"
         },
         {
-            "id": "RNV-0037",
+            "id": "RNV-0022",
             "path": "/assets/images/icons/barChart.png",
             "type": "file",
             "category": "asset",
@@ -428,7 +263,7 @@
             "name": "barChart.png"
         },
         {
-            "id": "RNV-0038",
+            "id": "RNV-0023",
             "path": "/assets/images/icons/blueBook.png",
             "type": "file",
             "category": "asset",
@@ -439,7 +274,7 @@
             "name": "blueBook.png"
         },
         {
-            "id": "RNV-0039",
+            "id": "RNV-0024",
             "path": "/assets/images/icons/bolt.png",
             "type": "file",
             "category": "asset",
@@ -450,7 +285,7 @@
             "name": "bolt.png"
         },
         {
-            "id": "RNV-0040",
+            "id": "RNV-0025",
             "path": "/assets/images/icons/book.png",
             "type": "file",
             "category": "asset",
@@ -461,7 +296,7 @@
             "name": "book.png"
         },
         {
-            "id": "RNV-0041",
+            "id": "RNV-0026",
             "path": "/assets/images/icons/books.png",
             "type": "file",
             "category": "asset",
@@ -472,7 +307,7 @@
             "name": "books.png"
         },
         {
-            "id": "RNV-0042",
+            "id": "RNV-0027",
             "path": "/assets/images/icons/brain.png",
             "type": "file",
             "category": "asset",
@@ -483,7 +318,7 @@
             "name": "brain.png"
         },
         {
-            "id": "RNV-0043",
+            "id": "RNV-0028",
             "path": "/assets/images/icons/bricks.png",
             "type": "file",
             "category": "asset",
@@ -494,7 +329,7 @@
             "name": "bricks.png"
         },
         {
-            "id": "RNV-0044",
+            "id": "RNV-0029",
             "path": "/assets/images/icons/briefcase.png",
             "type": "file",
             "category": "asset",
@@ -505,7 +340,7 @@
             "name": "briefcase.png"
         },
         {
-            "id": "RNV-0045",
+            "id": "RNV-0030",
             "path": "/assets/images/icons/calendar.png",
             "type": "file",
             "category": "asset",
@@ -516,7 +351,7 @@
             "name": "calendar.png"
         },
         {
-            "id": "RNV-0046",
+            "id": "RNV-0031",
             "path": "/assets/images/icons/camera.png",
             "type": "file",
             "category": "asset",
@@ -527,7 +362,7 @@
             "name": "camera.png"
         },
         {
-            "id": "RNV-0047",
+            "id": "RNV-0032",
             "path": "/assets/images/icons/clipboard.png",
             "type": "file",
             "category": "asset",
@@ -538,7 +373,7 @@
             "name": "clipboard.png"
         },
         {
-            "id": "RNV-0048",
+            "id": "RNV-0033",
             "path": "/assets/images/icons/clock.png",
             "type": "file",
             "category": "asset",
@@ -549,7 +384,7 @@
             "name": "clock.png"
         },
         {
-            "id": "RNV-0049",
+            "id": "RNV-0034",
             "path": "/assets/images/icons/clockface.png",
             "type": "file",
             "category": "asset",
@@ -560,7 +395,7 @@
             "name": "clockface.png"
         },
         {
-            "id": "RNV-0050",
+            "id": "RNV-0035",
             "path": "/assets/images/icons/code.png",
             "type": "file",
             "category": "asset",
@@ -571,7 +406,7 @@
             "name": "code.png"
         },
         {
-            "id": "RNV-0051",
+            "id": "RNV-0036",
             "path": "/assets/images/icons/compass.png",
             "type": "file",
             "category": "asset",
@@ -582,7 +417,7 @@
             "name": "compass.png"
         },
         {
-            "id": "RNV-0052",
+            "id": "RNV-0037",
             "path": "/assets/images/icons/database.png",
             "type": "file",
             "category": "asset",
@@ -593,7 +428,7 @@
             "name": "database.png"
         },
         {
-            "id": "RNV-0053",
+            "id": "RNV-0038",
             "path": "/assets/images/icons/dayEnd.png",
             "type": "file",
             "category": "asset",
@@ -604,7 +439,7 @@
             "name": "dayEnd.png"
         },
         {
-            "id": "RNV-0054",
+            "id": "RNV-0039",
             "path": "/assets/images/icons/dayStart.png",
             "type": "file",
             "category": "asset",
@@ -615,7 +450,7 @@
             "name": "dayStart.png"
         },
         {
-            "id": "RNV-0055",
+            "id": "RNV-0040",
             "path": "/assets/images/icons/daylight.png",
             "type": "file",
             "category": "asset",
@@ -626,7 +461,7 @@
             "name": "daylight.png"
         },
         {
-            "id": "RNV-0056",
+            "id": "RNV-0041",
             "path": "/assets/images/icons/document.png",
             "type": "file",
             "category": "asset",
@@ -637,7 +472,7 @@
             "name": "document.png"
         },
         {
-            "id": "RNV-0057",
+            "id": "RNV-0042",
             "path": "/assets/images/icons/downArrow.png",
             "type": "file",
             "category": "asset",
@@ -648,7 +483,7 @@
             "name": "downArrow.png"
         },
         {
-            "id": "RNV-0058",
+            "id": "RNV-0043",
             "path": "/assets/images/icons/flashingLight.png",
             "type": "file",
             "category": "asset",
@@ -659,7 +494,7 @@
             "name": "flashingLight.png"
         },
         {
-            "id": "RNV-0059",
+            "id": "RNV-0044",
             "path": "/assets/images/icons/floppyDisk.png",
             "type": "file",
             "category": "asset",
@@ -670,7 +505,7 @@
             "name": "floppyDisk.png"
         },
         {
-            "id": "RNV-0060",
+            "id": "RNV-0045",
             "path": "/assets/images/icons/folder.png",
             "type": "file",
             "category": "asset",
@@ -681,7 +516,7 @@
             "name": "folder.png"
         },
         {
-            "id": "RNV-0061",
+            "id": "RNV-0046",
             "path": "/assets/images/icons/gear.png",
             "type": "file",
             "category": "asset",
@@ -692,7 +527,7 @@
             "name": "gear.png"
         },
         {
-            "id": "RNV-0062",
+            "id": "RNV-0047",
             "path": "/assets/images/icons/graduationCap.png",
             "type": "file",
             "category": "asset",
@@ -703,7 +538,7 @@
             "name": "graduationCap.png"
         },
         {
-            "id": "RNV-0063",
+            "id": "RNV-0048",
             "path": "/assets/images/icons/holiday.png",
             "type": "file",
             "category": "asset",
@@ -714,7 +549,7 @@
             "name": "holiday.png"
         },
         {
-            "id": "RNV-0064",
+            "id": "RNV-0049",
             "path": "/assets/images/icons/hourglass.png",
             "type": "file",
             "category": "asset",
@@ -725,7 +560,7 @@
             "name": "hourglass.png"
         },
         {
-            "id": "RNV-0065",
+            "id": "RNV-0050",
             "path": "/assets/images/icons/inProgress.png",
             "type": "file",
             "category": "asset",
@@ -736,7 +571,7 @@
             "name": "inProgress.png"
         },
         {
-            "id": "RNV-0066",
+            "id": "RNV-0051",
             "path": "/assets/images/icons/information.png",
             "type": "file",
             "category": "asset",
@@ -747,7 +582,7 @@
             "name": "information.png"
         },
         {
-            "id": "RNV-0067",
+            "id": "RNV-0052",
             "path": "/assets/images/icons/integration.png",
             "type": "file",
             "category": "asset",
@@ -758,7 +593,7 @@
             "name": "integration.png"
         },
         {
-            "id": "RNV-0068",
+            "id": "RNV-0053",
             "path": "/assets/images/icons/lightbulb.png",
             "type": "file",
             "category": "asset",
@@ -769,7 +604,7 @@
             "name": "lightbulb.png"
         },
         {
-            "id": "RNV-0069",
+            "id": "RNV-0054",
             "path": "/assets/images/icons/link.png",
             "type": "file",
             "category": "asset",
@@ -780,7 +615,7 @@
             "name": "link.png"
         },
         {
-            "id": "RNV-0070",
+            "id": "RNV-0055",
             "path": "/assets/images/icons/live.png",
             "type": "file",
             "category": "asset",
@@ -791,7 +626,7 @@
             "name": "live.png"
         },
         {
-            "id": "RNV-0071",
+            "id": "RNV-0056",
             "path": "/assets/images/icons/mantleClock.png",
             "type": "file",
             "category": "asset",
@@ -802,7 +637,7 @@
             "name": "mantleClock.png"
         },
         {
-            "id": "RNV-0072",
+            "id": "RNV-0057",
             "path": "/assets/images/icons/megaphone.png",
             "type": "file",
             "category": "asset",
@@ -813,7 +648,7 @@
             "name": "megaphone.png"
         },
         {
-            "id": "RNV-0073",
+            "id": "RNV-0058",
             "path": "/assets/images/icons/memo.png",
             "type": "file",
             "category": "asset",
@@ -824,7 +659,7 @@
             "name": "memo.png"
         },
         {
-            "id": "RNV-0074",
+            "id": "RNV-0059",
             "path": "/assets/images/icons/mobilePhone.png",
             "type": "file",
             "category": "asset",
@@ -835,7 +670,7 @@
             "name": "mobilePhone.png"
         },
         {
-            "id": "RNV-0075",
+            "id": "RNV-0060",
             "path": "/assets/images/icons/moneybag.png",
             "type": "file",
             "category": "asset",
@@ -846,7 +681,7 @@
             "name": "moneybag.png"
         },
         {
-            "id": "RNV-0076",
+            "id": "RNV-0061",
             "path": "/assets/images/icons/network.png",
             "type": "file",
             "category": "asset",
@@ -857,7 +692,7 @@
             "name": "network.png"
         },
         {
-            "id": "RNV-0077",
+            "id": "RNV-0062",
             "path": "/assets/images/icons/nighttime.png",
             "type": "file",
             "category": "asset",
@@ -868,7 +703,7 @@
             "name": "nighttime.png"
         },
         {
-            "id": "RNV-0078",
+            "id": "RNV-0063",
             "path": "/assets/images/icons/notes.png",
             "type": "file",
             "category": "asset",
@@ -879,7 +714,7 @@
             "name": "notes.png"
         },
         {
-            "id": "RNV-0079",
+            "id": "RNV-0064",
             "path": "/assets/images/icons/openFolder.png",
             "type": "file",
             "category": "asset",
@@ -890,7 +725,7 @@
             "name": "openFolder.png"
         },
         {
-            "id": "RNV-0080",
+            "id": "RNV-0065",
             "path": "/assets/images/icons/owner.png",
             "type": "file",
             "category": "asset",
@@ -901,7 +736,7 @@
             "name": "owner.png"
         },
         {
-            "id": "RNV-0081",
+            "id": "RNV-0066",
             "path": "/assets/images/icons/palette.png",
             "type": "file",
             "category": "asset",
@@ -912,7 +747,7 @@
             "name": "palette.png"
         },
         {
-            "id": "RNV-0082",
+            "id": "RNV-0067",
             "path": "/assets/images/icons/partlyCloudy.png",
             "type": "file",
             "category": "asset",
@@ -923,7 +758,7 @@
             "name": "partlyCloudy.png"
         },
         {
-            "id": "RNV-0083",
+            "id": "RNV-0068",
             "path": "/assets/images/icons/pen.png",
             "type": "file",
             "category": "asset",
@@ -934,7 +769,7 @@
             "name": "pen.png"
         },
         {
-            "id": "RNV-0084",
+            "id": "RNV-0069",
             "path": "/assets/images/icons/pencil.png",
             "type": "file",
             "category": "asset",
@@ -945,7 +780,7 @@
             "name": "pencil.png"
         },
         {
-            "id": "RNV-0085",
+            "id": "RNV-0070",
             "path": "/assets/images/icons/pin.png",
             "type": "file",
             "category": "asset",
@@ -956,7 +791,7 @@
             "name": "pin.png"
         },
         {
-            "id": "RNV-0086",
+            "id": "RNV-0071",
             "path": "/assets/images/icons/plug.png",
             "type": "file",
             "category": "asset",
@@ -967,7 +802,7 @@
             "name": "plug.png"
         },
         {
-            "id": "RNV-0087",
+            "id": "RNV-0072",
             "path": "/assets/images/icons/property.png",
             "type": "file",
             "category": "asset",
@@ -978,7 +813,7 @@
             "name": "property.png"
         },
         {
-            "id": "RNV-0088",
+            "id": "RNV-0073",
             "path": "/assets/images/icons/puzzle.png",
             "type": "file",
             "category": "asset",
@@ -989,7 +824,7 @@
             "name": "puzzle.png"
         },
         {
-            "id": "RNV-0089",
+            "id": "RNV-0074",
             "path": "/assets/images/icons/receipt.png",
             "type": "file",
             "category": "asset",
@@ -1000,7 +835,7 @@
             "name": "receipt.png"
         },
         {
-            "id": "RNV-0090",
+            "id": "RNV-0075",
             "path": "/assets/images/icons/robot.png",
             "type": "file",
             "category": "asset",
@@ -1011,7 +846,7 @@
             "name": "robot.png"
         },
         {
-            "id": "RNV-0091",
+            "id": "RNV-0076",
             "path": "/assets/images/icons/rocket.png",
             "type": "file",
             "category": "asset",
@@ -1022,7 +857,7 @@
             "name": "rocket.png"
         },
         {
-            "id": "RNV-0092",
+            "id": "RNV-0077",
             "path": "/assets/images/icons/ruler.png",
             "type": "file",
             "category": "asset",
@@ -1033,7 +868,7 @@
             "name": "ruler.png"
         },
         {
-            "id": "RNV-0093",
+            "id": "RNV-0078",
             "path": "/assets/images/icons/scales.png",
             "type": "file",
             "category": "asset",
@@ -1044,7 +879,7 @@
             "name": "scales.png"
         },
         {
-            "id": "RNV-0094",
+            "id": "RNV-0079",
             "path": "/assets/images/icons/scroll.png",
             "type": "file",
             "category": "asset",
@@ -1055,7 +890,7 @@
             "name": "scroll.png"
         },
         {
-            "id": "RNV-0095",
+            "id": "RNV-0080",
             "path": "/assets/images/icons/shield.png",
             "type": "file",
             "category": "asset",
@@ -1066,7 +901,7 @@
             "name": "shield.png"
         },
         {
-            "id": "RNV-0096",
+            "id": "RNV-0081",
             "path": "/assets/images/icons/stopwatch.png",
             "type": "file",
             "category": "asset",
@@ -1077,7 +912,7 @@
             "name": "stopwatch.png"
         },
         {
-            "id": "RNV-0097",
+            "id": "RNV-0082",
             "path": "/assets/images/icons/sunrise.png",
             "type": "file",
             "category": "asset",
@@ -1088,7 +923,7 @@
             "name": "sunrise.png"
         },
         {
-            "id": "RNV-0098",
+            "id": "RNV-0083",
             "path": "/assets/images/icons/sunset.png",
             "type": "file",
             "category": "asset",
@@ -1099,7 +934,7 @@
             "name": "sunset.png"
         },
         {
-            "id": "RNV-0099",
+            "id": "RNV-0084",
             "path": "/assets/images/icons/table.png",
             "type": "file",
             "category": "asset",
@@ -1110,7 +945,7 @@
             "name": "table.png"
         },
         {
-            "id": "RNV-0100",
+            "id": "RNV-0085",
             "path": "/assets/images/icons/target.png",
             "type": "file",
             "category": "asset",
@@ -1121,7 +956,7 @@
             "name": "target.png"
         },
         {
-            "id": "RNV-0101",
+            "id": "RNV-0086",
             "path": "/assets/images/icons/temple.png",
             "type": "file",
             "category": "asset",
@@ -1132,7 +967,7 @@
             "name": "temple.png"
         },
         {
-            "id": "RNV-0102",
+            "id": "RNV-0087",
             "path": "/assets/images/icons/tools.png",
             "type": "file",
             "category": "asset",
@@ -1143,7 +978,7 @@
             "name": "tools.png"
         },
         {
-            "id": "RNV-0103",
+            "id": "RNV-0088",
             "path": "/assets/images/icons/tree.png",
             "type": "file",
             "category": "asset",
@@ -1154,7 +989,7 @@
             "name": "tree.png"
         },
         {
-            "id": "RNV-0104",
+            "id": "RNV-0089",
             "path": "/assets/images/icons/trophy.png",
             "type": "file",
             "category": "asset",
@@ -1165,7 +1000,7 @@
             "name": "trophy.png"
         },
         {
-            "id": "RNV-0105",
+            "id": "RNV-0090",
             "path": "/assets/images/icons/upArrow.png",
             "type": "file",
             "category": "asset",
@@ -1176,7 +1011,7 @@
             "name": "upArrow.png"
         },
         {
-            "id": "RNV-0106",
+            "id": "RNV-0091",
             "path": "/assets/images/icons/user.png",
             "type": "file",
             "category": "asset",
@@ -1187,7 +1022,7 @@
             "name": "user.png"
         },
         {
-            "id": "RNV-0107",
+            "id": "RNV-0092",
             "path": "/assets/images/icons/users.png",
             "type": "file",
             "category": "asset",
@@ -1198,7 +1033,7 @@
             "name": "users.png"
         },
         {
-            "id": "RNV-0108",
+            "id": "RNV-0093",
             "path": "/assets/images/icons/warning.png",
             "type": "file",
             "category": "asset",
@@ -1209,7 +1044,7 @@
             "name": "warning.png"
         },
         {
-            "id": "RNV-0109",
+            "id": "RNV-0094",
             "path": "/assets/images/icons/weather.png",
             "type": "file",
             "category": "asset",
@@ -1220,7 +1055,7 @@
             "name": "weather.png"
         },
         {
-            "id": "RNV-0110",
+            "id": "RNV-0095",
             "path": "/assets/images/icons/workman.png",
             "type": "file",
             "category": "asset",
@@ -1231,7 +1066,7 @@
             "name": "workman.png"
         },
         {
-            "id": "RNV-0111",
+            "id": "RNV-0096",
             "path": "/assets/images/icons/workmanVest.png",
             "type": "file",
             "category": "asset",
@@ -1242,7 +1077,7 @@
             "name": "workmanVest.png"
         },
         {
-            "id": "RNV-0112",
+            "id": "RNV-0097",
             "path": "/assets/images/icons/wrench.png",
             "type": "file",
             "category": "asset",
@@ -1253,7 +1088,7 @@
             "name": "wrench.png"
         },
         {
-            "id": "RNV-0113",
+            "id": "RNV-0098",
             "path": "/assets/images/skyebot-icon.png",
             "type": "file",
             "category": "asset",
@@ -1264,7 +1099,7 @@
             "name": "skyebot-icon.png"
         },
         {
-            "id": "RNV-0114",
+            "id": "RNV-0099",
             "path": "/assets/images/user-icon.png",
             "type": "file",
             "category": "asset",
@@ -1275,7 +1110,7 @@
             "name": "user-icon.png"
         },
         {
-            "id": "RNV-0115",
+            "id": "RNV-0100",
             "path": "/assets/js",
             "type": "dir",
             "category": "asset",
@@ -1286,7 +1121,7 @@
             "name": "js"
         },
         {
-            "id": "RNV-0116",
+            "id": "RNV-0101",
             "path": "/assets/js/app.js",
             "type": "file",
             "category": "asset",
@@ -1297,7 +1132,7 @@
             "name": "app.js"
         },
         {
-            "id": "RNV-0117",
+            "id": "RNV-0102",
             "path": "/assets/js/pages",
             "type": "dir",
             "category": "asset",
@@ -1308,7 +1143,7 @@
             "name": "pages"
         },
         {
-            "id": "RNV-0118",
+            "id": "RNV-0103",
             "path": "/assets/js/pages/officeBoard.js",
             "type": "file",
             "category": "asset",
@@ -1319,7 +1154,7 @@
             "name": "officeBoard.js"
         },
         {
-            "id": "RNV-0119",
+            "id": "RNV-0104",
             "path": "/assets/js/sse.js",
             "type": "file",
             "category": "asset",
@@ -1330,18 +1165,7 @@
             "name": "sse.js"
         },
         {
-            "id": "RNV-0120",
-            "path": "/audit-report.json",
-            "type": "file",
-            "category": "content",
-            "tier": "unassigned",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "audit-report.json"
-        },
-        {
-            "id": "RNV-0121",
+            "id": "RNV-0105",
             "path": "/bulletinBoards",
             "type": "dir",
             "category": "root",
@@ -1352,7 +1176,7 @@
             "name": "bulletinBoards"
         },
         {
-            "id": "RNV-0122",
+            "id": "RNV-0106",
             "path": "/bulletinBoards/officeBoard.html",
             "type": "file",
             "category": "content",
@@ -1363,7 +1187,7 @@
             "name": "officeBoard.html"
         },
         {
-            "id": "RNV-0123",
+            "id": "RNV-0107",
             "path": "/codex",
             "type": "dir",
             "category": "root",
@@ -1374,7 +1198,7 @@
             "name": "codex"
         },
         {
-            "id": "RNV-0124",
+            "id": "RNV-0108",
             "path": "/codex/codex.json",
             "type": "file",
             "category": "structural",
@@ -1385,161 +1209,282 @@
             "name": "codex.json"
         },
         {
-            "id": "RNV-0125",
-            "path": "/codex/constitution",
+            "id": "RNV-0109",
+            "path": "/data",
             "type": "dir",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
-            "name": "constitution"
+            "name": "data"
         },
         {
-            "id": "RNV-0126",
-            "path": "/codex/constitution/README.md",
-            "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "README.md"
-        },
-        {
-            "id": "RNV-0127",
-            "path": "/codex/meta",
+            "id": "RNV-0110",
+            "path": "/data/authoritative",
             "type": "dir",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
-            "name": "meta"
+            "name": "authoritative"
         },
         {
-            "id": "RNV-0128",
-            "path": "/codex/meta/README.md",
+            "id": "RNV-0111",
+            "path": "/data/authoritative/holidayRegistry.json",
             "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
-            "name": "README.md"
+            "name": "holidayRegistry.json"
         },
         {
-            "id": "RNV-0129",
-            "path": "/codex/meta/codexAudit.json",
+            "id": "RNV-0112",
+            "path": "/data/authoritative/iconMap.json",
             "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "iconMap.json"
+        },
+        {
+            "id": "RNV-0113",
+            "path": "/data/authoritative/intentMatrix.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "intentMatrix.json"
+        },
+        {
+            "id": "RNV-0114",
+            "path": "/data/authoritative/prefixRegistry.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "prefixRegistry.json"
+        },
+        {
+            "id": "RNV-0115",
+            "path": "/data/authoritative/systemRegistry.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "systemRegistry.json"
+        },
+        {
+            "id": "RNV-0116",
+            "path": "/data/authoritative/versions.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "versions.json"
+        },
+        {
+            "id": "RNV-0117",
+            "path": "/data/derived",
+            "type": "dir",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "derived"
+        },
+        {
+            "id": "RNV-0118",
+            "path": "/data/derived/archivistPrompt.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "archivistPrompt.json"
+        },
+        {
+            "id": "RNV-0119",
+            "path": "/data/derived/parliamentarianPrompt.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "parliamentarianPrompt.json"
+        },
+        {
+            "id": "RNV-0120",
+            "path": "/data/derived/promptTemplates.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "promptTemplates.json"
+        },
+        {
+            "id": "RNV-0121",
+            "path": "/data/records",
+            "type": "dir",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "records"
+        },
+        {
+            "id": "RNV-0122",
+            "path": "/data/records/audit-report.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "audit-report.json"
+        },
+        {
+            "id": "RNV-0123",
+            "path": "/data/records/codexAudit.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
             "name": "codexAudit.json"
         },
         {
-            "id": "RNV-0130",
-            "path": "/codex/meta/merkleRoot.txt",
+            "id": "RNV-0124",
+            "path": "/data/records/errorRegistry.json",
             "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "errorRegistry.json"
+        },
+        {
+            "id": "RNV-0125",
+            "path": "/data/records/merkleRoot.txt",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_EXCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
             "name": "merkleRoot.txt"
         },
         {
-            "id": "RNV-0131",
-            "path": "/codex/meta/merkleTree.json",
+            "id": "RNV-0126",
+            "path": "/data/records/merkleTree.json",
             "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_EXCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
             "name": "merkleTree.json"
         },
         {
-            "id": "RNV-0132",
-            "path": "/codex/meta/repositoryInventory.json",
+            "id": "RNV-0127",
+            "path": "/data/records/repositoryAudit.json",
             "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "repositoryAudit.json"
+        },
+        {
+            "id": "RNV-0128",
+            "path": "/data/records/repositoryInventory-preRebuild.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "repositoryInventory-preRebuild.json"
+        },
+        {
+            "id": "RNV-0129",
+            "path": "/data/records/repositoryInventory.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_EXCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
             "name": "repositoryInventory.json"
         },
         {
-            "id": "RNV-0133",
-            "path": "/codex/meta/roadmap.json",
-            "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
+            "id": "RNV-0130",
+            "path": "/data/runtimeEphemeral",
+            "type": "dir",
+            "category": "content",
+            "tier": "unassigned",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
-            "name": "roadmap.json"
+            "name": "runtimeEphemeral"
+        },
+        {
+            "id": "RNV-0131",
+            "path": "/data/runtimeEphemeral/activePermits.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "activePermits.json"
+        },
+        {
+            "id": "RNV-0132",
+            "path": "/data/runtimeEphemeral/announcements.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "announcements.json"
+        },
+        {
+            "id": "RNV-0133",
+            "path": "/data/runtimeEphemeral/kpi.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "kpi.json"
         },
         {
             "id": "RNV-0134",
-            "path": "/codex/meta/roadmapDetailed.json",
-            "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "roadmapDetailed.json"
-        },
-        {
-            "id": "RNV-0135",
-            "path": "/codex/modules",
-            "type": "dir",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "modules"
-        },
-        {
-            "id": "RNV-0136",
-            "path": "/codex/modules/README.md",
-            "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "README.md"
-        },
-        {
-            "id": "RNV-0137",
-            "path": "/codex/standards",
-            "type": "dir",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "standards"
-        },
-        {
-            "id": "RNV-0138",
-            "path": "/codex/standards/README.md",
-            "type": "file",
-            "category": "structural",
-            "tier": "Tier-2",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry",
-            "status": "active",
-            "name": "README.md"
-        },
-        {
-            "id": "RNV-0139",
             "path": "/documents",
             "type": "dir",
             "category": "root",
@@ -1550,7 +1495,18 @@
             "name": "documents"
         },
         {
-            "id": "RNV-0140",
+            "id": "RNV-0135",
+            "path": "/documents/sources",
+            "type": "dir",
+            "category": "documentation",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "sources"
+        },
+        {
+            "id": "RNV-0136",
             "path": "/documents/templates",
             "type": "dir",
             "category": "documentation",
@@ -1561,7 +1517,7 @@
             "name": "templates"
         },
         {
-            "id": "RNV-0141",
+            "id": "RNV-0137",
             "path": "/documents/templates/documentTemplate.html",
             "type": "file",
             "category": "documentation",
@@ -1572,7 +1528,7 @@
             "name": "documentTemplate.html"
         },
         {
-            "id": "RNV-0142",
+            "id": "RNV-0138",
             "path": "/modules",
             "type": "dir",
             "category": "root",
@@ -1583,7 +1539,7 @@
             "name": "modules"
         },
         {
-            "id": "RNV-0143",
+            "id": "RNV-0139",
             "path": "/modules/automation",
             "type": "dir",
             "category": "execution",
@@ -1594,7 +1550,7 @@
             "name": "automation"
         },
         {
-            "id": "RNV-0144",
+            "id": "RNV-0140",
             "path": "/modules/automation/aiValidator.php",
             "type": "file",
             "category": "execution",
@@ -1605,7 +1561,7 @@
             "name": "aiValidator.php"
         },
         {
-            "id": "RNV-0145",
+            "id": "RNV-0141",
             "path": "/modules/automation/codeValidator.php",
             "type": "file",
             "category": "execution",
@@ -1616,7 +1572,7 @@
             "name": "codeValidator.php"
         },
         {
-            "id": "RNV-0146",
+            "id": "RNV-0142",
             "path": "/modules/automation/historyValidator.php",
             "type": "file",
             "category": "execution",
@@ -1627,7 +1583,7 @@
             "name": "historyValidator.php"
         },
         {
-            "id": "RNV-0147",
+            "id": "RNV-0143",
             "path": "/modules/automation/ragValidator.php",
             "type": "file",
             "category": "execution",
@@ -1638,7 +1594,7 @@
             "name": "ragValidator.php"
         },
         {
-            "id": "RNV-0148",
+            "id": "RNV-0144",
             "path": "/modules/automation/semanticValidator.php",
             "type": "file",
             "category": "execution",
@@ -1649,7 +1605,7 @@
             "name": "semanticValidator.php"
         },
         {
-            "id": "RNV-0149",
+            "id": "RNV-0145",
             "path": "/modules/automation/skyebotValidator.php",
             "type": "file",
             "category": "execution",
@@ -1660,7 +1616,7 @@
             "name": "skyebotValidator.php"
         },
         {
-            "id": "RNV-0150",
+            "id": "RNV-0146",
             "path": "/modules/automation/sseIntegrityChecker.php",
             "type": "file",
             "category": "execution",
@@ -1671,7 +1627,7 @@
             "name": "sseIntegrityChecker.php"
         },
         {
-            "id": "RNV-0151",
+            "id": "RNV-0147",
             "path": "/modules/deployment",
             "type": "dir",
             "category": "execution",
@@ -1682,7 +1638,7 @@
             "name": "deployment"
         },
         {
-            "id": "RNV-0152",
+            "id": "RNV-0148",
             "path": "/modules/deployment/deploymentConfig.json",
             "type": "file",
             "category": "execution",
@@ -1693,7 +1649,7 @@
             "name": "deploymentConfig.json"
         },
         {
-            "id": "RNV-0153",
+            "id": "RNV-0149",
             "path": "/modules/deployment/deploymentEngine.php",
             "type": "file",
             "category": "execution",
@@ -1704,7 +1660,7 @@
             "name": "deploymentEngine.php"
         },
         {
-            "id": "RNV-0154",
+            "id": "RNV-0150",
             "path": "/modules/holidayInterpreter.php",
             "type": "file",
             "category": "execution",
@@ -1715,7 +1671,40 @@
             "name": "holidayInterpreter.php"
         },
         {
-            "id": "RNV-0155",
+            "id": "RNV-0151",
+            "path": "/planning",
+            "type": "dir",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "planning"
+        },
+        {
+            "id": "RNV-0152",
+            "path": "/planning/roadmap.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "roadmap.json"
+        },
+        {
+            "id": "RNV-0153",
+            "path": "/planning/roadmapDetailed.json",
+            "type": "file",
+            "category": "content",
+            "tier": "unassigned",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": "roadmapDetailed.json"
+        },
+        {
+            "id": "RNV-0154",
             "path": "/reports",
             "type": "dir",
             "category": "root",
@@ -1726,7 +1715,7 @@
             "name": "reports"
         },
         {
-            "id": "RNV-0156",
+            "id": "RNV-0155",
             "path": "/reports/automation",
             "type": "dir",
             "category": "system-state",
@@ -1737,7 +1726,7 @@
             "name": "automation"
         },
         {
-            "id": "RNV-0157",
+            "id": "RNV-0156",
             "path": "/reports/automation/dailyRepositoryAudit.json",
             "type": "file",
             "category": "system-state",
@@ -1748,7 +1737,7 @@
             "name": "dailyRepositoryAudit.json"
         },
         {
-            "id": "RNV-0158",
+            "id": "RNV-0157",
             "path": "/scripts",
             "type": "dir",
             "category": "root",
@@ -1759,7 +1748,7 @@
             "name": "scripts"
         },
         {
-            "id": "RNV-0159",
+            "id": "RNV-0158",
             "path": "/scripts/auditor.php",
             "type": "file",
             "category": "execution",
@@ -1770,7 +1759,7 @@
             "name": "auditor.php"
         },
         {
-            "id": "RNV-0160",
+            "id": "RNV-0159",
             "path": "/scripts/generateDocument.php",
             "type": "file",
             "category": "execution",
@@ -1781,7 +1770,7 @@
             "name": "generateDocument.php"
         },
         {
-            "id": "RNV-0161",
+            "id": "RNV-0160",
             "path": "/scripts/merkleBuild.php",
             "type": "file",
             "category": "execution",
@@ -1792,7 +1781,7 @@
             "name": "merkleBuild.php"
         },
         {
-            "id": "RNV-0162",
+            "id": "RNV-0161",
             "path": "/scripts/merkleBuilder.php",
             "type": "file",
             "category": "execution",
@@ -1803,7 +1792,7 @@
             "name": "merkleBuilder.php"
         },
         {
-            "id": "RNV-0163",
+            "id": "RNV-0162",
             "path": "/scripts/merkleVerify.php",
             "type": "file",
             "category": "execution",
@@ -1814,7 +1803,7 @@
             "name": "merkleVerify.php"
         },
         {
-            "id": "RNV-0164",
+            "id": "RNV-0163",
             "path": "/scripts/repositoryInventoryBuilder.php",
             "type": "file",
             "category": "execution",
@@ -1825,7 +1814,7 @@
             "name": "repositoryInventoryBuilder.php"
         },
         {
-            "id": "RNV-0165",
+            "id": "RNV-0164",
             "path": "/scripts/runCodexAudit.php",
             "type": "file",
             "category": "execution",
@@ -1836,7 +1825,7 @@
             "name": "runCodexAudit.php"
         },
         {
-            "id": "RNV-0166",
+            "id": "RNV-0165",
             "path": "/scripts/sentinel.php",
             "type": "file",
             "category": "execution",
@@ -1847,7 +1836,7 @@
             "name": "sentinel.php"
         },
         {
-            "id": "RNV-0167",
+            "id": "RNV-0166",
             "path": "/secure",
             "type": "dir",
             "category": "root",
@@ -1856,6 +1845,17 @@
             "purpose": "Pre-SIS auto-generated inventory entry",
             "status": "active",
             "name": "secure"
+        },
+        {
+            "id": "RNV-0167",
+            "path": "/secure/.gitignore",
+            "type": "file",
+            "category": "security",
+            "tier": "Tier-2",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry",
+            "status": "active",
+            "name": ".gitignore"
         },
         {
             "id": "RNV-0168",
