@@ -17,7 +17,7 @@ declare(strict_types=1);
 //
 //  Requires:
 //   • PHP 8.3+
-//   • codex/meta/repositoryInventory.json
+//   • data/records/repositoryInventory.json
 //
 //  Forbidden:
 //   • No Codex mutation
@@ -126,7 +126,7 @@ function scanFilesystem(
 
 #region SECTION 4 — Load Inventory (Authoritative)
 
-$inventoryPath = $root . "/codex/meta/repositoryInventory.json";
+$inventoryPath = $root . "/data/records/repositoryInventory.json";
 
 if (!file_exists($inventoryPath)) {
     echo json_encode([

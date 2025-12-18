@@ -1,37 +1,71 @@
 <?php
-// ======================================================================
-//  Skyesoft — merkleBuilder.php
-//  Codex Merkle Tree Generator • PHP 8.3
-//  Implements: Merkle Integrity Standard (MIS)
-// ======================================================================
-
 declare(strict_types=1);
 
-# -------------------------------------------------------------
-# Load Codex
-# -------------------------------------------------------------
-$codexPath = __DIR__ . "/../codex/codex.json";
+// ======================================================================
+// Skyesoft — Codex Merkle Builder
+// Tier: 3 — Codex Integrity Builder (CIS)
+// PHP 8.3+ • Strict Typing
+//
+// Responsibility:
+//   • Generate Merkle tree for Codex content integrity
+//   • Hash top-level Codex sections deterministically
+//   • Persist Codex integrity artifacts to records domain
+//
+// Forbidden:
+//   • NO repository scanning
+//   • NO inventory logic
+//   • NO Sentinel invocation
+// ======================================================================
+
+header("Content-Type: application/json; charset=UTF-8");
+
+#region SECTION 0 — Fail Handler
+
+function merkleFail(string $msg): never {
+    echo json_encode([
+        "success" => false,
+        "role"    => "codexMerkleBuilder",
+        "error"   => "❌ $msg"
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+#endregion SECTION 0 — Fail Handler
+
+#region SECTION I — Resolve Paths
+
+$root = realpath(__DIR__ . '/..');
+if (!$root) {
+    merkleFail("Unable to resolve repository root.");
+}
+
+$codexPath = $root . '/codex/codex.json';
+$treePath  = $root . '/data/records/codexMerkleTree.json';
+$rootPath  = $root . '/data/records/codexMerkleRoot.txt';
+
 if (!file_exists($codexPath)) {
-    echo "Codex missing.\n";
-    exit(1);
+    merkleFail("codex.json missing.");
 }
+
+#endregion SECTION I — Resolve Paths
+
+#region SECTION II — Load Codex
+
 $codexRaw = file_get_contents($codexPath);
-$codex = json_decode($codexRaw, true);
+$codex    = json_decode($codexRaw, true);
 
-# -------------------------------------------------------------
-# Helper: deterministic hashing
-# -------------------------------------------------------------
-function hashNode(string $data): string {
-    return hash("sha256", $data);
+if (!is_array($codex)) {
+    merkleFail("Invalid codex.json structure.");
 }
 
-# -------------------------------------------------------------
-# Helper: deterministic key-order serialization
-# -------------------------------------------------------------
-function stableJSON($value): string {
+#endregion SECTION II — Load Codex
+
+#region SECTION III — Deterministic Serialization
+
+function stableJSON(mixed $value): string {
     if (is_array($value)) {
-        if (array_keys($value) !== range(0, count($value)-1)) {
-            ksort($value); // associative
+        if (array_keys($value) !== range(0, count($value) - 1)) {
+            ksort($value);
         }
         $out = [];
         foreach ($value as $k => $v) {
@@ -42,51 +76,82 @@ function stableJSON($value): string {
     return json_encode($value, JSON_UNESCAPED_SLASHES);
 }
 
-# -------------------------------------------------------------
-# Step 1: build leaf hashes (top-level sections only)
-# -------------------------------------------------------------
-$leaves = [];
-foreach ($codex as $key => $section) {
-    $serialized = stableJSON($section);
-    $leaves[$key] = hashNode($serialized);
+function hashNode(string $data): string {
+    return hash('sha256', $data);
 }
 
-# -------------------------------------------------------------
-# Step 2: build Merkle tree upward
-# -------------------------------------------------------------
-$nodes = [];
-$current = array_values($leaves);
+#endregion SECTION III — Deterministic Serialization
+
+#region SECTION IV — Build Leaf Hashes (Top-Level Codex Sections)
+
+$leaves = [];
+
+foreach ($codex as $sectionKey => $sectionData) {
+    $serialized = stableJSON($sectionData);
+    $leaves[$sectionKey] = hashNode($serialized);
+}
+
+ksort($leaves); // deterministic ordering
+
+#endregion SECTION IV — Build Leaf Hashes
+
+#region SECTION V — Build Merkle Tree
+
+$layers   = [];
+$current  = array_values($leaves);
+$layers[] = $current;
 
 while (count($current) > 1) {
     $next = [];
+
     for ($i = 0; $i < count($current); $i += 2) {
-        $a = $current[$i];
-        $b = $current[$i+1] ?? $a; // duplicate last if odd count
-        $combined = hashNode($a . $b);
-        $nodes[] = $combined;
-        $next[] = $combined;
+        $left  = $current[$i];
+        $right = $current[$i + 1] ?? $left;
+        $next[] = hashNode($left . $right);
     }
-    $current = $next;
+
+    $layers[] = $next;
+    $current  = $next;
 }
 
-$merkleRoot = $current[0];
+$merkleRoot = $current[0] ?? null;
 
-# -------------------------------------------------------------
-# Step 3: write outputs
-# -------------------------------------------------------------
-$treeOut = [
-    "meta" => [
-        "version" => "1.0.0",
-        "generatedAt" => time(),
-        "algorithm" => "SHA-256",
-        "description" => "Merkle Tree for Codex integrity validation."
-    ],
-    "leaves" => $leaves,
-    "nodes"  => $nodes,
-    "root"   => $merkleRoot
-];
+if (!$merkleRoot) {
+    merkleFail("Unable to compute Codex Merkle root.");
+}
 
-file_put_contents(__DIR__ . "/../codex/meta/merkleTree.json", json_encode($treeOut, JSON_PRETTY_PRINT));
-file_put_contents(__DIR__ . "/../codex/meta/merkleRoot.txt", $merkleRoot);
+#endregion SECTION V — Build Merkle Tree
 
-echo "Merkle Tree generated. Root: $merkleRoot\n";
+#region SECTION VI — Persist Artifacts
+
+file_put_contents(
+    $treePath,
+    json_encode([
+        "meta" => [
+            "generatedAt" => date('c'),
+            "algorithm"   => "SHA-256",
+            "scope"       => "codex",
+            "description" => "Merkle tree for Codex integrity validation."
+        ],
+        "leaves" => $leaves,
+        "layers" => $layers,
+        "root"   => $merkleRoot
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+);
+
+file_put_contents($rootPath, $merkleRoot);
+
+#endregion SECTION VI — Persist Artifacts
+
+#region SECTION VII — Output
+
+echo json_encode([
+    "success" => true,
+    "role"    => "codexMerkleBuilder",
+    "root"    => $merkleRoot,
+    "leaves"  => count($leaves)
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+exit;
+
+#endregion SECTION VII — Output

@@ -41,9 +41,9 @@ function merkleFail(string $msg, string $code = "MERKLE_VERIFY_ERROR"): never {
 $root = realpath(__DIR__ . "/..");
 $root = rtrim(str_replace("\\", "/", (string)$root), "/");
 
-$inventoryPath = "$root/codex/meta/repositoryInventory.json";
-$treePath      = "$root/codex/meta/merkleTree.json";
-$rootPath      = "$root/codex/meta/merkleRoot.txt";
+$inventoryPath = "$root/data/records/repositoryInventory.json";
+$treePath      = "$root/data/records/merkleTree.json";
+$rootPath      = "$root/data/records/merkleRoot.txt";
 
 foreach ([$inventoryPath, $treePath, $rootPath] as $p) {
     if (!file_exists($p)) {
