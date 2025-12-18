@@ -92,10 +92,10 @@ if (!is_array($errors) || empty($errors)) {
 
 #region SECTION II — Load SOT Files
 
-$registryPath = "$root/assets/data/errorRegistry.json";
-$auditPath    = "$root/assets/data/repositoryAudit.json";
-$versionsPath = "$root/assets/data/versions.json";
-$merklePath   = "$root/codex/meta/merkleRoot.txt";
+$registryPath = "$root/data/records/errorRegistry.json";
+$auditPath    = "$root/data/records/repositoryAudit.json";
+$versionsPath = "$root/data/authoritative/versions.json";
+$merklePath   = "$root/data/records/merkleRoot.txt";
 
 foreach ([$registryPath, $auditPath] as $path) {
     if (!file_exists($path)) {
