@@ -28,7 +28,8 @@ while (ob_get_level()) {
 #region CONFIG
 
 $repoRoot   = realpath(__DIR__ . '/..');
-$outputPath = $repoRoot . '/codex/meta/repositoryInventory.json';
+// Output path for the generated inventory
+$outputPath = $repoRoot . '/data/records/repositoryInventory.json';
 
 $excluded = [
     '/.git',
@@ -126,9 +127,9 @@ foreach ($iterator as $file) {
     $tier     = resolveTier($category);
 
     $integrityScope = in_array($relPath, [
-        '/codex/meta/repositoryInventory.json',
-        '/codex/meta/merkleTree.json',
-        '/codex/meta/merkleRoot.txt'
+        '/data/records/repositoryInventory.json',
+        '/data/records/merkleTree.json',
+        '/data/records/merkleRoot.txt'
     ], true) ? 'MERKLE_EXCLUDED' : 'MERKLE_INCLUDED';
 
     $items[] = [
@@ -180,7 +181,7 @@ rename($tmpPath, $outputPath);
 // Human-readable confirmation only
 fwrite(STDOUT, "✔ Repository inventory declared successfully\n");
 fwrite(STDOUT, "• Items indexed: " . count($items) . "\n");
-fwrite(STDOUT, "• Output: /codex/meta/repositoryInventory.json\n");
+fwrite(STDOUT, "• Output: /data/records/repositoryInventory.json\n");
 
 #endregion OUTPUT
 
