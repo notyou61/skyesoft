@@ -356,8 +356,8 @@
                 "path": "/data/authoritative",
                 "purpose": "Persistent artifacts that define or participate in system truth."
               },
-              "runtime": {
-                "path": "/data/runtime",
+              "runtimeEphemeral": {
+                "path": "/data/runtimeEphemeral",
                 "purpose": "Ephemeral artifacts that represent live, authoritative system state and may be freely overwritten."
               },
               "records": {
