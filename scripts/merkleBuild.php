@@ -37,9 +37,9 @@ function merkleFail(string $msg): never {
 $root = realpath(__DIR__ . "/..");
 $root = rtrim(str_replace("\\", "/", (string)$root), "/");
 
-$inventoryPath = $root . "/codex/meta/repositoryInventory.json";
-$treePath      = $root . "/codex/meta/merkleTree.json";
-$rootPath      = $root . "/codex/meta/merkleRoot.txt";
+$inventoryPath = $root . "/data/records/repositoryInventory.json";
+$treePath      = $root . "/data/records/merkleTree.json";
+$rootPath      = $root . "/data/records/merkleRoot.txt";
 
 if (!$root || !is_dir($root)) {
     merkleFail("Unable to resolve repository root.");
