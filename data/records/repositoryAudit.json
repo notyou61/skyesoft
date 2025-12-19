@@ -86,5 +86,79 @@
         "code": "MERKLE_VERIFY_ERROR",
         "path": null,
         "message": "repositoryInventory.json missing."
-    }
+    },
+    "audits": [
+        {
+            "timestamp": 1766146996,
+            "mode": "operational",
+            "status": "FAIL",
+            "hasWarnings": false,
+            "violations": [
+                {
+                    "severity": "blocking",
+                    "code": "MISSING_DIR",
+                    "path": "documents/sources",
+                    "category": "repositoryInventory",
+                    "ruleRef": "RepositoryInventory.Consistency",
+                    "facts": {
+                        "path": "documents/sources"
+                    },
+                    "message": "This item is declared in the repository inventory but missing on disk.",
+                    "expected": "All inventory entries must physically exist.",
+                    "suggestedFix": "Restore the missing item or remove it from the inventory."
+                },
+                {
+                    "severity": "blocking",
+                    "code": "MISSING_DIR",
+                    "path": "reports/automation",
+                    "category": "repositoryInventory",
+                    "ruleRef": "RepositoryInventory.Consistency",
+                    "facts": {
+                        "path": "reports/automation"
+                    },
+                    "message": "This item is declared in the repository inventory but missing on disk.",
+                    "expected": "All inventory entries must physically exist.",
+                    "suggestedFix": "Restore the missing item or remove it from the inventory."
+                },
+                {
+                    "severity": "blocking",
+                    "code": "MISSING_FILE",
+                    "path": "reports/automation/dailyRepositoryAudit.json",
+                    "category": "repositoryInventory",
+                    "ruleRef": "RepositoryInventory.Consistency",
+                    "facts": {
+                        "path": "reports/automation/dailyRepositoryAudit.json"
+                    },
+                    "message": "This item is declared in the repository inventory but missing on disk.",
+                    "expected": "All inventory entries must physically exist.",
+                    "suggestedFix": "Restore the missing item or remove it from the inventory."
+                },
+                {
+                    "severity": "blocking",
+                    "code": "MISSING_FILE",
+                    "path": "secure/.gitignore",
+                    "category": "repositoryInventory",
+                    "ruleRef": "RepositoryInventory.Consistency",
+                    "facts": {
+                        "path": "secure/.gitignore"
+                    },
+                    "message": "This item is declared in the repository inventory but missing on disk.",
+                    "expected": "All inventory entries must physically exist.",
+                    "suggestedFix": "Restore the missing item or remove it from the inventory."
+                },
+                {
+                    "severity": "blocking",
+                    "code": "CODEX_WRITABLE",
+                    "message": "Codex must be immutable at runtime",
+                    "category": "codexIntegrity",
+                    "ruleRef": "Codex.Immutable",
+                    "facts": {
+                        "path": "codex/"
+                    },
+                    "expected": "The Codex must be read-only at runtime.",
+                    "suggestedFix": "Remove write permissions from the codex directory."
+                }
+            ]
+        }
+    ]
 }

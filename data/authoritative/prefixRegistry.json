@@ -82,10 +82,10 @@
       "example": "PER-0001"
     },
     {
-    "prefix": "ERR",
-    "domain": "errors",
-    "description": "Codified structural and validation error identifiers used by the Skyesoft audit system.",
-    "example": "ERR-0001"
+      "prefix": "VIO",
+      "domain": "auditViolations",
+      "description": "Optional identifiers for referencing individual audit violations detected during operational or governance audits. Violations are immutable observations, not error entities, and have no lifecycle or resolution state.",
+      "example": "VIO-0001"
     }
   ]
 }

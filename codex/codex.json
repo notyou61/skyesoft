@@ -2355,155 +2355,139 @@
           "This standard is structural and non-legislative."
         ]
       },
-      "errorGovernanceStandard": {
-        "title": { "icon": 50, "text": "Error Governance Standard (EGS)" },
+      "auditGovernanceStandard": {
+        "title": { "icon": 67, "text": "Audit Governance Standard (AGS)" },
         "tier": 2,
-        "hierarchyOrder": 18,
+        "hierarchyOrder": 5,
         "type": "Structural Standard",
         "preamble": {
-          "icon": 50,
-          "text": "EGS defines how Skyesoft detects, classifies, records, and preserves structural and operational errors. The Auditor discovers anomalies, Cron processes them into governed ERR entries, and AI advisory roles (Parliamentarian, Archivist) provide non-executing doctrinal and historical insight. All errors are permanent, immutable, and part of Skyesoft’s constitutional record."
+          "text": "The Audit Governance Standard (AGS) defines how Skyesoft audits system reality, detects governed violations, and preserves audit truth over time. Audits observe; they do not mutate. Violations describe deviations from Codex-governed expectations. Audit records are immutable, append-only, and permanently preserved."
         },
         "purpose": {
-          "icon": 20,
-          "text": "Provide a unified Codex-governed framework ensuring that errors are always detected, classified, logged, never overwritten, and permanently preserved. Maintain system integrity through strict separation of detection (Auditor), processing (Cron), and advisory interpretation (AI roles)."
+          "text": "Provide a single, unified governance framework for all audit activity in Skyesoft, including both continuous operational audits and periodic governance audits, ensuring deterministic detection, developer-actionable reporting, and immutable historical preservation."
         },
-        "governs": [
-          "scripts/auditor.php",
-          "api/cronRun.php",
-          "assets/data/errorRegistry.json",
-          "assets/data/repositoryAudit.json",
-          "assets/data/parliamentarianPrompt.json",
-          "assets/data/archivistPrompt.json"
+        "scope": [
+          "Repository state vs repositoryInventory.json",
+          "Codex integrity and immutability",
+          "Merkle integrity artifacts",
+          "Critical file presence",
+          "Naming and structural conventions",
+          "Codex doctrinal soundness (governance mode)"
         ],
-        "storage": {
-          "registryFile": "assets/data/errorRegistry.json",
-          "auditLogFile": "assets/data/repositoryAudit.json",
-          "description": "The canonical error registry and chronological audit log. Both files must always exist and may never be deleted."
-        },
+        "governs": [
+          "api/repositoryAuditor.php",
+          "assets/data/repositoryAudit.json"
+        ],
         "timeStandard": {
           "format": "unix_epoch_seconds_integer",
-          "description": "All timestamps stored, transmitted, or logged by Skyesoft must be UNIX epoch time expressed as an integer number of seconds since 1970-01-01T00:00:00Z. Milliseconds, ISO-8601 strings, locale-formatted dates, or floating-point representations are prohibited in all non-UI artifacts.",
-          "scope": [
-            "errorRegistry.json",
+          "description": "All audit timestamps must be stored as UNIX epoch seconds (integer). No other timestamp formats are permitted in audit artifacts.",
+          "appliesTo": [
             "repositoryAudit.json",
-            "repositoryInventory.json",
-            "versions.json",
-            "SSE payloads",
-            "automation reports",
-            "chat history logs",
-            "module outputs"
-          ],
-          "uiException": {
-            "allowed": true,
-            "rule": "Human-readable date/time formatting is permitted only at render time in UI layers and must derive directly from UNIX epoch values without mutation."
+            "repositoryAuditor.php outputs",
+            "automation audit reports",
+            "SSE audit payloads"
+          ]
+        },
+        "auditModes": {
+          "operational": {
+            "description": "A lightweight, continuous audit that detects runtime and structural violations during normal system operation.",
+            "frequency": "High (e.g., every minute via cron)",
+            "executor": "repositoryAuditor.php",
+            "characteristics": [
+              "Non-doctrinal",
+              "Deterministic",
+              "Fail-fast",
+              "Read-only execution",
+              "May emit multiple violations per run"
+            ],
+            "outputs": [
+              "status",
+              "violations"
+            ]
           },
-          "prohibitions": [
-            "ISO-8601 timestamps outside UI rendering",
-            "JavaScript Date objects stored directly",
-            "Mixed seconds/milliseconds representations",
-            "Synthetic or inferred timestamps"
-          ]
-        },
-        "errorTypes": {
-          "description": "Each error must belong to exactly one governed category.",
-          "types": [
-            { "key": "structural_validation", "description": "Unapproved files, missing SOT files, unexpected directories, drift." },
-            { "key": "prefix_mismatch", "description": "Unknown, deprecated, or misaligned prefix usage (PRF violation)." },
-            { "key": "inventory_mismatch", "description": "Filesystem vs repositoryInventory.json mismatch." },
-            { "key": "syntax_error", "description": "Malformed JSON, corrupted data files, invalid schemas." },
-            { "key": "dependency_error", "description": "Missing modules, unresolved references." },
-            { "key": "runtime_error", "description": "Execution anomalies inside auditor.php or cronRun.php." },
-            { "key": "policy_violation", "description": "Violations of Codex rules, structural mandates, naming standards, or MIS mismatches." }
-          ]
-        },
-        "lifecycle": {
-          "states": [
-            { "key": "active", "description": "A newly detected or unresolved error." },
-            { "key": "troubleshooting", "description": "Corrective action underway." },
-            { "key": "resolved", "description": "Error corrected; permanently preserved for lineage." }
-          ],
-          "rules": [
-            "Errors may never be deleted.",
-            "All state transitions must append an entry to repositoryAudit.json.",
-            "Resolved errors remain permanently in errorRegistry.json."
-          ]
-        },
-        "errorObjectSchema": {
-          "description": "All ERR entries must follow this schema.",
-          "schema": {
-            "id": { "type": "string", "pattern": "^ERR-[0-9]{5}$" },
-            "name": { "type": "string" },
-            "timestamp": { "type": "integer" },
-            "type": { "type": "string" },
-            "description": { "type": "string" },
-            "suggestedSolution": { "type": "string" },
-            "status": { "type": "string", "enum": ["active", "troubleshooting", "resolved"] },
-            "lastAction": { "type": "string" }
+          "governance": {
+            "description": "A point-in-time, exhaustive audit that evaluates Codex doctrinal soundness and internal consistency.",
+            "frequency": "Low (e.g., daily or on version change)",
+            "executor": "repositoryAuditor.php",
+            "characteristics": [
+              "Doctrinal evaluation",
+              "Adversarial interpretation",
+              "Read-only execution",
+              "Single assessment per run"
+            ],
+            "outputs": [
+              "status",
+              "notes"
+            ]
           }
         },
-        "registryRules": {
-          "description": "errorRegistry.json is the Single Source of Truth (SOT) for all ERR entries.",
+        "violationModel": {
+          "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations. Violations are not errors and do not have lifecycles.",
+          "properties": {
+            "severity": "blocking | warning",
+            "code": "Canonical violation code",
+            "category": "Governed classification domain",
+            "ruleRef": "Codex rule identifier",
+            "path": "Optional filesystem path",
+            "facts": "Structured contextual data",
+            "message": "Human-readable description of the violation",
+            "expected": "Statement of Codex-expected state",
+            "suggestedFix": "Developer-actionable remediation guidance"
+          },
           "rules": [
-            "ERR IDs must increment sequentially starting at ERR-00001.",
-            "No ERR ID may ever be reused.",
-            "Only cronRun.php may modify this file.",
-            "Resolved errors must remain for historical lineage."
+            "Violations are immutable once recorded.",
+            "Violations do not transition state.",
+            "Violations are not assigned identifiers.",
+            "Violations exist only within audit records."
           ]
+        },
+        "violationCategories": {
+          "repositoryInventory": "Filesystem vs repositoryInventory.json mismatches.",
+          "integrity": "Merkle and integrity artifact violations.",
+          "codexIntegrity": "Codex immutability or structural violations.",
+          "criticalFiles": "Missing or invalid critical system files.",
+          "naming": "Filename or extension convention violations.",
+          "canonicalRegistries": "Registry naming and structure violations.",
+          "directories": "Directory naming deviations.",
+          "runtime": "Execution invariant violations.",
+          "doctrine": "Codex governance contradictions or ambiguities."
         },
         "auditLog": {
-          "description": "repositoryAudit.json captures every occurrence, recurrence, or lifecycle transition.",
-          "schema": {
-            "timestamp": "UNIX epoch integer",
-            "errorId": "ERR-#####",
-            "status": "active|troubleshooting|resolved",
-            "name": "Short descriptor",
-            "type": "errorTypes.key",
-            "message": "Narrative contextual message"
-          },
+          "file": "assets/data/repositoryAudit.json",
+          "description": "Canonical, append-only audit log capturing the complete output of every audit execution.",
           "rules": [
-            "Log is append-only and immutable.",
-            "Entries may never be edited or removed.",
-            "Registry and log must remain consistent."
-          ]
+            "Audit records may never be deleted.",
+            "Audit records may never be modified.",
+            "Each audit run appends exactly one entry.",
+            "Audit records preserve full violation detail."
+          ],
+          "recordSchema": {
+            "schema": "Skyesoft.ViolationReport.v1",
+            "generatedAt": "UNIX epoch integer",
+            "auditor": "repositoryAuditor",
+            "version": "repositoryAuditor version",
+            "mode": "operational | governance",
+            "summary": {
+              "status": "PASS | FAIL | WARN",
+              "blocking": "integer",
+              "warnings": "integer",
+              "total": "integer"
+            },
+            "violations": "array of violation objects"
+          }
         },
-        "detection": {
-          "enforcedBy": "scripts/auditor.php",
-          "rules": [
-            "auditor.php must detect structural violations, drift, SOT absence, and MIS mismatches.",
-            "auditor.php must classify findings using errorTypes.",
-            "auditor.php must output raw findings only and must never mutate SOT.",
-            "auditor.php must not assign ERR IDs."
-          ]
-        },
-        "processing": {
-          "enforcedBy": "api/cronRun.php",
-          "rules": [
-            "cronRun.php must receive raw findings from auditor.php.",
-            "cronRun.php must assign ERR identifiers using PRF governance.",
-            "cronRun.php must update errorRegistry.json.",
-            "cronRun.php must append all events to repositoryAudit.json.",
-            "cronRun.php may update SSE errorState via getDynamicData.php."
-          ]
-        },
-        "uiIntegration": {
-          "optional": true,
-          "description": "UI surfaces may display errorState but must never compute it locally.",
-          "ssePayload": {
-            "latest": "ERR-#####",
-            "activeCount": "integer",
-            "timestamp": "UNIX epoch"
-          },
-          "rules": [
-            "Only cronRun.php and getDynamicData.php may update SSE errorState.",
-            "UI must remain passive and strictly Codex-aligned."
-          ]
-        },
+        "prohibitions": [
+          "No error entities or error registries",
+          "No ERR-prefixed identifiers",
+          "No lifecycle states (active, resolved, etc.)",
+          "No audit-triggered mutation of system state",
+          "No Codex mutation during audits"
+        ],
         "notes": [
-          "Parliamentarian and Archivist are AI advisory roles only and may not mutate SOT.",
-          "EGS v4 removes Sentinel entirely and consolidates mutation authority under Cron.",
-          "All structural and error data resides in assets/data to support the SOT model.",
-          "MIS integration allows cryptographic verification of Codex integrity."
+          "Audits observe reality; they do not correct it.",
+          "Developers act on violations using suggestedFix guidance.",
+          "Governance interpretation may be advisory but is non-executing.",
+          "This standard supersedes all prior error- or audit-specific Tier-2 standards."
         ]
       },
       "merkleIntegrityStandard": {
@@ -2674,80 +2658,6 @@
           "SIS authority is prospective and activates only upon explicit human declaration of system launch.",
           "All subsequent audits, Merkle checks, and EGS error lineage depend on correct SIS execution.",
           "This standard prevents development noise from contaminating operational history."
-        ]
-      },
-      "operationalAuditStandard": {
-        "title": { "icon": 67, "text": "Operational Audit Standard" },
-        "tier": 2,
-        "hierarchyOrder": 5,
-        "type": "Structural Standard",
-        "preamble": {
-          "text": "An Operational Audit is a lightweight, repeatable system check designed to detect runtime violations, integrity drift, configuration errors, or state inconsistencies as they occur.\n\nOperational Audits prioritize timeliness and safety over exhaustiveness. They exist to surface problems early, not to evaluate doctrine."
-        },
-        "purpose": {
-          "text": "Provide continuous monitoring of system health, integrity, and governed expectations during normal operation."
-        },
-        "scope": [
-          "Repository state vs declared inventory",
-          "Merkle integrity status",
-          "Critical configuration presence",
-          "Execution invariants required for safe operation"
-        ],
-        "principles": [
-          { "key": "nonDoctrinal", "text": "Operational Audits do not evaluate Codex doctrine itself." },
-          { "key": "continuous", "text": "Operational Audits may be run frequently and automatically." },
-          { "key": "failFast", "text": "Violations are reported immediately when detected." },
-          { "key": "nonLegislative", "text": "Operational Audits have no authority to alter system state or doctrine." },
-          { "key": "readOnlyExecution", "text": "Audits operate in read-only mode and must not mutate system state." }
-        ],
-        "execution": {
-          "trigger": "Automated (cron or system scheduler)",
-          "frequency": "High (e.g., every minute)",
-          "executor": "repositoryAuditor.php"
-        },
-        "outputs": {
-          "behavior": "Emit status, violations, and alerts as system events.",
-          "authority": "No canonical governance record is produced."
-        },
-        "notes": [
-          "Operational Audits may produce logs or alerts but do not create authoritative audit records.",
-          "Operational Audits may short-circuit or degrade gracefully under system load.",
-          "Operational Audits are executed as a distinct audit mode within a single governed auditor implementation."
-        ]
-      },
-      "governanceAuditStandard": {
-        "title": { "icon": 67, "text": "Governance Audit Standard" },
-        "tier": 2,
-        "hierarchyOrder": 6,
-        "type": "Structural Standard",
-        "preamble": {
-          "text": "A Governance Audit is a formal, point-in-time assessment of Codex Doctrinal Soundness.\n\nIt evaluates whether the Codex, as authored at the time of assessment, can be applied literally, universally, and safely without contradiction, ambiguity, or reliance on inference."
-        },
-        "purpose": {
-          "text": "Determine whether the Codex itself remains fit to govern the system."
-        },
-        "scope": "Entire Codex (all tiers)",
-        "principles": [
-          { "key": "presumptionOfValidity", "text": "The Codex is presumed sound unless proven otherwise." },
-          { "key": "literalInterpretation", "text": "Doctrine is evaluated exactly as written." },
-          { "key": "universality", "text": "Rules apply universally unless explicitly excepted." },
-          { "key": "adversarialPosture", "text": "Assume misuse, automation error, fatigue, and literal execution by non-human actors." },
-          { "key": "nonLegislative", "text": "Audits do not modify doctrine." },
-          { "key": "readOnlyExecution", "text": "Audits operate in read-only mode and must not mutate system state." }
-        ],
-        "execution": {
-          "trigger": "Scheduled or human-initiated",
-          "frequency": "Low (e.g., daily at midnight or on version change)",
-          "executor": "repositoryAuditor.php"
-        },
-        "outputs": {
-          "behavior": "Produce a single point-in-time determination of doctrinal soundness.",
-          "authority": "Governance significance; record defined elsewhere."
-        },
-        "notes": [
-          "Governance Audits are exhaustive, not continuous.",
-          "Governance Audits may require human review before sealing.",
-          "Governance Audits are executed using the same auditor implementation under a distinct governance mode."
         ]
       }
     }
