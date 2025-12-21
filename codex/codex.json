@@ -511,7 +511,7 @@
             "description": "JSON or configuration files that store structured data, datasets, or non-doctrinal configuration.",
             "authority": "Operational (configurable)",
             "rules": [
-              "kebab-case or snake_case filenames are permitted.",
+               "Filenames must use kebab-case.",
               "Consistency within the category is required."
             ],
             "examples": [
@@ -1702,6 +1702,97 @@
             "type": "incident"
           }
         ]
+      },
+      "entityLocationContactStandard": {
+        "title": {
+          "icon": 42,
+          "text": "Entity–Location–Contact (ELC) Data Model Standard"
+        },
+        "tier": 2,
+        "type": "Structural Standard",
+        "version": "1.0.2",
+        "preamble": {
+          "text": "Defines the canonical relational data model for entities, locations, and contacts within Skyesoft. This standard governs structure, normalization, identifiers, authoritative storage, and approved filesystem placement."
+        },
+        "paths": {
+          "authoritative": {
+            "root": "/database/elc",
+            "runtime": "/database/elc/runtime"
+          },
+          "supporting": {
+            "schema": "/database/elc/schema",
+            "migrations": "/database/elc/migrations"
+          }
+        },
+        "governs": [
+          "SQL ELC database schema and constraints",
+          "JSON ELC staging object structure",
+          "ELC import and export pipelines"
+        ],
+        "coreObjects": {
+          "entity": {
+            "description": "Top-level organizational or governmental unit.",
+            "primaryKey": "entity_id (integer)",
+            "relationships": [
+              "entity → locations (1:N)"
+            ]
+          },
+          "location": {
+            "description": "Physical address associated with an entity.",
+            "primaryKey": "location_id (integer)",
+            "foreignKeys": [
+              "entity_id"
+            ],
+            "relationships": [
+              "location → contacts (1:N)"
+            ]
+          },
+          "contact": {
+            "description": "Individual person associated with exactly one location.",
+            "primaryKey": "contact_id (integer)",
+            "foreignKeys": [
+              "location_id"
+            ]
+          }
+        },
+        "normalization": {
+          "level": "Third Normal Form (3NF)",
+          "rules": [
+            "No derived or repeated fields",
+            "No transitive dependencies",
+            "Contacts must not reference entities directly",
+            "Locations must not embed contact data"
+          ]
+        },
+        "storageDoctrine": {
+          "authoritative": {
+            "type": "SQL",
+            "path": "/database/elc/runtime",
+            "notes": "The SQL database (e.g., MySQL or SQLite) is the sole long-term source of truth for ELC records."
+          },
+          "staging": {
+            "type": "JSON",
+            "path": "/data/runtimeEphemeral",
+            "notes": "JSON files are used as a structured capture and staging mechanism prior to SQL promotion. Staging JSON is non-authoritative and may be versioned or discarded after successful SQL migration."
+          }
+        },
+        "constraints": {
+          "identifierPolicy": "All primary and foreign keys must be integers.",
+          "pathPolicy": "Authoritative data stores must reside under the /database directory.",
+          "gitPolicy": "Authoritative SQL database files are excluded from Git version control."
+        },
+        "growthPolicy": {
+          "allowedExtensions": [
+            "Additional relational tables linked via foreign keys",
+            "Historical or audit tables",
+            "Read-only derived views"
+          ],
+          "forbiddenExtensions": [
+            "Embedding related records as nested arrays",
+            "Using JSON as an authoritative store",
+            "Path relocation without Codex revision"
+          ]
+        }
       },
       "sseStandard": {
         "title": {

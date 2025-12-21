@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "schema": "ELC",
+    "version": "1.0.0",
+    "intent": "staging",
+    "authoritative": false,
+    "notes": "This file is a non-authoritative staging surface for Entity–Location–Contact records prior to SQL promotion."
+  },
+  "entities": [
+    {
+      "entity_id": 1,
+      "entity_type": "company",
+      "entity_name": "Christy Signs"
+    },
+    {
+      "entity_id": 2,
+      "entity_type": "customer",
+      "entity_name": "AlphaGraphics #106"
+    },
+    {
+      "entity_id": 3,
+      "entity_type": "jurisdiction",
+      "entity_name": "Gila County Community Development"
+    },
+    {
+      "entity_id": 4,
+      "entity_type": "customer",
+      "entity_name": "National Sign & Marketing Corporation"
+    },
+    {
+      "entity_id": 5,
+      "entity_type": "jurisdiction",
+      "entity_name": "City of Glendale"
+    }
+  ],
+  "locations": [
+    {
+      "location_id": 1,
+      "entity_id": 1,
+      "location_name": "Christy Signs – Phoenix HQ",
+      "parcel_number": null,
+      "address": "3145 N 33rd Ave",
+      "city": "Phoenix",
+      "state": "AZ",
+      "zip": "85017"
+    },
+    {
+      "location_id": 2,
+      "entity_id": 2,
+      "location_name": "AlphaGraphics #106 – Phoenix",
+      "parcel_number": null,
+      "address": "8027 N Black Canyon Hwy, Ste A",
+      "city": "Phoenix",
+      "state": "AZ",
+      "zip": "85021"
+    },
+    {
+      "location_id": 3,
+      "entity_id": 3,
+      "location_name": "Gila County Community Development – Payson",
+      "parcel_number": null,
+      "address": "608 E. Hwy 260",
+      "city": "Payson",
+      "state": "AZ",
+      "zip": "85541"
+    },
+    {
+      "location_id": 4,
+      "entity_id": 4,
+      "location_name": "National Sign & Marketing Corporation – Chino Office",
+      "parcel_number": null,
+      "address": "13580 5th Street",
+      "city": "Chino",
+      "state": "CA",
+      "zip": "91710"
+    },
+    {
+      "location_id": 5,
+      "entity_id": 5,
+      "location_name": "City of Glendale – Permit Services",
+      "parcel_number": null,
+      "address": null,
+      "city": "Glendale",
+      "state": "AZ",
+      "zip": null
+    }
+  ],
+  "contacts": [
+    {
+      "contact_id": 1,
+      "location_id": 1,
+      "salutation": "Mr.",
+      "first_name": "Steve",
+      "last_name": "Skye",
+      "title": "Account Executive / Permit Specialist",
+      "phone": "6022424488",
+      "email": "steve@christysigns.com"
+    },
+    {
+      "contact_id": 2,
+      "location_id": 2,
+      "salutation": "Mr.",
+      "first_name": "Carmine",
+      "last_name": "Lombardi",
+      "title": "Owner",
+      "phone": "6022342944",
+      "email": null
+    },
+    {
+      "contact_id": 3,
+      "location_id": 3,
+      "salutation": "Ms.",
+      "first_name": "Terri",
+      "last_name": "Morrell-Stancil",
+      "title": "Permit Technician",
+      "phone": "9284747111",
+      "email": null
+    },
+    {
+      "contact_id": 4,
+      "location_id": 4,
+      "salutation": "Ms.",
+      "first_name": "Joan",
+      "last_name": "Luna",
+      "title": "Project Manager",
+      "phone": "9092034424",
+      "email": "jluna@nsmc.com"
+    },
+    {
+      "contact_id": 5,
+      "location_id": 5,
+      "salutation": "Ms.",
+      "first_name": "Briceida",
+      "last_name": "Rodriguez",
+      "title": "Permit Technician",
+      "phone": null,
+      "email": "brodriguez1@glendaleaz.com"
+    }
+  ]
+}
