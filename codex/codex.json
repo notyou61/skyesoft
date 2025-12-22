@@ -347,7 +347,7 @@
             "lowAuthorityEphemeral": "DerivedOutput"
           },
           "structureNote": {
-            "text": "The Intent Domain Matrix is intended to map directly to physical data organization. Each quadrant corresponds to a distinct data folder, ensuring that artifact authority and longevity are reinforced by filesystem structure. This alignment is deliberate and exists to provide predictable paths, reduce ambiguity, and prevent accidental role mixing."
+            "text": "This mapping is conceptual only and does not mandate filesystem placement. Physical directory structure is governed exclusively by the Repository Standard."
           },
           "canonicalFolders": {
             "root": "/data",
@@ -691,13 +691,12 @@
         },
         "namingRules": {
           "title": { "icon": 11, "text": "File Naming Enforcement" },
-          "directive": "All filenames across the repository must use camelCase.",
+          "directive": "Filename conventions are governed exclusively by the Naming Convention Standard and enforced by semantic category.",
           "rules": [
-            "No spaces, underscores, or PascalCase allowed in filenames.",
-            "JSON, JS, PHP, HTML, CSS, and asset files must use camelCase.",
+            "Filenames must follow the Naming Convention Standard for their semantic category.",
+            "Repository Standard does not define naming styles directly.",
             "File extensions must remain lowercase.",
-            "Any naming exception requires a Codex amendment.",
-            "Dotfiles and widely recognized industry-standard filenames (e.g. .gitignore, README.md, LICENSE) are exempt from camelCase enforcement."
+            "Any naming exception requires a Codex amendment."
           ]
         },
         "directives": [

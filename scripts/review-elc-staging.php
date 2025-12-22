@@ -56,7 +56,7 @@ if (!is_array($jurisdictionRegistry)) {
 
 #region SECTION 1 — Environment Loading (Local / CLI)
 
-$envPath = 'C:\\Users\\Steve Skye\\Documents\\skyesoft\\secure\\env.local';
+$envPath = dirname(__DIR__) . '/secure/env.local';
 if (file_exists($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
@@ -97,10 +97,99 @@ require_once __DIR__ . '/../api/askOpenAI.php';
 
 #region SECTION 4 — Maricopa Parcel Resolution (Authoritative GIS)
 
-/* resolveMaricopaParcel() */
-/* queryMaricopaArcGIS() */
+function resolveMaricopaParcel(array &$l): ?string
+{
+    if (
+        empty($l['locationAddress']) ||
+        empty($l['locationCity'])
+    ) {
+        return null;
+    }
 
-/* (functions unchanged — omitted here for brevity) */
+    $street = strtoupper(trim(preg_replace('/\s+/', ' ', $l['locationAddress'])));
+    $city   = strtoupper(trim($l['locationCity']));
+    $full   = $street . ' ' . $city;
+
+    $baseUrl = 'https://gis.mcassessor.maricopa.gov/arcgis/rest/services/MaricopaDynamicQueryService/MapServer/3/query';
+    $outFields = 'APN,APN_DASH,PHYSICAL_ADDRESS,JURISDICTION,PHYSICAL_CITY';
+
+    $where = "UPPER(PHYSICAL_ADDRESS) = '" . addslashes($full) . "'";
+    $parcel = queryMaricopaArcGIS($baseUrl, $where, $outFields, $l);
+
+    if ($parcel) {
+        return $parcel;
+    }
+
+    $where = "UPPER(PHYSICAL_ADDRESS) LIKE '%" . addslashes($street) . "%'
+              AND UPPER(PHYSICAL_ADDRESS) LIKE '%" . addslashes($city) . "%'";
+
+    return queryMaricopaArcGIS($baseUrl, $where, $outFields, $l);
+}
+
+function queryMaricopaArcGIS(
+    string $baseUrl,
+    string $where,
+    string $outFields,
+    array &$l
+): ?string {
+
+    $params = [
+        'where'          => $where,
+        'outFields'      => $outFields,
+        'returnGeometry' => 'false',
+        'f'              => 'json'
+    ];
+
+    $url = $baseUrl . '?' . http_build_query($params);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; Skyesoft)'
+    ]);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$response) {
+        return null;
+    }
+
+    $data = json_decode($response, true);
+    $features = $data['features'] ?? [];
+
+    if (count($features) !== 1) {
+        return null;
+    }
+
+    $attrs = $features[0]['attributes'];
+    $apnRaw = $attrs['APN_DASH'] ?? $attrs['APN'] ?? null;
+
+    if (!$apnRaw) {
+        return null;
+    }
+
+    $formattedApn = trim($apnRaw);
+    $l['locationParcelNumber'] = $formattedApn;
+    $GLOBALS['fixes'][] =
+        "Resolved parcel '{$formattedApn}' via ArcGIS for locationId {$l['locationId']}";
+
+    if (empty($l['locationJurisdiction'])) {
+        $jur = trim($attrs['JURISDICTION'] ?? $attrs['PHYSICAL_CITY'] ?? '');
+        if ($jur) {
+            $l['locationJurisdiction'] =
+                strtoupper($jur) === 'UNINCORPORATED'
+                    ? 'Unincorporated Maricopa County'
+                    : $jur;
+
+            $GLOBALS['fixes'][] =
+                "Backfilled jurisdiction '{$l['locationJurisdiction']}' via ArcGIS for locationId {$l['locationId']}";
+        }
+    }
+
+    return $formattedApn;
+}
 
 #endregion
 
@@ -112,13 +201,138 @@ require_once __DIR__ . '/../api/askOpenAI.php';
 
 #region SECTION 6 — Jurisdiction Registry Resolver
 
-/* resolveJurisdictionFromCity() */
+function resolveJurisdictionFromCity(
+    string $city,
+    array $registry
+): ?string {
+
+    $cityUpper = strtoupper(trim($city));
+
+    foreach ($registry as $name => $meta) {
+        if (strtoupper($name) === $cityUpper) {
+            return $name;
+        }
+
+        foreach ($meta['aliases'] ?? [] as $alias) {
+            if (strtoupper($alias) === $cityUpper) {
+                return $name;
+            }
+        }
+    }
+
+    return null;
+}
 
 #endregion
 
 #region SECTION 7 — Location Enrichment
+/*
+    Flow (authoritative → least-authoritative):
 
-/* census → arcgis → registry → conditional default */
+    1. Census (county + FIPS)         — nationwide
+    2. ArcGIS parcel + jurisdiction   — Maricopa County only
+    3. Jurisdiction Registry          — authoritative name normalization
+    4. Conditional default:
+        • AZ + Maricopa  → Unincorporated Maricopa County
+        • Otherwise      → Needed
+*/
+
+foreach ($data['locations'] as &$l) {
+
+    // ------------------------------------------------------------------
+    // 7.1 — County & FIPS enrichment (Census, nationwide)
+    // ------------------------------------------------------------------
+    if (
+        (empty($l['locationCounty']) || empty($l['locationCountyFips'])) &&
+        !empty($l['locationAddress']) &&
+        !empty($l['locationState'])
+    ) {
+
+        $addressLine = trim(
+            $l['locationAddress'] . ', ' .
+            ($l['locationCity'] ?? '') . ', ' .
+            $l['locationState'] . ' ' .
+            ($l['locationZip'] ?? '')
+        );
+
+        $geo = censusGeocodeAddress($addressLine);
+
+        if ($geo && !empty($geo['county']) && !empty($geo['countyFips'])) {
+
+            if (empty($l['locationCounty'])) {
+                $l['locationCounty'] = $geo['county'];
+                $fixes[] = "Backfilled county '{$geo['county']}' for locationId {$l['locationId']}";
+            }
+
+            if (empty($l['locationCountyFips'])) {
+                $l['locationCountyFips'] = $geo['countyFips'];
+                $fixes[] = "Backfilled county FIPS '{$geo['countyFips']}' for locationId {$l['locationId']}";
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 7.2 — Parcel & jurisdiction resolution (Maricopa only, ArcGIS)
+    // ------------------------------------------------------------------
+    if (
+        ($l['locationState'] ?? null) === 'AZ' &&
+        strtoupper($l['locationCounty'] ?? '') === 'MARICOPA' &&
+        (($l['locationParcelNumber'] ?? '') === '' || $l['locationParcelNumber'] === 'Pending')
+    ) {
+
+        $parcel = resolveMaricopaParcel($l);
+
+        if (!$parcel && ($l['locationParcelNumber'] ?? '') !== 'Pending') {
+            $l['locationParcelNumber'] = 'Pending';
+            $fixes[] = "Marked parcel as Pending for locationId {$l['locationId']}";
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 7.3 — Jurisdiction normalization via authoritative registry
+    // ------------------------------------------------------------------
+    if (
+        empty($l['locationJurisdiction']) &&
+        !empty($l['locationCity'])
+    ) {
+
+        $resolved = resolveJurisdictionFromCity(
+            $l['locationCity'],
+            $jurisdictionRegistry
+        );
+
+        if ($resolved) {
+            $l['locationJurisdiction'] = $resolved;
+            $fixes[] = "Backfilled jurisdiction '{$resolved}' from registry for locationId {$l['locationId']}";
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 7.4 — Conditional default (truth-preserving)
+    // ------------------------------------------------------------------
+    if (empty($l['locationJurisdiction'])) {
+
+        if (
+            ($l['locationState'] ?? null) === 'AZ' &&
+            strtoupper($l['locationCounty'] ?? '') === 'MARICOPA'
+        ) {
+            $l['locationJurisdiction'] = 'Unincorporated Maricopa County';
+            $fixes[] = "Defaulted jurisdiction to Unincorporated Maricopa County for locationId {$l['locationId']}";
+        } else {
+            $l['locationJurisdiction'] = 'Needed';
+            $fixes[] = "Marked jurisdiction as Needed for locationId {$l['locationId']}";
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 7.5 — Non-Maricopa parcel placeholder (explicit)
+    // ------------------------------------------------------------------
+    if (empty($l['locationParcelNumber'])) {
+        $l['locationParcelNumber'] = 'Pending';
+        $fixes[] = "Marked parcel as Pending for locationId {$l['locationId']}";
+    }
+}
+unset($l);
 
 #endregion
 
