@@ -19,7 +19,7 @@ declare(strict_types=1);
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
-header("Content-Type: application/json; charset=UTF-8");
+//sheader("Content-Type: application/json; charset=UTF-8");
 
 #region SECTION 0 — Fail Handler
 function aiFail(string $msg): never {
@@ -69,6 +69,36 @@ function getCodexVersion(): string {
         ?? "pending"
     );
 }
+
+function inferSalutation(string $firstName, string $lastName): ?string
+{
+    $basePrompt = <<<PROMPT
+Given the name "{$firstName} {$lastName}", infer the most likely professional salutation for business correspondence.
+
+Respond with ONLY "Mr." or "Ms." — nothing else.
+PROMPT;
+
+    $fullPrompt = injectStandingOrders($basePrompt);
+
+    $apiKey = getenv("OPENAI_API_KEY");
+    if (!$apiKey) {
+        return null;
+    }
+
+    $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
+
+    if (!$response) {
+        return null;
+    }
+
+    $response = trim($response);
+
+    if (in_array($response, ['Mr.', 'Ms.'], true)) {
+        return $response;
+    }
+
+    return null;
+}
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -101,6 +131,10 @@ function callOpenAI(
 
     $ch = curl_init();
 
+    /* TEMPORARY — confirm SSL is the only blocker */
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
     curl_setopt_array($ch, [
         CURLOPT_URL            => "https://api.openai.com/v1/chat/completions",
         CURLOPT_RETURNTRANSFER => true,
@@ -129,7 +163,9 @@ function callOpenAI(
     $response = curl_exec($ch);
     $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    if ($status !== 200 || !$response) {
+    if (!$response || $status !== 200) {
+        echo "cURL error: " . curl_error($ch) . "\n";
+        echo "HTTP status: " . $status . "\n";
         return null;
     }
 
@@ -212,6 +248,13 @@ function buildAuditFacts(array $report): array {
             "Audit results are not persisted or indexed."
         ]
     ];
+}
+#endregion
+
+#region SECTION 4.5 — Library Mode Guard
+// Stop controller execution when used as a library (e.g., review-elc-staging.php)
+if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
+    return;
 }
 #endregion
 
