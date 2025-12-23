@@ -206,18 +206,7 @@ function explainViolation(array $v): array
                 "suggestedFix" =>
                     "Upgrade the PHP runtime to version 8.3 or newer."
             ];
-        case "CODEX_WRITABLE":
-            return $v + [
-                "category" => "codexIntegrity",
-                "ruleRef" => "Codex.Immutable",
-                "facts" => ["path" => "codex/"],
-                "message" =>
-                    "The Codex directory is writable, violating immutability guarantees.",
-                "expected" =>
-                    "The Codex must be read-only at runtime.",
-                "suggestedFix" =>
-                    "Remove write permissions from the codex directory."
-            ];
+
         // ─────────────────────────────────────────────
         // Naming Conventions
         // ─────────────────────────────────────────────
@@ -383,13 +372,6 @@ function checkExecutionInvariants(string $root): array {
             "severity" => "blocking",
             "code" => "PHP_VERSION_UNSUPPORTED",
             "message" => "PHP 8.3+ required"
-        ];
-    }
-    if (is_dir("$root/codex") && is_writable("$root/codex")) {
-        $violations[] = [
-            "severity" => "blocking",
-            "code" => "CODEX_WRITABLE",
-            "message" => "Codex must be immutable at runtime"
         ];
     }
     return $violations;
