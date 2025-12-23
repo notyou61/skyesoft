@@ -2451,7 +2451,7 @@
         "hierarchyOrder": 5,
         "type": "Structural Standard",
         "preamble": {
-          "text": "The Audit Governance Standard (AGS) defines how Skyesoft audits system reality, detects governed violations, and preserves audit truth over time. Audits observe; they do not mutate. Violations describe deviations from Codex-governed expectations. Audit records are immutable, append-only, and permanently preserved."
+          "text": "Audit records preserve immutable observations, support append-only resolution annotation, and are permanently preserved."
         },
         "purpose": {
           "text": "Provide a single, unified governance framework for all audit activity in Skyesoft, including both continuous operational audits and periodic governance audits, ensuring deterministic detection, developer-actionable reporting, and immutable historical preservation."
@@ -2465,16 +2465,16 @@
           "Codex doctrinal soundness (governance mode)"
         ],
         "governs": [
-          "api/repositoryAuditor.php",
-          "assets/data/repositoryAudit.json"
+          "scripts/auditor.php",
+          "data/records/auditResults.json"
         ],
         "timeStandard": {
           "format": "unix_epoch_seconds_integer",
           "description": "All audit timestamps must be stored as UNIX epoch seconds (integer). No other timestamp formats are permitted in audit artifacts.",
           "appliesTo": [
-            "repositoryAudit.json",
-            "repositoryAuditor.php outputs",
-            "automation audit reports",
+            "data/records/auditResults.json",
+            "auditor observations",
+            "sentinel notifications",
             "SSE audit payloads"
           ]
         },
@@ -2489,10 +2489,6 @@
               "Fail-fast",
               "Read-only execution",
               "May emit multiple violations per run"
-            ],
-            "outputs": [
-              "status",
-              "violations"
             ]
           },
           "governance": {
@@ -2505,31 +2501,56 @@
               "Read-only execution",
               "Single assessment per run"
             ],
-            "outputs": [
-              "status",
-              "notes"
-            ]
+            "persistence": "Violations only; audit executions are not recorded.",
+            "externalDependencyChecks": {
+              "description": "Periodic reachability checks for external endpoints referenced in governed registries.",
+              "rules": [
+                "Checks are advisory only",
+                "Failures do not indicate structural corruption",
+                "Results may vary over time",
+                "Checks must not run in operational audits",
+                "Checks are limited to basic HTTP reachability and response validation"
+              ],
+              "scope": [
+                "jurisdictionRegistry.json api.endpoint fields"
+              ]
+            }
           }
         },
         "violationModel": {
-          "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations. Violations are not errors and do not have lifecycles.",
+          "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations.",
           "properties": {
-            "severity": "blocking | warning",
-            "code": "Canonical violation code",
-            "category": "Governed classification domain",
-            "ruleRef": "Codex rule identifier",
-            "path": "Optional filesystem path",
-            "facts": "Structured contextual data",
-            "message": "Human-readable description of the violation",
-            "expected": "Statement of Codex-expected state",
-            "suggestedFix": "Developer-actionable remediation guidance"
+            "violationId": "Prefix-governed unique identifier (VIO-###)",
+            "timestamp": "UNIX epoch seconds when violation was first detected",
+            "auditMode": "operational | governance",
+            "observation": "Human-readable governed deviation",
+            "notificationSent": "UNIX epoch seconds (optional)",
+            "resolved": "UNIX epoch seconds when corrected (optional)",
+            "actions": "Corrective action narrative (optional)",
+            "lastObserved": "UNIX epoch seconds of most recent detection (null once resolved)",
+            "observationCount": "Integer count of detections while unresolved"
           },
           "rules": [
-            "Violations are immutable once recorded.",
-            "Violations do not transition state.",
-            "Violations are not assigned identifiers.",
-            "Violations exist only within audit records."
+            "Violation records are mutable while unresolved",
+            "timestamp never changes",
+            "lastObserved and observationCount update on each audit run",
+            "Mutation ceases once resolved is set",
+            "Violations are never deleted"
           ]
+        },
+        "violationDimensions": {
+          "determinism": {
+            "strict": "The observation outcome will always be identical given identical system state.",
+            "non-deterministic": "The observation outcome may vary over time even if system state is unchanged."
+          },
+          "dependencyScope": {
+            "local": "The observation depends solely on locally governed system artifacts.",
+            "external": "The observation depends on external systems, networks, or third-party services."
+          },
+          "recordPersistence": {
+            "permanent": "The violation record must be preserved indefinitely once observed.",
+            "advisory": "The violation record represents a time-variant condition and is preserved for historical context."
+          }
         },
         "violationCategories": {
           "repositoryInventory": "Filesystem vs repositoryInventory.json mismatches.",
@@ -2540,31 +2561,162 @@
           "canonicalRegistries": "Registry naming and structure violations.",
           "directories": "Directory naming deviations.",
           "runtime": "Execution invariant violations.",
-          "doctrine": "Codex governance contradictions or ambiguities."
+          "doctrine": "Codex governance contradictions or ambiguities.",
+          "violationCategoryNotes": [
+            "Violation categories are descriptive taxonomy only.",
+            "Violation categories do not authorize, limit, or constrain auditor observables."
+          ]
+        },
+        "violationClasses": {
+          "merkleIntegrity": {
+            "category": "integrity",
+            "auditModes": ["operational", "governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects divergence between governed Merkle artifacts and observed repository state.",
+            "narrativeGuidance": "Explain that a governed structural snapshot no longer matches observed system reality, indicating file addition, removal, or modification outside the ratified inventory.",
+            "detailsSchema": {
+              "storedMerkleRoot": "string",
+              "observedMerkleRoot": "string"
+            }
+          },
+          "repositoryInventoryConformance": {
+            "category": "repositoryInventory",
+            "auditModes": ["operational", "governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects mismatches between observed repository contents and repositoryInventory.json.",
+            "narrativeGuidance": "Explain that repository contents differ from the governed inventory, identifying missing or unexpected files or directories.",
+            "detailsSchema": {
+              "missingPaths": "array<string>",
+              "unexpectedPaths": "array<string>"
+            }
+          },
+          "nameConformance": {
+            "category": "naming",
+            "auditModes": ["operational", "governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects violations of Codex-governed naming conventions for files and directories.",
+            "narrativeGuidance": "Explain that one or more filesystem entities do not conform to Codex-governed naming conventions.",
+            "detailsSchema": {
+              "path": "string",
+              "ruleViolated": "string"
+            }
+          },
+          "criticalFilePresence": {
+            "category": "criticalFiles",
+            "auditModes": ["operational", "governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects missing or invalid critical system files required by Codex governance.",
+            "narrativeGuidance": "Explain that a required governed file was missing or invalid at audit time.",
+            "detailsSchema": {
+              "path": "string",
+              "expectedState": "string"
+            }
+          },
+          "directoryStructureConformance": {
+            "category": "directories",
+            "auditModes": ["operational", "governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects deviations from Codex-governed directory structure and placement rules.",
+            "narrativeGuidance": "Explain that one or more directories do not conform to governed structural placement or hierarchy expectations.",
+            "detailsSchema": {
+              "path": "string",
+              "expectedLocation": "string"
+            }
+          },
+          "canonicalRegistryReachability": {
+            "category": "canonicalRegistries",
+            "auditModes": ["governance"],
+            "determinism": "non-deterministic",
+            "dependencyScope": "external",
+            "recordPersistence": "permanent",
+            "description": "Observes reachability failures of external endpoints referenced by governed registries.",
+            "narrativeGuidance": "Explain that an external reference was unreachable at audit time and explicitly note the advisory, time-variant nature of the observation.",
+            "detailsSchema": {
+              "endpoint": "string",
+              "httpStatus": "integer | null",
+              "error": "string | null"
+            }
+          },
+          "codexStructuralIntegrity": {
+            "category": "codexIntegrity",
+            "auditModes": ["governance"],
+            "determinism": "strict",
+            "dependencyScope": "local",
+            "recordPersistence": "permanent",
+            "description": "Detects structural violations or immutability breaches within the Codex.",
+            "narrativeGuidance": "Explain that the Codex structure or protected sections no longer conform to governance rules.",
+            "detailsSchema": {
+              "section": "string",
+              "issue": "string"
+            }
+          }
+        },
+        "auditRecordSchemas": {
+          "violation": {
+            "definition": "An immutable governed observation emitted directly by an audit execution.",
+            "properties": {
+              "timestamp": "UNIX epoch seconds when violation was detected",
+              "auditMode": "operational | governance",
+              "observation": "AI-generated human-readable narrative explaining the governed deviation",
+              "notificationSent": "UNIX epoch seconds when notification was first sent (optional)",
+              "resolved": "UNIX epoch seconds when violation was resolved (optional)",
+              "actions": "Developer-provided narrative describing corrective action (optional)"
+            },
+            "rules": [
+              "Violation records are immutable once written",
+              "Original observation fields must never be altered",
+              "Resolution metadata may be appended once",
+              "Violation records do not track recurrence counts"
+            ]
+          },
+          "persistenceAnnotation": {
+            "definition": "A derived, append-only annotation describing repeated observation of an unresolved violation over time.",
+            "properties": {
+              "firstObserved": "UNIX epoch seconds of original violation detection",
+              "lastObserved": "UNIX epoch seconds of most recent detection",
+              "observationCount": "Integer count of repeated detections",
+              "auditModes": "Array of audit modes in which recurrence was observed"
+            },
+            "rules": [
+              "Persistence annotations are derived by sentinel, not auditor",
+              "Annotations may be updated over time",
+              "Annotations must never modify or redefine the original violation",
+              "Counting ceases once the violation is marked resolved"
+            ]
+          }
         },
         "auditLog": {
-          "file": "assets/data/repositoryAudit.json",
-          "description": "Canonical, append-only audit log capturing the complete output of every audit execution.",
+          "file": "data/records/auditResults.json",
+          "description": "Canonical, append-only registry of governed audit observations and derived persistence annotations.",
+          "recordTypes": {
+            "violation": "Immutable governed observation emitted directly by an audit execution.",
+            "persistenceAnnotation": "Derived, append-only annotation describing repeated observation of an unresolved violation over time."
+          },
           "rules": [
-            "Audit records may never be deleted.",
-            "Audit records may never be modified.",
-            "Each audit run appends exactly one entry.",
-            "Audit records preserve full violation detail."
+            "Only audit-derived records are persisted",
+            "Violation records are immutable once written",
+            "Persistence annotations may be updated to reflect continued observation",
+            "Persistence annotations must never alter or redefine the original violation",
+            "Resolution metadata may be appended once to a violation record",
+            "Violations and annotations are never deleted",
+            "Audit executions that detect no violations write nothing"
           ],
-          "recordSchema": {
-            "schema": "Skyesoft.ViolationReport.v1",
-            "generatedAt": "UNIX epoch integer",
-            "auditor": "repositoryAuditor",
-            "version": "repositoryAuditor version",
-            "mode": "operational | governance",
-            "summary": {
-              "status": "PASS | FAIL | WARN",
-              "blocking": "integer",
-              "warnings": "integer",
-              "total": "integer"
-            },
-            "violations": "array of violation objects"
-          }
+          "persistenceAnnotationRules": [
+            "Annotations are derived by sentinel via comparison of current audit output with prior records",
+            "Annotations track repeated detection counts and observation windows",
+            "Counting ceases once a violation is marked resolved",
+            "Annotations do not imply lifecycle state or severity"
+          ]
         },
         "prohibitions": [
           "No error entities or error registries",
@@ -2575,7 +2727,7 @@
         ],
         "notes": [
           "Audits observe reality; they do not correct it.",
-          "Developers act on violations using suggestedFix guidance.",
+          "Developers act on violations using Codex guidance and provide corrective action narratives.",
           "Governance interpretation may be advisory but is non-executing.",
           "This standard supersedes all prior error- or audit-specific Tier-2 standards."
         ]

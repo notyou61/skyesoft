@@ -1,83 +1,60 @@
 <?php
-// ======================================================================
-//  Skyesoft — auditor.php
-//  Structural Auditor (EGS + MIS Integration)
-//  PHP 8.1+ • Strict Typing
-//  Purpose: Detect structural issues, Codex drift, Merkle mismatch,
-//           inventory violations, missing SOT files, unapproved paths.
-//  Forbidden: Writing to ANY SOT file.
-// ======================================================================
-
 declare(strict_types=1);
+
+/* =====================================================================
+ *  Skyesoft — auditor.php
+ *  Role: Auditor (AGS v1)
+ *  Authority: Audit Governance Standard
+ *  PHP: 8.3+
+ *
+ *  Purpose:
+ *   • Observe Codex integrity via Merkle verification
+ *   • Emit governed violation observations only
+ *
+ *  Explicitly Forbidden:
+ *   • NO lifecycle handling
+ *   • NO counters or increments
+ *   • NO mutation of existing records
+ * ===================================================================== */
+
 header("Content-Type: application/json; charset=UTF-8");
 
-// ======================================================================
-// Fail Handler
-// ======================================================================
-function auditorFail(string $msg): never {
-    echo json_encode([
-        "success" => false,
-        "role"    => "auditor",
-        "error"   => $msg
-    ], JSON_UNESCAPED_SLASHES);
-    exit;
-}
+#region SECTION 0 — Runtime Context
 
-// ======================================================================
-// Load SOT Files (Read-Only)
-// ======================================================================
-$root = dirname(__DIR__);
+$root      = dirname(__DIR__);
+$timestamp = time();
+$auditMode = "governance";
 
-$codexPath   = $root . "/codex/codex.json";
-$inventoryPath = $root . "/assets/data/repositoryInventory.json";
-$errorRegistry = $root . "/assets/data/errorRegistry.json";
-$auditLog      = $root . "/assets/data/repositoryAudit.json";
+$auditLogPath = $root . '/data/records/auditResults.json';
+$violations   = [];
 
-$merkleTreePath = $root . "/codex/meta/merkleTree.json";
-$merkleRootPath = $root . "/codex/meta/merkleRoot.txt";
+#endregion SECTION 0 — Runtime Context
 
-foreach ([
-    "Codex"                     => $codexPath,
-    "repositoryInventory.json"  => $inventoryPath,
-    "errorRegistry.json"        => $errorRegistry,
-    "repositoryAudit.json"      => $auditLog,
-    "merkleTree.json"           => $merkleTreePath,
-    "merkleRoot.txt"            => $merkleRootPath
-] as $label => $path) {
-    if (!file_exists($path)) {
-        auditorFail("$label missing at $path");
-    }
-}
+#region SECTION I — Path Resolution
 
-$codex        = json_decode(file_get_contents($codexPath), true);
-$inventory    = json_decode(file_get_contents($inventoryPath), true);
-$merkleTree   = json_decode(file_get_contents($merkleTreePath), true);
-$storedRoot   = trim(file_get_contents($merkleRootPath));
+$codexPath      = $root . '/codex/codex.json';
+$merkleTreePath = $root . '/data/records/merkleTree.json';
+$merkleRootPath = $root . '/data/records/merkleRoot.txt';
 
-if (!is_array($codex))     auditorFail("Codex JSON invalid.");
-if (!is_array($inventory)) auditorFail("Repository inventory invalid.");
-if (!is_array($merkleTree)) auditorFail("Merkle tree JSON invalid.");
+#endregion SECTION I — Path Resolution
 
-if (!preg_match("/^[a-f0-9]{64}$/", $storedRoot)) {
-    auditorFail("Stored Merkle root is invalid.");
-}
+#region SECTION II — Merkle Helpers (MUST MATCH BUILDER)
 
-// ======================================================================
-// MIS RECURSIVE CHUNKING (must match merkleBuild.php exactly)
-// ======================================================================
-function recursiveChunks(mixed $node, string $path = ""): array {
+function recursiveChunks(mixed $node, string $path = ''): array {
     $chunks = [];
 
     if (!is_array($node)) {
-        $chunks[$path] = hash("sha256", json_encode($node, JSON_UNESCAPED_SLASHES));
+        $chunks[$path] = hash(
+            'sha256',
+            json_encode($node, JSON_UNESCAPED_SLASHES)
+        );
         return $chunks;
     }
 
     ksort($node);
-
     foreach ($node as $key => $value) {
-        $full = $path === "" ? $key : "$path.$key";
-        $chunks += recursiveChunks($value, $full);
+        $fullPath = $path === '' ? (string)$key : "$path.$key";
+        $chunks += recursiveChunks($value, $fullPath);
     }
 
     return $chunks;
@@ -88,114 +65,129 @@ function buildMerkle(array $leaves): string {
 
     while (count($layer) > 1) {
         $next = [];
-
         for ($i = 0; $i < count($layer); $i += 2) {
             $left  = $layer[$i];
-            $right = $layer[$i+1] ?? $layer[$i];
-            $next[] = hash("sha256", $left . $right);
+            $right = $layer[$i + 1] ?? $layer[$i];
+            $next[] = hash('sha256', $left . $right);
         }
-
         $layer = $next;
     }
 
-    return $layer[0];
+    return $layer[0] ?? hash('sha256', '');
 }
 
-// ======================================================================
-// AUDIT FUNCTION
-// ======================================================================
-function runAudit(array $codex, array $inventory, array $merkleTree, string $storedRoot): array {
+#endregion SECTION II — Merkle Helpers
 
-    $findings = [];
+#region SECTION III — Load Audit Log
 
-    // --------------------------------------------------
-    // (1) Required Codex Sections
-    // --------------------------------------------------
-    foreach (["meta", "constitution", "standards", "modules"] as $section) {
-        if (!array_key_exists($section, $codex)) {
-            $findings[] = [
-                "type"        => "syntax_error",
-                "name"        => "Codex Missing Section",
-                "description" => "Codex missing required section: {$section}",
-                "details"     => []
-            ];
-        }
-    }
-
-    // --------------------------------------------------
-    // (2) Ensure SOT Files Exist (EGS rule)
-    // --------------------------------------------------
-    foreach ([
-        "assets/data/errorRegistry.json",
-        "assets/data/repositoryAudit.json"
-    ] as $required) {
-
-        if (!file_exists(dirname(__DIR__) . "/$required")) {
-            $findings[] = [
-                "type"        => "structural_validation",
-                "name"        => "Missing SOT File",
-                "description" => "$required must always exist.",
-                "details"     => []
-            ];
-        }
-    }
-
-    // --------------------------------------------------
-    // (3) MIS Merkle Verification
-    // --------------------------------------------------
-    $liveLeaves = recursiveChunks($codex);
-    $liveRoot   = buildMerkle($liveLeaves);
-
-    if ($liveRoot !== $storedRoot) {
-
-        // Find changed leaf keys (drift location)
-        $changed = [];
-        foreach ($liveLeaves as $key => $hash) {
-            if (!isset($merkleTree["leaves"][$key])) {
-                $changed[] = $key;
-                continue;
-            }
-            if ($merkleTree["leaves"][$key] !== $hash) {
-                $changed[] = $key;
-            }
-        }
-
-        $findings[] = [
-            "type"        => "policy_violation",
-            "name"        => "Codex Drift Detected",
-            "description" => "Computed Merkle root does not match stored root.",
-            "details"     => [
-                "storedRoot" => $storedRoot,
-                "liveRoot"   => $liveRoot,
-                "changedKeys" => $changed
-            ]
-        ];
-    }
-
-    // --------------------------------------------------
-    // (4) Stub: Structural rules will expand later
-    // --------------------------------------------------
-    $findings[] = [
-        "type"        => "runtime_error",
-        "name"        => "Auditor Stub",
-        "description" => "Auditor executed, MIS verified, but structural rules not yet implemented.",
-        "details"     => []
-    ];
-
-    return [
-        "auditor"   => "Skyesoft Structural Auditor",
-        "timestamp" => time(),
-        "findings"  => $findings
-    ];
+if (!file_exists($auditLogPath)) {
+    file_put_contents($auditLogPath, json_encode([], JSON_PRETTY_PRINT));
 }
 
-// ======================================================================
-// OUTPUT (never mutate SOT)
-// ======================================================================
-echo json_encode([
-    "success"  => true,
-    "role"     => "auditor",
-    "findings" => runAudit($codex, $inventory, $merkleTree, $storedRoot)
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+$auditLog = json_decode(file_get_contents($auditLogPath), true);
+if (!is_array($auditLog)) {
+    $auditLog = [];
+}
 
-exit;
+function nextViolationId(array $log): string {
+    $max = 0;
+    foreach ($log as $r) {
+        if (isset($r['violationId']) && preg_match('/VIO-(\d+)/', $r['violationId'], $m)) {
+            $max = max($max, (int)$m[1]);
+        }
+    }
+    return sprintf('VIO-%03d', $max + 1);
+}
+
+function unresolvedDuplicate(array $log, string $observation): bool {
+    foreach ($log as $r) {
+        if (
+            ($r['type'] ?? null) === 'violation' &&
+            ($r['resolved'] ?? null) === null &&
+            ($r['observation'] ?? null) === $observation
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+#endregion SECTION III — Load Audit Log
+
+#region SECTION IV — Required File Presence
+
+$required = [
+    'codex.json'      => $codexPath,
+    'merkleTree.json' => $merkleTreePath,
+    'merkleRoot.txt'  => $merkleRootPath
+];
+
+foreach ($required as $label => $path) {
+    if (!file_exists($path)) {
+        $violations[] = "Required governed file missing: $label at $path";
+    }
+}
+
+#endregion SECTION IV — Required File Presence
+
+#region SECTION V — Merkle Integrity Checks
+
+if (!$violations) {
+    $codex      = json_decode(file_get_contents($codexPath), true);
+    $merkleTree = json_decode(file_get_contents($merkleTreePath), true);
+    $storedRoot = trim(file_get_contents($merkleRootPath));
+
+    $treeRoot = $merkleTree['root'] ?? null;
+
+    $observedLeaves = recursiveChunks($codex);
+    $observedRoot   = buildMerkle($observedLeaves);
+
+    if ($storedRoot !== $treeRoot) {
+        $violations[] =
+            "Stored Merkle root does not match merkleTree.json canonical root.";
+    }
+
+    if ($observedRoot !== $storedRoot) {
+        $violations[] =
+            "Observed Codex structure diverges from governed Merkle snapshot.";
+    }
+}
+
+#endregion SECTION V — Merkle Integrity Checks
+
+#region SECTION VI — Emit & Persist Violations
+
+$emitted = [];
+
+foreach ($violations as $obs) {
+    if (unresolvedDuplicate($auditLog, $obs)) {
+        continue;
+    }
+
+    $record = [
+        "type"             => "violation",
+        "violationId"      => nextViolationId($auditLog),
+        "timestamp"        => $timestamp,
+        "auditMode"        => $auditMode,
+        "observation"      => $obs,
+        "notificationSent" => null,
+        "resolved"         => null,
+        "actions"          => null,
+        "lastObserved"     => null,
+        "observationCount" => null
+    ];
+
+    $auditLog[] = $record;
+    $emitted[]  = $record;
+}
+
+if ($emitted) {
+    file_put_contents(
+        $auditLogPath,
+        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
+
+echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+#endregion SECTION VI — Emit & Persist
