@@ -147,7 +147,142 @@ foreach ($required as $label => $path) {
 
 #endregion SECTION IV — Required File Presence
 
-#region SECTION V — Merkle Integrity Checks
+#region SECTION V — Name Conformance Checks (Canonical Registries Only)
+
+/**
+ * Recursively audit semantic JSON keys for camelCase compliance.
+ *
+ * Doctrine:
+ * • All semantic keys are governed, including meta keys
+ * • Numeric index keys ("1", "2", etc.) are exempt
+ * • Values are not audited EXCEPT where explicitly semantic (e.g. filenames)
+ */
+function auditCamelCaseKeys(
+    mixed $node,
+    string $file,
+    array &$violations
+): void {
+
+    if (!is_array($node)) {
+        return;
+    }
+
+    foreach ($node as $key => $value) {
+
+        /* -----------------------------
+         * Key naming enforcement
+         * ----------------------------- */
+        if (
+            is_string($key) &&
+            !ctype_digit($key) &&
+            !preg_match('/^[a-z][a-zA-Z0-9]*$/', $key)
+        ) {
+            $violations[] =
+                "Name conformance violation: key '{$key}' in '{$file}' is not camelCase.";
+        }
+
+        /* -----------------------------
+         * Semantic VALUE enforcement
+         * (explicitly governed fields only)
+         * ----------------------------- */
+        if (
+            $key === 'file' &&
+            is_string($value)
+        ) {
+            $basename = pathinfo($value, PATHINFO_FILENAME);
+
+            if (!preg_match('/^[a-z][a-zA-Z0-9]*$/', $basename)) {
+                $violations[] =
+                    "Name conformance violation: file '{$value}' in '{$file}' must use camelCase basename.";
+            }
+        }
+
+        // Recurse into nested structures
+        auditCamelCaseKeys($value, $file, $violations);
+    }
+}
+
+    if (empty($violations)) {
+
+        $registryRoot = $root; // ENTIRE REPO SCOPE
+
+        $excludedDirs = [
+            '.git',
+            'node_modules',
+            'vendor',
+            'runtimeEphemeral',
+            'records',
+            'derived'
+        ];
+
+        $excludedFiles = [
+            'auditResults.json',
+            'audit-report.json',
+            'repositoryInventory.json',
+            'merkleTree.json',
+            'merkleRoot.txt'
+        ];
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(
+                $registryRoot,
+                FilesystemIterator::SKIP_DOTS
+            )
+        );
+
+        foreach ($iterator as $fileInfo) {
+
+        if (!$fileInfo->isFile()) {
+            continue;
+        }
+
+        $file = $fileInfo->getFilename();
+        $path = $fileInfo->getPathname();
+
+        // Skip excluded directories
+        foreach ($excludedDirs as $dir) {
+            if (str_contains($path, DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR)) {
+                continue 2;
+            }
+        }
+
+        // Skip excluded files
+        if (in_array($file, $excludedFiles, true)) {
+            continue;
+        }
+
+        // Canonical targets
+        $isCanonicalRegistry = preg_match('/(Registry|Map|Index)\.json$/', $file);
+        $isCodex             = ($file === 'codex.json');
+
+        if (!$isCanonicalRegistry && !$isCodex) {
+            continue;
+        }
+
+        // Filename camelCase enforcement — registries ONLY
+        if ($isCanonicalRegistry) {
+            if (!preg_match('/^[a-z][a-zA-Z0-9]*(Registry|Map|Index)\.json$/', $file)) {
+                $violations[] =
+                    "Name conformance violation: canonical registry filename '{$file}' must use camelCase.";
+                continue;
+            }
+        }
+
+        $json = json_decode(file_get_contents($path), true);
+
+        if (!is_array($json)) {
+            continue;
+        }
+
+        // Recursive semantic audit
+        auditCamelCaseKeys($json, $file, $violations);
+    }
+
+}
+
+#endregion SECTION V — Name Conformance Checks
+
+#region SECTION VI — Merkle Integrity Checks
 
 if (empty($violations)) {
     $codex      = json_decode(file_get_contents($codexPath), true);
@@ -168,13 +303,16 @@ if (empty($violations)) {
     }
 }
 
-#endregion SECTION V — Merkle Integrity Checks
+#endregion SECTION VI — Merkle Integrity Checks
 
-#region SECTION VI — Emit & Persist Violations
+#region SECTION VII — Emit & Persist Violations
 
 $emitted = [];
 $updated = false;
 
+/*
+ * Pass 1 — Emit current observations
+ */
 foreach ($violations as $obs) {
     $found = false;
 
@@ -187,13 +325,14 @@ foreach ($violations as $obs) {
             // Persistent unresolved violation — update tracking
             $record['lastObserved'] = $timestamp;
             $record['observationCount'] = ($record['observationCount'] ?? 0) + 1;
+
             $found = true;
             $updated = true;
-            $emitted[] = $record;  // Emit updated record
+            $emitted[] = $record;
             break;
         }
     }
-    unset($record); // Break reference
+    unset($record); // break reference
 
     if (!$found) {
         // New violation instance
@@ -211,7 +350,7 @@ foreach ($violations as $obs) {
         ];
 
         // Notify only on first instance creation
-        if (sendViolationNotice($developerEmail, $record)) {
+        if (sendViolationNotice($developerEmail, $record, $isProduction)) {
             $record["notificationSent"] = $timestamp;
         }
 
@@ -221,6 +360,27 @@ foreach ($violations as $obs) {
     }
 }
 
+/*
+ * Pass 2 — Resolution inference
+ * Any unresolved violation NOT observed in this run is now resolved
+ */
+$currentObservations = array_flip($violations);
+
+foreach ($auditLog as &$record) {
+    if (
+        ($record['type'] ?? null) === 'violation' &&
+        ($record['resolved'] ?? null) === null &&
+        !isset($currentObservations[$record['observation']])
+    ) {
+        $record['resolved'] = $timestamp;
+        $updated = true;
+    }
+}
+unset($record);
+
+/*
+ * Persist updates if anything changed
+ */
 if ($updated) {
     file_put_contents(
         $auditLogPath,
@@ -230,4 +390,4 @@ if ($updated) {
 
 echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-#endregion SECTION VI — Emit & Persist Violations
+#endregion SECTION VII — Emit & Persist Violations

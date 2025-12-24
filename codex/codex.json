@@ -2534,6 +2534,7 @@
             "Violation records are mutable while unresolved",
             "timestamp never changes",
             "lastObserved and observationCount update on each audit run",
+            "A violation is automatically marked resolved when its governing observation condition is no longer detected in a subsequent audit run",
             "Mutation ceases once resolved is set",
             "Violations are never deleted"
           ]
@@ -2725,11 +2726,14 @@
           "No audit-triggered mutation of system state",
           "No Codex mutation during audits"
         ],
-        "notes": [
-          "Audits observe reality; they do not correct it.",
-          "Developers act on violations using Codex guidance and provide corrective action narratives.",
-          "Governance interpretation may be advisory but is non-executing.",
-          "This standard supersedes all prior error- or audit-specific Tier-2 standards."
+        "rules": [
+          "Only audit-derived records are persisted",
+          "Violation records are immutable once written",
+          "Persistence annotations may be updated to reflect continued observation",
+          "Persistence annotations must never alter or redefine the original violation",
+          "Resolution metadata may be appended once when a violation condition is no longer observed",
+          "Violations and annotations are never deleted",
+          "Audit executions that detect no violations write nothing"
         ]
       },
       "merkleIntegrityStandard": {
