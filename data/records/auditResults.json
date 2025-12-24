@@ -2,13 +2,13 @@
     {
         "type": "violation",
         "violationId": "VIO-001",
-        "timestamp": 1766528559,
+        "timestamp": 1766582184,
         "auditMode": "governance",
         "observation": "Observed Codex structure diverges from governed Merkle snapshot.",
         "notificationSent": null,
         "resolved": null,
         "actions": null,
-        "lastObserved": null,
-        "observationCount": null
+        "lastObserved": 1766582752,
+        "observationCount": 2
     }
 ]
