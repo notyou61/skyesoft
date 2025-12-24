@@ -10,11 +10,11 @@ declare(strict_types=1);
  *  Purpose:
  *   • Observe Codex integrity via Merkle verification
  *   • Emit governed violation observations only
+ *   • Track persistence of unresolved violations via observation match
  *
  *  Explicitly Forbidden:
  *   • NO lifecycle handling
- *   • NO counters or increments
- *   • NO mutation of existing records
+ *   • NO mutation of existing records except persistence updates
  * ===================================================================== */
 
 header("Content-Type: application/json; charset=UTF-8");
@@ -26,7 +26,10 @@ $timestamp = time();
 $auditMode = "governance";
 
 $auditLogPath = $root . '/data/records/auditResults.json';
-$violations   = [];
+
+// Environment detection
+$isCli        = (PHP_SAPI === 'cli');
+$isProduction = !$isCli; // CLI = dev/test, Web SAPI = production (GoDaddy)
 
 #endregion SECTION 0 — Runtime Context
 
@@ -99,22 +102,36 @@ function nextViolationId(array $log): string {
     return sprintf('VIO-%03d', $max + 1);
 }
 
-function unresolvedDuplicate(array $log, string $observation): bool {
-    foreach ($log as $r) {
-        if (
-            ($r['type'] ?? null) === 'violation' &&
-            ($r['resolved'] ?? null) === null &&
-            ($r['observation'] ?? null) === $observation
-        ) {
-            return true;
-        }
+$developerEmail = 'steve.skye@skyelighting.com'; // set to your preferred address
+
+function sendViolationNotice(string $to, array $record, bool $isProduction): bool {
+    if (!$isProduction) {
+        // Non-production environment: skip email
+        return false;
     }
-    return false;
+
+    $subject = "[Skyesoft AGS] New Audit Violation {$record['violationId']}";
+
+    $body =
+        "A new audit violation instance was created.\n\n" .
+        "Violation ID : {$record['violationId']}\n" .
+        "Audit Mode   : {$record['auditMode']}\n" .
+        "Timestamp    : {$record['timestamp']}\n" .
+        "Observation  : {$record['observation']}\n\n" .
+        "This notice is sent once per violation instance.\n";
+
+    $headers =
+        "Content-Type: text/plain; charset=UTF-8\r\n" .
+        "From: skyesoft@localhost\r\n";
+
+    return @mail($to, $subject, $body, $headers);
 }
 
 #endregion SECTION III — Load Audit Log
 
 #region SECTION IV — Required File Presence
+
+$violations = [];  // Array of observation strings
 
 $required = [
     'codex.json'      => $codexPath,
@@ -132,7 +149,7 @@ foreach ($required as $label => $path) {
 
 #region SECTION V — Merkle Integrity Checks
 
-if (!$violations) {
+if (empty($violations)) {
     $codex      = json_decode(file_get_contents($codexPath), true);
     $merkleTree = json_decode(file_get_contents($merkleTreePath), true);
     $storedRoot = trim(file_get_contents($merkleRootPath));
@@ -143,13 +160,11 @@ if (!$violations) {
     $observedRoot   = buildMerkle($observedLeaves);
 
     if ($storedRoot !== $treeRoot) {
-        $violations[] =
-            "Stored Merkle root does not match merkleTree.json canonical root.";
+        $violations[] = "Stored Merkle root does not match merkleTree.json canonical root.";
     }
 
     if ($observedRoot !== $storedRoot) {
-        $violations[] =
-            "Observed Codex structure diverges from governed Merkle snapshot.";
+        $violations[] = "Observed Codex structure diverges from governed Merkle snapshot.";
     }
 }
 
@@ -158,30 +173,55 @@ if (!$violations) {
 #region SECTION VI — Emit & Persist Violations
 
 $emitted = [];
+$updated = false;
 
 foreach ($violations as $obs) {
-    if (unresolvedDuplicate($auditLog, $obs)) {
-        continue;
+    $found = false;
+
+    foreach ($auditLog as &$record) {
+        if (
+            ($record['type'] ?? null) === 'violation' &&
+            ($record['resolved'] ?? null) === null &&
+            ($record['observation'] ?? null) === $obs
+        ) {
+            // Persistent unresolved violation — update tracking
+            $record['lastObserved'] = $timestamp;
+            $record['observationCount'] = ($record['observationCount'] ?? 0) + 1;
+            $found = true;
+            $updated = true;
+            $emitted[] = $record;  // Emit updated record
+            break;
+        }
     }
+    unset($record); // Break reference
 
-    $record = [
-        "type"             => "violation",
-        "violationId"      => nextViolationId($auditLog),
-        "timestamp"        => $timestamp,
-        "auditMode"        => $auditMode,
-        "observation"      => $obs,
-        "notificationSent" => null,
-        "resolved"         => null,
-        "actions"          => null,
-        "lastObserved"     => null,
-        "observationCount" => null
-    ];
+    if (!$found) {
+        // New violation instance
+        $record = [
+            "type"             => "violation",
+            "violationId"      => nextViolationId($auditLog),
+            "timestamp"        => $timestamp,
+            "auditMode"        => $auditMode,
+            "observation"      => $obs,
+            "notificationSent" => null,
+            "resolved"         => null,
+            "actions"          => null,
+            "lastObserved"     => $timestamp,
+            "observationCount" => 1
+        ];
 
-    $auditLog[] = $record;
-    $emitted[]  = $record;
+        // Notify only on first instance creation
+        if (sendViolationNotice($developerEmail, $record)) {
+            $record["notificationSent"] = $timestamp;
+        }
+
+        $auditLog[] = $record;
+        $emitted[]  = $record;
+        $updated = true;
+    }
 }
 
-if ($emitted) {
+if ($updated) {
     file_put_contents(
         $auditLogPath,
         json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
@@ -190,4 +230,4 @@ if ($emitted) {
 
 echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
-#endregion SECTION VI — Emit & Persist
+#endregion SECTION VI — Emit & Persist Violations
