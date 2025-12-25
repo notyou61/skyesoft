@@ -313,7 +313,7 @@
       }
     },
     "items": {
-      "dataIntentStandard": {
+      "DataIntentStandard": {
         "title": {
           "icon": 42,
           "text": "Data Intent Classification Standard"
@@ -2206,7 +2206,7 @@
               "rule": "Incorporation of Design Inference into the Codex requires explicit human approval and a governed Codex update."
             }
           ],
-          "ai_behavior": {
+          "aiBehavior": {
             "allowed": [
               "Suggest descriptive terminology for undefined structures",
               "Propose classifications or groupings based on observed patterns",
@@ -2478,6 +2478,40 @@
             "SSE audit payloads"
           ]
         },
+        "batchIdFormat": {
+          "description": "Deterministic identifier for notification batches.",
+          "format": "{unixEpochSeconds}-{sequence}",
+          "examples": [
+            "1766669451-01",
+            "1766669451-02"
+          ],
+          "rules": [
+            "Sortable by time",
+            "Unique within system history",
+            "Generated without external state",
+            "Sequence resets per Sentinel execution context"
+          ]
+        },
+        "sentinelResponsibilities": [
+          "Aggregate violations detected in a single audit execution",
+          "Assign a notification batch identifier",
+          "Send at most one notification per batch",
+          "Annotate violation records with batch identifier",
+          "Never suppress or modify violations"
+        ],
+        "notificationNarrativeRules": {
+          "requirements": [
+            "List all violations in the batch",
+            "State batch identifier",
+            "Describe next audit confirmation behavior",
+            "Avoid asserting cause or correctness"
+          ],
+          "prohibited": [
+            "Speculative language",
+            "Attribution of intent",
+            "Claims of resolution"
+          ]
+        },
         "auditModes": {
           "operational": {
             "description": "A lightweight, continuous audit that detects runtime and structural violations during normal system operation.",
@@ -2524,17 +2558,18 @@
             "timestamp": "UNIX epoch seconds when violation was first detected",
             "auditMode": "operational | governance",
             "observation": "Human-readable governed deviation",
-            "notificationSent": "UNIX epoch seconds (optional)",
-            "resolved": "UNIX epoch seconds when corrected (optional)",
-            "actions": "Corrective action narrative (optional)",
+            "notificationSent": "UNIX epoch seconds when first human notification occurred",
+            "violationBatch": "Optional notification batch identifier assigned by Sentinel",
+            "resolved": "UNIX epoch seconds when corrected",
+            "resolution": "Optional reconciliation metadata governed by RGS; does not determine resolution state",
             "lastObserved": "UNIX epoch seconds of most recent detection (null once resolved)",
             "observationCount": "Integer count of detections while unresolved"
           },
           "rules": [
-            "Violation records are mutable while unresolved",
+            "Violation records permit controlled mutation of tracking fields while unresolved",
             "timestamp never changes",
             "lastObserved and observationCount update on each audit run",
-            "A violation is automatically marked resolved when its governing observation condition is no longer detected in a subsequent audit run",
+            "A violation is automatically marked resolved when its governing observation condition is no longer detected in a subsequent audit run, without asserting cause or corrective action",
             "Mutation ceases once resolved is set",
             "Violations are never deleted"
           ]
@@ -2662,13 +2697,26 @@
             }
           }
         },
+        "narrativeDiscipline": {
+          "rule": "Audit and reconciliation narratives must be declarative and non-expressive.",
+          "requirements": [
+            "No metaphors or anthropomorphic language",
+            "No inferred intent or motivation",
+            "No adjectives beyond technical descriptors",
+            "Statements must be reducible to a diff or rule evaluation"
+          ],
+          "aiUsage": {
+            "observations": "Deterministic, auditor-emitted narrative explaining the governed deviation",
+            "resolutionSummaries": "AI assistance permitted for clarity only; content must be derivable from the applied change"
+          }
+        },
         "auditRecordSchemas": {
           "violation": {
             "definition": "An immutable governed observation emitted directly by an audit execution.",
             "properties": {
               "timestamp": "UNIX epoch seconds when violation was detected",
               "auditMode": "operational | governance",
-              "observation": "AI-generated human-readable narrative explaining the governed deviation",
+              "observation": "Deterministic, auditor-emitted narrative explaining the governed deviation",
               "notificationSent": "UNIX epoch seconds when notification was first sent (optional)",
               "resolved": "UNIX epoch seconds when violation was resolved (optional)",
               "actions": "Developer-provided narrative describing corrective action (optional)"
@@ -2719,14 +2767,39 @@
             "Annotations do not imply lifecycle state or severity"
           ]
         },
+        "notificationBatching": {
+          "definition": "Notification batching governs how multiple violations detected in a single audit execution are grouped for human notification purposes.",
+          "purpose": "Reduce notification noise while preserving per-violation integrity and traceability.",
+          "authority": "Sentinel",
+          "scope": [
+            "Email notifications",
+            "External human-facing alerts"
+          ],
+          "batchRules": [
+            "Batching applies only to notification, not to violation identity",
+            "A batch may reference one or more violations",
+            "Batching must not alter violation content or lifecycle",
+            "Batching does not imply shared cause or resolution"
+          ],
+          "assignmentRules": [
+            "Batch identifiers are assigned only by Sentinel",
+            "A violation may belong to at most one batch",
+            "Batch assignment occurs at first notification only",
+            "Batch assignment does not change violation semantics",
+            "Batch identifiers are never reused"
+          ]
+        },
         "prohibitions": [
           "No error entities or error registries",
           "No ERR-prefixed identifiers",
           "No lifecycle states (active, resolved, etc.)",
           "No audit-triggered mutation of system state",
-          "No Codex mutation during audits"
+          "No Codex mutation during audits",
+          "No standalone reconciliation records; all corrective actions must be recorded as resolution metadata on the originating violation"
+
         ],
         "rules": [
+          "These rules are authoritative and supersede any overlapping rule statements above",
           "Only audit-derived records are persisted",
           "Violation records are immutable once written",
           "Persistence annotations may be updated to reflect continued observation",
@@ -2734,6 +2807,112 @@
           "Resolution metadata may be appended once when a violation condition is no longer observed",
           "Violations and annotations are never deleted",
           "Audit executions that detect no violations write nothing"
+        ]
+      },
+      "reconciliationGovernanceStandard": {
+        "title": { "icon": 68, "text": "Reconciliation Governance Standard (RGS)" },
+        "tier": 2,
+        "hierarchyOrder": 6,
+        "type": "Structural Standard",
+        "preamble": {
+          "text": "Reconciliation governs how governed deviations are corrected and how those corrections are recorded, without altering or redefining the originating audit observation."
+        },
+        "purpose": {
+          "text": "Define the permissible mechanisms, actors, and documentation rules for correcting audit-detected violations while preserving audit neutrality, immutability, and historical traceability."
+        },
+        "scope": [
+          "Audit-detected violations",
+          "Codex-governed artifacts",
+          "Naming and structural conformance",
+          "Automated and manual corrective actions",
+          "Resolution annotation"
+        ],
+        "governs": [
+          "Violation resolution metadata",
+          "Automated reconciliation utilities",
+          "Human corrective actions following audit"
+        ],
+        "corePrinciples": [
+          "Audits observe reality; reconciliation changes reality",
+          "Resolution is confirmed only by subsequent audit",
+          "Reconciliation must never assert correctness of outcome",
+          "All reconciliation is subordinate to the originating violation"
+        ],
+        "reconcilerActor": {
+          "definition": "A reconciler is a governed actor that applies corrective changes to system artifacts in response to audit-detected violations.",
+          "allowedForms": [
+            "Automated utility",
+            "Developer action",
+            "Assisted process"
+          ],
+          "identityRules": [
+            "Reconciler identity must not imply authorship of resolution state",
+            "Reconciler identity must be recorded when resolution metadata is present",
+            "Reconciler identity does not imply authority or correctness",
+            "Reconciler identity is descriptive only"
+          ]
+        },
+        "reconciliationMethods": {
+          "automated": {
+            "description": "Deterministic corrective changes applied by governed reconciliation utilities.",
+            "requirements": [
+              "Must operate on locally governed artifacts only",
+              "Must produce changes reducible to a diff",
+              "Must not execute during audit runs"
+            ]
+          },
+          "manual": {
+            "description": "Corrective changes applied by a developer or operator.",
+            "requirements": [
+              "Must comply with Codex-governed standards",
+              "May be assisted by tooling or AI",
+              "Must not modify audit artifacts directly"
+            ]
+          }
+        },
+        "resolutionModel": {
+          "definition": "Resolution metadata describes how alignment was achieved after a violation condition ceased to be observed.",
+          "locationRule": "Resolution metadata is stored only on the originating violation record.",
+          "properties": {
+            "method": "reconciliation | manual | automated",
+            "actor": "string identifier of reconciler",
+            "summary": "Declarative description of applied change",
+            "assistedByAI": "boolean"
+          },
+          "rules": [
+            "Resolution metadata is optional",
+            "Resolution metadata may be appended once",
+            "Resolution metadata must never alter the observation",
+            "Resolution metadata must be derivable from applied changes"
+          ]
+        },
+        "aiUsage": {
+          "permitted": [
+            "Drafting resolution summaries",
+            "Clarifying corrective diffs"
+          ],
+          "prohibited": [
+            "Generating audit observations",
+            "Determining resolution state",
+            "Asserting correctness or intent"
+          ]
+        },
+        "prohibitions": [
+          "No standalone reconciliation records",
+          "No reconciliation-triggered resolution",
+          "No reconciliation during audit execution",
+          "No mutation of audit artifacts",
+          "No inferred intent or motivation"
+        ],
+        "relationshipToAGS": {
+          "dependency": "RGS is subordinate to Audit Governance Standard (AGS)",
+          "rule": "In the event of conflict, AGS rules prevail",
+          "integration": "RGS operates exclusively through AGS-defined violation records"
+        },
+        "notes": [
+          "Reconciliation explains alignment; it does not prove it",
+          "Resolution state is always determined by audit re-observation",
+          "Historical accuracy takes precedence over narrative completeness"
         ]
       },
       "merkleIntegrityStandard": {
