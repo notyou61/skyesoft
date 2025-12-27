@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /* =====================================================================
- *  Skyesoft — auditor.php (AGS v2 compliant — hardened)
+ *  Skyesoft — auditor.php (AGS v2 compliant — hardened & Reentrant)
  *  Role: Auditor
  *  Authority: Audit Governance Standard v2
  *  PHP: 8.3+
@@ -13,6 +13,10 @@ declare(strict_types=1);
  *   • Emit governed violation observations only
  *   • Track persistence of unresolved violations
  *   • Infer resolution by absence of observation in current run
+ *
+ *  Reentrancy:
+ *   • All helper functions guarded with function_exists()
+ *   • Safe to require multiple times (supports Sentinel 2-pass verification)
  *
  *  Explicitly Forbidden:
  *   • NO notification logic
@@ -43,103 +47,148 @@ $merkleRootPath = $root . '/data/records/merkleRoot.txt';
 
 #endregion SECTION I
 
-#region SECTION II — Helpers
+#region SECTION II — Helpers (Reentrant)
 
-function recursiveChunks(mixed $node, string $path = ''): array {
-    $chunks = [];
+if (!function_exists('recursiveChunks')) {
+    function recursiveChunks(mixed $node, string $path = ''): array {
+        $chunks = [];
 
-    if (!is_array($node)) {
-        $chunks[$path] = hash('sha256', json_encode($node, JSON_UNESCAPED_SLASHES));
+        if (!is_array($node)) {
+            $chunks[$path] = hash('sha256', json_encode($node, JSON_UNESCAPED_SLASHES));
+            return $chunks;
+        }
+
+        ksort($node);
+        foreach ($node as $key => $value) {
+            $fullPath = $path === '' ? (string)$key : "$path.$key";
+            $chunks += recursiveChunks($value, $fullPath);
+        }
+
         return $chunks;
     }
-
-    ksort($node);
-    foreach ($node as $key => $value) {
-        $fullPath = $path === '' ? (string)$key : "$path.$key";
-        $chunks += recursiveChunks($value, $fullPath);
-    }
-
-    return $chunks;
 }
 
-function buildMerkle(array $leaves): string {
-    $layer = array_values($leaves);
+if (!function_exists('buildMerkle')) {
+    function buildMerkle(array $leaves): string {
+        $layer = array_values($leaves);
 
-    while (count($layer) > 1) {
-        $next = [];
-        for ($i = 0; $i < count($layer); $i += 2) {
-            $left  = $layer[$i];
-            $right = $layer[$i + 1] ?? $layer[$i];
-            $next[] = hash('sha256', $left . $right);
-        }
-        $layer = $next;
-    }
-
-    return $layer[0] ?? hash('sha256', '');
-}
-
-/**
- * Recursively audit semantic JSON keys for camelCase compliance.
- * Enforcement is strict ONLY within governed semantic scopes for codex.json.
- * Canonical registries receive full strict enforcement.
- */
-function auditCamelCaseKeys(
-    mixed $node,
-    string $file,
-    string $currentPath,      // accumulated dot-path, e.g. "violationClasses.enums"
-    array &$violations,
-    bool $fullEnforcement = false
-): void {
-    if (!is_array($node)) {
-        return;
-    }
-
-    // Governed top-level sections in codex.json where camelCase is strictly required
-    $governedSemanticRoots = [
-        'namingConvention',
-        'semanticRoles',
-        'violationModel',
-        'auditModes',
-        'violationClasses',
-        'actorModel',
-        'reconciliationModel',
-        'standards',
-        'standardsIndex',
-        'tier2Standards',
-        'codex',
-        // Future semantic doctrine sections added here deliberately
-    ];
-
-    // Determine if we are inside a governed scope (only matters when not full enforcement)
-    $isInGovernedScope = $fullEnforcement || (
-        $currentPath !== '' &&
-        in_array(explode('.', $currentPath)[0], $governedSemanticRoots, true)
-    );
-
-    foreach ($node as $key => $value) {
-        $childPath = $currentPath === '' ? (string)$key : "$currentPath.$key";
-
-        // Key naming enforcement
-        if (
-            is_string($key) &&
-            !ctype_digit($key) &&
-            !preg_match('/^[a-z][a-zA-Z0-9]*$/', $key) &&
-            ($fullEnforcement || $isInGovernedScope)
-        ) {
-            $violations[] = "Name conformance violation: key '{$key}' in '{$file}' (path: {$childPath}) is not camelCase.";
-        }
-
-        // Semantic 'file' field enforcement — always global
-        if ($key === 'file' && is_string($value)) {
-            $basename = pathinfo($value, PATHINFO_FILENAME);
-            if (!preg_match('/^[a-z][a-zA-Z0-9]*$/', $basename)) {
-                $violations[] = "Name conformance violation: file '{$value}' in '{$file}' must use camelCase basename.";
+        while (count($layer) > 1) {
+            $next = [];
+            for ($i = 0; $i < count($layer); $i += 2) {
+                $left  = $layer[$i];
+                $right = $layer[$i + 1] ?? $layer[$i];
+                $next[] = hash('sha256', $left . $right);
             }
+            $layer = $next;
         }
 
-        // Recurse — preserve accumulated path
-        auditCamelCaseKeys($value, $file, $childPath, $violations, $fullEnforcement);
+        return $layer[0] ?? hash('sha256', '');
     }
+}
+
+if (!function_exists('auditCamelCaseKeys')) {
+
+    // Audit camelCase keys (syntactic + semantic)
+    function auditCamelCaseKeys(
+        mixed $node,
+        string $file,
+        string $currentPath,
+        array &$violations,
+        bool $fullEnforcement = false
+    ): void {
+
+        if (!is_array($node)) {
+            return;
+        }
+
+        // Governed semantic roots (Codex-aware scope)
+        $governedSemanticRoots = [
+            'namingConvention',
+            'semanticRoles',
+            'violationModel',
+            'auditModes',
+            'violationClasses',
+            'actorModel',
+            'reconciliationModel',
+            'standards',
+            'standardsIndex',
+            'tier2Standards',
+            'codex',
+        ];
+
+        $isInGovernedScope =
+            $fullEnforcement ||
+            (
+                $currentPath !== '' &&
+                in_array(explode('.', $currentPath)[0], $governedSemanticRoots, true)
+            );
+
+        foreach ($node as $key => $value) {
+
+            $childPath = ($currentPath === '')
+                ? (string) $key
+                : "{$currentPath}.{$key}";
+
+            /* ------------------------------------------------------------
+             * KEY NAME CONFORMANCE
+             * ------------------------------------------------------------ */
+            if (
+                is_string($key) &&
+                !ctype_digit($key) &&
+                ($fullEnforcement || $isInGovernedScope)
+            ) {
+
+                $isSyntacticCamel =
+                    preg_match('/^[a-z]+([A-Z0-9][a-z0-9]*)*$/', $key) === 1;
+
+                $hasCollapsedWord =
+                    preg_match('/[A-Z][a-z]{3,}[a-z]/', $key) === 1;
+
+                if (!$isSyntacticCamel || $hasCollapsedWord) {
+                    $violations[] =
+                        "Name conformance violation: key '{$key}' in '{$file}' (path: {$childPath}) is not proper camelCase.";
+                }
+            }
+
+            /* ------------------------------------------------------------
+             * FILE BASENAME CONFORMANCE (when declared in JSON)
+             * ------------------------------------------------------------ */
+            if ($key === 'file' && is_string($value)) {
+                $basename = pathinfo($value, PATHINFO_FILENAME);
+
+                if (!preg_match('/^[a-z][a-zA-Z0-9]*$/', $basename)) {
+                    $violations[] =
+                        "Name conformance violation: file '{$value}' in '{$file}' must use camelCase basename.";
+                }
+            }
+
+            // Recurse
+            auditCamelCaseKeys(
+                $value,
+                $file,
+                $childPath,
+                $violations,
+                $fullEnforcement
+            );
+        }
+    }
+}
+
+if (!function_exists('inferRuleId')) {
+    // Infer rule ID from observation text
+    function inferRuleId(string $observation): string {
+        if (str_starts_with($observation, 'Merkle integrity violation:')) {
+            return 'MERKLE_INTEGRITY';
+        }
+        if (str_starts_with($observation, 'Name conformance violation:')) {
+            return 'NAMING_CONFORMANCE';
+        }
+        if (str_starts_with($observation, 'Required governed file missing:')) {
+            return 'REQUIRED_FILES';
+        }
+        return 'UNKNOWN';
+    }
+
 }
 
 #endregion SECTION II
@@ -152,14 +201,16 @@ if (!file_exists($auditLogPath)) {
 
 $auditLog = json_decode(file_get_contents($auditLogPath), true) ?? [];
 
-function nextViolationId(array $log): string {
-    $max = 0;
-    foreach ($log as $r) {
-        if (isset($r['violationId']) && preg_match('/VIO-(\d+)/', $r['violationId'], $m)) {
-            $max = max($max, (int)$m[1]);
+if (!function_exists('nextViolationId')) {
+    function nextViolationId(array $log): string {
+        $max = 0;
+        foreach ($log as $r) {
+            if (isset($r['violationId']) && preg_match('/VIO-(\d+)/', $r['violationId'], $m)) {
+                $max = max($max, (int)$m[1]);
+            }
         }
+        return sprintf('VIO-%03d', $max + 1);
     }
-    return sprintf('VIO-%03d', $max + 1);
 }
 
 #endregion SECTION III
@@ -231,7 +282,6 @@ if (empty($violations)) {
             continue;
         }
 
-        // Filename enforcement for canonical registries only
         if ($isCanonicalRegistry) {
             if (!preg_match('/^[a-z][a-zA-Z0-9]*(Registry|Map|Index)\.json$/', $file)) {
                 $violations[] = "Name conformance violation: canonical registry filename '{$file}' must use camelCase.";
@@ -244,49 +294,68 @@ if (empty($violations)) {
             continue;
         }
 
-        // Apply appropriate enforcement mode
         if ($isCodex) {
-            // Scoped enforcement for codex.json
             auditCamelCaseKeys($json, $file, '', $violations, false);
         } else {
-            // Full strict enforcement for all canonical registries
             auditCamelCaseKeys($json, $file, '', $violations, true);
         }
     }
 }
 
 // 3. Merkle integrity checks
-if (empty($violations)) {
-    $codex      = json_decode(file_get_contents($codexPath), true);
-    $merkleTree = json_decode(file_get_contents($merkleTreePath), true);
-    $storedRoot = trim(file_get_contents($merkleRootPath));
+$codex      = json_decode(file_get_contents($codexPath), true);
+$merkleTree = json_decode(file_get_contents($merkleTreePath), true);
+$storedRoot = trim(file_get_contents($merkleRootPath));
 
-    $treeRoot = $merkleTree['root'] ?? null;
+$treeRoot = $merkleTree['root'] ?? null;
 
-    $observedLeaves = recursiveChunks($codex);
-    $observedRoot   = buildMerkle($observedLeaves);
+$observedLeaves = recursiveChunks($codex);
+$observedRoot   = buildMerkle($observedLeaves);
 
-    if ($storedRoot !== $treeRoot) {
-        $violations[] = "Stored Merkle root does not match merkleTree.json canonical root.";
-    }
+$merkleViolation = false;
 
-    if ($observedRoot !== $storedRoot) {
-        $violations[] = "Observed Codex structure diverges from governed Merkle snapshot.";
-    }
+if ($storedRoot !== $treeRoot || $observedRoot !== $storedRoot) {
+    $merkleViolation = true;
+}
+
+if ($merkleViolation) {
+    $violations[] =
+        "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.";
 }
 
 #endregion SECTION IV
 
-#region SECTION V — Process Violations & Update Persistence
+#region SECTION V — Process Violations & Update Persistence (Rule-Aware)
 
+$violations = array_values(array_unique($violations));
 $emitted = [];
 $updated = false;
 
+/*
+ * RULE EXECUTION MAP
+ * ------------------
+ * This explicitly records which audit rules executed in THIS run.
+ * Resolution inference is only allowed for rules that ran.
+ */
+$rulesEvaluated = [
+    'REQUIRED_FILES'     => true,
+    'NAMING_CONFORMANCE' => empty($violations),
+    'MERKLE_INTEGRITY'   => empty($violations),
+];
+
+/*
+ * Map observations emitted this run for fast lookup
+ */
 $currentObservations = array_flip($violations);
 
-// Pass 1: Handle current observations
+/*
+ * PASS 1 — Handle current observations
+ * ------------------------------------
+ * Update persistence or emit new violations.
+ */
 foreach ($violations as $obs) {
     $found = false;
+    $ruleId = inferRuleId($obs);
 
     foreach ($auditLog as &$record) {
         if (($record['resolved'] ?? null) !== null) {
@@ -311,38 +380,61 @@ foreach ($violations as $obs) {
         $newRecord = [
             'type'              => 'violation',
             'violationId'       => nextViolationId($auditLog),
+            'ruleId'            => $ruleId,
             'timestamp'         => $timestamp,
             'auditMode'         => $auditMode,
             'observation'       => $obs,
-            'notificationSent'  => null,  // Owned by Sentinel
-            'violationBatch'    => null,  // Owned by Sentinel
+            'notificationSent'  => null,
+            'violationBatch'    => null,
             'resolved'          => null,
-            'resolution'        => null,  // Owned by Reconciler
+            'resolution'        => null,
             'lastObserved'      => $timestamp,
             'observationCount'  => 1
         ];
 
         $auditLog[] = $newRecord;
         $emitted[]  = $newRecord;
-        $updated    = true;
+        $updated = true;
     }
 }
 
-// Pass 2: Infer resolution by absence — mode-isolated
+/*
+ * PASS 2 — Infer resolution (RULE-AWARE)
+ * -------------------------------------
+ * A violation may ONLY be resolved if:
+ * • It is unresolved
+ * • Its originating rule executed in this run
+ * • That rule did NOT re-emit the observation
+ */
 foreach ($auditLog as &$record) {
     if (
-        ($record['type'] ?? null) === 'violation' &&
-        ($record['resolved'] ?? null) === null &&
-        ($record['auditMode'] ?? null) === $auditMode &&
-        !isset($currentObservations[$record['observation'] ?? ''])
+        ($record['type'] ?? null) !== 'violation' ||
+        ($record['resolved'] ?? null) !== null ||
+        ($record['auditMode'] ?? null) !== $auditMode
     ) {
+        continue;
+    }
+
+    $ruleId = $record['ruleId'] ?? null;
+
+    if (
+        !$ruleId ||
+        !isset($rulesEvaluated[$ruleId]) ||
+        $rulesEvaluated[$ruleId] !== true
+    ) {
+        continue;
+    }
+
+    if (!isset($currentObservations[$record['observation'] ?? ''])) {
         $record['resolved'] = $timestamp;
         $updated = true;
     }
 }
 unset($record);
 
-// Persist changes
+/*
+ * Persist changes
+ */
 if ($updated) {
     file_put_contents(
         $auditLogPath,
@@ -350,7 +442,9 @@ if ($updated) {
     );
 }
 
-// Emit violations observed in this audit execution (for Sentinel consumption)
+/*
+ * Emit violations observed in this audit execution (for Sentinel consumption)
+ */
 echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
 #endregion SECTION V
