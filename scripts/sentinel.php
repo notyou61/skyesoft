@@ -9,15 +9,14 @@ declare(strict_types=1);
  *
  *  Purpose:
  *   • Execute auditor to detect violations
- *   • Trigger mutator when fixable naming issues exist
- *   • Re-audit after mutation to verify resolution
+ *   • React to explicit audit completion
+ *   • Trigger mutator only when declared safe
+ *   • Re-audit to verify resolution
  *   • Batch notification on canonical registry
  *
- *  Governance Notes:
- *   • auditResults.json is flat canonical registry (owned by Auditor)
- *   • Sentinel orchestrates flow but mutates only notification fields
- *   • Mutator handles fixes and resolution narratives
- *   • Strict role separation maintained
+ *  Constitutional Rule:
+ *   • Sentinel NEVER infers lifecycle state
+ *   • Auditor MUST explicitly declare runComplete
  * ===================================================================== */
 
 #region SECTION 0 — Environment Setup
@@ -30,12 +29,13 @@ $auditorPath  = $scriptsDir . '/auditor.php';
 $mutatorPath  = $scriptsDir . '/mutator.php';
 $auditLogPath = $dataDir . '/auditResults.json';
 
-#endregion SECTION 0 — Environment Setup
+#endregion SECTION 0
 
 #region SECTION I — Guard Conditions
 
 foreach ([$auditorPath, $mutatorPath] as $path) {
     if (!file_exists($path)) {
+        error_log("SENTINEL ERROR: Missing required file {$path}");
         exit(1);
     }
 }
@@ -45,101 +45,102 @@ if (!is_dir($dataDir)) {
 }
 
 if (!file_exists($auditLogPath)) {
-    file_put_contents($auditLogPath, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents(
+        $auditLogPath,
+        json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
 }
 
-#endregion SECTION I — Guard Conditions
+#endregion SECTION I
 
-#region SECTION II — Audit → Mutate → Verify
+#region SECTION II — Audit → Mutate → Verify (Contractual)
 
-// PASS 1 — Audit (detect + persist)
-ob_start();
-require $auditorPath;
-ob_end_clean();
+define('SKYESOFT_LIB_MODE', true);
 
-// Load canonical violations to check for mutatable issues
-$log = json_decode(file_get_contents($auditLogPath), true);
-if (!is_array($log)) {
-    $log = [];
+/*
+ * Create audit batch ONCE per run
+ * Owned by Sentinel
+ * Immutable for duration of this execution
+ */
+$auditBatch = 'BATCH-' . time();
+
+// PASS 1 — Audit
+$summary1 = require $auditorPath;
+
+if (!is_array($summary1) || ($summary1['runComplete'] ?? false) !== true) {
+    error_log("SENTINEL ERROR: Auditor failed to declare runComplete");
+    exit(1);
 }
 
-// Detect if there are unresolved NAMING_CONFORMANCE violations
-$hasMutatable = false;
-// Collect already-notified violationIds
-foreach ($log as $idx => $rec) {
-    if (
-        ($rec['type'] ?? null) === 'violation' &&
-        ($rec['resolved'] ?? null) === null
-    ) {
-        // Stamp audit run batch if missing or from prior run
-        if (!isset($rec['violationBatch']) || !is_int($rec['violationBatch'])) {
-            $log[$idx]['violationBatch'] = $runBatch;
-        }
+// Guard against multiple mutation passes
+$mutationPerformed = false;
 
-        if (!isset($alreadyNotified[$rec['violationId'] ?? ''])) {
-            $targets[] = $idx;
-        }
+// PASS 2 — Mutate (only if Auditor explicitly reports mutatable issues)
+if (
+    ($summary1['mutatableCount'] ?? 0) > 0 &&
+    !$mutationPerformed
+) {
+    $mutationPerformed = true;
+
+    require $mutatorPath;
+
+    // PASS 3 — Verification Audit
+    $summary2 = require $auditorPath;
+
+    if (!is_array($summary2) || ($summary2['runComplete'] ?? false) !== true) {
+        error_log("SENTINEL ERROR: Verification audit failed runComplete");
+        exit(1);
     }
 }
 
-
-// PASS 2 — Mutate (only if needed)
-if ($hasMutatable) {
-    require $mutatorPath;
-
-    // PASS 3 — Verify (re-audit to infer resolution)
-    ob_start();
-    require $auditorPath;
-    ob_end_clean();
-}
-
-#endregion SECTION II — Audit → Mutate → Verify
+#endregion SECTION II
 
 #region SECTION III — Notifier (Canonical Flat Registry Only)
 
 $now = time();
 
-// Reload log after potential mutation + verification
+// Reload canonical audit log
 $log = json_decode(file_get_contents($auditLogPath), true);
 if (!is_array($log)) {
     $log = [];
 }
 
 /*
- * STEP 1: Build set of already-notified violationIds
+ * STEP 1 — Build set of already-notified violations
+ * Rule: notificationSent must be a real timestamp
  */
 $alreadyNotified = [];
 foreach ($log as $rec) {
     if (
         ($rec['type'] ?? null) === 'violation' &&
-        isset($rec['notificationSent'])
+        is_int($rec['notificationSent'] ?? null)
     ) {
-        $alreadyNotified[$rec['violationId'] ?? ''] = true;
+        $alreadyNotified[$rec['violationId']] = true;
     }
 }
 
 /*
- * STEP 2: Collect eligible violations (unresolved + never notified)
+ * STEP 2 — Collect eligible unresolved violations
  */
 $targets = [];
 foreach ($log as $idx => $rec) {
     if (
         ($rec['type'] ?? null) === 'violation' &&
         ($rec['resolved'] ?? null) === null &&
-        !isset($alreadyNotified[$rec['violationId'] ?? ''])
+        !isset($alreadyNotified[$rec['violationId']])
     ) {
         $targets[] = $idx;
     }
 }
 
 /*
- * STEP 3: Apply batch notification if needed
+ * STEP 3 — Apply batch notification
  */
 if (!empty($targets)) {
     $batchId = 'BATCH-' . $now;
 
     foreach ($targets as $idx) {
-        $log[$idx]['violationBatch']   = $batchId;
+        $log[$idx]['notificationBatch']   = $batchId;
         $log[$idx]['notificationSent'] = $now;
     }
 
@@ -148,29 +149,30 @@ if (!empty($targets)) {
         json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     );
 
-    $payload = [
-        "batchId" => $batchId,
-        "count"   => count($targets),
-        "items"   => array_map(
-            fn($idx) => [
-                "violationId" => $log[$idx]['violationId'] ?? null,
-                "ruleId"      => $log[$idx]['ruleId'] ?? null,
-                "observation" => $log[$idx]['observation'] ?? null,
-            ],
-            $targets
-        )
-    ];
-
     error_log(
         "NOTIFIER BATCH\n" .
-        json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        json_encode(
+            [
+                'batchId' => $batchId,
+                'count'   => count($targets),
+                'items'   => array_map(
+                    fn ($idx) => [
+                        'violationId' => $log[$idx]['violationId'],
+                        'ruleId'      => $log[$idx]['ruleId'],
+                        'observation' => $log[$idx]['observation'],
+                    ],
+                    $targets
+                ),
+            ],
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+        )
     );
 }
 
-#endregion SECTION III — Notifier
+#endregion SECTION III
 
 #region SECTION IV — Final Exit
 
 exit(0);
 
-#endregion SECTION IV — Final Exit
+#endregion SECTION IV

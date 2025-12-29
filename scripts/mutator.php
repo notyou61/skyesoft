@@ -9,67 +9,94 @@ declare(strict_types=1);
  *
  *  Purpose:
  *   • Auto-fix low-risk violations (naming conformance only)
- *   • Write resolution narrative to canonical registry
- *   • Trigger Sentinel re-audit for verification
+ *   • Write resolution metadata to canonical audit ledger
  *
  *  Governance Notes:
- *   • Trigger: Human-only (manual or approved cron)
- *   • Scope: ONLY NAMING_CONFORMANCE
- *   • No persistence — updates resolution field only
- *   • No notification — Sentinel handles
+ *   • Trigger: Sentinel-orchestrated (automatic when mutatable violations exist)
+ *   • Scope: ONLY NAMING_CONFORMANCE violations in codex.json
+ *   • Deterministic, idempotent, purely structural corrections only
+ *   • No semantic inference, no dictionary, no language dependency
+ *   • No detection logic
+ *   • No notification logic
+ *   • Authority delegated by Sentinel via contractual audit completion
  * ===================================================================== */
 
 #region SECTION 0 — Environment Setup
 
-$rootDir    = dirname(__DIR__);
-$dataDir    = $rootDir . '/data/records';
-$scriptsDir = $rootDir . '/scripts';
+$rootDir      = dirname(__DIR__);
+$dataDir      = $rootDir . '/data/records';
+$codexDir     = $rootDir . '/codex';
 
 $auditLogPath = $dataDir . '/auditResults.json';
-$sentinelPath = $scriptsDir . '/sentinel.php';
 
-#endregion SECTION 0 — Environment Setup
+#endregion SECTION 0
 
 #region SECTION I — Helpers
 
-/*
- * Helper: Convert key to camelCase
- * Examples:
- *   "MERKLE_EXCLUDED"          → "merkleExcluded"
- *   "step2_integrityCommit"    → "step2IntegrityCommit"
- *   "non-deterministic"        → "nonDeterministic"
+/**
+ * Convert an arbitrary key to proper camelCase using pure structural tokenization
+ *
+ * Rules:
+ *   • Remove all non-alphanumeric characters
+ *   • Split on runs of letters vs digits
+ *   • Preserve digit sequences exactly
+ *   • First token lowercase, subsequent tokens capitalized
+ *   • Fully deterministic, idempotent, language-independent
  */
-if (!function_exists('toCamelCase')) {
-    // To camelCase FunctionS
-    function toCamelCase(string $key): string {
-
-        // Already camelCase
-        if (preg_match('/^[a-z][a-zA-Z0-9]*$/', $key)) {
-            return lcfirst($key);
-        }
-
-        // Normalize separators
-        $norm  = preg_replace('/[^a-zA-Z0-9]+/', ' ', $key);
-        $parts = preg_split('/\s+/', trim($norm)) ?: [];
-
-        if (!$parts) {
-            return $key;
-        }
-
-        $first = strtolower(array_shift($parts));
-        $rest  = array_map(
-            fn($p) => ucfirst(strtolower($p)),
-            $parts
-        );
-
-        return $first . implode('', $rest);
+if (!function_exists('isCamelCase')) {
+    function isCamelCase(string $key): bool
+    {
+        return preg_match('/^[a-z][a-zA-Z0-9]*$/', $key) === 1;
     }
 }
 
-/*
- * Helper: Rename key in JSON at dotted path
+if (!function_exists('toCamelCase')) {
+    function toCamelCase(string $key): string
+    {
+        // If already valid camelCase, preserve exactly
+        if (isCamelCase($key)) {
+            return $key;
+        }
+
+        // Normalize separators to spaces
+        $normalized = preg_replace('/[^a-zA-Z0-9]+/', ' ', $key);
+        $normalized = trim($normalized);
+
+        if ($normalized === '') {
+            return $key;
+        }
+
+        // Tokenize
+        $parts = preg_split('/\s+/', $normalized);
+        $result = '';
+
+        foreach ($parts as $i => $part) {
+            if ($part === '') {
+                continue;
+            }
+
+            if ($i === 0) {
+                $result .= strtolower($part);
+            } else {
+                $result .= ucfirst(strtolower($part));
+            }
+        }
+
+        return $result;
+    }
+}
+
+/**
+ * Rename a JSON object key at a dotted path
+ * Returns true on successful mutation
  */
-function renameJsonKeyAtPath(string $filePath, string $fullPath, string $oldKey, string $newKey): bool {
+function renameJsonKeyAtPath(
+    string $filePath,
+    string $fullPath,
+    string $oldKey,
+    string $newKey,
+    ?int &$codeLine = null
+): bool {
     $json = json_decode(file_get_contents($filePath), true);
     if (!is_array($json)) {
         return false;
@@ -80,6 +107,7 @@ function renameJsonKeyAtPath(string $filePath, string $fullPath, string $oldKey,
         return false;
     }
 
+    // Navigate to parent
     array_pop($segments);
     $ref = &$json;
 
@@ -90,140 +118,165 @@ function renameJsonKeyAtPath(string $filePath, string $fullPath, string $oldKey,
         $ref = &$ref[$seg];
     }
 
-    if (!is_array($ref) || !isset($ref[$oldKey])) {
-        return false;
-    }
-    if ($oldKey === $newKey) {
+    if (!is_array($ref) || !isset($ref[$oldKey]) || $oldKey === $newKey) {
         return false;
     }
 
+    /* GOVERNED MUTATION LINE */
+    $codeLine = __LINE__ + 1;
     $ref[$newKey] = $ref[$oldKey];
     unset($ref[$oldKey]);
 
-    file_put_contents(
+    $success = file_put_contents(
         $filePath,
         json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    );
+    ) !== false;
 
-    return true;
+    return $success;
 }
 
-/*
- * Helper: Write resolution narrative to violation by ID
+/**
+ * Write resolution metadata by violationId
  */
-function writeResolutionByViolationId(string $auditLogPath, string $violationId, string $narrative): bool {
+function writeResolutionByViolationId(
+    string $auditLogPath,
+    string $violationId,
+    array $resolution
+): bool {
     $log = json_decode(file_get_contents($auditLogPath), true);
     if (!is_array($log)) {
         return false;
     }
 
-    $ts      = time();
     $updated = false;
-
     foreach ($log as &$rec) {
         if (
             ($rec['type'] ?? null) !== 'violation' ||
-            ($rec['violationId'] ?? null) !== $violationId
+            ($rec['violationId'] ?? null) !== $violationId ||
+            ($rec['resolved'] ?? null) !== null
         ) {
             continue;
         }
 
-        if (!empty($rec['resolution'])) {
-            continue; // idempotent
-        }
-
-        $rec['resolution'] = [
-            'timestamp' => $ts,
-            'actor'     => 'mutator',
-            'method'    => 'mutator.namingConformance',
-            'note'      => $narrative
-        ];
-
+        $rec['resolved']   = time();
+        $rec['resolution'] = $resolution;
         $updated = true;
         break;
     }
     unset($rec);
 
-    if ($updated) {
-        file_put_contents(
-            $auditLogPath,
-            json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
+    if (!$updated) {
+        return false;
     }
 
-    return $updated;
+    return file_put_contents(
+        $auditLogPath,
+        json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    ) !== false;
 }
 
-#endregion SECTION I — Helpers
+#endregion SECTION I
 
 #region SECTION II — Load Canonical Registry
+
+if (!file_exists($auditLogPath)) {
+    exit(1);
+}
 
 $log = json_decode(file_get_contents($auditLogPath), true);
 if (!is_array($log)) {
     exit(1);
 }
 
-#endregion SECTION II — Load Canonical Registry
+#endregion SECTION II
 
 #region SECTION III — Mutator Execution (NAMING_CONFORMANCE Only)
 
-$mutatableRules = ['NAMING_CONFORMANCE']; // Explicit allowlist — prevents scope creep
-$fixed          = 0;
+$mutatedCount = 0;
 
 foreach ($log as $v) {
+
+    // --------------------------------------------------
+    // Basic eligibility filters
+    // --------------------------------------------------
     if (
         ($v['type'] ?? null) !== 'violation' ||
         ($v['resolved'] ?? null) !== null ||
-        !in_array($v['ruleId'] ?? null, $mutatableRules, true)
+        ($v['ruleId'] ?? null) !== 'NAMING_CONFORMANCE'
     ) {
         continue;
     }
 
-    $obs = (string)($v['observation'] ?? '');
-    $vid = (string)($v['violationId'] ?? '');
-
-    // NOTE: Observation string format is governed by AGS.
-    // Mutator is explicitly coupled to NAMING_CONFORMANCE phrasing.
-    if (!preg_match("/key '([^']+)' in '([^']+)' \\(path: ([^)]+)\\)/", $obs, $m)) {
+    // --------------------------------------------------
+    // Parse observation (bounded coupling)
+    // --------------------------------------------------
+    if (
+        !preg_match(
+            "/key '([^']+)' in '([^']+)' \\(path: ([^)]+)\\)/",
+            (string) ($v['observation'] ?? ''),
+            $m
+        )
+    ) {
         continue;
     }
 
-    $badKey  = $m[1];
-    $file    = $m[2];
-    $path    = $m[3];
+    [$badKey, $file, $path] = [$m[1], $m[2], $m[3]];
 
-    // Scope: only codex.json
+    // --------------------------------------------------
+    // Strict scope enforcement
+    // --------------------------------------------------
     if ($file !== 'codex.json') {
         continue;
     }
 
-    $filePath = $rootDir . '/codex/' . $file;
+    $filePath = $codexDir . '/' . $file;
     if (!file_exists($filePath)) {
         continue;
     }
 
+    // --------------------------------------------------
+    // Compute deterministic fix
+    // --------------------------------------------------
     $fixedKey = toCamelCase($badKey);
 
-    if (renameJsonKeyAtPath($filePath, $path, $badKey, $fixedKey)) {
-        $narrative = "Auto-fixed naming: '{$badKey}' → '{$fixedKey}' in {$file} at path {$path}";
-        if (writeResolutionByViolationId($auditLogPath, $vid, $narrative)) {
-            $fixed++;
-        }
+    // No-op guard — no mutation, no ledger write
+    if ($badKey === $fixedKey) {
+        continue;
+    }
+
+    // Never degrade an already-valid key
+    if (isCamelCase($badKey) && !isCamelCase($fixedKey)) {
+        continue;
+    }
+
+    // Target must itself be valid camelCase
+    if (!isCamelCase($fixedKey)) {
+        continue;
+    }
+
+    // --------------------------------------------------
+    // Apply governed mutation
+    // --------------------------------------------------
+    $codeLine = null;
+
+    if (renameJsonKeyAtPath($filePath, $path, $badKey, $fixedKey, $codeLine)) {
+        $mutatedCount++;
+
+        writeResolutionByViolationId(
+            $auditLogPath,
+            (string) $v['violationId'],
+            [
+                'actor'    => 'mutator',
+                'ruleId'   => 'NAMING_CONFORMANCE',
+                'action'   => 'renameKey',
+                'before'   => $badKey,
+                'after'    => $fixedKey,
+                'file'     => $file,
+                'path'     => $path,
+                'codeLine' => $codeLine,
+            ]
+        );
     }
 }
 
-#endregion SECTION III — Mutator Execution
-
-#region SECTION IV — Trigger Verification (If Fixes Applied)
-
-if ($fixed > 0) {
-    require $sentinelPath;
-}
-
-#endregion SECTION IV — Trigger Verification
-
-#region SECTION V — Final Exit
-
-exit(0);
-
-#endregion SECTION V — Final Exit
+#endregion SECTION III
