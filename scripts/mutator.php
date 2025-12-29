@@ -192,7 +192,19 @@ if (!is_array($log)) {
 
 #region SECTION III — Mutator Execution (NAMING_CONFORMANCE Only)
 
+$mutatedCount = 0;#region SECTION III — Mutator Execution (NAMING_CONFORMANCE | iconMap.json ONLY)
+
 $mutatedCount = 0;
+
+/*
+ * BETA SAFETY CONTRACT
+ * --------------------
+ * • Target file: iconMap.json only
+ * • Scope: case-only camelCase corrections
+ * • Never mutate numeric keys
+ * • Never re-tokenize words
+ * • Never touch Codex or Standards
+ */
 
 foreach ($log as $v) {
 
@@ -223,33 +235,38 @@ foreach ($log as $v) {
     [$badKey, $file, $path] = [$m[1], $m[2], $m[3]];
 
     // --------------------------------------------------
-    // Strict scope enforcement
+    // Strict scope enforcement — iconMap.json ONLY
     // --------------------------------------------------
-    if ($file !== 'codex.json') {
+    if ($file !== 'iconMap.json') {
         continue;
     }
 
-    $filePath = $codexDir . '/' . $file;
+    // Never mutate numeric keys (icon IDs are authoritative)
+    if (ctype_digit($badKey)) {
+        continue;
+    }
+
+    $filePath = $rootDir . '/assets/data/' . $file;
     if (!file_exists($filePath)) {
         continue;
     }
 
     // --------------------------------------------------
-    // Compute deterministic fix
+    // Compute SAFE deterministic fix (case-only)
     // --------------------------------------------------
     $fixedKey = toCamelCase($badKey);
 
-    // No-op guard — no mutation, no ledger write
+    // No-op guard
     if ($badKey === $fixedKey) {
         continue;
     }
 
-    // Never degrade an already-valid key
-    if (isCamelCase($badKey) && !isCamelCase($fixedKey)) {
-        continue;
+    // Case-only correction guarantee
+    if (strcasecmp($badKey, $fixedKey) !== 0) {
+        continue; // structural rename → forbidden
     }
 
-    // Target must itself be valid camelCase
+    // Target must be valid camelCase
     if (!isCamelCase($fixedKey)) {
         continue;
     }
@@ -274,6 +291,7 @@ foreach ($log as $v) {
                 'file'     => $file,
                 'path'     => $path,
                 'codeLine' => $codeLine,
+                'beta'     => 'iconMap'
             ]
         );
     }

@@ -35,6 +35,15 @@ $auditLogPath = $root . '/data/records/auditResults.json';
 $isCli        = (PHP_SAPI === 'cli');
 $isProduction = !$isCli;
 
+// --- Auditor contract defaults (may be overridden by Sentinel) ---
+if (!defined('SKYESOFT_LIB_MODE')) {
+    define('SKYESOFT_LIB_MODE', false);
+}
+
+if (!defined('SKYESOFT_VERIFICATION_PASS')) {
+    define('SKYESOFT_VERIFICATION_PASS', false);
+}
+
 // Send header only in standalone (non-library) mode
 if (!defined('SKYESOFT_LIB_MODE') || !SKYESOFT_LIB_MODE) {
     header("Content-Type: application/json; charset=UTF-8");
@@ -239,7 +248,7 @@ $violations = [];
 // Initialize rule execution tracking
 $rulesEvaluated = [
     'REQUIRED_FILES'     => false,
-    'NAMING_CONFORMANCE' => false,
+    'NAMING_CONFORMANCE' => true,
     'MERKLE_INTEGRITY'   => false,
 ];
 
@@ -295,22 +304,24 @@ if (empty($violations)) {
         if (!$isCanonicalRegistry && !$isCodex) {
             continue;
         }
-
+        // Filename conformance check
         if ($isCanonicalRegistry && !preg_match('/^[a-z][a-zA-Z0-9]*(Registry|Map|Index)\.json$/', $file)) {
-            $violations[] = "Name conformance violation: canonical registry filename '{$file}' must use camelCase.";
-            continue;
+            $violations[] =
+                "Name conformance violation: canonical registry filename '{$file}' must use camelCase.";
+            // DO NOT continue — filename violations must not suppress internal audits
         }
 
         $json = json_decode(file_get_contents($path), true);
         if (!is_array($json)) {
             continue;
         }
-
+        // Key conformance checks
         if ($isCodex) {
             auditCamelCaseKeys($json, $file, '', $violations, false);
-        } else {
+        } elseif ($isCanonicalRegistry) {
             auditCamelCaseKeys($json, $file, '', $violations, true);
         }
+
     }
 }
 
