@@ -120,7 +120,8 @@ if (!function_exists('auditCamelCaseKeys')) {
         string $file,
         string $currentPath,
         array &$violations,
-        bool $fullEnforcement = false
+        bool $fullEnforcement = false,
+        bool $forceGovernance = false
     ): void {
         if (!is_array($node)) {
             return;
@@ -141,6 +142,7 @@ if (!function_exists('auditCamelCaseKeys')) {
         ];
 
         $isInGovernedScope =
+            $forceGovernance ||
             $fullEnforcement ||
             (
                 $currentPath !== '' &&
@@ -299,11 +301,13 @@ if (empty($violations)) {
         }
 
         $isCanonicalRegistry = preg_match('/(Registry|Map|Index)\.json$/', $file);
-        $isCodex = ($file === 'codex.json');
+        $isCodex            = ($file === 'codex.json');
+        $isIconMap          = ($file === 'iconMap.json');
 
-        if (!$isCanonicalRegistry && !$isCodex) {
+        if (!$isCanonicalRegistry && !$isCodex && !$isIconMap) {
             continue;
         }
+
         // Filename conformance check
         if ($isCanonicalRegistry && !preg_match('/^[a-z][a-zA-Z0-9]*(Registry|Map|Index)\.json$/', $file)) {
             $violations[] =
@@ -315,11 +319,14 @@ if (empty($violations)) {
         if (!is_array($json)) {
             continue;
         }
+
         // Key conformance checks
         if ($isCodex) {
             auditCamelCaseKeys($json, $file, '', $violations, false);
         } elseif ($isCanonicalRegistry) {
             auditCamelCaseKeys($json, $file, '', $violations, true);
+        } elseif ($isIconMap) {
+            auditCamelCaseKeys($json, $file, '', $violations, false, true);
         }
 
     }
@@ -441,11 +448,15 @@ if ($updated) {
 }
 
 // Compute mutatableCount — only NAMING_CONFORMANCE violations in codex.json
+// Compute mutatableCount — NAMING_CONFORMANCE violations with governed auto-fix
 $mutatableCount = 0;
 foreach ($emitted as $e) {
     if (
         ($e['ruleId'] ?? '') === 'NAMING_CONFORMANCE' &&
-        str_contains($e['observation'] ?? '', "in 'codex.json'")
+        (
+            str_contains($e['observation'] ?? '', "in 'codex.json'") ||
+            str_contains($e['observation'] ?? '', "in 'iconMap.json'")
+        )
     ) {
         $mutatableCount++;
     }

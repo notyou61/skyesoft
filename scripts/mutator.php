@@ -190,9 +190,7 @@ if (!is_array($log)) {
 
 #endregion SECTION II
 
-#region SECTION III — Mutator Execution (NAMING_CONFORMANCE Only)
-
-$mutatedCount = 0;#region SECTION III — Mutator Execution (NAMING_CONFORMANCE | iconMap.json ONLY)
+#region SECTION III — Mutator Execution (NAMING_CONFORMANCE | iconMap.json ONLY)
 
 $mutatedCount = 0;
 
@@ -200,10 +198,10 @@ $mutatedCount = 0;
  * BETA SAFETY CONTRACT
  * --------------------
  * • Target file: iconMap.json only
- * • Scope: case-only camelCase corrections
+ * • Scope: snake_case → camelCase key corrections
  * • Never mutate numeric keys
- * • Never re-tokenize words
- * • Never touch Codex or Standards
+ * • Deterministic + idempotent
+ * • No Codex / Standards mutation
  */
 
 foreach ($log as $v) {
@@ -220,7 +218,7 @@ foreach ($log as $v) {
     }
 
     // --------------------------------------------------
-    // Parse observation (bounded coupling)
+    // Parse observation
     // --------------------------------------------------
     if (
         !preg_match(
@@ -235,35 +233,30 @@ foreach ($log as $v) {
     [$badKey, $file, $path] = [$m[1], $m[2], $m[3]];
 
     // --------------------------------------------------
-    // Strict scope enforcement — iconMap.json ONLY
+    // Strict scope enforcement
     // --------------------------------------------------
     if ($file !== 'iconMap.json') {
         continue;
     }
 
-    // Never mutate numeric keys (icon IDs are authoritative)
+    // Never mutate numeric keys
     if (ctype_digit($badKey)) {
         continue;
     }
 
-    $filePath = $rootDir . '/assets/data/' . $file;
+    $filePath = $rootDir . '/data/authoritative/' . $file;
     if (!file_exists($filePath)) {
         continue;
     }
 
     // --------------------------------------------------
-    // Compute SAFE deterministic fix (case-only)
+    // Compute deterministic fix
     // --------------------------------------------------
     $fixedKey = toCamelCase($badKey);
 
     // No-op guard
     if ($badKey === $fixedKey) {
         continue;
-    }
-
-    // Case-only correction guarantee
-    if (strcasecmp($badKey, $fixedKey) !== 0) {
-        continue; // structural rename → forbidden
     }
 
     // Target must be valid camelCase

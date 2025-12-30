@@ -1,89 +1,393 @@
 {
     "meta": {
         "centralizes": "1.1.0",
-        "objectType": "iconMap",
         "objectKey": "iconMap",
         "generatedBy": "Skyesoft System",
         "generatedOn": "SSE:timeDateArray",
         "checksum": "auto",
-        "notes": "Master map of icon IDs to semantic icon keys."
+        "notes": "Master map of icon IDs to semantic icon keys.",
+        "objectType": "iconMap"
     },
     "icons": {
-    "1":  { "file": "barChart.png",      "emoji": "📊", "alt": "Bar chart icon" },
-    "2":  { "file": "blueBook.png",      "emoji": "📘", "alt": "Blue book icon" },
-    "3":  { "file": "bolt.png",          "emoji": "⚡",  "alt": "Bolt icon" },
-    "4":  { "file": "book.png",          "emoji": "📖", "alt": "Book icon" },
-    "5":  { "file": "books.png",         "emoji": "📚", "alt": "Books icon" },
-    "6":  { "file": "brain.png",         "emoji": "🧠", "alt": "Brain/AI icon" },
-    "7":  { "file": "bricks.png",        "emoji": "🧱", "alt": "Bricks/structure icon" },
-    "8":  { "file": "briefcase.png",     "emoji": "💼", "alt": "Briefcase/business icon" },
-    "9":  { "file": "calendar.png",      "emoji": "📅", "alt": "Calendar icon" },
-    "10": { "file": "camera.png",        "emoji": "📷", "alt": "Camera/photo icon" },
-    "11": { "file": "clipboard.png",     "emoji": "📋", "alt": "Clipboard/tasks icon" },
-    "12": { "file": "clock.png",         "emoji": "⏰", "alt": "Clock/schedule icon" },
-    "13": { "file": "clockface.png",     "emoji": "🕒", "alt": "Clock face icon" },
-    "14": { "file": "code.png",          "emoji": "💻", "alt": "Code/programming icon" },
-    "15": { "file": "compass.png",       "emoji": "🧭", "alt": "Compass/navigation icon" },
-    "16": { "file": "database.png",      "emoji": "🗄️", "alt": "Database/storage icon" },
-    "17": { "file": "dayEnd.png",        "emoji": "🌇", "alt": "Sunset/end-of-day icon" },
-    "18": { "file": "daylight.png",      "emoji": "🌞", "alt": "Daylight/sun icon" },
-    "19": { "file": "dayStart.png",      "emoji": "🌅", "alt": "Sunrise/start-of-day icon" },
-    "20": { "file": "document.png",      "emoji": "📄", "alt": "Document icon" },
-    "21": { "file": "downArrow.png",     "emoji": "🔻", "alt": "Down arrow icon" },
-    "22": { "file": "flashingLight.png", "emoji": "🚨", "alt": "Alert/emergency icon" },
-    "23": { "file": "floppyDisk.png",    "emoji": "💾", "alt": "Save/archive icon" },
-    "24": { "file": "folder.png",        "emoji": "🗂️", "alt": "Folder icon" },
-    "25": { "file": "gear.png",          "emoji": "⚙️", "alt": "Gear/settings icon" },
-    "26": { "file": "graduationCap.png", "emoji": "🎓", "alt": "Graduation/learning icon" },
-    "27": { "file": "holiday.png",       "emoji": "🎉", "alt": "Holiday/celebration icon" },
-    "28": { "file": "hourglass.png",     "emoji": "⏳", "alt": "Hourglass/time icon" },
-    "29": { "file": "information.png",   "emoji": "ℹ️", "alt": "Information icon" },
-    "30": { "file": "inProgress.png",    "emoji": "🔄", "alt": "In-progress icon" },
-    "31": { "file": "integration.png",   "emoji": "🔌", "alt": "Integration/plug icon" },
-    "32": { "file": "lightbulb.png",     "emoji": "💡", "alt": "Idea/lightbulb icon" },
-    "33": { "file": "link.png",          "emoji": "🔗", "alt": "Link/connection icon" },
-    "34": { "file": "live.png",          "emoji": "📡", "alt": "Live broadcast icon" },
-    "35": { "file": "mantleClock.png",   "emoji": "🕰️", "alt": "Mantle clock/time icon" },
-    "36": { "file": "megaphone.png",     "emoji": "📢", "alt": "Announcement/megaphone icon" },
-    "37": { "file": "memo.png",          "emoji": "📝", "alt": "Memo/notepad icon" },
-    "38": { "file": "mobilePhone.png",   "emoji": "📱", "alt": "Mobile phone icon" },
-    "39": { "file": "moneybag.png",      "emoji": "💰", "alt": "Money/finance icon" },
-    "40": { "file": "network.png",       "emoji": "🌐", "alt": "Network/global icon" },
-    "41": { "file": "nighttime.png",     "emoji": "🌃", "alt": "Nighttime/after-hours icon" },
-    "42": { "file": "notes.png",         "emoji": "🗒️", "alt": "Notes/documentation icon" },
-    "43": { "file": "openFolder.png",    "emoji": "📂", "alt": "Open folder icon" },
-    "44": { "file": "owner.png",         "emoji": "👤", "alt": "Person/owner icon" },
-    "45": { "file": "palette.png",       "emoji": "🎨", "alt": "Palette/design icon" },
-    "46": { "file": "partlyCloudy.png",  "emoji": "🌤️", "alt": "Partly cloudy icon" },
-    "47": { "file": "pen.png",           "emoji": "✒️", "alt": "Pen/signature icon" },
-    "48": { "file": "pencil.png",        "emoji": "✏️", "alt": "Pencil/edit icon" },
-    "49": { "file": "pin.png",           "emoji": "📍", "alt": "Location pin icon" },
-    "50": { "file": "plug.png",          "emoji": "🔌", "alt": "Plug/integration icon" },
-    "51": { "file": "property.png",      "emoji": "🏠", "alt": "Building/property icon" },
-    "52": { "file": "puzzle.png",        "emoji": "🧩", "alt": "Puzzle/module icon" },
-    "53": { "file": "receipt.png",       "emoji": "🧾", "alt": "Receipt/invoice icon" },
-    "54": { "file": "robot.png",         "emoji": "🤖", "alt": "Robot/AI icon" },
-    "55": { "file": "rocket.png",        "emoji": "🚀", "alt": "Rocket/growth icon" },
-    "56": { "file": "ruler.png",         "emoji": "📏", "alt": "Ruler/measurement icon" },
-    "57": { "file": "scales.png",        "emoji": "⚖️", "alt": "Scales/fairness icon" },
-    "58": { "file": "scroll.png",        "emoji": "📜", "alt": "Scroll/legal icon" },
-    "59": { "file": "shield.png",        "emoji": "🛡️", "alt": "Security/shield icon" },
-    "60": { "file": "stopwatch.png",     "emoji": "⏱️", "alt": "Stopwatch/timing icon" },
-    "61": { "file": "sunrise.png",       "emoji": "🌅", "alt": "Sunrise icon" },
-    "62": { "file": "sunset.png",        "emoji": "🌇", "alt": "Sunset icon" },
-    "63": { "file": "table.png",         "emoji": "📊", "alt": "Table/data icon" },
-    "64": { "file": "target.png",        "emoji": "🎯", "alt": "Target/goals icon" },
-    "65": { "file": "temple.png",        "emoji": "🏛️", "alt": "Temple/civic/permit icon" },
-    "66": { "file": "tools.png",         "emoji": "🛠️", "alt": "Tools/repair icon" },
-    "67": { "file": "tree.png",          "emoji": "🌳", "alt": "Tree/hierarchy icon" },
-    "68": { "file": "trophy.png",        "emoji": "🏆", "alt": "Trophy/achievement icon" },
-    "69": { "file": "upArrow.png",       "emoji": "🔺", "alt": "Up arrow icon" },
-    "70": { "file": "user.png",          "emoji": "👤", "alt": "User/person icon" },
-    "71": { "file": "users.png",         "emoji": "👥", "alt": "Users/group icon" },
-    "72": { "file": "warning.png",       "emoji": "⚠️", "alt": "Warning icon" },
-    "73": { "file": "weather.png",       "emoji": "☁️", "alt": "Weather/cloud icon" },
-    "74": { "file": "workman.png",       "emoji": "👷", "alt": "Workman/crew icon" },
-    "75": { "file": "workmanVest.png",   "emoji": "🦺", "alt": "Safety vest icon" },
-    "76": { "file": "wrench.png",        "emoji": "🔧", "alt": "Wrench/tool icon" }
+        "1": {
+            "file": "barChart.png",
+            "emoji": "\ud83d\udcca",
+            "alt": "Bar chart icon"
+        },
+        "2": {
+            "file": "blueBook.png",
+            "emoji": "\ud83d\udcd8",
+            "alt": "Blue book icon"
+        },
+        "3": {
+            "file": "bolt.png",
+            "emoji": "\u26a1",
+            "alt": "Bolt icon"
+        },
+        "4": {
+            "file": "book.png",
+            "emoji": "\ud83d\udcd6",
+            "alt": "Book icon"
+        },
+        "5": {
+            "file": "books.png",
+            "emoji": "\ud83d\udcda",
+            "alt": "Books icon"
+        },
+        "6": {
+            "file": "brain.png",
+            "emoji": "\ud83e\udde0",
+            "alt": "Brain/AI icon"
+        },
+        "7": {
+            "file": "bricks.png",
+            "emoji": "\ud83e\uddf1",
+            "alt": "Bricks/structure icon"
+        },
+        "8": {
+            "file": "briefcase.png",
+            "emoji": "\ud83d\udcbc",
+            "alt": "Briefcase/business icon"
+        },
+        "9": {
+            "file": "calendar.png",
+            "emoji": "\ud83d\udcc5",
+            "alt": "Calendar icon"
+        },
+        "10": {
+            "file": "camera.png",
+            "emoji": "\ud83d\udcf7",
+            "alt": "Camera/photo icon"
+        },
+        "11": {
+            "file": "clipboard.png",
+            "emoji": "\ud83d\udccb",
+            "alt": "Clipboard/tasks icon"
+        },
+        "12": {
+            "file": "clock.png",
+            "emoji": "\u23f0",
+            "alt": "Clock/schedule icon"
+        },
+        "13": {
+            "file": "clockface.png",
+            "emoji": "\ud83d\udd52",
+            "alt": "Clock face icon"
+        },
+        "14": {
+            "file": "code.png",
+            "emoji": "\ud83d\udcbb",
+            "alt": "Code/programming icon"
+        },
+        "15": {
+            "file": "compass.png",
+            "emoji": "\ud83e\udded",
+            "alt": "Compass/navigation icon"
+        },
+        "16": {
+            "file": "database.png",
+            "emoji": "\ud83d\uddc4\ufe0f",
+            "alt": "Database/storage icon"
+        },
+        "17": {
+            "file": "dayEnd.png",
+            "emoji": "\ud83c\udf07",
+            "alt": "Sunset/end-of-day icon"
+        },
+        "18": {
+            "file": "daylight.png",
+            "emoji": "\ud83c\udf1e",
+            "alt": "Daylight/sun icon"
+        },
+        "19": {
+            "file": "dayStart.png",
+            "emoji": "\ud83c\udf05",
+            "alt": "Sunrise/start-of-day icon"
+        },
+        "20": {
+            "file": "document.png",
+            "emoji": "\ud83d\udcc4",
+            "alt": "Document icon"
+        },
+        "21": {
+            "file": "downArrow.png",
+            "emoji": "\ud83d\udd3b",
+            "alt": "Down arrow icon"
+        },
+        "22": {
+            "file": "flashingLight.png",
+            "emoji": "\ud83d\udea8",
+            "alt": "Alert/emergency icon"
+        },
+        "23": {
+            "file": "floppyDisk.png",
+            "emoji": "\ud83d\udcbe",
+            "alt": "Save/archive icon"
+        },
+        "24": {
+            "file": "folder.png",
+            "emoji": "\ud83d\uddc2\ufe0f",
+            "alt": "Folder icon"
+        },
+        "25": {
+            "file": "gear.png",
+            "emoji": "\u2699\ufe0f",
+            "alt": "Gear/settings icon"
+        },
+        "26": {
+            "file": "graduationCap.png",
+            "emoji": "\ud83c\udf93",
+            "alt": "Graduation/learning icon"
+        },
+        "27": {
+            "file": "holiday.png",
+            "emoji": "\ud83c\udf89",
+            "alt": "Holiday/celebration icon"
+        },
+        "28": {
+            "file": "hourglass.png",
+            "emoji": "\u23f3",
+            "alt": "Hourglass/time icon"
+        },
+        "29": {
+            "file": "information.png",
+            "emoji": "\u2139\ufe0f",
+            "alt": "Information icon"
+        },
+        "30": {
+            "file": "inProgress.png",
+            "emoji": "\ud83d\udd04",
+            "alt": "In-progress icon"
+        },
+        "31": {
+            "file": "integration.png",
+            "emoji": "\ud83d\udd0c",
+            "alt": "Integration/plug icon"
+        },
+        "32": {
+            "file": "lightbulb.png",
+            "emoji": "\ud83d\udca1",
+            "alt": "Idea/lightbulb icon"
+        },
+        "33": {
+            "file": "link.png",
+            "emoji": "\ud83d\udd17",
+            "alt": "Link/connection icon"
+        },
+        "34": {
+            "file": "live.png",
+            "emoji": "\ud83d\udce1",
+            "alt": "Live broadcast icon"
+        },
+        "35": {
+            "file": "mantleClock.png",
+            "emoji": "\ud83d\udd70\ufe0f",
+            "alt": "Mantle clock/time icon"
+        },
+        "36": {
+            "file": "megaphone.png",
+            "emoji": "\ud83d\udce2",
+            "alt": "Announcement/megaphone icon"
+        },
+        "37": {
+            "file": "memo.png",
+            "emoji": "\ud83d\udcdd",
+            "alt": "Memo/notepad icon"
+        },
+        "38": {
+            "file": "mobilePhone.png",
+            "emoji": "\ud83d\udcf1",
+            "alt": "Mobile phone icon"
+        },
+        "39": {
+            "file": "moneybag.png",
+            "emoji": "\ud83d\udcb0",
+            "alt": "Money/finance icon"
+        },
+        "40": {
+            "file": "network.png",
+            "emoji": "\ud83c\udf10",
+            "alt": "Network/global icon"
+        },
+        "41": {
+            "file": "nighttime.png",
+            "emoji": "\ud83c\udf03",
+            "alt": "Nighttime/after-hours icon"
+        },
+        "42": {
+            "file": "notes.png",
+            "emoji": "\ud83d\uddd2\ufe0f",
+            "alt": "Notes/documentation icon"
+        },
+        "43": {
+            "file": "openFolder.png",
+            "emoji": "\ud83d\udcc2",
+            "alt": "Open folder icon"
+        },
+        "44": {
+            "file": "owner.png",
+            "emoji": "\ud83d\udc64",
+            "alt": "Person/owner icon"
+        },
+        "45": {
+            "file": "palette.png",
+            "emoji": "\ud83c\udfa8",
+            "alt": "Palette/design icon"
+        },
+        "46": {
+            "file": "partlyCloudy.png",
+            "emoji": "\ud83c\udf24\ufe0f",
+            "alt": "Partly cloudy icon"
+        },
+        "47": {
+            "file": "pen.png",
+            "emoji": "\u2712\ufe0f",
+            "alt": "Pen/signature icon"
+        },
+        "48": {
+            "file": "pencil.png",
+            "emoji": "\u270f\ufe0f",
+            "alt": "Pencil/edit icon"
+        },
+        "49": {
+            "file": "pin.png",
+            "emoji": "\ud83d\udccd",
+            "alt": "Location pin icon"
+        },
+        "50": {
+            "file": "plug.png",
+            "emoji": "\ud83d\udd0c",
+            "alt": "Plug/integration icon"
+        },
+        "51": {
+            "file": "property.png",
+            "emoji": "\ud83c\udfe0",
+            "alt": "Building/property icon"
+        },
+        "52": {
+            "file": "puzzle.png",
+            "emoji": "\ud83e\udde9",
+            "alt": "Puzzle/module icon"
+        },
+        "53": {
+            "file": "receipt.png",
+            "emoji": "\ud83e\uddfe",
+            "alt": "Receipt/invoice icon"
+        },
+        "54": {
+            "file": "robot.png",
+            "emoji": "\ud83e\udd16",
+            "alt": "Robot/AI icon"
+        },
+        "55": {
+            "file": "rocket.png",
+            "emoji": "\ud83d\ude80",
+            "alt": "Rocket/growth icon"
+        },
+        "56": {
+            "file": "ruler.png",
+            "emoji": "\ud83d\udccf",
+            "alt": "Ruler/measurement icon"
+        },
+        "57": {
+            "file": "scales.png",
+            "emoji": "\u2696\ufe0f",
+            "alt": "Scales/fairness icon"
+        },
+        "58": {
+            "file": "scroll.png",
+            "emoji": "\ud83d\udcdc",
+            "alt": "Scroll/legal icon"
+        },
+        "59": {
+            "file": "shield.png",
+            "emoji": "\ud83d\udee1\ufe0f",
+            "alt": "Security/shield icon"
+        },
+        "60": {
+            "file": "stopwatch.png",
+            "emoji": "\u23f1\ufe0f",
+            "alt": "Stopwatch/timing icon"
+        },
+        "61": {
+            "file": "sunrise.png",
+            "emoji": "\ud83c\udf05",
+            "alt": "Sunrise icon"
+        },
+        "62": {
+            "file": "sunset.png",
+            "emoji": "\ud83c\udf07",
+            "alt": "Sunset icon"
+        },
+        "63": {
+            "file": "table.png",
+            "emoji": "\ud83d\udcca",
+            "alt": "Table/data icon"
+        },
+        "64": {
+            "file": "target.png",
+            "emoji": "\ud83c\udfaf",
+            "alt": "Target/goals icon"
+        },
+        "65": {
+            "file": "temple.png",
+            "emoji": "\ud83c\udfdb\ufe0f",
+            "alt": "Temple/civic/permit icon"
+        },
+        "66": {
+            "file": "tools.png",
+            "emoji": "\ud83d\udee0\ufe0f",
+            "alt": "Tools/repair icon"
+        },
+        "67": {
+            "file": "tree.png",
+            "emoji": "\ud83c\udf33",
+            "alt": "Tree/hierarchy icon"
+        },
+        "68": {
+            "file": "trophy.png",
+            "emoji": "\ud83c\udfc6",
+            "alt": "Trophy/achievement icon"
+        },
+        "69": {
+            "file": "upArrow.png",
+            "emoji": "\ud83d\udd3a",
+            "alt": "Up arrow icon"
+        },
+        "70": {
+            "file": "user.png",
+            "emoji": "\ud83d\udc64",
+            "alt": "User/person icon"
+        },
+        "71": {
+            "file": "users.png",
+            "emoji": "\ud83d\udc65",
+            "alt": "Users/group icon"
+        },
+        "72": {
+            "file": "warning.png",
+            "emoji": "\u26a0\ufe0f",
+            "alt": "Warning icon"
+        },
+        "73": {
+            "file": "weather.png",
+            "emoji": "\u2601\ufe0f",
+            "alt": "Weather/cloud icon"
+        },
+        "74": {
+            "file": "workman.png",
+            "emoji": "\ud83d\udc77",
+            "alt": "Workman/crew icon"
+        },
+        "75": {
+            "file": "workmanVest.png",
+            "emoji": "\ud83e\uddba",
+            "alt": "Safety vest icon"
+        },
+        "76": {
+            "file": "wrench.png",
+            "emoji": "\ud83d\udd27",
+            "alt": "Wrench/tool icon"
+        }
     }
 }

@@ -3111,12 +3111,31 @@
                 },
                 "reconciliationMethods": {
                     "automated": {
-                        "description": "Deterministic corrective changes applied by governed reconciliation utilities.",
-                        "requirements": [
-                            "Must operate on locally governed artifacts only",
-                            "Must produce changes reducible to a diff",
-                            "Must not execute during audit runs"
-                        ]
+                    "description": "Deterministic corrective changes applied by governed reconciliation utilities.",
+                    "requirements": [
+                        "Must operate on locally governed artifacts only",
+                        "Must produce changes reducible to a diff",
+                        "Must not execute during audit runs",
+                        "Must declare its reconciliation class before acting"
+                    ],
+                    "reconciliationClasses": {
+                        "NAME_CONFORMANCE_SAFE": {
+                        "definition": "A bounded, non-semantic rename that improves naming conformance without changing structural meaning.",
+                        "eligibleRuleIds": [
+                            "NAMING_CONFORMANCE"
+                        ],
+                        "scopeRule": "May apply only to artifacts that are governed registries (per AGS naming rules) and that are JSON objects.",
+                        "constraints": [
+                            "Key renames only (no value mutation)",
+                            "Never mutate numeric keys",
+                            "No re-tokenization (no splitting/merging words)",
+                            "Case-only or separator-removal only (must be provably non-semantic)",
+                            "Renamed key must be proper camelCase",
+                            "Must not create collisions (target key must not already exist at that path)"
+                        ],
+                        "proofRule": "Mutator must emit a machine-checkable proof that the rename is non-semantic under this class."
+                        }
+                    }
                     },
                     "manual": {
                         "description": "Corrective changes applied by a developer or operator.",
