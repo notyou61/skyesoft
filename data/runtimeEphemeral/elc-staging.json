@@ -429,6 +429,15 @@
             "entityType": "client",
             "entityDate": 1738360389,
             "entityIsNotValid": false
+        },
+        {
+            "entityId": 49,
+            "entityName": "Hensley Beverage Company",
+            "entityLocationId": 49,
+            "entityNote": "Beverage distribution facility – Phoenix campus.",
+            "entityType": "client",
+            "entityDate": 1738362000,
+            "entityIsNotValid": false
         }
     ],
     "locations": [
@@ -1411,6 +1420,27 @@
             "locationIsBilling": false,
             "locationNote": "Parsed from proposed contact data.",
             "locationDate": 1738360389,
+            "locationIsNotValid": false,
+            "locationCounty": "Maricopa",
+            "locationCountyFips": "04013"
+        },
+        {
+            "locationId": 49,
+            "locationEntityId": 49,
+            "locationName": "Hensley Beverage Company – Phoenix",
+            "locationPlaceId": "ChIJn2X8F4gDK4cR6e4n4k3W2yU",
+            "locationLatitude": 33.4971148,
+            "locationLongitude": -112.155983,
+            "locationAddress": "4201 N 45th Ave",
+            "locationAddressSuite": "",
+            "locationCity": "Phoenix",
+            "locationState": "AZ",
+            "locationZip": "85031",
+            "locationParcelNumber": "Pending",
+            "locationJurisdiction": "Phoenix",
+            "locationIsBilling": true,
+            "locationNote": "Exterior building signage service location.",
+            "locationDate": 1738362000,
             "locationIsNotValid": false,
             "locationCounty": "Maricopa",
             "locationCountyFips": "04013"
@@ -2459,6 +2489,24 @@
             "contactEmailConfirmed": false,
             "contactNote": "Parsed from proposed contact.",
             "contactDate": 1738360389,
+            "contactIsNotValid": false
+        },
+        {
+            "contactId": 59,
+            "contactEntityId": 49,
+            "contactLocationId": 49,
+            "contactSalutation": "Mr.",
+            "contactFirstName": "Dan",
+            "contactLastName": "Rich",
+            "contactTitle": "Facility Maintenance Manager",
+            "contactIsBilling": true,
+            "contactPrimaryPhone": "6027998656",
+            "contactPrimaryPhoneExtension": "",
+            "contactSecondaryPhone": "",
+            "contactEmail": "drich@hensley.com",
+            "contactEmailConfirmed": false,
+            "contactNote": "Primary service and maintenance contact.",
+            "contactDate": 1738362000,
             "contactIsNotValid": false
         }
     ]
