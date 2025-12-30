@@ -114,82 +114,16 @@ if (!function_exists('buildMerkle')) {
     }
 }
 
-if (!function_exists('auditCamelCaseKeys')) {
-    function auditCamelCaseKeys(
-        mixed $node,
-        string $file,
-        string $currentPath,
-        array &$violations,
-        bool $fullEnforcement = false,
-        bool $forceGovernance = false
-    ): void {
-        if (!is_array($node)) {
-            return;
-        }
-
-        $governedSemanticRoots = [
-            'namingConvention',
-            'semanticRoles',
-            'violationModel',
-            'auditModes',
-            'violationClasses',
-            'actorModel',
-            'reconciliationModel',
-            'standards',
-            'standardsIndex',
-            'tier2Standards',
-            'codex',
-        ];
-
-        $isInGovernedScope =
-            $forceGovernance ||
-            $fullEnforcement ||
-            (
-                $currentPath !== '' &&
-                in_array(explode('.', $currentPath)[0], $governedSemanticRoots, true)
-            );
-
-        foreach ($node as $key => $value) {
-            $childPath = $currentPath === '' ? (string)$key : "{$currentPath}.{$key}";
-
-            if (
-                is_string($key) &&
-                !ctype_digit($key) &&
-                ($fullEnforcement || $isInGovernedScope)
-            ) {
-                // PURE syntactic camelCase check — nothing else
-                $isCamelCase = preg_match('/^[a-z][a-zA-Z0-9]*$/', $key) === 1;
-
-                if (!$isCamelCase) {
-                    $violations[] =
-                        "Name conformance violation: key '{$key}' in '{$file}' (path: {$childPath}) is not proper camelCase.";
-                }
-            }
-
-            // Filename check remains valid and separate
-            if ($key === 'file' && is_string($value)) {
-                $basename = pathinfo($value, PATHINFO_FILENAME);
-                if (!preg_match('/^[a-z][a-zA-Z0-9]*$/', $basename)) {
-                    $violations[] =
-                        "Name conformance violation: file '{$value}' in '{$file}' must use camelCase basename.";
-                }
-            }
-
-            auditCamelCaseKeys($value, $file, $childPath, $violations, $fullEnforcement);
-        }
-    }
-}
-
 if (!function_exists('inferRuleId')) {
     function inferRuleId(string $observation): string {
         if (str_starts_with($observation, 'Merkle integrity violation:')) {
             return 'MERKLE_INTEGRITY';
         }
-        if (str_starts_with($observation, 'Name conformance violation:')) {
-            return 'NAMING_CONFORMANCE';
-        }
         if (str_starts_with($observation, 'Required governed file missing:')) {
             return 'REQUIRED_FILES';
+        }
+        if (str_starts_with($observation, 'Repository inventory violation:')) {
+            return 'REPOSITORY_INVENTORY_CONFORMANCE';
         }
         return 'UNKNOWN';
     }
@@ -244,17 +178,50 @@ if (!function_exists('nextViolationId')) {
 #endregion SECTION III
 
 #region SECTION IV — Violation Collection
+/*
+ * SECTION IV PURPOSE
+ * ------------------
+ * This section is the ONLY place where the Auditor:
+ *
+ *   • Decides WHICH rules are evaluated in this run
+ *   • Decides WHICH files are in audit scope
+ *   • Collects raw, governed OBSERVATIONS (not resolutions)
+ *
+ * IMPORTANT:
+ *   • No mutation occurs here
+ *   • No notification occurs here
+ *   • No reconciliation occurs here
+ *   • Scope is intentionally conservative and pattern-based
+ *
+ * All observations emitted here are treated as factual snapshots
+ * of the repository state at audit time.
+ */
 
 $violations = [];
 
-// Initialize rule execution tracking
+#region SECTION IV.A — Rule Execution Ledger
+/*
+ * Tracks which rule families are evaluated during this run.
+ * Used later to determine safe auto-resolution by non-observation.
+ *
+ * A rule NOT marked as evaluated MUST NOT resolve prior violations.
+ */
 $rulesEvaluated = [
-    'REQUIRED_FILES'     => false,
-    'NAMING_CONFORMANCE' => true,
-    'MERKLE_INTEGRITY'   => false,
+    'REQUIRED_FILES'                  => false,
+    'MERKLE_INTEGRITY'                => false,
+    'REPOSITORY_INVENTORY_CONFORMANCE'=> false,
 ];
+#endregion SECTION IV.A
 
-// 1. Required file presence
+#region SECTION IV.B — Required File Presence (Explicit Scope)
+/*
+ * Enforces the existence of core governed artifacts.
+ *
+ * Characteristics:
+ *   • Explicit file list (no traversal)
+ *   • Absolute governance requirement
+ *   • Indicates repository corruption if violated
+ */
 $rulesEvaluated['REQUIRED_FILES'] = true;
 
 $required = [
@@ -268,71 +235,17 @@ foreach ($required as $label => $path) {
         $violations[] = "Required governed file missing: $label at $path";
     }
 }
+#endregion SECTION IV.B
 
-// 2. Name conformance checks
-$rulesEvaluated['NAMING_CONFORMANCE'] = true;
-
-if (empty($violations)) {
-    $registryRoot = $root;
-
-    $excludedDirs = ['.git', 'node_modules', 'vendor', 'runtimeEphemeral', 'records', 'derived'];
-    $excludedFiles = ['auditResults.json', 'audit-report.json', 'repositoryInventory.json', 'merkleTree.json', 'merkleRoot.txt'];
-
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($registryRoot, FilesystemIterator::SKIP_DOTS)
-    );
-
-    foreach ($iterator as $fileInfo) {
-        if (!$fileInfo->isFile()) {
-            continue;
-        }
-
-        $file = $fileInfo->getFilename();
-        $path = $fileInfo->getPathname();
-
-        foreach ($excludedDirs as $dir) {
-            if (str_contains($path, DIRECTORY_SEPARATOR . $dir . DIRECTORY_SEPARATOR)) {
-                continue 2;
-            }
-        }
-
-        if (in_array($file, $excludedFiles, true)) {
-            continue;
-        }
-
-        $isCanonicalRegistry = preg_match('/(Registry|Map|Index)\.json$/', $file);
-        $isCodex            = ($file === 'codex.json');
-        $isIconMap          = ($file === 'iconMap.json');
-
-        if (!$isCanonicalRegistry && !$isCodex && !$isIconMap) {
-            continue;
-        }
-
-        // Filename conformance check
-        if ($isCanonicalRegistry && !preg_match('/^[a-z][a-zA-Z0-9]*(Registry|Map|Index)\.json$/', $file)) {
-            $violations[] =
-                "Name conformance violation: canonical registry filename '{$file}' must use camelCase.";
-            // DO NOT continue — filename violations must not suppress internal audits
-        }
-
-        $json = json_decode(file_get_contents($path), true);
-        if (!is_array($json)) {
-            continue;
-        }
-
-        // Key conformance checks
-        if ($isCodex) {
-            auditCamelCaseKeys($json, $file, '', $violations, false);
-        } elseif ($isCanonicalRegistry) {
-            auditCamelCaseKeys($json, $file, '', $violations, true);
-        } elseif ($isIconMap) {
-            auditCamelCaseKeys($json, $file, '', $violations, false, true);
-        }
-
-    }
-}
-
-// 3. Merkle integrity checks
+#region SECTION IV.C — Merkle Integrity (Codex Only)
+/*
+ * Cryptographic integrity verification.
+ *
+ * Scope:
+ *   • codex.json ONLY
+ *   • No directory traversal
+ *   • No registry participation
+ */
 $rulesEvaluated['MERKLE_INTEGRITY'] = true;
 
 $codex      = json_decode(file_get_contents($codexPath), true);
@@ -345,8 +258,93 @@ $observedLeaves = recursiveChunks($codex);
 $observedRoot   = buildMerkle($observedLeaves);
 
 if ($storedRoot !== $treeRoot || $observedRoot !== $storedRoot) {
-    $violations[] = "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.";
+    $violations[] =
+        "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.";
 }
+#endregion SECTION IV.C
+
+#region SECTION IV.D — Repository Inventory Conformance
+/*
+ * Verifies that the observed repository filesystem
+ * exactly matches repositoryInventory.json.
+ *
+ * Bidirectional enforcement:
+ *   • Declared → Observed (missing items)
+ *   • Observed → Declared (unexpected items)
+ *
+ * Characteristics:
+ *   • Structural only
+ *   • Deterministic
+ *   • No hashing
+ *   • No mutation
+ */
+
+$rulesEvaluated['REPOSITORY_INVENTORY_CONFORMANCE'] = true;
+
+$inventoryPath = $root . '/data/records/repositoryInventory.json';
+
+if (!file_exists($inventoryPath)) {
+    $violations[] =
+        "Required governed file missing: repositoryInventory.json at {$inventoryPath}";
+} else {
+
+    $inventory = json_decode(file_get_contents($inventoryPath), true);
+
+    if (!is_array($inventory) || !isset($inventory['paths'])) {
+        $violations[] =
+            "Repository inventory violation: repositoryInventory.json is malformed or missing paths map.";
+    } else {
+
+        $declaredPaths = $inventory['paths'];
+        $observedPaths = [];
+
+        // ---- Scan filesystem ----
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $fileInfo) {
+            $fullPath = $fileInfo->getPathname();
+
+            // Normalize to repo-relative path
+            $relativePath = ltrim(str_replace($root, '', $fullPath), DIRECTORY_SEPARATOR);
+
+            // Excluded directories (governed non-repository state)
+            foreach (['.git','node_modules','vendor','runtimeEphemeral','records','derived'] as $dir) {
+                if (str_contains($relativePath, $dir . DIRECTORY_SEPARATOR)) {
+                    continue 2;
+                }
+            }
+
+            $observedPaths[$relativePath] = $fileInfo->isDir() ? 'dir' : 'file';
+        }
+
+        // ---- Declared → Observed (missing) ----
+        foreach ($declaredPaths as $path => $meta) {
+            $expectedType = $meta['type'] ?? null;
+
+            if (!isset($observedPaths[$path])) {
+                $violations[] =
+                    "Repository inventory violation: declared {$expectedType} '{$path}' is missing from repository.";
+                continue;
+            }
+
+            if ($expectedType && $observedPaths[$path] !== $expectedType) {
+                $violations[] =
+                    "Repository inventory violation: '{$path}' expected type '{$expectedType}' but found '{$observedPaths[$path]}'.";
+            }
+        }
+
+        // ---- Observed → Declared (unexpected) ----
+        foreach ($observedPaths as $path => $actualType) {
+            if (!isset($declaredPaths[$path])) {
+                $violations[] =
+                    "Repository inventory violation: unexpected {$actualType} '{$path}' exists but is not declared.";
+            }
+        }
+    }
+}
+#endregion SECTION IV.D
 
 #endregion SECTION IV
 
@@ -447,20 +445,7 @@ if ($updated) {
     );
 }
 
-// Compute mutatableCount — only NAMING_CONFORMANCE violations in codex.json
-// Compute mutatableCount — NAMING_CONFORMANCE violations with governed auto-fix
 $mutatableCount = 0;
-foreach ($emitted as $e) {
-    if (
-        ($e['ruleId'] ?? '') === 'NAMING_CONFORMANCE' &&
-        (
-            str_contains($e['observation'] ?? '', "in 'codex.json'") ||
-            str_contains($e['observation'] ?? '', "in 'iconMap.json'")
-        )
-    ) {
-        $mutatableCount++;
-    }
-}
 
 // Explicit completion summary for Sentinel
 $summary = [
@@ -468,7 +453,7 @@ $summary = [
     'timestamp'      => $timestamp,
     'auditMode'      => $auditMode,
     'emittedCount'   => count($emitted),
-    'mutatableCount' => $mutatableCount,
+    'mutatableCount' => 0, // Auditor is non-mutating by design
 ];
 
 // Library mode: output emitted violations and return contract

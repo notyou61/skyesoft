@@ -2787,6 +2787,34 @@
                         }
                     }
                 },
+                "auditModeScopeLimitations": {
+                    "title": "Operational Audit Scope Limitation",
+                    "purpose": "Constrain operational audits to a minimal, high-signal set of integrity and inventory checks, preventing semantic overreach and notification noise.",
+                    "rule": "In operational audit mode, the Auditor SHALL evaluate and emit violations ONLY for the violation classes explicitly permitted below.",
+                    "enforcementNote": "Auditor implementations MUST hard-code this scope fence and MUST NOT infer scope from violationClasses.",
+                    "permittedViolationClasses": [
+                        "merkleIntegrity",
+                        "repositoryInventoryConformance",
+                        "criticalFilePresence"
+                    ],
+                    "explicitExclusions": [
+                        "nameConformance",
+                        "directoryStructureConformance",
+                        "canonicalRegistries",
+                        "codexStructuralIntegrity",
+                        "doctrine"
+                    ],
+                    "constraints": [
+                        "Operational audits MUST NOT perform semantic evaluation",
+                        "Operational audits MUST NOT evaluate naming or stylistic conventions",
+                        "Operational audits MUST NOT perform external dependency checks",
+                        "Operational audits MUST NOT emit advisory or non-deterministic violations"
+                    ],
+                    "governanceOverride": {
+                        "description": "All violation classes excluded from operational audits MAY be evaluated in governance audit mode, subject to their declared determinism and dependencyScope.",
+                        "authority": "Audit Governance Standard (AGS)"
+                    }
+                },
                 "violationModel": {
                 "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations.",
                 "properties": {
@@ -3124,7 +3152,7 @@
                         "eligibleRuleIds": [
                             "NAMING_CONFORMANCE"
                         ],
-                        "scopeRule": "May apply only to artifacts that are governed registries (per AGS naming rules) and that are JSON objects.",
+                        "scopeRule": "May apply only where the originating audit rule applies and the violation targets a JSON object key.",
                         "constraints": [
                             "Key renames only (no value mutation)",
                             "Never mutate numeric keys",
@@ -3133,7 +3161,7 @@
                             "Renamed key must be proper camelCase",
                             "Must not create collisions (target key must not already exist at that path)"
                         ],
-                        "proofRule": "Mutator must emit a machine-checkable proof that the rename is non-semantic under this class."
+                        "proofRule": "Mutator must emit resolution.proof fields sufficient to verify all declared constraints for this reconciliation class."
                         }
                     }
                     },
@@ -3147,19 +3175,31 @@
                     }
                 },
                 "resolutionModel": {
-                    "definition": "Resolution metadata describes how alignment was achieved after a violation condition ceased to be observed.",
+                    "definition": "The method field identifies the execution mode, while reconciliationClass defines the semantic and safety constraints governing the action.",
                     "locationRule": "Resolution metadata is stored only on the originating violation record.",
                     "properties": {
-                        "method": "reconciliation | manual | automated",
+                        "method": "automated | manual",
                         "actor": "string identifier of reconciler",
-                        "summary": "Declarative description of applied change",
+                        "reconciliationClass": "string identifier of applied reconciliation class",
+                        "action": {
+                        "type": "string",
+                        "before": "string",
+                        "after": "string",
+                        "path": "string"
+                        },
+                        "proof": {
+                        "nonSemantic": "boolean",
+                        "constraintsSatisfied": "array of strings",
+                        "collisionFree": "boolean"
+                        },
                         "assistedByAI": "boolean"
                     },
                     "rules": [
                         "Resolution metadata is optional",
                         "Resolution metadata may be appended once",
                         "Resolution metadata must never alter the observation",
-                        "Resolution metadata must be derivable from applied changes"
+                        "Resolution metadata must be derivable from applied changes",
+                        "Resolution metadata must not assert correctness or intent"
                     ]
                 },
                 "aiUsage": {

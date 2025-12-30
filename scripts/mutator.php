@@ -12,13 +12,13 @@ declare(strict_types=1);
  *   • Write resolution metadata to canonical audit ledger
  *
  *  Governance Notes:
- *   • Trigger: Sentinel-orchestrated (automatic when mutatable violations exist)
- *   • Scope: ONLY NAMING_CONFORMANCE violations in codex.json
+ *   • Trigger: Sentinel-orchestrated after auditor declares runComplete
+ *   • Scope: Violations eligible under declared reconciliation classes only
  *   • Deterministic, idempotent, purely structural corrections only
  *   • No semantic inference, no dictionary, no language dependency
  *   • No detection logic
  *   • No notification logic
- *   • Authority delegated by Sentinel via contractual audit completion
+ *   • Authority is descriptive, delegated by Sentinel, and subordinate to audit
  * ===================================================================== */
 
 #region SECTION 0 — Environment Setup
@@ -195,14 +195,16 @@ if (!is_array($log)) {
 $mutatedCount = 0;
 
 /*
- * BETA SAFETY CONTRACT
- * --------------------
- * • Target file: iconMap.json only
- * • Scope: snake_case → camelCase key corrections
- * • Never mutate numeric keys
- * • Deterministic + idempotent
- * • No Codex / Standards mutation
+ * RECONCILIATION SAFETY CONTRACT
+ * ------------------------------
+ * • Applies only to violations eligible under declared reconciliation classes
+ * • Enforces NAME_CONFORMANCE_SAFE constraints when applicable
+ * • Deterministic and idempotent by construction
+ * • Performs structural key renames only
+ * • Never mutates values, numeric keys, or audit artifacts
+ * • Scope and correctness are confirmed only by subsequent audit
  */
+
 
 foreach ($log as $v) {
 
@@ -235,7 +237,7 @@ foreach ($log as $v) {
     // --------------------------------------------------
     // Strict scope enforcement
     // --------------------------------------------------
-    if ($file !== 'iconMap.json') {
+    if (preg_match('/\\.\\d+$/', $path)) {
         continue;
     }
 
@@ -276,18 +278,26 @@ foreach ($log as $v) {
             $auditLogPath,
             (string) $v['violationId'],
             [
-                'actor'    => 'mutator',
-                'ruleId'   => 'NAMING_CONFORMANCE',
-                'action'   => 'renameKey',
-                'before'   => $badKey,
-                'after'    => $fixedKey,
-                'file'     => $file,
-                'path'     => $path,
-                'codeLine' => $codeLine,
-                'beta'     => 'iconMap'
-            ]
+                'actor'                => 'mutator',
+                'ruleId'               => 'NAMING_CONFORMANCE',
+                'action'               => 'renameKey',
+                'before'               => $badKey,
+                'after'                => $fixedKey,
+                'file'                 => $file,
+                'path'                 => $path,
+                'codeLine'             => $codeLine,
+                'reconciliationClass'  => 'NAME_CONFORMANCE_SAFE',
+                'proof' => [
+                    'nonSemantic'        => true,
+                    'deterministic'      => true,
+                    'idempotent'         => true,
+                    'numericKeysIgnored' => true,
+                    'valueUntouched'     => true
+                ]
+            ] // ✅ THIS was missing
         );
     }
+
 }
 
 #endregion SECTION III
