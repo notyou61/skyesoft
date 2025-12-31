@@ -2733,7 +2733,8 @@
                     "Assign a violationBatch identifier to newly notified violations",
                     "Send at most one notification per batch",
                     "Annotate violation records with batch identifier",
-                    "Never suppress or modify violations"
+                    "Never suppress or modify violations",
+                    "May append violationNotes to violation records without altering observation or resolution state"
                 ],
                 "notificationNarrativeRules": {
                     "requirements": [
@@ -2795,7 +2796,7 @@
                     "permittedViolationClasses": [
                         "merkleIntegrity",
                         "repositoryInventoryConformance",
-                        "criticalFilePresence"
+                        "criticalArtifactPresence"
                     ],
                     "explicitExclusions": [
                         "nameConformance",
@@ -2816,27 +2817,30 @@
                     }
                 },
                 "violationModel": {
-                "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations.",
-                "properties": {
-                    "violationId": "Prefix-governed unique identifier (VIO-###)",
-                    "timestamp": "UNIX epoch seconds when violation was first detected",
-                    "auditMode": "operational | governance",
-                    "observation": "Human-readable governed deviation",
-                    "notificationSent": "UNIX epoch seconds when first human notification occurred",
-                    "violationBatch": "Optional notification batch identifier assigned by Sentinel",
-                    "resolved": "UNIX epoch seconds when corrected",
-                    "resolution": "Optional reconciliation metadata governed by RGS; does not determine resolution state",
-                    "lastObserved": "UNIX epoch seconds of most recent detection (null once resolved)",
-                    "observationCount": "Integer count of detections while unresolved"
-                },
-                "rules": [
-                    "Violation records permit controlled mutation of tracking fields while unresolved",
-                    "timestamp never changes",
-                    "lastObserved and observationCount update on each audit run",
-                    "A violation is automatically marked resolved when its governing observation condition is no longer detected in a subsequent audit run, without asserting cause or corrective action",
-                    "Mutation ceases once resolved is set",
-                    "Violations are never deleted"
-                ]
+                    "definition": "A violation is a governed observation indicating that system reality deviates from Codex-defined expectations.",
+                    "properties": {
+                        "violationId": "Prefix-governed unique identifier (VIO-###)",
+                        "timestamp": "UNIX epoch seconds when violation was first detected",
+                        "auditMode": "operational | governance",
+                        "observation": "Human-readable governed deviation",
+                        "violationNotes": "Optional structured facts and/or explanatory narrative elaborating on the violation",
+                        "notificationSent": "UNIX epoch seconds when first human notification occurred",
+                        "violationBatch": "Optional notification batch identifier assigned by Sentinel",
+                        "resolved": "UNIX epoch seconds when corrected",
+                        "resolution": "Optional reconciliation metadata governed by RGS; does not determine resolution state",
+                        "lastObserved": "UNIX epoch seconds of most recent detection (null once resolved)",
+                        "observationCount": "Integer count of detections while unresolved"
+                    },
+                    "rules": [
+                        "Violation records permit controlled mutation of tracking fields while unresolved",
+                        "timestamp never changes",
+                        "observation never changes",
+                        "violationNotes must not redefine or contradict the observation",
+                        "lastObserved and observationCount update on each audit run",
+                        "A violation is automatically marked resolved when its governing observation condition is no longer detected in a subsequent audit run",
+                        "Mutation ceases once resolved is set",
+                        "Violations are never deleted"
+                    ]
                 },
                 "violationDimensions": {
                     "determinism": {
@@ -2895,6 +2899,7 @@
                 },
                 "narrativeDiscipline": {
                     "rule": "Audit and reconciliation narratives must be declarative and non-expressive.",
+                    "authorityBoundary": "AI-assisted narrative generation is a post-detection, non-governing augmentation step and must never alter, influence, or redefine the authoritative audit observation.",
                     "requirements": [
                         "No metaphors or anthropomorphic language",
                         "No inferred intent or motivation",
@@ -2902,9 +2907,22 @@
                         "Statements must be reducible to a diff or rule evaluation"
                     ],
                     "aiUsage": {
-                        "observations": "Deterministic, auditor-emitted narrative explaining the governed deviation",
+                        "observations": "Deterministic, auditor-emitted narrative explaining the governed deviation. AI-generated narratives are derived, non-authoritative renderings of governed audit data and must never influence audit detection, resolution state, or system behavior.",
                         "resolutionSummaries": "AI assistance permitted for clarity only; content must be derivable from the applied change"
                     }
+                },
+                "violationNotes": {
+                    "permitted": [
+                        "Structured factual listings (paths, identifiers, counts)",
+                        "Declarative explanatory narrative",
+                        "Cross-references to governed artifacts"
+                    ],
+                    "prohibited": [
+                        "Speculation",
+                        "Causal assertions",
+                        "Claims of resolution",
+                        "Prescriptive language"
+                    ]
                 },
                 "auditRecordSchemas": {
                     "violation": {

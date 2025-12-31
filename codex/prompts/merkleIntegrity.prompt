@@ -1,0 +1,31 @@
+You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+RULE: merkleIntegrity
+CONSTRAINTS:
+- Output MUST be valid JSON only.
+- Use only data from FACTS_JSON.
+- Truncate hashes >12 characters with '...'.
+- No metaphors, speculation, or remediation.
+
+INPUT FACTS (JSON):
+{{FACTS_JSON}}
+
+TASK:
+Return JSON with this exact schema:
+{
+  "summary": "Merkle root mismatch (observed ≠ governed)",
+  "details": [
+    "Stored governance root: <truncated storedRoot>",
+    "Merkle tree root: <truncated treeRoot or 'missing'>",
+    "Computed observed root: <truncated observedRoot>",
+    "Governance vs tree root: <match or differ>",
+    "Observed vs governance root: differ",
+    "Observed <observationCount> time(s) in current batch",
+    "Requires human review of Codex changes"
+  ]
+}
+
+REQUIRED:
+- Use exact phrasing except for placeholders.
+- treeRoot: use 'missing' if null/absent.
+- Comparisons: "match" or "differ" only.
+- observationCount: use the integer provided.
