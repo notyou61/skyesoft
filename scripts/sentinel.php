@@ -62,7 +62,7 @@ define('SKYESOFT_LIB_MODE', true);
  * Owned by Sentinel
  * Immutable for duration of this execution
  */
-$auditBatch = 'BATCH-' . time();
+$violationBatch = 'VB-' . time();
 
 // PASS 1 — Audit
 $summary1 = require $auditorPath;
@@ -140,7 +140,6 @@ if (!empty($targets)) {
     $batchId = 'BATCH-' . $now;
 
     foreach ($targets as $idx) {
-        $log[$idx]['notificationBatch']   = $batchId;
         $log[$idx]['notificationSent'] = $now;
     }
 

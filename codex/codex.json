@@ -2715,7 +2715,7 @@
                     ]
                 },
                 "batchIdFormat": {
-                    "description": "Deterministic identifier for notification batches.",
+                    "description": "Deterministic identifier used as violationBatch to group violations for notification purposes.",
                     "format": "{unixEpochSeconds}-{sequence}",
                     "examples": [
                         "1766669451-01",
@@ -2730,7 +2730,7 @@
                 },
                 "sentinelResponsibilities": [
                     "Aggregate violations detected in a single audit execution",
-                    "Assign a notification batch identifier",
+                    "Assign a violationBatch identifier to newly notified violations",
                     "Send at most one notification per batch",
                     "Annotate violation records with batch identifier",
                     "Never suppress or modify violations"
@@ -2870,114 +2870,27 @@
                 "violationClasses": {
                     "merkleIntegrity": {
                         "category": "integrity",
-                        "auditModes": [
-                            "operational",
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects divergence between governed Merkle artifacts and observed repository state.",
-                        "narrativeGuidance": "Explain that a governed structural snapshot no longer matches observed system reality, indicating file addition, removal, or modification outside the ratified inventory.",
-                        "detailsSchema": {
-                            "storedMerkleRoot": "string",
-                            "observedMerkleRoot": "string"
-                        }
+                        "auditModes": ["operational", "governance"],
+                        "description": "Detects divergence between governed Merkle artifacts and observed governed state.",
+                        "narrativeGuidance": "Explain that the governed Merkle snapshot no longer matches observed system state."
                     },
                     "repositoryInventoryConformance": {
-                        "category": "repositoryInventory",
-                        "auditModes": [
-                            "operational",
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects mismatches between observed repository contents and repositoryInventory.json.",
-                        "narrativeGuidance": "Explain that repository contents differ from the governed inventory, identifying missing or unexpected files or directories.",
-                        "detailsSchema": {
-                            "missingPaths": "array<string>",
-                            "unexpectedPaths": "array<string>"
-                        }
+                        "category": "structuralArtifacts",
+                        "auditModes": ["operational", "governance"],
+                        "description": "Detects mismatches between observed repository contents and the governed repository inventory.",
+                        "narrativeGuidance": "Explain that observed repository contents differ from the governed inventory."
                     },
-                    "nameConformance": {
-                        "category": "naming",
-                        "auditModes": [
-                            "operational",
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects violations of Codex-governed naming conventions for files and directories.",
-                        "narrativeGuidance": "Explain that one or more filesystem entities do not conform to Codex-governed naming conventions.",
-                        "detailsSchema": {
-                            "path": "string",
-                            "ruleViolated": "string"
-                        }
+                    "criticalArtifactPresence": {
+                        "category": "structuralArtifacts",
+                        "auditModes": ["operational", "governance"],
+                        "description": "Detects absence or invalidity of critical governed artifacts required by Codex governance.",
+                        "narrativeGuidance": "Explain that a required governed artifact was missing or invalid at audit time."
                     },
-                    "criticalFilePresence": {
-                        "category": "criticalFiles",
-                        "auditModes": [
-                            "operational",
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects missing or invalid critical system files required by Codex governance.",
-                        "narrativeGuidance": "Explain that a required governed file was missing or invalid at audit time.",
-                        "detailsSchema": {
-                            "path": "string",
-                            "expectedState": "string"
-                        }
-                    },
-                    "directoryStructureConformance": {
-                        "category": "directories",
-                        "auditModes": [
-                            "operational",
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects deviations from Codex-governed directory structure and placement rules.",
-                        "narrativeGuidance": "Explain that one or more directories do not conform to governed structural placement or hierarchy expectations.",
-                        "detailsSchema": {
-                            "path": "string",
-                            "expectedLocation": "string"
-                        }
-                    },
-                    "canonicalRegistryReachability": {
-                        "category": "canonicalRegistries",
-                        "auditModes": [
-                            "governance"
-                        ],
-                        "determinism": "non-deterministic",
-                        "dependencyScope": "external",
-                        "recordPersistence": "permanent",
-                        "description": "Observes reachability failures of external endpoints referenced by governed registries.",
-                        "narrativeGuidance": "Explain that an external reference was unreachable at audit time and explicitly note the advisory, time-variant nature of the observation.",
-                        "detailsSchema": {
-                            "endpoint": "string",
-                            "httpStatus": "integer | null",
-                            "error": "string | null"
-                        }
-                    },
-                    "codexStructuralIntegrity": {
-                        "category": "codexIntegrity",
-                        "auditModes": [
-                            "governance"
-                        ],
-                        "determinism": "strict",
-                        "dependencyScope": "local",
-                        "recordPersistence": "permanent",
-                        "description": "Detects structural violations or immutability breaches within the Codex.",
-                        "narrativeGuidance": "Explain that the Codex structure or protected sections no longer conform to governance rules.",
-                        "detailsSchema": {
-                            "section": "string",
-                            "issue": "string"
-                        }
+                    "jurisdictionalRuleConformance": {
+                        "category": "jurisdictionalGovernance",
+                        "auditModes": ["governance"],
+                        "description": "Detects violations of Codex-governed jurisdictional rules derived from authoritative jurisdiction sources.",
+                        "narrativeGuidance": "Explain that a governed jurisdictional rule was violated based on the referenced authority."
                     }
                 },
                 "narrativeDiscipline": {
@@ -3065,7 +2978,7 @@
                         "Batching does not imply shared cause or resolution"
                     ],
                     "assignmentRules": [
-                        "Batch identifiers are assigned only by Sentinel",
+                        "Batch identifiers are assigned only by Sentinel as violationBatch",
                         "A violation may belong to at most one batch",
                         "Batch assignment occurs at first notification only",
                         "Batch assignment does not change violation semantics",

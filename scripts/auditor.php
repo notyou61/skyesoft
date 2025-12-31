@@ -52,9 +52,9 @@ if (!defined('SKYESOFT_LIB_MODE') || !SKYESOFT_LIB_MODE) {
 // Verification pass detection (set by Sentinel on second audit)
 $isVerificationPass = defined('SKYESOFT_VERIFICATION_PASS') && SKYESOFT_VERIFICATION_PASS;
 
-if (!isset($auditBatch) || !is_string($auditBatch)) {
+if (!isset($violationBatch) || !is_string($violationBatch)) {
     throw new RuntimeException(
-        'AUDITOR CONTRACT VIOLATION: auditBatch must be injected by Sentinel'
+        'AUDITOR CONTRACT VIOLATION: violationBatch must be injected by Sentinel'
     );
 }
 
@@ -115,17 +115,25 @@ if (!function_exists('buildMerkle')) {
 }
 
 if (!function_exists('inferRuleId')) {
+    // Infers rule ID from observation text patterns
     function inferRuleId(string $observation): string {
         if (str_starts_with($observation, 'Merkle integrity violation:')) {
-            return 'MERKLE_INTEGRITY';
+            return 'merkleIntegrity';
         }
-        if (str_starts_with($observation, 'Required governed file missing:')) {
-            return 'REQUIRED_FILES';
-        }
+
         if (str_starts_with($observation, 'Repository inventory violation:')) {
-            return 'REPOSITORY_INVENTORY_CONFORMANCE';
+            return 'repositoryInventoryConformance';
         }
-        return 'UNKNOWN';
+
+        if (str_starts_with($observation, 'Required governed artifact missing:')) {
+            return 'criticalArtifactPresence';
+        }
+
+        if (str_starts_with($observation, 'Jurisdiction rule violation:')) {
+            return 'jurisdictionalRuleConformance';
+        }
+
+        return 'unknown';
     }
 }
 
@@ -207,9 +215,10 @@ $violations = [];
  * A rule NOT marked as evaluated MUST NOT resolve prior violations.
  */
 $rulesEvaluated = [
-    'REQUIRED_FILES'                  => false,
-    'MERKLE_INTEGRITY'                => false,
-    'REPOSITORY_INVENTORY_CONFORMANCE'=> false,
+    'merkleIntegrity'                => false,
+    'repositoryInventoryConformance' => false,
+    'criticalArtifactPresence'       => false,
+    'jurisdictionalRuleConformance'  => false,
 ];
 #endregion SECTION IV.A
 
@@ -222,7 +231,7 @@ $rulesEvaluated = [
  *   • Absolute governance requirement
  *   • Indicates repository corruption if violated
  */
-$rulesEvaluated['REQUIRED_FILES'] = true;
+$rulesEvaluated['criticalArtifactPresence'] = true;
 
 $required = [
     'codex.json'      => $codexPath,
@@ -232,7 +241,8 @@ $required = [
 
 foreach ($required as $label => $path) {
     if (!file_exists($path)) {
-        $violations[] = "Required governed file missing: $label at $path";
+        $violations[] =
+            "Required governed artifact missing: $label at $path";
     }
 }
 #endregion SECTION IV.B
@@ -246,7 +256,7 @@ foreach ($required as $label => $path) {
  *   • No directory traversal
  *   • No registry participation
  */
-$rulesEvaluated['MERKLE_INTEGRITY'] = true;
+$rulesEvaluated['merkleIntegrity'] = true;
 
 $codex      = json_decode(file_get_contents($codexPath), true);
 $merkleTree = json_decode(file_get_contents($merkleTreePath), true);
@@ -279,13 +289,13 @@ if ($storedRoot !== $treeRoot || $observedRoot !== $storedRoot) {
  *   • No mutation
  */
 
-$rulesEvaluated['REPOSITORY_INVENTORY_CONFORMANCE'] = true;
+$rulesEvaluated['repositoryInventoryConformance'] = true;
 
 $inventoryPath = $root . '/data/records/repositoryInventory.json';
 
 if (!file_exists($inventoryPath)) {
     $violations[] =
-        "Required governed file missing: repositoryInventory.json at {$inventoryPath}";
+        "Required governed artifact missing: repositoryInventory.json at {$inventoryPath}";
 } else {
 
     $inventory = json_decode(file_get_contents($inventoryPath), true);
@@ -346,6 +356,36 @@ if (!file_exists($inventoryPath)) {
 }
 #endregion SECTION IV.D
 
+#region SECTION IV.E — Jurisdictional Rule Conformance (Governance Only)
+
+if ($auditMode === 'governance') {
+
+    $rulesEvaluated['jurisdictionalRuleConformance'] = true;
+
+    $jurisdictionRegistryPath = $root . '/data/records/jurisdictionRegistry.json';
+
+    if (!file_exists($jurisdictionRegistryPath)) {
+        $violations[] =
+            "Required governed artifact missing: jurisdictionRegistry.json at {$jurisdictionRegistryPath}";
+    } else {
+
+        $registry = json_decode(file_get_contents($jurisdictionRegistryPath), true);
+
+        if (!is_array($registry)) {
+            $violations[] =
+                "Jurisdiction rule violation: jurisdiction registry is malformed.";
+        }
+
+        /*
+         * NOTE:
+         * Actual rule evaluation is intentionally deferred.
+         * This section establishes the governed audit hook.
+         */
+    }
+}
+
+#endregion SECTION IV.E
+
 #endregion SECTION IV
 
 #region SECTION V — Process Violations & Update Persistence (Rule-Aware)
@@ -403,7 +443,7 @@ foreach ($violations as $obs) {
             'auditMode'         => $auditMode,
             'observation'       => $obs,
             'notificationSent'  => null,
-            'auditBatch'        => $auditBatch,
+            'violationBatch'        => $violationBatch,
             'resolved'          => null,
             'resolution'        => null,
             'lastObserved'      => $timestamp,

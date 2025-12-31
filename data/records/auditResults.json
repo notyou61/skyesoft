@@ -1,0 +1,47 @@
+[
+    {
+        "type": "violation",
+        "violationId": "VIO-001",
+        "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+        "ruleId": "merkleIntegrity",
+        "timestamp": 1767187708,
+        "auditMode": "governance",
+        "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+        "notificationSent": 1767187708,
+        "violationBatch": "VB-1767187708",
+        "resolved": null,
+        "resolution": null,
+        "lastObserved": 1767187708,
+        "observationCount": 1
+    },
+    {
+        "type": "violation",
+        "violationId": "VIO-002",
+        "identityHash": "5cdfcbdc6c3abc803b3a83728f443dea9c451758a569394e1b47c28518fdc7ed",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767187708,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: repositoryInventory.json is malformed or missing paths map.",
+        "notificationSent": 1767187708,
+        "violationBatch": "VB-1767187708",
+        "resolved": null,
+        "resolution": null,
+        "lastObserved": 1767187708,
+        "observationCount": 1
+    },
+    {
+        "type": "violation",
+        "violationId": "VIO-003",
+        "identityHash": "9d36cbd9943f81bc58b3f8dab06f9b389db77473039abe7b16b41ed4e01161dd",
+        "ruleId": "criticalArtifactPresence",
+        "timestamp": 1767187708,
+        "auditMode": "governance",
+        "observation": "Required governed artifact missing: jurisdictionRegistry.json at C:\\Users\\Steve Skye\\Documents\\skyesoft/data/records/jurisdictionRegistry.json",
+        "notificationSent": 1767187708,
+        "violationBatch": "VB-1767187708",
+        "resolved": null,
+        "resolution": null,
+        "lastObserved": 1767187708,
+        "observationCount": 1
+    }
+]
