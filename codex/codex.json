@@ -317,152 +317,152 @@
         },
         "items": {
             "dataIntentStandard": {
-            "title": {
-                "icon": 42,
-                "text": "Data Intent Classification Standard"
-            },
-            "tier": 2,
-            "type": "Structural Standard",
-            "hierarchyOrder": 1,
-            "version": "1.0.0",
-            "preamble": {
-                "icon": 7,
-                "text": "This Standard operationalizes the constitutional requirement that informational data in Skyesoft is governed by intent rather than format, location, or consuming module. It establishes a uniform framework for classifying governed informational artifacts—excluding structural UI components and execution scaffolding—by defining their authority, longevity, and permissible flows to prevent silent role drift and ambiguity."
-            },
-            "scope": {
-                "text": "Governs all governed artifacts within the Skyesoft repository, meaning any file or directory that is intentionally managed by the Codex — including what rules it must follow, who may change it, how it evolves over time, and how it is audited."
-            },
-            "requirements": [
-                "Each governed artifact must belong to exactly one intent domain.",
-                "Intent must not be inferred from file format or directory location.",
-                "Rendered outputs must never become sources of truth.",
-                "Persistent artifacts must declare their authority explicitly."
-            ],
-            "enforcement": {
-                "notes": "Intent violations must be resolved through governance, not workaround.",
-                "auditedBy": "repositoryAuditor",
-                "violationSeverity": "structural"
-            },
-            "relationships": {
-                "references": [
-                "repositoryStandard",
-                "repositoryInventoryStandard",
-                "documentStandard",
-                "errorGovernanceStandard",
-                "merkleIntegrityStandard"
+                "title": {
+                    "icon": 42,
+                    "text": "Data Intent Classification Standard"
+                },
+                "tier": 2,
+                "type": "Structural Standard",
+                "hierarchyOrder": 1,
+                "version": "1.0.0",
+                "preamble": {
+                    "icon": 7,
+                    "text": "This Standard operationalizes the constitutional requirement that informational data in Skyesoft is governed by intent rather than format, location, or consuming module. It establishes a uniform framework for classifying governed informational artifacts—excluding structural UI components and execution scaffolding—by defining their authority, longevity, and permissible flows to prevent silent role drift and ambiguity."
+                },
+                "scope": {
+                    "text": "Governs all governed artifacts within the Skyesoft repository, meaning any file or directory that is intentionally managed by the Codex — including what rules it must follow, who may change it, how it evolves over time, and how it is audited."
+                },
+                "requirements": [
+                    "Each governed artifact must belong to exactly one intent domain.",
+                    "Intent must not be inferred from file format or directory location.",
+                    "Rendered outputs must never become sources of truth.",
+                    "Persistent artifacts must declare their authority explicitly."
                 ],
-                "governedBy": "constitution.articleIII"
-            },
-            "conceptualModel": {
-                "name": "Intent Domain Matrix",
-                "axes": {
-                "authority": {
-                    "high": "Artifact defines or participates in system truth.",
-                    "low": "Artifact defers to truth defined elsewhere."
+                "enforcement": {
+                    "notes": "Intent violations must be resolved through governance, not workaround.",
+                    "auditedBy": "repositoryAuditor",
+                    "violationSeverity": "structural"
                 },
-                "longevity": {
-                    "persistent": "Artifact is intended to persist across executions or system lifetimes.",
-                    "ephemeral": "Artifact exists only to support current operation and may be discarded."
-                }
+                "relationships": {
+                    "references": [
+                    "repositoryStandard",
+                    "repositoryInventoryStandard",
+                    "documentStandard",
+                    "errorGovernanceStandard",
+                    "merkleIntegrityStandard"
+                    ],
+                    "governedBy": "constitution.articleIII"
                 },
-                "quadrants": {
-                "highAuthorityPersistent": "Authoritative",
-                "highAuthorityEphemeral": "RuntimeEphemeral",
-                "lowAuthorityPersistent": "RecordOrDocumentSource",
-                "lowAuthorityEphemeral": "DerivedOutput"
+                "conceptualModel": {
+                    "name": "Intent Domain Matrix",
+                    "axes": {
+                    "authority": {
+                        "high": "Artifact defines or participates in system truth.",
+                        "low": "Artifact defers to truth defined elsewhere."
+                    },
+                    "longevity": {
+                        "persistent": "Artifact is intended to persist across executions or system lifetimes.",
+                        "ephemeral": "Artifact exists only to support current operation and may be discarded."
+                    }
+                    },
+                    "quadrants": {
+                    "highAuthorityPersistent": "Authoritative",
+                    "highAuthorityEphemeral": "RuntimeEphemeral",
+                    "lowAuthorityPersistent": "RecordOrDocumentSource",
+                    "lowAuthorityEphemeral": "DerivedOutput"
+                    },
+                    "structureNote": {
+                    "text": "This mapping is conceptual only and does not mandate filesystem placement. Physical directory structure is governed exclusively by the Repository Standard."
+                    },
+                    "canonicalFolders": {
+                    "root": "/data",
+                    "folders": {
+                        "authoritative": {
+                        "path": "/data/authoritative",
+                        "purpose": "Persistent artifacts that define or participate in system truth."
+                        },
+                        "runtimeEphemeral": {
+                        "path": "/data/runtimeEphemeral",
+                        "purpose": "Ephemeral artifacts that represent live, authoritative system state and may be freely overwritten."
+                        },
+                        "records": {
+                        "path": "/data/records",
+                        "purpose": "Persistent artifacts that record events, observations, or history without defining truth."
+                        },
+                        "derived": {
+                        "path": "/data/derived",
+                        "purpose": "Ephemeral artifacts generated solely for human consumption, safe to regenerate, and never used as input sources."
+                        }
+                    }
+                    }
                 },
-                "structureNote": {
-                "text": "This mapping is conceptual only and does not mandate filesystem placement. Physical directory structure is governed exclusively by the Repository Standard."
-                },
-                "canonicalFolders": {
-                "root": "/data",
-                "folders": {
+                "intentDomains": {
                     "authoritative": {
-                    "path": "/data/authoritative",
-                    "purpose": "Persistent artifacts that define or participate in system truth."
+                    "description": "Artifacts that define system truth and to which all other artifacts must defer.",
+                    "authority": "high",
+                    "longevity": "persistent",
+                    "rules": [
+                        "May not be derived from other artifacts.",
+                        "May only be modified through governed processes.",
+                        "Conflicts are resolved in favor of this domain."
+                    ]
+                    },
+                    "record": {
+                    "description": "Artifacts that record events, observations, or history without defining truth.",
+                    "authority": "low",
+                    "longevity": "persistent",
+                    "rules": [
+                        "Must not be rewritten to alter history.",
+                        "Append-only unless explicitly governed otherwise.",
+                        "May not override authoritative artifacts."
+                    ]
+                    },
+                    "documentSource": {
+                    "description": "Artifacts that provide structured input for generating documents or reports.",
+                    "authority": "low",
+                    "longevity": "persistent",
+                    "rules": [
+                        "May be revised prior to regeneration.",
+                        "Must never be treated as authoritative truth.",
+                        "May feed only derived outputs."
+                    ]
+                    },
+                    "derivedOutput": {
+                    "description": "Artifacts that exist solely as rendered views for human consumption.",
+                    "authority": "low",
+                    "longevity": "ephemeral",
+                    "rules": [
+                        "May be deleted and regenerated freely.",
+                        "Must never be used as an input source.",
+                        "Loss does not constitute data loss."
+                    ]
                     },
                     "runtimeEphemeral": {
-                    "path": "/data/runtimeEphemeral",
-                    "purpose": "Ephemeral artifacts that represent live, authoritative system state and may be freely overwritten."
-                    },
-                    "records": {
-                    "path": "/data/records",
-                    "purpose": "Persistent artifacts that record events, observations, or history without defining truth."
-                    },
-                    "derived": {
-                    "path": "/data/derived",
-                    "purpose": "Ephemeral artifacts generated solely for human consumption, safe to regenerate, and never used as input sources."
+                    "description": "Artifacts that exist only to support live system operation.",
+                    "authority": "high",
+                    "longevity": "ephemeral",
+                    "rules": [
+                        "May be overwritten freely.",
+                        "Must not persist as records or truth.",
+                        "Must not be promoted to authoritative or record domains."
+                    ]
                     }
+                },
+                "flowConstraints": {
+                    "permitted": [
+                    "authoritative -> record",
+                    "authoritative -> runtimeEphemeral",
+                    "record -> derivedOutput",
+                    "documentSource -> derivedOutput",
+                    "runtimeEphemeral -> derivedOutput"
+                    ],
+                    "prohibited": [
+                    "derivedOutput -> any",
+                    "runtimeEphemeral -> authoritative",
+                    "record -> authoritative",
+                    "derivedOutput -> record"
+                    ]
                 }
-                }
-            },
-            "intentDomains": {
-                "authoritative": {
-                "description": "Artifacts that define system truth and to which all other artifacts must defer.",
-                "authority": "high",
-                "longevity": "persistent",
-                "rules": [
-                    "May not be derived from other artifacts.",
-                    "May only be modified through governed processes.",
-                    "Conflicts are resolved in favor of this domain."
-                ]
-                },
-                "record": {
-                "description": "Artifacts that record events, observations, or history without defining truth.",
-                "authority": "low",
-                "longevity": "persistent",
-                "rules": [
-                    "Must not be rewritten to alter history.",
-                    "Append-only unless explicitly governed otherwise.",
-                    "May not override authoritative artifacts."
-                ]
-                },
-                "documentSource": {
-                "description": "Artifacts that provide structured input for generating documents or reports.",
-                "authority": "low",
-                "longevity": "persistent",
-                "rules": [
-                    "May be revised prior to regeneration.",
-                    "Must never be treated as authoritative truth.",
-                    "May feed only derived outputs."
-                ]
-                },
-                "derivedOutput": {
-                "description": "Artifacts that exist solely as rendered views for human consumption.",
-                "authority": "low",
-                "longevity": "ephemeral",
-                "rules": [
-                    "May be deleted and regenerated freely.",
-                    "Must never be used as an input source.",
-                    "Loss does not constitute data loss."
-                ]
-                },
-                "runtimeEphemeral": {
-                "description": "Artifacts that exist only to support live system operation.",
-                "authority": "high",
-                "longevity": "ephemeral",
-                "rules": [
-                    "May be overwritten freely.",
-                    "Must not persist as records or truth.",
-                    "Must not be promoted to authoritative or record domains."
-                ]
-                }
-            },
-            "flowConstraints": {
-                "permitted": [
-                "authoritative -> record",
-                "authoritative -> runtimeEphemeral",
-                "record -> derivedOutput",
-                "documentSource -> derivedOutput",
-                "runtimeEphemeral -> derivedOutput"
-                ],
-                "prohibited": [
-                "derivedOutput -> any",
-                "runtimeEphemeral -> authoritative",
-                "record -> authoritative",
-                "derivedOutput -> record"
-                ]
-            }
             },
             "namingConvention": {
                 "title": {
@@ -611,136 +611,137 @@
                 ]
             },
             "prefixRegistry": {
-            "title": {
-                "icon": 11,
-                "text": "Prefix & Entity Identifiers Standard"
-            },
-            "tier": 2,
-            "type": "Structural Standard",
-            "hierarchyOrder": 2,
-            "preamble": {
-                "text": "Defines the mandatory prefix system for all entities, locations, datasets, and records to ensure unique, traceable identifiers across Skyesoft. Prefixes prevent collisions and enforce Codex-aligned naming."
-            },
-            "purpose": {
-                "icon": 6,
-                "text": "Establish a centralized registry of prefixes for consistent entity identification, supporting scalability and auditability."
-            },
-            "sourceFile": "assets/data/prefixRegistry.json",
-            "rules": [
-                "All identifiers must use a 3-5 character prefix followed by a hyphen and a unique sequential ID (e.g., LOC-001 for locations).",
-                "Prefixes must be defined in prefixRegistry.json and approved via amendment.",
-                "No reuse of prefixes across categories without Archivist recording.",
-                "Human-readable labels must not include prefixes.",
-                "Prefixes are case-insensitive but must be stored in uppercase in the registry."
-            ],
-            "schema": {
-                "registryFormat": {
-                "type": "object",
-                "properties": {
-                    "prefixes": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                        "key": { "type": "string" },
-                        "category": { "type": "string" },
-                        "description": { "type": "string" },
-                        "example": { "type": "string" }
-                        },
-                        "required": ["key", "category", "description"]
-                    }
-                    }
-                }
-                }
-            },
-            "examples": {
-                "valid": [
-                "LOC-001 (Location: Office HQ)",
-                "ENT-045 (Entity: Permit Application)",
-                "DOC-112 (Document: Photo Survey)"
+                "title": {
+                    "icon": 11,
+                    "text": "Prefix & Entity Identifiers Standard"
+                },
+                "tier": 2,
+                "type": "Structural Standard",
+                "hierarchyOrder": 2,
+                "preamble": {
+                    "text": "Defines the mandatory prefix system for all entities, locations, datasets, and records to ensure unique, traceable identifiers across Skyesoft. Prefixes prevent collisions and enforce Codex-aligned naming."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a centralized registry of prefixes for consistent entity identification, supporting scalability and auditability."
+                },
+                "sourceFile": "assets/data/prefixRegistry.json",
+                "rules": [
+                    "All identifiers must use a 3-5 character prefix followed by a hyphen and a unique sequential ID (e.g., LOC-001 for locations).",
+                    "Prefixes must be defined in prefixRegistry.json and approved via amendment.",
+                    "No reuse of prefixes across categories without Archivist recording.",
+                    "Human-readable labels must not include prefixes.",
+                    "Prefixes are case-insensitive but must be stored in uppercase in the registry."
                 ],
-                "invalid": [
-                "location001",
-                "perm-app-1"
+                "schema": {
+                    "registryFormat": {
+                    "type": "object",
+                    "properties": {
+                        "prefixes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                            "key": { "type": "string" },
+                            "category": { "type": "string" },
+                            "description": { "type": "string" },
+                            "example": { "type": "string" }
+                            },
+                            "required": ["key", "category", "description"]
+                        }
+                        }
+                    }
+                    }
+                },
+                "examples": {
+                    "valid": [
+                    "LOC-001 (Location: Office HQ)",
+                    "ENT-045 (Entity: Permit Application)",
+                    "DOC-112 (Document: Photo Survey)"
+                    ],
+                    "invalid": [
+                    "location001",
+                    "perm-app-1"
+                    ]
+                },
+                "validation": {
+                    "enforcedBy": "repositoryAuditor.php",
+                    "frequency": "on-commit",
+                    "action": "Reject non-conforming IDs"
+                },
+                "initialPrefixes": [
+                    {
+                    "key": "LOC",
+                    "category": "locations",
+                    "description": "Site and facility identifiers.",
+                    "example": "LOC-001"
+                    },
+                    {
+                    "key": "ENT",
+                    "category": "entities",
+                    "description": "Business entities and records.",
+                    "example": "ENT-045"
+                    },
+                    {
+                    "key": "DOC",
+                    "category": "documents",
+                    "description": "Generated document IDs.",
+                    "example": "DOC-112"
+                    },
+                    {
+                    "key": "MOD",
+                    "category": "modules",
+                    "description": "Operational module instances.",
+                    "example": "MOD-007"
+                    }
+                ],
+                "notes": [
+                    "prefixRegistry.json serves as the SOT for all prefixes.",
+                    "Updates to prefixes require formal amendment and Archivist logging."
                 ]
-            },
-            "validation": {
-                "enforcedBy": "repositoryAuditor.php",
-                "frequency": "on-commit",
-                "action": "Reject non-conforming IDs"
-            },
-            "initialPrefixes": [
-                {
-                "key": "LOC",
-                "category": "locations",
-                "description": "Site and facility identifiers.",
-                "example": "LOC-001"
-                },
-                {
-                "key": "ENT",
-                "category": "entities",
-                "description": "Business entities and records.",
-                "example": "ENT-045"
-                },
-                {
-                "key": "DOC",
-                "category": "documents",
-                "description": "Generated document IDs.",
-                "example": "DOC-112"
-                },
-                {
-                "key": "MOD",
-                "category": "modules",
-                "description": "Operational module instances.",
-                "example": "MOD-007"
-                }
-            ],
-            "notes": [
-                "prefixRegistry.json serves as the SOT for all prefixes.",
-                "Updates to prefixes require formal amendment and Archivist logging."
-            ]
             },
             "repositoryStandard": {
-            "title": {
-                "icon": 67,
-                "text": "Repository Standard"
-            },
-            "tier": 2,
-            "hierarchyOrder": 3,
-            "type": "Structural Standard",
-            "preamble": {
-                "icon": 0,
-                "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, enforces governance, and ensures long-term maintainability. No file or directory may exist outside this structure without explicit Codex authorization."
-            },
-            "purpose": {
-                "icon": 6,
-                "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term integrity."
-            },
-            "namingRules": {
                 "title": {
-                "icon": 11,
-                "text": "File Naming Enforcement"
+                    "icon": 67,
+                    "text": "Repository Standard"
                 },
-                "directive": "Filename conventions are governed exclusively by the Naming Convention Standard and enforced by semantic category.",
-                "rules": [
-                "Filenames must follow the Naming Convention Standard for their semantic category.",
-                "Repository Standard does not define naming styles directly.",
-                "File extensions must remain lowercase.",
-                "Any naming exception requires a Codex amendment."
+                "tier": 2,
+                "hierarchyOrder": 3,
+                "type": "Structural Standard",
+                "preamble": {
+                    "icon": 0,
+                    "text": "The Repository Standard defines the canonical structure of the Skyesoft system. All folders, files, and architectural groupings exist to support the Codex, the SSE, the unified UI architecture, and Skyebot. Uniformity prevents drift, enforces governance, and ensures long-term maintainability. No file or directory may exist outside this structure without explicit Codex authorization."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Ensure a consistent, Codex-governed layout for all Skyesoft components; prevent architectural drift; define the mandatory placement of all files; and maintain long-term integrity."
+                },
+                "namingRules": {
+                    "title": {
+                    "icon": 11,
+                    "text": "File Naming Enforcement"
+                    },
+                    "directive": "Filename conventions are governed exclusively by the Naming Convention Standard and enforced by semantic category.",
+                    "rules": [
+                    "Filenames must follow the Naming Convention Standard for their semantic category.",
+                    "Repository Standard does not define naming styles directly.",
+                    "File extensions must remain lowercase.",
+                    "Any naming exception requires a Codex amendment."
+                    ]
+                },
+                "directives": [
+                    "All files must reside within approved directories defined in this standard.",
+                    "No new top-level directories may be introduced without Codex amendment.",
+                    "Directory purpose must remain narrow and consistent.",
+                    "Executable logic must reside only in api/, assets/js/, modules/, or scripts/.",
+                    "Each directory must publish its allowed file categories in repositoryInventory.json.",
+                    "All filesystem items must appear in repositoryInventory.json.",
+                    "No duplicate filenames within the same directory tree.",
+                    "assets/data/errorRegistry.json and assets/data/repositoryAudit.json must always exist as SOT files.",
+                    "scripts/auditor.php is the only constitutional execution script required under EGS v2.0.",
+                    "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the canonical Merkle root is stored in /codex/meta/merkleRoot.txt and is updated only during explicit canonical state promotion."
                 ]
             },
-            "directives": [
-                "All files must reside within approved directories defined in this standard.",
-                "No new top-level directories may be introduced without Codex amendment.",
-                "Directory purpose must remain narrow and consistent.",
-                "Executable logic must reside only in api/, assets/js/, modules/, or scripts/.",
-                "Each directory must publish its allowed file categories in repositoryInventory.json.",
-                "All filesystem items must appear in repositoryInventory.json.",
-                "No duplicate filenames within the same directory tree.",
-                "assets/data/errorRegistry.json and assets/data/repositoryAudit.json must always exist as SOT files.",
-                "scripts/auditor.php is the only constitutional execution script required under EGS v2.0.",
-                "MIS (Merkle Integrity Standard) must be used to validate Codex integrity; the canonical Merkle root is stored in /codex/meta/merkleRoot.txt and is updated only during explicit canonical state promotion."
-            ],
             "inventoryClassification": {
                 "title": {
                 "icon": 42,
@@ -780,139 +781,138 @@
                 "Every file must declare a human-readable purpose.",
                 "Auto-generated placeholder purposes are permitted pre-SIS only.",
                 "Purpose must describe why the file exists, not how it is generated."
-                ]
-            },
-            "rules": {
-                "allowedRoots": [
-                "codex/",
-                "assets/",
-                "api/",
-                "documents/",
-                "reports/",
-                "bulletinBoards/",
-                "scripts/",
-                "modules/"
                 ],
-                "disallowed": [
-                "No runtime files may be stored in root.",
-                "No business logic may exist inside codex/.",
-                "No UI code may appear in api/.",
-                "No server-side code may appear in assets/.",
-                "No temporary or experimental directories may be added without Codex approval."
-                ]
-            },
-            "directories": {
-                "codex": {
-                "subdirs": [
-                    "meta",
-                    "constitution",
-                    "standards",
-                    "modules"
-                ],
-                "files": [
-                    "codex.json"
-                ],
-                "description": "Core governance files."
+                "rules": {
+                    "allowedRoots": [
+                    "codex/",
+                    "assets/",
+                    "api/",
+                    "documents/",
+                    "reports/",
+                    "bulletinBoards/",
+                    "scripts/",
+                    "modules/"
+                    ],
+                    "disallowed": [
+                    "No runtime files may be stored in root.",
+                    "No business logic may exist inside codex/.",
+                    "No UI code may appear in api/.",
+                    "No server-side code may appear in assets/.",
+                    "No temporary or experimental directories may be added without Codex approval."
+                    ]
                 },
-                "assets": {
-                "subdirs": [
-                    "js",
-                    "css",
-                    "data",
-                    "images"
-                ],
-                "files": [
-                    "iconMap.json",
-                    "prefixRegistry.json",
-                    "versions.json",
-                    "promptTemplates.json",
-                    "intentMatrix.json"
-                ],
-                "description": "Static and shared resources."
-                },
-                "api": {
-                "subdirs": [],
-                "files": [
-                    "getDynamicData.php",
-                    "getVersions.php",
-                    "cronRun.php",
-                    "askOpenAI.php"
-                ],
-                "description": "Server-side endpoints."
-                },
-                "documents": {
-                "subdirs": [],
-                "files": [
-                    "*.pdf",
-                    "*.html"
-                ],
-                "description": "Generated output documents."
-                },
-                "reports": {
-                "subdirs": [
-                    "automation",
-                    "chat",
-                    "rag"
-                ],
-                "files": [
-                    "*.json"
-                ],
-                "description": "Audit and log reports."
-                },
-                "bulletinBoards": {
-                "subdirs": [],
-                "files": [
-                    "officeBoard.html"
-                ],
-                "description": "Public-facing boards."
-                },
-                "scripts": {
-                "subdirs": [],
-                "files": [
-                    "auditor.php"
-                ],
-                "description": "Execution scripts for audits and analysis."
-                },
-                "modules": {
-                "subdirs": [
-                    "automation"
-                ],
-                "files": [
-                    "sseIntegrityChecker.php",
-                    "skyebotValidator.php",
-                    "aiValidator.php",
-                    "ragValidator.php",
-                    "semanticValidator.php",
-                    "historyValidator.php",
-                    "codeValidator.php"
-                ],
-                "description": "Operational modules."
-                }
-            },
-            "filesystemSchema": {
-                "type": "object",
-                "properties": {
-                "root": {
-                    "type": "array",
-                    "items": {
-                    "type": "string"
+                "directories": {
+                    "codex": {
+                    "subdirs": [
+                        "meta",
+                        "constitution",
+                        "standards",
+                        "modules"
+                    ],
+                    "files": [
+                        "codex.json"
+                    ],
+                    "description": "Core governance files."
                     },
-                    "description": "Allowed top-level directories."
-                }
+                    "assets": {
+                    "subdirs": [
+                        "js",
+                        "css",
+                        "data",
+                        "images"
+                    ],
+                    "files": [
+                        "iconMap.json",
+                        "prefixRegistry.json",
+                        "versions.json",
+                        "promptTemplates.json",
+                        "intentMatrix.json"
+                    ],
+                    "description": "Static and shared resources."
+                    },
+                    "api": {
+                    "subdirs": [],
+                    "files": [
+                        "getDynamicData.php",
+                        "getVersions.php",
+                        "cronRun.php",
+                        "askOpenAI.php"
+                    ],
+                    "description": "Server-side endpoints."
+                    },
+                    "documents": {
+                    "subdirs": [],
+                    "files": [
+                        "*.pdf",
+                        "*.html"
+                    ],
+                    "description": "Generated output documents."
+                    },
+                    "reports": {
+                    "subdirs": [
+                        "automation",
+                        "chat",
+                        "rag"
+                    ],
+                    "files": [
+                        "*.json"
+                    ],
+                    "description": "Audit and log reports."
+                    },
+                    "bulletinBoards": {
+                    "subdirs": [],
+                    "files": [
+                        "officeBoard.html"
+                    ],
+                    "description": "Public-facing boards."
+                    },
+                    "scripts": {
+                    "subdirs": [],
+                    "files": [
+                        "auditor.php"
+                    ],
+                    "description": "Execution scripts for audits and analysis."
+                    },
+                    "modules": {
+                    "subdirs": [
+                        "automation"
+                    ],
+                    "files": [
+                        "sseIntegrityChecker.php",
+                        "skyebotValidator.php",
+                        "aiValidator.php",
+                        "ragValidator.php",
+                        "semanticValidator.php",
+                        "historyValidator.php",
+                        "codeValidator.php"
+                    ],
+                    "description": "Operational modules."
+                    }
                 },
-                "required": [
-                "root"
+                "filesystemSchema": {
+                    "type": "object",
+                    "properties": {
+                    "root": {
+                        "type": "array",
+                        "items": {
+                        "type": "string"
+                        },
+                        "description": "Allowed top-level directories."
+                    }
+                    },
+                    "required": [
+                    "root"
+                    ]
+                },
+                "constraints": {
+                    "icon": 50,
+                    "text": "A daily cron job must audit the repository, compare all files and folders against Codex doctrine, and report any structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
+                },
+                "notes": [
+                    "This standard supersedes all prior repository assumptions.",
+                    "Any deviation constitutes architectural drift.",
+                    "MIS ensures Codex integrity is cryptographically verifiable."
                 ]
-            },
-            "constraints": {
-                "icon": 50,
-                "text": "A daily cron job must audit the repository, compare all files and folders against Codex doctrine, and report any structural violations. Any discrepancy must be corrected or justified through a Codex amendment."
-            },
-            "notes": [
-                "This standard supersedes all prior repository assumptions.",
-                "Any deviation constitutes architectural drift.",
-                "MIS ensures Codex integrity is cryptographically verifiable."
-            ]
             },
             "repositoryInventoryStandard": {
                 "title": {
@@ -1347,6 +1347,101 @@
                     "description": "Single Source of Truth for all system prefixes governed under PRF. All Skyesoft subsystems must load and validate against this file."
                 },
                 "output": "A unified, conflict-free prefix architecture ensuring identifier consistency, traceability, semantic clarity, and governance across all Skyesoft systems."
+            },
+            "inventoryNormalizationStandard": {
+                "title": {
+                    "icon": 12,
+                    "text": "Inventory Normalization Standard (INS-1)"
+                },
+                "tier": 2,
+                "type": "Structural Standard",
+                "hierarchyOrder": 4,
+                "version": "1.0.1",
+                "preamble": {
+                    "icon": 7,
+                    "text": "This Standard defines the canonical normalization rules governing how repository inventory declarations are interpreted, evaluated, and enforced by the Auditor. The repository inventory is the sole Source of Truth (SoT™) for governed artifact presence and type. Presence in the inventory constitutes active governance; undeclared artifacts are not governed."
+                },
+                "scope": {
+                    "text": "Governs repository inventory normalization and conformance auditing for all files and directories under Codex governance."
+                },
+                "requirements": [
+                    "The repository inventory file is the exclusive Source of Truth (SoT™) for governed artifact declaration.",
+                    "Presence of a path in the inventory constitutes active governance and enforcement.",
+                    "Every filesystem artifact observed but not declared in the inventory SHALL produce a distinct violation.",
+                    "Every declared inventory path not observed in the filesystem SHALL produce a distinct violation.",
+                    "Inventory normalization must occur before conformance evaluation.",
+                    "Inventory normalization must not mutate the stored inventory artifact.",
+                    "Each artifact-level mismatch must be evaluated atomically."
+                ],
+                "enforcement": {
+                    "notes": "Inventory conformance violations are structural and must be resolved through governed inventory updates.",
+                    "auditedBy": "repositoryAuditor",
+                    "violationSeverity": "structural"
+                },
+                "relationships": {
+                    "references": [
+                        "repositoryStandard",
+                        "repositoryInventoryStandard",
+                        "errorGovernanceStandard",
+                        "merkleIntegrityStandard"
+                    ],
+                    "governedBy": "constitution.articleIII"
+                },
+                "conceptualModel": {
+                    "name": "Inventory Normalization Model",
+                    "principles": {
+                        "sourceOfTruth": "The inventory defines what is governed; the filesystem does not.",
+                        "atomicity": "Each artifact mismatch constitutes a separate violation.",
+                        "nonInference": "The Auditor must not infer intent, ownership, lifecycle state, or remediation.",
+                        "determinism": "Given the same inventory and filesystem state, audit results must be identical."
+                    }
+                },
+                "normalizationRules": [
+                    {
+                        "ruleId": "INS-1.1",
+                        "description": "Normalize inventory declarations into a canonical, path-indexed structure prior to audit evaluation.",
+                        "constraints": [
+                            "Normalization must be deterministic.",
+                            "Normalization must not discard declared paths.",
+                            "Normalization must not introduce new paths.",
+                            "Normalization must not infer artifact lifecycle states."
+                        ]
+                    }
+                ],
+                "violationSemantics": {
+                    "blocking": [
+                        "missing_inventory",
+                        "malformed_inventory"
+                    ],
+                    "artifactLevel": [
+                        "missing",
+                        "unexpected",
+                        "type_mismatch"
+                    ],
+                    "aggregation": "prohibited"
+                },
+                "identityRules": {
+                    "identityHashInputs": [
+                        "ruleId",
+                        "subjectPath",
+                        "issue",
+                        "expectedType",
+                        "observedType"
+                    ],
+                    "guarantees": [
+                        "Stable identity across audit runs",
+                        "Accurate observation counting",
+                        "Correct resolution inference by absence of re-observation"
+                    ]
+                },
+                "nonGoals": [
+                    "Supporting inactive, deprecated, or soft-governed inventory entries",
+                    "Inferring missing inventory entries",
+                    "Suggesting remediation steps",
+                    "Grouping multiple artifacts into a single violation",
+                    "Interpreting developer intent",
+                    "Mutating repository inventory files"
+                ]
             },
             "unifiedClientArchitecture": {
                 "title": {
@@ -2046,6 +2141,83 @@
                     "Weather caching aligns with SSE Standard source-of-truth requirements.",
                     "Over-polling external APIs is prohibited unless Codex-amended."
                 ]
+            },
+            "jurisdictionalCodeGovernance": {
+                "title": {
+                    "icon": 12,
+                    "text": "Jurisdictional Code Governance Standard"
+                },
+                "type": "standard",
+                "tier": 2,
+                "hierarchyOrder": 20,
+                "description": "Defines the authoritative governance rules for indexing, storing, and resolving jurisdictional sign codes without duplication, execution leakage, or authority ambiguity.",
+                "rules": [
+                    "Jurisdiction registries shall function exclusively as index structures and shall not contain ordinance text, extracted rules, or embedded artifacts.",
+                    "Each jurisdiction registry entry must declare a stable jurisdiction identifier and a jurisdictionType classification.",
+                    "Registries may reference official external sources and governed artifact storage domains but shall not reference individual files.",
+                    "All jurisdictional sign codes shall be stored in a governed storage domain containing a canonical PDF, a semantic JSON representation, and governance metadata.",
+                    "Canonical PDF artifacts shall be immutable after attestation and treated as the authoritative snapshot for audit and verification.",
+                    "Semantic JSON representations shall be structured and normalized and shall not function as blind transcriptions of ordinance text.",
+                    "Artifact discovery, integrity verification, and version awareness shall be resolved via metadata within the governed storage domain.",
+                    "Registries may declare the existence and endpoint of zoning or GIS APIs but shall not encode invocation parameters, field mappings, or execution semantics.",
+                    "Jurisdiction authority shall be implicit and derived from Codex governance and governed artifacts, not redundantly declared within registry entries."
+                ],
+                "schema": {
+                    "registryEntry": {
+                        "type": "object",
+                        "properties": {
+                            "label": { "type": "string" },
+                            "aliases": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                            },
+                            "jurisdictionType": { "type": "string" },
+                            "county": { "type": "string", "optional": true },
+                            "fips": { "type": "number", "optional": true },
+                            "incorporation": { "type": "number", "optional": true },
+                            "signCode": {
+                                "type": "object",
+                                "properties": {
+                                    "officialSource": { "type": "string" },
+                                    "governedArtifacts": {
+                                        "type": "object",
+                                        "properties": {
+                                            "jurisdictionSlug": { "type": "string" },
+                                            "storageDomain": { "type": "string" }
+                                        },
+                                        "required": ["jurisdictionSlug", "storageDomain"]
+                                    }
+                                },
+                                "required": ["officialSource", "governedArtifacts"]
+                            },
+                            "zoningApi": {
+                                "type": "object",
+                                "properties": {
+                                    "type": { "type": "string" },
+                                    "endpoint": { "type": "string" }
+                                },
+                                "optional": true
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "jurisdictionType"
+                        ]
+                    }
+                },
+                "examples": {
+                    "valid": [
+                        "{ \"label\": \"Phoenix\", \"jurisdictionType\": \"City\" }"
+                    ],
+                    "invalid": [
+                        "{ \"label\": \"Phoenix\", \"signText\": \"Maximum sign area is 32 sq ft\" }"
+                    ]
+                },
+                "validation": {
+                    "enforcedBy": "auditors/jurisdictionRegistryValidator.php",
+                    "frequency": "on-change",
+                    "action": "Reject non-conforming entries; log violations for review"
+                }
             },
             "skyebotModule": {
                 "title": {
@@ -3163,184 +3335,184 @@
                 ]
             },
             "merkleIntegrityStandard": {
-            "title": {
-                "icon": 50,
-                "text": "Merkle Integrity Standard (MIS)"
-            },
-            "tier": 2,
-            "hierarchyOrder": 19,
-            "type": "Structural Standard",
-            "preamble": {
-                "icon": 50,
-                "text": "MIS defines the cryptographic mechanism used to verify that the Codex remains unchanged over time. A Merkle Tree generates a tamper-proof integrity root that enables rapid drift detection, safe external archiving, and absolute verification without exposing Codex content."
-            },
-            "purpose": {
-                "icon": 20,
-                "text": "Provide a cryptographically strong and tamper-proof method for validating the integrity of the Codex. Prevent unauthorized edits, accidental corruption, or silent architectural drift by comparing the live Merkle Root of the Codex with the stored, governed root."
-            },
-            "files": {
-                "tree": "codex/meta/merkleTree.json",
-                "root": "codex/meta/merkleRoot.txt",
-                "rules": [
-                "Both files must always exist.",
-                "Both files are SOT for Merkle validation.",
-                "Neither file may be deleted or replaced without formal Codex amendment.",
-                "Only Codex amendment procedures may regenerate the Merkle Tree or Merkle Root."
+                "title": {
+                    "icon": 50,
+                    "text": "Merkle Integrity Standard (MIS)"
+                },
+                "tier": 2,
+                "hierarchyOrder": 19,
+                "type": "Structural Standard",
+                "preamble": {
+                    "icon": 50,
+                    "text": "MIS defines the cryptographic mechanism used to verify that the Codex remains unchanged over time. A Merkle Tree generates a tamper-proof integrity root that enables rapid drift detection, safe external archiving, and absolute verification without exposing Codex content."
+                },
+                "purpose": {
+                    "icon": 20,
+                    "text": "Provide a cryptographically strong and tamper-proof method for validating the integrity of the Codex. Prevent unauthorized edits, accidental corruption, or silent architectural drift by comparing the live Merkle Root of the Codex with the stored, governed root."
+                },
+                "files": {
+                    "tree": "codex/meta/merkleTree.json",
+                    "root": "codex/meta/merkleRoot.txt",
+                    "rules": [
+                    "Both files must always exist.",
+                    "Both files are SOT for Merkle validation.",
+                    "Neither file may be deleted or replaced without formal Codex amendment.",
+                    "Only Codex amendment procedures may regenerate the Merkle Tree or Merkle Root."
+                    ]
+                },
+                "hashing": {
+                    "algorithm": "SHA-256",
+                    "format": "hexstring",
+                    "rules": [
+                    "Leaf hashes must reflect exact byte-accurate content of codex.json chunks.",
+                    "Internal node hashes are computed by concatenating sorted child hashes, then hashing again.",
+                    "Whitespace normalization, reformatting, or reserialization is forbidden.",
+                    "Hashing must operate on deterministic JSON objects, not on file lines."
+                    ]
+                },
+                "chunkingRules": {
+                    "method": "object-key deterministic chunking",
+                    "rules": [
+                    "The Codex must be chunked by top-level objects: meta, constitution, standards, modules.",
+                    "Each Tier is recursively chunked by its immediate child objects.",
+                    "Chunks must be processed in lexicographic key order.",
+                    "Chunk boundaries must be based on JSON structure, not text layout."
+                    ]
+                },
+                "registryRules": {
+                    "rules": [
+                    "merkleTree.json stores the full Merkle Tree (leaf and internal node hashes).",
+                    "merkleRoot.txt stores only the final root hash.",
+                    "Both files are append-only when regenerated via Codex amendment.",
+                    "Merkle roots may not be updated automatically by any automation process."
+                    ]
+                },
+                "auditorIntegration": {
+                    "enforcedBy": "scripts/auditor.php",
+                    "rules": [
+                    "Auditor must recompute the Merkle Root from codex.json at runtime.",
+                    "Auditor must compare the recomputed root to merkleRoot.txt.",
+                    "If mismatch occurs, Auditor must emit a finding of type 'policy_violation' with details.",
+                    "Auditor must never regenerate or modify merkleRoot.txt or merkleTree.json."
+                    ]
+                },
+                "cronIntegration": {
+                    "enforcedBy": "api/cronRun.php",
+                    "rules": [
+                    "Cron must process Auditor findings related to MIS mismatches.",
+                    "Cron must create ERR entries in errorRegistry.json for all MIS mismatches.",
+                    "Cron must append corresponding entries to repositoryAudit.json.",
+                    "Cron must not regenerate the Merkle Tree or Merkle Root; only amendments may do so."
+                    ]
+                },
+                "externalArchiving": {
+                    "description": "External storage of the Merkle Root is encouraged to enable long-term verification.",
+                    "rules": [
+                    "merkleRoot.txt may be stored externally (e.g., printed, emailed, uploaded off-system).",
+                    "External storage does not expose internal Codex content.",
+                    "External Merkle Roots may only be used for comparison—not modification."
+                    ]
+                },
+                "notes": [
+                    "MIS enables perfect integrity verification while exposing no Codex content.",
+                    "A Merkle Tree cannot reconstruct the Codex; it validates integrity only.",
+                    "MIS integrates with EGS through policy_violation errors on mismatched roots.",
+                    "This standard ensures anti-tamper guarantees without blockchain overhead.",
+                    "Parliamentarian and Archivist roles interpret MIS results but never alter SOT files."
                 ]
-            },
-            "hashing": {
-                "algorithm": "SHA-256",
-                "format": "hexstring",
-                "rules": [
-                "Leaf hashes must reflect exact byte-accurate content of codex.json chunks.",
-                "Internal node hashes are computed by concatenating sorted child hashes, then hashing again.",
-                "Whitespace normalization, reformatting, or reserialization is forbidden.",
-                "Hashing must operate on deterministic JSON objects, not on file lines."
-                ]
-            },
-            "chunkingRules": {
-                "method": "object-key deterministic chunking",
-                "rules": [
-                "The Codex must be chunked by top-level objects: meta, constitution, standards, modules.",
-                "Each Tier is recursively chunked by its immediate child objects.",
-                "Chunks must be processed in lexicographic key order.",
-                "Chunk boundaries must be based on JSON structure, not text layout."
-                ]
-            },
-            "registryRules": {
-                "rules": [
-                "merkleTree.json stores the full Merkle Tree (leaf and internal node hashes).",
-                "merkleRoot.txt stores only the final root hash.",
-                "Both files are append-only when regenerated via Codex amendment.",
-                "Merkle roots may not be updated automatically by any automation process."
-                ]
-            },
-            "auditorIntegration": {
-                "enforcedBy": "scripts/auditor.php",
-                "rules": [
-                "Auditor must recompute the Merkle Root from codex.json at runtime.",
-                "Auditor must compare the recomputed root to merkleRoot.txt.",
-                "If mismatch occurs, Auditor must emit a finding of type 'policy_violation' with details.",
-                "Auditor must never regenerate or modify merkleRoot.txt or merkleTree.json."
-                ]
-            },
-            "cronIntegration": {
-                "enforcedBy": "api/cronRun.php",
-                "rules": [
-                "Cron must process Auditor findings related to MIS mismatches.",
-                "Cron must create ERR entries in errorRegistry.json for all MIS mismatches.",
-                "Cron must append corresponding entries to repositoryAudit.json.",
-                "Cron must not regenerate the Merkle Tree or Merkle Root; only amendments may do so."
-                ]
-            },
-            "externalArchiving": {
-                "description": "External storage of the Merkle Root is encouraged to enable long-term verification.",
-                "rules": [
-                "merkleRoot.txt may be stored externally (e.g., printed, emailed, uploaded off-system).",
-                "External storage does not expose internal Codex content.",
-                "External Merkle Roots may only be used for comparison—not modification."
-                ]
-            },
-            "notes": [
-                "MIS enables perfect integrity verification while exposing no Codex content.",
-                "A Merkle Tree cannot reconstruct the Codex; it validates integrity only.",
-                "MIS integrates with EGS through policy_violation errors on mismatched roots.",
-                "This standard ensures anti-tamper guarantees without blockchain overhead.",
-                "Parliamentarian and Archivist roles interpret MIS results but never alter SOT files."
-            ]
             },
             "systemInitializationStandard": {
-            "title": {
-                "icon": 68,
-                "text": "System Initialization Standard (SIS)"
-            },
-            "tier": 2,
-            "hierarchyOrder": 20,
-            "type": "Structural Standard",
-            "status": {
-                "phase": "pre-launch",
-                "wip": true,
-                "description": "System Initialization Standard is defined but inactive during Codex work-in-progress. SIS may not be executed, enforced, or simulated until Codex doctrine is stabilized and an official launch decision is explicitly declared by a human authority."
-            },
-            "preamble": {
-                "icon": 68,
-                "text": "SIS defines the mandatory procedure for establishing Skyesoft’s canonical baseline at the moment of official launch. All Sources of Truth (SOT) must begin from an empty, production-cleansed state. Development artifacts, test data, placeholder values, and legacy drift are prohibited from persisting into operational lifecycle history."
-            },
-            "purpose": {
-                "icon": 20,
-                "text": "Ensure Skyesoft enters its governed operational lifecycle with a clean, deterministic, and cryptographically verifiable starting point. SIS prevents corruption of lineage, protects structural integrity, and guarantees that historical records reflect true operational activity only."
-            },
-            "scope": "Entire Skyesoft system at the moment of official launch",
-            "governs": [
-                "assets/data/errorRegistry.json",
-                "assets/data/repositoryAudit.json",
-                "assets/data/versions.json",
-                "assets/data/repositoryInventory.json",
-                "codex/meta/merkleTree.json",
-                "codex/meta/merkleRoot.txt"
-            ],
-            "initializationRules": {
-                "description": "Required actions prior to declaring Skyesoft ‘launched’.",
-                "rules": [
-                "SIS must not be executed while Codex is in WIP, draft, or pre-ratification status.",
-                "All SOT files must be purged of non-production data before launch.",
-                "errorRegistry.json must be reset to an empty array [].",
-                "repositoryAudit.json must be reset to an empty array [].",
-                "versions.json must contain only Codex-defined structural keys with no activity data.",
-                "repositoryInventory.json must be regenerated using repositoryAuditor.php in MODE A.",
-                "merkleTree.json and merkleRoot.txt must be regenerated immediately after Codex freeze.",
-                "All placeholder or test 'ERR-*' entries must be removed permanently before launch.",
-                "MIS must verify as valid immediately after initialization."
-                ]
-            },
-            "launchDeclaration": {
-                "description": "Defines the constitutional genesis of governed operation and the mandatory first entry of the operational audit log. Establishes the point at which audit records become authoritative.",
-                "schema": {
-                "timestamp": "UNIX epoch integer",
-                "event": "system_launch",
-                "message": "Skyesoft official operational lifecycle began",
-                "id": "ERR-LAUNCH"
+                "title": {
+                    "icon": 68,
+                    "text": "System Initialization Standard (SIS)"
                 },
-                "rules": [
-                "Sentinel must write a Launch Declaration entry to repositoryAudit.json after initialization.",
-                "Governance begins at the launch declaration timestamp.",
-                "The audit ledger is intentionally empty prior to the launch declaration.",
-                "All audit entries occurring after the launch declaration are authoritative.",
-                "Pre-launch conditions and observations are non-canonical.",
-                "ERR-LAUNCH is not an error; it is a constitutional marker and must never repeat.",
-                "The launch declaration must never be deleted, modified, or re-issued."
+                "tier": 2,
+                "hierarchyOrder": 20,
+                "type": "Structural Standard",
+                "status": {
+                    "phase": "pre-launch",
+                    "wip": true,
+                    "description": "System Initialization Standard is defined but inactive during Codex work-in-progress. SIS may not be executed, enforced, or simulated until Codex doctrine is stabilized and an official launch decision is explicitly declared by a human authority."
+                },
+                "preamble": {
+                    "icon": 68,
+                    "text": "SIS defines the mandatory procedure for establishing Skyesoft’s canonical baseline at the moment of official launch. All Sources of Truth (SOT) must begin from an empty, production-cleansed state. Development artifacts, test data, placeholder values, and legacy drift are prohibited from persisting into operational lifecycle history."
+                },
+                "purpose": {
+                    "icon": 20,
+                    "text": "Ensure Skyesoft enters its governed operational lifecycle with a clean, deterministic, and cryptographically verifiable starting point. SIS prevents corruption of lineage, protects structural integrity, and guarantees that historical records reflect true operational activity only."
+                },
+                "scope": "Entire Skyesoft system at the moment of official launch",
+                "governs": [
+                    "assets/data/errorRegistry.json",
+                    "assets/data/repositoryAudit.json",
+                    "assets/data/versions.json",
+                    "assets/data/repositoryInventory.json",
+                    "codex/meta/merkleTree.json",
+                    "codex/meta/merkleRoot.txt"
+                ],
+                "initializationRules": {
+                    "description": "Required actions prior to declaring Skyesoft ‘launched’.",
+                    "rules": [
+                    "SIS must not be executed while Codex is in WIP, draft, or pre-ratification status.",
+                    "All SOT files must be purged of non-production data before launch.",
+                    "errorRegistry.json must be reset to an empty array [].",
+                    "repositoryAudit.json must be reset to an empty array [].",
+                    "versions.json must contain only Codex-defined structural keys with no activity data.",
+                    "repositoryInventory.json must be regenerated using repositoryAuditor.php in MODE A.",
+                    "merkleTree.json and merkleRoot.txt must be regenerated immediately after Codex freeze.",
+                    "All placeholder or test 'ERR-*' entries must be removed permanently before launch.",
+                    "MIS must verify as valid immediately after initialization."
+                    ]
+                },
+                "launchDeclaration": {
+                    "description": "Defines the constitutional genesis of governed operation and the mandatory first entry of the operational audit log. Establishes the point at which audit records become authoritative.",
+                    "schema": {
+                    "timestamp": "UNIX epoch integer",
+                    "event": "system_launch",
+                    "message": "Skyesoft official operational lifecycle began",
+                    "id": "ERR-LAUNCH"
+                    },
+                    "rules": [
+                    "Sentinel must write a Launch Declaration entry to repositoryAudit.json after initialization.",
+                    "Governance begins at the launch declaration timestamp.",
+                    "The audit ledger is intentionally empty prior to the launch declaration.",
+                    "All audit entries occurring after the launch declaration are authoritative.",
+                    "Pre-launch conditions and observations are non-canonical.",
+                    "ERR-LAUNCH is not an error; it is a constitutional marker and must never repeat.",
+                    "The launch declaration must never be deleted, modified, or re-issued."
+                    ]
+                },
+                "merkleRules": {
+                    "description": "MIS interaction at initialization.",
+                    "rules": [
+                    "After SIS purge and Codex freeze, a fresh Merkle Tree and Merkle Root must be generated.",
+                    "This Merkle Root becomes the canonical baseline for all future MIS verification.",
+                    "No MIS discrepancies may exist at the moment of launch."
+                    ]
+                },
+                "immutabilityRules": {
+                    "description": "Defines SIS permanence.",
+                    "rules": [
+                    "Once launch occurs, SIS may never be re-run.",
+                    "Post-launch SOT files may not be wiped, reset, or reinitialized.",
+                    "All operational history must remain permanent and append-only."
+                    ]
+                },
+                "uiIntegration": {
+                    "optional": true,
+                    "description": "UI systems may visually indicate initialization state.",
+                    "rules": [
+                    "SSE may expose system.isInitialized = true|false.",
+                    "UI components must not infer initialization; they must read state from SOT only."
+                    ]
+                },
+                "notes": [
+                    "This standard is intentionally dormant during Codex work-in-progress.",
+                    "SIS authority is prospective and activates only upon explicit human declaration of system launch.",
+                    "All subsequent audits, Merkle checks, and EGS error lineage depend on correct SIS execution.",
+                    "This standard prevents development noise from contaminating operational history."
                 ]
-            },
-            "merkleRules": {
-                "description": "MIS interaction at initialization.",
-                "rules": [
-                "After SIS purge and Codex freeze, a fresh Merkle Tree and Merkle Root must be generated.",
-                "This Merkle Root becomes the canonical baseline for all future MIS verification.",
-                "No MIS discrepancies may exist at the moment of launch."
-                ]
-            },
-            "immutabilityRules": {
-                "description": "Defines SIS permanence.",
-                "rules": [
-                "Once launch occurs, SIS may never be re-run.",
-                "Post-launch SOT files may not be wiped, reset, or reinitialized.",
-                "All operational history must remain permanent and append-only."
-                ]
-            },
-            "uiIntegration": {
-                "optional": true,
-                "description": "UI systems may visually indicate initialization state.",
-                "rules": [
-                "SSE may expose system.isInitialized = true|false.",
-                "UI components must not infer initialization; they must read state from SOT only."
-                ]
-            },
-            "notes": [
-                "This standard is intentionally dormant during Codex work-in-progress.",
-                "SIS authority is prospective and activates only upon explicit human declaration of system launch.",
-                "All subsequent audits, Merkle checks, and EGS error lineage depend on correct SIS execution.",
-                "This standard prevents development noise from contaminating operational history."
-            ]
             }
         }
     },

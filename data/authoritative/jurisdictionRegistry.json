@@ -5,7 +5,7 @@
             "APACHE JUNCTION"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 402830,
         "incorporation": 1978,
         "api": null,
@@ -17,7 +17,7 @@
             "AVONDALE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 404720,
         "incorporation": 1946,
         "api": null,
@@ -29,7 +29,7 @@
             "BENSON"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 405770,
         "incorporation": null,
         "api": null,
@@ -41,7 +41,7 @@
             "BISBEE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 406260,
         "incorporation": 1902,
         "api": null,
@@ -53,7 +53,7 @@
             "BUCKEYE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 407940,
         "incorporation": null,
         "api": null,
@@ -65,7 +65,7 @@
             "BULLHEAD CITY"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 408220,
         "incorporation": 1984,
         "api": null,
@@ -77,7 +77,7 @@
             "CAMP VERDE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 409690,
         "incorporation": 1986,
         "api": null,
@@ -89,7 +89,7 @@
             "CAREFREE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 410180,
         "incorporation": 1984,
         "api": null,
@@ -101,7 +101,7 @@
             "CASA GRANDE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 410530,
         "incorporation": 1915,
         "api": null,
@@ -113,7 +113,7 @@
             "CAVE CREEK"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 411300,
         "incorporation": 1986,
         "api": null,
@@ -125,7 +125,7 @@
             "CHANDLER"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 412000,
         "incorporation": 1920,
         "api": null,
@@ -137,7 +137,7 @@
             "CHINO VALLEY"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 412840,
         "incorporation": 1970,
         "api": null,
@@ -149,7 +149,7 @@
             "CLARKDALE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 413890,
         "incorporation": 1957,
         "api": null,
@@ -161,7 +161,7 @@
             "CLIFTON"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 414380,
         "incorporation": 1909,
         "api": null,
@@ -173,7 +173,7 @@
             "COLORADO CITY"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 414870,
         "incorporation": 1985,
         "api": null,
@@ -185,7 +185,7 @@
             "COOLIDGE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 415500,
         "incorporation": 1945,
         "api": null,
@@ -197,7 +197,7 @@
             "COTTONWOOD"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 416410,
         "incorporation": 1960,
         "api": null,
@@ -209,7 +209,7 @@
             "DEWEY-HUMBOLDT"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 419145,
         "incorporation": 2004,
         "api": null,
@@ -221,7 +221,7 @@
             "DOUGLAS"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 420050,
         "incorporation": 1905,
         "api": null,
@@ -233,7 +233,7 @@
             "DUNCAN"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 420750,
         "incorporation": null,
         "api": null,
@@ -245,7 +245,7 @@
             "EAGAR"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 420960,
         "incorporation": 1948,
         "api": null,
@@ -257,7 +257,7 @@
             "EL MIRAGE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 422220,
         "incorporation": 1951,
         "api": null,
@@ -269,7 +269,7 @@
             "ELOY"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 422360,
         "incorporation": 1949,
         "api": null,
@@ -281,7 +281,7 @@
             "FLAGSTAFF"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 423620,
         "incorporation": null,
         "api": null,
@@ -293,7 +293,7 @@
             "FLORENCE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 423760,
         "incorporation": 1900,
         "api": null,
@@ -305,7 +305,7 @@
             "FOUNTAIN HILLS"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 425300,
         "incorporation": 1989,
         "api": null,
@@ -317,7 +317,7 @@
             "FREDONIA"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 425720,
         "incorporation": 1956,
         "api": null,
@@ -329,7 +329,7 @@
             "GILA BEND"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 427050,
         "incorporation": 1962,
         "api": null,
@@ -341,7 +341,7 @@
             "GILBERT"
         ],
         "county": "Maricopa",
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 427400,
         "incorporation": 1920,
         "api": {
@@ -369,7 +369,7 @@
             "GLENDALE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 427820,
         "incorporation": 1910,
         "api": null,
@@ -381,7 +381,7 @@
             "GLOBE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 428030,
         "incorporation": 1907,
         "api": null,
@@ -393,7 +393,7 @@
             "GOODYEAR"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 428380,
         "incorporation": 1946,
         "api": null,
@@ -405,7 +405,7 @@
             "GUADALUPE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 430270,
         "incorporation": 1975,
         "api": null,
@@ -417,7 +417,7 @@
             "HAYDEN"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 432020,
         "incorporation": 1956,
         "api": null,
@@ -429,23 +429,31 @@
             "HOLBROOK"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 433280,
         "incorporation": 1917,
         "api": null,
         "label": "Holbrook"
     },
-    "huachucaCity": {
+    "huachucacity": {
+        "label": "Huachuca City",
         "aliases": [
             "CITY OF HUACHUCA CITY",
-            "HUACHUCA CITY"
+            "HUACHUCA CITY",
+            "HUACHUCA CITY, AZ"
         ],
+        "jurisdictionType": "City",
         "county": null,
-        "type": "City",
-        "fips": 434120,
+        "fips": "0434120",
         "incorporation": 1958,
-        "api": null,
-        "label": "Huachuca City"
+        "signCode": {
+            "officialSource": "TBD",
+            "governedArtifacts": {
+                "jurisdictionSlug": "huachucacity",
+                "storageDomain": "/data/jurisdictions/huachucacity/"
+            }
+        },
+        "zoningApi": null
     },
     "jerome": {
         "aliases": [
@@ -453,7 +461,7 @@
             "JEROME"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 436290,
         "incorporation": null,
         "api": null,
@@ -465,7 +473,7 @@
             "KEARNY"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 437200,
         "incorporation": 1959,
         "api": null,
@@ -477,7 +485,7 @@
             "KINGMAN"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 437620,
         "incorporation": 1952,
         "api": null,
@@ -489,7 +497,7 @@
             "LAKE HAVASU CITY"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 439370,
         "incorporation": 1978,
         "api": null,
@@ -501,7 +509,7 @@
             "LITCHFIELD PARK"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 441330,
         "incorporation": 1987,
         "api": null,
@@ -513,7 +521,7 @@
             "MAMMOTH"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 443990,
         "incorporation": 1958,
         "api": null,
@@ -525,7 +533,7 @@
             "MARANA"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 444270,
         "incorporation": 1977,
         "api": null,
@@ -537,7 +545,7 @@
             "MARICOPA"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 444410,
         "incorporation": 2003,
         "api": null,
@@ -549,7 +557,7 @@
             "MESA"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 446000,
         "incorporation": 1883,
         "api": {
@@ -577,7 +585,7 @@
             "MIAMI"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 446350,
         "incorporation": 1918,
         "api": null,
@@ -589,7 +597,7 @@
             "NOGALES"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 449640,
         "incorporation": 1893,
         "api": null,
@@ -601,7 +609,7 @@
             "ORO VALLEY"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 451600,
         "incorporation": 1974,
         "api": null,
@@ -613,7 +621,7 @@
             "PAGE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 451810,
         "incorporation": 1975,
         "api": null,
@@ -625,7 +633,7 @@
             "PARADISE VALLEY"
         ],
         "county": "Maricopa",
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 452930,
         "incorporation": 1961,
         "api": null,
@@ -637,7 +645,7 @@
             "PARKER"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 453070,
         "incorporation": 1948,
         "api": null,
@@ -649,7 +657,7 @@
             "PATAGONIA"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 453490,
         "incorporation": 1948,
         "api": null,
@@ -661,7 +669,7 @@
             "PAYSON"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 453700,
         "incorporation": 1973,
         "api": null,
@@ -673,40 +681,41 @@
             "PEORIA"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 454050,
         "incorporation": 1954,
         "api": null,
         "label": "Peoria"
     },
     "phoenix": {
-        "api": {
-            "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0/query",
-            "modes": [
-                "point"
-            ],
-            "srid": 4326,
-            "requiresProjection": false,
-            "outFields": [
-                "ZONING",
-                "GEN_ZONE",
-                "LABEL1"
-            ],
-            "responseFields": {
-                "primary": "ZONING",
-                "secondary": "GEN_ZONE",
-                "tertiary": "LABEL1"
+        "label": "Phoenix",
+        "aliases": [
+            "CITY OF PHOENIX",
+            "PHOENIX"
+        ],
+        "jurisdictionType": "City",
+        "county": "Maricopa",
+        "fips": "0455000",
+        "incorporation": 1881,
+        "signCode": {
+            "officialSource": "https://phoenix.municipal.codes/ZO/705",
+            "governedArtifacts": {
+                "jurisdictionSlug": "phoenix",
+                "storageDomain": "/data/jurisdictions/phoenix/"
             }
         },
-        "label": "Phoenix"
-    },
+        "zoningApi": {
+            "type": "arcgis",
+            "endpoint": "https://maps.phoenix.gov/pub/rest/services/Public/Zoning/MapServer/0"
+        }
+    },    
     "pima": {
         "aliases": [
             "TOWN OF PIMA",
             "PIMA"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 455560,
         "incorporation": 1916,
         "api": null,
@@ -718,7 +727,7 @@
             "PINETOP-LAKESIDE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 455980,
         "incorporation": 1984,
         "api": null,
@@ -730,7 +739,7 @@
             "PRESCOTT"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 457380,
         "incorporation": 1883,
         "api": null,
@@ -742,7 +751,7 @@
             "PRESCOTT VALLEY"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 457450,
         "incorporation": 1978,
         "api": null,
@@ -754,7 +763,7 @@
             "QUARTZSITE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 458010,
         "incorporation": 1989,
         "api": null,
@@ -766,7 +775,7 @@
             "QUEEN CREEK"
         ],
         "county": "Maricopa",
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 458150,
         "incorporation": 1989,
         "api": null,
@@ -778,7 +787,7 @@
             "SAFFORD"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 462000,
         "incorporation": 1901,
         "api": null,
@@ -790,7 +799,7 @@
             "SAHUARITA"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 462140,
         "incorporation": 1994,
         "api": null,
@@ -802,7 +811,7 @@
             "SAN LUIS"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 463470,
         "incorporation": 1979,
         "api": null,
@@ -814,7 +823,7 @@
             "SCOTTSDALE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 465000,
         "incorporation": 1951,
         "api": {
@@ -840,7 +849,7 @@
             "SEDONA"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 465350,
         "incorporation": 1988,
         "api": null,
@@ -852,7 +861,7 @@
             "SHOW LOW"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 466470,
         "incorporation": 1953,
         "api": null,
@@ -864,7 +873,7 @@
             "SIERRA VISTA"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 466820,
         "incorporation": 1956,
         "api": null,
@@ -876,7 +885,7 @@
             "SNOWFLAKE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 467800,
         "incorporation": 1948,
         "api": null,
@@ -888,7 +897,7 @@
             "SOMERTON"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 468080,
         "incorporation": 1918,
         "api": null,
@@ -900,7 +909,7 @@
             "SOUTH TUCSON"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 468850,
         "incorporation": 1940,
         "api": null,
@@ -912,7 +921,7 @@
             "SPRINGERVILLE"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 468990,
         "incorporation": 1948,
         "api": null,
@@ -923,7 +932,7 @@
             "ST JOHNS"
         ],
         "county": null,
-        "type": null,
+        "jurisdictionType": null,
         "fips": null,
         "incorporation": null,
         "api": null,
@@ -935,7 +944,7 @@
             "STAR VALLEY"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 469480,
         "incorporation": 2005,
         "api": null,
@@ -947,7 +956,7 @@
             "SUPERIOR"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 471300,
         "incorporation": 1976,
         "api": null,
@@ -959,7 +968,7 @@
             "SURPRISE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 471510,
         "incorporation": 1960,
         "api": null,
@@ -971,7 +980,7 @@
             "TAYLOR"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 472420,
         "incorporation": 1966,
         "api": null,
@@ -983,7 +992,7 @@
             "TEMPE"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 473000,
         "incorporation": 1894,
         "api": null,
@@ -995,7 +1004,7 @@
             "THATCHER"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 473420,
         "incorporation": 1899,
         "api": null,
@@ -1007,7 +1016,7 @@
             "TOLLESON"
         ],
         "county": "Maricopa",
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 474190,
         "incorporation": null,
         "api": null,
@@ -1019,7 +1028,7 @@
             "TOMBSTONE"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 474400,
         "incorporation": 1881,
         "api": null,
@@ -1031,7 +1040,7 @@
             "TUCSON"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 477000,
         "incorporation": 1877,
         "api": null,
@@ -1043,7 +1052,7 @@
             "TUSAYAN"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 477490,
         "incorporation": 2010,
         "api": null,
@@ -1055,7 +1064,7 @@
             "WELLTON"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 481480,
         "incorporation": 1970,
         "api": null,
@@ -1067,7 +1076,7 @@
             "WICKENBURG"
         ],
         "county": "Maricopa",
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 482740,
         "incorporation": 1909,
         "api": null,
@@ -1079,7 +1088,7 @@
             "WILLCOX"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 483090,
         "incorporation": 1915,
         "api": null,
@@ -1091,7 +1100,7 @@
             "WILLIAMS"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 483160,
         "incorporation": 1901,
         "api": null,
@@ -1103,7 +1112,7 @@
             "WINKELMAN"
         ],
         "county": null,
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 483790,
         "incorporation": 1949,
         "api": null,
@@ -1115,7 +1124,7 @@
             "WINSLOW"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 483930,
         "incorporation": 1900,
         "api": null,
@@ -1127,7 +1136,7 @@
             "YOUNGTOWN"
         ],
         "county": "Maricopa",
-        "type": "Town",
+        "jurisdictionType": "Town",
         "fips": 485400,
         "incorporation": 1960,
         "api": null,
@@ -1139,7 +1148,7 @@
             "YUMA"
         ],
         "county": null,
-        "type": "City",
+        "jurisdictionType": "City",
         "fips": 485540,
         "incorporation": 1914,
         "api": null,
