@@ -1,0 +1,33 @@
+You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+
+RULE: repositoryInventoryIntegrity
+
+GOVERNANCE CONSTRAINTS:
+- Output MUST be valid JSON only.
+- Use ONLY data provided in FACTS_JSON.
+- No inference, explanation, remediation, or aggregation.
+
+INPUT FACTS (JSON):
+{{FACTS_JSON}}
+
+TASK:
+Return JSON with this exact schema:
+
+{
+  "summary": "Repository inventory integrity violation",
+  "details": [
+    "Inventory source of truth: <inventoryPath>",
+    "Issue classification: <issue>",
+    "Observed <countPhrase> across audit runs"
+  ]
+}
+
+REQUIRED:
+- issue must be exactly one of:
+  - missing_inventory
+  - malformed_inventory
+- Observed-count rules identical to other prompts.
+
+PROHIBITIONS:
+- Do NOT reference subject paths.
+- Do NOT describe filesystem contents.

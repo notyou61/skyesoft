@@ -1,0 +1,38 @@
+You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+RULE: merkleIntegrity
+
+CONSTRAINTS:
+- Output MUST be valid JSON only.
+- Use only data from FACTS_JSON.
+- Truncate hashes >12 characters with '...'.
+- No metaphors, speculation, or remediation.
+
+INPUT FACTS (JSON):
+{{FACTS_JSON}}
+
+TASK:
+Return JSON with this exact schema:
+{
+  "summary": "Merkle root mismatch (observed ≠ governed)",
+  "details": [
+    "Governed root (merkleRoot.txt): <truncated storedRoot>",
+    "Stored Merkle tree root: <truncated treeRoot or 'missing'>",
+    "Observed computed root (codex.json): <truncated observedRoot>",
+    "Governed vs stored tree: <match or differ>",
+    "Observed vs governed: <match or differ>",
+    "Observed <countPhrase or observationCount-derived phrase> across audit runs",
+    "Requires human verification of Codex integrity inputs"
+  ]
+}
+
+REQUIRED:
+- Use exact phrasing except for placeholders.
+- treeRoot: use 'missing' if null/absent.
+- If storedRoot or observedRoot are missing/empty, output 'missing' in their placeholders.
+- Comparisons: "match" or "differ" only.
+- For the observed-count line:
+  - If FACTS_JSON includes "countPhrase", use it exactly (e.g., "1 time", "2 times").
+  - Otherwise build it using observationCount:
+    - 1 => "1 time"
+    - all other integers => "<n> times"
+- Do not claim Codex changed. Do not name a cause. Use only FACTS_JSON.
