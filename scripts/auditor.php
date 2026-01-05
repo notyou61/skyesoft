@@ -73,6 +73,22 @@ $merkleRootPath = $root . '/data/records/codexMerkleRoot.txt';
 
 #region SECTION II — Helpers (Reentrant)
 
+if (!function_exists('normalizeJson')) {
+    /**
+     * Recursively normalize JSON structure — identical to codexMerkleBuilder.php
+     */
+    function normalizeJson(mixed $data): mixed
+    {
+        if (is_array($data)) {
+            ksort($data, SORT_STRING);
+            foreach ($data as $key => $value) {
+                $data[$key] = normalizeJson($value);
+            }
+        }
+        return $data;
+    }
+}
+
 if (!function_exists('recursiveChunks')) {
     function recursiveChunks(mixed $node, string $path = ''): array {
         $chunks = [];
@@ -184,26 +200,13 @@ if (!function_exists('renderViolationNotes')) {
      */
     function renderViolationNotes(string $ruleId, array $facts, string $root): ?array
     {
-        // Log presence or absence of API key for debugging
         error_log('AI CHECK: key=' . (getenv('OPENAI_API_KEY') ? 'present' : 'missing'));
-
-        // Load local environment for API keys (may set key if previously missing)
         loadEnvLocal($root);
-
-        // Re-check after loading env — useful for debug visibility
         $apiKey = getenv('OPENAI_API_KEY');
-        if ($apiKey && error_get_last() === null) {
-            error_log('AI CHECK: key loaded successfully from env.local');
-        }
 
-        /* =========================================================
-        * Merkle Integrity — governed AI attempt
-        * ======================================================= */
         if ($ruleId === 'merkleIntegrity') {
-
             $promptPath = $root . '/codex/prompts/merkleIntegrity.prompt';
 
-            // Governance prerequisites check
             if (!$apiKey) {
                 error_log('AI ATTEMPT FAILED: OPENAI_API_KEY not available');
             }
@@ -211,22 +214,16 @@ if (!function_exists('renderViolationNotes')) {
                 error_log("AI ATTEMPT FAILED: Prompt file missing at $promptPath");
             }
 
-            // Attempt AI only if both prerequisites are satisfied
             if ($apiKey && file_exists($promptPath)) {
-
                 $template  = file_get_contents($promptPath);
-                if ($template === false) {
-                    error_log("AI ATTEMPT FAILED: Could not read prompt file: $promptPath");
-                } else {
+                if ($template !== false) {
                     $factsJson = json_encode($facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                     $prompt    = str_replace('{{FACTS_JSON}}', $factsJson, $template);
 
                     $payload = json_encode([
                         'model'       => 'gpt-4o-mini',
                         'temperature' => 0.0,
-                        'messages'    => [
-                            ['role' => 'system', 'content' => $prompt]
-                        ]
+                        'messages'    => [['role' => 'system', 'content' => $prompt]]
                     ], JSON_UNESCAPED_SLASHES);
 
                     $context = stream_context_create([
@@ -237,7 +234,7 @@ if (!function_exists('renderViolationNotes')) {
                                 'Authorization: Bearer ' . $apiKey
                             ],
                             'content'  => $payload,
-                            'timeout'  => 12  // Slightly increased from 10 for reliability
+                            'timeout'  => 12
                         ],
                         'ssl' => [
                             'verify_peer'      => true,
@@ -245,31 +242,16 @@ if (!function_exists('renderViolationNotes')) {
                         ]
                     ]);
 
-                    $response = @file_get_contents(
-                        'https://api.openai.com/v1/chat/completions',
-                        false,
-                        $context
-                    );
-
-                    // Capture HTTP response code if available
+                    $response = @file_get_contents('https://api.openai.com/v1/chat/completions', false, $context);
                     $httpCode = $http_response_header[0] ?? 'unknown';
                     error_log("AI API CALL: HTTP status = $httpCode");
 
                     if ($response !== false) {
                         $data = json_decode($response, true);
-
-                        if (json_last_error() !== JSON_ERROR_NONE) {
-                            error_log('AI RESPONSE: Invalid JSON received: ' . json_last_error_msg());
-                            error_log('AI RAW RESPONSE: ' . substr($response, 0, 500));
-                        } elseif (isset($data['error'])) {
-                            $errMsg = $data['error']['message'] ?? 'Unknown OpenAI error';
-                            $errType = $data['error']['type'] ?? 'unknown';
-                            error_log("AI ERROR [$errType]: $errMsg");
-                        } else {
+                        if (json_last_error() === JSON_ERROR_NONE && !isset($data['error'])) {
                             $content = $data['choices'][0]['message']['content'] ?? null;
                             if ($content !== null) {
                                 $trimmed = trim($content);
-                                // Handle possible JSON wrapped in markdown code blocks
                                 if (str_starts_with($trimmed, '```json')) {
                                     $trimmed = preg_replace('/^```json\s*|\s*```$/', '', $trimmed);
                                 } elseif (str_starts_with($trimmed, '```')) {
@@ -277,7 +259,6 @@ if (!function_exists('renderViolationNotes')) {
                                 }
 
                                 $parsed = json_decode($trimmed, true);
-
                                 if (
                                     is_array($parsed) &&
                                     isset($parsed['summary'], $parsed['details']) &&
@@ -289,23 +270,13 @@ if (!function_exists('renderViolationNotes')) {
                                         'summary' => $parsed['summary'],
                                         'details' => array_values($parsed['details'])
                                     ];
-                                } else {
-                                    error_log('AI RESPONSE: Invalid schema - missing summary or details array');
-                                    error_log('AI PARSED OUTPUT: ' . substr(print_r($parsed, true), 0, 500));
                                 }
-                            } else {
-                                error_log('AI RESPONSE: No content in choices[0].message');
                             }
                         }
-                    } else {
-                        $lastError = error_get_last();
-                        $errMsg = $lastError['message'] ?? 'Unknown network error';
-                        error_log("AI CALL FAILED: file_get_contents error - $errMsg");
                     }
                 }
             }
 
-            // === Deterministic Governed Fallback (only if AI attempt fails or skipped) ===
             error_log('AI FALLBACK: Using deterministic notes for Merkle integrity violation');
             return [
                 'summary' => 'The observed Merkle root does not match the governed Merkle snapshot.',
@@ -317,18 +288,11 @@ if (!function_exists('renderViolationNotes')) {
             ];
         }
 
-        /* =========================================================
-        * Governed placeholder — non-Merkle rules
-        * ======================================================= */
         $placeholderSummary = match ($ruleId) {
-            'criticalArtifactPresence' =>
-                'A required governed artifact is missing from the repository.',
-            'repositoryInventoryConformance' =>
-                'The repository filesystem does not conform to the declared inventory.',
-            'jurisdictionalRuleConformance' =>
-                'The jurisdiction registry violates governance rules.',
-            default =>
-                'A governance violation has been detected.'
+            'criticalArtifactPresence' => 'A required governed artifact is missing from the repository.',
+            'repositoryInventoryConformance' => 'The repository filesystem does not conform to the declared inventory.',
+            'jurisdictionalRuleConformance' => 'The jurisdiction registry violates governance rules.',
+            default => 'A governance violation has been detected.'
         };
 
         return [
@@ -397,35 +361,38 @@ foreach ($required as $label => $path) {
 }
 #endregion SECTION IV.B
 
-#region SECTION IV.C — Merkle Integrity
+#region SECTION IV.C — Merkle Integrity (Governed Only)
 $rulesEvaluated['merkleIntegrity'] = true;
 
-$codex      = json_decode(file_get_contents($codexPath), true);
-$merkleTree = json_decode(file_get_contents($merkleTreePath), true);
+// Load current live Codex state
+$codex = json_decode(file_get_contents($codexPath), true);
+
+// Recompute observed Merkle root — IDENTICAL to codexMerkleBuilder.php
+$normalized   = normalizeJson($codex);
+$encoded      = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+$contentHash  = hash('sha256', $encoded);
+$observedRoot = hash('sha256', $contentHash);  // Single-leaf semantic root
+
+// Load stored governance root
 $storedRoot = trim(file_get_contents($merkleRootPath));
-$treeRoot   = $merkleTree['root'] ?? null;
 
-$observedLeaves = recursiveChunks($codex);
-$observedRoot   = buildMerkle($observedLeaves);
+$canonicalObservation =
+    'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
 
-// Pre-compute canonical identity hash for this specific violation type
-// This is deterministic and safe — same discrepancy always yields same hash
-$canonicalObservation = 'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
 $violationIdentityHash = canonicalViolationHash(
     'merkleIntegrity',
-    'unknown',           // file — not applicable here
-    'unknown',           // path — not applicable here
+    'unknown',
+    'unknown',
     $canonicalObservation
 );
 
-// Determine if this is a recurrent violation and compute next observation count
 $nextObservationCount = 1;
 $firstObservedTimestamp = $timestamp;
 
 foreach ($auditLog as $record) {
     if (
-        isset($record['identityHash']) &&
-        $record['identityHash'] === $violationIdentityHash &&
+        ($record['identityHash'] ?? null) === $violationIdentityHash &&
         ($record['resolved'] ?? null) === null &&
         ($record['auditMode'] ?? '') === $auditMode
     ) {
@@ -435,20 +402,17 @@ foreach ($auditLog as $record) {
     }
 }
 
-if ($storedRoot !== $treeRoot || $observedRoot !== $storedRoot) {
-    $facts = [
-        'storedRoot'       => $storedRoot,
-        'treeRoot'         => $treeRoot ?? 'missing',
-        'observedRoot'     => $observedRoot,
-        'observationCount' => $nextObservationCount,           // Correct: includes current run
-        'firstObserved'    => $firstObservedTimestamp,
-        'currentRun'       => $timestamp
-    ];
-
+if ($storedRoot !== $observedRoot) {
     $violations[] = [
         'ruleId'      => 'merkleIntegrity',
         'observation' => $canonicalObservation,
-        'facts'       => $facts
+        'facts'       => [
+            'storedRoot'       => $storedRoot,
+            'observedRoot'     => $observedRoot,
+            'observationCount' => $nextObservationCount,
+            'firstObserved'    => $firstObservedTimestamp,
+            'currentRun'       => $timestamp
+        ]
     ];
 }
 #endregion SECTION IV.C
@@ -482,31 +446,45 @@ if (!file_exists($inventoryPath)) {
         $declaredPaths = [];
         foreach ($inventory['items'] as $item) {
             if (isset($item['path'], $item['type'])) {
-                $declaredPaths[ltrim($item['path'], '/')] = $item['type'];
+                $declaredPaths[$item['path']] = $item['type'];  // Keep "/api"
             }
         }
 
-        // Observe filesystem
+        // Observe filesystem — canonical root-anchored paths
         $observedPaths = [];
 
         $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
         );
 
         foreach ($iterator as $fileInfo) {
-            $fullPath = $fileInfo->getPathname();
-            $relativePath = ltrim(str_replace($root, '', $fullPath), DIRECTORY_SEPARATOR);
+            /** @var SplFileInfo $fileInfo */
 
-            foreach (['.git','node_modules','vendor','runtimeEphemeral','records','derived'] as $dir) {
-                if (str_contains($relativePath, $dir . DIRECTORY_SEPARATOR)) {
+            $fullPath     = $fileInfo->getPathname();
+            $relativePath = str_replace($root, '', $fullPath);
+
+            $normalized   = str_replace('\\', '/', $relativePath);
+            $canonicalPath = '/' . ltrim($normalized, '/');
+
+            if ($canonicalPath === '/') {
+                continue;
+            }
+
+            foreach (['.git', 'node_modules', 'vendor', 'runtimeEphemeral', 'records', 'derived'] as $dir) {
+                if (str_starts_with($canonicalPath . '/', '/' . $dir . '/')) {
                     continue 2;
                 }
             }
 
-            $observedPaths[$relativePath] = $fileInfo->isDir() ? 'dir' : 'file';
+            if (preg_match('/\.(?:keep|gitkeep)$/', $canonicalPath)) {
+                continue;
+            }
+
+            $observedPaths[$canonicalPath] = $fileInfo->isDir() ? 'dir' : 'file';
         }
 
-        // Declared but missing
+        // Declared but missing / type mismatch
         foreach ($declaredPaths as $path => $expectedType) {
             if (!isset($observedPaths[$path])) {
                 $violations[] = [
@@ -607,7 +585,6 @@ foreach ($violations as $v) {
     }
     $seen[] = $obs;
 
-    // Always generate notes — AI for Merkle, governed placeholder for others
     $notes = renderViolationNotes($ruleId, $facts, $root);
 
     $normalizedViolations[] = [
@@ -641,16 +618,12 @@ foreach ($normalizedViolations as $nv) {
             continue;
         }
 
-        if (
-            ($record['identityHash'] ?? null) === $hash
-        ) {
+        if (($record['identityHash'] ?? null) === $hash) {
             $record['lastObserved'] = $timestamp;
             if (!$isVerificationPass) {
                 $record['observationCount'] = ($record['observationCount'] ?? 0) + 1;
             }
-            // Note: violationNotes always updated to reflect latest narrative
             if ($notes !== null) {
-                // First-time addition of notes
                 $record['violationNotes'] = $notes;
             }
             $found   = true;
@@ -673,7 +646,7 @@ foreach ($normalizedViolations as $nv) {
             'notificationSent'  => null,
             'violationBatch'    => $violationBatch,
             'resolved'          => null,
-            'resolution'        => null,
+            'resolution'       => null,
             'lastObserved'      => $timestamp,
             'observationCount'  => 1
         ];

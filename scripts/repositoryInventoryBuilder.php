@@ -68,25 +68,42 @@ $iterator = new RecursiveIteratorIterator(
 );
 
 foreach ($iterator as $file) {
+    /** @var SplFileInfo $file */
 
-    $relPath = normalizePath($file->getPathname(), $repoRoot);
+    $fullPath = $file->getPathname();
+    $relPath  = normalizePath($fullPath, $repoRoot);
 
-    if ($relPath === '') continue;
-    if (isExcluded($relPath, $excluded)) continue;
-    if (preg_match('/\.keep$|\.gitkeep$/', $relPath)) continue;
+    // Skip the root directory itself
+    if ($relPath === '') {
+        continue;
+    }
 
-    $integrityScope = in_array($relPath, [
+    // Skip explicitly excluded paths (e.g. .git, node_modules)
+    if (isExcluded($relPath, $excluded)) {
+        continue;
+    }
+
+    // Skip placeholder .keep files
+    if (preg_match('/\.(?:keep|gitkeep)$/', $relPath)) {
+        continue;
+    }
+
+    // Force canonical root-anchored path — this is now the single source of truth
+    $canonicalPath = '/' . ltrim($relPath, '/');
+
+    // Determine Merkle integrity scope using the canonical path
+    $integrityScope = in_array($canonicalPath, [
         '/data/records/repositoryInventory.json',
         '/data/records/merkleTree.json',
-        '/data/records/merkleRoot.txt'
+        '/data/records/merkleRoot.txt',
     ], true) ? 'MERKLE_EXCLUDED' : 'MERKLE_INCLUDED';
 
     $items[] = [
         'id'             => 'TEMP',
-        'path'           => $relPath,
+        'path'           => $canonicalPath,           // Always root-anchored e.g. "/api", "/api/askOpenAI.php"
         'type'           => $file->isDir() ? 'dir' : 'file',
         'integrityScope' => $integrityScope,
-        'purpose'        => 'Pre-SIS auto-generated inventory entry'
+        'purpose'        => 'Pre-SIS auto-generated inventory entry',
     ];
 }
 
