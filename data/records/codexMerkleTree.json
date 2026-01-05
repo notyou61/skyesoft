@@ -1,21 +1,30 @@
 {
     "meta": {
-        "title": "Skyesoft Codex Merkle Tree",
-        "generatedAt": 1767530514,
-        "generatedBy": "scripts/merkleBuilder.php",
-        "description": "Merkle tree representing integrity state of Codex. Leaves correspond to top-level Codex objects only."
+        "generatedAt": "2026-01-04T14:08:45-07:00",
+        "algorithm": "SHA-256",
+        "scope": "codex",
+        "description": "Merkle tree for Codex integrity validation."
     },
-    "tree": {
-        "algorithm": "sha256",
-        "leafCount": 1,
-        "root": "91bd3ea2476656679b0f24418afd87484cd2b09657aca9017d32346acc34240c",
-        "leaves": {
-            "codex.json": "91bd3ea2476656679b0f24418afd87484cd2b09657aca9017d32346acc34240c"
-        },
-        "layers": [
-            [
-                "91bd3ea2476656679b0f24418afd87484cd2b09657aca9017d32346acc34240c"
-            ]
+    "leaves": {
+        "constitution": "c9a4acb7ab586c392991e80bbb125fa7edb1f6dbfb71f61416daf09660addbb1",
+        "meta": "8c0f3dbe3e6c33d25b0608fca894c2f17f13e85f718ac261d326ca218a331f50",
+        "modules": "b0fb7befcb3d2f0dcacf3513bc83bf73b598c01ddc971d89f55bb6707b5dc176",
+        "standards": "44547927aaa64bdcd298e9a45ed67080f04c37c0c42421cbf48d44bedcbb7718"
+    },
+    "layers": [
+        [
+            "c9a4acb7ab586c392991e80bbb125fa7edb1f6dbfb71f61416daf09660addbb1",
+            "8c0f3dbe3e6c33d25b0608fca894c2f17f13e85f718ac261d326ca218a331f50",
+            "b0fb7befcb3d2f0dcacf3513bc83bf73b598c01ddc971d89f55bb6707b5dc176",
+            "44547927aaa64bdcd298e9a45ed67080f04c37c0c42421cbf48d44bedcbb7718"
+        ],
+        [
+            "a64ee3ad25eec229ef8a12d924cec9cf04cf599a5b71104a53e58a8e4ee5dc50",
+            "d492a1bd08ab9a20729bd4727826c0830ef7c0b064a45cf6036726bb1bc444c4"
+        ],
+        [
+            "2f1c898fd4e466fee134e95efc25db098d9e3104b6df7d6d56bfdf64dc689364"
         ]
-    }
+    ],
+    "root": "2f1c898fd4e466fee134e95efc25db098d9e3104b6df7d6d56bfdf64dc689364"
 }

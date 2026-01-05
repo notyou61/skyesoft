@@ -25,24 +25,18 @@ while (ob_get_level()) {
     ob_end_clean();
 }
 
-#region CONFIG
-
+#region SECTION I — CONFIGURATION
 $repoRoot   = realpath(__DIR__ . '/..');
-// Output path for the generated inventory
 $outputPath = $repoRoot . '/data/records/repositoryInventory.json';
 
 $excluded = [
     '/.git',
-    '/node_modules',
-    '/package.json',
-    '/package-lock.json',
-    '/repoTree.txt',
-    '/tree.txt'
+    '/node_modules'
 ];
 
-#endregion CONFIG
+#endregion SECTION I
 
-#region HELPERS
+#region SECTION II — PATH UTILITIES
 
 function normalizePath(string $fullPath, string $root): string
 {
@@ -62,50 +56,9 @@ function isExcluded(string $path, array $excluded): bool
     return false;
 }
 
-/**
- * Codex-governed category resolver (path-based only)
- */
-function resolveCategory(string $path, bool $isDir): string
-{
-    if (preg_match('#^/(codex|assets|api|documents|reports|scripts|modules|bulletinBoards|secure)$#', $path)) {
-        return 'root';
-    }
+#endregion SECTION II
 
-    if (str_starts_with($path, '/secure/')) {
-        return 'security';
-    }
-
-    return match (true) {
-        str_starts_with($path, '/codex/')        => 'structural',
-        str_starts_with($path, '/api/')          => 'execution',
-        str_starts_with($path, '/scripts/')      => 'execution',
-        str_starts_with($path, '/modules/')      => 'execution',
-        str_starts_with($path, '/assets/data/')  => 'system-registry',
-        str_starts_with($path, '/assets/')       => 'asset',
-        str_starts_with($path, '/documents/')    => 'documentation',
-        str_starts_with($path, '/reports/')      => 'system-state',
-        default                                  => 'content'
-    };
-}
-
-/**
- * Tier resolution (pre-SIS safe)
- */
-function resolveTier(string $category): string
-{
-    return match ($category) {
-        'structural'      => 'Tier-2',
-        'system-registry' => 'Tier-2',
-        'security'        => 'Tier-2',
-        'execution'       => 'Tier-3',
-        'system-state'    => 'Tier-3',
-        default           => 'unassigned'
-    };
-}
-
-#endregion HELPERS
-
-#region SCAN_FILESYSTEM
+#region SECTION III — FILESYSTEM SCAN
 
 $items = [];
 
@@ -122,10 +75,6 @@ foreach ($iterator as $file) {
     if (isExcluded($relPath, $excluded)) continue;
     if (preg_match('/\.keep$|\.gitkeep$/', $relPath)) continue;
 
-    $isDir    = $file->isDir();
-    $category = resolveCategory($relPath, $isDir);
-    $tier     = resolveTier($category);
-
     $integrityScope = in_array($relPath, [
         '/data/records/repositoryInventory.json',
         '/data/records/merkleTree.json',
@@ -135,19 +84,15 @@ foreach ($iterator as $file) {
     $items[] = [
         'id'             => 'TEMP',
         'path'           => $relPath,
-        'type'           => $isDir ? 'dir' : 'file',
-        'category'       => $category,
-        'tier'           => $tier,
+        'type'           => $file->isDir() ? 'dir' : 'file',
         'integrityScope' => $integrityScope,
-        'purpose'        => 'Pre-SIS auto-generated inventory entry',
-        'status'         => 'active',
-        'name'           => basename($relPath)
+        'purpose'        => 'Pre-SIS auto-generated inventory entry'
     ];
 }
 
-#endregion SCAN_FILESYSTEM
+#endregion SECTION III
 
-#region SORT_AND_REINDEX
+#region SECTION IV — SORTING & ID ASSIGNMENT
 
 usort($items, fn ($a, $b) => strcmp($a['path'], $b['path']));
 
@@ -156,18 +101,18 @@ foreach ($items as $i => &$item) {
 }
 unset($item);
 
-#endregion SORT_AND_REINDEX
+#endregion SECTION IV
 
-#region OUTPUT — INVENTORY DECLARATION
+#region SECTION V — INVENTORY DECLARATION OUTPUT
 
 $inventory = [
     'meta' => [
         'title'       => 'Skyesoft Repository Inventory',
-        'generatedAt' => date('c'),
+        'generatedAt' => time(), // UNIX epoch (governed)
         'generatedBy' => 'scripts/repositoryInventoryBuilder.php',
         'codexTier'   => 'Tier-2',
         'state'       => 'DECLARED',
-        'sisPhase'    => 'pre',
+        'purpose'     => 'Declared repository inventory entry',
         'description' => 'Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.'
     ],
     'items' => $items
@@ -175,7 +120,10 @@ $inventory = [
 
 // Atomic write
 $tmpPath = $outputPath . '.tmp';
-file_put_contents($tmpPath, json_encode($inventory, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+file_put_contents(
+    $tmpPath,
+    json_encode($inventory, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+);
 rename($tmpPath, $outputPath);
 
 // Human-readable confirmation only
@@ -183,16 +131,14 @@ fwrite(STDOUT, "✔ Repository inventory declared successfully\n");
 fwrite(STDOUT, "• Items indexed: " . count($items) . "\n");
 fwrite(STDOUT, "• Output: /data/records/repositoryInventory.json\n");
 
-#endregion OUTPUT
+#endregion SECTION V
 
-#region PROMOTION_AND_INTEGRITY_CASCADE
+#region SECTION VI — PROMOTION & INTEGRITY CASCADE
 
 $php     = escapeshellarg(PHP_BINARY);
 $scripts = $repoRoot . '/scripts';
 
-// ------------------------------------------------------------------
-// Step 2 — Merkle Commit
-// ------------------------------------------------------------------
+// Step VI.A — Merkle Commit
 $buildCmd = $php . ' ' . escapeshellarg($scripts . '/merkleBuild.php');
 exec($buildCmd, $buildOut, $buildCode);
 
@@ -201,23 +147,19 @@ if ($buildCode !== 0) {
     exit(1);
 }
 
-// ------------------------------------------------------------------
-// Step 3 — Merkle Verify (capture auditor payload)
-// ------------------------------------------------------------------
+// Step VI.B — Merkle Verify (capture auditor payload)
 $verifyCmd = $php . ' ' . escapeshellarg($scripts . '/merkleVerify.php');
 exec($verifyCmd, $verifyOut, $verifyCode);
 
 $auditorJson = implode("\n", $verifyOut);
 
-// ------------------------------------------------------------------
-// Step 4 — Sentinel consume (STDIN-safe)
-// ------------------------------------------------------------------
+// Step VI.C — Sentinel Consumption (STDIN-safe)
 $sentinelCmd = $php . ' ' . escapeshellarg($scripts . '/sentinel.php');
 
 $descriptors = [
-    0 => ['pipe', 'r'], // STDIN
-    1 => ['pipe', 'w'], // STDOUT
-    2 => ['pipe', 'w'], // STDERR
+    0 => ['pipe', 'r'],
+    1 => ['pipe', 'w'],
+    2 => ['pipe', 'w'],
 ];
 
 $process = proc_open($sentinelCmd, $descriptors, $pipes);
@@ -239,4 +181,4 @@ proc_close($process);
 fwrite(STDOUT, $sentinelOut . "\n");
 exit;
 
-#endregion
+#endregion SECTION VI

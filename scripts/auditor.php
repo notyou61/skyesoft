@@ -66,8 +66,8 @@ if (!isset($violationBatch) || !is_string($violationBatch)) {
 #region SECTION I — Path Resolution
 
 $codexPath      = $root . '/codex/codex.json';
-$merkleTreePath = $root . '/data/records/merkleTree.json';
-$merkleRootPath = $root . '/data/records/merkleRoot.txt';
+$merkleTreePath = $root . '/data/records/codexMerkleTree.json';
+$merkleRootPath = $root . '/data/records/codexMerkleRoot.txt';
 
 #endregion SECTION I
 
@@ -467,14 +467,26 @@ if (!file_exists($inventoryPath)) {
 } else {
     $inventory = json_decode(file_get_contents($inventoryPath), true);
 
-    if (!is_array($inventory) || !isset($inventory['paths'])) {
+    if (
+        !is_array($inventory) ||
+        !isset($inventory['items']) ||
+        !is_array($inventory['items'])
+    ) {
         $violations[] = [
             'ruleId'      => 'repositoryInventoryConformance',
-            'observation' => "Repository inventory violation: repositoryInventory.json is malformed or missing paths map.",
+            'observation' => "Repository inventory violation: repositoryInventory.json is malformed or missing items array.",
             'facts'       => ['path' => $inventoryPath]
         ];
     } else {
-        $declaredPaths = $inventory['paths'];
+        // Build declared path map from items[]
+        $declaredPaths = [];
+        foreach ($inventory['items'] as $item) {
+            if (isset($item['path'], $item['type'])) {
+                $declaredPaths[ltrim($item['path'], '/')] = $item['type'];
+            }
+        }
+
+        // Observe filesystem
         $observedPaths = [];
 
         $iterator = new RecursiveIteratorIterator(
@@ -494,9 +506,8 @@ if (!file_exists($inventoryPath)) {
             $observedPaths[$relativePath] = $fileInfo->isDir() ? 'dir' : 'file';
         }
 
-        foreach ($declaredPaths as $path => $meta) {
-            $expectedType = $meta['type'] ?? null;
-
+        // Declared but missing
+        foreach ($declaredPaths as $path => $expectedType) {
             if (!isset($observedPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
@@ -510,7 +521,7 @@ if (!file_exists($inventoryPath)) {
                 continue;
             }
 
-            if ($expectedType && $observedPaths[$path] !== $expectedType) {
+            if ($observedPaths[$path] !== $expectedType) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
                     'observation' => "Repository inventory violation: '{$path}' expected type '{$expectedType}' but found '{$observedPaths[$path]}'.",
@@ -524,15 +535,16 @@ if (!file_exists($inventoryPath)) {
             }
         }
 
+        // Observed but undeclared
         foreach ($observedPaths as $path => $actualType) {
             if (!isset($declaredPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
                     'observation' => "Repository inventory violation: unexpected {$actualType} '{$path}' exists but is not declared.",
                     'facts'       => [
-                        'path'        => $path,
-                        'observedType'=> $actualType,
-                        'issue'       => 'unexpected'
+                        'path'         => $path,
+                        'observedType' => $actualType,
+                        'issue'        => 'unexpected'
                     ]
                 ];
             }
@@ -546,7 +558,7 @@ if (!file_exists($inventoryPath)) {
 if ($auditMode === 'governance') {
     $rulesEvaluated['jurisdictionalRuleConformance'] = true;
 
-    $jurisdictionRegistryPath = $root . '/data/records/jurisdictionRegistry.json';
+    $jurisdictionRegistryPath = $root . '/data/authoritative/jurisdictionRegistry.json';
 
     if (!file_exists($jurisdictionRegistryPath)) {
         $violations[] = [

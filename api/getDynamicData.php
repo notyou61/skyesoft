@@ -11,7 +11,7 @@ declare(strict_types=1);
 // ======================================================================
 
 #region SECTION 0 — Dependencies
-require_once __DIR__ . '/../modules/holidayInterpreter.php';
+require_once __DIR__ . '/holidayInterpreter.php';
 #endregion
 
 #region SECTION 1 — Registry Loading
