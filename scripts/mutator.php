@@ -3,301 +3,296 @@ declare(strict_types=1);
 
 /* =====================================================================
  *  Skyesoft — mutator.php
- *  Role: Mutator (Auto-Fix Bounded Violations)
+ *  Role: Reconciler / Mutator (Positive Corrective Action)
  *  Authority: Reconciliation Governance Standard (RGS)
  *  PHP: 8.3+
  *
  *  Purpose:
- *   • Auto-fix low-risk violations (naming conformance only)
- *   • Write resolution metadata to canonical audit ledger
+ *   • Perform governed corrective actions after audit
+ *   • Write resolution metadata with verifiable facts
+ *   • Never assert correctness — only record actions taken
  *
- *  Governance Notes:
- *   • Trigger: Sentinel-orchestrated after auditor declares runComplete
- *   • Scope: Violations eligible under declared reconciliation classes only
- *   • Deterministic, idempotent, purely structural corrections only
- *   • No semantic inference, no dictionary, no language dependency
- *   • No detection logic
- *   • No notification logic
- *   • Authority is descriptive, delegated by Sentinel, and subordinate to audit
  * ===================================================================== */
 
-#region SECTION 0 — Environment Setup
+#region SECTION 0 — Environment
 
-$rootDir      = dirname(__DIR__);
-$dataDir      = $rootDir . '/data/records';
-$codexDir     = $rootDir . '/codex';
+$rootDir  = dirname(__DIR__);
+$dataDir  = $rootDir . '/data/records';
 
-$auditLogPath = $dataDir . '/auditResults.json';
+$auditLogPath   = $dataDir . '/auditResults.json';
+$merkleRootPath = $dataDir . '/codexMerkleRoot.txt';
+$merkleTreePath = $dataDir . '/codexMerkleTree.json';
+$codexPath      = $rootDir . '/codex/codex.json';
 
 #endregion SECTION 0
 
-#region SECTION I — Helpers
-
-/**
- * Convert an arbitrary key to proper camelCase using pure structural tokenization
- *
- * Rules:
- *   • Remove all non-alphanumeric characters
- *   • Split on runs of letters vs digits
- *   • Preserve digit sequences exactly
- *   • First token lowercase, subsequent tokens capitalized
- *   • Fully deterministic, idempotent, language-independent
- */
-if (!function_exists('isCamelCase')) {
-    function isCamelCase(string $key): bool
-    {
-        return preg_match('/^[a-z][a-zA-Z0-9]*$/', $key) === 1;
-    }
-}
-
-if (!function_exists('toCamelCase')) {
-    function toCamelCase(string $key): string
-    {
-        // If already valid camelCase, preserve exactly
-        if (isCamelCase($key)) {
-            return $key;
-        }
-
-        // Normalize separators to spaces
-        $normalized = preg_replace('/[^a-zA-Z0-9]+/', ' ', $key);
-        $normalized = trim($normalized);
-
-        if ($normalized === '') {
-            return $key;
-        }
-
-        // Tokenize
-        $parts = preg_split('/\s+/', $normalized);
-        $result = '';
-
-        foreach ($parts as $i => $part) {
-            if ($part === '') {
-                continue;
-            }
-
-            if ($i === 0) {
-                $result .= strtolower($part);
-            } else {
-                $result .= ucfirst(strtolower($part));
-            }
-        }
-
-        return $result;
-    }
-}
-
-/**
- * Rename a JSON object key at a dotted path
- * Returns true on successful mutation
- */
-function renameJsonKeyAtPath(
-    string $filePath,
-    string $fullPath,
-    string $oldKey,
-    string $newKey,
-    ?int &$codeLine = null
-): bool {
-    $json = json_decode(file_get_contents($filePath), true);
-    if (!is_array($json)) {
-        return false;
-    }
-
-    $segments = explode('.', $fullPath);
-    if (count($segments) < 2) {
-        return false;
-    }
-
-    // Navigate to parent
-    array_pop($segments);
-    $ref = &$json;
-
-    foreach ($segments as $seg) {
-        if (!is_array($ref) || !isset($ref[$seg])) {
-            return false;
-        }
-        $ref = &$ref[$seg];
-    }
-
-    if (!is_array($ref) || !isset($ref[$oldKey]) || $oldKey === $newKey) {
-        return false;
-    }
-
-    /* GOVERNED MUTATION LINE */
-    $codeLine = __LINE__ + 1;
-    $ref[$newKey] = $ref[$oldKey];
-    unset($ref[$oldKey]);
-
-    $success = file_put_contents(
-        $filePath,
-        json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    ) !== false;
-
-    return $success;
-}
-
-/**
- * Write resolution metadata by violationId
- */
-function writeResolutionByViolationId(
-    string $auditLogPath,
-    string $violationId,
-    array $resolution
-): bool {
-    $log = json_decode(file_get_contents($auditLogPath), true);
-    if (!is_array($log)) {
-        return false;
-    }
-
-    $updated = false;
-    foreach ($log as &$rec) {
-        if (
-            ($rec['type'] ?? null) !== 'violation' ||
-            ($rec['violationId'] ?? null) !== $violationId ||
-            ($rec['resolved'] ?? null) !== null
-        ) {
-            continue;
-        }
-
-        $rec['resolved']   = time();
-        $rec['resolution'] = $resolution;
-        $updated = true;
-        break;
-    }
-    unset($rec);
-
-    if (!$updated) {
-        return false;
-    }
-
-    return file_put_contents(
-        $auditLogPath,
-        json_encode($log, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    ) !== false;
-}
-
-#endregion SECTION I
-
-#region SECTION II — Load Canonical Registry
+#region SECTION I — Load Audit Ledger
 
 if (!file_exists($auditLogPath)) {
     exit(1);
 }
 
-$log = json_decode(file_get_contents($auditLogPath), true);
-if (!is_array($log)) {
+$auditLog = json_decode(file_get_contents($auditLogPath), true);
+if (!is_array($auditLog)) {
     exit(1);
+}
+
+#endregion SECTION I
+
+#region SECTION II — Helpers
+
+function now(): int
+{
+    return time();
+}
+
+function runCodexMerkleBuilder(): bool
+{
+    global $rootDir;  // ← Add this line
+
+    $cmd = 'php ' . escapeshellarg($rootDir . '/scripts/codexMerkleBuilder.php');
+    exec($cmd, $out, $code);
+    return $code === 0;
+}
+
+if (!function_exists('loadEnvLocal')) {
+    function loadEnvLocal(string $root): void
+    {
+        $envPath = $root . '/secure/env.local';
+
+        if (!file_exists($envPath)) {
+            return;
+        }
+
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
+                continue;
+            }
+            [$key, $value] = explode('=', $line, 2);
+            putenv(trim($key) . '=' . trim($value));
+        }
+    }
+}
+
+function readMerkleRoot(): ?string
+{
+    global $merkleRootPath;
+    if (!file_exists($merkleRootPath)) {
+        return null;
+    }
+    return trim(file_get_contents($merkleRootPath));
+}
+
+function extractObservedRoot(array $violation): ?string
+{
+    // Preferred: use structured facts if available (RGS-compliant)
+    if (isset($violation['facts']['observedRoot'])) {
+        return $violation['facts']['observedRoot'];
+    }
+
+    // Fallback: parse narrative text (backward compatibility only)
+    foreach ($violation['violationNotes']['details'] ?? [] as $line) {
+        if (str_starts_with($line, 'Computed observed root:')) {
+            return trim(substr($line, strlen('Computed observed root:')));
+        }
+    }
+    return null;
+}
+
+/**
+ * Generate governed AI resolution narrative (MANDATORY)
+ */
+function generateResolutionNarrative(
+    array $violation,
+    array $facts,
+    string $promptFile
+): ?array {
+
+    if (!file_exists($promptFile)) {
+        return null;
+    }
+
+    // ==== CRITICAL FIX: Load environment before reading API key ====
+    loadEnvLocal(dirname(__DIR__));
+
+    $apiKey = getenv('OPENAI_API_KEY');
+    if (!$apiKey) {
+        return null;
+    }
+
+    $template = file_get_contents($promptFile);
+    if ($template === false) {
+        return null;
+    }
+
+    $payloadPrompt = str_replace(
+        ['{{VIOLATION_JSON}}', '{{FACTS_JSON}}'],
+        [
+            json_encode($violation, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            json_encode($facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        ],
+        $template
+    );
+
+    $payload = json_encode([
+        'model'       => 'gpt-4o-mini',
+        'temperature' => 0.0,
+        'messages'    => [
+            ['role' => 'system', 'content' => $payloadPrompt]
+        ]
+    ]);
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey
+            ],
+            'content' => $payload,
+            'timeout' => 15
+        ],
+        'ssl' => [
+            'verify_peer'      => true,
+            'verify_peer_name' => true
+        ]
+    ]);
+
+    $response = @file_get_contents(
+        'https://api.openai.com/v1/chat/completions',
+        false,
+        $context
+    );
+
+    if ($response === false) {
+        return null;
+    }
+
+    $data = json_decode($response, true);
+    if (!isset($data['choices'][0]['message']['content'])) {
+        return null;
+    }
+
+    $content = trim($data['choices'][0]['message']['content']);
+
+    // ==== HARDENED JSON fence stripping ====
+    if (preg_match('/^```/', $content)) {
+        $content = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $content);
+        $content = trim($content);
+    }
+
+    $parsed = json_decode($content, true);
+
+    if (
+        !is_array($parsed) ||
+        !isset($parsed['summary'], $parsed['details']) ||
+        !is_array($parsed['details'])
+    ) {
+        return null;
+    }
+
+    return [
+        'summary' => $parsed['summary'],
+        'details' => array_values($parsed['details'])
+    ];
 }
 
 #endregion SECTION II
 
-#region SECTION III — Mutator Execution (NAMING_CONFORMANCE | iconMap.json ONLY)
+#region SECTION III — Reconciliation Engine
 
-$mutatedCount = 0;
+$updated = false;
 
-/*
- * RECONCILIATION SAFETY CONTRACT
- * ------------------------------
- * • Applies only to violations eligible under declared reconciliation classes
- * • Enforces NAME_CONFORMANCE_SAFE constraints when applicable
- * • Deterministic and idempotent by construction
- * • Performs structural key renames only
- * • Never mutates values, numeric keys, or audit artifacts
- * • Scope and correctness are confirmed only by subsequent audit
- */
+foreach ($auditLog as &$v) {
 
-
-foreach ($log as $v) {
-
-    // --------------------------------------------------
-    // Basic eligibility filters
-    // --------------------------------------------------
     if (
-        ($v['type'] ?? null) !== 'violation' ||
-        ($v['resolved'] ?? null) !== null ||
-        ($v['ruleId'] ?? null) !== 'NAMING_CONFORMANCE'
+        ($v['type'] ?? 'violation') !== 'violation' ||
+        ($v['resolved'] ?? null) !== null
     ) {
         continue;
     }
 
-    // --------------------------------------------------
-    // Parse observation
-    // --------------------------------------------------
-    if (
-        !preg_match(
-            "/key '([^']+)' in '([^']+)' \\(path: ([^)]+)\\)/",
-            (string) ($v['observation'] ?? ''),
-            $m
-        )
-    ) {
-        continue;
-    }
+    switch ($v['ruleId'] ?? '') {
 
-    [$badKey, $file, $path] = [$m[1], $m[2], $m[3]];
+    /* =============================================================
+    * MERKLE INTEGRITY RECONCILIATION
+    * ============================================================= */
+    case 'merkleIntegrity':
 
-    // --------------------------------------------------
-    // Strict scope enforcement
-    // --------------------------------------------------
-    if (preg_match('/\\.\\d+$/', $path)) {
-        continue;
-    }
+        $observedBefore = extractObservedRoot($v);
+        if ($observedBefore === null) {
+            break;
+        }
 
-    // Never mutate numeric keys
-    if (ctype_digit($badKey)) {
-        continue;
-    }
+        // ---- Perform positive corrective action
+        if (!runCodexMerkleBuilder()) {
+            break;
+        }
 
-    $filePath = $rootDir . '/data/authoritative/' . $file;
-    if (!file_exists($filePath)) {
-        continue;
-    }
+        $observedAfter = readMerkleRoot();
+        if ($observedAfter === null) {
+            break;
+        }
 
-    // --------------------------------------------------
-    // Compute deterministic fix
-    // --------------------------------------------------
-    $fixedKey = toCamelCase($badKey);
+        // ---- Assemble FACTS (show your work)
+        $facts = [
+            'artifact'             => 'codex/codex.json',
+            'storedGovernanceRoot' => $observedAfter,
+            'observedRootBefore'   => $observedBefore,
+            'observedRootAfter'    => $observedAfter,
+            'merkleBuilder'        => 'scripts/codexMerkleBuilder.php',
+            'timestamp'            => now()
+        ];
 
-    // No-op guard
-    if ($badKey === $fixedKey) {
-        continue;
-    }
-
-    // Target must be valid camelCase
-    if (!isCamelCase($fixedKey)) {
-        continue;
-    }
-
-    // --------------------------------------------------
-    // Apply governed mutation
-    // --------------------------------------------------
-    $codeLine = null;
-
-    if (renameJsonKeyAtPath($filePath, $path, $badKey, $fixedKey, $codeLine)) {
-        $mutatedCount++;
-
-        writeResolutionByViolationId(
-            $auditLogPath,
-            (string) $v['violationId'],
-            [
-                'actor'                => 'mutator',
-                'ruleId'               => 'NAMING_CONFORMANCE',
-                'action'               => 'renameKey',
-                'before'               => $badKey,
-                'after'                => $fixedKey,
-                'file'                 => $file,
-                'path'                 => $path,
-                'codeLine'             => $codeLine,
-                'reconciliationClass'  => 'NAME_CONFORMANCE_SAFE',
-                'proof' => [
-                    'nonSemantic'        => true,
-                    'deterministic'      => true,
-                    'idempotent'         => true,
-                    'numericKeysIgnored' => true,
-                    'valueUntouched'     => true
-                ]
-            ] // ✅ THIS was missing
+        // ---- Mandatory AI narrative (governed, non-authoritative)
+        $aiNarrative = generateResolutionNarrative(
+            violation: $v,
+            facts: $facts,
+            promptFile: $rootDir . '/prompts/resolutionNarrative.prompt'
         );
-    }
 
+        // Governance rule: no AI narrative → no resolution
+        if (
+            $aiNarrative === null ||
+            !isset($aiNarrative['summary'], $aiNarrative['details'])
+        ) {
+            break;
+        }
+
+        // ---- Commit resolution atomically
+        $v['resolved'] = now();
+        $v['resolution'] = [
+            'method'              => 'automated',
+            'actor'               => 'mutator',
+            'reconciliationClass' => 'GOVERNANCE_REBUILD',
+            'facts'               => $facts,
+            'summary'             => $aiNarrative['summary'],
+            'details'             => $aiNarrative['details'],
+            'assistedByAI'        => true
+        ];
+
+        $updated = true;
+        break;
+
+        default:
+            // Governed expansion point
+            break;
+    }
 }
 
+unset($v);
+
 #endregion SECTION III
+
+#region SECTION IV — Persist Ledger
+
+if ($updated) {
+    file_put_contents(
+        $auditLogPath,
+        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+    );
+}
+
+echo "✔ Mutator reconciliation run complete\n";
+
+#endregion SECTION IV
