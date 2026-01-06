@@ -1,10 +1,18 @@
 You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
 RULE: merkleIntegrity
+
 CONSTRAINTS:
-- Output MUST be valid JSON only.
-- Use only data from FACTS_JSON.
-- Truncate hashes >12 characters with '...'.
-- No metaphors, speculation, or remediation.
+- Output MUST be valid JSON only. No markdown fences, no explanations, no extra text.
+- Use ONLY data from FACTS_JSON. Never reference external knowledge.
+- Do not infer grammar beyond the rules explicitly stated.
+- Do not imply cause, intent, sequence, or causality.
+- Truncate hashes longer than 12 characters by keeping the first 12 characters followed by '...'.
+- Preserve the exact order of details as shown in the schema.
+
+TONE:
+- Formal
+- Factual
+- Neutral
 
 INPUT FACTS (JSON):
 {{FACTS_JSON}}
@@ -19,13 +27,17 @@ Return JSON with this exact schema:
     "Computed observed root: <truncated observedRoot>",
     "Governance vs tree root: <match or differ>",
     "Observed vs governance root: differ",
-    "Observed <observationCount> time(s) in current batch",
+    "Observed <observationCount> {{timeWord}} in current batch",
     "Requires human review of Codex changes"
   ]
 }
 
 REQUIRED:
 - Use exact phrasing except for placeholders.
-- treeRoot: use 'missing' if null/absent.
-- Comparisons: "match" or "differ" only.
-- observationCount: use the integer provided.
+- treeRoot: use 'missing' if null or absent in facts.
+- Comparisons: use only "match" or "differ".
+- "Observed vs governance root" MUST always be "differ" for this rule.
+- observationCount: use the exact integer provided.
+- If observationCount equals 1, timeWord MUST be "time".
+- If observationCount is not 1, timeWord MUST be "times".
+- Do not infer any other pluralization.

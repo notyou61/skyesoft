@@ -48,7 +48,7 @@ function now(): int
 
 function runCodexMerkleBuilder(): bool
 {
-    global $rootDir;  // ← Add this line
+    global $rootDir;
 
     $cmd = 'php ' . escapeshellarg($rootDir . '/scripts/codexMerkleBuilder.php');
     exec($cmd, $out, $code);
@@ -56,21 +56,27 @@ function runCodexMerkleBuilder(): bool
 }
 
 if (!function_exists('loadEnvLocal')) {
-    function loadEnvLocal(string $root): void
+    function loadEnvLocal(string $root): bool
     {
-        $envPath = $root . '/secure/env.local';
+        $candidates = [
+            $root . '/secure/env.local',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $root) . '/secure/env.local',
+            dirname($root) . '/secure/env.local',
+        ];
 
-        if (!file_exists($envPath)) {
-            return;
-        }
-
-        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-            if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
-                continue;
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
+                        continue;
+                    }
+                    [$key, $value] = explode('=', $line, 2);
+                    putenv(trim($key) . '=' . trim($value));
+                }
+                return true;
             }
-            [$key, $value] = explode('=', $line, 2);
-            putenv(trim($key) . '=' . trim($value));
         }
+        return false;
     }
 }
 
@@ -83,25 +89,6 @@ function readMerkleRoot(): ?string
     return trim(file_get_contents($merkleRootPath));
 }
 
-function extractObservedRoot(array $violation): ?string
-{
-    // Preferred: use structured facts if available (RGS-compliant)
-    if (isset($violation['facts']['observedRoot'])) {
-        return $violation['facts']['observedRoot'];
-    }
-
-    // Fallback: parse narrative text (backward compatibility only)
-    foreach ($violation['violationNotes']['details'] ?? [] as $line) {
-        if (str_starts_with($line, 'Computed observed root:')) {
-            return trim(substr($line, strlen('Computed observed root:')));
-        }
-    }
-    return null;
-}
-
-/**
- * Generate governed AI resolution narrative (MANDATORY)
- */
 function generateResolutionNarrative(
     array $violation,
     array $facts,
@@ -112,8 +99,7 @@ function generateResolutionNarrative(
         return null;
     }
 
-    // ==== CRITICAL FIX: Load environment before reading API key ====
-    loadEnvLocal(dirname(__DIR__));
+    loadEnvLocal(realpath(dirname(__DIR__)));
 
     $apiKey = getenv('OPENAI_API_KEY');
     if (!$apiKey) {
@@ -175,7 +161,6 @@ function generateResolutionNarrative(
 
     $content = trim($data['choices'][0]['message']['content']);
 
-    // ==== HARDENED JSON fence stripping ====
     if (preg_match('/^```/', $content)) {
         $content = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', $content);
         $content = trim($content);
@@ -212,72 +197,109 @@ foreach ($auditLog as &$v) {
         continue;
     }
 
-    switch ($v['ruleId'] ?? '') {
+    if (($v['ruleId'] ?? '') !== 'merkleIntegrity') {
+        continue;
+    }
 
-    /* =============================================================
-    * MERKLE INTEGRITY RECONCILIATION
-    * ============================================================= */
-    case 'merkleIntegrity':
+    // Auditor’s authoritative observed root at detection time
+    $observedRoot = $v['facts']['observedRoot'] ?? null;
+    if (!is_string($observedRoot) || $observedRoot === '') {
+        continue;
+    }
 
-        $observedBefore = extractObservedRoot($v);
-        if ($observedBefore === null) {
+    // Governed root BEFORE rebuild
+    $governedRootBefore = readMerkleRoot();
+    $governedRootBefore = (is_string($governedRootBefore) && $governedRootBefore !== '') 
+        ? $governedRootBefore 
+        : 'missing';
+
+    // Execute corrective action
+    if (!runCodexMerkleBuilder()) {
+        continue;
+    }
+
+    // Governed root AFTER rebuild
+    $governedRootAfter = readMerkleRoot();
+    if (!is_string($governedRootAfter) || $governedRootAfter === '') {
+        continue;
+    }
+
+    // === INVARIANTS ===
+    // 1. Actual snapshot change occurred (unless previously missing)
+    if ($governedRootBefore !== 'missing' && $governedRootBefore === $governedRootAfter) {
+        continue;
+    }
+
+    // 2. Rebuild successfully reconciled to auditor's observed state
+    if ($governedRootAfter !== $observedRoot) {
+        continue;
+    }
+
+    // Canonical observation — the verdict
+    $canonicalObservation = $v['observation'] 
+        ?? 'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
+
+    $facts = [
+        'artifact'            => 'codex/codex.json',
+        'governedRootBefore'  => $governedRootBefore,
+        'observedRoot'        => $observedRoot,
+        'governedRootAfter'   => $governedRootAfter,
+        'merkleBuilder'       => 'scripts/codexMerkleBuilder.php',
+        'timestamp'           => now(),
+        'observation'         => $canonicalObservation
+    ];
+
+    // Robust prompt file resolution
+    $promptCandidates = [
+        $rootDir . '/prompts/resolutionNarrative.prompt',
+        $rootDir . '/codex/prompts/resolutionNarrative.prompt',
+        str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/prompts/resolutionNarrative.prompt',
+        str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/codex/prompts/resolutionNarrative.prompt',
+    ];
+
+    $promptFile = null;
+    foreach ($promptCandidates as $candidate) {
+        if (file_exists($candidate)) {
+            $promptFile = $candidate;
             break;
         }
+    }
 
-        // ---- Perform positive corrective action
-        if (!runCodexMerkleBuilder()) {
-            break;
-        }
-
-        $observedAfter = readMerkleRoot();
-        if ($observedAfter === null) {
-            break;
-        }
-
-        // ---- Assemble FACTS (show your work)
-        $facts = [
-            'artifact'             => 'codex/codex.json',
-            'storedGovernanceRoot' => $observedAfter,
-            'observedRootBefore'   => $observedBefore,
-            'observedRootAfter'    => $observedAfter,
-            'merkleBuilder'        => 'scripts/codexMerkleBuilder.php',
-            'timestamp'            => now()
-        ];
-
-        // ---- Mandatory AI narrative (governed, non-authoritative)
+    $aiNarrative = null;
+    if ($promptFile !== null) {
         $aiNarrative = generateResolutionNarrative(
             violation: $v,
             facts: $facts,
-            promptFile: $rootDir . '/prompts/resolutionNarrative.prompt'
+            promptFile: $promptFile
         );
-
-        // Governance rule: no AI narrative → no resolution
-        if (
-            $aiNarrative === null ||
-            !isset($aiNarrative['summary'], $aiNarrative['details'])
-        ) {
-            break;
-        }
-
-        // ---- Commit resolution atomically
-        $v['resolved'] = now();
-        $v['resolution'] = [
-            'method'              => 'automated',
-            'actor'               => 'mutator',
-            'reconciliationClass' => 'GOVERNANCE_REBUILD',
-            'facts'               => $facts,
-            'summary'             => $aiNarrative['summary'],
-            'details'             => $aiNarrative['details'],
-            'assistedByAI'        => true
-        ];
-
-        $updated = true;
-        break;
-
-        default:
-            // Governed expansion point
-            break;
     }
+
+    // Deterministic fallback narrative (governed, non-authoritative)
+    if ($aiNarrative === null) {
+        $aiNarrative = [
+            'summary' => 'Merkle snapshot rebuilt to reconcile governed state with the observed Codex state.',
+            'details' => [
+                'The Codex Merkle builder was executed as the corrective action.',
+                'The governed Merkle root was updated based on the current Codex content.',
+                'Resolution is recorded because the new governed root matches the observed root from the audit run.',
+                'No claims are made regarding why the divergence occurred.'
+            ]
+        ];
+    }
+
+    // === COMMIT THE RESOLUTION ===
+    $v['resolved'] = now();
+    $v['resolution'] = [
+        'method'              => 'automated',
+        'actor'               => 'mutator',
+        'reconciliationClass' => 'GOVERNANCE_REBUILD',
+        'facts'               => $facts,
+        'summary'             => $aiNarrative['summary'],
+        'details'             => $aiNarrative['details'],
+        'assistedByAI'        => ($promptFile !== null)
+    ];
+
+    $updated = true;
 }
 
 unset($v);

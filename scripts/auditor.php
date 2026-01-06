@@ -585,13 +585,18 @@ foreach ($violations as $v) {
     }
     $seen[] = $obs;
 
-    $notes = renderViolationNotes($ruleId, $facts, $root);
+    // === AI Augmentation: Explanatory only, never touches observation ===
+    // Pass the canonical observation into facts so AI can explain it
+    $factsForAI = $facts;
+    $factsForAI['observation'] = $obs;  // Court reporter gets the verdict
+
+    $notes = renderViolationNotes($ruleId, $factsForAI, $root);
 
     $normalizedViolations[] = [
         'ruleId'         => $ruleId,
-        'observation'    => $obs,
-        'violationNotes' => $notes,
-        'facts'          => $facts
+        'observation'    => $obs,           // Law — untouched
+        'violationNotes' => $notes,         // Commentary — AI-assisted
+        'facts'          => $facts          // Raw detection facts only
     ];
 }
 
@@ -608,6 +613,7 @@ foreach ($normalizedViolations as $nv) {
     $obs    = $nv['observation'];
     $notes  = $nv['violationNotes'];
     $ruleId = $nv['ruleId'];
+    $facts  = $nv['facts'];
 
     [$file, $path] = extractViolationLocation($obs);
     $hash = canonicalViolationHash($ruleId, $file, $path, $obs);
@@ -626,6 +632,7 @@ foreach ($normalizedViolations as $nv) {
             if ($notes !== null) {
                 $record['violationNotes'] = $notes;
             }
+            $record['facts'] = $facts;  // Always keep raw facts up to date
             $found   = true;
             $updated = true;
             $emitted[] = $record;
@@ -648,7 +655,8 @@ foreach ($normalizedViolations as $nv) {
             'resolved'          => null,
             'resolution'       => null,
             'lastObserved'      => $timestamp,
-            'observationCount'  => 1
+            'observationCount'  => 1,
+            'facts'             => $facts
         ];
         $auditLog[] = $newRecord;
         $emitted[]  = $newRecord;
@@ -656,6 +664,7 @@ foreach ($normalizedViolations as $nv) {
     }
 }
 
+// Infer resolution by absence of canonical observation
 foreach ($auditLog as &$record) {
     if (
         ($record['resolved'] ?? null) !== null ||
@@ -679,7 +688,7 @@ unset($record);
 if ($updated) {
     file_put_contents(
         $auditLogPath,
-        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
     );
 }
 

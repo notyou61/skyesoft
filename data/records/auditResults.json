@@ -3,52 +3,133 @@
         "violationId": "VIO-001",
         "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
         "ruleId": "merkleIntegrity",
-        "timestamp": 1767633720,
+        "timestamp": 1767724569,
         "auditMode": "governance",
         "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
         "violationNotes": {
-            "summary": "Merkle root mismatch (observed \u2260 governed)",
+            "summary": "Merkle root mismatch (observed ≠ governed)",
             "details": [
-                "Stored governance root: 8ae0be5265bb",
+                "Stored governance root: a82a2dc357...",
                 "Merkle tree root: missing",
-                "Computed observed root: 5537ad1eec9f",
+                "Computed observed root: 554049aa8cee...",
                 "Governance vs tree root: differ",
                 "Observed vs governance root: differ",
-                "Observed 3 time(s) in current batch",
+                "Observed 1 time in current batch",
                 "Requires human review of Codex changes"
             ]
         },
         "notificationSent": null,
-        "violationBatch": "VB-1767633720",
-        "resolved": 1767638264,
-        "resolution": null,
-        "lastObserved": 1767637937,
-        "observationCount": 3
+        "violationBatch": "VB-1767724569",
+        "resolved": 1767724596,
+        "resolution": {
+            "method": "automated",
+            "actor": "mutator",
+            "reconciliationClass": "GOVERNANCE_REBUILD",
+            "facts": {
+                "artifact": "codex/codex.json",
+                "governedRootBefore": "a82a2dc3576acc437f4056f67852ce6edc5b12b423d0051fd63f36c8c586c390",
+                "observedRoot": "554049aa8cee229f0a6d719167fe732ca8bd209b181885df255e01d485c850d0",
+                "governedRootAfter": "554049aa8cee229f0a6d719167fe732ca8bd209b181885df255e01d485c850d0",
+                "merkleBuilder": "scripts/codexMerkleBuilder.php",
+                "timestamp": 1767724594,
+                "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot."
+            },
+            "summary": "The governance violation related to the Merkle integrity of the Codex has been resolved.",
+            "details": [
+                "The violation was not observed in a subsequent audit run.",
+                "The rule regarding Merkle integrity was evaluated in that run.",
+                "No claims are made regarding the reasons for the absence of the violation."
+            ],
+            "assistedByAI": true
+        },
+        "lastObserved": 1767724569,
+        "observationCount": 1,
+        "facts": {
+            "storedRoot": "a82a2dc3576acc437f4056f67852ce6edc5b12b423d0051fd63f36c8c586c390",
+            "observedRoot": "554049aa8cee229f0a6d719167fe732ca8bd209b181885df255e01d485c850d0",
+            "observationCount": 1,
+            "firstObserved": 1767724569,
+            "currentRun": 1767724569
+        }
     },
     {
         "violationId": "VIO-002",
+        "identityHash": "d15932ddf35cc16f9d38c0b602df00c659690c618cc7b86118a09ff699295fb5",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767724569,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: unexpected file '/UNGOVERNED_TEST_FILE.txt' exists but is not declared.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767724569",
+        "resolved": null,
+        "resolution": null,
+        "lastObserved": 1767724885,
+        "observationCount": 5,
+        "facts": {
+            "path": "/UNGOVERNED_TEST_FILE.txt",
+            "observedType": "file",
+            "issue": "unexpected"
+        }
+    },
+    {
+        "violationId": "VIO-003",
         "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
         "ruleId": "merkleIntegrity",
-        "timestamp": 1767638278,
+        "timestamp": 1767724793,
         "auditMode": "governance",
         "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
         "violationNotes": {
-            "summary": "Merkle root mismatch (observed \u2260 governed)",
+            "summary": "Merkle root mismatch (observed ≠ governed)",
             "details": [
-                "Stored governance root: 8ae0be5265...",
+                "Stored governance root: 554049aa8cee...",
                 "Merkle tree root: missing",
-                "Computed observed root: 54f0be6eec...",
+                "Computed observed root: a82a2dc3576...",
                 "Governance vs tree root: differ",
                 "Observed vs governance root: differ",
-                "Observed 1 time(s) in current batch",
+                "Observed 1 time in current batch",
                 "Requires human review of Codex changes"
             ]
         },
         "notificationSent": null,
-        "violationBatch": "VB-1767638278",
-        "resolved": null,
-        "resolution": null,
-        "lastObserved": 1767638278,
-        "observationCount": 1
+        "violationBatch": "VB-1767724793",
+        "resolved": 1767724836,
+        "resolution": {
+            "method": "automated",
+            "actor": "mutator",
+            "reconciliationClass": "GOVERNANCE_REBUILD",
+            "facts": {
+                "artifact": "codex/codex.json",
+                "governedRootBefore": "554049aa8cee229f0a6d719167fe732ca8bd209b181885df255e01d485c850d0",
+                "observedRoot": "a82a2dc3576acc437f4056f67852ce6edc5b12b423d0051fd63f36c8c586c390",
+                "governedRootAfter": "a82a2dc3576acc437f4056f67852ce6edc5b12b423d0051fd63f36c8c586c390",
+                "merkleBuilder": "scripts/codexMerkleBuilder.php",
+                "timestamp": 1767724834,
+                "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot."
+            },
+            "summary": "The Merkle integrity violation has been resolved.",
+            "details": [
+                "The violation was not observed in a subsequent audit run.",
+                "The rule regarding Merkle integrity was evaluated in that run.",
+                "No claims can be made about the reasons for the absence of the violation."
+            ],
+            "assistedByAI": true
+        },
+        "lastObserved": 1767724793,
+        "observationCount": 1,
+        "facts": {
+            "storedRoot": "554049aa8cee229f0a6d719167fe732ca8bd209b181885df255e01d485c850d0",
+            "observedRoot": "a82a2dc3576acc437f4056f67852ce6edc5b12b423d0051fd63f36c8c586c390",
+            "observationCount": 1,
+            "firstObserved": 1767724793,
+            "currentRun": 1767724793
+        }
     }
 ]
