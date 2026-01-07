@@ -332,6 +332,7 @@ if (!function_exists('nextViolationId')) {
 
 #region SECTION IV — Violation Collection (Detection Layer Only)
 
+#region SECTION IV.A — Initialization
 $violations = [];
 
 $rulesEvaluated = [
@@ -340,23 +341,47 @@ $rulesEvaluated = [
     'criticalArtifactPresence'       => false,
     'jurisdictionalRuleConformance'  => false,
 ];
+#endregion SECTION IV.A
 
 #region SECTION IV.B — Critical Artifact Presence
 $rulesEvaluated['criticalArtifactPresence'] = true;
 
-$required = [
-    'codex.json'      => $codexPath,
-    'merkleTree.json' => $merkleTreePath,
-    'merkleRoot.txt'  => $merkleRootPath,
-];
+$criticalRegistryPath = $root . '/codex/governance/criticalArtifacts.json';
 
-foreach ($required as $label => $path) {
-    if (!file_exists($path)) {
-        $violations[] = [
-            'ruleId'      => 'criticalArtifactPresence',
-            'observation' => "Required governed artifact missing: $label at $path",
-            'facts'       => ['artifact' => $label, 'path' => $path]
-        ];
+if (!file_exists($criticalRegistryPath)) {
+    $violations[] = [
+        'ruleId'      => 'criticalArtifactPresence',
+        'observation' => 'Critical artifacts registry missing',
+        'facts'       => [
+            'path'  => '/codex/governance/criticalArtifacts.json',
+            'issue' => 'registry_missing'
+        ]
+    ];
+} else {
+    $registry = json_decode(
+        file_get_contents($criticalRegistryPath),
+        true
+    );
+
+    $criticalArtifacts = $registry['criticalArtifacts'] ?? [];
+
+    foreach ($criticalArtifacts as $artifact) {
+        $path   = $artifact['path'];
+        $reason = $artifact['reason'] ?? 'No reason provided';
+
+        $absolutePath = $root . $path;
+
+        if (!file_exists($absolutePath)) {
+            $violations[] = [
+                'ruleId'      => 'criticalArtifactPresence',
+                'observation' => 'Required governed artifact missing',
+                'facts'       => [
+                    'path'   => $path,
+                    'reason' => $reason,
+                    'issue'  => 'missing'
+                ]
+            ];
+        }
     }
 }
 #endregion SECTION IV.B
@@ -364,56 +389,70 @@ foreach ($required as $label => $path) {
 #region SECTION IV.C — Merkle Integrity (Governed Only)
 $rulesEvaluated['merkleIntegrity'] = true;
 
-// Load current live Codex state
-$codex = json_decode(file_get_contents($codexPath), true);
+// Merkle root is a governed critical artifact.
+// Its absence MUST produce a criticalArtifactPresence violation
+// and MUST short-circuit Merkle integrity evaluation.
+if (!file_exists($merkleRootPath)) {
 
-// Recompute observed Merkle root — IDENTICAL to codexMerkleBuilder.php
-$normalized   = normalizeJson($codex);
-$encoded      = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    // Critical artifact absence is governed and emitted in SECTION IV.B.
+    // Merkle integrity evaluation is skipped when dependency is missing.
 
-$contentHash  = hash('sha256', $encoded);
-$observedRoot = hash('sha256', $contentHash);  // Single-leaf semantic root
+} else {
 
-// Load stored governance root
-$storedRoot = trim(file_get_contents($merkleRootPath));
+    // Load current live Codex state
+    $codex = json_decode(file_get_contents($codexPath), true);
 
-$canonicalObservation =
-    'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
+    // Recompute observed Merkle root — IDENTICAL to codexMerkleBuilder.php
+    $normalized   = normalizeJson($codex);
+    $encoded      = json_encode(
+        $normalized,
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
 
-$violationIdentityHash = canonicalViolationHash(
-    'merkleIntegrity',
-    'unknown',
-    'unknown',
-    $canonicalObservation
-);
+    $contentHash  = hash('sha256', $encoded);
+    $observedRoot = hash('sha256', $contentHash); // Single-leaf semantic root
 
-$nextObservationCount = 1;
-$firstObservedTimestamp = $timestamp;
+    // Load stored governance root (safe — existence guaranteed)
+    $storedRoot = trim(file_get_contents($merkleRootPath));
 
-foreach ($auditLog as $record) {
-    if (
-        ($record['identityHash'] ?? null) === $violationIdentityHash &&
-        ($record['resolved'] ?? null) === null &&
-        ($record['auditMode'] ?? '') === $auditMode
-    ) {
-        $nextObservationCount = ($record['observationCount'] ?? 0) + 1;
-        $firstObservedTimestamp = $record['timestamp'];
-        break;
+    $canonicalObservation =
+        'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
+
+    $violationIdentityHash = canonicalViolationHash(
+        'merkleIntegrity',
+        'unknown',
+        'unknown',
+        $canonicalObservation
+    );
+
+    $nextObservationCount     = 1;
+    $firstObservedTimestamp  = $timestamp;
+
+    foreach ($auditLog as $record) {
+        if (
+            ($record['identityHash'] ?? null) === $violationIdentityHash &&
+            ($record['resolved'] ?? null) === null &&
+            ($record['auditMode'] ?? '') === $auditMode
+        ) {
+            $nextObservationCount    = ($record['observationCount'] ?? 0) + 1;
+            $firstObservedTimestamp = $record['timestamp'];
+            break;
+        }
     }
-}
 
-if ($storedRoot !== $observedRoot) {
-    $violations[] = [
-        'ruleId'      => 'merkleIntegrity',
-        'observation' => $canonicalObservation,
-        'facts'       => [
-            'storedRoot'       => $storedRoot,
-            'observedRoot'     => $observedRoot,
-            'observationCount' => $nextObservationCount,
-            'firstObserved'    => $firstObservedTimestamp,
-            'currentRun'       => $timestamp
-        ]
-    ];
+    if ($storedRoot !== $observedRoot) {
+        $violations[] = [
+            'ruleId'      => 'merkleIntegrity',
+            'observation' => $canonicalObservation,
+            'facts'       => [
+                'storedRoot'       => $storedRoot,
+                'observedRoot'     => $observedRoot,
+                'observationCount' => $nextObservationCount,
+                'firstObserved'    => $firstObservedTimestamp,
+                'currentRun'       => $timestamp
+            ]
+        ];
+    }
 }
 #endregion SECTION IV.C
 
@@ -422,11 +461,44 @@ $rulesEvaluated['repositoryInventoryConformance'] = true;
 
 $inventoryPath = $root . '/data/records/repositoryInventory.json';
 
+/*
+ * IMPORTANT GOVERNANCE RULE
+ * -------------------------
+ * Repository inventory conformance MUST ignore artifacts declared
+ * in codex/governance/criticalArtifacts.json.
+ * Critical artifacts are evaluated exclusively under
+ * the criticalArtifactPresence rule.
+ */
+
+// Build critical artifact exclusion set (paths only)
+$criticalArtifactPaths = [];
+
+$criticalRegistryPath = $root . '/codex/governance/criticalArtifacts.json';
+if (file_exists($criticalRegistryPath)) {
+    $criticalRegistry = json_decode(file_get_contents($criticalRegistryPath), true);
+
+    if (
+        is_array($criticalRegistry) &&
+        isset($criticalRegistry['criticalArtifacts']) &&
+        is_array($criticalRegistry['criticalArtifacts'])
+    ) {
+        foreach ($criticalRegistry['criticalArtifacts'] as $artifact) {
+            if (isset($artifact['path'])) {
+                $criticalArtifactPaths[$artifact['path']] = true;
+            }
+        }
+    }
+}
+
 if (!file_exists($inventoryPath)) {
+    // Inventory itself is a critical artifact — escalate properly
     $violations[] = [
         'ruleId'      => 'criticalArtifactPresence',
-        'observation' => "Required governed artifact missing: repositoryInventory.json at {$inventoryPath}",
-        'facts'       => ['artifact' => 'repositoryInventory.json', 'path' => $inventoryPath]
+        'observation' => "Required governed artifact missing: repositoryInventory.json",
+        'facts'       => [
+            'path'  => '/data/records/repositoryInventory.json',
+            'issue' => 'missing'
+        ]
     ];
 } else {
     $inventory = json_decode(file_get_contents($inventoryPath), true);
@@ -439,14 +511,18 @@ if (!file_exists($inventoryPath)) {
         $violations[] = [
             'ruleId'      => 'repositoryInventoryConformance',
             'observation' => "Repository inventory violation: repositoryInventory.json is malformed or missing items array.",
-            'facts'       => ['path' => $inventoryPath]
+            'facts'       => ['path' => '/data/records/repositoryInventory.json']
         ];
     } else {
-        // Build declared path map from items[]
+
+        // Build declared path map (excluding critical artifacts)
         $declaredPaths = [];
         foreach ($inventory['items'] as $item) {
             if (isset($item['path'], $item['type'])) {
-                $declaredPaths[$item['path']] = $item['type'];  // Keep "/api"
+                if (isset($criticalArtifactPaths[$item['path']])) {
+                    continue; // governed elsewhere
+                }
+                $declaredPaths[$item['path']] = $item['type'];
             }
         }
 
@@ -461,16 +537,16 @@ if (!file_exists($inventoryPath)) {
         foreach ($iterator as $fileInfo) {
             /** @var SplFileInfo $fileInfo */
 
-            $fullPath     = $fileInfo->getPathname();
-            $relativePath = str_replace($root, '', $fullPath);
-
-            $normalized   = str_replace('\\', '/', $relativePath);
+            $fullPath      = $fileInfo->getPathname();
+            $relativePath  = str_replace($root, '', $fullPath);
+            $normalized    = str_replace('\\', '/', $relativePath);
             $canonicalPath = '/' . ltrim($normalized, '/');
 
             if ($canonicalPath === '/') {
                 continue;
             }
 
+            // Skip excluded directories
             foreach (['.git', 'node_modules', 'vendor', 'runtimeEphemeral', 'records', 'derived'] as $dir) {
                 if (str_starts_with($canonicalPath . '/', '/' . $dir . '/')) {
                     continue 2;
@@ -478,6 +554,11 @@ if (!file_exists($inventoryPath)) {
             }
 
             if (preg_match('/\.(?:keep|gitkeep)$/', $canonicalPath)) {
+                continue;
+            }
+
+            // Skip critical artifacts entirely
+            if (isset($criticalArtifactPaths[$canonicalPath])) {
                 continue;
             }
 

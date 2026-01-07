@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "version": "1.0.1",
+    "authority": "Codex Governance",
+    "description": "Declarative list of artifacts whose absence constitutes a governance violation"
+  },
+  "criticalArtifacts": [
+      {
+        "path": "/codex/codex.json",
+        "reason": "Primary Codex governance source of truth"
+      },
+      {
+        "path": "/data/records/repositoryInventory.json",
+        "reason": "Declared repository inventory required for structural governance"
+      },
+      {
+        "path": "/data/records/codexMerkleRoot.txt",
+        "reason": "Persisted governed Merkle commitment root used for integrity assertion and reconciliation"
+      },
+      {
+        "path": "/api/sse.php",
+        "reason": "Live system state broadcast backbone required for governed real-time coherence"
+      },
+      {
+        "path": "/api/getDynamicData.php",
+        "reason": "Authoritative dynamic state generator feeding the governed SSE stream"
+      },
+      {
+        "path": "/api/askOpenAI.php",
+        "reason": "Governed AI decision and response surface used for Codex-aligned actions"
+      }
+  ]
+}

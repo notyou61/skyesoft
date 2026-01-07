@@ -10,7 +10,7 @@ declare(strict_types=1);
  *  Purpose:
  *   • Perform governed corrective actions after audit
  *   • Write resolution metadata with verifiable facts
- *   • Never assert correctness — only record actions taken
+ *   • AI narratives for all resolutions (rule-specific prompts, deterministic fallback)
  *
  * ===================================================================== */
 
@@ -87,6 +87,39 @@ function readMerkleRoot(): ?string
         return null;
     }
     return trim(file_get_contents($merkleRootPath));
+}
+
+function findPromptFile(string $ruleId, string $rootDir): ?string
+{
+    // Rule-specific prompt candidates (prioritized) + generic fallback
+    $specificCandidates = match ($ruleId) {
+        'criticalArtifactPresence' => [
+            $rootDir . '/prompts/criticalFileResolutionNarrative.prompt',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/prompts/criticalFileResolutionNarrative.prompt',
+            $rootDir . '/codex/prompts/criticalFileResolutionNarrative.prompt',
+        ],
+        'merkleIntegrity' => [
+            $rootDir . '/prompts/resolutionNarrative.prompt',
+            $rootDir . '/codex/prompts/resolutionNarrative.prompt',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/prompts/resolutionNarrative.prompt',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/codex/prompts/resolutionNarrative.prompt',
+        ],
+        'repositoryInventoryConformance' => [ // Generic fallback (no specific prompt provided)
+            $rootDir . '/prompts/resolutionNarrative.prompt',
+            $rootDir . '/codex/prompts/resolutionNarrative.prompt',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/prompts/resolutionNarrative.prompt',
+            str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/codex/prompts/resolutionNarrative.prompt',
+        ],
+        default => []
+    };
+
+    foreach ($specificCandidates as $candidate) {
+        if (file_exists($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return null;
 }
 
 function generateResolutionNarrative(
@@ -181,7 +214,6 @@ function generateResolutionNarrative(
         'details' => array_values($parsed['details'])
     ];
 }
-
 #endregion SECTION II
 
 #region SECTION III — Reconciliation Engine
@@ -197,109 +229,202 @@ foreach ($auditLog as &$v) {
         continue;
     }
 
-    if (($v['ruleId'] ?? '') !== 'merkleIntegrity') {
-        continue;
+    $ruleId = $v['ruleId'] ?? '';
+    switch ($ruleId) {
+        case 'merkleIntegrity':
+            // === ACTIVE RECONCILIATION PATH (AI Narrative) ===
+
+            $observedRoot = $v['facts']['observedRoot'] ?? null;
+            if (!is_string($observedRoot) || $observedRoot === '') {
+                continue 2;
+            }
+
+            $governedRootBefore = readMerkleRoot();
+            $governedRootBefore = (is_string($governedRootBefore) && $governedRootBefore !== '') 
+                ? $governedRootBefore 
+                : 'missing';
+
+            if (!runCodexMerkleBuilder()) {
+                continue 2;
+            }
+
+            $governedRootAfter = readMerkleRoot();
+            if (!is_string($governedRootAfter) || $governedRootAfter === '') {
+                continue 2;
+            }
+
+            if ($governedRootBefore !== 'missing' && $governedRootBefore === $governedRootAfter) {
+                continue 2;
+            }
+            if ($governedRootAfter !== $observedRoot) {
+                continue 2;
+            }
+
+            $canonicalObservation = $v['observation'] 
+                ?? 'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
+
+            $facts = [
+                'artifact'            => 'codex/codex.json',
+                'governedRootBefore'  => $governedRootBefore,
+                'observedRoot'        => $observedRoot,
+                'governedRootAfter'   => $governedRootAfter,
+                'merkleBuilder'       => 'scripts/codexMerkleBuilder.php',
+                'timestamp'           => now(),
+                'observation'         => $canonicalObservation
+            ];
+
+            $promptFile = findPromptFile($ruleId, $rootDir);
+            $aiNarrative = null;
+            $assistedByAI = false;
+            if ($promptFile !== null) {
+                $aiNarrative = generateResolutionNarrative($v, $facts, $promptFile);
+                $assistedByAI = ($aiNarrative !== null);
+            }
+
+            if ($aiNarrative === null) {
+                $aiNarrative = [
+                    'summary' => 'Merkle snapshot rebuilt to reconcile governed state with the observed Codex state.',
+                    'details' => [
+                        'The Codex Merkle builder was executed as the corrective action.',
+                        'The governed Merkle root was updated based on the current Codex content.',
+                        'Resolution is recorded because the new governed root matches the observed root from the audit run.',
+                        'No claims are made regarding why the divergence occurred.'
+                    ]
+                ];
+            }
+
+            $v['resolved'] = now();
+            $v['resolution'] = [
+                'method'              => 'automated',
+                'actor'               => 'mutator',
+                'reconciliationClass' => 'GOVERNANCE_REBUILD',
+                'facts'               => $facts,
+                'summary'             => $aiNarrative['summary'],
+                'details'             => $aiNarrative['details'],
+                'assistedByAI'        => $assistedByAI
+            ];
+
+            $updated = true;
+            continue 2;
+
+        case 'criticalArtifactPresence':
+            // === PASSIVE RECONCILIATION PATH (AI Narrative) ===
+
+            $path = $v['facts']['path'] ?? null;
+            if (!$path || !is_string($path)) {
+                continue 2;
+            }
+
+            $absolutePath = $rootDir . '/' . ltrim($path, '/');
+            if (!file_exists($absolutePath)) {
+                continue 2;
+            }
+
+            $facts = [
+                'artifact'  => $path,
+                'verified'  => true,
+                'timestamp' => now()
+            ];
+
+            $promptFile = findPromptFile($ruleId, $rootDir);
+            $aiNarrative = null;
+            $assistedByAI = false;
+            if ($promptFile !== null) {
+                $aiNarrative = generateResolutionNarrative($v, $facts, $promptFile);
+                $assistedByAI = ($aiNarrative !== null);
+            }
+
+            if ($aiNarrative === null) {
+                $aiNarrative = [
+                    'summary' => 'Previously missing governed artifact is now present.',
+                    'details' => [
+                        'The governed artifact was verified to exist at reconciliation time.',
+                        'No automated mutation was performed.',
+                        'Resolution records observed state only.'
+                    ]
+                ];
+            }
+
+            $v['resolved'] = now();
+            $v['resolution'] = [
+                'method'              => 'passive',
+                'actor'               => 'mutator',
+                'reconciliationClass' => 'GOVERNANCE_VERIFICATION',
+                'facts'               => $facts,
+                'summary'             => $aiNarrative['summary'],
+                'details'             => $aiNarrative['details'],
+                'assistedByAI'        => $assistedByAI
+            ];
+
+            $updated = true;
+            continue 2;
+
+        case 'repositoryInventoryConformance':
+            // === PASSIVE RECONCILIATION PATH (AI Narrative) ===
+
+            $path = $v['facts']['path'] ?? null;
+            $issue = $v['facts']['issue'] ?? null;
+
+            if (!$path || !$issue || !is_string($path) || !is_string($issue)) {
+                continue 2;
+            }
+
+            $absolutePath = $rootDir . '/' . ltrim($path, '/');
+
+            $resolved = match ($issue) {
+                'missing'      => file_exists($absolutePath),
+                'type_mismatch' => file_exists($absolutePath), // Type re-audited next run
+                'unexpected'   => !file_exists($absolutePath),
+                default        => false
+            };
+
+            if (!$resolved) {
+                continue 2;
+            }
+
+            $facts = [
+                'path'      => $path,
+                'issue'     => $issue,
+                'verified'  => true,
+                'timestamp' => now()
+            ];
+
+            $promptFile = findPromptFile($ruleId, $rootDir);
+            $aiNarrative = null;
+            $assistedByAI = false;
+            if ($promptFile !== null) {
+                $aiNarrative = generateResolutionNarrative($v, $facts, $promptFile);
+                $assistedByAI = ($aiNarrative !== null);
+            }
+
+            if ($aiNarrative === null) {
+                $aiNarrative = [
+                    'summary' => 'Repository inventory discrepancy no longer observed.',
+                    'details' => [
+                        'The previously reported inventory discrepancy is no longer present.',
+                        'Resolution reflects current observed repository state.',
+                        'No automated changes were performed.'
+                    ]
+                ];
+            }
+
+            $v['resolved'] = now();
+            $v['resolution'] = [
+                'method'              => 'passive',
+                'actor'               => 'mutator',
+                'reconciliationClass' => 'STRUCTURAL_VERIFICATION',
+                'facts'               => $facts,
+                'summary'             => $aiNarrative['summary'],
+                'details'             => $aiNarrative['details'],
+                'assistedByAI'        => $assistedByAI
+            ];
+
+            $updated = true;
+            continue 2;
+
+        default:
+            continue 2;
     }
-
-    // Auditor’s authoritative observed root at detection time
-    $observedRoot = $v['facts']['observedRoot'] ?? null;
-    if (!is_string($observedRoot) || $observedRoot === '') {
-        continue;
-    }
-
-    // Governed root BEFORE rebuild
-    $governedRootBefore = readMerkleRoot();
-    $governedRootBefore = (is_string($governedRootBefore) && $governedRootBefore !== '') 
-        ? $governedRootBefore 
-        : 'missing';
-
-    // Execute corrective action
-    if (!runCodexMerkleBuilder()) {
-        continue;
-    }
-
-    // Governed root AFTER rebuild
-    $governedRootAfter = readMerkleRoot();
-    if (!is_string($governedRootAfter) || $governedRootAfter === '') {
-        continue;
-    }
-
-    // === INVARIANTS ===
-    // 1. Actual snapshot change occurred (unless previously missing)
-    if ($governedRootBefore !== 'missing' && $governedRootBefore === $governedRootAfter) {
-        continue;
-    }
-
-    // 2. Rebuild successfully reconciled to auditor's observed state
-    if ($governedRootAfter !== $observedRoot) {
-        continue;
-    }
-
-    // Canonical observation — the verdict
-    $canonicalObservation = $v['observation'] 
-        ?? 'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.';
-
-    $facts = [
-        'artifact'            => 'codex/codex.json',
-        'governedRootBefore'  => $governedRootBefore,
-        'observedRoot'        => $observedRoot,
-        'governedRootAfter'   => $governedRootAfter,
-        'merkleBuilder'       => 'scripts/codexMerkleBuilder.php',
-        'timestamp'           => now(),
-        'observation'         => $canonicalObservation
-    ];
-
-    // Robust prompt file resolution
-    $promptCandidates = [
-        $rootDir . '/prompts/resolutionNarrative.prompt',
-        $rootDir . '/codex/prompts/resolutionNarrative.prompt',
-        str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/prompts/resolutionNarrative.prompt',
-        str_replace('\\Documents\\', '\\OneDrive\\Documents\\', $rootDir) . '/codex/prompts/resolutionNarrative.prompt',
-    ];
-
-    $promptFile = null;
-    foreach ($promptCandidates as $candidate) {
-        if (file_exists($candidate)) {
-            $promptFile = $candidate;
-            break;
-        }
-    }
-
-    $aiNarrative = null;
-    if ($promptFile !== null) {
-        $aiNarrative = generateResolutionNarrative(
-            violation: $v,
-            facts: $facts,
-            promptFile: $promptFile
-        );
-    }
-
-    // Deterministic fallback narrative (governed, non-authoritative)
-    if ($aiNarrative === null) {
-        $aiNarrative = [
-            'summary' => 'Merkle snapshot rebuilt to reconcile governed state with the observed Codex state.',
-            'details' => [
-                'The Codex Merkle builder was executed as the corrective action.',
-                'The governed Merkle root was updated based on the current Codex content.',
-                'Resolution is recorded because the new governed root matches the observed root from the audit run.',
-                'No claims are made regarding why the divergence occurred.'
-            ]
-        ];
-    }
-
-    // === COMMIT THE RESOLUTION ===
-    $v['resolved'] = now();
-    $v['resolution'] = [
-        'method'              => 'automated',
-        'actor'               => 'mutator',
-        'reconciliationClass' => 'GOVERNANCE_REBUILD',
-        'facts'               => $facts,
-        'summary'             => $aiNarrative['summary'],
-        'details'             => $aiNarrative['details'],
-        'assistedByAI'        => ($promptFile !== null)
-    ];
-
-    $updated = true;
 }
 
 unset($v);

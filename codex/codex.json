@@ -2978,10 +2978,11 @@
                         "doctrine"
                     ],
                     "constraints": [
-                        "Operational audits MUST NOT perform semantic evaluation",
-                        "Operational audits MUST NOT evaluate naming or stylistic conventions",
-                        "Operational audits MUST NOT perform external dependency checks",
-                        "Operational audits MUST NOT emit advisory or non-deterministic violations"
+                    "Operational audits MUST NOT perform semantic evaluation",
+                    "Operational audits MUST NOT evaluate naming or stylistic conventions",
+                    "Operational audits MUST NOT perform external dependency checks",
+                    "Operational audits MUST NOT emit advisory or non-deterministic violations",
+                    "Operational audits MUST NOT infer critical artifacts outside governed registries"
                     ],
                     "governanceOverride": {
                         "description": "All violation classes excluded from operational audits MAY be evaluated in governance audit mode, subject to their declared determinism and dependencyScope.",
@@ -3043,6 +3044,16 @@
                         "Violation categories do not authorize, limit, or constrain auditor observables."
                     ]
                 },
+                "governedCriticalArtifacts": {
+                "authority": "Codex Governance",
+                "source": "codex/governance/criticalArtifacts.json",
+                "description": "Declarative registry defining artifacts whose absence constitutes a criticalArtifactPresence violation.",
+                "rules": [
+                    "The auditor SHALL evaluate critical artifact presence exclusively against this registry.",
+                    "Criticality SHALL NOT be inferred from repository inventory, naming conventions, or filesystem heuristics.",
+                    "Changes to criticalArtifacts.json constitute a governance change and MUST be versioned."
+                ]
+                },
                 "violationClasses": {
                     "merkleIntegrity": {
                         "category": "integrity",
@@ -3057,10 +3068,18 @@
                         "narrativeGuidance": "Describe that observed repository contents differ from the governed inventory."
                     },
                     "criticalArtifactPresence": {
-                        "category": "structuralArtifacts",
-                        "auditModes": ["operational", "governance"],
-                        "description": "Detects absence or invalidity of critical governed artifacts required by Codex governance.",
-                        "narrativeGuidance": "Explain that a required governed artifact was missing or invalid at audit time."
+                    "category": "structuralArtifacts",
+                    "auditModes": ["operational", "governance"],
+                    "description": "Detects absence or invalidity of critical governed artifacts required by Codex governance.",
+                    "narrativeGuidance": "Explain that a required governed artifact was missing or invalid at audit time.",
+                    "determinism": "strict",
+                    "dependencyScope": "local",
+                    "authority": "codex/governance/criticalArtifacts.json",
+                    "enforcementRules": [
+                        "Evaluation is strictly declarative.",
+                        "The auditor SHALL NOT infer critical artifacts from repositoryInventory.json.",
+                        "The auditor SHALL emit one violation per missing declared artifact."
+                    ]
                     },
                     "jurisdictionalRuleConformance": {
                         "category": "jurisdictionalGovernance",
