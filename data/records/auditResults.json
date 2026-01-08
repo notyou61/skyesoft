@@ -41,5 +41,206 @@
             "reason": "Persisted governed Merkle commitment root used for integrity assertion and reconciliation",
             "issue": "missing"
         }
+    },
+    {
+        "violationId": "VIO-002",
+        "identityHash": "ae657e979b5f1bfe89624e614258650a6c95d80792dc3c210a4d73257b5bb688",
+        "ruleId": "criticalArtifactPresence",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Required governed artifact missing",
+        "violationNotes": {
+            "summary": "A required governed artifact is missing from the repository.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767876140,
+        "resolution": {
+            "method": "passive",
+            "actor": "mutator",
+            "reconciliationClass": "GOVERNANCE_VERIFICATION",
+            "facts": {
+                "artifact": "/api/getDynamicData.php",
+                "verified": true,
+                "timestamp": 1767876137
+            },
+            "summary": "The required governed artifact was observed to exist.",
+            "details": [
+                "The artifact located at '/api/getDynamicData.php' was verified as present.",
+                "The verification occurred at timestamp 1767876137.",
+                "This artifact is identified as an authoritative dynamic state generator feeding the governed SSE stream."
+            ],
+            "assistedByAI": true
+        },
+        "lastObserved": 1767875526,
+        "observationCount": 1,
+        "facts": {
+            "path": "/api/getDynamicData.php",
+            "reason": "Authoritative dynamic state generator feeding the governed SSE stream",
+            "issue": "missing"
+        }
+    },
+    {
+        "violationId": "VIO-003",
+        "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+        "ruleId": "merkleIntegrity",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+        "violationNotes": {
+            "summary": "Merkle root mismatch (observed ≠ governed)",
+            "details": [
+                "Stored governance root: 5567617bf58f...",
+                "Merkle tree root: missing",
+                "Computed observed root: 35d242ad0a12...",
+                "Governance vs tree root: differ",
+                "Observed vs governance root: differ",
+                "Observed 1 time in current batch",
+                "Requires human review of Codex changes"
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767876848,
+        "resolution": null,
+        "lastObserved": 1767875526,
+        "observationCount": 1,
+        "facts": {
+            "storedRoot": "5567617bf58f425da8219c34e550cdbac1b1e57a26aeebb95bd15019484d443f",
+            "observedRoot": "35d242ad0a124a7aeb70083eaab593e21eb6888764b36863a48bdff914bcbfec",
+            "observationCount": 1,
+            "firstObserved": 1767875526,
+            "currentRun": 1767875526
+        }
+    },
+    {
+        "violationId": "VIO-004",
+        "identityHash": "f594f7bab808f12aaa86849dc904cf4c630f2b3b389a1b8647e130ee044a0394",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: declared file '/data/derived/merkleIntegrity.prompt' is missing from repository.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767876143,
+        "resolution": {
+            "method": "passive",
+            "actor": "mutator",
+            "reconciliationClass": "STRUCTURAL_VERIFICATION",
+            "facts": {
+                "path": "/data/derived/merkleIntegrity.prompt",
+                "issue": "missing",
+                "verified": true,
+                "timestamp": 1767876140
+            },
+            "summary": "The governance violation regarding the missing integrity prompt is considered resolved.",
+            "details": [
+                "The violation was not observed in a subsequent audit run.",
+                "The rule was evaluated in that run.",
+                "No claims are made regarding the reasons for the absence of the violation."
+            ],
+            "assistedByAI": true
+        },
+        "lastObserved": 1767875526,
+        "observationCount": 1,
+        "facts": {
+            "path": "/data/derived/merkleIntegrity.prompt",
+            "expectedType": "file",
+            "issue": "missing"
+        }
+    },
+    {
+        "violationId": "VIO-005",
+        "identityHash": "3ca689ce49a6cc25d0738683fe601050a71b06cb6509ba1e912b4c3bc1ab02e2",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: declared dir '/reports/automation' is missing from repository.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767877913,
+        "resolution": null,
+        "lastObserved": 1767876848,
+        "observationCount": 2,
+        "facts": {
+            "path": "/reports/automation",
+            "expectedType": "dir",
+            "issue": "missing"
+        }
+    },
+    {
+        "violationId": "VIO-006",
+        "identityHash": "50bbfedf4c00b5c5ea3d9d3a2a9d14ea65fd401b04aa62d108a77a13b5ad232d",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: declared file '/reports/automation/dailyRepositoryAudit.json' is missing from repository.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767877913,
+        "resolution": null,
+        "lastObserved": 1767876848,
+        "observationCount": 2,
+        "facts": {
+            "path": "/reports/automation/dailyRepositoryAudit.json",
+            "expectedType": "file",
+            "issue": "missing"
+        }
+    },
+    {
+        "violationId": "VIO-007",
+        "identityHash": "6c48c2571729567a77027d3fdef784b760f871eeea310650706a2edc1e09d839",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767875526,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: declared file '/secure/.gitignore' is missing from repository.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767875526",
+        "resolved": 1767877913,
+        "resolution": null,
+        "lastObserved": 1767876848,
+        "observationCount": 2,
+        "facts": {
+            "path": "/secure/.gitignore",
+            "expectedType": "file",
+            "issue": "missing"
+        }
     }
 ]

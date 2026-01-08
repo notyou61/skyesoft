@@ -1,6 +1,6 @@
 {
     "meta": {
-        "generatedAt": 1767801403,
+        "generatedAt": 1767877742,
         "generatedBy": "scripts/codexMerkleBuilder.php",
         "scope": "codex/codex.json ONLY",
         "codexTier": "Tier-1",
