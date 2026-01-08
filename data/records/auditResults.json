@@ -242,5 +242,86 @@
             "expectedType": "file",
             "issue": "missing"
         }
+    },
+    {
+        "violationId": "VIO-008",
+        "identityHash": "0be5e5426717f5919a50af314f9040b380fece4f968346944aa0616a442a018c",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767886087,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: unexpected dir '/reports/automation' exists but is not declared.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767886087",
+        "resolved": 1767886879,
+        "resolution": null,
+        "lastObserved": 1767886087,
+        "observationCount": 1,
+        "facts": {
+            "path": "/reports/automation",
+            "observedType": "dir",
+            "issue": "unexpected"
+        }
+    },
+    {
+        "violationId": "VIO-009",
+        "identityHash": "b6192aadabda0b283621e7489c26e7368b24576705755fa7b4a2e89f80789ac7",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767886087,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: unexpected file '/reports/automation/dailyRepositoryAudit.json' exists but is not declared.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767886087",
+        "resolved": 1767886879,
+        "resolution": null,
+        "lastObserved": 1767886087,
+        "observationCount": 1,
+        "facts": {
+            "path": "/reports/automation/dailyRepositoryAudit.json",
+            "observedType": "file",
+            "issue": "unexpected"
+        }
+    },
+    {
+        "violationId": "VIO-010",
+        "identityHash": "68ce2bd6407f047b39cd9572c9535753e254e809a6400467298edb039cb3f6d6",
+        "ruleId": "repositoryInventoryConformance",
+        "timestamp": 1767886087,
+        "auditMode": "governance",
+        "observation": "Repository inventory violation: unexpected file '/secure/.gitignore' exists but is not declared.",
+        "violationNotes": {
+            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "details": [
+                "This violation requires human review.",
+                "AI-generated detailed narrative is not yet available for this rule.",
+                "A governed prompt will be added in a future Codex revision."
+            ]
+        },
+        "notificationSent": null,
+        "violationBatch": "VB-1767886087",
+        "resolved": 1767886879,
+        "resolution": null,
+        "lastObserved": 1767886087,
+        "observationCount": 1,
+        "facts": {
+            "path": "/secure/.gitignore",
+            "observedType": "file",
+            "issue": "unexpected"
+        }
     }
 ]

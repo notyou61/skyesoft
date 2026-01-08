@@ -109,6 +109,21 @@ foreach ($iterator as $file) {
 
 #endregion SECTION III
 
+#region SECTION III+ — QUANTITATIVE COUNTS (NEW)
+
+$dirCount  = 0;
+$fileCount = 0;
+
+foreach ($items as $item) {
+    if ($item['type'] === 'dir') {
+        $dirCount++;
+    } else {
+        $fileCount++;
+    }
+}
+
+#endregion SECTION III+
+
 #region SECTION IV — SORTING & ID ASSIGNMENT
 
 usort($items, fn ($a, $b) => strcmp($a['path'], $b['path']));
@@ -120,17 +135,37 @@ unset($item);
 
 #endregion SECTION IV
 
+#region SECTION IV+ — INVENTORY RUN COUNTER (NEW)
+
+$newInventoryRuns = 1;
+
+if (file_exists($outputPath)) {
+    $existing = json_decode(file_get_contents($outputPath), true);
+    // Check for existing run count
+    if (isset($existing['meta']['newInventoryRuns'])) {
+        $newInventoryRuns = (int)$existing['meta']['newInventoryRuns'] + 1;
+    }
+}
+
+#endregion SECTION IV+
+
 #region SECTION V — INVENTORY DECLARATION OUTPUT
 
 $inventory = [
     'meta' => [
-        'title'       => 'Skyesoft Repository Inventory',
-        'generatedAt' => time(), // UNIX epoch (governed)
-        'generatedBy' => 'scripts/repositoryInventoryBuilder.php',
-        'codexTier'   => 'Tier-2',
-        'state'       => 'DECLARED',
-        'purpose'     => 'Declared repository inventory entry',
-        'description' => 'Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.'
+        'title'              => 'Skyesoft Repository Inventory',
+        'generatedAt'        => time(), // UNIX epoch (governed)
+        'generatedBy'        => 'scripts/repositoryInventoryBuilder.php',
+        'codexTier'          => 'Tier-2',
+        'state'              => 'DECLARED',
+        'purpose'            => 'Declared repository inventory entry',
+        'description'        => 'Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.',
+
+        // ✳️ NEW GOVERNANCE METADATA
+        'newInventoryRuns'   => $newInventoryRuns,
+        'itemsDeclared'      => count($items),
+        'directoriesDeclared'=> $dirCount,
+        'filesDeclared'      => $fileCount,
     ],
     'items' => $items
 ];

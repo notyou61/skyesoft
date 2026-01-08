@@ -2967,8 +2967,7 @@
                     "enforcementNote": "Auditor implementations MUST hard-code this scope fence and MUST NOT infer scope from violationClasses.",
                     "permittedViolationClasses": [
                         "merkleIntegrity",
-                        "repositoryInventoryConformance",
-                        "criticalArtifactPresence"
+                        "repositoryInventoryConformance"
                     ],
                     "explicitExclusions": [
                         "nameConformance",
@@ -2982,7 +2981,7 @@
                     "Operational audits MUST NOT evaluate naming or stylistic conventions",
                     "Operational audits MUST NOT perform external dependency checks",
                     "Operational audits MUST NOT emit advisory or non-deterministic violations",
-                    "Operational audits MUST NOT infer critical artifacts outside governed registries"
+                    "Operational audits MUST NOT perform independent critical artifact existence checks outside repositoryInventoryConformance"
                     ],
                     "governanceOverride": {
                         "description": "All violation classes excluded from operational audits MAY be evaluated in governance audit mode, subject to their declared determinism and dependencyScope.",
@@ -3045,14 +3044,15 @@
                     ]
                 },
                 "governedCriticalArtifacts": {
-                "authority": "Codex Governance",
-                "source": "codex/governance/criticalArtifacts.json",
-                "description": "Declarative registry defining artifacts whose absence constitutes a criticalArtifactPresence violation.",
-                "rules": [
-                    "The auditor SHALL evaluate critical artifact presence exclusively against this registry.",
-                    "Criticality SHALL NOT be inferred from repository inventory, naming conventions, or filesystem heuristics.",
-                    "Changes to criticalArtifacts.json constitute a governance change and MUST be versioned."
-                ]
+                    "authority": "Codex Governance",
+                    "source": "codex/governance/criticalArtifacts.json",
+                    "description": "Declarative registry identifying inventory paths whose absence elevates a repositoryInventoryConformance violation to critical severity.",
+                    "rules": [
+                        "Criticality augments severity and notification behavior only.",
+                        "Criticality SHALL NOT introduce independent existence checks.",
+                        "A missing critical artifact is expressed solely as a repositoryInventoryConformance violation with critical classification.",
+                        "No separate violation class SHALL exist for critical artifact absence."
+                    ]
                 },
                 "violationClasses": {
                     "merkleIntegrity": {
@@ -3064,22 +3064,34 @@
                     "repositoryInventoryConformance": {
                         "category": "structuralArtifacts",
                         "auditModes": ["operational", "governance"],
-                        "description": "Detects mismatches between observed repository contents and the governed repository inventory.",
-                        "narrativeGuidance": "Describe that observed repository contents differ from the governed inventory."
-                    },
-                    "criticalArtifactPresence": {
-                    "category": "structuralArtifacts",
-                    "auditModes": ["operational", "governance"],
-                    "description": "Detects absence or invalidity of critical governed artifacts required by Codex governance.",
-                    "narrativeGuidance": "Explain that a required governed artifact was missing or invalid at audit time.",
-                    "determinism": "strict",
-                    "dependencyScope": "local",
-                    "authority": "codex/governance/criticalArtifacts.json",
-                    "enforcementRules": [
-                        "Evaluation is strictly declarative.",
-                        "The auditor SHALL NOT infer critical artifacts from repositoryInventory.json.",
-                        "The auditor SHALL emit one violation per missing declared artifact."
-                    ]
+                        "description": "Detects divergence between the governed repository inventory and the observed filesystem state.",
+                        "narrativeGuidance": "Describe that the observed filesystem state does not conform to the declared repository inventory.",
+                        "conformanceDirections": {
+                            "declaredToObserved": {
+                            "name": "Missing Declared Artifact",
+                            "definition": "An artifact declared in repositoryInventory.json is not present in the observed filesystem.",
+                            "semanticMeaning": "Declared intent was not satisfied by system reality.",
+                            "examples": [
+                                "Declared file does not exist",
+                                "Declared directory is missing"
+                            ]
+                            },
+                            "observedToDeclared": {
+                            "name": "Unexpected Observed Artifact",
+                            "definition": "An artifact present in the observed filesystem is not declared in repositoryInventory.json.",
+                            "semanticMeaning": "System reality contains undeclared or unauthorized artifacts.",
+                            "examples": [
+                                "Unregistered file exists",
+                                "Unregistered directory exists"
+                            ]
+                            }
+                        },
+                        "rules": [
+                            "Exactly one violation instance SHALL exist per unique path and direction while unresolved.",
+                            "Repeated detections update observationCount and lastObserved.",
+                            "A violation is resolved when the governing condition is no longer observed in a subsequent audit run.",
+                            "Direction is a factual property of the violation and MUST be recorded in violation facts."
+                        ]
                     },
                     "jurisdictionalRuleConformance": {
                         "category": "jurisdictionalGovernance",
