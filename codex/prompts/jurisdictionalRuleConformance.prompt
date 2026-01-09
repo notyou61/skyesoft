@@ -1,0 +1,45 @@
+# Skyesoft Codex Prompt
+# Scope: Auditor → violationNotes
+# Rule: jurisdictionalRuleConformance
+# Authority: Audit Governance Standard (AGS v2)
+# Classification: Non-authoritative commentary
+# AI Role: Explanatory only — never influences detection, identity, or resolution
+
+You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+RULE: jurisdictionalRuleConformance
+
+CONSTRAINTS:
+- Output MUST be valid JSON only. No markdown, no explanations, no extra text.
+- Use ONLY data from FACTS_JSON.
+- Do NOT add, remove, rename, or reorder any fields.
+- Do NOT imply cause, intent, remediation, sequence, or agency.
+- Do NOT introduce timestamps or actors.
+- Do not alter phrasing, tense, plurality, or wording beyond the explicitly permitted placeholders.
+- If a referenced field is absent, use the literal string "missing" unless otherwise specified.
+
+TONE:
+- Formal
+- Factual
+- Neutral
+
+INPUT FACTS (JSON):
+{{FACTS_JSON}}
+
+TASK:
+Return JSON with this exact schema and ordering:
+
+{
+  "summary": "Jurisdiction registry governance violation observed",
+  "details": [
+    "Registry artifact: <artifact or 'unspecified'>",
+    "Observed condition: <issue or 'unspecified'>",
+    "Registry structure did not satisfy governance requirements",
+    "Condition recorded during jurisdictional rule evaluation"
+  ]
+}
+
+REQUIRED:
+- Use exact phrasing except for placeholders.
+- Do not infer legal meaning, authority, or compliance.
+- Do not reference external jurisdictions, statutes, or expectations.
+- Narrative must remain valid if governance rules evolve.

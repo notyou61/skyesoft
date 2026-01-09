@@ -3,15 +3,15 @@
         "violationId": "VIO-001",
         "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
         "ruleId": "merkleIntegrity",
-        "timestamp": 1767964708,
+        "timestamp": 1767994970,
         "auditMode": "governance",
         "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
         "violationNotes": {
             "summary": "Merkle root mismatch (observed ≠ governed)",
             "details": [
-                "Stored governance root: 5567617bf58f...",
+                "Stored governance root: 31a36b11fee6...",
                 "Merkle tree root: missing",
-                "Computed observed root: 31a36b11fee6...",
+                "Computed observed root: 058ebea2dc38...",
                 "Governance vs tree root: differ",
                 "Observed vs governance root: differ",
                 "Observed 1 time in current batch",
@@ -19,98 +19,62 @@
             ]
         },
         "notificationSent": null,
-        "violationBatch": "VB-1767964708",
-        "resolved": null,
-        "resolution": null,
-        "lastObserved": 1767964708,
-        "observationCount": 1,
+        "violationBatch": "VB-1767994970",
+        "resolved": 1767995026,
+        "resolution": {
+            "method": "passive",
+            "reconciliationClass": "STATE_CONVERGENCE",
+            "facts": {
+                "artifact": "codex/codex.json",
+                "currentObservedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+                "currentGovernedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+                "merkleBuilderRun": false
+            }
+        },
+        "lastObserved": 1767994980,
+        "observationCount": 2,
         "facts": {
-            "storedRoot": "5567617bf58f425da8219c34e550cdbac1b1e57a26aeebb95bd15019484d443f",
-            "observedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-            "observationCount": 1,
-            "firstObserved": 1767964708,
-            "currentRun": 1767964708
+            "storedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+            "observedRoot": "058ebea2dc3893032f409912a360de29fef1fa6ec42387e9d87847edd3347cf5"
         }
     },
     {
         "violationId": "VIO-002",
-        "identityHash": "3ca689ce49a6cc25d0738683fe601050a71b06cb6509ba1e912b4c3bc1ab02e2",
-        "ruleId": "repositoryInventoryConformance",
-        "timestamp": 1767964708,
+        "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+        "ruleId": "merkleIntegrity",
+        "timestamp": 1767995309,
         "auditMode": "governance",
-        "observation": "Repository inventory violation: declared dir '/reports/automation' is missing from repository.",
+        "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
         "violationNotes": {
-            "summary": "The repository filesystem does not conform to the declared inventory.",
+            "summary": "Merkle root mismatch (observed ≠ governed)",
             "details": [
-                "This violation requires human review.",
-                "AI-generated detailed narrative is not yet available for this rule.",
-                "A governed prompt will be added in a future Codex revision."
+                "Stored governance root: 31a36b11fee6...",
+                "Merkle tree root: missing",
+                "Computed observed root: 058ebea2dc38...",
+                "Governance vs tree root: differ",
+                "Observed vs governance root: differ",
+                "Observed 1 time in current batch",
+                "Requires human review of Codex changes"
             ]
         },
         "notificationSent": null,
-        "violationBatch": "VB-1767964708",
-        "resolved": null,
-        "resolution": null,
-        "lastObserved": 1767964708,
-        "observationCount": 1,
-        "facts": {
-            "path": "/reports/automation",
-            "expectedType": "dir",
-            "issue": "missing"
-        }
-    },
-    {
-        "violationId": "VIO-003",
-        "identityHash": "50bbfedf4c00b5c5ea3d9d3a2a9d14ea65fd401b04aa62d108a77a13b5ad232d",
-        "ruleId": "repositoryInventoryConformance",
-        "timestamp": 1767964708,
-        "auditMode": "governance",
-        "observation": "Repository inventory violation: declared file '/reports/automation/dailyRepositoryAudit.json' is missing from repository.",
-        "violationNotes": {
-            "summary": "The repository filesystem does not conform to the declared inventory.",
-            "details": [
-                "This violation requires human review.",
-                "AI-generated detailed narrative is not yet available for this rule.",
-                "A governed prompt will be added in a future Codex revision."
-            ]
+        "violationBatch": "VB-1767995309",
+        "resolved": 1767995389,
+        "resolution": {
+            "method": "passive",
+            "reconciliationClass": "STATE_CONVERGENCE",
+            "facts": {
+                "artifact": "codex/codex.json",
+                "currentObservedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+                "currentGovernedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+                "merkleBuilderRun": false
+            }
         },
-        "notificationSent": null,
-        "violationBatch": "VB-1767964708",
-        "resolved": null,
-        "resolution": null,
-        "lastObserved": 1767964708,
-        "observationCount": 1,
+        "lastObserved": 1767995320,
+        "observationCount": 2,
         "facts": {
-            "path": "/reports/automation/dailyRepositoryAudit.json",
-            "expectedType": "file",
-            "issue": "missing"
-        }
-    },
-    {
-        "violationId": "VIO-004",
-        "identityHash": "6c48c2571729567a77027d3fdef784b760f871eeea310650706a2edc1e09d839",
-        "ruleId": "repositoryInventoryConformance",
-        "timestamp": 1767964708,
-        "auditMode": "governance",
-        "observation": "Repository inventory violation: declared file '/secure/.gitignore' is missing from repository.",
-        "violationNotes": {
-            "summary": "The repository filesystem does not conform to the declared inventory.",
-            "details": [
-                "This violation requires human review.",
-                "AI-generated detailed narrative is not yet available for this rule.",
-                "A governed prompt will be added in a future Codex revision."
-            ]
-        },
-        "notificationSent": null,
-        "violationBatch": "VB-1767964708",
-        "resolved": null,
-        "resolution": null,
-        "lastObserved": 1767964708,
-        "observationCount": 1,
-        "facts": {
-            "path": "/secure/.gitignore",
-            "expectedType": "file",
-            "issue": "missing"
+            "storedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
+            "observedRoot": "058ebea2dc3893032f409912a360de29fef1fa6ec42387e9d87847edd3347cf5"
         }
     }
 ]

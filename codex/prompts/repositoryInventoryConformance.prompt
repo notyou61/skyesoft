@@ -1,0 +1,47 @@
+# Skyesoft Codex Prompt
+# Scope: Auditor → violationNotes
+# Rule: repositoryInventoryConformance
+# Authority: Audit Governance Standard (AGS v2)
+# Classification: Non-authoritative commentary
+# AI Role: Explanatory only — never influences detection, identity, or resolution
+
+You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
+RULE: repositoryInventoryConformance
+
+CONSTRAINTS:
+- Output MUST be valid JSON only. No markdown, no explanations, no extra text.
+- Use ONLY data from FACTS_JSON.
+- Do NOT add, remove, rename, or reorder any fields.
+- Do NOT imply cause, intent, remediation, sequence, or agency.
+- Do NOT introduce timestamps or actors.
+- Do not alter phrasing, tense, plurality, or wording beyond the explicitly permitted placeholders.
+- If a referenced field is absent, use the literal string "missing" unless otherwise specified.
+
+TONE:
+- Formal
+- Factual
+- Neutral
+
+INPUT FACTS (JSON):
+{{FACTS_JSON}}
+
+TASK:
+Return JSON with this exact schema and ordering:
+
+{
+  "summary": "Repository inventory conformance violation observed",
+  "details": [
+    "Declared path: <path>",
+    "Expected type: <expectedType or 'unspecified'>",
+    "Observed type: <observedType or 'missing'>",
+    "Inventory issue classification: <issue>",
+    "Condition recorded during repository inventory evaluation"
+  ]
+}
+
+REQUIRED:
+- Use exact phrasing except for placeholders.
+- <issue> MUST be one of: "missing", "type_mismatch", "unexpected".
+- If expectedType is absent, use "unspecified".
+- If observedType is absent, use "missing".
+- Do not infer filesystem behavior beyond the provided facts.
