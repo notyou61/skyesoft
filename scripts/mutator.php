@@ -28,6 +28,9 @@ $auditLogPath   = $dataDir . '/auditResults.json';
 $merkleRootPath = $dataDir . '/codexMerkleRoot.txt';
 $codexPath      = $rootDir . '/codex/codex.json';
 
+// ⬇️ LOAD ENVIRONMENT EARLY (CRITICAL)
+loadEnvLocal($rootDir);
+
 #endregion
 
 #region SECTION I — Load Audit Ledger
@@ -36,7 +39,13 @@ if (!file_exists($auditLogPath)) {
     exit(1);
 }
 
-$auditLog = json_decode(file_get_contents($auditLogPath), true);
+$ledger = json_decode(file_get_contents($auditLogPath), true);
+if (!is_array($ledger) || !isset($ledger['violations']) || !is_array($ledger['violations'])) {
+    exit(1);
+}
+
+$auditLog = &$ledger['violations'];
+
 if (!is_array($auditLog)) {
     exit(1);
 }
@@ -48,6 +57,21 @@ if (!is_array($auditLog)) {
 function now(): int
 {
     return time();
+}
+
+function loadEnvLocal(string $root): void
+{
+    $envPath = $root . '/secure/env.local';
+    if (!file_exists($envPath)) return;
+
+    foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (!str_contains($line, '=')) continue;
+
+        [$key, $value] = explode('=', $line, 2);
+        putenv(trim($key) . '=' . trim($value));
+    }
 }
 
 function runCodexMerkleBuilder(): bool
@@ -201,6 +225,7 @@ function renderResolutionNarrative(
 
     return null;
 }
+
 #endregion
 
 #region SECTION III — Governed Reconciliation Engine
@@ -214,6 +239,27 @@ if (defined('SKYESOFT_VERIFICATION_PASS') && SKYESOFT_VERIFICATION_PASS) {
 $updated = false;
 
 foreach ($auditLog as &$violation) {
+
+    /* ── COMPLETION GUARD: materialize inferred resolution ───────────── */
+    if (
+        ($violation['resolved'] ?? null) !== null &&
+        ($violation['resolution'] ?? null) === null &&
+        in_array($violation['ruleId'] ?? '', [
+            'merkleIntegrity',
+            'repositoryInventoryConformance'
+        ], true)
+    ) {
+        $violation['resolution'] = [
+            'method'              => 'passive',
+            'reconciliationClass' => 'INFERRED_BY_NON_OBSERVATION',
+            'facts'               => $violation['facts'] ?? []
+        ];
+
+        $updated = true;
+        continue; // IMPORTANT: do not fall through
+    }
+
+    /* ── NORMAL SKIP LOGIC ─────────────────────────────────────────── */
     if (
         ($violation['type'] ?? 'violation') !== 'violation' ||
         ($violation['resolved'] ?? null) !== null
@@ -290,32 +336,64 @@ foreach ($auditLog as &$violation) {
 
     // ── repositoryInventoryConformance case ─────────────────────────────────
     elseif ($ruleId === 'repositoryInventoryConformance') {
-        $path = $violation['facts']['path'] ?? null;
-        $expectedType = $violation['facts']['expectedType'] ?? $violation['facts']['expected'] ?? null;
 
-        if (!$path || !is_string($path) || !$expectedType) {
+        $path     = $violation['facts']['path']     ?? null;
+        $issue    = $violation['facts']['issue']    ?? null;
+        $type     = $violation['facts']['type']     ?? null;
+        $expected = $violation['facts']['expected'] ?? null;
+
+        if (!$path || !is_string($path)) {
             continue;
         }
 
         $absolutePath = $rootDir . '/' . ltrim($path, '/');
         $exists = file_exists($absolutePath);
 
-        // Currently only simple existence cases are auto-resolved
-        // (type mismatches require manual intervention)
-        $conditionGone = in_array($expectedType, ['file', 'dir'], true) && $exists;
+        // ── CASE 1: unexpected artifact (your test case)
+        if ($issue === 'unexpected') {
 
-        if (!$conditionGone) {
-            continue;
+            // Condition is gone when artifact no longer exists
+            if ($exists) {
+                continue;
+            }
+
+            $facts = [
+                'path'             => $path,
+                'type'             => $type ?? 'missing',
+                'issue'            => $issue,                        // 'unexpected'
+                'expected'         => $expected ?? 'missing',
+                'observationCount' => $violation['observationCount'] ?? 1,
+                'exists'           => false
+            ];
+
+            $method = 'passive';
+            $reconciliationClass = 'STRUCTURAL_REMOVAL';
         }
 
-        $facts = [
-            'path'         => $path,
-            'expectedType' => $expectedType,
-            'exists'       => $exists
-        ];
+        // ── CASE 2: declared but missing artifact
+        elseif ($issue === 'missing' && in_array($expected, ['file', 'dir'], true)) {
 
-        $reconciliationClass = 'STRUCTURAL_VERIFICATION';
-        $method = 'passive';
+            if (!$exists) {
+                continue;
+            }
+
+            $facts = [
+                'path'             => $path,
+                'type'             => $type ?? 'missing',
+                'issue'            => $issue,                        // 'missing'
+                'expected'         => $expected,                     // 'file' or 'dir'
+                'observationCount' => $violation['observationCount'] ?? 1,
+                'exists'           => true
+            ];
+
+            $method = 'passive';
+            $reconciliationClass = 'STRUCTURAL_RESTORATION';
+        }
+
+        // ── CASE 3: type mismatch → manual only
+        else {
+            continue;
+        }
     }
 
     // Resolution conditions satisfied → record it
@@ -331,8 +409,10 @@ foreach ($auditLog as &$violation) {
     ];
 
     if ($narrative !== null) {
-        $violation['resolution']['summary'] = $narrative['summary'];
-        $violation['resolution']['details'] = $narrative['details'];
+        $violation['resolutionNotes'] = [
+            'summary' => $narrative['summary'],
+            'details' => $narrative['details']
+        ];
     }
 
     $updated = true;
@@ -347,7 +427,7 @@ unset($violation);
 if ($updated) {
     file_put_contents(
         $auditLogPath,
-        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
     );
 }
 

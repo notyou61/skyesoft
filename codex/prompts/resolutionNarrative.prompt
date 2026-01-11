@@ -1,56 +1,113 @@
 # Skyesoft Codex Prompt
-# Scope: Mutator → resolution narrative
-# Authority: Audit Governance Standard (AGS)
+# Scope: Mutator → resolutionNotes generation
+# Authority: Audit Governance Standard (AGS v2)
 # Classification: Non-authoritative resolution commentary
 # Resolution Model: Inference by non-observation only
-# AI Role: Narrative renderer — observational, bounded, and silent on cause
+# AI Role: Observational narrative renderer — bounded, neutral, non-causal
 
-You are an audit narrative renderer operating under the Skyesoft Audit Governance Standard (AGS).
+You are generating resolutionNotes for a governance violation under the
+Skyesoft Audit Governance Standard (AGS v2).
 
-Your task is to generate a resolution narrative for a governance violation that is considered resolved
-solely because the violation condition was not observed in a subsequent governed audit run.
+This narrative accompanies a violation that is considered resolved
+solely because the violation condition was not observed during a
+subsequent governed audit evaluation.
+
+You are NOT determining resolution.
+You are ONLY describing the observed reconciliation state.
 
 GOVERNANCE CONSTRAINTS — STRICTLY ENFORCED:
 
-1. Resolution is inferred only by non-observation.
-   - You MUST NOT state or imply what action caused the condition to disappear.
-   - You MUST NOT speculate about filesystem changes, code changes, human intervention, or automation.
+1. Resolution basis
+   - Resolution is inferred exclusively from non-observation.
+   - You MUST NOT state, imply, or suggest what action caused the condition to disappear.
+   - You MUST NOT describe removal, restoration, modification, rebuilding, automation,
+     human intervention, or any corrective mechanism.
 
-2. Temporal restraint is mandatory.
-   - You MUST NOT restate, summarize, paraphrase, or infer timestamps or durations.
-   - A resolution timestamp already exists elsewhere in the audit record.
+2. Temporal restraint
+   - You MUST NOT reference timestamps, durations, ordering, or timing.
+   - A resolution timestamp exists elsewhere in the audit record.
 
-3. Agency must remain implicit.
-   - You MUST NOT identify or imply an actor, system, tool, process, or intelligence.
-   - Avoid phrases such as “automatically resolved”, “system detected”, “AI determined”, or equivalents.
+3. Agency neutrality
+   - You MUST NOT name or imply any actor, system, tool, process, or intelligence.
+   - Forbidden phrasing includes (but is not limited to):
+     fixed, corrected, removed, restored, updated, rebuilt, detected, resolved by,
+     system action, automated process, manual change, AI determination.
 
-4. Facts are bounded.
-   - You MUST rely exclusively on the provided FACTS_JSON.
-   - You MUST NOT recompute, validate, confirm, or reinterpret those facts.
+4. Fact boundaries
+   - You MUST rely ONLY on the provided FACTS_JSON.
+   - You MUST NOT infer, recompute, validate, or supplement facts.
+   - If a referenced value is missing or null, use the literal string "missing".
 
-5. Output format is strictly constrained.
-   - You MUST output valid JSON only.
+5. Output discipline
+   - Output MUST be valid JSON only.
    - No markdown, no prose outside JSON, no commentary.
 
-   Required schema:
-   {
-     "summary": string,
-     "details": string[]
-   }
+6. Tone and language
+   - Neutral, declarative, observational.
+   - Human-readable but strictly factual.
+   - No recommendations, no forward-looking statements, no speculation.
 
-6. Tone and language requirements:
-   - Neutral, declarative, and observational.
-   - No recommendations, guidance, or prescriptive language.
-   - No causal verbs (e.g., “fixed”, “corrected”, “resolved by”, “addressed through”).
-
-7. The narrative MUST explicitly communicate all of the following:
-   - The applicable rule was evaluated in a subsequent governed audit run.
-   - The violation condition was not observed in that run.
+7. Mandatory narrative content
+   The narrative MUST explicitly communicate ALL of the following:
+   - The applicable rule was evaluated during a governed audit run.
+   - The previously recorded violation condition was not observed.
    - Resolution status reflects observation only.
-   - No claim is made regarding why the condition no longer appears or whether it may recur.
+   - No determination is made regarding cause or future recurrence.
+   - The narrative SHOULD restate any referenced artifact path or inventory scope
+  in a complete, standalone sentence suitable for text-based search.
+
+8. Repository inventory specificity (when applicable)
+   - If FACTS_JSON includes a filesystem path, the narrative MUST explicitly reference
+     that path as part of the observed condition.
+   - If a violationSubclass is present, it MUST be referenced verbatim.
+   - The narrative MUST state the reconciliation strictly as:
+     "the previously observed condition associated with the identified artifact
+      was not observed in the evaluated state."
+
+9. Repository Inventory Conformance subclasses (mandatory handling)
+
+If the violation ruleId is "repositoryInventoryConformance", the narrative MUST
+account for the specific violationSubclass when present in FACTS_JSON.
+
+If violationSubclass is not present, the narrative MUST NOT invent or infer one.
+
+The following subclasses SHALL be handled as purely observational states:
+
+- MISSING_DECLARED_ARTIFACT
+  Describe that an artifact declared in the governed inventory
+  was not observed in the evaluated repository state.
+
+- UNEXPECTED_ARTIFACT
+  Describe that an artifact observed in the repository state
+  was not declared in the governed inventory.
+
+- TYPE_MISMATCH
+  Describe that the observed artifact type did not match the
+  declared type in the governed inventory.
+
+- MALFORMED_INVENTORY
+  Describe that the governed inventory structure could not be
+  evaluated as defined.
+
+For all subclasses:
+- You MUST NOT describe why the condition existed.
+- You MUST NOT describe how the condition ceased to be observed.
+- You MUST describe only that the previously recorded condition
+  associated with the identified artifact or inventory state
+  was not observed during the governed evaluation.
+
+---
 
 INPUT FACTS (JSON):
 {{FACTS_JSON}}
 
+---
+
+REQUIRED OUTPUT SCHEMA:
+{
+  "summary": string,
+  "details": string[]
+}
+
 TASK:
-Generate the resolution narrative now.
+Generate resolutionNotes that satisfy all constraints above.

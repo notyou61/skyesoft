@@ -1,80 +1,43 @@
-[
-    {
-        "violationId": "VIO-001",
-        "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
-        "ruleId": "merkleIntegrity",
-        "timestamp": 1767994970,
-        "auditMode": "governance",
-        "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
-        "violationNotes": {
-            "summary": "Merkle root mismatch (observed ≠ governed)",
-            "details": [
-                "Stored governance root: 31a36b11fee6...",
-                "Merkle tree root: missing",
-                "Computed observed root: 058ebea2dc38...",
-                "Governance vs tree root: differ",
-                "Observed vs governance root: differ",
-                "Observed 1 time in current batch",
-                "Requires human review of Codex changes"
-            ]
-        },
-        "notificationSent": null,
-        "violationBatch": "VB-1767994970",
-        "resolved": 1767995026,
-        "resolution": {
-            "method": "passive",
-            "reconciliationClass": "STATE_CONVERGENCE",
-            "facts": {
-                "artifact": "codex/codex.json",
-                "currentObservedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-                "currentGovernedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-                "merkleBuilderRun": false
-            }
-        },
-        "lastObserved": 1767994980,
-        "observationCount": 2,
-        "facts": {
-            "storedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-            "observedRoot": "058ebea2dc3893032f409912a360de29fef1fa6ec42387e9d87847edd3347cf5"
-        }
+{
+    "meta": {
+        "title": "Skyesoft Governance Violation",
+        "generatedAt": 1768169626,
+        "generatedBy": "scripts/auditor.php",
+        "codexTier": "Tier-2",
+        "purpose": "Governance audit violation record",
+        "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
+        "auditCount": 3,
+        "violationCount": 1,
+        "unresolvedViolations": 1,
+        "lastAudit": 1768172082,
+        "lastViolationBatch": "VB-1768172082"
     },
-    {
-        "violationId": "VIO-002",
-        "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
-        "ruleId": "merkleIntegrity",
-        "timestamp": 1767995309,
-        "auditMode": "governance",
-        "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
-        "violationNotes": {
-            "summary": "Merkle root mismatch (observed ≠ governed)",
-            "details": [
-                "Stored governance root: 31a36b11fee6...",
-                "Merkle tree root: missing",
-                "Computed observed root: 058ebea2dc38...",
-                "Governance vs tree root: differ",
-                "Observed vs governance root: differ",
-                "Observed 1 time in current batch",
-                "Requires human review of Codex changes"
-            ]
-        },
-        "notificationSent": null,
-        "violationBatch": "VB-1767995309",
-        "resolved": 1767995389,
-        "resolution": {
-            "method": "passive",
-            "reconciliationClass": "STATE_CONVERGENCE",
+    "violations": [
+        {
+            "violationId": "VIO-001",
+            "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+            "ruleId": "merkleIntegrity",
+            "timestamp": 1768172082,
+            "auditMode": "governance",
+            "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+            "violationNotes": {
+                "summary": "A Merkle root mismatch was observed during this audit run.",
+                "details": [
+                    "The observed Merkle state differs from the governed snapshot.",
+                    "This condition was observed once in this audit run.",
+                    "Human review may be required."
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768172082",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768172082,
+            "observationCount": 1,
             "facts": {
-                "artifact": "codex/codex.json",
-                "currentObservedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-                "currentGovernedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-                "merkleBuilderRun": false
+                "storedRoot": "9271225a5d8eedcb196f7ea4e31061d8380109b0c6f067b30bb94fdc34743e8a",
+                "observedRoot": "721db4ff410c9c400cd46d48976bfe44a42b8e5ca33aa0e5e62b7775464e877f"
             }
-        },
-        "lastObserved": 1767995320,
-        "observationCount": 2,
-        "facts": {
-            "storedRoot": "31a36b11fee67dcb9b1e0dd90876dd6096f6b5315d2e246528b499a0ca64317b",
-            "observedRoot": "058ebea2dc3893032f409912a360de29fef1fa6ec42387e9d87847edd3347cf5"
         }
-    }
-]
+    ]
+}

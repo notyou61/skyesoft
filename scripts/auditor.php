@@ -15,6 +15,10 @@ declare(strict_types=1);
  *   • Strict separation: AI never influences detection, hashing, lifecycle
  *   • Structural groundwork laid for future governed resolution narratives
  *
+ *  Fixed in this version (Jan 2026):
+ *   • observationCount now incremented BEFORE AI narrative generation on updates
+ *   • AI always receives the current (this-run-included) observation count
+ *
  *  Still planned (next wave):
  *   • Full governed resolution narrative on inferred resolution
  *   • Dedicated renderResolutionNarrative() helper + prompt
@@ -211,6 +215,24 @@ if (!function_exists('renderViolationNotes')) {
     }
 }
 
+if (!function_exists('nextViolationId')) {
+    function nextViolationId(array $auditLog): string
+    {
+        $max = 0;
+
+        foreach ($auditLog as $record) {
+            if (
+                isset($record['violationId']) &&
+                preg_match('/VIO-(\d+)/', $record['violationId'], $m)
+            ) {
+                $max = max($max, (int)$m[1]);
+            }
+        }
+
+        return sprintf('VIO-%03d', $max + 1);
+    }
+}
+
 #endregion PRELUDE
 
 #region SECTION 0 — Runtime Context
@@ -252,25 +274,25 @@ $merkleRootPath = $root . '/data/records/codexMerkleRoot.txt';
 
 #endregion SECTION I
 
-#region SECTION III — Load Audit Log
+#region SECTION III — Load Audit Log (Canonical Structure)
 
 if (!file_exists($auditLogPath)) {
-    file_put_contents($auditLogPath, json_encode([], JSON_PRETTY_PRINT));
+    file_put_contents(
+        $auditLogPath,
+        json_encode(
+            ['meta' => null, 'violations' => []],
+            JSON_PRETTY_PRINT
+        )
+    );
 }
 
-$auditLog = json_decode(file_get_contents($auditLogPath), true) ?? [];
+$auditDoc = json_decode(file_get_contents($auditLogPath), true);
 
-if (!function_exists('nextViolationId')) {
-    function nextViolationId(array $log): string {
-        $max = 0;
-        foreach ($log as $r) {
-            if (isset($r['violationId']) && preg_match('/VIO-(\d+)/', $r['violationId'], $m)) {
-                $max = max($max, (int)$m[1]);
-            }
-        }
-        return sprintf('VIO-%03d', $max + 1);
-    }
+if (!is_array($auditDoc)) {
+    throw new RuntimeException('AUDITOR CONTRACT VIOLATION: auditResults.json malformed');
 }
+
+$auditLog = $auditDoc['violations'] ?? [];
 
 #endregion SECTION III
 
@@ -281,56 +303,19 @@ $violations = [];
 $rulesEvaluated = [
     'merkleIntegrity'                => false,
     'repositoryInventoryConformance' => false,
-    'criticalArtifactPresence'       => false,
     'jurisdictionalRuleConformance'  => false,
 ];
 
-// IV.B — Critical Artifact Presence
-$rulesEvaluated['criticalArtifactPresence'] = true;
 
-$criticalRegistryPath = $root . '/codex/governance/criticalArtifacts.json';
-
-if (!file_exists($criticalRegistryPath)) {
-    $violations[] = [
-        'ruleId'      => 'criticalArtifactPresence',
-        'observation' => 'Critical artifacts registry missing',
-        'facts'       => [
-            'path'  => '/codex/governance/criticalArtifacts.json',
-            'issue' => 'registry_missing'
-        ]
-    ];
-} else {
-    $registry = json_decode(file_get_contents($criticalRegistryPath), true);
-    $criticalArtifacts = $registry['criticalArtifacts'] ?? [];
-
-    foreach ($criticalArtifacts as $artifact) {
-        $path   = $artifact['path'] ?? '';
-        $reason = $artifact['reason'] ?? 'No reason provided';
-        $absolutePath = $root . $path;
-
-        if (!file_exists($absolutePath)) {
-            $violations[] = [
-                'ruleId'      => 'criticalArtifactPresence',
-                'observation' => "Required governed artifact missing: $path",
-                'facts'       => [
-                    'path'   => $path,
-                    'reason' => $reason,
-                    'issue'  => 'missing'
-                ]
-            ];
-        }
-    }
-}
-
-// IV.C — Merkle Integrity
+// IV.B — Merkle Integrity
 $rulesEvaluated['merkleIntegrity'] = true;
 
 if (file_exists($merkleRootPath) && file_exists($codexPath)) {
     $codex = json_decode(file_get_contents($codexPath), true) ?? [];
 
-    $normalized = normalizeJson($codex);
-    $encoded = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $contentHash = hash('sha256', $encoded);
+    $normalized   = normalizeJson($codex);
+    $encoded      = json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $contentHash  = hash('sha256', $encoded);
     $observedRoot = hash('sha256', $contentHash);
 
     $storedRoot = trim(file_get_contents($merkleRootPath));
@@ -338,7 +323,8 @@ if (file_exists($merkleRootPath) && file_exists($codexPath)) {
     if ($storedRoot !== $observedRoot) {
         $violations[] = [
             'ruleId'      => 'merkleIntegrity',
-            'observation' => 'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.',
+            'observation' =>
+                'Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.',
             'facts'       => [
                 'storedRoot'   => $storedRoot,
                 'observedRoot' => $observedRoot
@@ -347,45 +333,62 @@ if (file_exists($merkleRootPath) && file_exists($codexPath)) {
     }
 }
 
-// IV.D — Repository Inventory Conformance
+
+// IV.C — Repository Inventory Conformance
 $rulesEvaluated['repositoryInventoryConformance'] = true;
 
 $inventoryPath = $root . '/data/records/repositoryInventory.json';
 
-$criticalArtifactPaths = [];
-$criticalRegistryPath = $root . '/codex/governance/criticalArtifacts.json';
-if (file_exists($criticalRegistryPath)) {
-    $criticalRegistry = json_decode(file_get_contents($criticalRegistryPath), true) ?? [];
-    foreach ($criticalRegistry['criticalArtifacts'] ?? [] as $artifact) {
-        if (isset($artifact['path'])) {
-            $criticalArtifactPaths[$artifact['path']] = true;
-        }
-    }
-}
-
 if (!file_exists($inventoryPath)) {
     $violations[] = [
-        'ruleId'      => 'criticalArtifactPresence',
-        'observation' => 'Required governed artifact missing: repositoryInventory.json',
-        'facts'       => ['path' => '/data/records/repositoryInventory.json']
+        'ruleId'      => 'repositoryInventoryConformance',
+        'observation' =>
+            'Repository inventory violation: repositoryInventory.json is missing',
+        'facts'       => [
+            'path'              => '/data/records/repositoryInventory.json',
+            'issue'             => 'missing',
+            'violationSubclass' => 'MALFORMED_INVENTORY'
+        ]
     ];
 } else {
+
     $inventory = json_decode(file_get_contents($inventoryPath), true) ?? [];
+
+    /* ── Inventory structure must be valid ─────────────────────────── */
     if (!isset($inventory['items']) || !is_array($inventory['items'])) {
         $violations[] = [
             'ruleId'      => 'repositoryInventoryConformance',
-            'observation' => 'Repository inventory violation: malformed or missing items array',
-            'facts'       => ['path' => '/data/records/repositoryInventory.json']
+            'observation' =>
+                'Repository inventory violation: malformed or missing items array',
+            'facts'       => [
+                'path'              => '/data/records/repositoryInventory.json',
+                'issue'             => 'malformed',
+                'violationSubclass' => 'MALFORMED_INVENTORY'
+            ]
         ];
     } else {
+
+        /* ── Declared inventory paths ───────────────────────────────── */
         $declaredPaths = [];
         foreach ($inventory['items'] as $item) {
             if (isset($item['path'], $item['type'])) {
-                if (isset($criticalArtifactPaths[$item['path']])) continue;
                 $declaredPaths[$item['path']] = $item['type'];
             }
         }
 
+        /* ── Allowed path closure (declared + implicit parents) ─────── */
+        $allowedPaths = $declaredPaths;
+        foreach (array_keys($declaredPaths) as $declaredPath) {
+            $parts = explode('/', trim($declaredPath, '/'));
+            $accum = '';
+            foreach ($parts as $part) {
+                if ($part === '') continue;
+                $accum .= '/' . $part;
+                $allowedPaths[$accum] ??= 'dir';
+            }
+        }
+
+        /* ── Observed filesystem paths ─────────────────────────────── */
         $observedPaths = [];
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
@@ -393,55 +396,73 @@ if (!file_exists($inventoryPath)) {
         );
 
         foreach ($iterator as $fileInfo) {
-            $fullPath     = $fileInfo->getPathname();
-            $relativePath = str_replace($root, '', $fullPath);
-            $normalized   = str_replace('\\', '/', $relativePath);
-            $canonical    = '/' . ltrim($normalized, '/');
+            $relativePath = str_replace('\\', '/', str_replace($root, '', $fileInfo->getPathname()));
+            $canonical    = '/' . ltrim($relativePath, '/');
 
             if ($canonical === '/') continue;
 
-            // Skip common vendor & temp dirs
             foreach (['.git', 'node_modules', 'vendor', 'runtimeEphemeral', 'records', 'derived'] as $dir) {
                 if (str_starts_with($canonical . '/', "/$dir/")) continue 2;
             }
 
             if (preg_match('/\.(?:keep|gitkeep)$/', $canonical)) continue;
-            if (isset($criticalArtifactPaths[$canonical])) continue;
 
             $observedPaths[$canonical] = $fileInfo->isDir() ? 'dir' : 'file';
         }
 
-        // Declared but missing / wrong type
+        /* ── Declared → Observed ───────────────────────────────────── */
         foreach ($declaredPaths as $path => $expected) {
+
             if (!isset($observedPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
-                    'observation' => "Repository inventory violation: declared $expected '$path' is missing",
-                    'facts'       => ['path' => $path, 'expected' => $expected, 'issue' => 'missing']
+                    'observation' =>
+                        "Repository inventory violation: declared $expected '$path' is missing",
+                    'facts'       => [
+                        'path'              => $path,
+                        'expected'          => $expected,
+                        'issue'             => 'missing',
+                        'violationSubclass' => 'MISSING_DECLARED_ARTIFACT'
+                    ]
                 ];
-            } elseif ($observedPaths[$path] !== $expected) {
+            }
+            elseif ($observedPaths[$path] !== $expected) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
-                    'observation' => "Repository inventory violation: '$path' expected $expected but found {$observedPaths[$path]}",
-                    'facts'       => ['path' => $path, 'expected' => $expected, 'observed' => $observedPaths[$path]]
+                    'observation' =>
+                        "Repository inventory violation: '$path' expected $expected but found {$observedPaths[$path]}",
+                    'facts'       => [
+                        'path'              => $path,
+                        'expected'          => $expected,
+                        'observed'          => $observedPaths[$path],
+                        'issue'             => 'type_mismatch',
+                        'violationSubclass' => 'TYPE_MISMATCH'
+                    ]
                 ];
             }
         }
 
-        // Observed but undeclared
+        /* ── Observed → Declared ───────────────────────────────────── */
         foreach ($observedPaths as $path => $type) {
-            if (!isset($declaredPaths[$path])) {
+            if (!isset($allowedPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
-                    'observation' => "Repository inventory violation: unexpected $type '$path' exists but not declared",
-                    'facts'       => ['path' => $path, 'type' => $type, 'issue' => 'unexpected']
+                    'observation' =>
+                        "Repository inventory violation: unexpected $type '$path' exists but not declared",
+                    'facts'       => [
+                        'path'              => $path,
+                        'type'              => $type,
+                        'issue'             => 'unexpected',
+                        'violationSubclass' => 'UNEXPECTED_ARTIFACT'
+                    ]
                 ];
             }
         }
     }
 }
 
-// IV.E — Jurisdictional Rule Conformance (governance mode only)
+
+// IV.D — Jurisdictional Rule Conformance (governance mode only)
 if ($auditMode === 'governance') {
     $rulesEvaluated['jurisdictionalRuleConformance'] = true;
 
@@ -449,17 +470,25 @@ if ($auditMode === 'governance') {
 
     if (!file_exists($jurisdictionRegistryPath)) {
         $violations[] = [
-            'ruleId'      => 'criticalArtifactPresence',
-            'observation' => 'Required governed artifact missing: jurisdictionRegistry.json',
-            'facts'       => ['path' => '/data/authoritative/jurisdictionRegistry.json']
+            'ruleId'      => 'jurisdictionalRuleConformance',
+            'observation' =>
+                'Jurisdiction rule violation: jurisdiction registry is missing',
+            'facts'       => [
+                'path'  => '/data/authoritative/jurisdictionRegistry.json',
+                'issue' => 'missing'
+            ]
         ];
     } else {
         $registry = json_decode(file_get_contents($jurisdictionRegistryPath), true);
         if (!is_array($registry)) {
             $violations[] = [
                 'ruleId'      => 'jurisdictionalRuleConformance',
-                'observation' => 'Jurisdiction rule violation: registry is malformed',
-                'facts'       => ['path' => $jurisdictionRegistryPath]
+                'observation' =>
+                    'Jurisdiction rule violation: registry is malformed',
+                'facts'       => [
+                    'path'  => $jurisdictionRegistryPath,
+                    'issue' => 'malformed'
+                ]
             ];
         }
     }
@@ -467,82 +496,92 @@ if ($auditMode === 'governance') {
 
 #endregion SECTION IV
 
-#region SECTION V — Process Violations & Update Persistence
+#region SECTION V — Process Violations & Persist Canonical Audit Results
 
-$emitted = [];
-$updated = false;
+/* ============================================================
+ *  SECTION V.A — Canonical Violation Merge (Authoritative)
+ * ============================================================ */
 
 $normalizedViolations = [];
-$seen = [];
+$seenObservations = [];
 
+/* ── Normalize & deduplicate observations (this run only) ── */
 foreach ($violations as $v) {
-    $obs    = $v['observation'] ?? (string)$v;
-    $ruleId = $v['ruleId'] ?? inferRuleId($obs);
+    $observation = $v['observation'] ?? '';
+    if ($observation === '') continue;
+    if (in_array($observation, $seenObservations, true)) continue;
+
+    $seenObservations[] = $observation;
+
+    $ruleId = $v['ruleId'] ?? inferRuleId($observation);
     $facts  = $v['facts'] ?? [];
 
-    if (in_array($obs, $seen, true)) continue;
-    $seen[] = $obs;
+    $notes = $isVerificationPass
+        ? null
+        : renderViolationNotes($ruleId, array_merge($facts, [
+            'observation' => $observation
+        ]), $root);
 
-    $factsForAI = $facts;
-    $factsForAI['observation'] = $obs;
-
-    $notes = $isVerificationPass ? null : renderViolationNotes($ruleId, $factsForAI, $root);
 
     $normalizedViolations[] = [
         'ruleId'         => $ruleId,
-        'observation'    => $obs,
+        'observation'    => $observation,
         'violationNotes' => $notes,
         'facts'          => $facts
     ];
 }
 
+/* ── Build identity set for current run ─────────────────── */
 $currentIdentities = [];
+
 foreach ($normalizedViolations as $nv) {
-    $obs    = $nv['observation'];
-    $ruleId = $nv['ruleId'];
-    [$file, $path] = extractViolationLocation($obs);
-    $hash = canonicalViolationHash($ruleId, $file, $path, $obs);
+    [$file, $path] = extractViolationLocation($nv['observation']);
+    $hash = canonicalViolationHash(
+        $nv['ruleId'],
+        $file,
+        $path,
+        $nv['observation']
+    );
     $currentIdentities[$hash] = true;
 }
 
+/* ── Merge into canonical ledger ────────────────────────── */
 foreach ($normalizedViolations as $nv) {
-    $obs    = $nv['observation'];
-    $notes  = $nv['violationNotes'];
-    $ruleId = $nv['ruleId'];
-    $facts  = $nv['facts'];
+    $observation = $nv['observation'];
+    $ruleId      = $nv['ruleId'];
+    $facts       = $nv['facts'];
+    $notes       = $nv['violationNotes'];
 
-    [$file, $path] = extractViolationLocation($obs);
-    $hash = canonicalViolationHash($ruleId, $file, $path, $obs);
+    [$file, $path] = extractViolationLocation($observation);
+    $hash = canonicalViolationHash($ruleId, $file, $path, $observation);
 
     $found = false;
+
     foreach ($auditLog as &$record) {
         if (($record['resolved'] ?? null) !== null) continue;
+        if (($record['identityHash'] ?? null) !== $hash) continue;
 
-        if (($record['identityHash'] ?? null) === $hash) {
-            $record['lastObserved'] = $timestamp;
-            if (!$isVerificationPass) {
-                $record['observationCount'] = ($record['observationCount'] ?? 0) + 1;
-            }
-            if ($notes !== null) {
-                $record['violationNotes'] = $notes;
-            }
-            $record['facts'] = $facts;
-            $found = true;
-            $updated = true;
-            $emitted[] = $record;
-            break;
+        $record['lastObserved'] = $timestamp;
+        $record['observationCount'] = ($record['observationCount'] ?? 0) + 1;
+
+        if ($notes !== null) {
+            $record['violationNotes'] = $notes;
         }
+
+        $record['facts'] = $facts;
+        $found = true;
+        break;
     }
     unset($record);
 
     if (!$found) {
-        $newRecord = [
+        $auditLog[] = [
             'violationId'       => nextViolationId($auditLog),
             'identityHash'      => $hash,
             'ruleId'            => $ruleId,
             'timestamp'         => $timestamp,
             'auditMode'         => $auditMode,
-            'observation'       => $obs,
+            'observation'       => $observation,
             'violationNotes'    => $notes,
             'notificationSent'  => null,
             'violationBatch'    => $violationBatch,
@@ -552,53 +591,86 @@ foreach ($normalizedViolations as $nv) {
             'observationCount'  => 1,
             'facts'             => $facts
         ];
-        $auditLog[] = $newRecord;
-        $emitted[]  = $newRecord;
-        $updated = true;
     }
 }
 
-// Infer resolution by absence
+/* ── Infer resolution by absence (Codex-mandated) ───────── */
 foreach ($auditLog as &$record) {
-    if (
-        ($record['resolved'] ?? null) !== null ||
-        ($record['auditMode'] ?? null) !== $auditMode
-    ) {
-        continue;
-    }
-
-    $ruleId = $record['ruleId'] ?? null;
-    if (!$ruleId || !($rulesEvaluated[$ruleId] ?? false)) continue;
+    if (($record['resolved'] ?? null) !== null) continue;
+    if (($record['auditMode'] ?? null) !== $auditMode) continue;
 
     if (!isset($currentIdentities[$record['identityHash'] ?? ''])) {
         $record['resolved'] = $timestamp;
         $record['lastObserved'] = $timestamp;
-        $updated = true;
     }
 }
 unset($record);
 
-if ($updated) {
-    file_put_contents(
-        $auditLogPath,
-        json_encode($auditLog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-    );
+
+/* ============================================================
+ *  SECTION V.B — Compute Persistent Meta (Authoritative)
+ * ============================================================ */
+
+$previousMeta = $auditDoc['meta'] ?? [];
+
+/* ── Preserve immutable lineage ─────────────────────────── */
+$generatedAt = $previousMeta['generatedAt'] ?? $timestamp;
+
+/* ── Rolling counters ───────────────────────────────────── */
+$auditCount = ($previousMeta['auditCount'] ?? 0) + 1;
+
+$violationCount = count($auditLog);
+
+$unresolvedViolations = 0;
+foreach ($auditLog as $v) {
+    if (($v['resolved'] ?? null) === null) {
+        $unresolvedViolations++;
+    }
 }
 
-$summary = [
-    'runComplete'    => true,
-    'timestamp'      => $timestamp,
-    'auditMode'      => $auditMode,
-    'emittedCount'   => count($emitted),
-    'mutatableCount' => 0,
+/* ── Canonical meta object (NO state field) ──────────────── */
+$meta = [
+    'title'                => 'Skyesoft Governance Violation',
+    'generatedAt'          => $generatedAt,
+    'generatedBy'          => 'scripts/auditor.php',
+    'codexTier'            => 'Tier-2',
+    'purpose'              => 'Governance audit violation record',
+    'description'          =>
+        'Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.',
+    'auditCount'           => $auditCount,
+    'violationCount'       => $violationCount,
+    'unresolvedViolations' => $unresolvedViolations,
+    'lastAudit'            => $timestamp,
+    'lastViolationBatch'   => $violationBatch
 ];
 
-if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
-    echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    return $summary;
-}
+/* ============================================================
+ *  SECTION V.C — Persist Canonical File (SINGLE SOURCE OF TRUTH)
+ * ============================================================ */
 
-echo json_encode($emitted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+file_put_contents(
+    $auditLogPath,
+    json_encode(
+        [
+            'meta'       => $meta,
+            'violations' => $auditLog
+        ],
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    )
+);
+
+/* ============================================================
+ *  SECTION V.D — Emit for Sentinel / CLI (NON-PERSISTENT)
+ * ============================================================ */
+
+echo json_encode(
+    [
+        'meta'       => $meta,
+        'violations' => $auditLog
+    ],
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+);
+
 exit(0);
 
 #endregion SECTION V

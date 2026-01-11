@@ -1,56 +1,57 @@
-# Skyesoft Codex Prompt
-# Scope: Auditor → violationNotes
-# Rule: merkleIntegrity
-# Authority: Audit Governance Standard (AGS v2)
-# Classification: Non-authoritative commentary
-# AI Role: Explanatory only — never influences detection, identity, or resolution
+You are an audit narrative renderer operating under the Skyesoft Audit Governance Standard (AGS).
 
-You are generating non-authoritative violationNotes for Skyesoft Auditor (AGS v2).
-RULE: merkleIntegrity
+Your task is to generate a **violation narrative** for a Merkle integrity failure detected
+during a single governed audit run.
 
-CONSTRAINTS:
-- Output MUST be valid JSON only. No markdown, no explanations, no extra text.
-- Use ONLY data from FACTS_JSON.
-- Do NOT add, remove, rename, or reorder any fields.
-- Do NOT imply cause, intent, sequence, remediation, or agency.
-- Do NOT introduce timestamps or actors.
-- Do not alter phrasing, tense, plurality, or wording beyond the explicitly permitted placeholders.
-- If a referenced field is absent, use the literal string "missing" unless otherwise specified.
+GOVERNANCE CONSTRAINTS — STRICTLY ENFORCED:
 
-HASH HANDLING:
-- If a hash string length is greater than 12 characters, output the first 12 characters followed immediately by "...".
-- If length is 12 characters or fewer, output it unchanged.
+1. Scope of observation is limited to the CURRENT audit run only.
+   - You MUST describe observations as occurring within this audit run.
+   - You MUST NOT reference cumulative history, prior runs, or observation counts.
 
-TONE:
-- Formal
-- Factual
-- Neutral
+2. You MUST NOT speculate on causes.
+   - Do NOT infer filesystem edits, human actions, automation, or intent.
+   - Avoid causal language such as “changed”, “modified”, “rebuilt”, or “corrected”.
 
-INPUT FACTS (JSON):
-{{FACTS_JSON}}
+3. Temporal restraint is mandatory.
+   - You MUST NOT invent or restate timestamps.
+   - A timestamp already exists elsewhere in the audit record.
 
-TASK:
-Return JSON with this exact schema and ordering:
+4. Agency must remain implicit.
+   - Do NOT identify or imply any actor, system, or process.
+   - Avoid phrases like “the system detected”, “the auditor found”, or “AI determined”.
 
+5. Facts are bounded.
+   - You MUST rely exclusively on the provided FACTS_JSON.
+   - You MUST NOT recompute, validate, or reinterpret the facts.
+
+6. Output format is strictly constrained.
+   - Output MUST be valid JSON only.
+   - No markdown, no commentary, no prose outside JSON.
+
+REQUIRED OUTPUT SCHEMA:
 {
-  "summary": "Merkle root mismatch (observed ≠ governed)",
-  "details": [
-    "Stored governance root: <truncated storedRoot>",
-    "Merkle tree root: <truncated treeRoot or 'missing'>",
-    "Computed observed root: <truncated observedRoot>",
-    "Governance vs tree root: <match or differ>",
-    "Observed vs governance root: differ",
-    "Observed <observationCount> {{timeWord}} in current batch",
-    "Requires human review of Codex changes"
-  ]
+  "summary": string,
+  "details": string[]
 }
 
-REQUIRED:
-- Use exact phrasing except for placeholders.
-- treeRoot: use "missing" if null or absent in facts.
-- Comparisons: use only "match" or "differ".
-- "Observed vs governance root" MUST always be "differ".
-- observationCount: use the exact integer provided.
-- If observationCount equals 1, timeWord MUST be "time".
-- If observationCount is not 1, timeWord MUST be "times".
-- Do not infer any other pluralization or wording.
+7. Narrative requirements:
+   - Clearly state that a Merkle root mismatch was observed during this audit run.
+   - Indicate that the observed Merkle state differs from the governed snapshot.
+   - Clarify that the condition was observed once in this audit run.
+   - Explicitly note that human review may be required.
+   - Make no claims about persistence, recurrence, or resolution.
+
+TONE AND LANGUAGE:
+- Neutral, declarative, and observational.
+- No recommendations beyond noting review necessity.
+- No references to cumulative observations or historical frequency.
+
+---
+
+FACTS_JSON:
+{{FACTS_JSON}}
+
+---
+
+Generate the violation narrative now.

@@ -58,53 +58,96 @@ function isExcluded(string $path, array $excluded): bool
 
 #endregion SECTION II
 
-#region SECTION III — FILESYSTEM SCAN
+#region SECTION III — FILESYSTEM SCAN (REBUILT, NO HARDCODING)
 
 $items = [];
+$dirHasCanonicalChild = [];
+$intentionalDirs = [];
 
+// First pass: detect intentional directories via placeholders
 $iterator = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($repoRoot, FilesystemIterator::SKIP_DOTS),
     RecursiveIteratorIterator::SELF_FIRST
 );
 
 foreach ($iterator as $file) {
+    $fullPath = $file->getPathname();
+    $relPath  = normalizePath($fullPath, $repoRoot);
+
+    if ($relPath === '' || isExcluded($relPath, $excluded)) {
+        continue;
+    }
+
+    // Detect placeholder intent (but do not inventory placeholder files)
+    if (preg_match('/\/\.(?:keep|gitkeep)$/', $relPath)) {
+        $intentionalDirs[dirname('/' . ltrim($relPath, '/'))] = true;
+    }
+}
+
+// Second pass: inventory canonical artifacts only
+foreach ($iterator as $file) {
     /** @var SplFileInfo $file */
 
     $fullPath = $file->getPathname();
     $relPath  = normalizePath($fullPath, $repoRoot);
 
-    // Skip the root directory itself
-    if ($relPath === '') {
+    if ($relPath === '' || isExcluded($relPath, $excluded)) {
         continue;
     }
 
-    // Skip explicitly excluded paths (e.g. .git, node_modules)
-    if (isExcluded($relPath, $excluded)) {
-        continue;
-    }
-
-    // Skip placeholder .keep files
+    // Skip placeholder files themselves
     if (preg_match('/\.(?:keep|gitkeep)$/', $relPath)) {
         continue;
     }
 
-    // Force canonical root-anchored path — this is now the single source of truth
     $canonicalPath = '/' . ltrim($relPath, '/');
 
-    // Determine Merkle integrity scope using the canonical path
-    $integrityScope = in_array($canonicalPath, [
-        '/data/records/repositoryInventory.json',
-        '/data/records/merkleTree.json',
-        '/data/records/merkleRoot.txt',
-    ], true) ? 'MERKLE_EXCLUDED' : 'MERKLE_INCLUDED';
+    // Files must physically exist to be canonical
+    if ($file->isFile()) {
+        $dirHasCanonicalChild[dirname($canonicalPath)] = true;
 
-    $items[] = [
-        'id'             => 'TEMP',
-        'path'           => $canonicalPath,           // Always root-anchored e.g. "/api", "/api/askOpenAI.php"
-        'type'           => $file->isDir() ? 'dir' : 'file',
-        'integrityScope' => $integrityScope,
-        'purpose'        => 'Pre-SIS auto-generated inventory entry',
-    ];
+        $integrityScope = in_array($canonicalPath, [
+            '/data/records/repositoryInventory.json',
+            '/data/records/merkleTree.json',
+            '/data/records/merkleRoot.txt',
+        ], true) ? 'MERKLE_EXCLUDED' : 'MERKLE_INCLUDED';
+
+        $items[] = [
+            'id'             => 'TEMP',
+            'path'           => $canonicalPath,
+            'type'           => 'file',
+            'integrityScope' => $integrityScope,
+            'purpose'        => 'Pre-SIS auto-generated inventory entry',
+        ];
+    }
+}
+
+// Third pass: include directories only if they have intent
+foreach ($iterator as $file) {
+    if (!$file->isDir()) {
+        continue;
+    }
+
+    $relPath = normalizePath($file->getPathname(), $repoRoot);
+
+    if ($relPath === '' || isExcluded($relPath, $excluded)) {
+        continue;
+    }
+
+    $canonicalPath = '/' . ltrim($relPath, '/');
+
+    if (
+        isset($intentionalDirs[$canonicalPath]) ||
+        isset($dirHasCanonicalChild[$canonicalPath])
+    ) {
+        $items[] = [
+            'id'             => 'TEMP',
+            'path'           => $canonicalPath,
+            'type'           => 'dir',
+            'integrityScope' => 'MERKLE_INCLUDED',
+            'purpose'        => 'Pre-SIS auto-generated inventory entry',
+        ];
+    }
 }
 
 #endregion SECTION III
@@ -184,53 +227,3 @@ fwrite(STDOUT, "• Items indexed: " . count($items) . "\n");
 fwrite(STDOUT, "• Output: /data/records/repositoryInventory.json\n");
 
 #endregion SECTION V
-
-#region SECTION VI — PROMOTION & INTEGRITY CASCADE
-
-$php     = escapeshellarg(PHP_BINARY);
-$scripts = $repoRoot . '/scripts';
-
-// Step VI.A — Merkle Commit
-$buildCmd = $php . ' ' . escapeshellarg($scripts . '/merkleBuild.php');
-exec($buildCmd, $buildOut, $buildCode);
-
-if ($buildCode !== 0) {
-    fwrite(STDOUT, implode("\n", $buildOut) . "\n");
-    exit(1);
-}
-
-// Step VI.B — Merkle Verify (capture auditor payload)
-$verifyCmd = $php . ' ' . escapeshellarg($scripts . '/merkleVerify.php');
-exec($verifyCmd, $verifyOut, $verifyCode);
-
-$auditorJson = implode("\n", $verifyOut);
-
-// Step VI.C — Sentinel Consumption (STDIN-safe)
-$sentinelCmd = $php . ' ' . escapeshellarg($scripts . '/sentinel.php');
-
-$descriptors = [
-    0 => ['pipe', 'r'],
-    1 => ['pipe', 'w'],
-    2 => ['pipe', 'w'],
-];
-
-$process = proc_open($sentinelCmd, $descriptors, $pipes);
-
-if (!is_resource($process)) {
-    fwrite(STDOUT, "❌ Unable to invoke sentinel\n");
-    exit(1);
-}
-
-fwrite($pipes[0], $auditorJson);
-fclose($pipes[0]);
-
-$sentinelOut = stream_get_contents($pipes[1]);
-fclose($pipes[1]);
-
-proc_close($process);
-
-// Emit final canonical result
-fwrite(STDOUT, $sentinelOut . "\n");
-exit;
-
-#endregion SECTION VI

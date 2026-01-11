@@ -2977,11 +2977,11 @@
                         "doctrine"
                     ],
                     "constraints": [
-                    "Operational audits MUST NOT perform semantic evaluation",
-                    "Operational audits MUST NOT evaluate naming or stylistic conventions",
-                    "Operational audits MUST NOT perform external dependency checks",
-                    "Operational audits MUST NOT emit advisory or non-deterministic violations",
-                    "Operational audits MUST NOT perform independent critical artifact existence checks outside repositoryInventoryConformance"
+                        "Operational audits MUST NOT perform semantic evaluation",
+                        "Operational audits MUST NOT evaluate naming or stylistic conventions",
+                        "Operational audits MUST NOT perform external dependency checks",
+                        "Operational audits MUST NOT emit advisory or non-deterministic violations",
+                        "Operational audits MUST NOT perform independent critical artifact existence checks outside repositoryInventoryConformance"
                     ],
                     "governanceOverride": {
                         "description": "All violation classes excluded from operational audits MAY be evaluated in governance audit mode, subject to their declared determinism and dependencyScope.",
@@ -3062,36 +3062,71 @@
                         "narrativeGuidance": "Explain that the governed Merkle snapshot no longer matches observed system state."
                     },
                     "repositoryInventoryConformance": {
-                        "category": "structuralArtifacts",
-                        "auditModes": ["operational", "governance"],
-                        "description": "Detects divergence between the governed repository inventory and the observed filesystem state.",
-                        "narrativeGuidance": "Describe that the observed filesystem state does not conform to the declared repository inventory.",
-                        "conformanceDirections": {
-                            "declaredToObserved": {
-                            "name": "Missing Declared Artifact",
-                            "definition": "An artifact declared in repositoryInventory.json is not present in the observed filesystem.",
-                            "semanticMeaning": "Declared intent was not satisfied by system reality.",
-                            "examples": [
-                                "Declared file does not exist",
-                                "Declared directory is missing"
-                            ]
-                            },
-                            "observedToDeclared": {
-                            "name": "Unexpected Observed Artifact",
-                            "definition": "An artifact present in the observed filesystem is not declared in repositoryInventory.json.",
-                            "semanticMeaning": "System reality contains undeclared or unauthorized artifacts.",
-                            "examples": [
-                                "Unregistered file exists",
-                                "Unregistered directory exists"
-                            ]
-                            }
-                        },
-                        "rules": [
-                            "Exactly one violation instance SHALL exist per unique path and direction while unresolved.",
-                            "Repeated detections update observationCount and lastObserved.",
-                            "A violation is resolved when the governing condition is no longer observed in a subsequent audit run.",
-                            "Direction is a factual property of the violation and MUST be recorded in violation facts."
+                    "category": "structuralArtifacts",
+                    "auditModes": ["operational", "governance"],
+                    "description": "Detects divergence between the governed repository inventory and the observed filesystem state.",
+                    "narrativeGuidance": "Describe that the observed filesystem state does not conform to the declared repository inventory.",
+
+                    "violationSubclasses": {
+                        "UNEXPECTED_ARTIFACT": {
+                        "direction": "observedToDeclared",
+                        "definition": "An artifact exists in the observed filesystem but is not declared in repositoryInventory.json.",
+                        "semanticMeaning": "System reality contains undeclared artifacts.",
+                        "resolutionConditions": [
+                            "Artifact no longer exists in observed filesystem",
+                            "Artifact is declared in repositoryInventory.json"
+                        ],
+                        "examples": [
+                            "Unregistered file exists",
+                            "Unregistered directory exists"
                         ]
+                        },
+
+                        "MISSING_DECLARED_ARTIFACT": {
+                        "direction": "declaredToObserved",
+                        "definition": "An artifact declared in repositoryInventory.json does not exist in the observed filesystem.",
+                        "semanticMeaning": "Declared intent was not satisfied by system reality.",
+                        "resolutionConditions": [
+                            "Artifact exists in observed filesystem",
+                            "Artifact declaration is removed from repositoryInventory.json"
+                        ],
+                        "examples": [
+                            "Declared file does not exist",
+                            "Declared directory is missing"
+                        ]
+                        },
+                        "TYPE_MISMATCH": {
+                        "direction": "declaredToObserved",
+                        "definition": "An artifact exists but does not match its declared type.",
+                        "semanticMeaning": "Declared structural expectations do not match observed form.",
+                        "resolutionConditions": [
+                            "Observed artifact matches declared type",
+                            "Inventory declaration is updated to match observed type"
+                        ],
+                        "examples": [
+                            "Declared directory is a file",
+                            "Declared file is a directory"
+                        ]
+                        },
+                        "MALFORMED_INVENTORY": {
+                        "direction": "inventoryInternal",
+                        "definition": "repositoryInventory.json is structurally invalid or semantically unreadable.",
+                        "semanticMeaning": "Inventory governance artifact cannot be reliably evaluated.",
+                        "resolutionConditions": [
+                            "Inventory structure is valid and parseable"
+                        ],
+                        "examples": [
+                            "Invalid JSON",
+                            "Missing required inventory fields"
+                        ]
+                        }
+                    },
+                    "rules": [
+                        "Exactly one violation instance SHALL exist per unique path and subclass while unresolved.",
+                        "violationSubclasses are authoritative classifications emitted by the Auditor.",
+                        "The Mutator MUST NOT infer or alter violationSubclasses.",
+                        "Resolution narratives MUST align with the recorded violationSubclass."
+                    ]
                     },
                     "jurisdictionalRuleConformance": {
                         "category": "jurisdictionalGovernance",
@@ -3479,6 +3514,7 @@
                     "assets/data/repositoryAudit.json",
                     "assets/data/versions.json",
                     "assets/data/repositoryInventory.json",
+                    "data/records/auditResults.json",
                     "codex/meta/merkleTree.json",
                     "codex/meta/merkleRoot.txt"
                 ],
@@ -3496,6 +3532,29 @@
                     "MIS must verify as valid immediately after initialization."
                     ]
                 },
+                "auditLedgerInitialization": {
+                    "description": "Defines the constitutional initialization of the governed audit ledger.",
+                    "rules": [
+                        "auditResults.json must not exist prior to official system launch.",
+                        "auditResults.json must be created only after SIS completion and launch declaration.",
+                        "The first generated meta.generatedAt timestamp constitutes the audit ledger genesis and must never change.",
+                        "Pre-launch audits, test runs, or simulations must not persist into auditResults.json.",
+                        "If auditResults.json is deleted prior to launch, it may be regenerated without violation.",
+                        "If auditResults.json is deleted after launch, this constitutes a critical governance violation."
+                    ]
+                },
+                "auditMetaRules": {
+                    "description": "Defines immutable and mutable fields within auditResults.json meta block.",
+                    "rules": [
+                        "meta.generatedAt represents the audit ledger genesis timestamp and must never change after creation.",
+                        "meta.auditCount is a cumulative count of governed audit executions and must increment monotonically.",
+                        "meta.violationCount reflects the total number of recorded violations in the ledger at time of evaluation.",
+                        "meta.unresolvedViolations must be computed dynamically based on violations lacking a resolved timestamp.",
+                        "meta.lastAudit must update on every governed audit execution.",
+                        "meta.lastViolationBatch must reflect the most recent audit batch identifier.",
+                        "Mutator processes must never modify meta fields."
+                    ]
+                },
                 "launchDeclaration": {
                     "description": "Defines the constitutional genesis of governed operation and the mandatory first entry of the operational audit log. Establishes the point at which audit records become authoritative.",
                     "schema": {
@@ -3505,13 +3564,14 @@
                     "id": "ERR-LAUNCH"
                     },
                     "rules": [
-                    "Sentinel must write a Launch Declaration entry to repositoryAudit.json after initialization.",
-                    "Governance begins at the launch declaration timestamp.",
-                    "The audit ledger is intentionally empty prior to the launch declaration.",
-                    "All audit entries occurring after the launch declaration are authoritative.",
-                    "Pre-launch conditions and observations are non-canonical.",
-                    "ERR-LAUNCH is not an error; it is a constitutional marker and must never repeat.",
-                    "The launch declaration must never be deleted, modified, or re-issued."
+                        "Sentinel must write a Launch Declaration entry to repositoryAudit.json after initialization.",
+                        "Governance begins at the launch declaration timestamp.",
+                        "The audit ledger is intentionally empty prior to the launch declaration.",
+                        "All audit entries occurring after the launch declaration are authoritative.",
+                        "Pre-launch conditions and observations are non-canonical.",
+                        "ERR-LAUNCH is not an error; it is a constitutional marker and must never repeat.",
+                        "The launch declaration must never be deleted, modified, or re-issued.",
+                        "All governed audit ledgers, including auditResults.json, begin authority at the launch declaration timestamp."
                     ]
                 },
                 "merkleRules": {

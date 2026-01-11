@@ -1,16 +1,16 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": 1767984130,
+        "generatedAt": 1768063016,
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
         "purpose": "Declared repository inventory entry",
         "description": "Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.",
-        "newInventoryRuns": 2,
-        "itemsDeclared": 263,
-        "directoriesDeclared": 115,
-        "filesDeclared": 148
+        "newInventoryRuns": 7,
+        "itemsDeclared": 257,
+        "directoriesDeclared": 111,
+        "filesDeclared": 146
     },
     "items": [
         {
@@ -99,1756 +99,1714 @@
         },
         {
             "id": "RNV-0012",
-            "path": "/assets",
-            "type": "dir",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0013",
             "path": "/assets/css",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0014",
+            "id": "RNV-0013",
             "path": "/assets/css/officeBoard.css",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0015",
+            "id": "RNV-0014",
             "path": "/assets/css/skyesoft-ui.css",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0016",
+            "id": "RNV-0015",
             "path": "/assets/images",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0017",
+            "id": "RNV-0016",
             "path": "/assets/images/background.jpg",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0018",
+            "id": "RNV-0017",
             "path": "/assets/images/christyLogo.jpg",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0019",
+            "id": "RNV-0018",
             "path": "/assets/images/christyLogo.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0020",
+            "id": "RNV-0019",
             "path": "/assets/images/favicon.ico",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0021",
+            "id": "RNV-0020",
             "path": "/assets/images/icons",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0022",
+            "id": "RNV-0021",
             "path": "/assets/images/icons/barChart.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0023",
+            "id": "RNV-0022",
             "path": "/assets/images/icons/blueBook.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0024",
+            "id": "RNV-0023",
             "path": "/assets/images/icons/bolt.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0025",
+            "id": "RNV-0024",
             "path": "/assets/images/icons/book.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0026",
+            "id": "RNV-0025",
             "path": "/assets/images/icons/books.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0027",
+            "id": "RNV-0026",
             "path": "/assets/images/icons/brain.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0028",
+            "id": "RNV-0027",
             "path": "/assets/images/icons/bricks.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0029",
+            "id": "RNV-0028",
             "path": "/assets/images/icons/briefcase.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0030",
+            "id": "RNV-0029",
             "path": "/assets/images/icons/calendar.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0031",
+            "id": "RNV-0030",
             "path": "/assets/images/icons/camera.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0032",
+            "id": "RNV-0031",
             "path": "/assets/images/icons/clipboard.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0033",
+            "id": "RNV-0032",
             "path": "/assets/images/icons/clock.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0034",
+            "id": "RNV-0033",
             "path": "/assets/images/icons/clockface.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0035",
+            "id": "RNV-0034",
             "path": "/assets/images/icons/code.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0036",
+            "id": "RNV-0035",
             "path": "/assets/images/icons/compass.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0037",
+            "id": "RNV-0036",
             "path": "/assets/images/icons/database.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0038",
+            "id": "RNV-0037",
             "path": "/assets/images/icons/dayEnd.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0039",
+            "id": "RNV-0038",
             "path": "/assets/images/icons/dayStart.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0040",
+            "id": "RNV-0039",
             "path": "/assets/images/icons/daylight.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0041",
+            "id": "RNV-0040",
             "path": "/assets/images/icons/document.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0042",
+            "id": "RNV-0041",
             "path": "/assets/images/icons/downArrow.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0043",
+            "id": "RNV-0042",
             "path": "/assets/images/icons/flashingLight.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0044",
+            "id": "RNV-0043",
             "path": "/assets/images/icons/floppyDisk.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0045",
+            "id": "RNV-0044",
             "path": "/assets/images/icons/folder.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0046",
+            "id": "RNV-0045",
             "path": "/assets/images/icons/gear.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0047",
+            "id": "RNV-0046",
             "path": "/assets/images/icons/graduationCap.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0048",
+            "id": "RNV-0047",
             "path": "/assets/images/icons/holiday.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0049",
+            "id": "RNV-0048",
             "path": "/assets/images/icons/hourglass.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0050",
+            "id": "RNV-0049",
             "path": "/assets/images/icons/inProgress.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0051",
+            "id": "RNV-0050",
             "path": "/assets/images/icons/information.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0052",
+            "id": "RNV-0051",
             "path": "/assets/images/icons/integration.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0053",
+            "id": "RNV-0052",
             "path": "/assets/images/icons/lightbulb.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0054",
+            "id": "RNV-0053",
             "path": "/assets/images/icons/link.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0055",
+            "id": "RNV-0054",
             "path": "/assets/images/icons/live.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0056",
+            "id": "RNV-0055",
             "path": "/assets/images/icons/mantleClock.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0057",
+            "id": "RNV-0056",
             "path": "/assets/images/icons/megaphone.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0058",
+            "id": "RNV-0057",
             "path": "/assets/images/icons/memo.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0059",
+            "id": "RNV-0058",
             "path": "/assets/images/icons/mobilePhone.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0060",
+            "id": "RNV-0059",
             "path": "/assets/images/icons/moneybag.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0061",
+            "id": "RNV-0060",
             "path": "/assets/images/icons/network.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0062",
+            "id": "RNV-0061",
             "path": "/assets/images/icons/nighttime.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0063",
+            "id": "RNV-0062",
             "path": "/assets/images/icons/notes.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0064",
+            "id": "RNV-0063",
             "path": "/assets/images/icons/openFolder.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0065",
+            "id": "RNV-0064",
             "path": "/assets/images/icons/owner.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0066",
+            "id": "RNV-0065",
             "path": "/assets/images/icons/palette.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0067",
+            "id": "RNV-0066",
             "path": "/assets/images/icons/partlyCloudy.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0068",
+            "id": "RNV-0067",
             "path": "/assets/images/icons/pen.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0069",
+            "id": "RNV-0068",
             "path": "/assets/images/icons/pencil.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0070",
+            "id": "RNV-0069",
             "path": "/assets/images/icons/pin.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0071",
+            "id": "RNV-0070",
             "path": "/assets/images/icons/plug.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0072",
+            "id": "RNV-0071",
             "path": "/assets/images/icons/property.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0073",
+            "id": "RNV-0072",
             "path": "/assets/images/icons/puzzle.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0074",
+            "id": "RNV-0073",
             "path": "/assets/images/icons/receipt.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0075",
+            "id": "RNV-0074",
             "path": "/assets/images/icons/robot.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0076",
+            "id": "RNV-0075",
             "path": "/assets/images/icons/rocket.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0077",
+            "id": "RNV-0076",
             "path": "/assets/images/icons/ruler.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0078",
+            "id": "RNV-0077",
             "path": "/assets/images/icons/scales.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0079",
+            "id": "RNV-0078",
             "path": "/assets/images/icons/scroll.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0080",
+            "id": "RNV-0079",
             "path": "/assets/images/icons/shield.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0081",
+            "id": "RNV-0080",
             "path": "/assets/images/icons/stopwatch.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0082",
+            "id": "RNV-0081",
             "path": "/assets/images/icons/sunrise.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0083",
+            "id": "RNV-0082",
             "path": "/assets/images/icons/sunset.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0084",
+            "id": "RNV-0083",
             "path": "/assets/images/icons/table.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0085",
+            "id": "RNV-0084",
             "path": "/assets/images/icons/target.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0086",
+            "id": "RNV-0085",
             "path": "/assets/images/icons/temple.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0087",
+            "id": "RNV-0086",
             "path": "/assets/images/icons/tools.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0088",
+            "id": "RNV-0087",
             "path": "/assets/images/icons/tree.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0089",
+            "id": "RNV-0088",
             "path": "/assets/images/icons/trophy.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0090",
+            "id": "RNV-0089",
             "path": "/assets/images/icons/upArrow.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0091",
+            "id": "RNV-0090",
             "path": "/assets/images/icons/user.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0092",
+            "id": "RNV-0091",
             "path": "/assets/images/icons/users.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0093",
+            "id": "RNV-0092",
             "path": "/assets/images/icons/warning.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0094",
+            "id": "RNV-0093",
             "path": "/assets/images/icons/weather.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0095",
+            "id": "RNV-0094",
             "path": "/assets/images/icons/workman.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0096",
+            "id": "RNV-0095",
             "path": "/assets/images/icons/workmanVest.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0097",
+            "id": "RNV-0096",
             "path": "/assets/images/icons/wrench.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0098",
+            "id": "RNV-0097",
             "path": "/assets/images/skyebot-icon.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0099",
+            "id": "RNV-0098",
             "path": "/assets/images/user-icon.png",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0100",
+            "id": "RNV-0099",
             "path": "/assets/js",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0101",
+            "id": "RNV-0100",
             "path": "/assets/js/app.js",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0102",
+            "id": "RNV-0101",
             "path": "/assets/js/pages",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0103",
+            "id": "RNV-0102",
             "path": "/assets/js/pages/officeBoard.js",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0104",
+            "id": "RNV-0103",
             "path": "/assets/js/sse.js",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0105",
+            "id": "RNV-0104",
             "path": "/bulletinBoards",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0106",
+            "id": "RNV-0105",
             "path": "/bulletinBoards/officeBoard.html",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0107",
+            "id": "RNV-0106",
             "path": "/codex",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0108",
+            "id": "RNV-0107",
             "path": "/codex/codex.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0109",
+            "id": "RNV-0108",
             "path": "/codex/governance",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0110",
+            "id": "RNV-0109",
             "path": "/codex/governance/criticalArtifacts.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0111",
+            "id": "RNV-0110",
             "path": "/codex/prompts",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0112",
+            "id": "RNV-0111",
             "path": "/codex/prompts/jurisdictionalRuleConformance.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0113",
+            "id": "RNV-0112",
             "path": "/codex/prompts/merkleIntegrity.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0114",
+            "id": "RNV-0113",
             "path": "/codex/prompts/parliamentarianPrompt.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0115",
+            "id": "RNV-0114",
             "path": "/codex/prompts/promptTemplates.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0116",
+            "id": "RNV-0115",
             "path": "/codex/prompts/repositoryInventoryConformance.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0117",
+            "id": "RNV-0116",
             "path": "/codex/prompts/resolutionNarrative.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0118",
-            "path": "/data",
-            "type": "dir",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0119",
+            "id": "RNV-0117",
             "path": "/data/authoritative",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0120",
+            "id": "RNV-0118",
             "path": "/data/authoritative/holidayRegistry.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0121",
+            "id": "RNV-0119",
             "path": "/data/authoritative/iconMap.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0122",
+            "id": "RNV-0120",
             "path": "/data/authoritative/jurisdictionRegistry.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0123",
-            "path": "/data/authoritative/jurisdictions",
-            "type": "dir",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0124",
+            "id": "RNV-0121",
             "path": "/data/authoritative/jurisdictions/apachejunction",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0125",
+            "id": "RNV-0122",
             "path": "/data/authoritative/jurisdictions/avondale",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0126",
+            "id": "RNV-0123",
             "path": "/data/authoritative/jurisdictions/benson",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0127",
+            "id": "RNV-0124",
             "path": "/data/authoritative/jurisdictions/bisbee",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0128",
+            "id": "RNV-0125",
             "path": "/data/authoritative/jurisdictions/buckeye",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0129",
+            "id": "RNV-0126",
             "path": "/data/authoritative/jurisdictions/bullheadcity",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0130",
+            "id": "RNV-0127",
             "path": "/data/authoritative/jurisdictions/campverde",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0131",
+            "id": "RNV-0128",
             "path": "/data/authoritative/jurisdictions/carefree",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0132",
+            "id": "RNV-0129",
             "path": "/data/authoritative/jurisdictions/casagrande",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0133",
+            "id": "RNV-0130",
             "path": "/data/authoritative/jurisdictions/cavecreek",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0134",
+            "id": "RNV-0131",
             "path": "/data/authoritative/jurisdictions/chandler",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0135",
+            "id": "RNV-0132",
             "path": "/data/authoritative/jurisdictions/chinovalley",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0136",
+            "id": "RNV-0133",
             "path": "/data/authoritative/jurisdictions/clarkdale",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0137",
+            "id": "RNV-0134",
             "path": "/data/authoritative/jurisdictions/clifton",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0138",
+            "id": "RNV-0135",
             "path": "/data/authoritative/jurisdictions/coloradocity",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0139",
+            "id": "RNV-0136",
             "path": "/data/authoritative/jurisdictions/coolidge",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0140",
+            "id": "RNV-0137",
             "path": "/data/authoritative/jurisdictions/cottonwood",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0141",
+            "id": "RNV-0138",
             "path": "/data/authoritative/jurisdictions/deweyhumboldt",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0142",
+            "id": "RNV-0139",
             "path": "/data/authoritative/jurisdictions/douglas",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0143",
+            "id": "RNV-0140",
             "path": "/data/authoritative/jurisdictions/duncan",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0144",
+            "id": "RNV-0141",
             "path": "/data/authoritative/jurisdictions/eagar",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0145",
+            "id": "RNV-0142",
             "path": "/data/authoritative/jurisdictions/elmirage",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0146",
+            "id": "RNV-0143",
             "path": "/data/authoritative/jurisdictions/eloy",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0147",
+            "id": "RNV-0144",
             "path": "/data/authoritative/jurisdictions/flagstaff",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0148",
+            "id": "RNV-0145",
             "path": "/data/authoritative/jurisdictions/florence",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0149",
+            "id": "RNV-0146",
             "path": "/data/authoritative/jurisdictions/fountainhills",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0150",
+            "id": "RNV-0147",
             "path": "/data/authoritative/jurisdictions/fredonia",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0151",
+            "id": "RNV-0148",
             "path": "/data/authoritative/jurisdictions/gilabend",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0152",
+            "id": "RNV-0149",
             "path": "/data/authoritative/jurisdictions/gilbert",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0153",
+            "id": "RNV-0150",
             "path": "/data/authoritative/jurisdictions/glendale",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0154",
+            "id": "RNV-0151",
             "path": "/data/authoritative/jurisdictions/globe",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0155",
+            "id": "RNV-0152",
             "path": "/data/authoritative/jurisdictions/goodyear",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0156",
+            "id": "RNV-0153",
             "path": "/data/authoritative/jurisdictions/guadalupe",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0157",
+            "id": "RNV-0154",
             "path": "/data/authoritative/jurisdictions/hayden",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0158",
+            "id": "RNV-0155",
             "path": "/data/authoritative/jurisdictions/holbrook",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0159",
+            "id": "RNV-0156",
             "path": "/data/authoritative/jurisdictions/huachucacity",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0160",
+            "id": "RNV-0157",
             "path": "/data/authoritative/jurisdictions/jerome",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0161",
+            "id": "RNV-0158",
             "path": "/data/authoritative/jurisdictions/kearny",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0162",
+            "id": "RNV-0159",
             "path": "/data/authoritative/jurisdictions/kingman",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0163",
+            "id": "RNV-0160",
             "path": "/data/authoritative/jurisdictions/lakehavasucity",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0164",
+            "id": "RNV-0161",
             "path": "/data/authoritative/jurisdictions/litchfieldpark",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0165",
+            "id": "RNV-0162",
             "path": "/data/authoritative/jurisdictions/mammoth",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0166",
+            "id": "RNV-0163",
             "path": "/data/authoritative/jurisdictions/marana",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0167",
+            "id": "RNV-0164",
             "path": "/data/authoritative/jurisdictions/maricopa",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0168",
+            "id": "RNV-0165",
             "path": "/data/authoritative/jurisdictions/mesa",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0169",
+            "id": "RNV-0166",
             "path": "/data/authoritative/jurisdictions/miami",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0170",
+            "id": "RNV-0167",
             "path": "/data/authoritative/jurisdictions/nogales",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0171",
+            "id": "RNV-0168",
             "path": "/data/authoritative/jurisdictions/orovalley",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0172",
+            "id": "RNV-0169",
             "path": "/data/authoritative/jurisdictions/page",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0173",
+            "id": "RNV-0170",
             "path": "/data/authoritative/jurisdictions/paradisevalley",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0174",
+            "id": "RNV-0171",
             "path": "/data/authoritative/jurisdictions/parker",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0175",
+            "id": "RNV-0172",
             "path": "/data/authoritative/jurisdictions/patagonia",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0176",
+            "id": "RNV-0173",
             "path": "/data/authoritative/jurisdictions/payson",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0177",
+            "id": "RNV-0174",
             "path": "/data/authoritative/jurisdictions/peoria",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0178",
+            "id": "RNV-0175",
             "path": "/data/authoritative/jurisdictions/phoenix",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0179",
+            "id": "RNV-0176",
             "path": "/data/authoritative/jurisdictions/pima",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0180",
+            "id": "RNV-0177",
             "path": "/data/authoritative/jurisdictions/pinetoplakeside",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0181",
+            "id": "RNV-0178",
             "path": "/data/authoritative/jurisdictions/prescott",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0182",
+            "id": "RNV-0179",
             "path": "/data/authoritative/jurisdictions/prescottvalley",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0183",
+            "id": "RNV-0180",
             "path": "/data/authoritative/jurisdictions/quartzsite",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0184",
+            "id": "RNV-0181",
             "path": "/data/authoritative/jurisdictions/queencreek",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0185",
+            "id": "RNV-0182",
             "path": "/data/authoritative/jurisdictions/safford",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0186",
+            "id": "RNV-0183",
             "path": "/data/authoritative/jurisdictions/sahuarita",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0187",
+            "id": "RNV-0184",
             "path": "/data/authoritative/jurisdictions/sanluis",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0188",
+            "id": "RNV-0185",
             "path": "/data/authoritative/jurisdictions/scottsdale",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0189",
+            "id": "RNV-0186",
             "path": "/data/authoritative/jurisdictions/sedona",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0190",
+            "id": "RNV-0187",
             "path": "/data/authoritative/jurisdictions/showlow",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0191",
+            "id": "RNV-0188",
             "path": "/data/authoritative/jurisdictions/sierravista",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0192",
+            "id": "RNV-0189",
             "path": "/data/authoritative/jurisdictions/snowflake",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0193",
+            "id": "RNV-0190",
             "path": "/data/authoritative/jurisdictions/somerton",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0194",
+            "id": "RNV-0191",
             "path": "/data/authoritative/jurisdictions/southtucson",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0195",
+            "id": "RNV-0192",
             "path": "/data/authoritative/jurisdictions/springerville",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0196",
+            "id": "RNV-0193",
             "path": "/data/authoritative/jurisdictions/starvalley",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0197",
+            "id": "RNV-0194",
             "path": "/data/authoritative/jurisdictions/stjohns",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0198",
+            "id": "RNV-0195",
             "path": "/data/authoritative/jurisdictions/superior",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0199",
+            "id": "RNV-0196",
             "path": "/data/authoritative/jurisdictions/surprise",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0200",
+            "id": "RNV-0197",
             "path": "/data/authoritative/jurisdictions/taylor",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0201",
+            "id": "RNV-0198",
             "path": "/data/authoritative/jurisdictions/tempe",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0202",
+            "id": "RNV-0199",
             "path": "/data/authoritative/jurisdictions/thatcher",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0203",
+            "id": "RNV-0200",
             "path": "/data/authoritative/jurisdictions/tolleson",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0204",
+            "id": "RNV-0201",
             "path": "/data/authoritative/jurisdictions/tombstone",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0205",
+            "id": "RNV-0202",
             "path": "/data/authoritative/jurisdictions/tucson",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0206",
+            "id": "RNV-0203",
             "path": "/data/authoritative/jurisdictions/tusayan",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0207",
+            "id": "RNV-0204",
             "path": "/data/authoritative/jurisdictions/wellton",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0208",
+            "id": "RNV-0205",
             "path": "/data/authoritative/jurisdictions/wickenburg",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0209",
+            "id": "RNV-0206",
             "path": "/data/authoritative/jurisdictions/willcox",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0210",
+            "id": "RNV-0207",
             "path": "/data/authoritative/jurisdictions/williams",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0211",
+            "id": "RNV-0208",
             "path": "/data/authoritative/jurisdictions/winkelman",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0212",
+            "id": "RNV-0209",
             "path": "/data/authoritative/jurisdictions/winslow",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0213",
+            "id": "RNV-0210",
             "path": "/data/authoritative/jurisdictions/youngtown",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0214",
+            "id": "RNV-0211",
             "path": "/data/authoritative/jurisdictions/yuma",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0215",
+            "id": "RNV-0212",
             "path": "/data/authoritative/prefixRegistry.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0216",
+            "id": "RNV-0213",
             "path": "/data/authoritative/systemRegistry.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0217",
+            "id": "RNV-0214",
             "path": "/data/authoritative/versions.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0218",
+            "id": "RNV-0215",
             "path": "/data/derived",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0219",
+            "id": "RNV-0216",
             "path": "/data/derived/archivistPrompt.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0220",
+            "id": "RNV-0217",
             "path": "/data/derived/merkleIntegrity.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0221",
+            "id": "RNV-0218",
             "path": "/data/derived/parliamentarianPrompt.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0222",
+            "id": "RNV-0219",
             "path": "/data/derived/promptTemplates.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0223",
+            "id": "RNV-0220",
             "path": "/data/derived/repositoryInventoryConformance.prompt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0224",
+            "id": "RNV-0221",
             "path": "/data/records",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0225",
+            "id": "RNV-0222",
             "path": "/data/records/auditResults.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0226",
+            "id": "RNV-0223",
             "path": "/data/records/codexAudit.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0227",
+            "id": "RNV-0224",
             "path": "/data/records/codexMerkleRoot.txt",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0228",
+            "id": "RNV-0225",
             "path": "/data/records/codexMerkleTree.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0229",
+            "id": "RNV-0226",
             "path": "/data/records/repositoryInventory.json",
             "type": "file",
             "integrityScope": "MERKLE_EXCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0230",
+            "id": "RNV-0227",
             "path": "/data/runtimeEphemeral",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0231",
+            "id": "RNV-0228",
             "path": "/data/runtimeEphemeral/activePermits.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0232",
+            "id": "RNV-0229",
             "path": "/data/runtimeEphemeral/announcements.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0233",
+            "id": "RNV-0230",
             "path": "/data/runtimeEphemeral/elc-staging.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0234",
+            "id": "RNV-0231",
             "path": "/data/runtimeEphemeral/kpi.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0235",
+            "id": "RNV-0232",
             "path": "/documents",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0236",
+            "id": "RNV-0233",
             "path": "/documents/templates",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0237",
+            "id": "RNV-0234",
             "path": "/documents/templates/documentTemplate.html",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0238",
+            "id": "RNV-0235",
             "path": "/package-lock.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0239",
+            "id": "RNV-0236",
             "path": "/package.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0240",
+            "id": "RNV-0237",
             "path": "/planning",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0241",
+            "id": "RNV-0238",
             "path": "/planning/roadmap.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0242",
+            "id": "RNV-0239",
             "path": "/planning/roadmapDetailed.json",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0243",
+            "id": "RNV-0240",
             "path": "/reports",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0244",
-            "path": "/reports/automation",
-            "type": "dir",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0245",
-            "path": "/reports/automation/dailyRepositoryAudit.json",
-            "type": "file",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0246",
+            "id": "RNV-0241",
             "path": "/scripts",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0247",
+            "id": "RNV-0242",
             "path": "/scripts/auditor.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0248",
+            "id": "RNV-0243",
             "path": "/scripts/censusGeocode.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0249",
+            "id": "RNV-0244",
             "path": "/scripts/codexMerkleBuilder.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0250",
+            "id": "RNV-0245",
             "path": "/scripts/discoveryScan.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0251",
+            "id": "RNV-0246",
             "path": "/scripts/generateDocument.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0252",
+            "id": "RNV-0247",
             "path": "/scripts/merkleBuild.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0253",
+            "id": "RNV-0248",
             "path": "/scripts/merkleBuilder.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0254",
+            "id": "RNV-0249",
             "path": "/scripts/merkleVerify.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0255",
+            "id": "RNV-0250",
             "path": "/scripts/mutator.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0256",
+            "id": "RNV-0251",
             "path": "/scripts/repositoryInventoryBuilder.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0257",
+            "id": "RNV-0252",
             "path": "/scripts/review-elc-staging.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0258",
+            "id": "RNV-0253",
             "path": "/scripts/runCodexAudit.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0259",
+            "id": "RNV-0254",
             "path": "/scripts/sentinel.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0260",
+            "id": "RNV-0255",
             "path": "/secure",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0261",
-            "path": "/secure/.gitignore",
-            "type": "file",
-            "integrityScope": "MERKLE_INCLUDED",
-            "purpose": "Pre-SIS auto-generated inventory entry"
-        },
-        {
-            "id": "RNV-0262",
+            "id": "RNV-0256",
             "path": "/secure/env.local",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
