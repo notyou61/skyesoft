@@ -1,13 +1,13 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": 1768063016,
+        "generatedAt": 1768239721,
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
         "purpose": "Declared repository inventory entry",
         "description": "Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.",
-        "newInventoryRuns": 7,
+        "newInventoryRuns": 8,
         "itemsDeclared": 257,
         "directoriesDeclared": 111,
         "filesDeclared": 146
@@ -1807,7 +1807,7 @@
         },
         {
             "id": "RNV-0256",
-            "path": "secure/env.local",
+            "path": "/secure/env.local",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
