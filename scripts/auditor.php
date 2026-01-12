@@ -613,7 +613,10 @@ unset($record);
 
 $previousMeta = $auditDoc['meta'] ?? [];
 
-/* ── Preserve immutable lineage ─────────────────────────── */
+/* ── Preserve immutable lineage ───────────────────────────
+ * generatedAt represents the genesis timestamp of this audit record.
+ * It MUST remain immutable across all subsequent audit runs.
+ */
 $generatedAt = $previousMeta['generatedAt'] ?? $timestamp;
 
 /* ── Rolling counters ───────────────────────────────────── */

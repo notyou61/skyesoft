@@ -1,0 +1,57 @@
+{
+  "jurisdiction": {
+    "label": "Phoenix",
+    "jurisdictionType": "City",
+    "state": "AZ",
+    "country": "US"
+  },
+
+  "ordinance": {
+    "title": "Phoenix Zoning Ordinance – Signs",
+    "codeReference": "ZO §705",
+    "subject": "Sign regulations",
+    "authority": "City of Phoenix"
+  },
+
+  "authoritativeSource": {
+    "type": "web",
+    "url": "https://phoenix.municipal.codes/ZO/705",
+    "publisher": "Municipal Code Corporation",
+    "contentFormats": ["html"],
+    "accessExpectation": "PUBLIC",
+    "canonical": true
+  },
+
+  "retrieval": {
+    "preferredFormat": "html",
+    "fallbackFormats": ["pdf"],
+    "normalizationProfile": "MUNICODE_STANDARD_V1",
+    "crawlAllowed": true
+  },
+
+  "validation": {
+    "availabilityRequired": true,
+    "httpFailureIsViolation": true,
+    "redirectAllowed": false,
+    "contentTypeValidation": true
+  },
+
+  "canonization": {
+    "canonizedArtifact": "canonized_text.txt",
+    "canonizationMethod": "HUMAN_ATTESTED",
+    "lastCanonizedAt": 1768000000,
+    "effectiveDate": null
+  },
+
+  "governance": {
+    "tier": "Tier-3",
+    "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+    "autoAcceptChanges": false,
+    "requiresInterpretation": true
+  },
+
+  "notes": [
+    "This source represents the authoritative sign code for the City of Phoenix.",
+    "All permitting logic must defer to canonized artifacts derived from this source."
+  ]
+}

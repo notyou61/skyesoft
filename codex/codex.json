@@ -2160,7 +2160,12 @@
                     "Semantic JSON representations shall be structured and normalized and shall not function as blind transcriptions of ordinance text.",
                     "Artifact discovery, integrity verification, and version awareness shall be resolved via metadata within the governed storage domain.",
                     "Registries may declare the existence and endpoint of zoning or GIS APIs but shall not encode invocation parameters, field mappings, or execution semantics.",
-                    "Jurisdiction authority shall be implicit and derived from Codex governance and governed artifacts, not redundantly declared within registry entries."
+                    "Jurisdiction authority shall be implicit, derived from Codex governance and governed artifacts, and shall not be redundantly or explicitly asserted within registry entries.",
+                    "Jurisdictions declaring signCode governance must be represented in the authoritative jurisdiction storage domain.",
+                    "Absence of required governed artifacts for a declared jurisdiction constitutes a governance violation.",
+                    "Registry compliance does not authorize permitting logic without successful jurisdictionalRuleConformance.",
+                    "Jurisdiction registries shall not assert ordinance correctness, version currency, or legal interpretation."
+
                 ],
                 "schema": {
                     "registryEntry": {
@@ -2205,6 +2210,42 @@
                         ]
                     }
                 },
+                "conformanceLinkage": {
+                    "description": "Establishes the mandatory relationship between jurisdiction registries and Tier-3 jurisdictional rule conformance audits.",
+                    "linkedRule": "jurisdictionalRuleConformance",
+                    "requirements": [
+                        "Each registry entry declaring a signCode must have a corresponding governed jurisdiction directory.",
+                        "Registry validity does not imply ordinance conformance.",
+                        "JurisdictionalRuleConformance audits are authoritative for ordinance accuracy and availability."
+                    ]
+                },
+                "nonResponsibilities": [
+                    "Registry standards do not verify ordinance availability or textual accuracy.",
+                    "Registry standards do not perform external HTTP validation.",
+                    "Registry standards do not interpret legal meaning or permitting impact."
+                ],
+                "severityAlignment": {
+                    "registryViolation": "GOVERNANCE_BLOCKING",
+                    "artifactAbsence": "GOVERNANCE_BLOCKING",
+                    "ordinanceDrift": "DEFERRED_TO_TIER_3"
+                },
+                "authoritativeArtifacts": {
+                    "description": "Defines the minimum artifact expectations for governed jurisdictional ordinance storage.",
+                    "requiredArtifacts": [
+                        "source.json",
+                        "canonized_text.txt",
+                        "source_metadata.json"
+                    ],
+                    "optionalArtifacts": [
+                        "diff_history.json",
+                        "interpretation.json"
+                    ],
+                    "constraints": [
+                        "Artifacts shall not be embedded or duplicated within registries.",
+                        "Artifacts shall not be auto-modified by runtime systems.",
+                        "Artifact absence constitutes a governance-blocking condition."
+                    ]
+                },
                 "examples": {
                     "valid": [
                         "{ \"label\": \"Phoenix\", \"jurisdictionType\": \"City\" }"
@@ -2217,6 +2258,81 @@
                     "enforcedBy": "auditors/jurisdictionRegistryValidator.php",
                     "frequency": "on-change",
                     "action": "Reject non-conforming entries; log violations for review"
+                }
+            },
+            "jurisdictionalRuleConformance": {
+                "title": {
+                    "icon": 12,
+                    "text": "Jurisdictional Rule Conformance"
+                },
+                "type": "rule",
+                "tier": 3,
+                "category": "jurisdictionalGovernance",
+                "hierarchyOrder": 30,
+                "auditModes": ["governance"],
+                "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+                "description": "Defines the governance rule responsible for determining whether Codex-governed jurisdictional ordinances remain aligned with their authoritative external sources. This rule establishes conformance expectations, violation classes, and resolution constraints without performing enforcement or acquisition logic.",
+                "intent": [
+                    "Prevent silent divergence between Codex-governed jurisdictional ordinances and authoritative law.",
+                    "Ensure permitting logic is never based on unverifiable or stale regulatory text.",
+                    "Establish external law as a first-class governance authority subject to audit visibility."
+                ],
+                "scope": {
+                    "appliesTo": [
+                        "Jurisdictions declaring signCode governance",
+                        "Governed jurisdictional ordinance storage domains"
+                    ],
+                    "excludes": [
+                        "Registry validation",
+                        "Permitting rule interpretation",
+                        "Runtime execution logic"
+                    ]
+                },
+                "conformanceExpectations": [
+                    "Each governed jurisdiction must declare at least one authoritative external source.",
+                    "Canonized ordinance artifacts must correspond to an identifiable authoritative source.",
+                    "Jurisdictional ordinance governance must explicitly acknowledge drift, ambiguity, or unverified status."
+                ],
+                "violationConditions": [
+                    "Authoritative source declared but unreachable",
+                    "Canonized ordinance exists without authoritative source metadata",
+                    "Declared authoritative source differs materially from canonized ordinance",
+                    "Jurisdiction declared in registry without governed ordinance artifacts",
+                    "Jurisdictional ordinance present but not yet canonized or reviewed"
+                ],
+                "resolutionPolicy": {
+                    "allowedMethods": [
+                        "HUMAN_CANONIZATION",
+                        "GOVERNED_ACCEPTANCE",
+                        "GOVERNED_REJECTION"
+                    ],
+                    "disallowedMethods": [
+                        "PASSIVE_NON_OBSERVATION",
+                        "AUTOMATED_SELF_RESOLUTION"
+                    ],
+                    "notes": "Jurisdictional discrepancies represent legal authority boundaries and must always be resolved by explicit governance action."
+                },
+                "narrativeGuidance": [
+                    "Identify the jurisdiction and authoritative source involved.",
+                    "Describe the nature of the detected discrepancy or uncertainty.",
+                    "State the potential permitting impact.",
+                    "Indicate whether canonization or review is pending or complete."
+                ],
+                "nonResponsibilities": [
+                    "This rule does not fetch or crawl external sources.",
+                    "This rule does not parse or interpret ordinance text.",
+                    "This rule does not determine permitting outcomes.",
+                    "This rule does not modify governed artifacts."
+                ],
+                "governanceNotes": [
+                    "External jurisdictional law always supersedes internal canon until reconciled.",
+                    "Jurisdictional conformance operates at the highest trust boundary in the Codex.",
+                    "Failure of this rule blocks downstream permitting reliance."
+                ],
+                "implementationStatus": {
+                    "auditor": "NOT_IMPLEMENTED",
+                    "sentinel": "NOT_SCHEDULED",
+                    "automation": "PROHIBITED"
                 }
             },
             "skyebotModule": {
@@ -3062,77 +3178,194 @@
                         "narrativeGuidance": "Explain that the governed Merkle snapshot no longer matches observed system state."
                     },
                     "repositoryInventoryConformance": {
-                    "category": "structuralArtifacts",
-                    "auditModes": ["operational", "governance"],
-                    "description": "Detects divergence between the governed repository inventory and the observed filesystem state.",
-                    "narrativeGuidance": "Describe that the observed filesystem state does not conform to the declared repository inventory.",
-
-                    "violationSubclasses": {
-                        "UNEXPECTED_ARTIFACT": {
-                        "direction": "observedToDeclared",
-                        "definition": "An artifact exists in the observed filesystem but is not declared in repositoryInventory.json.",
-                        "semanticMeaning": "System reality contains undeclared artifacts.",
-                        "resolutionConditions": [
-                            "Artifact no longer exists in observed filesystem",
-                            "Artifact is declared in repositoryInventory.json"
-                        ],
-                        "examples": [
-                            "Unregistered file exists",
-                            "Unregistered directory exists"
-                        ]
+                        "category": "structuralArtifacts",
+                        "auditModes": ["operational", "governance"],
+                        "description": "Detects divergence between the governed repository inventory and the observed filesystem state.",
+                        "narrativeGuidance": "Describe that the observed filesystem state does not conform to the declared repository inventory.",
+                        "violationSubclasses": {
+                            "UNEXPECTED_ARTIFACT": {
+                            "direction": "observedToDeclared",
+                            "definition": "An artifact exists in the observed filesystem but is not declared in repositoryInventory.json.",
+                            "semanticMeaning": "System reality contains undeclared artifacts.",
+                            "resolutionConditions": [
+                                "Artifact no longer exists in observed filesystem",
+                                "Artifact is declared in repositoryInventory.json"
+                            ],
+                            "examples": [
+                                "Unregistered file exists",
+                                "Unregistered directory exists"
+                            ]
+                            },
+                            "MISSING_DECLARED_ARTIFACT": {
+                            "direction": "declaredToObserved",
+                            "definition": "An artifact declared in repositoryInventory.json does not exist in the observed filesystem.",
+                            "semanticMeaning": "Declared intent was not satisfied by system reality.",
+                            "resolutionConditions": [
+                                "Artifact exists in observed filesystem",
+                                "Artifact declaration is removed from repositoryInventory.json"
+                            ],
+                            "examples": [
+                                "Declared file does not exist",
+                                "Declared directory is missing"
+                            ]
+                            },
+                            "TYPE_MISMATCH": {
+                            "direction": "declaredToObserved",
+                            "definition": "An artifact exists but does not match its declared type.",
+                            "semanticMeaning": "Declared structural expectations do not match observed form.",
+                            "resolutionConditions": [
+                                "Observed artifact matches declared type",
+                                "Inventory declaration is updated to match observed type"
+                            ],
+                            "examples": [
+                                "Declared directory is a file",
+                                "Declared file is a directory"
+                            ]
+                            },
+                            "MALFORMED_INVENTORY": {
+                            "direction": "inventoryInternal",
+                            "definition": "repositoryInventory.json is structurally invalid or semantically unreadable.",
+                            "semanticMeaning": "Inventory governance artifact cannot be reliably evaluated.",
+                            "resolutionConditions": [
+                                "Inventory structure is valid and parseable"
+                            ],
+                            "examples": [
+                                "Invalid JSON",
+                                "Missing required inventory fields"
+                            ]
+                            }
                         },
-
-                        "MISSING_DECLARED_ARTIFACT": {
-                        "direction": "declaredToObserved",
-                        "definition": "An artifact declared in repositoryInventory.json does not exist in the observed filesystem.",
-                        "semanticMeaning": "Declared intent was not satisfied by system reality.",
-                        "resolutionConditions": [
-                            "Artifact exists in observed filesystem",
-                            "Artifact declaration is removed from repositoryInventory.json"
-                        ],
-                        "examples": [
-                            "Declared file does not exist",
-                            "Declared directory is missing"
+                        "rules": [
+                            "Exactly one violation instance SHALL exist per unique path and subclass while unresolved.",
+                            "violationSubclasses are authoritative classifications emitted by the Auditor.",
+                            "The Mutator MUST NOT infer or alter violationSubclasses.",
+                            "Resolution narratives MUST align with the recorded violationSubclass."
                         ]
-                        },
-                        "TYPE_MISMATCH": {
-                        "direction": "declaredToObserved",
-                        "definition": "An artifact exists but does not match its declared type.",
-                        "semanticMeaning": "Declared structural expectations do not match observed form.",
-                        "resolutionConditions": [
-                            "Observed artifact matches declared type",
-                            "Inventory declaration is updated to match observed type"
-                        ],
-                        "examples": [
-                            "Declared directory is a file",
-                            "Declared file is a directory"
-                        ]
-                        },
-                        "MALFORMED_INVENTORY": {
-                        "direction": "inventoryInternal",
-                        "definition": "repositoryInventory.json is structurally invalid or semantically unreadable.",
-                        "semanticMeaning": "Inventory governance artifact cannot be reliably evaluated.",
-                        "resolutionConditions": [
-                            "Inventory structure is valid and parseable"
-                        ],
-                        "examples": [
-                            "Invalid JSON",
-                            "Missing required inventory fields"
-                        ]
-                        }
-                    },
-                    "rules": [
-                        "Exactly one violation instance SHALL exist per unique path and subclass while unresolved.",
-                        "violationSubclasses are authoritative classifications emitted by the Auditor.",
-                        "The Mutator MUST NOT infer or alter violationSubclasses.",
-                        "Resolution narratives MUST align with the recorded violationSubclass."
-                    ]
                     },
                     "jurisdictionalRuleConformance": {
+                        "tier": "Tier-3",
                         "category": "jurisdictionalGovernance",
                         "auditModes": ["governance"],
-                        "description": "Detects violations of Codex-governed jurisdictional rules derived from authoritative jurisdiction sources.",
-                        "narrativeGuidance": "Explain that a governed jurisdictional rule was violated based on the referenced authority."
+                        "authorityLevel": "EXTERNAL_CANONICAL_SOURCE",
+                        "description": "Ensures continued conformance between Codex-governed jurisdictional rules and their authoritative external sources, detecting availability failures, textual drift, semantic changes, and unresolved regulatory discrepancies.",
+                        "intent": [
+                            "Prevent silent regulatory drift between Codex-governed rules and authoritative jurisdictional sources.",
+                            "Guarantee that permitting logic is based on current, verifiable law.",
+                            "Establish jurisdictional ordinances as auditable, canonized governance artifacts."
+                        ],
+                        "capabilities": {
+                            "availabilityValidation": {
+                                "description": "Verifies continued accessibility of authoritative jurisdictional sources.",
+                                "failureConditions": [
+                                    "HTTP 404 or 410",
+                                    "Redirect to unrelated content",
+                                    "Access denial or paywall",
+                                    "Source domain change without governance approval"
+                                ],
+                                "severity": "GOVERNANCE_BLOCKING"
+                            },
+                            "textAcquisition": {
+                                "description": "Retrieves and normalizes authoritative jurisdictional text for deterministic comparison.",
+                                "supportedFormats": ["html", "pdf", "plaintext"],
+                                "normalizationRules": [
+                                    "Whitespace normalization",
+                                    "Section heading stabilization",
+                                    "Footnote and citation preservation"
+                                ]
+                            },
+                            "driftDetection": {
+                                "description": "Detects differences between canonized jurisdictional text and the authoritative source.",
+                                "driftTypes": [
+                                    "ADDITION",
+                                    "REMOVAL",
+                                    "MODIFICATION",
+                                    "STRUCTURAL_REORDERING"
+                                ],
+                                "exclusions": [
+                                    "Formatting-only changes",
+                                    "Non-semantic punctuation differences"
+                                ]
+                            },
+                            "interpretation": {
+                                "description": "Classifies detected drift into permitting-relevant regulatory meaning.",
+                                "interpretationClasses": [
+                                    "NEW_RESTRICTION",
+                                    "NEW_ALLOWANCE",
+                                    "CLARIFICATION",
+                                    "REMOVAL_OF_REQUIREMENT",
+                                    "AMBIGUITY_INTRODUCED"
+                                ],
+                                "requiresHumanReview": true
+                            },
+                            "canonization": {
+                                "description": "Promotes updated jurisdictional rules into Codex-governed canonical form.",
+                                "outputs": [
+                                    "Structured jurisdictionalRuleChange.json",
+                                    "Updated canonized ordinance text",
+                                    "Governance resolution record"
+                                ],
+                                "effectiveDateHandling": [
+                                    "Explicit effective date",
+                                    "Implicit publication date",
+                                    "Deferred enforcement flag"
+                                ]
+                            }
+                        },
+                        "authoritativeRepository": {
+                            "path": "data/authoritative/jurisdictions",
+                            "structureModel": "ONE_DIRECTORY_PER_JURISDICTION",
+                            "authorityRole": "EXTERNAL_CANONICAL_SOURCE",
+                            "governanceConstraints": {
+                                "mutationPolicy": "HUMAN_OR_GOVERNED_ONLY",
+                                "automatedWritesProhibited": true,
+                                "inventoryDeclared": true
+                            },
+                            "jurisdictionFolderContract": {
+                                "requiredArtifacts": [
+                                    "source.json",
+                                    "canonized_text.txt",
+                                    "source_metadata.json"
+                                ],
+                                "optionalArtifacts": [
+                                    "diff_history.json",
+                                    "interpretation.json"
+                                ],
+                                "absenceSeverity": "GOVERNANCE_BLOCKING"
+                            },
+                            "notes": [
+                                "This repository represents the trust boundary between Skyesoft and external law.",
+                                "Contents are ingested, compared, and interpreted, but never auto-modified.",
+                                "Absence or corruption of this repository invalidates jurisdictional conformance."
+                            ]
+                        },
+                        "violationConditions": [
+                            "Authoritative source unreachable",
+                            "Detected textual drift without canonization",
+                            "Canonized ordinance does not match authoritative source",
+                            "Uninterpreted jurisdictional change present"
+                        ],
+                        "resolutionPolicy": {
+                            "allowedMethods": [
+                                "HUMAN_CANONIZATION",
+                                "GOVERNED_ACCEPTANCE",
+                                "GOVERNED_REJECTION"
+                            ],
+                            "disallowedMethods": [
+                                "PASSIVE_NON_OBSERVATION"
+                            ],
+                            "notes": "Jurisdictional discrepancies must never self-resolve. All resolutions are explicit governance acts."
+                        },
+                        "narrativeGuidance": [
+                            "Explain the authoritative source involved.",
+                            "Describe the detected discrepancy or availability failure.",
+                            "Summarize the regulatory impact on permitting.",
+                            "State whether canonization has occurred or is pending."
+                        ],
+                        "governanceNotes": [
+                            "Jurisdictional rules are treated as living law, not static reference data.",
+                            "External authority always supersedes internal canon until reconciled.",
+                            "This rule operates at the highest trust boundary between Codex and external reality."
+                        ]
                     }
                 },
                 "narrativeDiscipline": {
