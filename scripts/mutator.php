@@ -249,14 +249,27 @@ foreach ($auditLog as &$violation) {
             'repositoryInventoryConformance'
         ], true)
     ) {
+        $facts = $violation['facts'] ?? [];
+        $ruleId = $violation['ruleId'];
+
         $violation['resolution'] = [
             'method'              => 'passive',
             'reconciliationClass' => 'INFERRED_BY_NON_OBSERVATION',
-            'facts'               => $violation['facts'] ?? []
+            'facts'               => $facts
         ];
 
+        // 🔹 NEW: attempt governed resolution narrative
+        $narrative = renderResolutionNarrative($facts, $ruleId, $rootDir);
+
+        if ($narrative !== null) {
+            $violation['resolutionNotes'] = [
+                'summary' => $narrative['summary'],
+                'details' => $narrative['details']
+            ];
+        }
+
         $updated = true;
-        continue; // IMPORTANT: do not fall through
+        continue;
     }
 
     /* ── NORMAL SKIP LOGIC ─────────────────────────────────────────── */

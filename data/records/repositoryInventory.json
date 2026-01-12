@@ -1807,7 +1807,7 @@
         },
         {
             "id": "RNV-0256",
-            "path": "/secure/env.local",
+            "path": "secure/env.local",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"

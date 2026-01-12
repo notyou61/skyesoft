@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 3,
-        "violationCount": 1,
+        "auditCount": 12,
+        "violationCount": 7,
         "unresolvedViolations": 1,
-        "lastAudit": 1768172082,
-        "lastViolationBatch": "VB-1768172082"
+        "lastAudit": 1768223022,
+        "lastViolationBatch": "VB-1768223022"
     },
     "violations": [
         {
@@ -30,13 +30,315 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768172082",
-            "resolved": null,
-            "resolution": null,
+            "resolved": 1768217909,
+            "resolution": {
+                "method": "automated",
+                "reconciliationClass": "GOVERNANCE_REBUILD",
+                "facts": {
+                    "artifact": "codex/codex.json",
+                    "currentObservedRoot": "721db4ff410c9c400cd46d48976bfe44a42b8e5ca33aa0e5e62b7775464e877f",
+                    "currentGovernedRoot": "9271225a5d8eedcb196f7ea4e31061d8380109b0c6f067b30bb94fdc34743e8a",
+                    "governedRootBefore": "9271225a5d8eedcb196f7ea4e31061d8380109b0c6f067b30bb94fdc34743e8a",
+                    "merkleBuilderRun": true,
+                    "governedRootAfter": "721db4ff410c9c400cd46d48976bfe44a42b8e5ca33aa0e5e62b7775464e877f",
+                    "currentObservedRootAfter": "721db4ff410c9c400cd46d48976bfe44a42b8e5ca33aa0e5e62b7775464e877f"
+                }
+            },
             "lastObserved": 1768172082,
             "observationCount": 1,
             "facts": {
                 "storedRoot": "9271225a5d8eedcb196f7ea4e31061d8380109b0c6f067b30bb94fdc34743e8a",
                 "observedRoot": "721db4ff410c9c400cd46d48976bfe44a42b8e5ca33aa0e5e62b7775464e877f"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact codex/codex.json was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-002",
+            "identityHash": "edfff470d362a3f6dc97246ab02fd974f399246aa15294504ee9437adea3d3d5",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768219463,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/temp-test-folder' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/temp-test-folder' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768219463",
+            "resolved": 1768219558,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/temp-test-folder",
+                    "type": "dir",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768219558,
+            "observationCount": 1,
+            "facts": {
+                "path": "/temp-test-folder",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-003",
+            "identityHash": "edfff470d362a3f6dc97246ab02fd974f399246aa15294504ee9437adea3d3d5",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768220524,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/temp-test-folder' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/temp-test-folder' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768220524",
+            "resolved": 1768220546,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/temp-test-folder",
+                    "type": "dir",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768220546,
+            "observationCount": 1,
+            "facts": {
+                "path": "/temp-test-folder",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to an unexpected artifact in the repository was not observed.",
+                    "The previously observed condition associated with the identified artifact at the path '/temp-test-folder' was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-004",
+            "identityHash": "86b04e0e3baab0dcc5eea0a92ee24845a664d314aaa406f7ac62f966077b0046",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768221877,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/temp-test-folder-2' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/temp-test-folder-2' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768221877",
+            "resolved": 1768221901,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/temp-test-folder-2",
+                    "type": "dir",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768221901,
+            "observationCount": 1,
+            "facts": {
+                "path": "/temp-test-folder-2",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to an unexpected artifact in the repository at the path '/temp-test-folder-2' was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-005",
+            "identityHash": "2402bc3498462e6a206ad6c964299b3de0a7200335df885467a34bd1e8b7f4ba",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768222979,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file 'secure/secure/env.local' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' 'secure/secure/env.local' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768222979",
+            "resolved": 1768223022,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "secure/secure/env.local",
+                    "expected": "file",
+                    "issue": "missing",
+                    "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768223022,
+            "observationCount": 1,
+            "facts": {
+                "path": "secure/secure/env.local",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence.",
+                    "The previously observed condition associated with the identified artifact 'secure/secure/env.local' was not observed in the evaluated state."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-006",
+            "identityHash": "271da3becbc7c6a3c067897980ba2189f6eeea63ec23cead7e9a819a580a30aa",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768222979,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/secure/env.local' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/secure/env.local' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768222979",
+            "resolved": 1768223022,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/secure/env.local",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768223022,
+            "observationCount": 1,
+            "facts": {
+                "path": "/secure/env.local",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition associated with the artifact at path '/secure/env.local' was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-007",
+            "identityHash": "aa98a395e61d5b47285e2bc12a71eae09f025973ce7faf56fae32b3c14aca821",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768223022,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file 'secure/env.local' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'secure/env.local' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768223022",
+            "resolved": 1768223040,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "STRUCTURAL_RESTORATION",
+                "facts": {
+                    "path": "secure/env.local",
+                    "type": "missing",
+                    "issue": "missing",
+                    "expected": "file",
+                    "observationCount": 1,
+                    "exists": true
+                }
+            },
+            "lastObserved": 1768223022,
+            "observationCount": 1,
+            "facts": {
+                "path": "secure/env.local",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to the missing declared artifact at the path 'secure/env.local' was not observed."
+                ]
             }
         }
     ]
