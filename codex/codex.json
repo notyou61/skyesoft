@@ -2142,6 +2142,75 @@
                     "Over-polling external APIs is prohibited unless Codex-amended."
                 ]
             },
+            "skyecrawlInterpretation": {
+                "title": {
+                    "icon": 78,
+                    "text": "Skyecrawl External Discovery Standard"
+                },
+                "tier": 2,
+                "hierarchyOrder": 17,
+                "type": "Structural Standard",
+                "preamble": {
+                    "text": "Defines how Skyecrawl performs governed, non-authoritative discovery of publicly accessible external information. Ensures external reconnaissance remains observational, bounded, auditable, and human-reviewed, without asserting correctness, authority, or intent."
+                },
+                "rules": [
+                    "Skyecrawl may observe, locate, and report publicly accessible external resources only.",
+                    "All discoveries must be treated as non-authoritative observations.",
+                    "Skyecrawl must not infer legality, compliance, correctness, or intent.",
+                    "No discovered resource may be auto-canonicalized or promoted to authority.",
+                    "All Skyecrawl findings require explicit human acceptance before registry inclusion.",
+                    "Skyecrawl may emit structured draft artifacts for human review, provided they are explicitly marked as non-canonical and pre-governance.",
+                    "Skyecrawl must not scrape, mirror, or store third-party content.",
+                    "Change detection is limited to availability, structure, and metadata only.",
+                    "Skyecrawl must never modify Codex, registries, or governance state directly."
+                ],
+                "operationModes": {
+                    "oneTimeBootstrap": {
+                        "description": "Single-run discovery used to generate draft external source descriptors for human review.",
+                        "scope": "Jurisdiction-scoped or topic-scoped",
+                        "outputs": [
+                            "Draft authoritativeSource JSON",
+                            "Discovery metadata and confidence notes"
+                        ],
+                        "governance": "Human attestation required before registry inclusion"
+                    },
+                    "continuousObservation": {
+                        "description": "Periodic availability and metadata checks for previously identified external resources.",
+                        "scope": "Known URLs only",
+                        "outputs": [
+                            "Availability status",
+                            "Metadata change signals"
+                        ],
+                        "governance": "Observational only; no authority inference"
+                    }
+                },
+                "supportedDiscoveryTypes": {
+                    "jurisdictionalCodes": "Public zoning, sign code, and development code publications",
+                    "authoritativePublishers": "Municipal, county, or state code hosting platforms",
+                    "contactValidation": "Publicly listed contact endpoints and metadata",
+                    "prospectingSignals": "Public business indicators observable via web presence",
+                    "accessibilityChecks": "Public access status, response codes, and format availability"
+                },
+                "authoritativeSourceTemplate": {
+                    "type": "web",
+                    "url": "https://example.municode.com/...",
+                    "publisher": "Public Code Publisher",
+                    "contentFormats": ["html", "pdf"],
+                    "accessExpectation": "PUBLIC",
+                    "canonical": false,
+                    "note": "Template represents a discovery hypothesis only and MUST NOT be treated as authoritative until human-attested."
+                },
+                "validation": {
+                    "enforcedBy": "scripts/sentinel.php",
+                    "action": "Verify Skyecrawl outputs are observational, non-authoritative, and require explicit human acceptance"
+                },
+                "notes": [
+                    "Skyecrawl complements but does not replace jurisdiction registries.",
+                    "Discovery does not imply correctness, currency, or legal standing.",
+                    "Skyecrawl operates as a reconnaissance layer, not a compliance engine.",
+                    "This standard governs behavior only; discovered data remains external."
+                ]
+            },
             "jurisdictionalCodeGovernance": {
                 "title": {
                     "icon": 12,

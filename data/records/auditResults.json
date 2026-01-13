@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 8,
-        "violationCount": 3,
-        "unresolvedViolations": 0,
-        "lastAudit": 1768248249,
-        "lastViolationBatch": "VB-1768248249"
+        "auditCount": 10,
+        "violationCount": 6,
+        "unresolvedViolations": 2,
+        "lastAudit": 1768310827,
+        "lastViolationBatch": "VB-1768310827"
     },
     "violations": [
         {
@@ -154,6 +154,115 @@
                     "Resolution status reflects observation only.",
                     "No determination is made regarding cause or future recurrence."
                 ]
+            }
+        },
+        {
+            "violationId": "VIO-004",
+            "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+            "ruleId": "merkleIntegrity",
+            "timestamp": 1768310710,
+            "auditMode": "governance",
+            "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+            "violationNotes": {
+                "summary": "A Merkle integrity violation was observed during this audit run.",
+                "details": [
+                    "The observed Merkle root differs from the governed snapshot.",
+                    "The stored root is '1d4c4b9fa6048676f7a760b6d7e6b84673523862a7969609ac433b09e4e0df0e'.",
+                    "The observed root is '89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712'.",
+                    "This condition was observed once in this audit run.",
+                    "Human review may be required."
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768310710",
+            "resolved": 1768310790,
+            "resolution": {
+                "method": "automated",
+                "reconciliationClass": "GOVERNANCE_REBUILD",
+                "facts": {
+                    "artifact": "codex/codex.json",
+                    "currentObservedRoot": "89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712",
+                    "currentGovernedRoot": "1d4c4b9fa6048676f7a760b6d7e6b84673523862a7969609ac433b09e4e0df0e",
+                    "governedRootBefore": "1d4c4b9fa6048676f7a760b6d7e6b84673523862a7969609ac433b09e4e0df0e",
+                    "merkleBuilderRun": true,
+                    "governedRootAfter": "89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712",
+                    "currentObservedRootAfter": "89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712"
+                }
+            },
+            "lastObserved": 1768310710,
+            "observationCount": 1,
+            "facts": {
+                "storedRoot": "1d4c4b9fa6048676f7a760b6d7e6b84673523862a7969609ac433b09e4e0df0e",
+                "observedRoot": "89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule 'merkleIntegrity' was evaluated during a governed audit run.",
+                    "The previously recorded violation condition associated with the artifact 'codex/codex.json' was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-005",
+            "identityHash": "487f68d390205eca8cf91edb0c8ecc974e2cb029b026813ef9070897a44c0586",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768310710,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/jurisdictions/phoenix/source.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/jurisdictions/phoenix/source.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768310710",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768310827,
+            "observationCount": 2,
+            "facts": {
+                "path": "/data/authoritative/jurisdictions/phoenix/source.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-006",
+            "identityHash": "ed0d220364974e4a8e2756576ab5cbd1971c5c45c2df50ebd622ac459452ea4a",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768310710,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/scripts/skyecrawler.php' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/scripts/skyecrawler.php' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768310710",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768310827,
+            "observationCount": 2,
+            "facts": {
+                "path": "/scripts/skyecrawler.php",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
             }
         }
     ]
