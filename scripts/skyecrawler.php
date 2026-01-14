@@ -3,17 +3,19 @@ declare(strict_types=1);
 
 /* =====================================================================
  *  Skyesoft — skyecrawler.php
- *  Role: External Discovery Assistant (Prototype)
+ *  Role: External Discovery Assistant (Host-First Prototype)
  *  Authority: Skyecrawl External Discovery Standard (Codex)
  *
- *  PURPOSE
- *  -------
- *  Performs governed, non-authoritative discovery of publicly accessible
- *  external resources and emits draft source.json files for HUMAN REVIEW.
+ *  DISCOVERY MODEL
+ *  ---------------
+ *  1. Identify likely authoritative HOSTS first (municode, .gov, etc.)
+ *  2. Run constrained searches against those hosts
+ *  3. Rank candidates by host + URL pattern
+ *  4. Emit draft source.json for HUMAN REVIEW ONLY
  *
  *  MODES
  *  -----
- *  • No arguments        → discover ALL jurisdictions missing source.json
+ *  • No arguments        → discover for ALL jurisdictions missing source.json
  *  • <JurisdictionName>  → discover ONLY that jurisdiction (if unresolved)
  *
  * ===================================================================== */
@@ -23,12 +25,9 @@ declare(strict_types=1);
 $rootDir         = dirname(__DIR__);
 $jurisdictionDir = $rootDir . '/data/authoritative/jurisdictions';
 $envPath         = $rootDir . '/secure/env.local';
-$promptPath      = __DIR__ . '/skyecrawler.prompt';
 
-$targetJurisdiction = $argv[1] ?? null;
-if ($targetJurisdiction !== null) {
-    $targetJurisdiction = strtolower(trim($targetJurisdiction));
-}
+$target = $argv[1] ?? null;
+$target = $target ? strtolower(trim($target)) : null;
 
 #endregion
 
@@ -57,9 +56,34 @@ if (!$googleKey || !$googleCx) {
 
 #endregion
 
-#region SECTION II — Helpers
+#region SECTION II — Discovery Configuration
 
-function googleSearch(string $query, string $key, string $cx): ?array
+$hostProfiles = [
+    [
+        'name'     => 'Municode Library',
+        'domain'   => 'library.municode.com',
+        'weight'   => 120,
+        'patterns' => ['tempe', 'codes', 'sign', 'zoning']
+    ],
+    [
+        'name'     => 'Municode Root',
+        'domain'   => 'municode.com',
+        'weight'   => 90,
+        'patterns' => ['codes']
+    ],
+    [
+        'name'     => 'City Website',
+        'domain'   => '.gov',
+        'weight'   => 70,
+        'patterns' => ['sign', 'ordinance', 'zoning']
+    ]
+];
+
+#endregion
+
+#region SECTION III — Helpers
+
+function googleSearch(string $query, string $key, string $cx): array
 {
     $url = 'https://www.googleapis.com/customsearch/v1'
          . '?key=' . urlencode($key)
@@ -67,86 +91,46 @@ function googleSearch(string $query, string $key, string $cx): ?array
          . '&q='   . urlencode($query);
 
     $json = @file_get_contents($url);
-    if ($json === false) return null;
+    if ($json === false) return [];
 
     $data = json_decode($json, true);
-    return is_array($data) ? ($data['items'] ?? null) : null;
+    return is_array($data['items'] ?? null) ? $data['items'] : [];
 }
 
-/**
- * AI-assisted query expansion.
- * Must return array<string>.
- * Falls back deterministically if AI unavailable.
- */
-function expandQueries(string $jurisdiction, string $state, string $promptPath): array
+function scoreResult(array $item, array $hostProfiles): int
 {
-    if (!file_exists($promptPath)) {
-        return [
-            "{$jurisdiction} City sign code",
-            "City of {$jurisdiction} zoning ordinance signs",
-            "{$jurisdiction} {$state} municipal sign regulations"
-        ];
+    $score = 0;
+    $url   = strtolower($item['link'] ?? '');
+
+    foreach ($hostProfiles as $host) {
+        if (str_contains($url, $host['domain'])) {
+            $score += $host['weight'];
+            foreach ($host['patterns'] as $p) {
+                if (str_contains($url, $p)) {
+                    $score += 10;
+                }
+            }
+        }
     }
 
-    $prompt = str_replace(
-        ['{{JURISDICTION}}', '{{STATE}}'],
-        [$jurisdiction, $state],
-        file_get_contents($promptPath)
-    );
-
-    // 🔒 GOVERNANCE NOTE:
-    // This assumes an internal AI call that returns JSON array only.
-    // Replace `callAI()` with your actual implementation.
-    $response = callAI($prompt);
-
-    $queries = json_decode($response, true);
-    if (!is_array($queries)) return [];
-
-    return array_values(array_filter($queries, 'is_string'));
-}
-
-/**
- * Stub for AI call (replace with real implementation)
- */
-function callAI(string $prompt): string
-{
-    // Intentionally conservative stub for now
-    return json_encode([
-        "Tempe City sign code",
-        "City of Tempe zoning ordinance signs",
-        "Tempe AZ municipal sign regulations",
-        "Tempe sign ordinance"
-    ]);
+    return $score;
 }
 
 #endregion
 
-#region SECTION III — Discovery Loop
-
-if (!is_dir($jurisdictionDir)) {
-    echo "❌ Jurisdiction directory not found\n";
-    exit(1);
-}
+#region SECTION IV — Discovery Loop
 
 $folders = scandir($jurisdictionDir);
 
 foreach ($folders as $folder) {
 
     if ($folder === '.' || $folder === '..') continue;
+    if ($target && strtolower($folder) !== $target) continue;
 
-    $folderLower = strtolower($folder);
-
-    // Single-jurisdiction mode
-    if ($targetJurisdiction !== null && $folderLower !== $targetJurisdiction) {
-        continue;
-    }
-
-    $path = $jurisdictionDir . '/' . $folder;
+    $path = "{$jurisdictionDir}/{$folder}";
     if (!is_dir($path)) continue;
 
-    $sourceFile = $path . '/source.json';
-
-    // Governance state check — resolved jurisdictions skipped
+    $sourceFile = "{$path}/source.json";
     if (file_exists($sourceFile)) {
         echo "⏭ Skipping {$folder} (source.json exists)\n";
         continue;
@@ -154,22 +138,31 @@ foreach ($folders as $folder) {
 
     echo "🔍 Discovering source for {$folder}...\n";
 
-    $queries = expandQueries($folder, 'AZ', $promptPath);
+    $queries = [
+        "site:library.municode.com {$folder} AZ sign",
+        "site:library.municode.com {$folder} zoning sign",
+        "{$folder} AZ sign code municode",
+        "{$folder} Arizona sign ordinance",
+        "City of {$folder} AZ sign code"
+    ];
 
-    $topResult = null;
 
-    foreach ($queries as $query) {
-        $results = googleSearch($query, $googleKey, $googleCx);
-        if ($results && count($results) > 0) {
-            $topResult = $results[0];
-            break;
+    $candidates = [];
+
+    foreach ($queries as $q) {
+        foreach (googleSearch($q, $googleKey, $googleCx) as $item) {
+            $item['__score'] = scoreResult($item, $hostProfiles);
+            $candidates[] = $item;
         }
     }
 
-    if ($topResult === null) {
-        echo "⚠ No results found for {$folder}\n";
+    if (empty($candidates)) {
+        echo "⚠ No candidates found for {$folder}\n";
         continue;
     }
+
+    usort($candidates, fn($a, $b) => $b['__score'] <=> $a['__score']);
+    $best = $candidates[0];
 
     $draft = [
         'jurisdiction' => [
@@ -179,18 +172,24 @@ foreach ($folders as $folder) {
             'country' => 'US'
         ],
         'ordinance' => [
-            'title' => $topResult['title'] ?? 'Unknown sign ordinance',
+            'title' => $best['title'] ?? "{$folder} Sign Ordinance",
             'codeReference' => null,
             'subject' => 'Sign regulations',
             'authority' => $folder
         ],
         'authoritativeSource' => [
             'type' => 'web',
-            'url' => $topResult['link'] ?? null,
-            'publisher' => $topResult['displayLink'] ?? 'Unknown',
+            'url' => $best['link'] ?? null,
+            'publisher' => $best['displayLink'] ?? 'Unknown',
             'contentFormats' => ['html'],
             'accessExpectation' => 'PUBLIC',
             'canonical' => false
+        ],
+        'retrieval' => [
+            'preferredFormat' => 'html',
+            'fallbackFormats' => ['pdf'],
+            'normalizationProfile' => 'MUNICODE_STANDARD_V1',
+            'crawlAllowed' => false
         ],
         'governance' => [
             'tier' => 'Tier-3',
@@ -200,13 +199,16 @@ foreach ($folders as $folder) {
         ],
         'discoveryMeta' => [
             'discoveredBy' => 'skyecrawler.php',
+            'discoveryModel' => 'HOST_FIRST',
+            'score' => $best['__score'],
             'queriesUsed' => $queries,
             'discoveredAt' => time(),
             'reviewStatus' => 'PENDING_HUMAN_REVIEW'
         ],
         'notes' => [
-            'Generated via AI-assisted query expansion.',
-            'Observational only; requires human verification.'
+            'Generated via host-first discovery.',
+            'Metadata only; no content mirrored.',
+            'Requires human validation before use.'
         ]
     ];
 
@@ -220,8 +222,8 @@ foreach ($folders as $folder) {
 
 #endregion
 
-#region SECTION IV — Output
+#region SECTION V — Output
 
-echo "✔ Skyecrawler run complete (prototype mode)\n";
+echo "✔ Skyecrawler run complete (host-first prototype)\n";
 
 #endregion

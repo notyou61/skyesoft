@@ -1,0 +1,57 @@
+{
+    "jurisdiction": {
+        "label": "tempe",
+        "jurisdictionType": "City",
+        "state": "AZ",
+        "country": "US"
+    },
+    "ordinance": {
+        "title": "Zoning and Development Code | Tempe, AZ | Municode Library",
+        "codeReference": null,
+        "subject": "Sign regulations",
+        "authority": "tempe"
+    },
+    "authoritativeSource": {
+        "type": "web",
+        "url": "https://library.municode.com/az/tempe/codes/zoning_and_development_code",
+        "publisher": "library.municode.com",
+        "contentFormats": [
+            "html"
+        ],
+        "accessExpectation": "PUBLIC",
+        "canonical": false
+    },
+    "retrieval": {
+        "preferredFormat": "html",
+        "fallbackFormats": [
+            "pdf"
+        ],
+        "normalizationProfile": "MUNICODE_STANDARD_V1",
+        "crawlAllowed": false
+    },
+    "governance": {
+        "tier": "Tier-3",
+        "authorityLevel": "UNVERIFIED_EXTERNAL_SOURCE",
+        "autoAcceptChanges": false,
+        "requiresInterpretation": true
+    },
+    "discoveryMeta": {
+        "discoveredBy": "skyecrawler.php",
+        "discoveryModel": "HOST_FIRST",
+        "score": 250,
+        "queriesUsed": [
+            "site:library.municode.com tempe AZ sign",
+            "site:library.municode.com tempe zoning sign",
+            "tempe AZ sign code municode",
+            "tempe Arizona sign ordinance",
+            "City of tempe AZ sign code"
+        ],
+        "discoveredAt": 1768421576,
+        "reviewStatus": "PENDING_HUMAN_REVIEW"
+    },
+    "notes": [
+        "Generated via host-first discovery.",
+        "Metadata only; no content mirrored.",
+        "Requires human validation before use."
+    ]
+}
