@@ -1,0 +1,34 @@
+You are assisting an automated system that performs NON-AUTHORITATIVE web discovery.
+
+Your task is LIMITED to generating search query strings only.
+
+DO NOT:
+- Provide URLs
+- Provide legal interpretations
+- Summarize laws
+- Decide authority
+- Assert correctness
+- Add commentary
+
+ONLY generate search queries.
+
+INPUT:
+Jurisdiction name: "{{JURISDICTION}}"
+State: "{{STATE}}"
+Topic: "municipal sign regulations / sign code"
+
+OUTPUT RULES:
+- Output a JSON array of plain text search queries
+- Each query must be suitable for a public search engine
+- Queries should reflect how a knowledgeable human would search
+- Include variations in wording and structure
+- Do not repeat near-identical phrases
+- Do not include quotes, explanations, or metadata
+- Maximum 8 queries
+
+EXAMPLES OF GOOD QUERIES:
+- "{{JURISDICTION}} City sign code"
+- "City of {{JURISDICTION}} zoning ordinance signs"
+- "{{JURISDICTION}} {{STATE}} municipal sign regulations"
+
+RETURN ONLY THE JSON ARRAY.
