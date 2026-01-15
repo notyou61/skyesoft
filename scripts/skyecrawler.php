@@ -3,21 +3,15 @@ declare(strict_types=1);
 
 /* =====================================================================
  *  Skyesoft — skyecrawler.php
- *  Role: External Discovery Assistant (Host-First Prototype)
+ *  Role: External Discovery Assistant (Municode-Aware Prototype)
  *  Authority: Skyecrawl External Discovery Standard (Codex)
  *
- *  DISCOVERY MODEL
- *  ---------------
- *  1. Identify likely authoritative HOSTS first (municode, .gov, etc.)
- *  2. Run constrained searches against those hosts
- *  3. Rank candidates by host + URL pattern
- *  4. Emit draft source.json for HUMAN REVIEW ONLY
+ *  GOAL (CURRENT PHASE)
+ *  --------------------
+ *  Correctly identify the MUNICODE SIGN REGULATION ENTRY POINT
+ *  for a jurisdiction (starting with Tempe).
  *
- *  MODES
- *  -----
- *  • No arguments        → discover for ALL jurisdictions missing source.json
- *  • <JurisdictionName>  → discover ONLY that jurisdiction (if unresolved)
- *
+ *  This is LINK DISCOVERY ONLY — no scraping or interpretation.
  * ===================================================================== */
 
 #region SECTION 0 — Paths & Inputs
@@ -56,39 +50,15 @@ if (!$googleKey || !$googleCx) {
 
 #endregion
 
-#region SECTION II — Discovery Configuration
-
-$hostProfiles = [
-    [
-        'name'     => 'Municode Library',
-        'domain'   => 'library.municode.com',
-        'weight'   => 120,
-        'patterns' => ['tempe', 'codes', 'sign', 'zoning']
-    ],
-    [
-        'name'     => 'Municode Root',
-        'domain'   => 'municode.com',
-        'weight'   => 90,
-        'patterns' => ['codes']
-    ],
-    [
-        'name'     => 'City Website',
-        'domain'   => '.gov',
-        'weight'   => 70,
-        'patterns' => ['sign', 'ordinance', 'zoning']
-    ]
-];
-
-#endregion
-
-#region SECTION III — Helpers
+#region SECTION II — Helpers
 
 function googleSearch(string $query, string $key, string $cx): array
 {
     $url = 'https://www.googleapis.com/customsearch/v1'
          . '?key=' . urlencode($key)
          . '&cx='  . urlencode($cx)
-         . '&q='   . urlencode($query);
+         . '&q='   . urlencode($query)
+         . '&num=5';
 
     $json = @file_get_contents($url);
     if ($json === false) return [];
@@ -97,28 +67,39 @@ function googleSearch(string $query, string $key, string $cx): array
     return is_array($data['items'] ?? null) ? $data['items'] : [];
 }
 
-function scoreResult(array $item, array $hostProfiles): int
+/**
+ * Attempt to locate a Municode "sign" node by inspecting links
+ * inside the zoning / development code page.
+ */
+function discoverMunicodeSignNode(string $baseUrl): ?string
 {
-    $score = 0;
-    $url   = strtolower($item['link'] ?? '');
+    $html = @file_get_contents($baseUrl);
+    if ($html === false) return null;
 
-    foreach ($hostProfiles as $host) {
-        if (str_contains($url, $host['domain'])) {
-            $score += $host['weight'];
-            foreach ($host['patterns'] as $p) {
-                if (str_contains($url, $p)) {
-                    $score += 10;
-                }
+    // Look for links containing "sign"
+    if (!preg_match_all('/href="([^"]+)"/i', $html, $matches)) {
+        return null;
+    }
+
+    foreach ($matches[1] as $href) {
+        $hrefLower = strtolower($href);
+        if (str_contains($hrefLower, 'sign')) {
+            // Normalize relative URLs
+            if (str_starts_with($href, '/')) {
+                return 'https://library.municode.com' . $href;
+            }
+            if (str_starts_with($href, 'http')) {
+                return $href;
             }
         }
     }
 
-    return $score;
+    return null;
 }
 
 #endregion
 
-#region SECTION IV — Discovery Loop
+#region SECTION III — Discovery Loop
 
 $folders = scandir($jurisdictionDir);
 
@@ -138,32 +119,42 @@ foreach ($folders as $folder) {
 
     echo "🔍 Discovering source for {$folder}...\n";
 
-    $queries = [
-        "site:library.municode.com {$folder} AZ sign",
-        "site:library.municode.com {$folder} zoning sign",
-        "{$folder} AZ sign code municode",
-        "{$folder} Arizona sign ordinance",
-        "City of {$folder} AZ sign code"
-    ];
+    // STEP 1 — Confirm Municode presence
+    $query = "site:library.municode.com az {$folder} zoning sign";
+    $results = googleSearch($query, $googleKey, $googleCx);
 
-
-    $candidates = [];
-
-    foreach ($queries as $q) {
-        foreach (googleSearch($q, $googleKey, $googleCx) as $item) {
-            $item['__score'] = scoreResult($item, $hostProfiles);
-            $candidates[] = $item;
-        }
-    }
-
-    if (empty($candidates)) {
-        echo "⚠ No candidates found for {$folder}\n";
+    if (empty($results)) {
+        echo "⚠ No Municode results for {$folder}\n";
         continue;
     }
 
-    usort($candidates, fn($a, $b) => $b['__score'] <=> $a['__score']);
-    $best = $candidates[0];
+    // STEP 2 — Find the base code URL
+    $baseUrl = null;
+    foreach ($results as $item) {
+        if (str_contains($item['link'], "/{$folder}/codes/")) {
+            $baseUrl = $item['link'];
+            break;
+        }
+    }
 
+    if (!$baseUrl) {
+        // fallback to city_code
+        $baseUrl = "https://library.municode.com/az/{$folder}/codes/zoning_and_development_code";
+    }
+
+    echo "  • Found Municode base: {$baseUrl}\n";
+
+    // STEP 3 — Attempt to refine to sign node
+    $signUrl = discoverMunicodeSignNode($baseUrl);
+
+    if ($signUrl) {
+        echo "  • Refined to sign node: {$signUrl}\n";
+    } else {
+        echo "  • No sign node found; using base URL\n";
+        $signUrl = $baseUrl;
+    }
+
+    // STEP 4 — Emit draft source.json
     $draft = [
         'jurisdiction' => [
             'label' => $folder,
@@ -172,43 +163,30 @@ foreach ($folders as $folder) {
             'country' => 'US'
         ],
         'ordinance' => [
-            'title' => $best['title'] ?? "{$folder} Sign Ordinance",
-            'codeReference' => null,
+            'title' => "{$folder} Sign Regulations",
             'subject' => 'Sign regulations',
             'authority' => $folder
         ],
         'authoritativeSource' => [
             'type' => 'web',
-            'url' => $best['link'] ?? null,
-            'publisher' => $best['displayLink'] ?? 'Unknown',
+            'url' => $signUrl,
+            'publisher' => 'library.municode.com',
             'contentFormats' => ['html'],
             'accessExpectation' => 'PUBLIC',
             'canonical' => false
         ],
-        'retrieval' => [
-            'preferredFormat' => 'html',
-            'fallbackFormats' => ['pdf'],
-            'normalizationProfile' => 'MUNICODE_STANDARD_V1',
-            'crawlAllowed' => false
-        ],
-        'governance' => [
-            'tier' => 'Tier-3',
-            'authorityLevel' => 'UNVERIFIED_EXTERNAL_SOURCE',
-            'autoAcceptChanges' => false,
-            'requiresInterpretation' => true
-        ],
         'discoveryMeta' => [
             'discoveredBy' => 'skyecrawler.php',
-            'discoveryModel' => 'HOST_FIRST',
-            'score' => $best['__score'],
-            'queriesUsed' => $queries,
+            'discoveryModel' => 'MUNICODE_REFINEMENT',
+            'baseUrl' => $baseUrl,
+            'refined' => $signUrl !== $baseUrl,
             'discoveredAt' => time(),
             'reviewStatus' => 'PENDING_HUMAN_REVIEW'
         ],
         'notes' => [
-            'Generated via host-first discovery.',
-            'Metadata only; no content mirrored.',
-            'Requires human validation before use.'
+            'Municode sign node refined via link discovery.',
+            'No ordinance content scraped.',
+            'Human verification required.'
         ]
     ];
 
@@ -222,8 +200,8 @@ foreach ($folders as $folder) {
 
 #endregion
 
-#region SECTION V — Output
+#region SECTION IV — Output
 
-echo "✔ Skyecrawler run complete (host-first prototype)\n";
+echo "✔ Skyecrawler run complete (Municode-aware prototype)\n";
 
 #endregion
