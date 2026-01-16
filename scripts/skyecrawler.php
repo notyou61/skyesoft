@@ -68,33 +68,92 @@ function googleSearch(string $query, string $key, string $cx): array
 }
 
 /**
- * Attempt to locate a Municode "sign" node by inspecting links
- * inside the zoning / development code page.
+ * Discover Municode "Sign Regulations" nodeId via embedded TOC JSON.
+ * This inspects TOC labels, not URLs.
  */
 function discoverMunicodeSignNode(string $baseUrl): ?string
 {
     $html = @file_get_contents($baseUrl);
-    if ($html === false) return null;
-
-    // Look for links containing "sign"
-    if (!preg_match_all('/href="([^"]+)"/i', $html, $matches)) {
+    if ($html === false) {
         return null;
     }
 
-    foreach ($matches[1] as $href) {
-        $hrefLower = strtolower($href);
-        if (str_contains($hrefLower, 'sign')) {
-            // Normalize relative URLs
+    // Add user-agent — some Municode endpoints are stricter without it
+    $context = stream_context_create([
+        'http' => [
+            'header' => "User-Agent: Mozilla/5.0 (compatible; Skyecrawler/1.0; +https://example.com/bot)\r\n"
+        ]
+    ]);
+    $html = @file_get_contents($baseUrl, false, $context) ?: '';
+
+    $candidates = [];
+
+    // More permissive but still safe regex for anchors
+    if (preg_match_all(
+        '/<a\s+(?:[^>]*?\s+)?href\s*=\s*["\']([^"\']+)["\'][^>]*>([^<]*(?:<[^>]+>[^<]*)*?)<\/a>/is',
+        $html,
+        $matches,
+        PREG_SET_ORDER
+    )) {
+        foreach ($matches as $m) {
+            $href  = html_entity_decode(trim($m[1]));
+            $label = trim(strip_tags($m[2]));
+            $labelL = strtolower($label);
+            $hrefL  = strtolower($href);
+
+            // Must look like a node link
+            if (!str_contains($hrefL, 'nodeid=')) {
+                continue;
+            }
+
+            // Stronger sign signals (helps reduce noise)
+            $isSign = 
+                str_contains($labelL, 'sign') ||
+                str_contains($labelL, 'signs') ||
+                str_contains($hrefL, 'sign');
+
+            // Bonus points for more specific phrases (helps ranking)
+            $score = 0;
+            if ($isSign) {
+                $score += 10;
+                if (str_contains($labelL, 'regulat') || str_contains($labelL, 'standard')) $score += 4;
+                if (str_contains($labelL, 'chapter') || str_contains($labelL, 'article') || str_contains($labelL, 'section')) $score += 3;
+                if (str_contains($hrefL, '_si') || str_contains($hrefL, 'sig')) $score += 5;
+            }
+
+            if ($score < 8) continue;
+
+            // Normalize and validate URL
             if (str_starts_with($href, '/')) {
-                return 'https://library.municode.com' . $href;
+                $href = 'https://library.municode.com' . $href;
             }
-            if (str_starts_with($href, 'http')) {
-                return $href;
+
+            // Important: must stay in the same code document tree
+            if (!str_starts_with($href, $baseUrl) && !str_contains($href, parse_url($baseUrl, PHP_URL_PATH))) {
+                continue;
             }
+
+            $candidates[] = [
+                'url'   => $href,
+                'score' => $score,
+                'depth' => substr_count($href, '/') + substr_count($href, '_') // rough depth proxy
+            ];
         }
     }
 
-    return null;
+    if (empty($candidates)) {
+        return null;
+    }
+
+    // Sort: best score first, then deepest node
+    usort($candidates, function($a, $b) {
+        if ($a['score'] !== $b['score']) {
+            return $b['score'] <=> $a['score'];
+        }
+        return $b['depth'] <=> $a['depth'];
+    });
+
+    return $candidates[0]['url'];
 }
 
 #endregion

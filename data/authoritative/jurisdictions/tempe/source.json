@@ -1,0 +1,36 @@
+{
+    "jurisdiction": {
+        "label": "tempe",
+        "jurisdictionType": "City",
+        "state": "AZ",
+        "country": "US"
+    },
+    "ordinance": {
+        "title": "tempe Sign Regulations",
+        "subject": "Sign regulations",
+        "authority": "tempe"
+    },
+    "authoritativeSource": {
+        "type": "web",
+        "url": "https://library.municode.com/az/tempe/codes/zoning_and_development_code",
+        "publisher": "library.municode.com",
+        "contentFormats": [
+            "html"
+        ],
+        "accessExpectation": "PUBLIC",
+        "canonical": false
+    },
+    "discoveryMeta": {
+        "discoveredBy": "skyecrawler.php",
+        "discoveryModel": "MUNICODE_REFINEMENT",
+        "baseUrl": "https://library.municode.com/az/tempe/codes/zoning_and_development_code",
+        "refined": false,
+        "discoveredAt": 1768569009,
+        "reviewStatus": "PENDING_HUMAN_REVIEW"
+    },
+    "notes": [
+        "Municode sign node refined via link discovery.",
+        "No ordinance content scraped.",
+        "Human verification required."
+    ]
+}
