@@ -1,36 +1,35 @@
 {
     "jurisdiction": {
-        "label": "tempe",
+        "label": "Tempe",
         "jurisdictionType": "City",
         "state": "AZ",
         "country": "US"
     },
     "ordinance": {
-        "title": "tempe Sign Regulations",
+        "title": "tempe Sign Regulations (entry point)",
         "subject": "Sign regulations",
         "authority": "tempe"
     },
     "authoritativeSource": {
         "type": "web",
-        "url": "https://library.municode.com/az/tempe/codes/zoning_and_development_code",
-        "publisher": "library.municode.com",
+        "url": "https://codelibrary.amlegal.com/codes/eloyaz/latest/eloy_az/0-0-0-8688",
+        "publisher": "amlegal",
         "contentFormats": [
             "html"
         ],
         "accessExpectation": "PUBLIC",
-        "canonical": false
+        "canonical": true
     },
     "discoveryMeta": {
         "discoveredBy": "skyecrawler.php",
-        "discoveryModel": "MUNICODE_REFINEMENT",
-        "baseUrl": "https://library.municode.com/az/tempe/codes/zoning_and_development_code",
-        "refined": false,
-        "discoveredAt": 1768569009,
-        "reviewStatus": "PENDING_HUMAN_REVIEW"
+        "platform": "amlegal",
+        "discoveryModel": "AMLEGAL_BASE_ONLY",
+        "discoveredAt": 1768580137,
+        "reviewStatus": "AUTO_DISCOVERED"
     },
     "notes": [
-        "Municode sign node refined via link discovery.",
-        "No ordinance content scraped.",
-        "Human verification required."
+        "Entry point discovery only \u2014 no content was scraped.",
+        "American Legal implementations usually allow reliable deep linking.",
+        "Human verification of sign regulations location is required for municode implementations."
     ]
 }

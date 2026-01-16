@@ -1,0 +1,2274 @@
+{
+  "meta": {
+    "schema": "proto-skyesoft-permit-registry",
+    "version": "0.5",
+    "generatedOn": 1768593577,
+    "counts": {
+      "totalWorkOrders": 143
+    },
+    "statusBreakdown": {
+      "need_to_submit": 16,
+      "submitted": 20,
+      "qc_passed": 0,
+      "under_review": 52,
+      "corrections": 1,
+      "ready_to_issue": 20,
+      "issued": 21,
+      "inspections": 0,
+      "finaled": 13
+    },
+    "updatedOn": 1768594417
+  },
+  "workOrders": {
+    "26090": {
+      "workOrder": 26090,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Sonic # 5912",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25916": {
+      "workOrder": 25916,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Sonic # 3729",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25813": {
+      "workOrder": 25813,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Sonic # 3563",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25819": {
+      "workOrder": 25819,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Sonic # 1173",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25945": {
+      "workOrder": 25945,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions # 0357",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25946": {
+      "workOrder": 25946,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions # 0109",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25943": {
+      "workOrder": 25943,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25938": {
+      "workOrder": 25938,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions # 0108",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25937": {
+      "workOrder": 25937,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 225.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26337": {
+      "workOrder": 26337,
+      "customer": "U-Haul",
+      "jobsite": "U-Haul # 00000",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": "B24-2273",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 664.6,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26157": {
+      "workOrder": 26157,
+      "customer": "U-Haul",
+      "jobsite": "U-Haul # 00000",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26397": {
+      "workOrder": 26397,
+      "customer": "U-Haul",
+      "jobsite": "U-Haul # 723061",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": null,
+        "status": "corrections",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25935": {
+      "workOrder": 25935,
+      "customer": "U-Haul",
+      "jobsite": "U-Haul # 721041",
+      "jurisdiction": "maricopa county",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25767": {
+      "workOrder": 25767,
+      "customer": "Pattison Sign Group",
+      "jobsite": "Stotz Equipment # 074063",
+      "jurisdiction": "maricopa county",
+      "permit": {
+        "number": "BLDC2400373",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 377.81,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25514": {
+      "workOrder": 25514,
+      "customer": "Pattison Sign Group",
+      "jobsite": "Stotz Equipment # 074299",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25511": {
+      "workOrder": 25511,
+      "customer": "Pattison Sign Group",
+      "jobsite": "Stotz Equipment # 074088",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26216": {
+      "workOrder": 26216,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": "PL-24-0113",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 440.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25974": {
+      "workOrder": 25974,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "buckeye",
+      "permit": {
+        "number": "BLDC-23-0355",
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25808": {
+      "workOrder": 25808,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "231614-LPSG",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26117": {
+      "workOrder": 26117,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26166": {
+      "workOrder": 26166,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "maricopa county",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26112": {
+      "workOrder": 26112,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "SGN24057",
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25915": {
+      "workOrder": 25915,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "231329-LPSG",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26336": {
+      "workOrder": 26336,
+      "customer": "Tait Development",
+      "jobsite": "Tait Development",
+      "jurisdiction": "tolleson",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26328": {
+      "workOrder": 26328,
+      "customer": "Omaha Neon Sign",
+      "jobsite": "Pinnacle Bank",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": "2463-24",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "24741": {
+      "workOrder": 24741,
+      "customer": "Arizona Partners",
+      "jobsite": "Arrowhead Marketplace",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "241219",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 844.93,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26241": {
+      "workOrder": 26241,
+      "customer": "AGI",
+      "jobsite": "Chapman Ford",
+      "jurisdiction": "srpmic",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26430": {
+      "workOrder": 26430,
+      "customer": "Printing Solutions",
+      "jobsite": "Novo",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 787.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26513": {
+      "workOrder": 26513,
+      "customer": "Penchetta Pen & Knife",
+      "jobsite": "Penchetta Pen & Knife",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "240845-LPSG",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 225.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26386": {
+      "workOrder": 26386,
+      "customer": "AGI",
+      "jobsite": "Don Sanderson",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "241535",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 860.69,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26408": {
+      "workOrder": 26408,
+      "customer": "American Interstate",
+      "jobsite": "Jackson Hewitt",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26348": {
+      "workOrder": 26348,
+      "customer": "Printing Solutions",
+      "jobsite": "Rhino Sheild",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN24-0206",
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26438": {
+      "workOrder": 26438,
+      "customer": "Anchor Signs",
+      "jobsite": "Krispy Kreme Doughnuts # 636",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "SGN24239",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 1485.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "24301": {
+      "workOrder": 24301,
+      "customer": "Pattison Sign Group",
+      "jobsite": "Horne Kia",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25525": {
+      "workOrder": 25525,
+      "customer": "Clinica La Familia",
+      "jobsite": "Clinica La Familia  (Casa Grande)",
+      "jurisdiction": "casa grande",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26209": {
+      "workOrder": 26209,
+      "customer": "Banner Heath",
+      "jobsite": "Banner Health",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "241728",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25523": {
+      "workOrder": 25523,
+      "customer": "Printing Solutions",
+      "jobsite": "Roosevelt Lake Marina",
+      "jurisdiction": "roosevelt lake",
+      "permit": {
+        "number": "G2502-017 28085",
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26197": {
+      "workOrder": 26197,
+      "customer": "Branham Sign",
+      "jobsite": "White Castle",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26312": {
+      "workOrder": 26312,
+      "customer": "Sun Valley Wellness",
+      "jobsite": "Sun Valley Wellness",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 545.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25477": {
+      "workOrder": 25477,
+      "customer": "Ceviche 101",
+      "jobsite": "Ceviche 101",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26366": {
+      "workOrder": 26366,
+      "customer": "Tait Development",
+      "jobsite": "Vanguard",
+      "jurisdiction": "tolleson",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25868": {
+      "workOrder": 25868,
+      "customer": "Core Machinery",
+      "jobsite": "Core Machinery",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25963": {
+      "workOrder": 25963,
+      "customer": "Happy Home Care",
+      "jobsite": "Happy Home Care",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26036": {
+      "workOrder": 26036,
+      "customer": "Switch Electric",
+      "jobsite": "Switch Electric",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 356.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "24682": {
+      "workOrder": 24682,
+      "customer": "Swt Arizona Investments, Llc",
+      "jobsite": "KFC # D212119",
+      "jurisdiction": "casa grande",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25745": {
+      "workOrder": 25745,
+      "customer": "Psco Kieffer",
+      "jobsite": "Plato's Closet",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "24703": {
+      "workOrder": 24703,
+      "customer": "Burros & Fries",
+      "jobsite": "Burros & Fries",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25674": {
+      "workOrder": 25674,
+      "customer": "Printing Solutions",
+      "jobsite": "Ten Figures",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 225.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25175": {
+      "workOrder": 25175,
+      "customer": "Branham Sign",
+      "jobsite": "White Castle",
+      "jurisdiction": "goodyear",
+      "permit": {
+        "number": "B24-01541",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 199.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26124": {
+      "workOrder": 26124,
+      "customer": "Jas Diesel",
+      "jobsite": "Jas Diesel",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25617": {
+      "workOrder": 25617,
+      "customer": "Clayton Signs",
+      "jobsite": "Tidal Wave Car Wash",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26515": {
+      "workOrder": 26515,
+      "customer": "State Farm",
+      "jobsite": "State Farm",
+      "jurisdiction": "peoria",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26335": {
+      "workOrder": 26335,
+      "customer": "U-Haul",
+      "jobsite": "U-Haul (Grand/Bell Rd)",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25491": {
+      "workOrder": 25491,
+      "customer": "El Shaddai",
+      "jobsite": "El Shaddai",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26517": {
+      "workOrder": 26517,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "240857-LPSG",
+        "status": "ready_to_issue",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26570": {
+      "workOrder": 26570,
+      "customer": "Agate Construction",
+      "jobsite": "Chapman Ford",
+      "jurisdiction": "srpmic",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26550": {
+      "workOrder": 26550,
+      "customer": "Go & Drive Driving School",
+      "jobsite": "Go & Drive Driving School",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26123": {
+      "workOrder": 26123,
+      "customer": "Mellow Mushroom Pizza",
+      "jobsite": "Mellow Mushroom Pizza",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26519": {
+      "workOrder": 26519,
+      "customer": "Wingfoot Center",
+      "jobsite": "Wingfoot Center",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN24-0210",
+        "status": "ready_to_issue",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26630": {
+      "workOrder": 26630,
+      "customer": "Signtech",
+      "jobsite": "Williams Sonoma",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": "109401",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 620.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26381": {
+      "workOrder": 26381,
+      "customer": "AGI",
+      "jobsite": "Ford Training Center",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "LPSG 241083",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26568": {
+      "workOrder": 26568,
+      "customer": "Scheidt & Bachmann",
+      "jobsite": "Scheidt & Bachmann",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "LPSG-240917",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26606": {
+      "workOrder": 26606,
+      "customer": "Allen Industries, Inc",
+      "jobsite": "Verizon BeMobile",
+      "jurisdiction": "goodyear",
+      "permit": {
+        "number": "B24-02700",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 388.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26598": {
+      "workOrder": 26598,
+      "customer": "Identity Sign",
+      "jobsite": "Ferguson",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN24-0236",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26545": {
+      "workOrder": 26545,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26406": {
+      "workOrder": 26406,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "242346",
+        "status": "issued",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26639": {
+      "workOrder": 26639,
+      "customer": "Allen Industries, Inc",
+      "jobsite": "Verizon BeMobile",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "25965": {
+      "workOrder": 25965,
+      "customer": "Federal Heath Sign Company",
+      "jobsite": "Crash Champions # 0104",
+      "jurisdiction": "peoria",
+      "permit": {
+        "number": "SGN24-00302",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26585": {
+      "workOrder": 26585,
+      "customer": "NRS",
+      "jobsite": "NRS",
+      "jurisdiction": "casa grande",
+      "permit": {
+        "number": "CDP-24-02351",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 254.77,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26729": {
+      "workOrder": 26729,
+      "customer": "Walton Signage",
+      "jobsite": "Bank Of America # AZW-296",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26694": {
+      "workOrder": 26694,
+      "customer": "Gudeng Inc",
+      "jobsite": "Gudeng Inc",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26111": {
+      "workOrder": 26111,
+      "customer": "Identity Sign",
+      "jobsite": "Ferguson",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": "8800-24",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 570.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26752": {
+      "workOrder": 26752,
+      "customer": "PSCO Kieffer",
+      "jobsite": "Candlewood Suites",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 517.64,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26853": {
+      "workOrder": 26853,
+      "customer": "Allen Industries, Inc",
+      "jobsite": "Plato's Closet",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "LPSG 241482",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 300.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26877": {
+      "workOrder": 26877,
+      "customer": "Identity Sign",
+      "jobsite": "Ferguson",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "250183",
+        "status": "need_to_submit",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 400.22,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26836": {
+      "workOrder": 26836,
+      "customer": "Yaho",
+      "jobsite": "Yaho",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": "240243-3",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26885": {
+      "workOrder": 26885,
+      "customer": "Walton Signage",
+      "jobsite": "Bank of America # AZW-294",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": "PMT25-01179",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26905": {
+      "workOrder": 26905,
+      "customer": "Walton Signage",
+      "jobsite": "Bank of America # AZW-298",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": "114299",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26927": {
+      "workOrder": 26927,
+      "customer": "Omaha Neon Sign",
+      "jobsite": "Blue Sushi Sake Grill",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "SGN25019",
+        "status": "finaled",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26937": {
+      "workOrder": 26937,
+      "customer": "Burros & Fries",
+      "jobsite": "Burros & Fries",
+      "jurisdiction": "yuma",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26970": {
+      "workOrder": 26970,
+      "customer": "Anchor Signs",
+      "jobsite": "Jason's Deli",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26753": {
+      "workOrder": 26753,
+      "customer": "AWP Safety",
+      "jobsite": "AWP Safety",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26754": {
+      "workOrder": 26754,
+      "customer": "AWP Safety",
+      "jobsite": "AWP Safety",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "BLDC2500230",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27031": {
+      "workOrder": 27031,
+      "customer": "Entera Branding",
+      "jobsite": "Mellow Mushroom # 144",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26862": {
+      "workOrder": 26862,
+      "customer": "Living Waters",
+      "jobsite": "Living Waters",
+      "jurisdiction": "chino valley",
+      "permit": {
+        "number": "CUP-2025-03",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 1155.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26760": {
+      "workOrder": 26760,
+      "customer": "AWP Safety",
+      "jobsite": "AWP Safety",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "LPSG 250319",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27033": {
+      "workOrder": 27033,
+      "customer": "Federal Heath",
+      "jobsite": "Ross Dress For Less # 2730",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": "SIGN-2025-00079",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "20170": {
+      "workOrder": 20170,
+      "customer": "StoragExperts",
+      "jobsite": "StoragExperts",
+      "jurisdiction": "goodyear",
+      "permit": {
+        "number": "B25-00655",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27051": {
+      "workOrder": 27051,
+      "customer": "Sign Resource",
+      "jobsite": "Safeway # 209",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": "B25-0938",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27071": {
+      "workOrder": 27071,
+      "customer": "Pattison Sign Group",
+      "jobsite": "Stotz Equipment",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN25-0083",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26889": {
+      "workOrder": 26889,
+      "customer": "Walton Signage",
+      "jobsite": "Bank of America # AZW-297",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27091": {
+      "workOrder": 27091,
+      "customer": "Burros & Fries (Queen Creek)",
+      "jobsite": "Burros & Fries",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": "B25-1556",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27043": {
+      "workOrder": 27043,
+      "customer": "Burros & Fries (Gilbert)",
+      "jobsite": "Burros & Fries",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": "SIGN-2025-00283",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27104": {
+      "workOrder": 27104,
+      "customer": "Holiday Inn Express",
+      "jobsite": "Holiday Inn Express",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "SGN25180",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27138": {
+      "workOrder": 27138,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53512",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": "PL-25-0116",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27141": {
+      "workOrder": 27141,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53527",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": "250721-LPSG",
+        "status": "ready_to_issue",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27142": {
+      "workOrder": 27142,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53530",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27151": {
+      "workOrder": 27151,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53532",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27137": {
+      "workOrder": 27137,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53529",
+      "jurisdiction": "laveen",
+      "permit": {
+        "number": null,
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 450.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27139": {
+      "workOrder": 27139,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53510",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "issued",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 225.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27140": {
+      "workOrder": 27140,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53524",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27135": {
+      "workOrder": 27135,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53508",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "SGN25189",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27150": {
+      "workOrder": 27150,
+      "customer": "Everbright",
+      "jobsite": "Habit Burger # 53531",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": "2025-8616",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27232": {
+      "workOrder": 27232,
+      "customer": "Everbright",
+      "jobsite": "State Farm-Curt Lewis",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27099": {
+      "workOrder": 27099,
+      "customer": "Fairmont Commerce Center",
+      "jobsite": "Fairmont Commerce Center",
+      "jurisdiction": "tempe",
+      "permit": {
+        "number": "PL250224",
+        "status": "submitted",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 553.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27128": {
+      "workOrder": 27128,
+      "customer": "The Element Group",
+      "jobsite": "First Credit Union",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": "B25-1777",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27231": {
+      "workOrder": 27231,
+      "customer": "Everbright",
+      "jobsite": "State Farm-Lisa Ross",
+      "jurisdiction": "buckeye",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27144": {
+      "workOrder": 27144,
+      "customer": "Everbright",
+      "jobsite": "Sherwin Williams # 708000",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": "PMT25-08915",
+        "status": "issued",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 101.23,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27316": {
+      "workOrder": 27316,
+      "customer": "Everbright",
+      "jobsite": "Dunkin Avondale",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": "PL-25-0194",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 826.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27296": {
+      "workOrder": 27296,
+      "customer": "Omaha Neon Sign",
+      "jobsite": "Scooters # 2597",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 300.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27350": {
+      "workOrder": 27350,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Laveen Village",
+      "jurisdiction": "laveen village",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27351": {
+      "workOrder": 27351,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Avondale",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": "PL-25-0208",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27352": {
+      "workOrder": 27352,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Maricopa",
+      "jurisdiction": "maricopa",
+      "permit": {
+        "number": "SGN25-42",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27355": {
+      "workOrder": 27355,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Surprise",
+      "jurisdiction": "surprise",
+      "permit": {
+        "number": "2025004158-CRUMBL",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27357": {
+      "workOrder": 27357,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Chandler",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN25-0208",
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27314": {
+      "workOrder": 27314,
+      "customer": "National Sign & Marketing",
+      "jobsite": "Farmer Boys",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": "B25-2275",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27154": {
+      "workOrder": 27154,
+      "customer": "Everbright",
+      "jobsite": "State Farm - Severiano Torres",
+      "jurisdiction": "buckeye",
+      "permit": {
+        "number": "BLDC-25-0336",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27380": {
+      "workOrder": 27380,
+      "customer": "National Sign & Marketing",
+      "jobsite": "Chick Fil A",
+      "jurisdiction": "glendale",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27325": {
+      "workOrder": 27325,
+      "customer": "U-Haul International",
+      "jobsite": "U-Haul (Thatcher)",
+      "jurisdiction": "thatcher",
+      "permit": {
+        "number": "250117",
+        "status": "ready_to_issue",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 116.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27199": {
+      "workOrder": 27199,
+      "customer": "First Rate Staffing",
+      "jobsite": "First Rate Staffing",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27170": {
+      "workOrder": 27170,
+      "customer": "Everbright",
+      "jobsite": "Great Clips # 1554",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27171": {
+      "workOrder": 27171,
+      "customer": "Everbright",
+      "jobsite": "Great Clips # 1525",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27169": {
+      "workOrder": 27169,
+      "customer": "Everbright",
+      "jobsite": "Great Clips # 6336",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27401": {
+      "workOrder": 27401,
+      "customer": "Everbright",
+      "jobsite": "State Farm-Rene Chavez",
+      "jurisdiction": "maricopa",
+      "permit": {
+        "number": "25-4015",
+        "status": "submitted",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 279.0,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27497": {
+      "workOrder": 27497,
+      "customer": "Everbright",
+      "jobsite": "State Farm - Brayden Hough",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": "SIGN-2025-00341",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27409": {
+      "workOrder": 27409,
+      "customer": "Vetra of Chandler",
+      "jobsite": "Vetra of Chandler",
+      "jurisdiction": "chandler",
+      "permit": {
+        "number": "SGN25-0272",
+        "status": "under_review",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 373.19,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27385": {
+      "workOrder": 27385,
+      "customer": "U-Haul International",
+      "jobsite": "U-Haul-Sahuarita",
+      "jurisdiction": "sahuarita",
+      "permit": {
+        "number": "SAH-25-01056",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27435": {
+      "workOrder": 27435,
+      "customer": "Everbright",
+      "jobsite": "Jen's Ice Cream",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27461": {
+      "workOrder": 27461,
+      "customer": "Silicon Signs",
+      "jobsite": "Crumbl-Peoria",
+      "jurisdiction": "phoenix",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "26989": {
+      "workOrder": 26989,
+      "customer": "Sign Resource",
+      "jobsite": "Safeway # 0343",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27447": {
+      "workOrder": 27447,
+      "customer": "Everbright",
+      "jobsite": "First Watch # 54530",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": "SIGN-2026-00015",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27479": {
+      "workOrder": 27479,
+      "customer": "KGR Group",
+      "jobsite": "Rally's",
+      "jurisdiction": "tolleson",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": [
+          {
+            "feeType": "other",
+            "label": "Unspecified Fee",
+            "amount": 349.8,
+            "note": null,
+            "paid": false
+          }
+        ]
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27195": {
+      "workOrder": 27195,
+      "customer": "Mercy Housing",
+      "jobsite": "Mercy Housing",
+      "jurisdiction": "guadalupe",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27562": {
+      "workOrder": 27562,
+      "customer": "Silicon Signs",
+      "jobsite": "Uni K Wax",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": "124266",
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27565": {
+      "workOrder": 27565,
+      "customer": "Silicon Signs",
+      "jobsite": "Uni K Wax (Scottsdale Rd)",
+      "jurisdiction": "paradise valley",
+      "permit": {
+        "number": null,
+        "status": "submitted",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27549": {
+      "workOrder": 27549,
+      "customer": "National Sign & Marketing",
+      "jobsite": "Chick Fil A # 1490",
+      "jurisdiction": "goodyear",
+      "permit": {
+        "number": "B25-02814",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27544": {
+      "workOrder": 27544,
+      "customer": "Silicon Signs",
+      "jobsite": "Back Nine",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27404": {
+      "workOrder": 27404,
+      "customer": "Everbright",
+      "jobsite": "Sherwin Williams # 701582",
+      "jurisdiction": "mesa",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27589": {
+      "workOrder": 27589,
+      "customer": "Federal Heath",
+      "jobsite": "Ross Dress for Less # 2669",
+      "jurisdiction": "buckeye",
+      "permit": {
+        "number": "BLDC-26-0029",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27601": {
+      "workOrder": 27601,
+      "customer": "Silicon Signs",
+      "jobsite": "Bodybar",
+      "jurisdiction": "scottsdale",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27477": {
+      "workOrder": 27477,
+      "customer": "Everbright",
+      "jobsite": "Papa Johns",
+      "jurisdiction": "gilbert",
+      "permit": {
+        "number": "SIGN-2026-00019",
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27502": {
+      "workOrder": 27502,
+      "customer": "Eisenberg & Associates",
+      "jobsite": "The Mix on Roosevelt",
+      "jurisdiction": "buckeye",
+      "permit": {
+        "number": null,
+        "status": "need_to_submit",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    },
+    "27595": {
+      "workOrder": 27595,
+      "customer": "Silicon Signs",
+      "jobsite": "Bodybar",
+      "jurisdiction": "avondale",
+      "permit": {
+        "number": "PL-26-0014",
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768593442,
+      "lastUpdatedAt": 1768594417
+    }
+  }
+}

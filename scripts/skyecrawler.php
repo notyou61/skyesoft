@@ -3,15 +3,23 @@ declare(strict_types=1);
 
 /* =====================================================================
  *  Skyesoft — skyecrawler.php
- *  Role: External Discovery Assistant (Municode-Aware Prototype)
+ *  Role: External Discovery Assistant (Platform-Aware)
  *  Authority: Skyecrawl External Discovery Standard (Codex)
  *
- *  GOAL (CURRENT PHASE)
- *  --------------------
- *  Correctly identify the MUNICODE SIGN REGULATION ENTRY POINT
- *  for a jurisdiction (starting with Tempe).
+ *  CURRENT GOAL (2026 phase)
+ *  -------------------------
+ *  1. Find the authoritative online code location for a jurisdiction
+ *  2. Identify which major platform hosts it (AmLegal vs Municode mainly)
+ *  3. Record a trustworthy entry-point URL
+ *  4. Classify automation potential honestly
  *
- *  This is LINK DISCOVERY ONLY — no scraping or interpretation.
+ *  IMPORTANT REALITY (Jan 2026):
+ *  - American Legal → usually safe to deep-link automatically
+ *  - Municode     → almost all modern implementations are React SPAs
+ *                   → reliable static deep-chapter discovery is NOT possible
+ *                   → we stop at base code URL + flag for human review
+ *
+ *  This script performs LINK DISCOVERY ONLY — no content scraping.
  * ===================================================================== */
 
 #region SECTION 0 — Paths & Inputs
@@ -64,106 +72,26 @@ function googleSearch(string $query, string $key, string $cx): array
     if ($json === false) return [];
 
     $data = json_decode($json, true);
-    return is_array($data['items'] ?? null) ? $data['items'] : [];
+    return $data['items'] ?? [];
 }
 
-/**
- * Discover Municode "Sign Regulations" nodeId via embedded TOC JSON.
- * This inspects TOC labels, not URLs.
- */
-function discoverMunicodeSignNode(string $baseUrl): ?string
+function detectCodePlatform(string $url): string
 {
-    $html = @file_get_contents($baseUrl);
-    if ($html === false) {
-        return null;
+    $url = strtolower($url);
+    if (str_contains($url, 'codelibrary.amlegal.com')) return 'amlegal';
+    if (str_contains($url, 'library.municode.com') || str_contains($url, 'municode.com')) {
+        return 'municode';
     }
-
-    // Add user-agent — some Municode endpoints are stricter without it
-    $context = stream_context_create([
-        'http' => [
-            'header' => "User-Agent: Mozilla/5.0 (compatible; Skyecrawler/1.0; +https://example.com/bot)\r\n"
-        ]
-    ]);
-    $html = @file_get_contents($baseUrl, false, $context) ?: '';
-
-    $candidates = [];
-
-    // More permissive but still safe regex for anchors
-    if (preg_match_all(
-        '/<a\s+(?:[^>]*?\s+)?href\s*=\s*["\']([^"\']+)["\'][^>]*>([^<]*(?:<[^>]+>[^<]*)*?)<\/a>/is',
-        $html,
-        $matches,
-        PREG_SET_ORDER
-    )) {
-        foreach ($matches as $m) {
-            $href  = html_entity_decode(trim($m[1]));
-            $label = trim(strip_tags($m[2]));
-            $labelL = strtolower($label);
-            $hrefL  = strtolower($href);
-
-            // Must look like a node link
-            if (!str_contains($hrefL, 'nodeid=')) {
-                continue;
-            }
-
-            // Stronger sign signals (helps reduce noise)
-            $isSign = 
-                str_contains($labelL, 'sign') ||
-                str_contains($labelL, 'signs') ||
-                str_contains($hrefL, 'sign');
-
-            // Bonus points for more specific phrases (helps ranking)
-            $score = 0;
-            if ($isSign) {
-                $score += 10;
-                if (str_contains($labelL, 'regulat') || str_contains($labelL, 'standard')) $score += 4;
-                if (str_contains($labelL, 'chapter') || str_contains($labelL, 'article') || str_contains($labelL, 'section')) $score += 3;
-                if (str_contains($hrefL, '_si') || str_contains($hrefL, 'sig')) $score += 5;
-            }
-
-            if ($score < 8) continue;
-
-            // Normalize and validate URL
-            if (str_starts_with($href, '/')) {
-                $href = 'https://library.municode.com' . $href;
-            }
-
-            // Important: must stay in the same code document tree
-            if (!str_starts_with($href, $baseUrl) && !str_contains($href, parse_url($baseUrl, PHP_URL_PATH))) {
-                continue;
-            }
-
-            $candidates[] = [
-                'url'   => $href,
-                'score' => $score,
-                'depth' => substr_count($href, '/') + substr_count($href, '_') // rough depth proxy
-            ];
-        }
-    }
-
-    if (empty($candidates)) {
-        return null;
-    }
-
-    // Sort: best score first, then deepest node
-    usort($candidates, function($a, $b) {
-        if ($a['score'] !== $b['score']) {
-            return $b['score'] <=> $a['score'];
-        }
-        return $b['depth'] <=> $a['depth'];
-    });
-
-    return $candidates[0]['url'];
+    return 'unknown';
 }
 
 #endregion
 
-#region SECTION III — Discovery Loop
+#region SECTION III — Main Discovery Loop
 
 $folders = scandir($jurisdictionDir);
 
 foreach ($folders as $folder) {
-
     if ($folder === '.' || $folder === '..') continue;
     if ($target && strtolower($folder) !== $target) continue;
 
@@ -172,80 +100,114 @@ foreach ($folders as $folder) {
 
     $sourceFile = "{$path}/source.json";
     if (file_exists($sourceFile)) {
-        echo "⏭ Skipping {$folder} (source.json exists)\n";
+        echo "⏭ Skipping {$folder} — source.json already exists\n";
         continue;
     }
 
     echo "🔍 Discovering source for {$folder}...\n";
 
-    // STEP 1 — Confirm Municode presence
-    $query = "site:library.municode.com az {$folder} zoning sign";
+    $platform = 'unknown';
+    $baseUrl  = null;
+
+    // Priority 1: Try American Legal first (best automation potential)
+    $query = "site:codelibrary.amlegal.com az {$folder}";
     $results = googleSearch($query, $googleKey, $googleCx);
 
-    if (empty($results)) {
-        echo "⚠ No Municode results for {$folder}\n";
-        continue;
-    }
-
-    // STEP 2 — Find the base code URL
-    $baseUrl = null;
     foreach ($results as $item) {
-        if (str_contains($item['link'], "/{$folder}/codes/")) {
-            $baseUrl = $item['link'];
+        if (str_contains($item['link'], 'codelibrary.amlegal.com')) {
+            $baseUrl  = $item['link'];
+            $platform = 'amlegal';
             break;
         }
     }
 
+    // Priority 2: Fall back to Municode
     if (!$baseUrl) {
-        // fallback to city_code
-        $baseUrl = "https://library.municode.com/az/{$folder}/codes/zoning_and_development_code";
+        $query = "site:library.municode.com az {$folder} codes";
+        $results = googleSearch($query, $googleKey, $googleCx);
+
+        foreach ($results as $item) {
+            $link = $item['link'];
+            if (str_contains($link, "/{$folder}/codes/") || str_contains($link, "/{$folder}/")) {
+                $baseUrl  = $link;
+                $platform = 'municode';
+                break;
+            }
+        }
     }
 
-    echo "  • Found Municode base: {$baseUrl}\n";
+    // Last chance: slightly broader Municode search
+    if (!$baseUrl) {
+        $query = "site:library.municode.com {$folder} arizona zoning OR code OR ordinances";
+        $results = googleSearch($query, $googleKey, $googleCx);
 
-    // STEP 3 — Attempt to refine to sign node
-    $signUrl = discoverMunicodeSignNode($baseUrl);
-
-    if ($signUrl) {
-        echo "  • Refined to sign node: {$signUrl}\n";
-    } else {
-        echo "  • No sign node found; using base URL\n";
-        $signUrl = $baseUrl;
+        foreach ($results as $item) {
+            $link = $item['link'];
+            if (str_contains($link, "/{$folder}/")) {
+                $baseUrl  = $link;
+                $platform = 'municode';
+                break;
+            }
+        }
     }
 
-    // STEP 4 — Emit draft source.json
+    if (!$baseUrl) {
+        echo "  ❌ No usable code source location found\n";
+        continue;
+    }
+
+    // Platform consistency check (trust URL more than search snippet)
+    $detected = detectCodePlatform($baseUrl);
+    if ($detected !== 'unknown' && $detected !== $platform) {
+        echo "  ⚠️ Platform mismatch → overriding to detected: {$detected}\n";
+        $platform = $detected;
+    }
+
+    echo "  • Platform: {$platform}\n";
+    echo "  • Base URL: {$baseUrl}\n";
+
+    // Final decision — honest automation boundary
+    $entryUrl = $baseUrl;
+    $reviewStatus = match ($platform) {
+        'amlegal'  => 'AUTO_DISCOVERED',
+        'municode' => 'PENDING_HUMAN_REVIEW',
+        default    => 'UNKNOWN_SOURCE'
+    };
+
+    // Prepare structured output
     $draft = [
         'jurisdiction' => [
-            'label' => $folder,
+            'label'           => ucwords($folder),
             'jurisdictionType' => 'City',
-            'state' => 'AZ',
-            'country' => 'US'
+            'state'           => 'AZ',
+            'country'         => 'US'
         ],
         'ordinance' => [
-            'title' => "{$folder} Sign Regulations",
-            'subject' => 'Sign regulations',
+            'title'    => "{$folder} Sign Regulations (entry point)",
+            'subject'  => 'Sign regulations',
             'authority' => $folder
         ],
         'authoritativeSource' => [
-            'type' => 'web',
-            'url' => $signUrl,
-            'publisher' => 'library.municode.com',
-            'contentFormats' => ['html'],
+            'type'              => 'web',
+            'url'               => $entryUrl,
+            'publisher'         => $platform,
+            'contentFormats'    => ['html'],
             'accessExpectation' => 'PUBLIC',
-            'canonical' => false
+            'canonical'         => $platform === 'amlegal'   // only AmLegal gets canonical for now
         ],
         'discoveryMeta' => [
-            'discoveredBy' => 'skyecrawler.php',
-            'discoveryModel' => 'MUNICODE_REFINEMENT',
-            'baseUrl' => $baseUrl,
-            'refined' => $signUrl !== $baseUrl,
-            'discoveredAt' => time(),
-            'reviewStatus' => 'PENDING_HUMAN_REVIEW'
+            'discoveredBy'   => 'skyecrawler.php',
+            'platform'       => $platform,
+            'discoveryModel' => strtoupper($platform) . '_BASE_ONLY',
+            'discoveredAt'   => time(),
+            'reviewStatus'   => $reviewStatus
         ],
         'notes' => [
-            'Municode sign node refined via link discovery.',
-            'No ordinance content scraped.',
-            'Human verification required.'
+            'Entry point discovery only — no content was scraped.',
+            $platform === 'amlegal'
+                ? 'American Legal implementations usually allow reliable deep linking.'
+                : 'Municode is predominantly a modern React SPA — deep chapter discovery currently requires human navigation.',
+            'Human verification of sign regulations location is required for municode implementations.'
         ]
     ];
 
@@ -254,13 +216,13 @@ foreach ($folders as $folder) {
         json_encode($draft, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     );
 
-    echo "📝 Draft source.json created for {$folder}\n";
+    echo "  📝 Created draft source.json for {$folder}  ({$reviewStatus})\n";
 }
 
 #endregion
 
-#region SECTION IV — Output
+#region SECTION IV — Final Output
 
-echo "✔ Skyecrawler run complete (Municode-aware prototype)\n";
+echo "\n✔ Skyecrawler run complete\n";
 
 #endregion
