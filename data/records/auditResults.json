@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 10,
-        "violationCount": 6,
-        "unresolvedViolations": 2,
-        "lastAudit": 1768310827,
-        "lastViolationBatch": "VB-1768310827"
+        "auditCount": 13,
+        "violationCount": 12,
+        "unresolvedViolations": 0,
+        "lastAudit": 1768739591,
+        "lastViolationBatch": "VB-1768739591"
     },
     "violations": [
         {
@@ -224,10 +224,10 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768310710",
-            "resolved": null,
+            "resolved": 1768739322,
             "resolution": null,
-            "lastObserved": 1768310827,
-            "observationCount": 2,
+            "lastObserved": 1768739322,
+            "observationCount": 3,
             "facts": {
                 "path": "/data/authoritative/jurisdictions/phoenix/source.json",
                 "type": "file",
@@ -254,12 +254,192 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768310710",
-            "resolved": null,
+            "resolved": 1768739322,
             "resolution": null,
-            "lastObserved": 1768310827,
-            "observationCount": 2,
+            "lastObserved": 1768739322,
+            "observationCount": 3,
             "facts": {
                 "path": "/scripts/skyecrawler.php",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-007",
+            "identityHash": "d60babb3bfbd87995e31f7a264de384beccf3ceb2f876031a64e6708b701f895",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/data/runtimeEphemeral/activePermits.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' '/data/runtimeEphemeral/activePermits.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/activePermits.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-008",
+            "identityHash": "9988730e1332db06879d6fde21db09976b20578bdbe5264ff906d0783d1af045",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/codex/prompts/skyecrawler.prompt' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/codex/prompts/skyecrawler.prompt' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/codex/prompts/skyecrawler.prompt",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-009",
+            "identityHash": "f94df943f88bd499cd32fcaa8196a56fe70586d74c0665b683454837a9c15999",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/jurisdictions/tempe/source.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/jurisdictions/tempe/source.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/jurisdictions/tempe/source.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-010",
+            "identityHash": "c66c0591063dad97d152b22c399d97aed040ea8ca55f9827e90fdf057b15239e",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/runtimeEphemeral/permitRegistry.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/runtimeEphemeral/permitRegistry.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/permitRegistry.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-011",
+            "identityHash": "cb67d518aa907cb1122670d554655102f9035e5fd03e2cb60268244376f592a5",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/deploy-winscp.txt' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/deploy-winscp.txt' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/deploy-winscp.txt",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-012",
+            "identityHash": "89c51feb12896e34f545748f9708c0590224744c97773dd5236deb15b18b555c",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768739016,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/deploy.ps1' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/deploy.ps1' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768739016",
+            "resolved": 1768739322,
+            "resolution": null,
+            "lastObserved": 1768739322,
+            "observationCount": 1,
+            "facts": {
+                "path": "/deploy.ps1",
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"

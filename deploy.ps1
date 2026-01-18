@@ -1,5 +1,7 @@
-param (
-    [switch]$Deploy
+param(
+    [switch]$Commit,
+    [switch]$Deploy,
+    [switch]$DryRun
 )
 
 # ===============================
@@ -46,12 +48,61 @@ if ($status -match 'ahead') {
 
 # --- Clean working tree enforcement ---
 $dirty = git status --porcelain
-if ($dirty) {
+if ($dirty -and -not $Commit) {
     Write-Error 'Uncommitted changes detected. Commit required before deploy.'
     exit 1
 }
 
-Write-Host 'Git state clean and aligned with SoT.'
+Write-Host 'Git state verified against SoT.'
+
+# --- Commit phase ---
+if ($Commit) {
+
+    $changed = git status --porcelain
+    if (-not $changed) {
+        Write-Host 'No changes to commit.' -ForegroundColor Yellow
+    }
+    else {
+        Write-Host 'Changes detected:' -ForegroundColor Cyan
+        git status --short
+
+        Write-Host 'Generating commit message via AI...' -ForegroundColor Cyan
+        $commitMessage = php scripts/commitNarrator.php
+
+        if (-not $commitMessage) {
+            Write-Error 'Commit narrator failed. Commit aborted.'
+            exit 1
+        }
+
+        Write-Host ''
+        Write-Host 'Proposed commit message:' -ForegroundColor Green
+        Write-Host '--------------------------------'
+        Write-Host $commitMessage
+        Write-Host '--------------------------------'
+
+        $confirm = Read-Host 'Proceed with commit? (Y/N)'
+        if ($confirm -ne 'Y') {
+            Write-Host 'Commit cancelled by user.' -ForegroundColor Yellow
+            exit 0
+        }
+
+        if (-not $DryRun) {
+            git add .
+            git commit -m "$commitMessage"
+
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error 'Git commit failed.'
+                exit 1
+            }
+
+            git push origin main
+            Write-Host 'Commit pushed to Git SoT™.' -ForegroundColor Green
+        }
+        else {
+            Write-Host 'DRY RUN: Commit skipped.' -ForegroundColor Yellow
+        }
+    }
+}
 
 # --- OFFICE confirmation gate ---
 if ($machineRole -eq 'OFFICE' -and $Deploy) {
