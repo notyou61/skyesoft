@@ -19,12 +19,12 @@ $root = dirname(__DIR__);
 
 $paths = [
     "codex"          => $root . "/codex/codex.json",
-    "versions"       => $root . "/assets/data/versions.json",
-    "holiday"        => $root . "/assets/data/holidayRegistry.json",
-    "systemRegistry" => $root . "/assets/data/systemRegistry.json",
-    "kpi"            => $root . "/assets/data/kpi.json",
-    "permits"        => $root . "/assets/data/activePermits.json",
-    "announcements"  => $root . "/assets/data/announcements.json",
+    "versions"       => $root . "/data/authoritative/versions.json",
+    "holiday"        => $root . "/data/authoritative/holidayRegistry.json",
+    "systemRegistry" => $root . "/data/authoritative/systemRegistry.json",
+    "kpi"            => $root . "/data/runtimeEphemeral/kpi.json",
+    "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
+    "announcements"  => $root . "/data/runtimeEphemeral/announcements.json",
 ];
 
 foreach ($paths as $key => $path) {
