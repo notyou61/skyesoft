@@ -45,8 +45,8 @@ $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
 #region SECTION 2 — Weather Configuration
-$envPathPrimary = $root . "/secure/.env";
-$envPathLocal   = $root . "/secure/env.local";
+$envPathPrimary = dirname($root) . "/secure/.env";
+$envPathLocal   = dirname($root) . "/secure/env.local";
 
 if (file_exists($envPathPrimary)) {
     $env = parse_ini_file($envPathPrimary);
