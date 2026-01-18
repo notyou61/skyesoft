@@ -1,6 +1,9 @@
+param (
+    [switch]$Deploy
+)
+
 # ===============================
-# Skyesoft Deploy Script (v1)
-# DRY RUN ONLY — NO DEPLOY LOGIC
+# Skyesoft Deploy Script (v2)
 # ===============================
 
 Write-Host '=== Skyesoft Deploy ===' -ForegroundColor Cyan
@@ -50,8 +53,8 @@ if ($dirty) {
 
 Write-Host 'Git state clean and aligned with SoT.'
 
-# --- Office confirmation gate ---
-if ($machineRole -eq 'OFFICE') {
+# --- OFFICE confirmation gate ---
+if ($machineRole -eq 'OFFICE' -and $Deploy) {
     $confirm = Read-Host 'You are deploying from OFFICE. Continue? (Y/N)'
     if ($confirm -ne 'Y') {
         Write-Host 'Deploy cancelled.'
@@ -59,6 +62,24 @@ if ($machineRole -eq 'OFFICE') {
     }
 }
 
-# --- DRY RUN TERMINATION ---
-Write-Host 'DRY RUN - Deploy step skipped' -ForegroundColor Yellow
-exit 0
+# --- DRY RUN DEFAULT ---
+if (-not $Deploy) {
+    Write-Host 'DRY RUN - Deploy step skipped' -ForegroundColor Yellow
+    Write-Host 'Use: .\deploy.ps1 -Deploy to push to GoDaddy'
+    exit 0
+}
+
+# --- GoDaddy deploy ---
+Write-Host 'Deploying to GoDaddy...' -ForegroundColor Cyan
+
+$winscp = 'C:\Program Files (x86)\WinSCP\winscp.com'
+$script  = 'deploy-winscp.txt'
+
+& $winscp /script=$script
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error 'Deploy failed.'
+    exit 1
+}
+
+Write-Host 'Deploy completed successfully.' -ForegroundColor Green

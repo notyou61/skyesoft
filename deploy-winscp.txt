@@ -1,10 +1,16 @@
-open skyesoft-prod
-lcd C:\Users\Steve Skye\Documents\skyesoft
-cd /home/notyou64/public_html
+option batch on
+option confirm off
 
-synchronize remote assets
-synchronize remote bulletinBoards
-synchronize remote api
-put index.html
+open sftp://USERNAME:PASSWORD@YOURDOMAIN.com:22
+
+cd /public_html
+
+synchronize remote . . ^
+ -exclude ".git/*" ^
+ -exclude ".env" ^
+ -exclude "secure/*" ^
+ -exclude "node_modules/*" ^
+ -exclude "repoTree.txt" ^
+ -exclude "tree.txt"
 
 exit
