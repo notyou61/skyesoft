@@ -50,16 +50,28 @@ $tz = new DateTimeZone("America/Phoenix");
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
-$options = false; // no sections
-$scannerMode = INI_SCANNER_RAW; // ← This is the magic
-
+// TEMP DEBUG: Show exactly what the file starts with
 if (file_exists($envPathPrimary)) {
-    $env = parse_ini_file($envPathPrimary, false, INI_SCANNER_RAW);  // ← Add INI_SCANNER_RAW here
+    $firstLines = implode("\n", array_slice(file($envPathPrimary), 0, 5)); // first 5 lines
+    echo "<pre style='background:#000;color:#0f0;padding:15px;'>";
+    echo "DEBUG: Primary .env exists at: " . htmlspecialchars($envPathPrimary) . "\n\n";
+    echo "First 5 lines (raw):\n" . htmlspecialchars($firstLines) . "\n";
+    echo "</pre>";
+    // Uncomment next line to stop after debug
+    // exit;
 } elseif (file_exists($envPathLocal)) {
-    $env = parse_ini_file($envPathLocal, false, INI_SCANNER_RAW);
+    // same debug for local
+    $firstLines = implode("\n", array_slice(file($envPathLocal), 0, 5));
+    echo "<pre style='background:#000;color:#0f0;padding:15px;'>";
+    echo "DEBUG: Local env exists at: " . htmlspecialchars($envPathLocal) . "\n\n";
+    echo "First 5 lines (raw):\n" . htmlspecialchars($firstLines) . "\n";
+    echo "</pre>";
+    // exit;
 } else {
     throw new RuntimeException("Missing WEATHER env file");
 }
+
+// ... rest of your code (keep the INI_SCANNER_RAW lines)
 
 $weatherKey = $env["WEATHER_API_KEY"] ?? null;
 if (!$weatherKey) {
