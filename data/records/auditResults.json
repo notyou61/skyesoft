@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 15,
-        "violationCount": 13,
-        "unresolvedViolations": 0,
-        "lastAudit": 1768741803,
-        "lastViolationBatch": "VB-1768741803"
+        "auditCount": 16,
+        "violationCount": 18,
+        "unresolvedViolations": 5,
+        "lastAudit": 1768750117,
+        "lastViolationBatch": "VB-1768750117"
     },
     "violations": [
         {
@@ -641,6 +641,156 @@
                     "Resolution status reflects observation only.",
                     "No determination is made regarding cause or future recurrence."
                 ]
+            }
+        },
+        {
+            "violationId": "VIO-014",
+            "identityHash": "534246b8d391497c915631e59abe99f0b13c700089de051a100e113d239aa193",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768750117,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/.vscode' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '{{path}}' is {{issue}}",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768750117",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768750117,
+            "observationCount": 1,
+            "facts": {
+                "path": "/.vscode",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-015",
+            "identityHash": "cff3f06b0912f996614bf8c90bef940f9a50fc7b070cb27d50e80c9ec74fcd4a",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768750117,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/.vscode/tasks.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/.vscode/tasks.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768750117",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768750117,
+            "observationCount": 1,
+            "facts": {
+                "path": "/.vscode/tasks.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-016",
+            "identityHash": "33ec262f4b184164a4f2d6d9f5c380ff423c65064697e2cc5f769ad19113843f",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768750117,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/index.html' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/index.html' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768750117",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768750117,
+            "observationCount": 1,
+            "facts": {
+                "path": "/index.html",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-017",
+            "identityHash": "e0d67383053e1626d2c40829a04f7953d1440e7ce154fa62d3886aa845fb4af5",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768750117,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/tools/vscode' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/tools/vscode' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768750117",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768750117,
+            "observationCount": 1,
+            "facts": {
+                "path": "/tools/vscode",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-018",
+            "identityHash": "70fbc04c052649cf3d21abdb016d75dda19f7da24ba706022f232a5b91720904",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768750117,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/tools/vscode/tasks.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/tools/vscode/tasks.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768750117",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768750117,
+            "observationCount": 1,
+            "facts": {
+                "path": "/tools/vscode/tasks.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
             }
         }
     ]
