@@ -45,15 +45,17 @@ $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
 #region SECTION 2 — Weather Configuration
-$envPathPrimary = dirname($root) . "/secure/.env";
-$envPathLocal   = dirname($root) . "/secure/env.local";
+
+// Env files stored outside public_html for security
+$envPathPrimary = dirname(dirname($root)) . "/secure/.env";
+$envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
 if (file_exists($envPathPrimary)) {
     $env = parse_ini_file($envPathPrimary);
 } elseif (file_exists($envPathLocal)) {
     $env = parse_ini_file($envPathLocal);
 } else {
-    throw new RuntimeException("Missing WEATHER env file");
+    throw new RuntimeException("Missing WEATHER env file at: {$envPathPrimary}");
 }
 
 $weatherKey = $env["WEATHER_API_KEY"] ?? null;
@@ -67,6 +69,7 @@ $baseOW = $systemRegistry["api"]["openWeatherBase"];
 
 $currentWeather  = null;
 $lastWeatherUnix = 0;
+
 #endregion
 
 #region SECTION 3 — Public Helper Functions
