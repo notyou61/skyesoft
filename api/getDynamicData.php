@@ -287,6 +287,8 @@ $payload = [
 #endregion
 
 #region SECTION 5 — Output for SSE (Flush every update)
+header('Content-Type: application/json');
+echo json_encode($payload, JSON_PRETTY_PRINT);
 //echo "data: " . json_encode($payload) . "\n\n";
 //@ob_flush();
 //flush();
