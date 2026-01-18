@@ -44,51 +44,66 @@ $announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
+#region SECTION 2 — Weather Configuration
+
 // Env files stored outside public_html
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
+// Choose the first existing env file
 $envFile = null;
 if (file_exists($envPathPrimary)) {
     $envFile = $envPathPrimary;
 } elseif (file_exists($envPathLocal)) {
     $envFile = $envPathLocal;
-} else {
-    throw new RuntimeException("Missing WEATHER env file");
 }
 
+if ($envFile === null) {
+    throw new RuntimeException("Missing WEATHER env file - checked:\n  • $envPathPrimary\n  • $envPathLocal");
+}
+
+// Custom .env parser - tolerant of comments, emojis, special chars
 $env = [];
 $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-foreach ($lines as $line) {
+
+foreach ($lines as $lineNum => $line) {
     $line = trim($line);
+    
+    // Skip empty lines and comments (both ; and #, with or without emojis)
     if ($line === '' || $line[0] === ';' || $line[0] === '#') {
-        continue; // skip comments (handles # with emojis too)
+        continue;
     }
+    
+    // Must contain at least one = sign
     if (strpos($line, '=') === false) {
-        continue; // skip invalid lines
+        continue; // silently skip malformed lines (or log if you want)
     }
-    list($key, $value) = explode('=', $line, 2);
-    $key = trim($key);
+    
+    [$key, $value] = explode('=', $line, 2);
+    $key   = trim($key);
     $value = trim($value);
-    // Optional: strip surrounding quotes if present
-    $value = trim($value, '"\'');
+    
+    // Remove surrounding quotes if present (single or double)
+    if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
+        $value = substr($value, 1, -1);
+    } elseif (str_starts_with($value, "'") && str_ends_with($value, "'")) {
+        $value = substr($value, 1, -1);
+    }
+    
     $env[$key] = $value;
 }
 
-$weatherKey = $env["WEATHER_API_KEY"] ?? null;
-if (!$weatherKey) {
-    throw new RuntimeException("Missing WEATHER_API_KEY");
+$weatherKey = $env['WEATHER_API_KEY'] ?? null;
+if ($weatherKey === null) {
+    throw new RuntimeException("Missing or empty WEATHER_API_KEY in $envFile");
 }
 
-$weatherKey = $env["WEATHER_API_KEY"] ?? null;
-if (!$weatherKey) {
-    throw new RuntimeException("Missing WEATHER_API_KEY");
-}
+// Weather coordinates and base URL from system registry
+$lat    = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484); // fallback: Phoenix, AZ
+$lon    = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
+$baseOW = $systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5';
 
-$lat    = (float)$systemRegistry["weather"]["latitude"];
-$lon    = (float)$systemRegistry["weather"]["longitude"];
-$baseOW = $systemRegistry["api"]["openWeatherBase"];
-
+// Initialize weather state
 $currentWeather  = null;
 $lastWeatherUnix = 0;
 
