@@ -61,14 +61,11 @@ if ($machineRole -eq "OFFICE") {
 # --- Deploy via WinSCP (rsync-equivalent) ---
 Write-Host "Deploying to GoDaddy..."
 
-$winscp = "C:\Program Files (x86)\WinSCP\winscp.com"
-$script = "deploy-winscp.txt"
-
-& $winscp /script=$script
-
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Deploy failed."
     exit 1
 }
 
-Write-Host "Deploy completed successfully." -ForegroundColor Green
+# --- Deploy via WinSCP (rsync-equivalent) ---
+Write-Host "DRY RUN: Deploy step skipped (no files transferred)." -ForegroundColor Yellow
+exit 0
