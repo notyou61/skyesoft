@@ -292,7 +292,7 @@ echo json_encode($payload, JSON_PRETTY_PRINT);
 //echo "data: " . json_encode($payload) . "\n\n";
 //@ob_flush();
 //flush();
-return $payload;
+//return $payload;
 #endregion
 
 #region SECTION END — No Output / No Headers / No Exit
