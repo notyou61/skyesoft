@@ -67,7 +67,8 @@ if ($Commit) {
         git status --short
 
         Write-Host 'Generating commit message via AI...' -ForegroundColor Cyan
-        $commitMessage = php scripts/commitNarrator.php
+        $diff = git diff --stat
+        $commitMessage = php scripts/commitNarrator.php "$diff"
 
         if (-not $commitMessage) {
             Write-Error 'Commit narrator failed. Commit aborted.'

@@ -1,72 +1,34 @@
 <?php
+declare(strict_types=1);
 
-// Commit Narrator — governed AI assistant
-// Reads git diff and produces a single commit message
+// Clean input
+$diff = $argv[1] ?? '';
 
-$diff = shell_exec('git diff --stat');
-
-if (!$diff) {
+if (trim($diff) === '') {
+    echo "Chore: no effective changes detected";
     exit;
 }
 
-// Fallback deterministic message
-$fallback = "Update repository content";
-
-// Optional: AI hook
-$useAI = true;
-
-if (!$useAI) {
-    echo $fallback;
-    exit;
+// Heuristic classification
+$type = 'Update';
+if (str_contains($diff, 'deploy.ps1')) {
+    $type = 'Infra';
+} elseif (str_contains($diff, 'repositoryInventory')) {
+    $type = 'Governance';
+} elseif (str_contains($diff, 'tasks.json')) {
+    $type = 'Tooling';
 }
 
-// ---- AI PROMPT ----
-$prompt = <<<PROMPT
-You are generating a Git commit message.
+// Summarize touched areas
+$lines = explode("\n", trim($diff));
+$summary = [];
 
-Rules:
-- One concise summary line
-- No emojis
-- No marketing language
-- Neutral, factual tone
-- Imperative mood
-- Mention only what changed
-
-Git diff summary:
-$diff
-PROMPT;
-
-// --- OpenAI call (simplified, replace with your existing key loader) ---
-$apiKey = getenv("OPENAI_API_KEY");
-if (!$apiKey) {
-    echo $fallback;
-    exit;
+foreach ($lines as $line) {
+    if (preg_match('/^\s*(.+)\s+\|\s+/', $line, $m)) {
+        $summary[] = $m[1];
+    }
 }
 
-$payload = json_encode([
-    "model" => "gpt-4.1-mini",
-    "messages" => [
-        ["role" => "system", "content" => "You write Git commit messages."],
-        ["role" => "user", "content" => $prompt]
-    ],
-    "max_tokens" => 60
-]);
+$summaryText = implode(', ', array_slice($summary, 0, 4));
 
-$ch = curl_init("https://api.openai.com/v1/chat/completions");
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_HTTPHEADER => [
-        "Content-Type: application/json",
-        "Authorization: Bearer $apiKey"
-    ],
-    CURLOPT_POSTFIELDS => $payload
-]);
-
-$response = curl_exec($ch);
-curl_close($ch);
-
-$data = json_decode($response, true);
-
-$message = $data["choices"][0]["message"]["content"] ?? null;
-echo trim($message ?: $fallback);
+echo "{$type}: update {$summaryText}";
