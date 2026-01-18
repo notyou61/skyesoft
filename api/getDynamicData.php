@@ -44,34 +44,41 @@ $announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
-#region SECTION 2 — Weather Configuration
-
 // Env files stored outside public_html
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
-// TEMP DEBUG: Show exactly what the file starts with
+$envFile = null;
 if (file_exists($envPathPrimary)) {
-    $firstLines = implode("\n", array_slice(file($envPathPrimary), 0, 5)); // first 5 lines
-    echo "<pre style='background:#000;color:#0f0;padding:15px;'>";
-    echo "DEBUG: Primary .env exists at: " . htmlspecialchars($envPathPrimary) . "\n\n";
-    echo "First 5 lines (raw):\n" . htmlspecialchars($firstLines) . "\n";
-    echo "</pre>";
-    // Uncomment next line to stop after debug
-    // exit;
+    $envFile = $envPathPrimary;
 } elseif (file_exists($envPathLocal)) {
-    // same debug for local
-    $firstLines = implode("\n", array_slice(file($envPathLocal), 0, 5));
-    echo "<pre style='background:#000;color:#0f0;padding:15px;'>";
-    echo "DEBUG: Local env exists at: " . htmlspecialchars($envPathLocal) . "\n\n";
-    echo "First 5 lines (raw):\n" . htmlspecialchars($firstLines) . "\n";
-    echo "</pre>";
-    // exit;
+    $envFile = $envPathLocal;
 } else {
     throw new RuntimeException("Missing WEATHER env file");
 }
 
-// ... rest of your code (keep the INI_SCANNER_RAW lines)
+$env = [];
+$lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === '' || $line[0] === ';' || $line[0] === '#') {
+        continue; // skip comments (handles # with emojis too)
+    }
+    if (strpos($line, '=') === false) {
+        continue; // skip invalid lines
+    }
+    list($key, $value) = explode('=', $line, 2);
+    $key = trim($key);
+    $value = trim($value);
+    // Optional: strip surrounding quotes if present
+    $value = trim($value, '"\'');
+    $env[$key] = $value;
+}
+
+$weatherKey = $env["WEATHER_API_KEY"] ?? null;
+if (!$weatherKey) {
+    throw new RuntimeException("Missing WEATHER_API_KEY");
+}
 
 $weatherKey = $env["WEATHER_API_KEY"] ?? null;
 if (!$weatherKey) {
