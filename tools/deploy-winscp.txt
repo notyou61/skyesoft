@@ -5,7 +5,6 @@ open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x
 
 cd /home/notyou64/public_html
 
-synchronize remote skyesoft skyesoft `
-  -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"
+synchronize remote skyesoft skyesoft -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"
 
 exit
