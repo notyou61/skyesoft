@@ -50,10 +50,13 @@ $tz = new DateTimeZone("America/Phoenix");
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
+$options = false; // no sections
+$scannerMode = INI_SCANNER_RAW; // ← This is the magic
+
 if (file_exists($envPathPrimary)) {
-    $env = parse_ini_file($envPathPrimary);
+    $env = parse_ini_file($envPathPrimary, false, INI_SCANNER_RAW);  // ← Add INI_SCANNER_RAW here
 } elseif (file_exists($envPathLocal)) {
-    $env = parse_ini_file($envPathLocal);
+    $env = parse_ini_file($envPathLocal, false, INI_SCANNER_RAW);
 } else {
     throw new RuntimeException("Missing WEATHER env file");
 }
