@@ -29,9 +29,13 @@ while (ob_get_level()) {
 $repoRoot   = realpath(__DIR__ . '/..');
 $outputPath = $repoRoot . '/data/records/repositoryInventory.json';
 
+// Explicitly excluded namespaces
+// These paths are operational tooling or external dependencies
+// and are not subject to repository inventory governance.
 $excluded = [
     '/.git',
-    '/node_modules'
+    '/node_modules',
+    '/tools/ops'
 ];
 
 #endregion SECTION I

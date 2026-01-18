@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 14,
+        "auditCount": 15,
         "violationCount": 13,
-        "unresolvedViolations": 1,
-        "lastAudit": 1768740890,
-        "lastViolationBatch": "VB-1768740890"
+        "unresolvedViolations": 0,
+        "lastAudit": 1768741803,
+        "lastViolationBatch": "VB-1768741803"
     },
     "violations": [
         {
@@ -614,15 +614,33 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768740890",
-            "resolved": null,
-            "resolution": null,
-            "lastObserved": 1768740890,
+            "resolved": 1768741803,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/scripts/commitNarrator.php",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
+            "lastObserved": 1768741803,
             "observationCount": 1,
             "facts": {
                 "path": "/scripts/commitNarrator.php",
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition associated with the artifact at path '/scripts/commitNarrator.php' was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
             }
         }
     ]
