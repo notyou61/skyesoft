@@ -1,10 +1,10 @@
 option batch on
 option confirm off
 
-open sftp://USERNAME:PASSWORD@YOURDOMAIN.com:22
+open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 SHA256:9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
 
-cd /public_html
+cd /home/notyou64/public_html
 
-synchronize remote . . -delete -exclude ".git/*" -exclude ".env" -exclude "secure/*" -exclude "node_modules/*" -exclude "repoTree.txt" -exclude "tree.txt"
+synchronize remote skyesoft skyesoft -exclude=".git/*" -exclude=".env" -exclude="secure/*" -exclude="node_modules/*" -exclude="repoTree.txt" -exclude="tree.txt"
 
 exit
