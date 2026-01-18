@@ -46,7 +46,7 @@ $tz = new DateTimeZone("America/Phoenix");
 
 #region SECTION 2 — Weather Configuration
 
-// Env files stored outside public_html for security
+// Env files stored outside public_html
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
@@ -55,7 +55,7 @@ if (file_exists($envPathPrimary)) {
 } elseif (file_exists($envPathLocal)) {
     $env = parse_ini_file($envPathLocal);
 } else {
-    throw new RuntimeException("Missing WEATHER env file at: {$envPathPrimary}");
+    throw new RuntimeException("Missing WEATHER env file");
 }
 
 $weatherKey = $env["WEATHER_API_KEY"] ?? null;
