@@ -124,10 +124,22 @@ if (-not $Deploy) {
 # --- GoDaddy deploy ---
 Write-Host 'Deploying to GoDaddy...' -ForegroundColor Cyan
 
-$winscp = 'C:\Program Files (x86)\WinSCP\winscp.com'
-$script  = 'deploy-winscp.txt'
+$winscp = 'C:\Program Files (x86)\WinSCP\WinSCP.com'
+$script = Join-Path $PSScriptRoot 'deploy-winscp.txt'
 
-& $winscp /script=$script
+# --- Safety checks ---
+if (-not (Test-Path $winscp)) {
+    Write-Error "WinSCP CLI not found at: $winscp"
+    exit 1
+}
+
+if (-not (Test-Path $script)) {
+    Write-Error "WinSCP script not found at: $script"
+    exit 1
+}
+
+# --- Execute deploy ---
+& "$winscp" /script="$script"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Deploy failed.'
