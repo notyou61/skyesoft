@@ -1,7 +1,7 @@
 option batch on
 option confirm off
 
-open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 SHA256:9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
+open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
 
 cd /home/notyou64/public_html
 
