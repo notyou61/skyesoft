@@ -1,16 +1,10 @@
 option batch on
 option confirm off
 
-open skyesoft-godaddy
+open sftp://USERNAME:PASSWORD@YOURDOMAIN.com:22
 
 cd /public_html
 
-synchronize remote "." "." 
-  -exclude ".git/*"
-  -exclude ".env"
-  -exclude "secure/*"
-  -exclude "node_modules/*"
-  -exclude "repoTree.txt"
-  -exclude "tree.txt"
+synchronize remote . . -delete -exclude ".git/*" -exclude ".env" -exclude "secure/*" -exclude "node_modules/*" -exclude "repoTree.txt" -exclude "tree.txt"
 
 exit
