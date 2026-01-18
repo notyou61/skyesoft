@@ -1,0 +1,10 @@
+open skyesoft-prod
+lcd C:\Users\Steve Skye\Documents\skyesoft
+cd /home/notyou64/public_html
+
+synchronize remote assets
+synchronize remote bulletinBoards
+synchronize remote api
+put index.html
+
+exit
