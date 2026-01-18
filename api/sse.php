@@ -18,8 +18,8 @@ header("X-Accel-Buffering: no");  // Prevent proxy buffering
 #endregion
 
 #region SECTION 1 — PHP Runtime Controls (No Timeout, No Abort)
-set_time_limit(0);          // Disable 30-second timeout
-ignore_user_abort(true);     // Continue even if client disconnects
+set_time_limit(0);
+ignore_user_abort(true);
 #endregion
 
 #region SECTION 2 — Loop Initialization
@@ -29,108 +29,25 @@ $lastSecond = null;
 #region SECTION 3 — SSE 1 Hz Continuous Loop
 while (true) {
 
-    // Terminate if client disconnects
     if (connection_aborted()) {
         break;
     }
 
     $now = time();
 
-    // Enforce exact 1 Hz refresh rate
     if ($now === $lastSecond) {
-        usleep(20000); // 20 ms micro-wait
+        usleep(20000);
         continue;
     }
+
     $lastSecond = $now;
 
-    // Pull fresh dynamic data snapshot
+    // SINGLE SOURCE OF TRUTH
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    // Emit SSE message
     echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
-    // Flush immediately
     @ob_flush();
     flush();
 }
-#endregion
-
-#region SECTION 4 — Time & Interval (TIS Engine)
-    $timeContext     = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
-    $calendarType    = $timeContext["calendarType"];
-    $currentInterval = $timeContext["currentInterval"];
-    $timeDateArray   = $timeContext["timeDateArray"];
-    $holidayState    = $timeContext["holidayState"];
-#endregion
-
-#region SECTION 5 — Weather (Cached)
-    $currentWeather = getWeatherCached(
-        $now,
-        $baseOW,
-        (float)$lat,
-        (float)$lon,
-        $weatherKey
-    );
-#endregion
-
-#region SECTION 6 — Site Meta & Pulse Metrics
-    $siteMeta = [
-        "siteVersion"  => $versions["system"]["siteVersion"],
-        "codexVersion" => $versions["codex"]["version"],
-        "deployTime"   => $versions["system"]["deployTime"],
-        "commitHash"   => $versions["system"]["commitHash"],
-        "lastUpdate"   => date(DateTime::ATOM)
-    ];
-
-    $deployUnix = strtotime($versions["system"]["deployTime"]) ?: $now;
-    $pulse = [
-        "streamHealth"  => "healthy",
-        "uptimeSeconds" => $now - $deployUnix
-    ];
-#endregion
-
-#region SECTION 7 — Payload Assembly
-$payload = [
-    "calendarType"     => $calendarType,
-    "currentInterval"  => $currentInterval,
-    "timeDateArray"    => $timeDateArray,
-
-    // weather snapshot
-    "weather"          => $currentWeather,
-
-    // correct field name (not "holiday")
-    "holidayState"     => $holidayState,
-
-    // KPI normalized
-    "kpi"              => $kpi,
-
-    // flattened permit records
-    "activePermits"    => $activePermits,
-
-    // flattened announcements
-    "announcements"    => $announcements,
-
-    // site metadata
-    "siteMeta"         => $siteMeta,
-
-    // heartbeat information
-    "pulse"            => $pulse,
-
-    // required for SSE health debugging
-    "connectionStatus" => "connected"
-];
-#endregion
-
-#region SECTION 8 — Stream Output (event: update)
-    echo "event: update\n";
-    echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
-    echo ": 🫀 keep-alive\n\n"; // SSE heartbeat comment
-
-    @ob_flush();
-    @flush();
-// <-- closes while(true)
-#endregion
-
-#region SECTION END — Stream Terminated
-exit;
 #endregion
