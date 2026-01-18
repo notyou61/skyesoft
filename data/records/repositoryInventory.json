@@ -1,16 +1,16 @@
 {
     "meta": {
         "title": "Skyesoft Repository Inventory",
-        "generatedAt": 1768739175,
+        "generatedAt": 1768741035,
         "generatedBy": "scripts/repositoryInventoryBuilder.php",
         "codexTier": "Tier-2",
         "state": "DECLARED",
         "purpose": "Declared repository inventory entry",
         "description": "Canonical, exhaustive repository inventory declaring the intended filesystem state under Codex governance.",
-        "newInventoryRuns": 14,
-        "itemsDeclared": 263,
+        "newInventoryRuns": 15,
+        "itemsDeclared": 264,
         "directoriesDeclared": 111,
-        "filesDeclared": 152
+        "filesDeclared": 153
     },
     "items": [
         {
@@ -1765,90 +1765,97 @@
         },
         {
             "id": "RNV-0250",
-            "path": "/scripts/discoveryScan.php",
+            "path": "/scripts/commitNarrator.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0251",
-            "path": "/scripts/generateDocument.php",
+            "path": "/scripts/discoveryScan.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0252",
-            "path": "/scripts/merkleBuild.php",
+            "path": "/scripts/generateDocument.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0253",
-            "path": "/scripts/merkleBuilder.php",
+            "path": "/scripts/merkleBuild.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0254",
-            "path": "/scripts/merkleVerify.php",
+            "path": "/scripts/merkleBuilder.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0255",
-            "path": "/scripts/mutator.php",
+            "path": "/scripts/merkleVerify.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0256",
-            "path": "/scripts/repositoryInventoryBuilder.php",
+            "path": "/scripts/mutator.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0257",
-            "path": "/scripts/review-elc-staging.php",
+            "path": "/scripts/repositoryInventoryBuilder.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0258",
-            "path": "/scripts/runCodexAudit.php",
+            "path": "/scripts/review-elc-staging.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0259",
-            "path": "/scripts/sentinel.php",
+            "path": "/scripts/runCodexAudit.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0260",
-            "path": "/scripts/skyecrawler.php",
+            "path": "/scripts/sentinel.php",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
             "id": "RNV-0261",
+            "path": "/scripts/skyecrawler.php",
+            "type": "file",
+            "integrityScope": "MERKLE_INCLUDED",
+            "purpose": "Pre-SIS auto-generated inventory entry"
+        },
+        {
+            "id": "RNV-0262",
             "path": "/secure",
             "type": "dir",
             "integrityScope": "MERKLE_INCLUDED",
             "purpose": "Pre-SIS auto-generated inventory entry"
         },
         {
-            "id": "RNV-0262",
+            "id": "RNV-0263",
             "path": "/secure/env.local",
             "type": "file",
             "integrityScope": "MERKLE_INCLUDED",

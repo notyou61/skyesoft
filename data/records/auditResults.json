@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 13,
-        "violationCount": 12,
-        "unresolvedViolations": 0,
-        "lastAudit": 1768739591,
-        "lastViolationBatch": "VB-1768739591"
+        "auditCount": 14,
+        "violationCount": 13,
+        "unresolvedViolations": 1,
+        "lastAudit": 1768740890,
+        "lastViolationBatch": "VB-1768740890"
     },
     "violations": [
         {
@@ -225,7 +225,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768310710",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/data/authoritative/jurisdictions/phoenix/source.json",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 3,
             "facts": {
@@ -233,6 +242,18 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence.",
+                    "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                    "The artifact path referenced is /data/authoritative/jurisdictions/phoenix/source.json.",
+                    "The violation subclass is UNEXPECTED_ARTIFACT."
+                ]
             }
         },
         {
@@ -255,7 +276,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768310710",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/scripts/skyecrawler.php",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 3,
             "facts": {
@@ -263,6 +293,15 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition associated with the artifact at path '/scripts/skyecrawler.php' was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
             }
         },
         {
@@ -285,7 +324,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/data/runtimeEphemeral/activePermits.json",
+                    "expected": "file",
+                    "issue": "missing",
+                    "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
@@ -293,6 +341,16 @@
                 "expected": "file",
                 "issue": "missing",
                 "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence.",
+                    "The previously observed condition associated with the identified artifact at path /data/runtimeEphemeral/activePermits.json was not observed in the evaluated state."
+                ]
             }
         },
         {
@@ -315,7 +373,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/codex/prompts/skyecrawler.prompt",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
@@ -323,6 +390,16 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence.",
+                    "The previously observed condition associated with the identified artifact at path '/codex/prompts/skyecrawler.prompt' was not observed in the evaluated state."
+                ]
             }
         },
         {
@@ -345,7 +422,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/data/authoritative/jurisdictions/tempe/source.json",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
@@ -353,6 +439,16 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to an unexpected artifact in the repository was not observed.",
+                    "The previously observed condition associated with the identified artifact at the path /data/authoritative/jurisdictions/tempe/source.json was not observed in the evaluated state.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
             }
         },
         {
@@ -375,7 +471,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/data/runtimeEphemeral/permitRegistry.json",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
@@ -383,6 +488,15 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to the unexpected artifact at the path '/data/runtimeEphemeral/permitRegistry.json' was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
             }
         },
         {
@@ -405,7 +519,16 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/deploy-winscp.txt",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
@@ -413,6 +536,15 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to the unexpected artifact at the path '/deploy-winscp.txt' was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
             }
         },
         {
@@ -435,11 +567,59 @@
             "notificationSent": null,
             "violationBatch": "VB-1768739016",
             "resolved": 1768739322,
-            "resolution": null,
+            "resolution": {
+                "method": "passive",
+                "reconciliationClass": "INFERRED_BY_NON_OBSERVATION",
+                "facts": {
+                    "path": "/deploy.ps1",
+                    "type": "file",
+                    "issue": "unexpected",
+                    "violationSubclass": "UNEXPECTED_ARTIFACT"
+                }
+            },
             "lastObserved": 1768739322,
             "observationCount": 1,
             "facts": {
                 "path": "/deploy.ps1",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            },
+            "resolutionNotes": {
+                "summary": "The previously observed condition associated with the identified artifact was not observed in the evaluated state.",
+                "details": [
+                    "The applicable rule was evaluated during a governed audit run.",
+                    "The previously recorded violation condition related to the unexpected artifact at the path '/deploy.ps1' was not observed.",
+                    "Resolution status reflects observation only.",
+                    "No determination is made regarding cause or future recurrence."
+                ]
+            }
+        },
+        {
+            "violationId": "VIO-013",
+            "identityHash": "09d1057ba604812451d8de9e8c291a5223e899cc94e3da3352db8e5e45cf2903",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1768740890,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/scripts/commitNarrator.php' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/scripts/commitNarrator.php' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1768740890",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1768740890,
+            "observationCount": 1,
+            "facts": {
+                "path": "/scripts/commitNarrator.php",
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
