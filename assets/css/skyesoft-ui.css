@@ -164,59 +164,67 @@ html, body {
 -------------------------------------------------- */
 #permitScrollWrap {
     max-height: 600px;
-    margin-top: 0;                 /* ⬅️ remove gap above table */
-    padding-top: 0;
+    margin: 0;
+    padding: 0;
 
     overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
 
-    /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     /* Hide scrollbar (still scrollable) */
-    scrollbar-width: none;         /* Firefox */
+    scrollbar-width: none;              /* Firefox */
 }
 #permitScrollWrap::-webkit-scrollbar {
-    display: none;                 /* Chrome / Edge / Safari */
+    width: 0;
+    height: 0;
 }
 
 /* --------------------------------------------------
    Table Base
+   NOTE: separate + 0 spacing plays nicer with sticky headers
 -------------------------------------------------- */
 .permitTable {
     width: 100%;
-    border-collapse: collapse;     /* ⬅️ CRITICAL: removes header/body gap */
+    border-collapse: separate;
     border-spacing: 0;
     font-size: 0.95em;
+    table-layout: fixed;                /* prevents column jitter */
 }
 
 /* --------------------------------------------------
-   Header Cells
+   Header Cells (sticky)
 -------------------------------------------------- */
 .permitTable thead th {
     padding: 6px 8px;
     font-weight: bold;
+    text-align: left;
 
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 20;
 
     background: #0f172a;
     color: #ffffff;
 
-    border-bottom: 1px solid #ccc;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
 
-    /* Prevent bleed-through */
+    /* Keeps header visually “attached” to body */
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
 /* --------------------------------------------------
    Body Cells
 -------------------------------------------------- */
-.permitTable td {
+.permitTable tbody td {
     padding: 6px 8px;
     border-bottom: 1px solid #ddd;
+    vertical-align: top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* --------------------------------------------------
@@ -225,17 +233,17 @@ html, body {
 .permitTable tbody tr:nth-child(odd) {
     background-color: #f9fafb;
 }
-
 .permitTable tbody tr:nth-child(even) {
     background-color: #ffffff;
 }
 
-.permitTable tbody tr {
-    transition: background-color 0.15s linear;
+/* Optional subtle hover (helps readability on big lists) */
+.permitTable tbody tr:hover {
+    filter: brightness(0.98);
 }
 
 /* --------------------------------------------------
-   Rows
+   Row Animation / Highlight
 -------------------------------------------------- */
 .permit-row {
     opacity: 1;
@@ -246,6 +254,12 @@ html, body {
     animation: flashRow 1.2s ease-out;
 }
 
+/* Return to zebra after highlight */
+@keyframes flashRow {
+    0%   { background-color: #ffffcc; }
+    100% { background-color: inherit; }
+}
+
 /* --------------------------------------------------
    Empty State
 -------------------------------------------------- */
@@ -253,14 +267,7 @@ html, body {
     text-align: center;
     color: #777;
     font-style: italic;
-}
-
-/* --------------------------------------------------
-   Animations
--------------------------------------------------- */
-@keyframes flashRow {
-    0%   { background-color: #ffffcc; }
-    100% { background-color: transparent; }
+    white-space: normal;
 }
 
 /* #endregion */
