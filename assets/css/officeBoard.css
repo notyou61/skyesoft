@@ -86,6 +86,10 @@
     opacity: 0.6;
 }
 
+#pageBody .board-section:first-of-type {
+    margin-top: 12px;
+}
+
 /* MTCO — Page vertical layout contract */
 body[data-page="officeBoard"] {
     display: flex;
