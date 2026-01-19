@@ -1,104 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Permit Table Zebra Test</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Permit Table Zebra Test • Improved</title>
 
-<style>
-/* ===========================
-   BASE RESET
-=========================== */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+  <style>
+    /****************************
+       MODERN RESET & BASE
+    ****************************/
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-body {
-    font-family: Segoe UI, Tahoma, sans-serif;
-    background: #f0f0f0;
-    padding: 40px;
-}
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f5f7fa;
+      color: #1e293b;
+      padding: 3rem 1.5rem;
+      line-height: 1.5;
+    }
 
-/* ===========================
-   SCROLL CONTAINER
-=========================== */
-#permitScrollWrap {
-    max-height: 300px;
-    overflow-y: auto;
-    background: #ffffff;
-    border: 1px solid #ccc;
-}
+    h2 {
+      margin-bottom: 0.75rem;
+      color: #0f172a;
+    }
 
-/* ===========================
-   TABLE BASE
-=========================== */
-.permitTable {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95em;
-}
+    .intro {
+      color: #64748b;
+      margin-bottom: 1.5rem;
+      max-width: 60ch;
+    }
 
-/* ===========================
-   HEADER
-=========================== */
-.permitTable thead th {
-    background: #0f172a;
-    color: #ffffff;
-    padding: 8px;
-    text-align: left;
-}
+    /****************************
+       SCROLLABLE CONTAINER
+    ****************************/
+    .scroll-wrapper {
+      max-height: 320px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
 
-/* ===========================
-   BODY CELLS
-=========================== */
-.permitTable tbody td {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-}
+    /****************************
+       TABLE STYLES
+    ****************************/
+    .permit-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94rem;
+      table-layout: auto;
+    }
 
-/* ===========================
-   ZEBRA STRIPING (BASELINE)
-=========================== */
-.permitTable tbody tr:nth-child(odd) {
-    background-color: #eeeeee;
-}
+    .permit-table th,
+    .permit-table td {
+      padding: 10px 12px;
+      text-align: left;
+    }
 
-.permitTable tbody tr:nth-child(even) {
-    background-color: #ffffff;
-}
-</style>
+    thead th {
+      background: #0f172a;
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* Improved, more noticeable but still professional zebra striping */
+    tbody tr:nth-child(odd) {
+      background-color: #f8fafc;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #ffffff;
+    }
+
+    /* Optional: subtle hover for better UX */
+    tbody tr:hover {
+      background-color: #f1f5f9;
+      transition: background-color 0.12s;
+    }
+  </style>
 </head>
-
 <body>
 
-<h2>Permit Table Zebra Test</h2>
-<p style="margin: 10px 0 20px;">
-If zebra striping does not appear here, the problem is NOT your app.
-</p>
+  <h2>Permit Table Zebra Test • Improved</h2>
+  <p class="intro">
+    Clean, modern look with better contrast zebra striping.<br>
+    If you still can't see the stripes → your monitor is probably very bright :)
+  </p>
 
-<div id="permitScrollWrap">
-    <table class="permitTable">
-        <thead>
-            <tr>
-                <th>WO</th>
-                <th>Customer</th>
-                <th>Jobsite</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>25101</td><td>Alpha Signs</td><td>Phoenix</td><td>Submitted</td></tr>
-            <tr><td>25102</td><td>Beta Signs</td><td>Tempe</td><td>Review</td></tr>
-            <tr><td>25103</td><td>Gamma Signs</td><td>Mesa</td><td>Approved</td></tr>
-            <tr><td>25104</td><td>Delta Signs</td><td>Scottsdale</td><td>Issued</td></tr>
-            <tr><td>25105</td><td>Epsilon Signs</td><td>Glendale</td><td>Finaled</td></tr>
-            <tr><td>25106</td><td>Zeta Signs</td><td>Avondale</td><td>Submitted</td></tr>
-            <tr><td>25107</td><td>Eta Signs</td><td>Goodyear</td><td>Review</td></tr>
-            <tr><td>25108</td><td>Theta Signs</td><td>Surprise</td><td>Issued</td></tr>
-        </tbody>
+  <div class="scroll-wrapper">
+    <table class="permit-table">
+      <thead>
+        <tr>
+          <th>WO</th>
+          <th>Customer</th>
+          <th>Jobsite</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>25101</td><td>Alpha Signs</td><td>Phoenix</td><td>Submitted</td></tr>
+        <tr><td>25102</td><td>Beta Signs</td><td>Tempe</td><td>Review</td></tr>
+        <tr><td>25103</td><td>Gamma Signs</td><td>Mesa</td><td>Approved</td></tr>
+        <tr><td>25104</td><td>Delta Signs</td><td>Scottsdale</td><td>Issued</td></tr>
+        <tr><td>25105</td><td>Epsilon Signs</td><td>Glendale</td><td>Finaled</td></tr>
+        <tr><td>25106</td><td>Zeta Signs</td><td>Avondale</td><td>Submitted</td></tr>
+        <tr><td>25107</td><td>Eta Signs</td><td>Goodyear</td><td>Review</td></tr>
+        <tr><td>25108</td><td>Theta Signs</td><td>Surprise</td><td>Issued</td></tr>
+      </tbody>
     </table>
-</div>
+  </div>
 
 </body>
 </html>
