@@ -8,7 +8,6 @@
 
 /* #region Card Containers */
 .card {
-    display: none; /* rotation controlled by JS */
     background: #f7f7f7;
     border-radius: 12px;
     padding: 16px;
@@ -40,11 +39,16 @@
    FIXED 420px window (viewport-independent)  
    This is the visible window the scroll must pass through.
 */
+/* Base card body — flexible for most cards */
 .cardBody {
-    height: 420px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+/* Active Permits ONLY — fixed scroll window */
+#cardActivePermits .cardBody {
+    height: 420px;
 }
 
 /* 
@@ -57,8 +61,7 @@
     padding-right: 6px;
     scroll-behavior: smooth;
     scrollbar-width: thin;
-
-    max-height: 600px;   /* match permitScrollWrap intent */
+    max-height: 420px;   /* match permitScrollWrap intent */
 }
 
 /* Table text rules */
