@@ -265,11 +265,11 @@ $weather = getWeatherCached(
 $permitList = [];
 
 if (
-    isset($activePermits["activePermits"]["workOrders"]) &&
-    is_array($activePermits["activePermits"]["workOrders"])
+    is_array($activePermits)
+    && isset($activePermits["activePermits"]["workOrders"])
+    && is_array($activePermits["activePermits"]["workOrders"])
 ) {
     foreach ($activePermits["activePermits"]["workOrders"] as $wo) {
-
         $permitList[] = [
             "wo"           => $wo["workOrder"] ?? "",
             "customer"     => $wo["customer"] ?? "",
@@ -279,9 +279,7 @@ if (
         ];
     }
 }
-elseif (is_array($activePermits)) {
-    $permitList = $activePermits;
-}
+
 
 // ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
