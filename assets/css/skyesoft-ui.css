@@ -8,15 +8,15 @@
 
 /* #region Base Layout */
 html, body {
+    min-height: 100vh;
     height: 100%;
-    margin: 0;                     /* Ensures no default margins create gaps */
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
     background-size: cover;
 
     display: flex;
     flex-direction: column;
-    /* Removed align-items: center — this is the #1 cause of stretch failure */
+    align-items: center;
 }
 /* #endregion */
 
@@ -121,9 +121,12 @@ html, body {
 
 /* #region Page Body */
 #pageBody {
-    flex: 1 1 auto;              /* Grow to fill remaining space after header + before footer */
-    min-height: 0;               /* Chrome/Safari fix: allows inner scrollers (like permit table) to work without overflow bugs */
-    width: 100%;                 /* Forces full width stretch */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    margin-top: 12px;
 }
 /* #endregion */
 
@@ -300,8 +303,11 @@ html, body {
 
 /* #region Page Footer */
 #pageFooter {
-    flex-shrink: 0;              /* Footer never collapses */
-    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    padding: 6px 12px;
+    margin-bottom: 10px;
 }
 /* #endregion */
 
