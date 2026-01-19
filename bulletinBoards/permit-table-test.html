@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Permit Table Zebra Test • Improved</title>
 
-  <style>
+<style>
     /****************************
        MODERN RESET & BASE
     ****************************/
@@ -38,12 +38,12 @@
        SCROLLABLE CONTAINER
     ****************************/
     .scroll-wrapper {
-      max-height: 320px;
+      max-height: 500px;          /* increased for more rows visible at once */
       overflow-y: auto;
       background: white;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #cbd5e1;
       border-radius: 8px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
     }
 
     /****************************
@@ -58,8 +58,9 @@
 
     .permit-table th,
     .permit-table td {
-      padding: 10px 12px;
+      padding: 11px 14px;        /* slightly more breathing room */
       text-align: left;
+      vertical-align: middle;
     }
 
     thead th {
@@ -70,36 +71,36 @@
       top: 0;
       z-index: 10;
       white-space: nowrap;
+      border-bottom: 2px solid #334155; /* subtle separator */
     }
 
     tbody td {
       border-bottom: 1px solid #e2e8f0;
     }
 
-    /* Improved, more noticeable but still professional zebra striping */
+    /* Professional zebra striping – visible but not distracting */
     tbody tr:nth-child(odd) {
-      background-color: #f8fafc;
+      background-color: #f1f5f9;   /* Soft slate gray – recommended sweet spot */
     }
 
     tbody tr:nth-child(even) {
       background-color: #ffffff;
     }
 
-    /* Optional: subtle hover for better UX */
+    /* Remove the test colors now that we know it works */
+    /* .scroll-wrapper table.permit-table tbody tr:nth-child(odd) { background-color: lime !important; } */
+    /* .scroll-wrapper table.permit-table tbody tr:nth-child(even) { background-color: hotpink !important; } */
+
+    /* Subtle hover for better interactivity */
     tbody tr:hover {
-      background-color: #f1f5f9;
-      transition: background-color 0.12s;
-    }
-    
-    .scroll-wrapper table.permit-table tbody tr:nth-child(odd) {
-        background-color: lime !important;   /* screaming green — impossible to miss */
+      background-color: #e2e8f0 !important;  /* slightly darker on hover */
+      transition: background-color 0.15s ease;
     }
 
-    .scroll-wrapper table.permit-table tbody tr:nth-child(even) {
-        background-color: hotpink !important;
-    }
-
-  </style>
+    /* Optional: highlight "Ready" statuses or fees due (uncomment if desired) */
+    /* td:nth-child(7):contains("Ready") { background-color: #dcfce7 !important; color: #166534; } */ 
+    /* td:nth-child(6):not(:empty) { font-weight: 600; color: #b45309; } */  /* Fee Due column */
+</style>
 </head>
 <body>
 
