@@ -124,14 +124,23 @@ if (-not $Deploy) {
 # --- GoDaddy deploy ---
 Write-Host 'Deploying to GoDaddy...' -ForegroundColor Cyan
 
-$winscp = 'C:\Program Files (x86)\WinSCP\WinSCP.com'
 $script = Join-Path $PSScriptRoot 'deploy-winscp.txt'
 
-# --- Safety checks ---
-if (-not (Test-Path $winscp)) {
-    Write-Error "WinSCP CLI not found at: $winscp"
+# --- WinSCP auto-discovery ---
+$possibleWinScpPaths = @(
+    "C:\Program Files (x86)\WinSCP\WinSCP.com",
+    "C:\Program Files\WinSCP\WinSCP.com",
+    "$env:LOCALAPPDATA\Programs\WinSCP\WinSCP.com"
+)
+
+$winscp = $possibleWinScpPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $winscp) {
+    Write-Error "WinSCP CLI not found. Install WinSCP with command-line support."
     exit 1
 }
+
+Write-Host "Using WinSCP CLI: $winscp" -ForegroundColor DarkGray
 
 if (-not (Test-Path $script)) {
     Write-Error "WinSCP script not found at: $script"
