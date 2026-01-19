@@ -122,9 +122,8 @@ html, body {
 /* #region Page Body */
 #pageBody {
     flex-grow: 1;
-    max-height: 85vh;           /* ← or try 80vh / 90vh depending on your header/footer size */
-    overflow-y: auto;           /* allows scrolling inside body if content ever exceeds */
-    /* keep your other properties like width: 100%, min-height: 0, etc. */
+    min-height: 0;      /* critical for nested scrolling */
+    overflow: hidden;  /* page itself does not scroll */
 }
 /* #endregion */
 
