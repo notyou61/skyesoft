@@ -273,28 +273,14 @@ window.SkyOfficeBoard = {
 
         // ---- CHANGE DETECTION (prevents flashing) ----
         const signature = Array.isArray(activePermits)
-            ? activePermits
-                .map(p => `${p.wo}|${p.status}`)
-                .join("::")
+            ? activePermits.map(p => `${p.wo}|${p.status}`).join("::")
             : "empty";
 
         if (signature === this.lastPermitSignature) {
-            return; // ⛔ no DOM work, no scroll reset, no blink
+            return; // ⛔ no DOM work, no scroll reset
         }
 
         this.lastPermitSignature = signature;
-
-        // 👇 ADD HERE
-        requestAnimationFrame(() => {
-            if (this.dom.permitScroll &&
-                this.dom.cardActivePermits.style.display !== "none") {
-
-                this.autoScroll.start(
-                    this.dom.permitScroll,
-                    this.rotation.duration
-                );
-            }
-        });
 
         // ---- EMPTY STATE ----
         if (!Array.isArray(activePermits) || activePermits.length === 0) {
@@ -305,9 +291,7 @@ window.SkyOfficeBoard = {
                 </tr>
             `;
 
-            if (footer) {
-                footer.textContent = "No permits found";
-            }
+            if (footer) footer.textContent = "No permits found";
 
             this.prevPermitLength = 0;
             return;
@@ -327,9 +311,7 @@ window.SkyOfficeBoard = {
             const tr = document.createElement("tr");
             tr.classList.add("permit-row");
 
-            if (lengthChanged) {
-                tr.classList.add("updated");
-            }
+            if (lengthChanged) tr.classList.add("updated");
 
             tr.innerHTML = `
                 <td>${p.wo ?? ""}</td>
@@ -351,12 +333,13 @@ window.SkyOfficeBoard = {
 
         this.prevPermitLength = sorted.length;
 
-        // ---- SCROLL RESTART (ONLY ON REAL DATA CHANGE) ----
+        // ---- SCROLL RESTART (ON REAL DATA CHANGE ONLY) ----
         requestAnimationFrame(() => {
             if (
                 this.dom.permitScroll &&
                 this.dom.cardActivePermits &&
-                this.dom.cardActivePermits.style.display !== "none"
+                this.dom.cardActivePermits.style.display !== "none" &&
+                this.dom.permitScroll.scrollHeight > this.dom.permitScroll.clientHeight
             ) {
                 this.autoScroll.start(
                     this.dom.permitScroll,
