@@ -349,10 +349,18 @@ function resolveHolidayState(string $registryPath, DateTime $now): array
         }
     }
 
-    // Output format: Parliamentarian-approved
+    // Determine whether this is a COMPANY holiday (only those close the office)
+    $isCompanyHoliday = false;
+
     if ($current) {
+        $types = $current['type'] ?? [];
+
+        if (is_array($types) && in_array("company", $types, true)) {
+            $isCompanyHoliday = true;
+        }
+
         return [
-            "isHoliday"     => true,
+            "isHoliday"     => $isCompanyHoliday,
             "holidayKey"    => $current['key'],
             "holidayName"   => $current['name'],
             "ruleType"      => $current['ruleType'],
