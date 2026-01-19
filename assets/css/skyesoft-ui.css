@@ -102,9 +102,9 @@ html, body {
     object-fit: contain;
 }
 
-.hsb-label {
-    font-weight: 600;
-    color: #333;
+.hsb-value {
+    font-weight: 400;
+    color: #0f172a;
 }
 
 .hsb-value {
@@ -115,7 +115,7 @@ html, body {
 #headerWeather,
 #headerTime,
 #headerInterval {
-    font-weight: 600;
+    font-weight: 400;
 }
 /* #endregion */
 
