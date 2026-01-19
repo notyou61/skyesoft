@@ -148,16 +148,13 @@ if (-not (Test-Path $script)) {
 }
 
 # --- Execute deploy ---
-# Better: pass current directory (where deploy.ps1 is called from = repo root)
 $localRoot = Get-Location | Select-Object -ExpandProperty Path
 
 Write-Host "Deploying from local root: $localRoot" -ForegroundColor DarkCyan
 
 & "$winscp" `
     /script="$script" `
-    /parameter $localRoot `
-    /log="winscp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').log" `
-    /loglevel=0
+    /parameter $localRoot
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Deploy failed.'
