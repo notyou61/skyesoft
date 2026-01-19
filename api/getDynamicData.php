@@ -260,6 +260,30 @@ $weather = getWeatherCached(
 );
 
 // ------------------------------------------------------------
+// Normalize active permits into flat array for frontend
+// ------------------------------------------------------------
+$permitList = [];
+
+if (
+    isset($activePermits["activePermits"]["workOrders"]) &&
+    is_array($activePermits["activePermits"]["workOrders"])
+) {
+    foreach ($activePermits["activePermits"]["workOrders"] as $wo) {
+
+        $permitList[] = [
+            "wo"           => $wo["workOrder"] ?? "",
+            "customer"     => $wo["customer"] ?? "",
+            "jobsite"      => $wo["jobsite"] ?? "",
+            "jurisdiction" => $wo["jurisdiction"] ?? "",
+            "status"       => $wo["permit"]["status"] ?? ""
+        ];
+    }
+}
+elseif (is_array($activePermits)) {
+    $permitList = $activePermits;
+}
+
+// ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
 // ------------------------------------------------------------
 $payload = [
@@ -270,13 +294,10 @@ $payload = [
     "holidayState"    => $timeContext["holidayState"],
     "weather"         => $weather,
 
-    // KPI — already normalized
     "kpi"             => $kpi,
 
-    // ACTIVE PERMITS — robust flatten
-    "activePermits"   => is_array($activePermits) ? $activePermits : [],
+    "activePermits"   => $permitList,
 
-    // ANNOUNCEMENTS — robust flatten (supports both schemas)
     "announcements"   => is_array($announcements)
         ? (isset($announcements["announcements"]) ? $announcements["announcements"] : $announcements)
         : [],
