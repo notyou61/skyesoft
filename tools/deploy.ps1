@@ -155,7 +155,9 @@ Write-Host "Deploying from local root: $localRoot" -ForegroundColor DarkCyan
 
 & "$winscp" `
     /script="$script" `
-    /parameter $localRoot   # ← important: no quotes around the name, just the value
+    /parameter $localRoot `
+    /log="winscp-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss').log" `
+    /loglevel=0
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Deploy failed.'

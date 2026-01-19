@@ -1,24 +1,21 @@
-# deploy-winscp.txt — fixed version 2026
-
 option batch on
 option confirm off
 
-# Host key is fine — keep it
 open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
 
-# Use parameter passed from PowerShell (%1% = full path to local repo root)
+# Change to the repo root (passed as %1% from PowerShell)
 lcd "%1%"
 
-# Go to correct remote parent directory
+# Move to the parent folder on remote where skyesoft should live
 cd /home/notyou64/public_html
 
-# Mirror local → remote /skyesoft
-#   • delete files on remote that no longer exist locally
-#   • only direction: local → remote
-#   • exclude git junk, vendor folders, secrets, etc.
-synchronize remote -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt" skyesoft
+# === The key line ===
+# Push contents of current local dir (.) → remote subfolder 'skyesoft'
+# -delete    → remove remote files no longer present locally (true mirror)
+# -filemask= → exclude patterns (note the | prefix for exclusions)
+synchronize remote . skyesoft -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"
 
-# Optional: add -preview when testing
-# synchronize remote -preview -delete -filemask="|..." skyesoft
+# For testing/safety first, comment the line above and uncomment this preview version:
+# synchronize remote . skyesoft -preview -delete -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"
 
 exit
