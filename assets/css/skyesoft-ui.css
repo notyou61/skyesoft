@@ -167,14 +167,13 @@ html, body {
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
-
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-
-    scrollbar-width: none;
+    scrollbar-width: none;           /* Firefox */
 }
+
 #permitScrollWrap::-webkit-scrollbar {
-    display: none;
+    display: none;                   /* Chrome, Safari, Edge */
 }
 
 /* --------------------------------------------------
@@ -186,80 +185,104 @@ html, body {
     border-spacing: 0;
     font-size: 0.95em;
     table-layout: fixed;
+    border-radius: 0 0 6px 6px;      /* subtle rounded bottom when no header shadow */
 }
 
 /* --------------------------------------------------
-   Header
+   Header (Sticky)
 -------------------------------------------------- */
 .permitTable thead th {
-    padding: 6px 8px;
-    font-weight: bold;
+    padding: 8px 10px;               /* slightly more breathing room */
+    font-weight: 600;
     text-align: left;
-
     position: sticky;
     top: 0;
     z-index: 20;
-
     background: #0f172a;
     color: #ffffff;
-
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.18);
+    white-space: nowrap;
 }
 
 /* --------------------------------------------------
    Body Cells
 -------------------------------------------------- */
 .permitTable tbody td {
-    padding: 6px 8px;
-    border-bottom: 1px solid #ddd;
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 0;                    /* crucial for proper ellipsis + flex-like behavior */
 }
 
 /* --------------------------------------------------
-   Zebra Striping (APPLIED TO TD — KEY FIX)
+   Zebra Striping – visible & override-resistant
 -------------------------------------------------- */
-.permitTable tbody tr:nth-child(odd) td {
-    background-color: #f9fafb;
+.permitTable tbody tr:nth-child(odd) > td {
+    background-color: #f5f7fa !important;   /* noticeably cooler gray – very readable */
 }
-.permitTable tbody tr:nth-child(even) td {
-    background-color: #ffffff;
+
+.permitTable tbody tr:nth-child(even) > td {
+    background-color: #ffffff !important;
 }
 
 /* --------------------------------------------------
-   Rows
+   Hover effect (accessibility + UX)
+-------------------------------------------------- */
+.permitTable tbody tr:hover > td {
+    background-color: #eff6ff !important;   /* light blue highlight */
+    transition: background-color 0.13s ease;
+}
+
+/* --------------------------------------------------
+   Rows & Update Flash – zebra-safe version
 -------------------------------------------------- */
 .permit-row {
-    opacity: 1;
+    transition: background-color 0.2s ease; /* smooth out any future changes */
 }
 
-/* Highlight ONLY on real data changes */
-.permit-row.updated {
-    animation: flashRow 1.2s ease-out;
+.permit-row.updated > td {
+    animation: flashCell 1.4s ease-out;
 }
 
-/* --------------------------------------------------
-   Highlight Animation (does not break zebra)
--------------------------------------------------- */
-@keyframes flashRow {
-    0% {
-        box-shadow: inset 0 0 0 9999px rgba(255, 230, 150, 0.85);
-    }
-    100% {
-        box-shadow: inset 0 0 0 0 rgba(255, 230, 150, 0);
-    }
+/* Cell-based flash – preserves zebra & more consistent rendering */
+@keyframes flashCell {
+    0%   { background-color: #ffefc7 !important; }   /* warm yellow */
+    25%  { background-color: #ffefc7 !important; }
+    100% { background-color: transparent !important; } /* returns to zebra */
 }
+
+/* Optional: stronger flash version if you want more visibility
+@keyframes flashCell {
+    0%   { background-color: #fef3c7 !important; box-shadow: inset 0 0 0 9999px rgba(255,230,150,0.6); }
+    30%  { background-color: #fef3c7 !important; box-shadow: inset 0 0 0 9999px rgba(255,230,150,0.4); }
+    100% { background-color: transparent !important; box-shadow: none; }
+}
+*/
 
 /* --------------------------------------------------
    Empty State
 -------------------------------------------------- */
 .permitTable .empty-row td {
     text-align: center;
-    color: #777;
+    color: #6b7280;
     font-style: italic;
     white-space: normal;
+    padding: 40px 20px;
+    border-bottom: none;
+}
+
+/* --------------------------------------------------
+   Mobile adjustments
+-------------------------------------------------- */
+@media (max-width: 640px) {
+    .permitTable thead th,
+    .permitTable tbody td {
+        padding: 7px 8px;
+        font-size: 0.88em;
+    }
 }
 
 /* #endregion */
