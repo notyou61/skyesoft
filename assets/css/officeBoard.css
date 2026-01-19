@@ -7,7 +7,7 @@
 /* #endregion */
 
 /* #region Card Containers */
-.board-card {
+.card {
     display: none; /* rotation controlled by JS */
     background: #f7f7f7;
     border-radius: 12px;
@@ -83,6 +83,17 @@
     opacity: 0.6;
 }
 
+/* Remove vertical gap between page header and first card */
+body[data-page="officeBoard"] #pageHeader {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+body[data-page="officeBoard"] #pageBody {
+    margin-top: 0;
+    padding-top: 0;
+}
+
 /* #endregion */
 
 /* #region Highlights Card */
@@ -126,7 +137,7 @@
 /* #region Mobile Tweaks */
 @media (max-width: 600px) {
 
-    .board-card {
+    .card {
         padding: 14px;
     }
 
