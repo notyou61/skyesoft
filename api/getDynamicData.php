@@ -261,15 +261,15 @@ $weather = getWeatherCached(
 
 // ------------------------------------------------------------
 // Normalize active permits into flat array for frontend
+// Source: permitRegistry.json → workOrders (map)
 // ------------------------------------------------------------
 $permitList = [];
 
-if (
-    is_array($activePermits)
-    && isset($activePermits["activePermits"]["workOrders"])
-    && is_array($activePermits["activePermits"]["workOrders"])
-) {
-    foreach ($activePermits["activePermits"]["workOrders"] as $wo) {
+if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"])) {
+
+    foreach ($activePermits["workOrders"] as $wo) {
+
+        // Optional filter: exclude finaled / issued if desired later
         $permitList[] = [
             "wo"           => $wo["workOrder"] ?? "",
             "customer"     => $wo["customer"] ?? "",
@@ -278,8 +278,8 @@ if (
             "status"       => $wo["permit"]["status"] ?? ""
         ];
     }
-}
 
+}
 
 // ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
