@@ -159,62 +159,90 @@ html, body {
 
 /* #region Permit Table */
 
-.permit-scroll-wrap {
+/* --------------------------------------------------
+   Scroll Container (single source of truth)
+-------------------------------------------------- */
+#permitScrollWrap {
     max-height: 600px;
-    overflow-y: auto;
     margin-top: 10px;
 
-    /* Smooth hardware-accelerated scrolling */
+    overflow-y: auto;
+    position: relative;
+
+    /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 }
 
-/* --- NEW: Row animation --- */
-.permit-row {
-    opacity: 0;
-    animation: fadeIn 0.4s forwards ease-out;
-}
-
-/* --- NEW: Update flash highlight --- */
-.permit-row.updated {
-    animation: fadeIn 0.4s forwards ease-out,
-               flashRow 1.2s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-@keyframes flashRow {
-    0%   { background-color: #ffffcc; }
-    100% { background-color: transparent; }
-}
-
+/* --------------------------------------------------
+   Table Base
+-------------------------------------------------- */
 .permitTable {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.95em;
 }
 
+/* --------------------------------------------------
+   Header Cells
+-------------------------------------------------- */
 .permitTable th {
-    background: #e6e6e6;
     padding: 6px 8px;
-    border-bottom: 1px solid #ccc;
     font-weight: bold;
+    border-bottom: 1px solid #ccc;
 }
 
+/* Sticky header behavior */
+#permitScrollWrap thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    background: #0f172a;
+    color: #ffffff;
+
+    /* Prevent bleed-through during scroll */
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* --------------------------------------------------
+   Body Cells
+-------------------------------------------------- */
 .permitTable td {
     padding: 6px 8px;
     border-bottom: 1px solid #ddd;
 }
 
-/* Empty state row */
+/* --------------------------------------------------
+   Rows (stable by default — no forced animation)
+-------------------------------------------------- */
+.permit-row {
+    opacity: 1;
+}
+
+/* Highlight only when data truly changes */
+.permit-row.updated {
+    animation: flashRow 1.2s ease-out;
+}
+
+/* --------------------------------------------------
+   Empty State
+-------------------------------------------------- */
 .permitTable .empty-row td {
     text-align: center;
     color: #777;
     font-style: italic;
 }
+
+/* --------------------------------------------------
+   Animations
+-------------------------------------------------- */
+@keyframes flashRow {
+    0%   { background-color: #ffffcc; }
+    100% { background-color: transparent; }
+}
+
 /* #endregion */
 
 /* ===========================================================
