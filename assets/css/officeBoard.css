@@ -86,16 +86,27 @@
     opacity: 0.6;
 }
 
-/* Remove vertical gap between page header and first card */
-body[data-page="officeBoard"] #pageHeader {
-    margin-bottom: 0;
-    padding-bottom: 0;
+
+
+/* Establish vertical layout contract */
+body[data-page="officeBoard"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
+/* Middle section absorbs remaining space */
 body[data-page="officeBoard"] #pageBody {
-    margin-top: 0;
-    padding-top: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
 }
+
+/* Footer stays at bottom */
+body[data-page="officeBoard"] #pageFooter {
+    flex-shrink: 0;
+}
+
 
 /* #endregion */
 
