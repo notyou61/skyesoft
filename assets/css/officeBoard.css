@@ -73,12 +73,14 @@
 }
 
 #cardActivePermits .cardHeader h2 {
-    margin: 0;                 /* kill default h2 margins */
-    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 
 #cardActivePermits .cardBodyDivider {
+    margin-top: 2px;
     margin-bottom: 2px;
+    opacity: 0.6;
 }
 
 /* #endregion */
