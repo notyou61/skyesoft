@@ -273,11 +273,13 @@ $payload = [
     // KPI — already normalized
     "kpi"             => $kpi,
 
-    // ACTIVE PERMITS — force flatten
-    "activePermits"   => $activePermits["activePermits"] ?? [],
+    // ACTIVE PERMITS — robust flatten
+    "activePermits"   => is_array($activePermits) ? $activePermits : [],
 
-    // ANNOUNCEMENTS — force flatten
-    "announcements"   => $announcements["announcements"] ?? [],
+    // ANNOUNCEMENTS — robust flatten (supports both schemas)
+    "announcements"   => is_array($announcements)
+        ? (isset($announcements["announcements"]) ? $announcements["announcements"] : $announcements)
+        : [],
 
     "siteMeta"        => [
         "siteVersion" => $versions["siteVersion"] ?? "unknown"

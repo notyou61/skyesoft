@@ -42,11 +42,11 @@ html, body {
 #pageHeader {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;     /* left block / right block */
-    align-items: center;                /* vertical alignment */
+    justify-content: space-between;
+    align-items: center;
 
     padding: 12px 18px;
-    gap: 20px;                          /* prevents collision */
+    gap: 20px;
 }
 
 .logoRow {
@@ -68,73 +68,56 @@ html, body {
 /* #endregion */
 
 /* ===========================================================
-   HEADER STATUS BLOCK (Weather • Time • Interval)
-   Fully aligned, no drift
+   HEADER STATUS BLOCK (HSB-X Standard)
    =========================================================== */
 
-/* #region HSB — Header Status Block (Codex Standard HSB-X) */
+/* #region HSB */
 .headerStatusBlock {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;      /* right aligned */
+    align-items: flex-end;
     white-space: nowrap;
     font-size: 0.90em;
-
-    gap: 2px;                   /* legacy tight spacing */
+    gap: 2px;
 }
 
-/* One row (Weather / Time / Interval) */
 .hsb-item {
     display: flex;
     flex-direction: row;
     align-items: center;
-
-    height: 20px;               /* fixed row height */
-    line-height: 20px;          /* vertical alignment */
-    gap: 6px;                   /* icon–label–value spacing */
+    height: 20px;
+    line-height: 20px;
+    gap: 6px;
 }
 
-/* Static icon (weather.png, clock.png, hourglass.png) */
 .hsb-icon {
     width: 18px;
     height: 18px;
     object-fit: contain;
-    display: inline-block;
 }
 
-/* Dynamic OpenWeather icon (placed before label inside value only if used) */
 .hsb-weather-icon {
     width: 22px;
     height: 22px;
     object-fit: contain;
-    display: inline-block;
-    vertical-align: middle;
 }
 
-/* Label (Weather:, Time:, Interval:) */
 .hsb-label {
     font-weight: 600;
     color: #333;
-    display: inline-block;
 }
 
-/* Value block (only the dynamic part updates) */
 .hsb-value {
     font-weight: 600;
-    display: inline-block;
-    font-variant-numeric: tabular-nums; /* digits stay fixed width */
+    font-variant-numeric: tabular-nums;
 }
 
-/* Explicit IDs share same formatting — prevents drift */
 #headerWeather,
 #headerTime,
 #headerInterval {
     font-weight: 600;
-    display: inline-block;
-    line-height: 20px;
 }
 /* #endregion */
-
 
 /* #region Page Body */
 #pageBody {
@@ -148,7 +131,7 @@ html, body {
 /* #endregion */
 
 /* ===========================================================
-   CARD SYSTEM (Static <section> layout)
+   CARD SYSTEM
    =========================================================== */
 
 /* #region Board Cards */
@@ -157,7 +140,7 @@ html, body {
     border-radius: 10px;
     padding: 16px 20px;
     box-shadow: 0 0 6px rgba(0,0,0,0.06);
-    display: none;    /* rotation controls visibility */
+    display: none;
 }
 
 .board-card.active {
@@ -175,10 +158,37 @@ html, body {
    =========================================================== */
 
 /* #region Permit Table */
+
 .permit-scroll-wrap {
-    max-height: 600px;     /* auto-scrolling pane */
+    max-height: 600px;
     overflow-y: auto;
     margin-top: 10px;
+
+    /* Smooth hardware-accelerated scrolling */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* --- NEW: Row animation --- */
+.permit-row {
+    opacity: 0;
+    animation: fadeIn 0.4s forwards ease-out;
+}
+
+/* --- NEW: Update flash highlight --- */
+.permit-row.updated {
+    animation: fadeIn 0.4s forwards ease-out,
+               flashRow 1.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes flashRow {
+    0%   { background-color: #ffffcc; }
+    100% { background-color: transparent; }
 }
 
 .permitTable {
@@ -198,10 +208,17 @@ html, body {
     padding: 6px 8px;
     border-bottom: 1px solid #ddd;
 }
+
+/* Empty state row */
+.permitTable .empty-row td {
+    text-align: center;
+    color: #777;
+    font-style: italic;
+}
 /* #endregion */
 
 /* ===========================================================
-   PLACEHOLDER CARDS (Highlights, KPI, Announcements)
+   PLACEHOLDER CARDS
    =========================================================== */
 
 /* #region Placeholders */
@@ -232,18 +249,28 @@ html, body {
 }
 /* #endregion */
 
+/* ===========================================================
+   MOBILE TWEAKS
+   =========================================================== */
+
 /* #region Mobile Tweaks */
 @media (max-width: 600px) {
     .board-section {
         width: 95vw;
     }
+
     .logo {
         height: 42px;
     }
+
     .permitTable th,
     .permitTable td {
         font-size: 0.85em;
         padding: 4px 6px;
+    }
+
+    .headerStatusBlock {
+        font-size: 0.82em;
     }
 }
 /* #endregion */

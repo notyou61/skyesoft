@@ -47,7 +47,6 @@ function formatSmartInterval(totalSeconds) {
 }
 /* #endregion */
 
-
 /* #region PAGE CONTROLLER */
 window.SkyOfficeBoard = {
 
@@ -68,7 +67,6 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region ROTATION CONFIG */
     rotation: {
         index: 0,
@@ -77,7 +75,6 @@ window.SkyOfficeBoard = {
         cards: ["activePermits", "highlights", "kpi", "announcements"]
     },
     /* #endregion */
-
 
     /* #region AUTOSCROLL ENGINE */
     autoScroll: {
@@ -108,7 +105,7 @@ window.SkyOfficeBoard = {
                 Math.round(scrollTimeMs / (1000 / this.FPS))
             );
 
-            const speed = distance / frames;
+            const speed = Math.max(0.5, distance / frames);
 
             el.scrollTop = 0;
 
@@ -140,7 +137,6 @@ window.SkyOfficeBoard = {
         }
     },
     /* #endregion */
-
 
     /* #region CARD DISPLAY */
     showCard: function (index) {
@@ -179,7 +175,6 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region INIT */
     init: function () {
 
@@ -210,7 +205,6 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region ROTATION */
     startRotation: function () {
         if (this.rotation.timer) {
@@ -225,7 +219,6 @@ window.SkyOfficeBoard = {
         }, this.rotation.duration);
     },
     /* #endregion */
-
 
     /* #region HEADER UPDATES */
     updateHeader: function (payload) {
@@ -270,27 +263,56 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region PERMIT TABLE */
     updatePermitTable: function (activePermits) {
 
         const body = this.dom.permitTableBody;
+        const footer = document.getElementById("permitFooter");
+
         if (!body) return;
 
-        body.innerHTML = "";
-
+        // ---- EMPTY STATE ----
         if (!activePermits || activePermits.length === 0) {
+
             body.innerHTML =
-                `<tr><td colspan="5" style="text-align:center;">No active permits</td></tr>`;
+                `<tr class="empty-row">
+                    <td colspan="5">
+                        No active permits
+                    </td>
+                </tr>`;
+
+            if (footer) {
+                footer.textContent = "No permits found";
+            }
+
+            this.prevPermitLength = 0;
             return;
         }
 
+        // ---- NORMAL DATA PATH ----
         const sorted = [...activePermits].sort((a, b) =>
             (parseInt(a.wo) || 0) - (parseInt(b.wo) || 0)
         );
 
+        // Determine if the data set size changed (for highlight behavior)
+        const lengthChanged = sorted.length !== this.prevPermitLength;
+
+        // Rebuild table
+        body.innerHTML = "";
+
+        const frag = document.createDocumentFragment();
+
         sorted.forEach(p => {
             const tr = document.createElement("tr");
+
+            // Always get base animation class
+            tr.classList.add("permit-row");
+
+            // If data count changed, trigger highlight animation
+            if (lengthChanged) {
+                tr.classList.add("updated");
+            }
+
             tr.innerHTML = `
                 <td>${p.wo ?? ""}</td>
                 <td>${p.customer ?? ""}</td>
@@ -298,11 +320,22 @@ window.SkyOfficeBoard = {
                 <td>${p.jurisdiction ?? ""}</td>
                 <td>${p.status ?? ""}</td>
             `;
-            body.appendChild(tr);
+
+            frag.appendChild(tr);
         });
+
+        body.appendChild(frag);
+
+        // ---- UPDATE FOOTER ----
+        if (footer) {
+            footer.textContent =
+                `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
+        }
+
+        // Track for next cycle
+        this.prevPermitLength = sorted.length;
     },
     /* #endregion */
-
 
     /* #region ANNOUNCEMENTS */
     updateAnnouncements: function (arr) {
@@ -317,7 +350,6 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region FOOTER */
     updateFooter: function (payload) {
         if (payload.siteMeta && this.dom.versionFooter) {
@@ -326,7 +358,6 @@ window.SkyOfficeBoard = {
         }
     },
     /* #endregion */
-
 
     /* #region HIGHLIGHTS CARD */
     updateHighlights: function (payload) {
@@ -366,14 +397,54 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-
     /* #region SSE ROUTING */
     onSSE: function (payload) {
 
         this.updateHeader(payload);
 
         if (Array.isArray(payload.activePermits)) {
+
+            // Update the table
             this.updatePermitTable(payload.activePermits);
+
+            const currentLength = payload.activePermits.length;
+
+            // FIRST data arrival – start scroll if visible
+            if (!this._scrollStarted && currentLength > 0) {
+                this._scrollStarted = true;
+
+                requestAnimationFrame(() => {
+
+                    const el = this.dom.permitScroll;
+
+                    const needsScroll =
+                        el &&
+                        el.scrollHeight > el.clientHeight &&
+                        this.dom.permitTableBody &&
+                        this.dom.permitTableBody.children.length > 3;
+
+                    if (needsScroll) {
+                        this.autoScroll.start(el, this.rotation.duration);
+                    }
+                });
+
+            }
+
+            // If number of permits changed – restart scroll
+            if (currentLength !== this.prevPermitLength) {
+                this.prevPermitLength = currentLength;
+
+                requestAnimationFrame(() => {
+                    if (this.dom.permitScroll &&
+                        this.dom.cardActivePermits.style.display !== "none") {
+
+                        this.autoScroll.start(
+                            this.dom.permitScroll,
+                            this.rotation.duration
+                        );
+                    }
+                });
+            }
         }
 
         if (Array.isArray(payload.announcements)) {
@@ -387,7 +458,6 @@ window.SkyOfficeBoard = {
     /* #endregion */
 };
 /* #endregion */
-
 
 /* #region REGISTER PAGE */
 window.SkyeApp.registerPage("officeBoard", window.SkyOfficeBoard);
