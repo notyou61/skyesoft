@@ -266,20 +266,44 @@ window.SkyOfficeBoard = {
     /* #region PERMIT TABLE */
     updatePermitTable: function (activePermits) {
 
-        const body = this.dom.permitTableBody;
+        const body   = this.dom.permitTableBody;
         const footer = document.getElementById("permitFooter");
 
         if (!body) return;
 
-        // ---- EMPTY STATE ----
-        if (!activePermits || activePermits.length === 0) {
+        // ---- CHANGE DETECTION (prevents flashing) ----
+        const signature = Array.isArray(activePermits)
+            ? activePermits
+                .map(p => `${p.wo}|${p.status}`)
+                .join("::")
+            : "empty";
 
-            body.innerHTML =
-                `<tr class="empty-row">
-                    <td colspan="5">
-                        No active permits
-                    </td>
-                </tr>`;
+        if (signature === this.lastPermitSignature) {
+            return; // ⛔ no DOM work, no scroll reset, no blink
+        }
+
+        this.lastPermitSignature = signature;
+
+        // 👇 ADD HERE
+        requestAnimationFrame(() => {
+            if (this.dom.permitScroll &&
+                this.dom.cardActivePermits.style.display !== "none") {
+
+                this.autoScroll.start(
+                    this.dom.permitScroll,
+                    this.rotation.duration
+                );
+            }
+        });
+
+        // ---- EMPTY STATE ----
+        if (!Array.isArray(activePermits) || activePermits.length === 0) {
+
+            body.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="5">No active permits</td>
+                </tr>
+            `;
 
             if (footer) {
                 footer.textContent = "No permits found";
@@ -291,24 +315,18 @@ window.SkyOfficeBoard = {
 
         // ---- NORMAL DATA PATH ----
         const sorted = [...activePermits].sort((a, b) =>
-            (parseInt(a.wo) || 0) - (parseInt(b.wo) || 0)
+            (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
         );
 
-        // Determine if the data set size changed (for highlight behavior)
         const lengthChanged = sorted.length !== this.prevPermitLength;
 
-        // Rebuild table
         body.innerHTML = "";
-
         const frag = document.createDocumentFragment();
 
         sorted.forEach(p => {
             const tr = document.createElement("tr");
-
-            // Always get base animation class
             tr.classList.add("permit-row");
 
-            // If data count changed, trigger highlight animation
             if (lengthChanged) {
                 tr.classList.add("updated");
             }
@@ -326,14 +344,26 @@ window.SkyOfficeBoard = {
 
         body.appendChild(frag);
 
-        // ---- UPDATE FOOTER ----
         if (footer) {
             footer.textContent =
                 `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
         }
 
-        // Track for next cycle
         this.prevPermitLength = sorted.length;
+
+        // ---- SCROLL RESTART (ONLY ON REAL DATA CHANGE) ----
+        requestAnimationFrame(() => {
+            if (
+                this.dom.permitScroll &&
+                this.dom.cardActivePermits &&
+                this.dom.cardActivePermits.style.display !== "none"
+            ) {
+                this.autoScroll.start(
+                    this.dom.permitScroll,
+                    this.rotation.duration
+                );
+            }
+        });
     },
     /* #endregion */
 
@@ -430,21 +460,6 @@ window.SkyOfficeBoard = {
 
             }
 
-            // If number of permits changed – restart scroll
-            if (currentLength !== this.prevPermitLength) {
-                this.prevPermitLength = currentLength;
-
-                requestAnimationFrame(() => {
-                    if (this.dom.permitScroll &&
-                        this.dom.cardActivePermits.style.display !== "none") {
-
-                        this.autoScroll.start(
-                            this.dom.permitScroll,
-                            this.rotation.duration
-                        );
-                    }
-                });
-            }
         }
 
         if (Array.isArray(payload.announcements)) {
