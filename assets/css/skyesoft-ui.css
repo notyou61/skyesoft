@@ -121,9 +121,8 @@ html, body {
 
 /* #region Page Body */
 #pageBody {
-    flex-grow: 1;
-    min-height: 0;      /* critical for nested scrolling */
-    overflow: hidden;  /* page itself does not scroll */
+    margin-top: 0;     /* Kill the double-gap */
+    padding-top: 0;    /* Ensure no internal creep */
 }
 /* #endregion */
 

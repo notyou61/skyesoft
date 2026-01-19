@@ -66,6 +66,21 @@
 .permitTable td {
     white-space: nowrap;
 }
+
+/* Tighten Active Permits header spacing */
+#cardActivePermits .cardHeader {
+    padding-bottom: 4px;
+}
+
+#cardActivePermits .cardHeader h2 {
+    margin: 0;                 /* kill default h2 margins */
+    line-height: 1.2;
+}
+
+#cardActivePermits .cardBodyDivider {
+    margin-bottom: 2px;
+}
+
 /* #endregion */
 
 /* #region Highlights Card */
