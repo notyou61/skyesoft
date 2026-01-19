@@ -164,7 +164,8 @@ html, body {
 -------------------------------------------------- */
 #permitScrollWrap {
     max-height: 600px;
-    margin-top: 10px;
+    margin-top: 0;                 /* ⬅️ remove gap above table */
+    padding-top: 0;
 
     overflow-y: auto;
     position: relative;
@@ -172,6 +173,12 @@ html, body {
     /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
+
+    /* Hide scrollbar (still scrollable) */
+    scrollbar-width: none;         /* Firefox */
+}
+#permitScrollWrap::-webkit-scrollbar {
+    display: none;                 /* Chrome / Edge / Safari */
 }
 
 /* --------------------------------------------------
@@ -179,7 +186,7 @@ html, body {
 -------------------------------------------------- */
 .permitTable {
     width: 100%;
-    border-collapse: separate;
+    border-collapse: collapse;     /* ⬅️ CRITICAL: removes header/body gap */
     border-spacing: 0;
     font-size: 0.95em;
 }
@@ -187,14 +194,10 @@ html, body {
 /* --------------------------------------------------
    Header Cells
 -------------------------------------------------- */
-.permitTable th {
+.permitTable thead th {
     padding: 6px 8px;
     font-weight: bold;
-    border-bottom: 1px solid #ccc;
-}
 
-/* Sticky header behavior */
-#permitScrollWrap thead th {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -202,7 +205,9 @@ html, body {
     background: #0f172a;
     color: #ffffff;
 
-    /* Prevent bleed-through during scroll */
+    border-bottom: 1px solid #ccc;
+
+    /* Prevent bleed-through */
     box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
@@ -215,13 +220,13 @@ html, body {
 }
 
 /* --------------------------------------------------
-   Rows (stable by default — no forced animation)
+   Rows
 -------------------------------------------------- */
 .permit-row {
     opacity: 1;
 }
 
-/* Highlight only when data truly changes */
+/* Highlight only on real data changes */
 .permit-row.updated {
     animation: flashRow 1.2s ease-out;
 }
