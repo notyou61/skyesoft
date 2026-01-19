@@ -3,6 +3,9 @@ option confirm off
 
 open sftp://notyou64:Steven1!@68.178.221.71:22 -hostkey="ssh-ed25519 255 9NktM0x2LybydB83Ie/azLpT7VpKQIpMfjfouXmVZWY"
 
+# 🔑 SET LOCAL DIRECTORY (THIS WAS MISSING)
+lcd "%LOCALROOT%"
+
 cd /home/notyou64/public_html
 
 synchronize remote skyesoft skyesoft -filemask="|.git/;node_modules/;secure/;.env;repoTree.txt;tree.txt"

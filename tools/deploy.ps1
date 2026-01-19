@@ -148,7 +148,9 @@ if (-not (Test-Path $script)) {
 }
 
 # --- Execute deploy ---
-& "$winscp" /script="$script"
+& "$winscp" `
+  /parameter "LOCALROOT=$localRoot" `
+  /script="$script"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Deploy failed.'
