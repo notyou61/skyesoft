@@ -1,58 +1,57 @@
-/* =============================================================================
-   OFFICE BULLETIN BOARD - FINAL FIXED LAYOUT (2026)
-   Clean flex math, no drift, footer sticks, Chrome scrolling fixed
-   ============================================================================= */
-
-/* #region Global Reset & Base */
+/* #region Global Reset */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
+/* #endregion */
 
+/* #region Base Layout */
 html, body {
     height: 100%;
-    min-height: 100vh;
     margin: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
     background-size: cover;
 
-    /* Root flex column — NO align-items: center here (that was the main culprit) */
     display: flex;
     flex-direction: column;
+    /* Removed align-items: center — this was preventing proper stretch */
 }
 /* #endregion */
 
-/* #region Content Centering */
+/* #region Board Wrapper Sections */
 .board-section {
     width: 90vw;
     max-width: 1200px;
-    margin: 12px auto 0;           /* Centers horizontally — clean & safe */
-    background: rgba(255, 255, 255, 0.96);
+
+    background: #fff;
     border-radius: 12px;
     padding: 10px 18px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    margin-top: 12px;
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
 }
 /* #endregion */
 
 /* ===========================================================
-   PAGE HEADER — Stable & Drift-Resistant
+   PAGE HEADER — DRIFT-RESISTANT VERSION
    =========================================================== */
+
+/* #region Page Header */
 #pageHeader {
-    padding: 12px 18px;
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
+
+    padding: 12px 18px;
     gap: 20px;
-    background: rgba(255, 255, 255, 0.92);
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
 }
 
 .logoRow {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 14px;
 }
@@ -65,31 +64,41 @@ html, body {
     margin: 0;
     font-size: 1.8rem;
     line-height: 1.1;
-    font-weight: 700;
 }
+/* #endregion */
 
-/* Header Status Block (HSB-X) */
+/* ===========================================================
+   HEADER STATUS BLOCK (HSB-X Standard)
+   =========================================================== */
+
+/* #region HSB */
 .headerStatusBlock {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    font-size: 0.90em;
-    gap: 3px;
     white-space: nowrap;
+    font-size: 0.90em;
+    gap: 2px;
 }
 
 .hsb-item {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 6px;
     height: 20px;
     line-height: 20px;
+    gap: 6px;
 }
 
-.hsb-icon,
+.hsb-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
 .hsb-weather-icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
 }
 
@@ -102,183 +111,228 @@ html, body {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+
+#headerWeather,
+#headerTime,
+#headerInterval {
+    font-weight: 600;
+}
 /* #endregion */
 
-/* ===========================================================
-   PAGE BODY — The key flex-grow + Chrome fix lives here
-   =========================================================== */
+/* #region Page Body */
 #pageBody {
-    flex: 1 1 auto;                /* Grow to fill remaining space */
-    min-height: 0;                 /* Critical: allows nested scrollers to work in Chrome */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 12px 0;
+    gap: 18px;
     width: 100%;
+    margin-top: 12px;
 }
 /* #endregion */
 
 /* ===========================================================
-   BOARD CARDS (used for Active Permits, Highlights, etc.)
+   CARD SYSTEM
    =========================================================== */
+
+/* #region Board Cards */
 .board-card {
-    background: #f8fafc;
+    background: #f6f6f6;
     border-radius: 10px;
     padding: 16px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 380px;             /* Helps maintain consistent card height */
+    box-shadow: 0 0 6px rgba(0,0,0,0.06);
+    display: none;
 }
 
 .board-card.active {
-    display: flex;
+    display: block;
 }
 
 .cardTitle h2 {
-    margin: 0 0 12px 0;
-    font-size: 1.38rem;
-    font-weight: 700;
-    color: #1e293b;
+    margin-bottom: 10px;
+    font-size: 1.3rem;
 }
+/* #endregion */
 
-/* Scrollable permit table container */
+/* ===========================================================
+   PERMIT TABLE
+   =========================================================== */
+
+/* #region Permit Table */
+
+/* --------------------------------------------------
+   Scroll Container
+-------------------------------------------------- */
 #permitScrollWrap {
-    flex: 1 1 auto;
-    min-height: 0;
+    max-height: 600px;
     overflow-y: auto;
     overflow-x: hidden;
+    position: relative;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    scrollbar-width: thin;
-    scrollbar-color: #94a3b8 #f1f5f9;
+    scrollbar-width: none;           /* Firefox */
 }
 
 #permitScrollWrap::-webkit-scrollbar {
-    width: 6px;
+    display: none;                   /* Chrome, Safari, Edge */
 }
 
-#permitScrollWrap::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 10px;
-}
-
-#permitScrollWrap::-webkit-scrollbar-thumb {
-    background: #94a3b8;
-    border-radius: 10px;
-}
-
-/* ===========================================================
-   PERMIT TABLE (your existing great table styles — kept & lightly improved)
-   =========================================================== */
+/* --------------------------------------------------
+   Table Base
+-------------------------------------------------- */
 .permitTable {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     font-size: 0.95em;
     table-layout: fixed;
+    border-radius: 0 0 6px 6px;      /* subtle rounded bottom corners */
 }
 
+/* --------------------------------------------------
+   Header (Sticky)
+-------------------------------------------------- */
 .permitTable thead th {
+    padding: 8px 10px;
+    font-weight: 600;
+    text-align: left;
     position: sticky;
     top: 0;
     z-index: 20;
     background: #0f172a;
-    color: white;
-    padding: 10px 12px;
-    font-weight: 600;
-    text-align: left;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.18);
     white-space: nowrap;
 }
 
+/* --------------------------------------------------
+   Body Cells
+-------------------------------------------------- */
 .permitTable tbody td {
-    padding: 9px 12px;
+    padding: 8px 10px;
     border-bottom: 1px solid #e5e7eb;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 0;                    /* Required for proper ellipsis in fixed layout */
+    background-color: transparent !important; /* Prevents td from overriding row background */
 }
 
+/* --------------------------------------------------
+   Zebra Striping – row-level, high visibility, override-proof
+-------------------------------------------------- */
 .permitTable tbody tr:nth-child(odd) {
-    background-color: #f0f7ff;
+    background-color: #edf2ff !important;   /* Light blue-gray – clearly visible difference */
 }
 
 .permitTable tbody tr:nth-child(even) {
-    background-color: #ffffff;
+    background-color: #ffffff !important;
 }
 
+/* --------------------------------------------------
+   Hover effect (accessibility + UX)
+-------------------------------------------------- */
 .permitTable tbody tr:hover {
     background-color: #dbeafe !important;
-    transition: background-color 0.12s ease;
+    transition: background-color 0.15s ease;
 }
 
-/* Flash animation */
+/* --------------------------------------------------
+   Update Flash – row-based, zebra-friendly
+-------------------------------------------------- */
+.permit-row {
+    transition: background-color 0.2s ease;
+}
+
 .permit-row.updated {
-    animation: flashRow 1.5s ease-out;
+    animation: flashRow 1.4s ease-out;
 }
 
 @keyframes flashRow {
-    0%, 40%   { background-color: #fefce8 !important; }
-    100%      { background-color: transparent !important; }
+    0%   { background-color: #fefce8 !important; }   /* Warm yellow flash */
+    35%  { background-color: #fefce8 !important; }
+    100% { background-color: transparent !important; } /* Returns to zebra */
 }
 
-/* #endregion */
-
-/* ===========================================================
-   FOOTER — Locked to bottom
-   =========================================================== */
-#pageFooter {
-    flex-shrink: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 18px;
-    font-size: 0.84em;
-    color: #4b5563;
-    background: rgba(255, 255, 255, 0.92);
-    border-top: 1px solid rgba(0,0,0,0.06);
-    margin-top: auto;              /* Pushes to bottom when content is short */
+/* --------------------------------------------------
+   Empty State
+-------------------------------------------------- */
+.permitTable .empty-row td {
+    text-align: center;
+    color: #6b7280;
+    font-style: italic;
+    white-space: normal;
+    padding: 40px 20px;
+    border-bottom: none;
 }
-/* #endregion */
 
-/* ===========================================================
-   MOBILE RESPONSIVENESS
-   =========================================================== */
+/* --------------------------------------------------
+   Mobile adjustments
+-------------------------------------------------- */
 @media (max-width: 640px) {
-    .board-section {
-        width: 96vw;
-        margin: 8px auto 0;
-        padding: 12px 14px;
-    }
-
-    #pageHeader {
-        padding: 10px 14px;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-
-    .logo {
-        height: 44px;
-    }
-
-    .headerStatusBlock {
-        font-size: 0.84em;
-        align-items: flex-start;
-    }
-
     .permitTable thead th,
     .permitTable tbody td {
-        padding: 8px 9px;
+        padding: 7px 8px;
         font-size: 0.88em;
     }
 }
 
-@media (max-width: 480px) {
-    .logoRow h1 {
-        font-size: 1.5rem;
+/* #endregion */
+
+/* ===========================================================
+   PLACEHOLDER CARDS
+   =========================================================== */
+
+/* #region Placeholders */
+.highlights-list,
+.announcement-list {
+    margin-left: 4px;
+}
+
+.kpi-placeholder,
+.placeholderBlock {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+
+    color: #555;
+    font-size: 1.3em;
+}
+/* #endregion */
+
+/* #region Page Footer */
+#pageFooter {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    padding: 6px 12px;
+    margin-bottom: 10px;
+}
+/* #endregion */
+
+/* ===========================================================
+   MOBILE TWEAKS
+   =========================================================== */
+
+/* #region Mobile Tweaks */
+@media (max-width: 600px) {
+    .board-section {
+        width: 95vw;
+    }
+
+    .logo {
+        height: 42px;
+    }
+
+    .permitTable th,
+    .permitTable td {
+        font-size: 0.85em;
+        padding: 4px 6px;
+    }
+
+    .headerStatusBlock {
+        font-size: 0.82em;
     }
 }
 /* #endregion */
