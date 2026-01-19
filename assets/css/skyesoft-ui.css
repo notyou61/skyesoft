@@ -185,14 +185,14 @@ html, body {
     border-spacing: 0;
     font-size: 0.95em;
     table-layout: fixed;
-    border-radius: 0 0 6px 6px;      /* subtle rounded bottom when no header shadow */
+    border-radius: 0 0 6px 6px;      /* subtle rounded bottom corners */
 }
 
 /* --------------------------------------------------
    Header (Sticky)
 -------------------------------------------------- */
 .permitTable thead th {
-    padding: 8px 10px;               /* slightly more breathing room */
+    padding: 8px 10px;
     font-weight: 600;
     text-align: left;
     position: sticky;
@@ -214,53 +214,45 @@ html, body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 0;                    /* crucial for proper ellipsis + flex-like behavior */
+    max-width: 0;                    /* Required for proper ellipsis in fixed layout */
+    background-color: transparent !important; /* Prevents td from overriding row background */
 }
 
 /* --------------------------------------------------
-   Zebra Striping – visible & override-resistant
+   Zebra Striping – row-level, high visibility, override-proof
 -------------------------------------------------- */
-.permitTable tbody tr:nth-child(odd) > td {
-    background-color: #f5f7fa !important;   /* noticeably cooler gray – very readable */
+.permitTable tbody tr:nth-child(odd) {
+    background-color: #edf2ff !important;   /* Light blue-gray – clearly visible difference */
 }
 
-.permitTable tbody tr:nth-child(even) > td {
+.permitTable tbody tr:nth-child(even) {
     background-color: #ffffff !important;
 }
 
 /* --------------------------------------------------
    Hover effect (accessibility + UX)
 -------------------------------------------------- */
-.permitTable tbody tr:hover > td {
-    background-color: #eff6ff !important;   /* light blue highlight */
-    transition: background-color 0.13s ease;
+.permitTable tbody tr:hover {
+    background-color: #dbeafe !important;
+    transition: background-color 0.15s ease;
 }
 
 /* --------------------------------------------------
-   Rows & Update Flash – zebra-safe version
+   Update Flash – row-based, zebra-friendly
 -------------------------------------------------- */
 .permit-row {
-    transition: background-color 0.2s ease; /* smooth out any future changes */
+    transition: background-color 0.2s ease;
 }
 
-.permit-row.updated > td {
-    animation: flashCell 1.4s ease-out;
+.permit-row.updated {
+    animation: flashRow 1.4s ease-out;
 }
 
-/* Cell-based flash – preserves zebra & more consistent rendering */
-@keyframes flashCell {
-    0%   { background-color: #ffefc7 !important; }   /* warm yellow */
-    25%  { background-color: #ffefc7 !important; }
-    100% { background-color: transparent !important; } /* returns to zebra */
+@keyframes flashRow {
+    0%   { background-color: #fefce8 !important; }   /* Warm yellow flash */
+    35%  { background-color: #fefce8 !important; }
+    100% { background-color: transparent !important; } /* Returns to zebra */
 }
-
-/* Optional: stronger flash version if you want more visibility
-@keyframes flashCell {
-    0%   { background-color: #fef3c7 !important; box-shadow: inset 0 0 0 9999px rgba(255,230,150,0.6); }
-    30%  { background-color: #fef3c7 !important; box-shadow: inset 0 0 0 9999px rgba(255,230,150,0.4); }
-    100% { background-color: transparent !important; box-shadow: none; }
-}
-*/
 
 /* --------------------------------------------------
    Empty State
