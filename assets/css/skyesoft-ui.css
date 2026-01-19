@@ -336,3 +336,9 @@ html, body {
     }
 }
 /* #endregion */
+#permitScrollWrap .permitTable tbody tr:nth-child(odd) {
+    background-color: #edf2ff !important;
+}
+#permitScrollWrap .permitTable tbody tr:nth-child(even) {
+    background-color: #ffffff !important;
+}
