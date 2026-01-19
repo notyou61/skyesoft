@@ -220,6 +220,21 @@ html, body {
 }
 
 /* --------------------------------------------------
+   Zebra Striping (tbody only)
+-------------------------------------------------- */
+.permitTable tbody tr:nth-child(odd) {
+    background-color: #f9fafb;
+}
+
+.permitTable tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.permitTable tbody tr {
+    transition: background-color 0.15s linear;
+}
+
+/* --------------------------------------------------
    Rows
 -------------------------------------------------- */
 .permit-row {
