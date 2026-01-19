@@ -52,18 +52,13 @@
    AutoScroll engine scrolls scrollContainer.scrollTop → max over time.
 */
 .scrollContainer {
-    flex-grow: 1;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 6px;
-
-    /* Smooth visual scroll (JS movement still precise) */
     scroll-behavior: smooth;
-
-    /* Cleaner scrollbars */
     scrollbar-width: thin;
 
-    max-height: 360px; /* <<< REQUIRED */
+    max-height: 600px;   /* match permitScrollWrap intent */
 }
 
 /* Table text rules */
