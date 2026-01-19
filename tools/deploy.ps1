@@ -148,9 +148,14 @@ if (-not (Test-Path $script)) {
 }
 
 # --- Execute deploy ---
+# Better: pass current directory (where deploy.ps1 is called from = repo root)
+$localRoot = Get-Location | Select-Object -ExpandProperty Path
+
+Write-Host "Deploying from local root: $localRoot" -ForegroundColor DarkCyan
+
 & "$winscp" `
-  /parameter "LOCALROOT=$localRoot" `
-  /script="$script"
+    /script="$script" `
+    /parameter $localRoot   # ← important: no quotes around the name, just the value
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error 'Deploy failed.'
