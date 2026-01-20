@@ -1,12 +1,9 @@
-/* #region Card Dividers */
-.cardBodyDivider,
-.cardFooterDivider {
-    border-bottom: 2px solid #ccc;
-    margin: 10px 0;
-}
-/* #endregion */
+/* ============================================================
+   OFFICE BOARD STYLESHEET
+   Cleaned & MTCO-aligned — January 2026
+   ============================================================ */
 
-/* #region Card Containers */
+/* #region Card Base */
 .card {
     background: #f7f7f7;
     border-radius: 12px;
@@ -15,9 +12,12 @@
     min-height: 360px;
     display: flex;
     flex-direction: column;
+
+    /* Unified width behavior (desktop + mobile) */
+    width: 100%;
+    max-width: 100%;
 }
 
-/* Proper container styling for the header section */
 .cardHeader {
     padding-bottom: 4px;
     display: flex;
@@ -25,52 +25,32 @@
     justify-content: space-between;
 }
 
-/* Title styling */
 .cardHeader h2 {
     font-size: 1.45rem;
     font-weight: 700;
     margin: 0;
 }
-/* #endregion */
 
-/* #region Active Permits — Fixed Window Scroll */
-
-/* 
-   FIXED 420px window (viewport-independent)  
-   This is the visible window the scroll must pass through.
-*/
-/* Base card body — flexible for most cards */
 .cardBody {
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
+/* #endregion */
 
-/* Active Permits ONLY — fixed scroll window */
+/* #region Card Dividers */
+.cardBodyDivider,
+.cardFooterDivider {
+    border-bottom: 2px solid #ccc;
+    margin: 10px 0;
+}
+/* #endregion */
+
+/* #region Active Permits — Specialization */
 #cardActivePermits .cardBody {
     height: 420px;
 }
 
-/* 
-   This is the actual scrollable area.
-   AutoScroll engine scrolls scrollContainer.scrollTop → max over time.
-*/
-.scrollContainer {
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 6px;
-    scroll-behavior: smooth;
-    scrollbar-width: thin;
-    max-height: 420px;   /* match permitScrollWrap intent */
-}
-
-/* Table text rules */
-.permitTable th,
-.permitTable td {
-    white-space: nowrap;
-}
-
-/* Tighten Active Permits header spacing */
 #cardActivePermits .cardHeader {
     padding-bottom: 4px;
 }
@@ -81,60 +61,68 @@
 }
 
 #cardActivePermits .cardBodyDivider {
-    margin-top: 2px;
-    margin-bottom: 2px;
+    margin: 2px 0;
     opacity: 0.6;
 }
 
-/* MTCO — Page vertical layout contract */
+/* Scrollable content window */
+.scrollContainer {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    max-height: 420px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+}
+
+/* Table nowrap behavior (used in Active Permits) */
+.permitTable th,
+.permitTable td {
+    white-space: nowrap;
+}
+/* #endregion */
+
+/* #region Page Layout — Office Board */
 body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
-    min-height: 100vh; /* fill viewport */
+    min-height: 100vh;
 }
 
-/* Page body owns remaining vertical space */
-/* Page body is a frame, not a spacer */
+body[data-page="officeBoard"] #pageHeader {
+    margin-bottom: 12px; /* non-collapsing spacing */
+}
+
 body[data-page="officeBoard"] #pageBody {
-    flex: 0 0 auto;              /* do not stretch */
+    flex: 0 0 auto;              /* acts as frame, not spacer */
     display: flex;
     flex-direction: column;
 
-    justify-content: center;     /* vertical centering when single card */
-    align-items: stretch;        /* cards control width */
+    justify-content: center;     /* vertical centering when few cards */
+    align-items: stretch;        /* cards determine their own width */
 
-    padding: 16px;               /* equal margin on all sides */
+    padding: 16px;               /* consistent outer margin */
 }
 
-/* MTCO — Header → Body spacing (non-collapsing) */
-body[data-page="officeBoard"] #pageHeader {
-    margin-bottom: 12px;
-}
-
-/* Footer stays pinned, no floating gap */
 body[data-page="officeBoard"] #pageFooter {
     flex-shrink: 0;
 }
-
-#pageBody.board-section {
-    padding: 16px;     /* equal padding on all sides */
-}
-
 /* #endregion */
 
-/* #region Highlights Card */
+/* #region Card Content — Lists & Placeholders */
+/* Highlights */
 .highlights-list {
     list-style: none;
     font-size: 1.06em;
     line-height: 1.7;
     margin-top: 10px;
 }
+
 .highlights-list li {
     padding: 3px 0;
 }
-/* #endregion */
 
-/* #region KPI Placeholder */
+/* KPI Placeholder */
 .kpi-placeholder {
     flex-grow: 1;
     display: flex;
@@ -144,9 +132,8 @@ body[data-page="officeBoard"] #pageFooter {
     font-weight: 600;
     color: #666;
 }
-/* #endregion */
 
-/* #region Announcements */
+/* Announcements */
 .announcement-list {
     list-style: none;
     margin-top: 10px;
@@ -154,20 +141,15 @@ body[data-page="officeBoard"] #pageFooter {
     line-height: 1.6;
     padding-left: 2px;
 }
+
 .announcement-list li {
     padding: 6px 4px;
     border-bottom: 1px solid #eee;
 }
 /* #endregion */
 
-/* #region Mobile Tweaks */
+/* #region Mobile Adjustments */
 @media (max-width: 600px) {
-
-    .card {
-        width: 100%;
-        max-width: 100%;
-    }
-
     .permitTable th,
     .permitTable td {
         font-size: 0.85em;
