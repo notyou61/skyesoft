@@ -257,37 +257,38 @@ body[data-page="officeBoard"] #pageBody > .card {
 /* ============================================================
    #endregion
    ============================================================ */
-   
-   /* ============================================================
-   #region MTCO OUTER BALANCE & FOOTER PADDING
+
+/* ============================================================
+   #region MTCO OUTER BALANCE & FOOTER PADDING — symmetric outer space
    ============================================================ */
 
-/* A: Add symmetric top padding to the entire page (matches bottom feel) */
+/* Symmetric top + bottom padding on the root flex container */
 body[data-page="officeBoard"] {
-    padding-top: var(--ob-section-gap, 16px);   /* creates top margin-like space for header */
+    padding: var(--ob-section-gap, 16px);   /* top + right + bottom + left — uniform breathing room */
+    /* If you want different horizontal padding, use: padding: 16px 24px; or similar */
 }
 
-/* If the header already has its own top margin/padding from shared CSS, you can use this instead to avoid double-spacing:
-body[data-page="officeBoard"] #pageHeader {
-    margin-top: var(--ob-section-gap, 16px);
-}
-(Choose ONE of the above — test padding on body first; it's simpler for overall symmetry.)
-*/
+/* Override the previous top-only version — remove or comment out the old padding-top line */
 
-/* B: Give footer internal vertical breathing room */
+/* Keep footer internal padding for vertical breathing on the copyright text */
 body[data-page="officeBoard"] #pageFooter {
-    padding: 12px 16px;               /* top/bottom 12px, left/right keep consistent */
-    text-align: center;               /* optional: centers copyright if not already */
-    font-size: 0.9rem;                /* optional: slightly smaller if it feels too prominent */
-    line-height: 1.4;                 /* improves readability */
+    padding: 12px 16px;                    /* top/bottom 12px inside footer */
+    text-align: center;
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
-/* If .board-section adds unwanted padding/margin to footer, reinforce zeroing */
+/* Reinforce against external inflation (safe !important if needed) */
 body[data-page="officeBoard"] #pageFooter,
 body[data-page="officeBoard"] #pageFooter.board-section {
-    padding-top: 12px !important;     /* override any external top padding */
+    padding-top: 12px !important;
     padding-bottom: 12px !important;
-    margin: 0 !important;             /* extra guardrail */
+    margin: 0 !important;
+}
+
+/* If you still want the card → footer inner gap controlled separately, keep this: */
+body[data-page="officeBoard"] #pageFooter {
+    margin-top: var(--ob-section-gap, 16px);   /* keeps the previous inner separation */
 }
 
 /* ============================================================
