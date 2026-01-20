@@ -1,7 +1,7 @@
 /* ============================================================
    OFFICE BOARD STYLESHEET
    MTCO-aligned • Monitor-safe • Full-viewport kiosk pattern
-   January 2026
+   January 2026 — with balanced header/body/footer gaps
    ============================================================ */
 
 /* ============================================================
@@ -21,19 +21,6 @@ body {
    #endregion
    ============================================================ */
 
-/* ============================================================
-   #region OFFICE BOARD SPACING TOKENS
-   ============================================================ */
-
-:root {
-    --ob-section-gap: 16px;
-}
-
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
 
 /* ============================================================
    #region CARD BASE & VERTICAL CONTRACT
@@ -50,7 +37,7 @@ body {
 
     width: 100%;
     max-width: 100%;
-    min-height: 360px;               /* preserved intent, now safe */
+    min-height: 360px;
 }
 
 /* Header & footer fixed-size */
@@ -76,7 +63,7 @@ body {
 /* Body grows & contains */
 .cardBody {
     flex: 1 1 auto;
-    min-height: 0;                   /* critical for nested shrink/scroll */
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -103,7 +90,7 @@ body {
 
 
 /* ============================================================
-   #region PAGE LAYOUT — OFFICE BOARD (with restored spacing)
+   #region PAGE LAYOUT — OFFICE BOARD (viewport frame)
    ============================================================ */
 
 body[data-page="officeBoard"] {
@@ -112,42 +99,36 @@ body[data-page="officeBoard"] {
     height: 100%;
 }
 
-/* Header */
+/* Page header fixed */
 body[data-page="officeBoard"] #pageHeader {
     flex: 0 0 auto;
-    margin-bottom: var(--ob-section-gap);
+    margin-bottom: 12px;
 }
 
-/* Body (frame) */
+/* Main content frame — fills remaining space */
 body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
-
     justify-content: center;
     align-items: stretch;
-
     padding: 16px;
     overflow: hidden;
-
-    margin-bottom: var(--ob-section-gap);
+    margin-bottom: 0;                  /* MTCO: prevent extra bottom push */
 }
 
-/* Footer */
+/* Footer pinned + controlled gap from card */
 body[data-page="officeBoard"] #pageFooter {
     flex: 0 0 auto;
+    margin-top: var(--ob-section-gap, 16px);   /* single source of body↔footer space; fallback 16px */
+    padding-top: 0;                        /* override any .board-section top padding */
 }
 
-/* Guardrail stays — prevents external drift */
+/* Guardrail: neutralize external margins */
 body[data-page="officeBoard"] .board-section {
-    margin-left: 0;
-    margin-right: 0;
+    margin: 0;
 }
-
-/* ============================================================
-   #endregion
-   ============================================================ */
 
 /* ============================================================
    #endregion
@@ -158,7 +139,6 @@ body[data-page="officeBoard"] .board-section {
    #region ACTIVE/VISIBLE CARD — constrained to frame
    ============================================================ */
 
-/* Visible card fits #pageBody exactly */
 body[data-page="officeBoard"] #pageBody > .card {
     flex: 1 1 auto;
     min-height: 0;
@@ -196,13 +176,12 @@ body[data-page="officeBoard"] #pageBody > .card {
     padding-right: 6px;
     scroll-behavior: smooth;
 
-    /* Hide scrollbars cleanly */
-    scrollbar-width: none;           /* Firefox */
-    -ms-overflow-style: none;        /* IE/legacy Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 #cardActivePermits .scrollContainer::-webkit-scrollbar {
-    display: none;                   /* Chrome/Safari/Modern Edge */
+    display: none;
 }
 
 /* Table nowrap */
