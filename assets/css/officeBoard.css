@@ -19,7 +19,6 @@
 }
 
 .cardHeader {
-    flex: 0 0 auto;       /* intrinsic height */
     padding-bottom: 4px;
     display: flex;
     align-items: center;
@@ -33,26 +32,11 @@
 }
 
 .cardBody {
-    flex: 1 1 auto;       /* fills remaining card space */
-    overflow: hidden;     /* body never scrolls */
-    min-height: 0;        /* allow internal scroll areas */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
-
-.cardFooter {
-    flex: 0 0 auto;
-}
-
 /* #endregion */
-
-/* #region Board Cards — Equal Height Shells */
-#pageBody > .card {
-    flex: 1 1 0;          /* all cards get equal share */
-    display: flex;
-    flex-direction: column;
-    min-height: 0;        /* CRITICAL for scroll math */
-}
 
 /* #region Card Dividers */
 .cardBodyDivider,
@@ -64,9 +48,7 @@
 
 /* #region Active Permits — Specialization */
 #cardActivePermits .cardBody {
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
+    height: 420px;
 }
 
 #cardActivePermits .cardHeader {
