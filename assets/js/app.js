@@ -113,9 +113,9 @@ window.SkyeApp.updateVersionFooter = function (payload) {
     const el = document.getElementById("versionFooter");
     if (!el) return;
 
-    if (payload.siteMeta?.siteVersion) {
-        el.textContent = "v" + payload.siteMeta.siteVersion;
-    }
+    const version = payload.system?.siteVersion;
+
+    el.textContent = version ? "v" + version : "vunknown";
 };
 /* #endregion */
 
