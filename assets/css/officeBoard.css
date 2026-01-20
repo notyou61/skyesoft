@@ -94,13 +94,16 @@ body[data-page="officeBoard"] {
 }
 
 /* Page body owns remaining vertical space */
+/* Page body is a frame, not a spacer */
 body[data-page="officeBoard"] #pageBody {
-    flex: 0 0 auto;     /* do not stretch */
+    flex: 0 0 auto;              /* do not stretch */
     display: flex;
     flex-direction: column;
 
-    justify-content: center;   /* vertical centering */
-    align-items: center;       /* horizontal centering */
+    justify-content: center;     /* vertical centering when single card */
+    align-items: stretch;        /* cards control width */
+
+    padding: 16px;               /* equal margin on all sides */
 }
 
 /* MTCO — Header → Body spacing (non-collapsing) */
@@ -161,7 +164,6 @@ body[data-page="officeBoard"] #pageFooter {
 @media (max-width: 600px) {
 
     .card {
-        padding: 14px;
         width: 100%;
         max-width: 100%;
     }
