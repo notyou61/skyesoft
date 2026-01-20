@@ -21,6 +21,19 @@ body {
    #endregion
    ============================================================ */
 
+/* ============================================================
+   #region OFFICE BOARD SPACING TOKENS
+   ============================================================ */
+
+:root {
+    --ob-section-gap: 16px;
+}
+
+/* ============================================================
+   #endregion
+   ============================================================ */
+
+
 
 /* ============================================================
    #region CARD BASE & VERTICAL CONTRACT
@@ -90,42 +103,51 @@ body {
 
 
 /* ============================================================
-   #region PAGE LAYOUT — OFFICE BOARD (viewport frame)
+   #region PAGE LAYOUT — OFFICE BOARD (with restored spacing)
    ============================================================ */
 
 body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
-    height: 100%;                    /* stricter than min-height for containment */
+    height: 100%;
 }
 
-/* Page header fixed */
+/* Header */
 body[data-page="officeBoard"] #pageHeader {
     flex: 0 0 auto;
-    margin-bottom: 12px;
+    margin-bottom: var(--ob-section-gap);
 }
 
-/* Main content frame — fills remaining space */
+/* Body (frame) */
 body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;         /* centers when content short */
+
+    justify-content: center;
     align-items: stretch;
+
     padding: 16px;
-    overflow: hidden;                /* contains everything inward */
+    overflow: hidden;
+
+    margin-bottom: var(--ob-section-gap);
 }
 
-/* Footer pinned */
+/* Footer */
 body[data-page="officeBoard"] #pageFooter {
     flex: 0 0 auto;
 }
 
-/* Guardrail: neutralize external margins (e.g. from skyesoft-ui.css) */
+/* Guardrail stays — prevents external drift */
 body[data-page="officeBoard"] .board-section {
-    margin: 0;
+    margin-left: 0;
+    margin-right: 0;
 }
+
+/* ============================================================
+   #endregion
+   ============================================================ */
 
 /* ============================================================
    #endregion
