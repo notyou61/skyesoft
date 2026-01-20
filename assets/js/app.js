@@ -110,12 +110,13 @@ window.SkyeApp.updateHSB = function (payload) {
 
 /* #region VERSION FOOTER */
 window.SkyeApp.updateVersionFooter = function (payload) {
-    const el = document.getElementById("versionFooter");
-    if (!el) return;
 
-    const version = payload.system?.siteVersion;
+    const versionEl = document.getElementById("footerVersion");
+    if (!versionEl) return;
 
-    el.textContent = version ? "v" + version : "vunknown";
+    const version = payload.siteMeta?.siteVersion;
+
+    versionEl.textContent = version ?? "--";
 };
 /* #endregion */
 
