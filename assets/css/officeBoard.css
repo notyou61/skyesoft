@@ -72,7 +72,7 @@
 
 
 /* ============================================================
-   #region ACTIVE PERMITS — INTERNAL SCROLL ONLY
+   #region ACTIVE PERMITS — INTERNAL SCROLL ONLY (NO SCROLLBARS)
    ============================================================ */
 
 /* Tighten header slightly */
@@ -87,15 +87,29 @@
     opacity: 0.6;
 }
 
-/* Scroll happens INSIDE the body */
+/* Card body must be allowed to shrink inside flex layouts */
+#cardActivePermits .cardBody {
+    flex: 1 1 auto;
+    min-height: 0;                 /* CRITICAL: prevents flex overflow */
+}
+
+/* Scroll happens INSIDE the body (hidden scrollbars) */
 #cardActivePermits .scrollContainer {
-    height: 100%;
+    flex: 1 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 6px;
 
     scroll-behavior: smooth;
-    scrollbar-width: thin;
+
+    /* Hide scrollbars (all engines) */
+    scrollbar-width: none;         /* Firefox */
+    -ms-overflow-style: none;      /* IE / legacy Edge */
+}
+
+/* WebKit scrollbar suppression */
+#cardActivePermits .scrollContainer::-webkit-scrollbar {
+    display: none;                 /* Chrome / Safari */
 }
 
 /* Table formatting */
