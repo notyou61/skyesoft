@@ -98,8 +98,9 @@ body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    margin-top: 0;
-    padding-top: 0;
+
+    justify-content: center;   /* vertical centering */
+    align-items: center;       /* horizontal centering */
 }
 
 /* MTCO — Header → Body spacing (non-collapsing) */
@@ -157,6 +158,8 @@ body[data-page="officeBoard"] #pageFooter {
 
     .card {
         padding: 14px;
+        width: 100%;
+        max-width: 100%;
     }
 
     .permitTable th,
