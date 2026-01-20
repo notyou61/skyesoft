@@ -86,10 +86,6 @@
     opacity: 0.6;
 }
 
-#pageBody .board-section:first-of-type {
-    margin-top: 12px;
-}
-
 /* MTCO — Page vertical layout contract */
 body[data-page="officeBoard"] {
     display: flex;
@@ -106,15 +102,14 @@ body[data-page="officeBoard"] #pageBody {
     padding-top: 0;
 }
 
+/* MTCO — Header → Body spacing (non-collapsing) */
+body[data-page="officeBoard"] #pageHeader {
+    margin-bottom: 12px;
+}
+
 /* Footer stays pinned, no floating gap */
 body[data-page="officeBoard"] #pageFooter {
     flex-shrink: 0;
-}
-
-/* Remove vertical gap between page header and first card */
-body[data-page="officeBoard"] #pageHeader {
-    margin-bottom: 0;
-    padding-bottom: 0;
 }
 
 /* #endregion */
