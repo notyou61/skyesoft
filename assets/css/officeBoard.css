@@ -1,23 +1,35 @@
 /* ============================================================
    OFFICE BOARD STYLESHEET
-   Cleaned & MTCO-aligned — January 2026
+   MTCO-aligned • Monitor-safe • January 2026
    ============================================================ */
 
-/* #region Card Base */
+/* ============================================================
+   #region CARD BASE & VERTICAL CONTRACT
+   ============================================================ */
+
 .card {
     background: #f7f7f7;
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 3px 8px rgba(0,0,0,0.10);
-    min-height: 360px;
+
+    /* Vertical contract */
     display: flex;
     flex-direction: column;
 
-    /* Unified width behavior (desktop + mobile) */
+    /* Width behavior */
     width: 100%;
     max-width: 100%;
+    min-height: 360px;
 }
 
+/* Header & footer never flex */
+.cardHeader,
+.cardFooter {
+    flex: 0 0 auto;
+}
+
+/* Header layout */
 .cardHeader {
     padding-bottom: 4px;
     display: flex;
@@ -31,85 +43,113 @@
     margin: 0;
 }
 
+/* Body absorbs remaining vertical space */
 .cardBody {
+    flex: 1 1 auto;
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
-/* #endregion */
 
-/* #region Card Dividers */
+/* ============================================================
+   #endregion
+   ============================================================ */
+
+
+/* ============================================================
+   #region CARD DIVIDERS
+   ============================================================ */
+
 .cardBodyDivider,
 .cardFooterDivider {
     border-bottom: 2px solid #ccc;
     margin: 10px 0;
 }
-/* #endregion */
 
-/* #region Active Permits — Specialization */
-#cardActivePermits .cardBody {
-    height: 420px;
-}
+/* ============================================================
+   #endregion
+   ============================================================ */
 
-#cardActivePermits .cardHeader {
-    padding-bottom: 4px;
-}
 
+/* ============================================================
+   #region ACTIVE PERMITS — INTERNAL SCROLL ONLY
+   ============================================================ */
+
+/* Tighten header slightly */
 #cardActivePermits .cardHeader h2 {
     font-weight: 600;
     letter-spacing: 0.2px;
 }
 
+/* Subtle divider */
 #cardActivePermits .cardBodyDivider {
     margin: 2px 0;
     opacity: 0.6;
 }
 
-/* Scrollable content window */
-.scrollContainer {
+/* Scroll happens INSIDE the body */
+#cardActivePermits .scrollContainer {
+    height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 6px;
-    max-height: 420px;
+
     scroll-behavior: smooth;
     scrollbar-width: thin;
 }
 
-/* Table nowrap behavior (used in Active Permits) */
+/* Table formatting */
 .permitTable th,
 .permitTable td {
     white-space: nowrap;
 }
-/* #endregion */
 
-/* #region Page Layout — Office Board */
+/* ============================================================
+   #endregion
+   ============================================================ */
+
+
+/* ============================================================
+   #region PAGE LAYOUT — OFFICE BOARD
+   ============================================================ */
+
 body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
 
+/* Header spacing */
 body[data-page="officeBoard"] #pageHeader {
-    margin-bottom: 12px; /* non-collapsing spacing */
+    margin-bottom: 12px;
 }
 
+/* Body is a frame, not a spacer */
 body[data-page="officeBoard"] #pageBody {
-    flex: 0 0 auto;              /* acts as frame, not spacer */
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
 
-    justify-content: center;     /* vertical centering when few cards */
-    align-items: stretch;        /* cards determine their own width */
+    justify-content: center;
+    align-items: stretch;
 
-    padding: 16px;               /* consistent outer margin */
+    padding: 16px;
 }
 
+/* Footer stays pinned */
 body[data-page="officeBoard"] #pageFooter {
     flex-shrink: 0;
 }
-/* #endregion */
 
-/* #region Card Content — Lists & Placeholders */
+/* ============================================================
+   #endregion
+   ============================================================ */
+
+
+/* ============================================================
+   #region CARD CONTENT — LISTS & PLACEHOLDERS
+   ============================================================ */
+
 /* Highlights */
 .highlights-list {
     list-style: none;
@@ -124,7 +164,7 @@ body[data-page="officeBoard"] #pageFooter {
 
 /* KPI Placeholder */
 .kpi-placeholder {
-    flex-grow: 1;
+    flex: 1 1 auto;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -146,10 +186,18 @@ body[data-page="officeBoard"] #pageFooter {
     padding: 6px 4px;
     border-bottom: 1px solid #eee;
 }
-/* #endregion */
 
-/* #region Mobile Adjustments */
+/* ============================================================
+   #endregion
+   ============================================================ */
+
+
+/* ============================================================
+   #region MOBILE ADJUSTMENTS
+   ============================================================ */
+
 @media (max-width: 600px) {
+
     .permitTable th,
     .permitTable td {
         font-size: 0.85em;
@@ -160,4 +208,7 @@ body[data-page="officeBoard"] #pageFooter {
         font-size: 0.95em;
     }
 }
-/* #endregion */
+
+/* ============================================================
+   #endregion
+   ============================================================ */
