@@ -111,11 +111,15 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region VERSION FOOTER */
 window.SkyeApp.updateVersionFooter = function (payload) {
     const versionEl = document.getElementById("footerVersion");
-    if (!versionEl) return;
+    if (!versionEl) {
+        console.warn("Version span (#footerVersion) not found in DOM");
+        return;
+    }
 
+    // Use the actual path from your SSE payload / versions.json structure
     const version = payload?.siteMeta?.siteVersion;
 
-    versionEl.textContent = version ?? "--";
+    versionEl.textContent = version || "--";   // "--" if missing/undefined/null
 };
 /* #endregion */
 
