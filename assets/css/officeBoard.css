@@ -95,7 +95,7 @@ body[data-page="officeBoard"] {
 
 /* Page body owns remaining vertical space */
 body[data-page="officeBoard"] #pageBody {
-    flex: 1 1 auto;
+    flex: 0 0 auto;     /* do not stretch */
     display: flex;
     flex-direction: column;
 
@@ -111,6 +111,10 @@ body[data-page="officeBoard"] #pageHeader {
 /* Footer stays pinned, no floating gap */
 body[data-page="officeBoard"] #pageFooter {
     flex-shrink: 0;
+}
+
+#pageBody.board-section {
+    padding: 18px;     /* equal padding on all sides */
 }
 
 /* #endregion */
