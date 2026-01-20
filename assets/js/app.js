@@ -144,11 +144,26 @@ window.SkyeApp.handleSSE = function (payload) {
 };
 /* #endregion */
 
+/* #region FOOTER BOOTSTRAP */
+window.SkyeApp.initFooter = function () {
+
+    /* Dynamic Year */
+    const yearEl = document.getElementById("footerYear");
+    if (yearEl) {
+        yearEl.textContent = new Date().getFullYear();
+    }
+
+};
+/* #endregion */
+
 /* #region DOM READY BOOTSTRAP */
 document.addEventListener("DOMContentLoaded", function () {
 
     window.SkyeApp.detectPage();
     window.SkyeApp.initPage();
+
+    /* Footer (non-SSE, static bootstraps) */
+    window.SkyeApp.initFooter();
 
     if (window.SkySSE?.start) {
         window.SkySSE.start();
