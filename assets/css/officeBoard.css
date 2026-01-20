@@ -111,12 +111,14 @@ body[data-page="officeBoard"] #pageBody {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+
+    justify-content: space-between; /* ✅ FIX */
     align-items: stretch;
-    padding-inline: 16px;   /* left/right page margin */
-    padding-block: 16px;    /* top/bottom page margin (what you said we lost) */
+
+    padding-inline: 16px;
+    padding-block: 16px;
+
     overflow: hidden;
-    margin-bottom: 0;                  /* MTCO: prevent extra bottom push */
 }
 
 /* Footer pinned + controlled gap from card */
