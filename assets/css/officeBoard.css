@@ -140,9 +140,9 @@ body[data-page="officeBoard"] .board-section {
    ============================================================ */
 
 body[data-page="officeBoard"] #pageBody > .card {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: 100%;
+    flex: 0 1 auto;          /* ← no grow, only shrink if needed */
+    align-self: center;      /* optional: horizontal center if you want */
+    max-height: calc(100% - 32px);  /* rough cap to leave room for paddings + gaps; adjust as needed */
     overflow: hidden;
 }
 
