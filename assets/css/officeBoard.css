@@ -113,7 +113,8 @@ body[data-page="officeBoard"] #pageBody {
     flex-direction: column;
     justify-content: center;
     align-items: stretch;
-    padding: 16px;
+    padding-inline: 16px;   /* left/right page margin */
+    padding-block: 16px;    /* top/bottom page margin (what you said we lost) */
     overflow: hidden;
     margin-bottom: 0;                  /* MTCO: prevent extra bottom push */
 }
