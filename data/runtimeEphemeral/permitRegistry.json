@@ -2269,6 +2269,20 @@
       "notes": [],
       "createdAt": 1768593442,
       "lastUpdatedAt": 1768594417
+    },
+    "27639": {
+      "workOrder": 27639,
+      "customer": "Everbrite",
+      "jobsite": "First Watch # 64183",
+      "jurisdiction": "queen creek",
+      "permit": {
+        "number": null,
+        "status": "under_review",
+        "fees": []
+      },
+      "notes": [],
+      "createdAt": 1768595000,
+      "lastUpdatedAt": 1768595000
     }
   }
 }
