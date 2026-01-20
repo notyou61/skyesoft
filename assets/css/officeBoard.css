@@ -114,7 +114,7 @@ body[data-page="officeBoard"] #pageFooter {
 }
 
 #pageBody.board-section {
-    padding: 18px;     /* equal padding on all sides */
+    padding: 16px;     /* equal padding on all sides */
 }
 
 /* #endregion */
