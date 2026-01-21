@@ -143,6 +143,28 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 /* #endregion */
 
+/* --- Make the scroll header hug the divider line --- */
+
+/* kill the “spacer divider” (keep it for structure but remove visual height) */
+.cardBodyDivider {
+    border: 0;
+    margin: 0;
+    height: 0;
+}
+
+/* put the divider line on the scroll surface itself */
+.cardContent {
+    padding: 0;                 /* IMPORTANT: no top padding */
+    margin: 0;
+    border-top: 1px solid #ccc; /* divider line lives here now */
+}
+
+/* safety: ensure no top gap from the table */
+.permit-table {
+    margin: 0;
+}
+
+
 /* #region Active Permits Table */
 .permit-table {
     width: 100%;
@@ -156,7 +178,7 @@ body[data-page="officeBoard"] #boardCardHost {
     top: 0;
     background: #0f172a;
     color: #fff;
-    padding: 8px 10px;
+    padding: 6px 8px;
     z-index: 1;
 }
 
