@@ -19,7 +19,7 @@ body {
 body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
+    height: 100vh;
     padding: var(--ob-section-gap, 16px);
 }
 
@@ -30,12 +30,11 @@ body[data-page="officeBoard"] #pageHeader {
 
 body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
-    min-height: 0;          /* REQUIRED for nested scrolling */
+    min-height: 0;          /* REQUIRED for nested flex scrolling */
     display: flex;
     flex-direction: column;
-    align-items: stretch;
     padding: 16px;
-    overflow: hidden;       /* Prevents page scroll */
+    overflow: hidden;
 }
 
 body[data-page="officeBoard"] #pageFooter {
@@ -48,40 +47,47 @@ body[data-page="officeBoard"] #pageFooter {
 }
 /* #endregion */
 
-/* #region Board Wrapper Sections */
+/* #region Board Section Wrapper */
 body[data-page="officeBoard"] .board-section {
     width: 100%;
     margin: 0;
     background: #fff;
     border-radius: 12px;
     padding: 10px 18px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
 }
 /* #endregion */
 
-/* #region Card Base */
+/* #region Card Host (multi-card container) */
+body[data-page="officeBoard"] #boardCardHost {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+/* #endregion */
+
+/* #region Card Base Contract (all cards) */
 .card {
     background: #f7f7f7;
     border-radius: 12px;
-    padding: 16px;
     box-shadow: 0 3px 8px rgba(0,0,0,0.10);
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    max-width: 100%;
-    min-height: 320px;
+    flex: 1 1 auto;
+    min-height: 0;
 }
+/* #endregion */
 
-.cardHeader,
-.cardFooter {
-    flex: 0 0 auto;
-}
-
+/* #region Card Header & Footer */
 .cardHeader {
-    padding-bottom: 4px;
+    flex: 0 0 52px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding-bottom: 4px;
 }
 
 .cardHeader h2 {
@@ -90,11 +96,14 @@ body[data-page="officeBoard"] .board-section {
     margin: 0;
 }
 
-.cardBody {
+.cardFooter {
+    flex: 0 0 36px;
     display: flex;
-    flex-direction: column;
-    padding: 8px 0;
-    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #333;
+    padding-top: 8px;
 }
 /* #endregion */
 
@@ -102,182 +111,41 @@ body[data-page="officeBoard"] .board-section {
 .cardBodyDivider,
 .cardFooterDivider {
     border-bottom: 2px solid #ccc;
-    margin: 10px 0;
+    margin: 8px 0;
 }
 /* #endregion */
 
-/* #region Active Card Constraints */
-body[data-page="officeBoard"] #pageBody > .card {
-    flex: 0 1 auto;
-    align-self: center;
-    max-height: calc(100% - 32px);
+/* #region Card Body (layout allocator — no direct scrolling) */
+.cardBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 /* #endregion */
 
-/* #region Permit Table */
-#permitScrollWrap {
-    max-height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none;
-}
-
-#permitScrollWrap::-webkit-scrollbar {
-    display: none;
-}
-
-.permitTable {
-    width: 100%;
-    border-collapse: separate;
-    table-layout: fixed;
-    font-size: 0.95em;
-}
-
-.permitTable thead th {
-    position: sticky;
-    top: 0;
-    background: #0f172a;
-    color: #fff;
-    padding: 8px 10px;
-}
-
-.permitTable tbody tr:nth-child(odd) {
-    background-color: #edf2ff;
-}
-
-.permitTable tbody tr:nth-child(even) {
-    background-color: #ffffff;
-}
-
-.permitTable tbody tr:hover {
-    background-color: #dbeafe;
-}
-
-.permitTable th,
-.permitTable td {
-    white-space: nowrap;
-}
-/* #endregion */
-
-/* #region Active Permits Card Refinements */
-#cardActivePermits .cardHeader h2 {
-    font-weight: 600;
-    letter-spacing: 0.2px;
-}
-
-#cardActivePermits .cardBodyDivider {
-    margin: 2px 0;
-    opacity: 0.6;
-}
-
-#cardActivePermits .scrollContainer {
+/* #region Card Content (the only scrolling surface) */
+.cardContent {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-right: 6px;
-    scroll-behavior: smooth;
+    padding: 8px 12px;
     scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
-#cardActivePermits .scrollContainer::-webkit-scrollbar {
+.cardContent::-webkit-scrollbar {
     display: none;
 }
 /* #endregion */
 
-/* #region Card Content Elements */
-.highlights-list {
-    list-style: none;
-    font-size: 1.06em;
-    line-height: 1.7;
-    margin-top: 10px;
-}
-
-.highlights-list li {
-    padding: 3px 0;
-}
-
-.kpi-placeholder {
-    flex: 1 1 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: #666;
-}
-
-.announcement-list {
-    list-style: none;
-    margin-top: 10px;
-    font-size: 1.05em;
-    line-height: 1.6;
-    padding-left: 2px;
-}
-
-.announcement-list li {
-    padding: 6px 4px;
-    border-bottom: 1px solid #eee;
-}
-/* #endregion */
-
-/* #region Mobile Adjustments */
-@media (max-width: 600px) {
-    .permitTable th,
-    .permitTable td {
-        font-size: 0.85em;
-        padding: 5px 6px;
-    }
-
-    .announcement-list li {
-        font-size: 0.95em;
-    }
-}
-/* #endregion */
-
-/* ── 2026 Active Permits card fixes ────────────────────────────────────── */
-
-body[data-page="officeBoard"] #boardCardHost {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    width: 100%;
-}
-
-body[data-page="officeBoard"] #boardCardHost > .board-card.active-permits {
-    flex: 1 1 auto !important;
-    min-height: 400px !important;
-    max-height: none !important;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    background: white;
-}
-
-.card-body {
-    flex: 1 1 auto !important;
-    min-height: 0;
-    overflow: visible;          /* ← changed from hidden */
-    display: flex;
-    flex-direction: column;
-}
-
-.scroll-container.permit-scroll {
-    flex: 1 1 auto !important;
-    min-height: 200px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden;
-    padding: 0 8px;
-}
-
-/* Table styles matching JS classes */
+/* #region Active Permits Table */
 .permit-table {
     width: 100%;
-    table-layout: auto;
     border-collapse: collapse;
     font-size: 0.95em;
+    table-layout: auto;
 }
 
 .permit-table thead th {
@@ -301,16 +169,53 @@ body[data-page="officeBoard"] #boardCardHost > .board-card.active-permits {
     background-color: #dbeafe;
 }
 
-.permit-table td,
-.permit-table th {
+.permit-table th,
+.permit-table td {
     padding: 8px 12px;
     white-space: nowrap;
 }
+/* #endregion */
 
-/* Footer polish */
-.card-footer {
-    font-weight: 600;
-    color: #333;
-    padding-top: 8px;
-    text-align: center;
+/* #region Shared Content Lists */
+.highlights-list,
+.announcement-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+    font-size: 1.05em;
+    line-height: 1.6;
 }
+
+.highlights-list li,
+.announcement-list li {
+    padding: 6px 4px;
+    border-bottom: 1px solid #eee;
+}
+/* #endregion */
+
+/* #region KPI / Placeholder */
+.kpi-placeholder {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #666;
+}
+/* #endregion */
+
+/* #region Mobile Adjustments */
+@media (max-width: 600px) {
+    .permit-table th,
+    .permit-table td {
+        font-size: 0.85em;
+        padding: 5px 6px;
+    }
+
+    .highlights-list,
+    .announcement-list {
+        font-size: 0.95em;
+    }
+}
+/* #endregion */
