@@ -110,16 +110,27 @@ window.SkyeApp.updateHSB = function (payload) {
 
 /* #region VERSION FOOTER */
 window.SkyeApp.updateVersionFooter = function (payload) {
-    const versionEl = document.getElementById("versionFooter");
-    if (!versionEl) {
-        console.warn("Version span (#footerVersion) not found in DOM");
+    const el = document.getElementById("versionFooter");
+    if (!el) return;
+
+    const version = payload?.siteMeta?.siteVersion;
+    const deployTime = payload?.siteMeta?.deployTime;
+
+    if (!version) {
+        el.textContent = "v—";
         return;
     }
 
-    // Use the actual path from your SSE payload / versions.json structure
-    const version = payload?.siteMeta?.siteVersion;
+    // Format deploy date → YYYY-MM-DD
+    let deployedStr = "";
+    if (deployTime) {
+        const d = new Date(deployTime);
+        if (!isNaN(d)) {
+            deployedStr = ` · deployed ${d.toISOString().slice(0, 10)}`;
+        }
+    }
 
-    versionEl.textContent = version || "--";   // "--" if missing/undefined/null
+    el.textContent = `v${version}${deployedStr}`;
 };
 /* #endregion */
 

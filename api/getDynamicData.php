@@ -301,7 +301,8 @@ $payload = [
         : [],
 
     "siteMeta" => [
-        "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown"
+        "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown",
+        "deployTime"  => $versions["system"]["deployTime"]  ?? null
     ]
 
 ];
