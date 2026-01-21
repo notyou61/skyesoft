@@ -60,13 +60,12 @@ body {
     margin: 0;
 }
 
-/* Body grows & contains */
+/* Base card body */
 .cardBody {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    padding: 8px 0;     /* equal vertical breathing room */
+    overflow: hidden;  /* prevent bleed */
 }
 
 /* ============================================================
