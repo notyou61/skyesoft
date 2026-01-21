@@ -1906,6 +1906,43 @@
                     }
                 ]
             },
+            "boardStructure": {
+                "description": "Canonical structural contract for all Skyesoft boards",
+                "appliesTo": [
+                "officeBoard",
+                "futureBoards"
+                ],
+                "card": {
+                "description": "Standard card unit used across all boards",
+                "requiredSections": [
+                    "cardHeader",
+                    "cardBody",
+                    "cardFooter"
+                ],
+                "cardHeader": {
+                    "iconRequired": true,
+                    "titleRequired": true,
+                    "dynamicContent": true,
+                    "notes": "Header always renders; icon precedes title"
+                },
+                "cardBody": {
+                    "dynamicContent": true,
+                    "scrollAllowed": true,
+                    "notes": "Only section permitted to scroll"
+                },
+                "cardFooter": {
+                    "mustExist": true,
+                    "dynamicContent": true,
+                    "notes": "Footer must remain visible at all times"
+                }
+                },
+                "rules": [
+                "All boards must use the same card structure",
+                "Header and footer may never collapse due to overflow",
+                "Only cardBody may contain scrollable regions",
+                "Card content is dynamic; structure is fixed"
+                ]
+            },
             "entityLocationContactStandard": {
                 "title": {
                     "icon": 42,
