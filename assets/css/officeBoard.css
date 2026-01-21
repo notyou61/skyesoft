@@ -114,7 +114,7 @@ body[data-page="officeBoard"] #boardCardHost {
 .cardBodyDivider,
 .cardFooterDivider {
     border-bottom: 1px solid #ccc;
-    margin: 2px 0;
+    margin: 0;
 }
 /* #endregion */
 
