@@ -4,10 +4,7 @@
    January 2026 — with balanced header/body/footer gaps
    ============================================================ */
 
-/* ============================================================
-   #region VIEWPORT LOCK — no page-level scroll/overflow ever
-   ============================================================ */
-
+/* #region Root Viewport Lock */
 html,
 body {
     height: 100%;
@@ -16,37 +13,63 @@ body {
     overflow: hidden;
     box-sizing: border-box;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
+/* #region Board Wrapper Sections */
+body[data-page="officeBoard"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: var(--ob-section-gap, 16px);
+}
 
+body[data-page="officeBoard"] #pageHeader {
+    flex: 0 0 auto;
+    margin-bottom: var(--ob-section-gap, 16px);
+}
 
-/* ============================================================
-   #region CARD BASE & VERTICAL CONTRACT
-   ============================================================ */
+body[data-page="officeBoard"] #pageBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    overflow: hidden;
+}
 
+body[data-page="officeBoard"] #pageFooter {
+    flex: 0 0 auto;
+    margin-top: var(--ob-section-gap, 16px);
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+body[data-page="officeBoard"] .board-section {
+    margin: 0;
+}
+/* #endregion */
+
+/* #region Card Base */
 .card {
     background: #f7f7f7;
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 3px 8px rgba(0,0,0,0.10);
-
     display: flex;
     flex-direction: column;
-
     width: 100%;
     max-width: 100%;
     min-height: 320px;
 }
 
-/* Header & footer fixed-size */
 .cardHeader,
 .cardFooter {
     flex: 0 0 auto;
 }
 
-/* Header layout */
 .cardHeader {
     padding-bottom: 4px;
     display: flex;
@@ -60,116 +83,42 @@ body {
     margin: 0;
 }
 
-/* Base card body */
 .cardBody {
     display: flex;
     flex-direction: column;
-    padding: 8px 0;     /* equal vertical breathing room */
-    overflow: hidden;  /* prevent bleed */
+    padding: 8px 0;
+    overflow: hidden;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region CARD DIVIDERS
-   ============================================================ */
-
+/* #region Card Dividers */
 .cardBodyDivider,
 .cardFooterDivider {
     border-bottom: 2px solid #ccc;
     margin: 10px 0;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region PAGE LAYOUT — OFFICE BOARD (viewport frame)
-   ============================================================ */
-
-body[data-page="officeBoard"] {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-/* Page header fixed */
-body[data-page="officeBoard"] #pageHeader {
-    flex: 0 0 auto;
-    margin-bottom: 12px;
-}
-
-/* Main content frame — fills remaining space */
-body[data-page="officeBoard"] #pageBody {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-
-    justify-content: space-between; /* ✅ FIX */
-    align-items: stretch;
-
-    padding-inline: 16px;
-    padding-block: 16px;
-
-    overflow: hidden;
-}
-
-/* Footer pinned + controlled gap from card */
-body[data-page="officeBoard"] #pageFooter {
-    flex: 0 0 auto;
-    margin-top: var(--ob-section-gap, 16px);   /* single source of body↔footer space; fallback 16px */
-    padding-top: 0;                        /* override any .board-section top padding */
-}
-
-/* Guardrail: neutralize external margins */
-body[data-page="officeBoard"] .board-section {
-    margin: 0;
-}
-
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region ACTIVE/VISIBLE CARD — constrained to frame
-   ============================================================ */
-
+/* #region Active Card Constraints */
 body[data-page="officeBoard"] #pageBody > .card {
-    flex: 0 1 auto;          /* ← no grow, only shrink if needed */
-    align-self: center;      /* optional: horizontal center if you want */
-    max-height: calc(100% - 32px);  /* rough cap to leave room for paddings + gaps; adjust as needed */
+    flex: 0 1 auto;
+    align-self: center;
+    max-height: calc(100% - 32px);
     overflow: hidden;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region ACTIVE PERMITS — internal scroll, hidden scrollbar
-   ============================================================ */
-
-/* Slightly tighter header */
+/* #region Active Permits Scroll */
 #cardActivePermits .cardHeader h2 {
     font-weight: 600;
     letter-spacing: 0.2px;
 }
 
-/* Subtle divider */
 #cardActivePermits .cardBodyDivider {
     margin: 2px 0;
     opacity: 0.6;
 }
 
-/* Scroll container fills body */
 #cardActivePermits .scrollContainer {
     flex: 1 1 auto;
     min-height: 0;
@@ -177,7 +126,6 @@ body[data-page="officeBoard"] #pageBody > .card {
     overflow-x: hidden;
     padding-right: 6px;
     scroll-behavior: smooth;
-
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -186,21 +134,13 @@ body[data-page="officeBoard"] #pageBody > .card {
     display: none;
 }
 
-/* Table nowrap */
 .permitTable th,
 .permitTable td {
     white-space: nowrap;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region CARD CONTENT — LISTS & PLACEHOLDERS
-   ============================================================ */
-
+/* #region Card Content Elements */
 .highlights-list {
     list-style: none;
     font-size: 1.06em;
@@ -234,16 +174,9 @@ body[data-page="officeBoard"] #pageBody > .card {
     padding: 6px 4px;
     border-bottom: 1px solid #eee;
 }
+/* #endregion */
 
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-
-/* ============================================================
-   #region MOBILE ADJUSTMENTS
-   ============================================================ */
-
+/* #region Mobile Adjustments */
 @media (max-width: 600px) {
     .permitTable th,
     .permitTable td {
@@ -255,44 +188,4 @@ body[data-page="officeBoard"] #pageBody > .card {
         font-size: 0.95em;
     }
 }
-
-/* ============================================================
-   #endregion
-   ============================================================ */
-
-/* ============================================================
-   #region MTCO OUTER BALANCE & FOOTER PADDING — symmetric outer space
-   ============================================================ */
-
-/* Symmetric top + bottom padding on the root flex container */
-body[data-page="officeBoard"] {
-    padding: var(--ob-section-gap, 16px);   /* top + right + bottom + left — uniform breathing room */
-    /* If you want different horizontal padding, use: padding: 16px 24px; or similar */
-}
-
-/* Override the previous top-only version — remove or comment out the old padding-top line */
-
-/* Keep footer internal padding for vertical breathing on the copyright text */
-body[data-page="officeBoard"] #pageFooter {
-    padding: 12px 16px;                    /* top/bottom 12px inside footer */
-    text-align: center;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-/* Reinforce against external inflation (safe !important if needed) */
-body[data-page="officeBoard"] #pageFooter,
-body[data-page="officeBoard"] #pageFooter.board-section {
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-    margin: 0 !important;
-}
-
-/* If you still want the card → footer inner gap controlled separately, keep this: */
-body[data-page="officeBoard"] #pageFooter {
-    margin-top: var(--ob-section-gap, 16px);   /* keeps the previous inner separation */
-}
-
-/* ============================================================
-   #endregion
-   ============================================================ */
+/* #endregion */

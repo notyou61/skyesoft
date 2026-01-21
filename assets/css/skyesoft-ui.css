@@ -1,3 +1,10 @@
+/* ============================================================
+   SKYESOFT UI STYLESHEET
+   Structural Layout Contract • MTCO-Aligned
+   Full-Viewport • Monitor-Safe • Kiosk-Grade
+   January 2026
+   ============================================================ */
+   
 /* #region Global Reset */
 * {
     box-sizing: border-box;
@@ -6,52 +13,46 @@
 }
 /* #endregion */
 
-/* #region Base Layout */
-html, body {
-    min-height: 100vh;
+/* #region Root Viewport */
+html,
+body {
     height: 100%;
+    overflow: hidden;
     font-family: Arial, Helvetica, sans-serif;
     background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
     background-size: cover;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 /* #endregion */
 
 /* #region Board Wrapper Sections */
-.board-section {
-    width: 90vw;
-    max-width: 1200px;
+body[data-page="officeBoard"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: var(--ob-section-gap, 16px);
+}
 
+body[data-page="officeBoard"] .board-section {
+    width: 100%;
+    margin: 0;
     background: #fff;
     border-radius: 12px;
     padding: 10px 18px;
-    margin-top: 12px;
-
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
 }
 /* #endregion */
 
-/* ===========================================================
-   PAGE HEADER — DRIFT-RESISTANT VERSION
-   =========================================================== */
-
 /* #region Page Header */
 #pageHeader {
+    flex: 0 0 auto;
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
-
-    padding: 12px 18px;
     gap: 20px;
 }
 
 .logoRow {
     display: flex;
-    flex-direction: row;
     align-items: center;
     gap: 14px;
 }
@@ -61,74 +62,46 @@ html, body {
 }
 
 .logoRow h1 {
-    margin: 0;
     font-size: 1.8rem;
     line-height: 1.1;
 }
 /* #endregion */
 
-/* ===========================================================
-   HEADER STATUS BLOCK (HSB-X Standard)
-   =========================================================== */
-
-/* #region HSB */
+/* #region Header Status Block */
 .headerStatusBlock {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     white-space: nowrap;
-    font-size: 0.90em;
+    font-size: 0.9em;
     gap: 2px;
 }
 
 .hsb-item {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    height: 20px;
-    line-height: 20px;
     gap: 6px;
 }
 
-.hsb-icon {
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
-}
-
-.hsb-weather-icon {
-    width: 22px;
-    height: 22px;
-    object-fit: contain;
-}
-
-.hsb-value {
-    font-weight: 400;
-    color: #0f172a;
-}
+.hsb-icon { width: 18px; height: 18px; }
+.hsb-weather-icon { width: 22px; height: 22px; }
 
 .hsb-value {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-}
-
-#headerWeather,
-#headerTime,
-#headerInterval {
-    font-weight: 400;
+    color: #0f172a;
 }
 /* #endregion */
 
 /* #region Page Body */
 #pageBody {
-    margin-top: 0;     /* Kill the double-gap */
-    padding-top: 0;    /* Ensure no internal creep */
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 /* #endregion */
-
-/* ===========================================================
-   CARD SYSTEM
-   =========================================================== */
 
 /* #region Board Cards */
 .board-card {
@@ -144,190 +117,78 @@ html, body {
 }
 
 .cardTitle h2 {
-    margin-bottom: 10px;
     font-size: 1.3rem;
+    margin-bottom: 10px;
 }
 /* #endregion */
 
-/* ===========================================================
-   PERMIT TABLE
-   =========================================================== */
-
 /* #region Permit Table */
-
-/* --------------------------------------------------
-   Scroll Container
--------------------------------------------------- */
 #permitScrollWrap {
-    max-height: 600px;
+    max-height: 100%;
     overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    scrollbar-width: none;           /* Firefox */
+    scrollbar-width: none;
 }
 
 #permitScrollWrap::-webkit-scrollbar {
-    display: none;                   /* Chrome, Safari, Edge */
+    display: none;
 }
 
-/* --------------------------------------------------
-   Table Base
--------------------------------------------------- */
 .permitTable {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.95em;
     table-layout: fixed;
-    border-radius: 0 0 6px 6px;      /* subtle rounded bottom corners */
+    font-size: 0.95em;
 }
 
-/* --------------------------------------------------
-   Header (Sticky)
--------------------------------------------------- */
 .permitTable thead th {
-    padding: 8px 10px;
-    font-weight: 600;
-    text-align: left;
     position: sticky;
     top: 0;
-    z-index: 20;
     background: #0f172a;
-    color: #ffffff;
-    border-bottom: 1px solid rgba(255,255,255,0.12);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.18);
-    white-space: nowrap;
-}
-
-/* --------------------------------------------------
-   Body Cells
--------------------------------------------------- */
-.permitTable tbody td {
+    color: #fff;
     padding: 8px 10px;
-    border-bottom: 1px solid #e5e7eb;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 0;                    /* Required for proper ellipsis in fixed layout */
-    background-color: transparent !important; /* Prevents td from overriding row background */
 }
 
-/* --------------------------------------------------
-   Zebra Striping – row-level, high visibility, override-proof
--------------------------------------------------- */
 .permitTable tbody tr:nth-child(odd) {
-    background-color: #edf2ff !important;   /* Light blue-gray – clearly visible difference */
+    background-color: #edf2ff;
 }
 
 .permitTable tbody tr:nth-child(even) {
-    background-color: #ffffff !important;
+    background-color: #ffffff;
 }
 
-/* --------------------------------------------------
-   Hover effect (accessibility + UX)
--------------------------------------------------- */
 .permitTable tbody tr:hover {
-    background-color: #dbeafe !important;
-    transition: background-color 0.15s ease;
+    background-color: #dbeafe;
 }
-
-/* --------------------------------------------------
-   Update Flash – row-based, zebra-friendly
--------------------------------------------------- */
-.permit-row {
-    transition: background-color 0.2s ease;
-}
-
-.permit-row.updated {
-    animation: flashRow 1.4s ease-out;
-}
-
-@keyframes flashRow {
-    0%   { background-color: #fefce8 !important; }   /* Warm yellow flash */
-    35%  { background-color: #fefce8 !important; }
-    100% { background-color: transparent !important; } /* Returns to zebra */
-}
-
-/* --------------------------------------------------
-   Empty State
--------------------------------------------------- */
-.permitTable .empty-row td {
-    text-align: center;
-    color: #6b7280;
-    font-style: italic;
-    white-space: normal;
-    padding: 40px 20px;
-    border-bottom: none;
-}
-
-/* --------------------------------------------------
-   Mobile adjustments
--------------------------------------------------- */
-@media (max-width: 640px) {
-    .permitTable thead th,
-    .permitTable tbody td {
-        padding: 7px 8px;
-        font-size: 0.88em;
-    }
-}
-
 /* #endregion */
 
-/* ===========================================================
-   PLACEHOLDER CARDS
-   =========================================================== */
-
 /* #region Placeholders */
-.highlights-list,
-.announcement-list {
-    margin-left: 4px;
-}
-
 .kpi-placeholder,
 .placeholderBlock {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 200px;
-
-    color: #555;
     font-size: 1.3em;
+    color: #555;
 }
 /* #endregion */
 
 /* #region Page Footer */
 #pageFooter {
-    display: flex;
-    justify-content: space-between;
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    text-align: center;
     font-size: 0.85em;
-    padding: 6px 12px;
-    margin-bottom: 10px;
 }
 /* #endregion */
 
-/* ===========================================================
-   MOBILE TWEAKS
-   =========================================================== */
-
 /* #region Mobile Tweaks */
 @media (max-width: 600px) {
-    .board-section {
-        width: 95vw;
-    }
-
-    .logo {
-        height: 42px;
-    }
-
+    .logo { height: 42px; }
     .permitTable th,
     .permitTable td {
         font-size: 0.85em;
         padding: 4px 6px;
     }
-
-    .headerStatusBlock {
-        font-size: 0.82em;
-    }
 }
+/* #endregion */
