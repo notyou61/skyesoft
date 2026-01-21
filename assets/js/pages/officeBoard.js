@@ -22,17 +22,17 @@ function formatSmartInterval(totalSeconds) {
 /* #region CARD FACTORY */
 function createActivePermitsCard() {
     const card = document.createElement("section");
-    card.className = "board-card active-permits";
+    card.className = "card card-active-permits";
 
     card.innerHTML = `
-        <header class="card-header">
-            <div class="card-title">📋 Active Permits</div>
-        </header>
+        <div class="cardHeader">
+            <h2>📋 Active Permits</h2>
+        </div>
 
-        <div class="card-body-divider"></div>
+        <div class="cardBodyDivider"></div>
 
-        <div class="card-body">
-            <div class="scroll-container permit-scroll">
+        <div class="cardBody">
+            <div class="cardContent" id="permitScrollWrap">
                 <table class="permit-table">
                     <thead>
                         <tr>
@@ -43,22 +43,27 @@ function createActivePermitsCard() {
                             <th>Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr><td colspan="5">Waiting for data…</td></tr>
+                    <tbody id="permitTableBody">
+                        <tr>
+                            <td colspan="5">Loading permits…</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="card-footer-divider"></div>
-        <footer class="card-footer">—</footer>
+        <div class="cardFooterDivider"></div>
+
+        <div class="cardFooter" id="permitFooter">
+            Loading…
+        </div>
     `;
 
     return {
         root: card,
-        scrollWrap: card.querySelector(".permit-scroll"),
-        tableBody: card.querySelector("tbody"),
-        footer: card.querySelector(".card-footer")
+        scrollWrap: card.querySelector("#permitScrollWrap"),
+        tableBody: card.querySelector("#permitTableBody"),
+        footer: card.querySelector("#permitFooter")
     };
 }
 /* #endregion */
