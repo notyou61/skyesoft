@@ -60,115 +60,13 @@
 <!-- #region PAGE BODY -->
 <div id="pageBody" class="board-section">
 
-    <!-- #region CARD — ACTIVE PERMITS -->
-    <div id="cardActivePermits" class="card" style="display:none;">
-
-        <!-- Card Header -->
-        <header class="cardHeader">
-            <h2>Active Permits</h2>
-        </header>
-
-        <!-- Header Divider -->
-        <div class="cardBodyDivider"></div>
-
-        <!-- Card Body -->
-        <div class="cardBody">
-
-            <!-- FIXED SCROLL WRAPPER (MUST BE VALID) -->
-            <div id="permitScrollWrap" class="scrollContainer">
-                <table class="permitTable">
-
-                    <thead>
-                        <tr>
-                            <th>WO</th>
-                            <th>Customer</th>
-                            <th>Jobsite</th>
-                            <th>Jurisdiction</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-
-                    <!-- CLEAN, VALID TBODY -->
-                    <tbody id="permitTableBody">
-                        <tr>
-                            <td colspan="5" style="text-align:center;">Loading…</td>
-                        </tr>
-                    </tbody>
-
-                </table>
-            </div>
-            <!-- END permitScrollWrap -->
-        </div>
-
-        <!-- Footer Divider -->
-        <div class="cardFooterDivider"></div>
-
-        <!-- Card Footer -->
-        <footer class="cardFooter" id="permitFooter"></footer>
-
-    </div>
-    <!-- #endregion -->
-
-    <!-- #region CARD — TODAY'S HIGHLIGHTS -->
-    <div id="cardHighlights" class="card" style="display:none;">
-
-        <div class="cardHeader">Today's Highlights</div>
-        <hr class="cardDivider">
-
-        <div class="cardBody">
-            <ul class="highlights-list">
-                <li>Date: <span id="hlDate">Loading…</span></li>
-                <li>Day of Year: <span id="hlDayOfYear">Loading…</span></li>
-                <li>Days Remaining: <span id="hlDaysRemain">Loading…</span></li>
-                <li>Sunrise: <span id="hlSunrise">Loading…</span></li>
-                <li>Sunset: <span id="hlSunset">Loading…</span></li>
-                <li>Daylight Hours: <span id="hlDayHours">Loading…</span></li>
-                <li>Next Holiday: <span id="hlNextHoliday">Loading…</span></li>
-                <li>3-Day Forecast: <span id="hlForecast">Loading…</span></li>
-            </ul>
-        </div>
-
-        <hr class="cardDivider">
-        <div class="cardFooter" id="highlightsFooter">Loading…</div>
-
-    </div>
-    <!-- #endregion -->
-
-
-    <!-- #region CARD — KPI DASHBOARD -->
-    <div id="cardKPI" class="card" style="display:none;">
-
-        <div class="cardHeader">KPI Dashboard</div>
-        <hr class="cardDivider">
-
-        <div class="cardBody">
-            <div class="kpi-placeholder">Coming Soon…</div>
-        </div>
-
-        <hr class="cardDivider">
-        <div class="cardFooter" id="kpiFooter">Loading…</div>
-
-    </div>
-    <!-- #endregion -->
-
-
-    <!-- #region CARD — ANNOUNCEMENTS -->
-    <div id="cardAnnouncements" class="card" style="display:none;">
-
-        <div class="cardHeader">Announcements</div>
-        <hr class="cardDivider">
-
-        <div class="cardBody">
-            <ul id="announcementList" class="announcement-list">
-                <li>No announcements posted.</li>
-            </ul>
-        </div>
-
-        <hr class="cardDivider">
-        <div class="cardFooter" id="announcementsFooter">Loading…</div>
-
-    </div>
-    <!-- #endregion -->
+    <!--
+      Board Card Host
+      =================
+      All board cards are injected dynamically by officeBoard.js.
+      No card HTML is authored here.
+    -->
+    <div id="boardCardHost"></div>
 
 </div>
 <!-- #endregion -->
