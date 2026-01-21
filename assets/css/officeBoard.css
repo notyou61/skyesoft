@@ -73,45 +73,47 @@ body[data-page="officeBoard"] #boardCardHost {
     background: #f7f7f7;
     border-radius: 12px;
     box-shadow: 0 3px 8px rgba(0,0,0,0.10);
-    padding: 6px 8px;          /* single source of truth */
+    padding: 6px;              /* uniform all sides */
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
 }
+
 /* #endregion */
 
 /* #region Card Header & Footer */
 .cardHeader {
-    flex: 0 0 36px;
+    flex: 0 0 30px;            /* tighter */
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 6px;   /* ← ADD THIS */
+    padding: 2px 0;            /* vertical only */
 }
 
 .cardHeader h2 {
-    font-size: 1.45rem;
+    font-size: 1.35rem;   /* was 1.45rem */
     font-weight: 700;
+    line-height: 1.1;
     margin: 0;
 }
 
 .cardFooter {
-    flex: 0 0 28px;
+    flex: 0 0 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     color: #333;
-    padding: 4px 6px;
+    padding: 2px 0;
 }
 /* #endregion */
 
 /* #region Card Dividers */
 .cardBodyDivider,
 .cardFooterDivider {
-    border-bottom: 2px solid #ccc;
-    margin: 4px 0;
+    border-bottom: 1px solid #ccc;
+    margin: 2px 0;
 }
 /* #endregion */
 
@@ -131,7 +133,7 @@ body[data-page="officeBoard"] #boardCardHost {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 4px 6px;
+    padding: 2px 0;            /* vertical only */
     scrollbar-width: none;
 }
 
