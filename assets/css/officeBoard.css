@@ -1,7 +1,7 @@
 /* ============================================================
    OFFICE BOARD STYLESHEET
    MTCO-aligned • Monitor-safe • Full-viewport kiosk pattern
-   January 2026 — with balanced header/body/footer gaps
+   January 2026
    ============================================================ */
 
 /* #region Root Viewport Lock */
@@ -15,7 +15,7 @@ body {
 }
 /* #endregion */
 
-/* #region Board Wrapper Sections */
+/* #region Board Layout Contract */
 body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
@@ -46,9 +46,16 @@ body[data-page="officeBoard"] #pageFooter {
     font-size: 0.9rem;
     line-height: 1.4;
 }
+/* #endregion */
 
+/* #region Board Wrapper Sections */
 body[data-page="officeBoard"] .board-section {
+    width: 100%;
     margin: 0;
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
 }
 /* #endregion */
 
@@ -108,7 +115,51 @@ body[data-page="officeBoard"] #pageBody > .card {
 }
 /* #endregion */
 
-/* #region Active Permits Scroll */
+/* #region Permit Table */
+#permitScrollWrap {
+    max-height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+#permitScrollWrap::-webkit-scrollbar {
+    display: none;
+}
+
+.permitTable {
+    width: 100%;
+    border-collapse: separate;
+    table-layout: fixed;
+    font-size: 0.95em;
+}
+
+.permitTable thead th {
+    position: sticky;
+    top: 0;
+    background: #0f172a;
+    color: #fff;
+    padding: 8px 10px;
+}
+
+.permitTable tbody tr:nth-child(odd) {
+    background-color: #edf2ff;
+}
+
+.permitTable tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.permitTable tbody tr:hover {
+    background-color: #dbeafe;
+}
+
+.permitTable th,
+.permitTable td {
+    white-space: nowrap;
+}
+/* #endregion */
+
+/* #region Active Permits Card Refinements */
 #cardActivePermits .cardHeader h2 {
     font-weight: 600;
     letter-spacing: 0.2px;
@@ -132,11 +183,6 @@ body[data-page="officeBoard"] #pageBody > .card {
 
 #cardActivePermits .scrollContainer::-webkit-scrollbar {
     display: none;
-}
-
-.permitTable th,
-.permitTable td {
-    white-space: nowrap;
 }
 /* #endregion */
 

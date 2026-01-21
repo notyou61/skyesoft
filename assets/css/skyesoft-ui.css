@@ -4,7 +4,7 @@
    Full-Viewport • Monitor-Safe • Kiosk-Grade
    January 2026
    ============================================================ */
-   
+
 /* #region Global Reset */
 * {
     box-sizing: border-box;
@@ -21,24 +21,6 @@ body {
     font-family: Arial, Helvetica, sans-serif;
     background: url('/skyesoft/assets/images/background.jpg') no-repeat center center fixed;
     background-size: cover;
-}
-/* #endregion */
-
-/* #region Board Wrapper Sections */
-body[data-page="officeBoard"] {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    padding: var(--ob-section-gap, 16px);
-}
-
-body[data-page="officeBoard"] .board-section {
-    width: 100%;
-    margin: 0;
-    background: #fff;
-    border-radius: 12px;
-    padding: 10px 18px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
 }
 /* #endregion */
 
@@ -93,16 +75,6 @@ body[data-page="officeBoard"] .board-section {
 }
 /* #endregion */
 
-/* #region Page Body */
-#pageBody {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-/* #endregion */
-
 /* #region Board Cards */
 .board-card {
     background: #f6f6f6;
@@ -119,45 +91,6 @@ body[data-page="officeBoard"] .board-section {
 .cardTitle h2 {
     font-size: 1.3rem;
     margin-bottom: 10px;
-}
-/* #endregion */
-
-/* #region Permit Table */
-#permitScrollWrap {
-    max-height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none;
-}
-
-#permitScrollWrap::-webkit-scrollbar {
-    display: none;
-}
-
-.permitTable {
-    width: 100%;
-    border-collapse: separate;
-    table-layout: fixed;
-    font-size: 0.95em;
-}
-
-.permitTable thead th {
-    position: sticky;
-    top: 0;
-    background: #0f172a;
-    color: #fff;
-    padding: 8px 10px;
-}
-
-.permitTable tbody tr:nth-child(odd) {
-    background-color: #edf2ff;
-}
-
-.permitTable tbody tr:nth-child(even) {
-    background-color: #ffffff;
-}
-
-.permitTable tbody tr:hover {
-    background-color: #dbeafe;
 }
 /* #endregion */
 
