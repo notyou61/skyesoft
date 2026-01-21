@@ -68,7 +68,7 @@ window.SkyOfficeBoard = {
 
     /* #region DOM CACHE */
     dom: {
-        host: null,
+        //host: null,
         card: null,
         weather: null,
         time: null,
@@ -131,8 +131,9 @@ window.SkyOfficeBoard = {
     },
 
     init() {
-        this.dom.host = document.getElementById("boardCardHost");
-        if (!this.dom.host) {
+        this.dom.pageBody = document.getElementById("boardCardHost");
+        
+        if (!this.dom.pageBody) {                           // ← change here
             console.warn("officeBoard: boardCardHost not found");
             return;
         }
@@ -143,11 +144,16 @@ window.SkyOfficeBoard = {
         this.dom.version  = document.getElementById("versionFooter");
 
         this.dom.card = createActivePermitsCard();
-        this.dom.host.appendChild(this.dom.card.root);
+        this.dom.pageBody.appendChild(this.dom.card.root);
 
         if (window.SkyeApp?.lastSSE) {
             this.onSSE(window.SkyeApp.lastSSE);
         }
+        
+        console.log(
+            "Active Permits card injected",
+            this.dom.card.root
+        );
     },
 
     destroy() {
@@ -200,7 +206,7 @@ window.SkyOfficeBoard = {
             ? activePermits.map(p => `${p.wo}|${p.status}`).join("::")
             : "empty";
 
-        if (signature === this.lastPermitSignature) return;
+        //if (signature === this.lastPermitSignature) return;
         this.lastPermitSignature = signature;
 
         const body = card.tableBody;
@@ -235,7 +241,7 @@ window.SkyOfficeBoard = {
         });
 
         body.appendChild(frag);
-        card.footer.textContent = `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
+        `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`
         this.prevPermitLength = sorted.length;
 
         requestAnimationFrame(() => {
@@ -248,6 +254,12 @@ window.SkyOfficeBoard = {
 
     /* #region SSE */
     onSSE(payload) {
+
+        console.log(
+            "OfficeBoard SSE received",
+            payload.activePermits?.length
+        );
+
         this.updateHeader(payload);
 
         if (Array.isArray(payload.activePermits)) {
