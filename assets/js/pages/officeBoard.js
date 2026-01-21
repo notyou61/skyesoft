@@ -257,13 +257,50 @@ window.SkyOfficeBoard = {
 
         console.log(
             "OfficeBoard SSE received",
-            payload.activePermits?.length
+            payload.activePermits?.length ?? "missing / not present"
         );
+
+        // Early debug: show structure of activePermits if it exists
+        if (payload.activePermits) {
+            const permits = payload.activePermits;
+            console.log("activePermits type:", Object.prototype.toString.call(permits));
+
+            if (permits.length > 0) {
+                const first = permits[0];
+                console.log("First permit sample:", first);
+                console.log("Has expected keys?", 
+                    'wo'          in first &&
+                    'customer'    in first &&
+                    'jobsite'     in first &&
+                    'jurisdiction'in first &&
+                    'status'      in first
+                );
+            } else {
+                console.log("activePermits is empty (length 0)");
+            }
+        } else {
+            console.log("No activePermits property in payload");
+        }
 
         this.updateHeader(payload);
 
+        // Normalized handling for rendering
+        let permitsToRender = null;
+
         if (Array.isArray(payload.activePermits)) {
-            this.updatePermitTable(payload.activePermits);
+            permitsToRender = payload.activePermits;
+        } else if (payload.activePermits && typeof payload.activePermits.length === 'number') {
+            // array-like (NodeList, arguments, typed array, etc.)
+            console.log("Converting array-like object to real array");
+            permitsToRender = Array.from(payload.activePermits);
+        }
+
+        if (permitsToRender) {
+            this.updatePermitTable(permitsToRender);
+        } else {
+            console.warn("activePermits is not usable (not array or array-like) → table not updated");
+            // Optional: force "No active permits" state if desired
+            // this.updatePermitTable([]);
         }
 
         this.updateFooter(payload);
