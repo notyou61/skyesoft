@@ -28,7 +28,7 @@ body[data-page="officeBoard"] #pageHeader {
     margin-bottom: var(--ob-section-gap, 16px);
 }
 
-body[data-page="officeBoard"] #pageBody {
+/*body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -36,7 +36,7 @@ body[data-page="officeBoard"] #pageBody {
     align-items: stretch;
     padding: 16px;
     overflow: hidden;
-}
+}*/
 
 body[data-page="officeBoard"] #pageFooter {
     flex: 0 0 auto;
@@ -236,44 +236,81 @@ body[data-page="officeBoard"] #pageBody > .card {
 }
 /* #endregion */
 
-/* Emergency fix for collapsed Active Permits card – January 2026 debug */
-body[data-page="officeBoard"] #pageBody {
-    overflow-y: auto;              /* Allow #pageBody itself to scroll if needed */
-    min-height: 200px;             /* Prevent total collapse */
+/* ── 2026 Active Permits card fixes ────────────────────────────────────── */
+
+body[data-page="officeBoard"] #boardCardHost {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
 }
 
-body[data-page="officeBoard"] #pageBody > .board-card.active-permits {
-    flex: 1 1 100%;                /* Grow aggressively to fill available space */
-    max-height: none !important;   /* Remove any artificial cap */
-    min-height: 400px !important;  /* Guarantee minimum visible area */
-    height: auto !important;
+body[data-page="officeBoard"] #boardCardHost > .board-card.active-permits {
+    flex: 1 1 auto !important;
+    min-height: 400px !important;
+    max-height: none !important;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    background: white;
 }
 
-.cardBody {
-    flex: 1 1 auto !important;     /* Let body grow */
+.card-body {
+    flex: 1 1 auto !important;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;          /* ← changed from hidden */
     display: flex;
     flex-direction: column;
 }
 
 .scroll-container.permit-scroll {
     flex: 1 1 auto !important;
-    min-height: 150px !important;  /* Critical: prevent 0-height scroll area */
+    min-height: 200px !important;
     overflow-y: auto !important;
     overflow-x: hidden;
-    height: auto !important;
+    padding: 0 8px;
 }
 
-/* Ensure table rows are visible and not fighting layout */
+/* Table styles matching JS classes */
 .permit-table {
+    width: 100%;
     table-layout: auto;
-    min-width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
 }
 
-.permit-table tbody {
-    display: table-row-group !important; /* Reset if overridden */
+.permit-table thead th {
+    position: sticky;
+    top: 0;
+    background: #0f172a;
+    color: #fff;
+    padding: 8px 10px;
+    z-index: 1;
+}
+
+.permit-table tbody tr:nth-child(odd) {
+    background-color: #edf2ff;
+}
+
+.permit-table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.permit-table tbody tr:hover {
+    background-color: #dbeafe;
+}
+
+.permit-table td,
+.permit-table th {
+    padding: 8px 12px;
+    white-space: nowrap;
+}
+
+/* Footer polish */
+.card-footer {
+    font-weight: 600;
+    color: #333;
+    padding-top: 8px;
+    text-align: center;
 }
