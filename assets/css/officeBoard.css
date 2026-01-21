@@ -28,15 +28,15 @@ body[data-page="officeBoard"] #pageHeader {
     margin-bottom: var(--ob-section-gap, 16px);
 }
 
-/*body[data-page="officeBoard"] #pageBody {
+body[data-page="officeBoard"] #pageBody {
     flex: 1 1 auto;
-    min-height: 0;
+    min-height: 0;          /* REQUIRED for nested scrolling */
     display: flex;
     flex-direction: column;
     align-items: stretch;
     padding: 16px;
-    overflow: hidden;
-}*/
+    overflow: hidden;       /* Prevents page scroll */
+}
 
 body[data-page="officeBoard"] #pageFooter {
     flex: 0 0 auto;
