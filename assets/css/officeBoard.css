@@ -33,7 +33,7 @@ body[data-page="officeBoard"] #pageBody {
     min-height: 0;          /* REQUIRED for nested flex scrolling */
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 8px 12px;      /* tighter top, monitor-safe */
     overflow: hidden;
 }
 
