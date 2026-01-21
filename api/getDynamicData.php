@@ -300,9 +300,10 @@ $payload = [
         ? (isset($announcements["announcements"]) ? $announcements["announcements"] : $announcements)
         : [],
 
-    "siteMeta"        => [
-        "siteVersion" => $versions["siteVersion"] ?? "unknown"
+    "siteMeta" => [
+        "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown"
     ]
+
 ];
 
 #endregion
