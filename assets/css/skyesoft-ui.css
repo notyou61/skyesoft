@@ -109,19 +109,38 @@ body {
 /* #region Page Footer */
 #pageFooter {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
     padding: 12px 16px;
-    text-align: center;
     font-size: 0.85em;
+    line-height: 1.2;
+
+    white-space: nowrap;   /* keep it on one line */
+    gap: 16px;             /* breathing room if it gets tight */
+}
+
+#footerCopyright,
+#versionFooter {
+    white-space: nowrap;
 }
 /* #endregion */
 
 /* #region Mobile Tweaks */
 @media (max-width: 600px) {
     .logo { height: 42px; }
+
     .permitTable th,
     .permitTable td {
         font-size: 0.85em;
         padding: 4px 6px;
+    }
+}
+
+@media (max-width: 520px) {
+    #pageFooter {
+        font-size: 0.78em;
     }
 }
 /* #endregion */
