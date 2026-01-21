@@ -235,3 +235,45 @@ body[data-page="officeBoard"] #pageBody > .card {
     }
 }
 /* #endregion */
+
+/* Emergency fix for collapsed Active Permits card – January 2026 debug */
+body[data-page="officeBoard"] #pageBody {
+    overflow-y: auto;              /* Allow #pageBody itself to scroll if needed */
+    min-height: 200px;             /* Prevent total collapse */
+}
+
+body[data-page="officeBoard"] #pageBody > .board-card.active-permits {
+    flex: 1 1 100%;                /* Grow aggressively to fill available space */
+    max-height: none !important;   /* Remove any artificial cap */
+    min-height: 400px !important;  /* Guarantee minimum visible area */
+    height: auto !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardBody {
+    flex: 1 1 auto !important;     /* Let body grow */
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.scroll-container.permit-scroll {
+    flex: 1 1 auto !important;
+    min-height: 150px !important;  /* Critical: prevent 0-height scroll area */
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    height: auto !important;
+}
+
+/* Ensure table rows are visible and not fighting layout */
+.permit-table {
+    table-layout: auto;
+    min-width: 100%;
+}
+
+.permit-table tbody {
+    display: table-row-group !important; /* Reset if overridden */
+}
