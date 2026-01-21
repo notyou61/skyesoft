@@ -132,7 +132,7 @@ window.SkyOfficeBoard = {
        Lifecycle
     ──────────────────────────────────────────────── */
     init() {
-        this.dom.pageBody = document.getElementById("pageBody");
+        this.dom.pageBody = document.getElementById("boardCardHost");
         if (!this.dom.pageBody) {
             console.warn("officeBoard: #pageBody container not found");
             return;
