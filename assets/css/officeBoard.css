@@ -20,7 +20,7 @@ body[data-page="officeBoard"] {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    padding: var(--ob-section-gap, 16px);
+    padding: var(--ob-section-gap, 12px);
 }
 
 body[data-page="officeBoard"] #pageHeader {
@@ -33,7 +33,7 @@ body[data-page="officeBoard"] #pageBody {
     min-height: 0;          /* REQUIRED for nested flex scrolling */
     display: flex;
     flex-direction: column;
-    padding: 8px 12px;      /* tighter top, monitor-safe */
+    padding: 6px;      /* tighter top, monitor-safe */
     overflow: hidden;
 }
 
@@ -53,10 +53,11 @@ body[data-page="officeBoard"] .board-section {
     margin: 0;
     background: #fff;
     border-radius: 12px;
-    padding: 6px 14px;    /* was 10px 18px */
+    padding: 6px;                /* uniform — critical */
     box-shadow: 0 4px 12px rgba(0,0,0,0.10);
 }
 /* #endregion */
+
 
 /* #region Card Host (multi-card container) */
 body[data-page="officeBoard"] #boardCardHost {
