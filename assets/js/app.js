@@ -110,7 +110,7 @@ window.SkyeApp.updateHSB = function (payload) {
 
 /* #region VERSION FOOTER */
 window.SkyeApp.updateVersionFooter = function (payload) {
-    const versionEl = document.getElementById("footerVersion");
+    const versionEl = document.getElementById("versionFooter");
     if (!versionEl) {
         console.warn("Version span (#footerVersion) not found in DOM");
         return;
