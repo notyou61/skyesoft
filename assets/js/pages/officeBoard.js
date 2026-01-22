@@ -65,7 +65,7 @@ if (!permitRegistryMeta) {
         "Using temporary hardcoded permitRegistryMeta due to CORS block. " +
         "Footer will show total and updated time."
     );
-}
+}yield
     
 
 /* #region SMART INTERVAL FORMATTER */
