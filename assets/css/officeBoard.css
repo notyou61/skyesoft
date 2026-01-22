@@ -152,6 +152,7 @@ body[data-page="officeBoard"] #boardCardHost {
 /* Left-align footer text for Active Permits card */
 .card-active-permits .cardFooter {
     text-align: left;
+    padding-left: 14px; /* optional – matches table gutter */
 }
 
 /* Kill the spacer divider (retain structure, remove visual height) */
