@@ -4,7 +4,10 @@
    Phoenix, Arizona – MST timezone
 */
 
-/* #region GLOBAL REGISTRIES */
+// ────────────────────────────────────────────────
+// GLOBAL REGISTRIES (loaded async)
+// Phoenix MST note: fetches are non-blocking; fallback used if CORS blocks
+// ────────────────────────────────────────────────
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 
@@ -45,6 +48,10 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         applyPermitRegistryFallback();
     });
 
+// ────────────────────────────────────────────────
+// TEMPORARY WORKAROUND – Deferred fallback for footer testing
+// Remove once server sends Access-Control-Allow-Origin header
+// ────────────────────────────────────────────────
 function applyPermitRegistryFallback() {
     if (permitRegistryMeta !== null) return;
 
@@ -58,7 +65,6 @@ function applyPermitRegistryFallback() {
         'Footer will show total 144 + updated time. Remove when server fixed.'
     );
 }
-/* #endregion */
 
 /* #region SMART INTERVAL FORMATTER */
 function formatSmartInterval(totalSeconds) {
