@@ -4,12 +4,14 @@
 */
 
 // ────────────────────────────────────────────────
-// Global registry reference (loaded async)
+// Global registries (loaded async)
 // ────────────────────────────────────────────────
 let jurisdictionRegistry = null;
+let permitRegistryMeta = null;
 
+// Jurisdiction Registry
 fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', {
-    cache: 'no-cache'  // ensure we get fresh version
+    cache: 'no-cache'
 })
     .then(response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -18,14 +20,33 @@ fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry
     .then(data => {
         jurisdictionRegistry = data;
         console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
-        // Optional: force re-render if data already arrived
         if (window.SkyOfficeBoard?.lastPermitSignature) {
             window.SkyOfficeBoard.lastPermitSignature = null;
         }
     })
     .catch(err => {
         console.error('❌ Failed to load jurisdictionRegistry.json', err);
-        jurisdictionRegistry = {}; // prevent crash → fallback to title case
+        jurisdictionRegistry = {};
+    });
+
+// Permit Registry Meta
+fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', {
+    cache: 'no-cache'
+})
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
+    .then(data => {
+        permitRegistryMeta = data.meta || null;
+        console.log("✅ Permit registry meta loaded", permitRegistryMeta);
+        if (window.SkyOfficeBoard?.lastPermitSignature) {
+            window.SkyOfficeBoard.lastPermitSignature = null;
+        }
+    })
+    .catch(err => {
+        console.error('❌ Failed to load permitRegistry.json', err);
+        permitRegistryMeta = null;
     });
 
 /* #region SMART INTERVAL FORMATTER */
@@ -41,6 +62,22 @@ function formatSmartInterval(totalSeconds) {
     if (hours > 0) return `${hours}h ${String(minutes).padStart(2,"0")}m ${String(seconds).padStart(2,"0")}s`;
     if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2,"0")}s`;
     return `${seconds}s`;
+}
+/* #endregion */
+
+/* #region TIMESTAMP FORMATTER (for permit registry updatedOn) */
+function formatTimestamp(ts) {
+    if (!ts) return "--/--/-- --:--";
+    const date = new Date(ts * 1000);
+    return date.toLocaleString("en-US", {
+        timeZone: "America/Phoenix",
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+    }).replace(/,/, '');
 }
 /* #endregion */
 
@@ -326,8 +363,26 @@ window.SkyOfficeBoard = {
 
         tableBody.appendChild(fragment);
 
+        // Enhanced footer with total + updated timestamp
         if (footer) {
-            footer.textContent = `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
+            const activeCount = sorted.length;
+            let footerText = `${activeCount} active permit${activeCount === 1 ? "" : "s"}`;
+
+            if (permitRegistryMeta?.counts?.totalWorkOrders != null) {
+                footerText += ` • ${permitRegistryMeta.counts.totalWorkOrders} total`;
+            }
+
+            if (permitRegistryMeta?.updatedOn) {
+                const ts = permitRegistryMeta.updatedOn * 1000;
+                const minutesAgo = (Date.now() - ts) / 60000;
+                let freshness = '🟢';
+                if (minutesAgo > 60) freshness = '🟡';
+                if (minutesAgo > 1440) freshness = '🔴';
+
+                footerText += ` • ${freshness} Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
+            }
+
+            footer.textContent = footerText;
         }
 
         this.prevPermitLength = sorted.length;
@@ -336,7 +391,7 @@ window.SkyOfficeBoard = {
         requestAnimationFrame(() => {
             const scrollEl = this.dom.card?.scrollWrap;
             if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
-                this.autoScroll.start(scrollEl, 30000); // fallback duration
+                this.autoScroll.start(scrollEl, 30000);
             }
         });
     },
@@ -369,10 +424,6 @@ window.SkyOfficeBoard = {
         }
 
         if (permitsToRender) {
-            // Optional filter: only show non-final permits
-            // permitsToRender = permitsToRender.filter(p => 
-            //     !['issued','finaled'].includes((p.status || '').toLowerCase())
-            // );
             this.updatePermitTable(permitsToRender);
         } else {
             console.warn("No usable activePermits array → clearing table");
