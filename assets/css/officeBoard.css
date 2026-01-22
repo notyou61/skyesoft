@@ -58,7 +58,6 @@ body[data-page="officeBoard"] .board-section {
 }
 /* #endregion */
 
-
 /* #region Card Host (multi-card container) */
 body[data-page="officeBoard"] #boardCardHost {
     flex: 1 1 auto;
@@ -143,27 +142,33 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 /* #endregion */
 
-/* --- Make the scroll header hug the divider line --- */
+/* #region ACTIVE PERMITS — TABLE HEADER + DIVIDER REFINEMENT */
 
-/* kill the “spacer divider” (keep it for structure but remove visual height) */
+/* Active Permits – table header alignment */
+.card-active-permits .permit-table th {
+    text-align: left;
+}
+
+/* Kill the spacer divider (retain structure, remove visual height) */
 .cardBodyDivider {
     border: 0;
     margin: 0;
     height: 0;
 }
 
-/* put the divider line on the scroll surface itself */
+/* Move the divider line onto the scroll surface itself */
 .cardContent {
     padding: 0;                 /* IMPORTANT: no top padding */
     margin: 0;
-    border-top: 1px solid #ccc; /* divider line lives here now */
+    border-top: 1px solid #ccc; /* Divider line lives here */
 }
 
-/* safety: ensure no top gap from the table */
+/* Safety: ensure no top gap from the table */
 .permit-table {
     margin: 0;
 }
 
+/* #endregion */
 
 /* #region Active Permits Table */
 .permit-table {
