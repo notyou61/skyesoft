@@ -209,6 +209,7 @@ window.SkyOfficeBoard = {
 
         /* --------------------------------------------
         1️⃣ Build data signature (WO + status)
+            (prevents scroll reset on SSE ticks)
         -------------------------------------------- */
         const signature = Array.isArray(activePermits)
             ? activePermits.map(p => `${p.wo}|${p.status}`).join("::")
@@ -217,17 +218,13 @@ window.SkyOfficeBoard = {
         const isSameData = signature === this.lastPermitSignature;
         this.lastPermitSignature = signature;
 
-        /* --------------------------------------------
-        2️⃣ If data did NOT change, do nothing
-            (prevents scroll reset on SSE ticks)
-        -------------------------------------------- */
         if (isSameData) return;
 
         const body = card.tableBody;
         body.innerHTML = "";
 
         /* --------------------------------------------
-        3️⃣ Handle empty state
+        2️⃣ Handle empty state
         -------------------------------------------- */
         if (!Array.isArray(activePermits) || activePermits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
@@ -236,6 +233,18 @@ window.SkyOfficeBoard = {
             this.prevPermitLength = 0;
             return;
         }
+
+        /* --------------------------------------------
+        3️⃣ Registry lookups (presentation layer)
+        -------------------------------------------- */
+        const jurisdictions = this.registries?.jurisdictions ?? {};
+        const statuses = this.registries?.permitStatuses ?? {};
+
+        const resolveJurisdiction = key =>
+            jurisdictions[key]?.label ?? key ?? "";
+
+        const resolveStatus = key =>
+            statuses[key]?.label ?? key ?? "";
 
         /* --------------------------------------------
         4️⃣ Sort permits (stable, numeric WO)
@@ -259,9 +268,10 @@ window.SkyOfficeBoard = {
                 <td>${p.wo ?? ""}</td>
                 <td>${p.customer ?? ""}</td>
                 <td>${p.jobsite ?? ""}</td>
-                <td>${p.jurisdiction ?? ""}</td>
-                <td>${p.status ?? ""}</td>
+                <td>${resolveJurisdiction(p.jurisdiction)}</td>
+                <td>${resolveStatus(p.status)}</td>
             `;
+
             frag.appendChild(tr);
         });
 
@@ -276,7 +286,7 @@ window.SkyOfficeBoard = {
         this.prevPermitLength = sorted.length;
 
         /* --------------------------------------------
-        7️⃣ Start auto-scroll ONLY if not already running
+        7️⃣ Start auto-scroll ONLY if needed
         -------------------------------------------- */
         requestAnimationFrame(() => {
             const wrap = card.scrollWrap;
