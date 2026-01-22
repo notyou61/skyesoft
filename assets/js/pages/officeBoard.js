@@ -207,16 +207,28 @@ window.SkyOfficeBoard = {
         const card = this.dom.card;
         if (!card) return;
 
+        /* --------------------------------------------
+        1️⃣ Build data signature (WO + status)
+        -------------------------------------------- */
         const signature = Array.isArray(activePermits)
             ? activePermits.map(p => `${p.wo}|${p.status}`).join("::")
             : "empty";
 
-        //if (signature === this.lastPermitSignature) return;
+        const isSameData = signature === this.lastPermitSignature;
         this.lastPermitSignature = signature;
+
+        /* --------------------------------------------
+        2️⃣ If data did NOT change, do nothing
+            (prevents scroll reset on SSE ticks)
+        -------------------------------------------- */
+        if (isSameData) return;
 
         const body = card.tableBody;
         body.innerHTML = "";
 
+        /* --------------------------------------------
+        3️⃣ Handle empty state
+        -------------------------------------------- */
         if (!Array.isArray(activePermits) || activePermits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
             card.footer.textContent = "No permits found";
@@ -225,11 +237,19 @@ window.SkyOfficeBoard = {
             return;
         }
 
-        const sorted = [...activePermits].sort((a,b) => (parseInt(a.wo,10)||0) - (parseInt(b.wo,10)||0));
-        const countChanged = sorted.length !== this.prevPermitLength;
+        /* --------------------------------------------
+        4️⃣ Sort permits (stable, numeric WO)
+        -------------------------------------------- */
+        const sorted = [...activePermits].sort(
+            (a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
+        );
 
+        const countChanged = sorted.length !== this.prevPermitLength;
         const frag = document.createDocumentFragment();
 
+        /* --------------------------------------------
+        5️⃣ Build rows
+        -------------------------------------------- */
         sorted.forEach(p => {
             const tr = document.createElement("tr");
             tr.className = "permit-row";
@@ -246,16 +266,31 @@ window.SkyOfficeBoard = {
         });
 
         body.appendChild(frag);
-        `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`
+
+        /* --------------------------------------------
+        6️⃣ Footer + state tracking
+        -------------------------------------------- */
+        card.footer.textContent =
+            `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
+
         this.prevPermitLength = sorted.length;
 
+        /* --------------------------------------------
+        7️⃣ Start auto-scroll ONLY if not already running
+        -------------------------------------------- */
         requestAnimationFrame(() => {
-            if (card.scrollWrap.scrollHeight > card.scrollWrap.clientHeight) {
-                this.autoScroll.start(card.scrollWrap);
+            const wrap = card.scrollWrap;
+            if (!wrap) return;
+
+            const canScroll = wrap.scrollHeight > wrap.clientHeight;
+
+            if (canScroll && !this.autoScroll.running) {
+                this.autoScroll.start(wrap, 30000); // full card duration
             }
         });
     },
     /* #endregion */
+
 
     /* #region SSE */
     onSSE(payload) {
