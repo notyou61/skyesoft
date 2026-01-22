@@ -48,24 +48,6 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         console.error('❌ Failed to load permitRegistry.json', err);
         permitRegistryMeta = null;
     });
-
-// ────────────────────────────────────────────────
-// TEMPORARY WORKAROUND: Hard-code known values until CORS is fixed
-// Remove this block once server sends Access-Control-Allow-Origin header
-// ────────────────────────────────────────────────
-if (!permitRegistryMeta) {
-    permitRegistryMeta = {
-        counts: {
-            totalWorkOrders: 144   // ← update this number manually when it changes
-        },
-        updatedOn: 1768594417      // ← your last known timestamp from the JSON file
-        // You can add more fields later if needed, e.g. statusBreakdown
-    };
-    console.warn(
-        "Using temporary hardcoded permitRegistryMeta due to CORS block. " +
-        "Footer will show total and updated time."
-    );
-}yield
     
 
 /* #region SMART INTERVAL FORMATTER */
