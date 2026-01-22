@@ -202,104 +202,149 @@ window.SkyOfficeBoard = {
     },
     /* #endregion */
 
-/* #region ACTIVE PERMITS */
-updatePermitTable(activePermits) {
-    const card = this.dom.card;
-    if (!card) return;
+    /* #region PERMIT TABLE */
+    updatePermitTable: function (activePermits) {
 
-    /* --------------------------------------------
-       1️⃣ Build data signature (WO + status)
-          (prevents scroll reset on SSE ticks)
-    -------------------------------------------- */
-    const signature = Array.isArray(activePermits)
-        ? activePermits.map(p => `${p.wo}|${p.status}`).join("::")
-        : "empty";
+        const varBody   = this.dom.permitTableBody;
+        const varFooter = document.getElementById("permitFooter");
 
-    const isSameData = signature === this.lastPermitSignature;
-    this.lastPermitSignature = signature;
+        if (!varBody) return;
 
-    if (isSameData) return;
-
-    const body = card.tableBody;
-    body.innerHTML = "";
-
-    /* --------------------------------------------
-       2️⃣ Handle empty state
-    -------------------------------------------- */
-    if (!Array.isArray(activePermits) || activePermits.length === 0) {
-        body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
-        card.footer.textContent = "No permits found";
-        this.autoScroll.stop();
-        this.prevPermitLength = 0;
-        return;
-    }
-
-    /* --------------------------------------------
-       3️⃣ Registry lookups (presentation layer)
-    -------------------------------------------- */
-    const jurisdictions = this.registries?.jurisdictions ?? {};
-    const statuses = this.registries?.permitStatuses ?? {};
-
-    const resolveJurisdiction = key =>
-        jurisdictions[key]?.label ?? key ?? "";
-
-    const resolveStatus = key =>
-        statuses[key]?.label ?? key ?? "";
-
-    /* --------------------------------------------
-       4️⃣ Sort permits (stable, numeric WO)
-    -------------------------------------------- */
-    const sorted = [...activePermits].sort(
-        (a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
-    );
-
-    const countChanged = sorted.length !== this.prevPermitLength;
-    const frag = document.createDocumentFragment();
-
-    /* --------------------------------------------
-       5️⃣ Build rows
-    -------------------------------------------- */
-    sorted.forEach(p => {
-        const tr = document.createElement("tr");
-        tr.className = "permit-row";
-        if (countChanged) tr.classList.add("updated");
-
-        tr.innerHTML = `
-            <td>${p.wo ?? ""}</td>
-            <td>${p.customer ?? ""}</td>
-            <td>${p.jobsite ?? ""}</td>
-            <td>${resolveJurisdiction(p.jurisdiction)}</td>
-            <td>${resolveStatus(p.status)}</td>
-        `;
-
-        frag.appendChild(tr);
-    });
-
-    body.appendChild(frag);
-
-    /* --------------------------------------------
-       6️⃣ Footer + state tracking
-    -------------------------------------------- */
-    card.footer.textContent =
-        `${sorted.length} active permit${sorted.length === 1 ? "" : "s"}`;
-
-    this.prevPermitLength = sorted.length;
-
-    /* --------------------------------------------
-       7️⃣ Start auto-scroll ONLY if needed
-    -------------------------------------------- */
-    requestAnimationFrame(() => {
-        const wrap = card.scrollWrap;
-        if (!wrap) return;
-
-        const canScroll = wrap.scrollHeight > wrap.clientHeight;
-
-        if (canScroll && !this.autoScroll.running) {
-            this.autoScroll.start(wrap, 30000); // full card duration
+        // Helper: Title Case (keeps spaces, fixes underscores/dashes)
+        function toTitleCase(varText) {
+            if (!varText) return "";
+            return String(varText)
+                .replace(/[_-]+/g, " ")
+                .trim()
+                .split(/\s+/)
+                .map(function (varWord) {
+                    return varWord.charAt(0).toUpperCase() + varWord.slice(1).toLowerCase();
+                })
+                .join(" ");
         }
-    });
-},
-/* #endregion */
+
+        // Helper: Jurisdiction label (registry-like, with a few common exceptions)
+        function formatJurisdiction(varKey) {
+            const varRaw = (varKey ?? "").toString().trim();
+            if (!varRaw) return "";
+
+            const varLower = varRaw.toLowerCase();
+
+            // Common internal / special cases
+            const varMap = {
+                "srpmic": "SRPMIC",
+                "maricopa county": "Maricopa County",
+                "paradise valley": "Paradise Valley"
+            };
+
+            if (varMap[varLower]) return varMap[varLower];
+
+            // Default: clean Title Case (mesa -> Mesa, queen creek -> Queen Creek)
+            return toTitleCase(varRaw);
+        }
+
+        // Helper: Status label (prefer explicit map, fallback to Title Case)
+        function formatStatus(varKey) {
+            const varRaw = (varKey ?? "").toString().trim();
+            if (!varRaw) return "";
+
+            const varLower = varRaw.toLowerCase();
+
+            const varMap = {
+                "under_review": "Under Review",
+                "ready_to_issue": "Ready to Issue",
+                "need_to_submit": "Need to Submit",
+                "applicant_resubmit": "Applicant Resubmit",
+                "plans_approved": "Plans Approved",
+                "final_fees": "Final Fees",
+                "issued": "Issued",
+                "finaled": "Finaled",
+                "submitted": "Submitted",
+                "corrections": "Corrections"
+            };
+
+            if (varMap[varLower]) return varMap[varLower];
+
+            // Fallback: convert under_review -> Under Review, etc.
+            return toTitleCase(varRaw);
+        }
+
+        // ---- CHANGE DETECTION (prevents flashing + scroll reset on SSE ticks) ----
+        const varSignature = Array.isArray(activePermits)
+            ? activePermits.map(function (p) { return `${p.wo}|${p.status}|${p.jurisdiction}`; }).join("::")
+            : "empty";
+
+        if (varSignature === this.lastPermitSignature) return;
+        this.lastPermitSignature = varSignature;
+
+        // ---- EMPTY STATE ----
+        if (!Array.isArray(activePermits) || activePermits.length === 0) {
+
+            varBody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="5">No active permits</td>
+                </tr>
+            `;
+
+            if (varFooter) varFooter.textContent = "No permits found";
+            this.prevPermitLength = 0;
+            return;
+        }
+
+        // ---- NORMAL DATA PATH ----
+        const varSorted = activePermits.slice().sort(function (a, b) {
+            return (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0);
+        });
+
+        const varLengthChanged = varSorted.length !== this.prevPermitLength;
+
+        varBody.innerHTML = "";
+        const varFrag = document.createDocumentFragment();
+
+        varSorted.forEach(function (p) {
+
+            const varTr = document.createElement("tr");
+            varTr.classList.add("permit-row");
+
+            if (varLengthChanged) varTr.classList.add("updated");
+
+            // Format columns
+            const varJurisdictionLabel = formatJurisdiction(p.jurisdiction);
+            const varStatusLabel       = formatStatus(p.status);
+
+            varTr.innerHTML = `
+                <td>${p.wo ?? ""}</td>
+                <td>${p.customer ?? ""}</td>
+                <td>${p.jobsite ?? ""}</td>
+                <td>${varJurisdictionLabel}</td>
+                <td>${varStatusLabel}</td>
+            `;
+
+            varFrag.appendChild(varTr);
+        });
+
+        varBody.appendChild(varFrag);
+
+        if (varFooter) {
+            varFooter.textContent =
+                `${varSorted.length} active permit${varSorted.length === 1 ? "" : "s"}`;
+        }
+
+        this.prevPermitLength = varSorted.length;
+
+        // ---- SCROLL RESTART (ONLY ON REAL DATA CHANGE) ----
+        requestAnimationFrame(() => {
+            if (
+                this.dom.permitScroll &&
+                this.dom.cardActivePermits &&
+                this.dom.cardActivePermits.style.display !== "none" &&
+                this.dom.permitScroll.scrollHeight > this.dom.permitScroll.clientHeight
+            ) {
+                this.autoScroll.start(this.dom.permitScroll, this.rotation.duration);
+            }
+        });
+    },
+    /* #endregion */
 
     /* #region SSE */
     onSSE(payload) {
