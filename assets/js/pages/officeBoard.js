@@ -3,6 +3,31 @@
    Dynamic Card Model – Active Permits only (2026 edition)
 */
 
+// ────────────────────────────────────────────────
+// Global registry reference (loaded async)
+// ────────────────────────────────────────────────
+let jurisdictionRegistry = null;
+
+fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', {
+    cache: 'no-cache'  // ensure we get fresh version
+})
+    .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    })
+    .then(data => {
+        jurisdictionRegistry = data;
+        console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
+        // Optional: force re-render if data already arrived
+        if (window.SkyOfficeBoard?.lastPermitSignature) {
+            window.SkyOfficeBoard.lastPermitSignature = null;
+        }
+    })
+    .catch(err => {
+        console.error('❌ Failed to load jurisdictionRegistry.json', err);
+        jurisdictionRegistry = {}; // prevent crash → fallback to title case
+    });
+
 /* #region SMART INTERVAL FORMATTER */
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
@@ -71,20 +96,16 @@ function createActivePermitsCard() {
 /* #region PAGE CONTROLLER */
 window.SkyOfficeBoard = {
 
-    /* #region DOM CACHE */
     dom: {
-        //host: null,
         card: null,
         weather: null,
         time: null,
         interval: null,
         version: null
     },
-    /* #endregion */
 
     lastPermitSignature: null,
     prevPermitLength: 0,
-    scrollStarted: false,
 
     /* #region AUTOSCROLL */
     autoScroll: {
@@ -138,7 +159,7 @@ window.SkyOfficeBoard = {
     init() {
         this.dom.pageBody = document.getElementById("boardCardHost");
         
-        if (!this.dom.pageBody) {                           // ← change here
+        if (!this.dom.pageBody) {
             console.warn("officeBoard: boardCardHost not found");
             return;
         }
@@ -155,10 +176,7 @@ window.SkyOfficeBoard = {
             this.onSSE(window.SkyeApp.lastSSE);
         }
         
-        console.log(
-            "Active Permits card injected",
-            this.dom.card.root
-        );
+        console.log("Active Permits card injected", this.dom.card.root);
     },
 
     destroy() {
@@ -205,14 +223,13 @@ window.SkyOfficeBoard = {
     /* #region PERMIT TABLE */
     updatePermitTable: function (activePermits) {
 
-        const tableBody = this.dom.card.tableBody;
-        const footer    = this.dom.card.footer;
+        const tableBody = this.dom.card?.tableBody;
+        const footer    = this.dom.card?.footer;
 
-        if (!tableBody) return;
-
-        // ────────────────────────────────────────────────
-        // Helpers (already good — just keeping them here for completeness)
-        // ────────────────────────────────────────────────
+        if (!tableBody) {
+            console.warn("Permit table body not found");
+            return;
+        }
 
         function toTitleCase(text) {
             if (!text) return "";
@@ -230,8 +247,8 @@ window.SkyOfficeBoard = {
 
             const lower = raw.toLowerCase();
 
-            if (!jurisdictionRegistry || typeof jurisdictionRegistry !== 'object') {
-                console.warn("jurisdictionRegistry not loaded — falling back to title case");
+            if (!jurisdictionRegistry) {
+                console.warn("jurisdictionRegistry not ready yet — using title case");
                 return toTitleCase(raw);
             }
 
@@ -240,7 +257,6 @@ window.SkyOfficeBoard = {
                 return entry.label;
             }
 
-            console.debug(`No registry entry for jurisdiction "${raw}" → using title case`);
             return toTitleCase(raw);
         }
 
@@ -261,48 +277,30 @@ window.SkyOfficeBoard = {
                 "finaled":          "Finaled",
                 "submitted":        "Submitted",
                 "corrections":      "Corrections"
-                // Add new statuses here when they appear — no code change needed elsewhere
             };
 
-            if (statusMap[lower]) {
-                return statusMap[lower];
-            }
-
-            // Fallback for unknown / future statuses
-            console.debug(`Unknown status "${raw}" → using title case`);
-            return toTitleCase(raw);
+            return statusMap[lower] || toTitleCase(raw);
         }
 
-        // ────────────────────────────────────────────────
-        // Change detection (prevents unnecessary DOM rebuilds)
-        // ────────────────────────────────────────────────
+        // Change detection
         const signature = Array.isArray(activePermits)
-            ? activePermits.map(p => `${p.workOrder}|${p.permit?.status ?? ''}|${p.jurisdiction ?? ''}`).join("::")
+            ? activePermits.map(p => `${p.wo ?? ''}|${p.status ?? ''}|${p.jurisdiction ?? ''}`).join("::")
             : "empty";
 
         if (signature === this.lastPermitSignature) return;
         this.lastPermitSignature = signature;
 
-        // ────────────────────────────────────────────────
         // Empty state
-        // ────────────────────────────────────────────────
         if (!Array.isArray(activePermits) || activePermits.length === 0) {
-            tableBody.innerHTML = `
-                <tr class="empty-row">
-                    <td colspan="5">No active permits</td>
-                </tr>
-            `;
-
+            tableBody.innerHTML = `<tr class="empty-row"><td colspan="5">No active permits</td></tr>`;
             if (footer) footer.textContent = "No permits found";
             this.prevPermitLength = 0;
             return;
         }
 
-        // ────────────────────────────────────────────────
-        // Normal rendering path
-        // ────────────────────────────────────────────────
+        // Render
         const sorted = activePermits.slice().sort((a, b) =>
-            (parseInt(a.workOrder, 10) || 0) - (parseInt(b.workOrder, 10) || 0)
+            (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
         );
 
         const lengthChanged = sorted.length !== this.prevPermitLength;
@@ -310,23 +308,17 @@ window.SkyOfficeBoard = {
         tableBody.innerHTML = "";
         const fragment = document.createDocumentFragment();
 
-        sorted.forEach(permit => {
+        sorted.forEach(p => {
             const row = document.createElement("tr");
             row.classList.add("permit-row");
-
-            if (lengthChanged) {
-                row.classList.add("updated");
-            }
-
-            const jurisdictionLabel = formatJurisdiction(permit.jurisdiction);
-            const statusLabel       = formatStatus(permit.permit?.status);
+            if (lengthChanged) row.classList.add("updated");
 
             row.innerHTML = `
-                <td>${permit.workOrder ?? ""}</td>
-                <td>${permit.customer   ?? ""}</td>
-                <td>${permit.jobsite    ?? ""}</td>
-                <td>${jurisdictionLabel}</td>
-                <td>${statusLabel}</td>
+                <td>${p.wo ?? ""}</td>
+                <td>${p.customer ?? ""}</td>
+                <td>${p.jobsite ?? ""}</td>
+                <td>${formatJurisdiction(p.jurisdiction)}</td>
+                <td>${formatStatus(p.status)}</td>
             `;
 
             fragment.appendChild(row);
@@ -340,17 +332,11 @@ window.SkyOfficeBoard = {
 
         this.prevPermitLength = sorted.length;
 
-        // ────────────────────────────────────────────────
-        // Auto-scroll restart (only when content actually changed)
-        // ────────────────────────────────────────────────
+        // Auto-scroll
         requestAnimationFrame(() => {
-            const scrollEl = this.dom.card.scrollWrap;
-            if (
-                scrollEl &&
-                this.dom.card.root?.style.display !== "none" &&
-                scrollEl.scrollHeight > scrollEl.clientHeight
-            ) {
-                this.autoScroll.start(scrollEl, this.rotation?.duration ?? 30000);
+            const scrollEl = this.dom.card?.scrollWrap;
+            if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
+                this.autoScroll.start(scrollEl, 30000); // fallback duration
             }
         });
     },
@@ -358,53 +344,39 @@ window.SkyOfficeBoard = {
 
     /* #region SSE */
     onSSE(payload) {
+        console.log("OfficeBoard SSE received", payload.activePermits?.length ?? "missing");
 
-        console.log(
-            "OfficeBoard SSE received",
-            payload.activePermits?.length ?? "missing / not present"
-        );
-
-        // Early debug: show structure of activePermits if it exists
         if (payload.activePermits) {
             const permits = payload.activePermits;
             console.log("activePermits type:", Object.prototype.toString.call(permits));
 
-            if (permits.length > 0) {
+            if (Array.isArray(permits) && permits.length > 0) {
                 const first = permits[0];
                 console.log("First permit sample:", first);
                 console.log("Has expected keys?", 
-                    'wo'          in first &&
-                    'customer'    in first &&
-                    'jobsite'     in first &&
-                    'jurisdiction'in first &&
-                    'status'      in first
+                    'wo' in first && 'customer' in first && 'jobsite' in first &&
+                    'jurisdiction' in first && 'status' in first
                 );
-            } else {
-                console.log("activePermits is empty (length 0)");
             }
-        } else {
-            console.log("No activePermits property in payload");
         }
 
         this.updateHeader(payload);
 
-        // Normalized handling for rendering
         let permitsToRender = null;
 
         if (Array.isArray(payload.activePermits)) {
             permitsToRender = payload.activePermits;
-        } else if (payload.activePermits && typeof payload.activePermits.length === 'number') {
-            // array-like (NodeList, arguments, typed array, etc.)
-            console.log("Converting array-like object to real array");
-            permitsToRender = Array.from(payload.activePermits);
         }
 
         if (permitsToRender) {
+            // Optional filter: only show non-final permits
+            // permitsToRender = permitsToRender.filter(p => 
+            //     !['issued','finaled'].includes((p.status || '').toLowerCase())
+            // );
             this.updatePermitTable(permitsToRender);
         } else {
-            console.warn("activePermits is not usable (not array or array-like) → table not updated");
-            // Optional: force "No active permits" state if desired
-            // this.updatePermitTable([]);
+            console.warn("No usable activePermits array → clearing table");
+            this.updatePermitTable([]);
         }
 
         this.updateFooter(payload);
