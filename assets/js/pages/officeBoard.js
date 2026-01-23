@@ -4,10 +4,8 @@
    Phoenix, Arizona – MST timezone
 */
 
-// ────────────────────────────────────────────────
-// GLOBAL REGISTRIES (loaded async)
-// Phoenix MST note: fetches are non-blocking; fallback used if CORS blocks
-// ────────────────────────────────────────────────
+// #region GLOBAL REGISTRIES
+
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 
@@ -48,25 +46,9 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         applyPermitRegistryFallback();
     });
 
-// ────────────────────────────────────────────────
-// TEMPORARY WORKAROUND – Deferred fallback for footer testing
-// Remove once server sends Access-Control-Allow-Origin header
-// ────────────────────────────────────────────────
-function applyPermitRegistryFallback() {
-    if (permitRegistryMeta !== null) return;
+// #endregion
 
-    permitRegistryMeta = {
-        counts: { totalWorkOrders: 144 }, // update this when real count changes
-        updatedOn: 1768594417             // last known timestamp from sample
-    };
-
-    console.warn(
-        'TEMP: Using hardcoded permitRegistryMeta (CORS block). ' +
-        'Footer will show total 144 + updated time. Remove when server fixed.'
-    );
-}
-
-/* #region SMART INTERVAL FORMATTER */
+//  #region SMART INTERVAL FORMATTER */
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -79,9 +61,9 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-/* #endregion */
+//  #endregion */
 
-/* #region TIMESTAMP FORMATTER */
+// #region TIMESTAMP FORMATTER */
 // Phoenix MST (no DST) – consistent MM/DD/YY hh:mm AM/PM
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
@@ -93,9 +75,9 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-/* #endregion */
+//  #endregion */
 
-/* #region CARD FACTORY */
+// #region CARD FACTORY */
 function createActivePermitsCard() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
@@ -125,9 +107,9 @@ function createActivePermitsCard() {
         footer: card.querySelector('#permitFooter')
     };
 }
-/* #endregion */
+// #endregion */
 
-/* #region PAGE CONTROLLER */
+// #region PAGE CONTROLLER */
 window.SkyOfficeBoard = {
     dom: { card: null, weather: null, time: null, interval: null, version: null },
     lastPermitSignature: null,
@@ -228,8 +210,8 @@ window.SkyOfficeBoard = {
         this.updatePermitTable(payload.activePermits || []);
     }
 };
-/* #endregion */
+// #endregion */
 
-/* #region REGISTER */
+// #region REGISTER */
 window.SkyeApp.registerPage('officeBoard', window.SkyOfficeBoard);
-/* #endregion */
+// #endregion */
