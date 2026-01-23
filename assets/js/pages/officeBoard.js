@@ -43,8 +43,8 @@ function formatStatus(status) {
         .join(' ');
 }
 
-// Jurisdiction Registry – loads city display labels
-fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
+// Jurisdiction Registry – loads proper city/county labels
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
     .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -62,7 +62,7 @@ fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry
     });
 
 // Permit Registry Meta – total work orders + updated timestamp
-fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
+fetch('https://www.skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
     .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -79,8 +79,8 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         permitRegistryMeta = null;
     });
 
-// Icon Map – loads emoji & file references for dynamic icons
-fetch('https://skyelighting.com/skyesoft/assets/data/iconMap.json', { cache: 'no-cache' })
+// Icon Map – loads emoji & file references for dynamic status icons
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', { cache: 'no-cache' })
     .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -102,9 +102,9 @@ function getStatusIcon(status) {
 
     const s = status.toLowerCase();
 
-    // Semantic key mapping – matches keys/alt/file in iconMap.json
+    // Semantic key mapping – matches file/alt in iconMap.json
     const keyMap = {
-        'under_review':     'clock',          // ⏳ or ⌛
+        'under_review':     'clock',          // ⏳ ⌛
         'need_to_submit':   'warning',        // ⚠️
         'submitted':        'clipboard',      // 📋
         'ready_to_issue':   'calendar',       // 📅
@@ -116,7 +116,7 @@ function getStatusIcon(status) {
     const iconKey = keyMap[s];
     if (!iconKey || !iconMap) return '';
 
-    // Find best matching entry (file or alt contains the key)
+    // Find best matching entry
     const entry = Object.values(iconMap).find(e => 
         (e.file && e.file.toLowerCase().includes(iconKey)) ||
         (e.alt && e.alt.toLowerCase().includes(iconKey))
@@ -124,14 +124,14 @@ function getStatusIcon(status) {
 
     if (!entry) return '';
 
-    // Prefer emoji (fastest, no extra request)
+    // Prefer emoji if present (fastest)
     if (entry.emoji) {
         return entry.emoji + ' ';
     }
 
     // Fallback to small image tag
     if (entry.file) {
-        const url = `https://skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+        const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
         return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
     }
 
