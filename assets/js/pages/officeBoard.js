@@ -170,10 +170,10 @@ const ActivePermitsCard = {
     durationMs: 30000,
 
     instance: null,
+    lastSignature: null,  // moved here from global for better isolation
 
     create() {
         this.instance = createActivePermitsCardElement();
-        // Initial render (will be updated via payload soon)
         return this.instance.root;
     },
 
@@ -189,7 +189,6 @@ const ActivePermitsCard = {
             ? payload.activePermits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}`).join('::')
             : 'empty';
 
-        // You can keep lastPermitSignature on the card if you prefer isolation
         if (signature === this.lastSignature) return;
         this.lastSignature = signature;
 
@@ -197,6 +196,7 @@ const ActivePermitsCard = {
         if (latestActivePermits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
             footer && (footer.textContent = 'No permits found');
+            // No scroll needed when empty
             return;
         }
 
@@ -230,15 +230,24 @@ const ActivePermitsCard = {
             }
             footer.innerHTML = text;
         }
+
+        // ────────────────────────────────────────────────
+        //  FIXED SCROLL START – moved here so it runs AFTER render
+        // ────────────────────────────────────────────────
+        requestAnimationFrame(() => {
+            if (this.instance?.scrollWrap) {
+                window.SkyOfficeBoard.autoScroll.start(
+                    this.instance.scrollWrap,
+                    this.durationMs
+                );
+            }
+        });
+        // ────────────────────────────────────────────────
     },
 
     onShow() {
-        if (this.instance?.scrollWrap) {
-            window.SkyOfficeBoard.autoScroll.start(
-                this.instance.scrollWrap,
-                this.durationMs
-            );
-        }
+        // Keep this for future cards that might need setup on visibility
+        // But scroll start is now handled in update() where data is fresh
     },
 
     onHide() {
@@ -246,7 +255,6 @@ const ActivePermitsCard = {
     }
 };
 
-// Register the only card (for now)
 BOARD_CARDS.push(ActivePermitsCard);
 
 function updateAllCards(payload) {
@@ -331,13 +339,11 @@ function showCard(index) {
 // #region PAGE CONTROLLER
 
 window.SkyOfficeBoard = {
-    ...window.SkyOfficeBoard,  // preserve any previous props if needed
+    ...window.SkyOfficeBoard,
 
     dom: { card: null, weather: null, time: null, interval: null, version: null },
 
-    start() {
-        this.init();
-    },
+    start() { this.init(); },
 
     init() {
         this.dom.pageBody  = document.getElementById('boardCardHost');
@@ -348,16 +354,13 @@ window.SkyOfficeBoard = {
 
         if (!this.dom.pageBody) return;
 
-        // Start showing the first (and currently only) card
         showCard(0);
 
-        // If we already have SSE data, push it through
         if (window.SkyeApp?.lastSSE) {
             updateAllCards(window.SkyeApp.lastSSE);
         }
     },
 
-    // Keep for compatibility if anything external still calls it directly
     updatePermitTable(activePermits) {
         updateAllCards({ activePermits });
     },
