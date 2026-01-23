@@ -89,6 +89,26 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         applyPermitRegistryFallback();
     });
 
+    function applyPermitRegistryFallback() {
+    if (permitRegistryMeta !== null) return;
+
+    permitRegistryMeta = {
+        counts: { totalWorkOrders: 144 }, // update this manually when count changes
+        updatedOn: 1768594417             // last known timestamp
+    };
+
+    console.warn(
+        'TEMP: Using hardcoded permitRegistryMeta (CORS block). ' +
+        'Footer will show total + updated time. Remove when fixed.'
+    );
+
+    // Force footer re-render if we have data
+    if (window.SkyOfficeBoard?.lastRenderedPermits) {
+        console.log('Fallback applied → re-rendering footer');
+        window.SkyOfficeBoard.updatePermitTable(window.SkyOfficeBoard.lastRenderedPermits);
+    }
+}
+
 // #endregion
 
 //  #region SMART INTERVAL FORMATTER
