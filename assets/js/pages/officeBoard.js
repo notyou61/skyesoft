@@ -322,7 +322,7 @@ window.SkyOfficeBoard = {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
 
             // Bigger LIVE icon
-            const liveIcon = `<img src="https://www.skyelighting.com/skyesoft/assets/images/icons/live.png" alt="Live indicator" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">`;
+            const liveIcon = `<img src="https://www.skyelighting.com/skyesoft/assets/images/icons/live.png" alt="Live indicator" style="width:28px; height:28px; vertical-align:middle; margin-right:6px;">`;
             footerText = `${liveIcon}${footerText}`;
 
             if (permitRegistryMeta?.updatedOn) {
