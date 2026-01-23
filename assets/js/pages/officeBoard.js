@@ -214,7 +214,7 @@ window.SkyOfficeBoard = {
         let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
 
         if (permitRegistryMeta?.updatedOn) {
-            footerText += ` Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
+            footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
         }
 
         if (footer) footer.textContent = footerText;
