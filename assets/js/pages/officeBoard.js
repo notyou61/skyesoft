@@ -321,16 +321,16 @@ window.SkyOfficeBoard = {
         if (footer) {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
 
-            // LIVE icon from iconMap or fallback to live.png
-            const liveIcon = getFooterIcon('live');
+            // Bigger LIVE icon
+            const liveIcon = `<img src="https://www.skyelighting.com/skyesoft/assets/images/icons/live.png" alt="Live indicator" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">`;
             footerText = `${liveIcon}${footerText}`;
 
             if (permitRegistryMeta?.updatedOn) {
                 footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             }
 
-            footer.innerHTML = footerText;  // ← Changed from .textContent to .innerHTML
-            console.log('Footer updated (HTML):', footerText);
+            footer.innerHTML = footerText;
+            console.log('Footer updated:', footerText);
         }
 
         requestAnimationFrame(() => {
