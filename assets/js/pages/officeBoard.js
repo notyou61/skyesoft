@@ -127,7 +127,26 @@ function formatTimestamp(ts) {
 
 // #endregion
 
-// #region CARD FACTORY (unchanged logic, now used inside card spec)
+// #region LIVE FOOTER HELPER (new – centralized)
+
+function renderLiveFooter({ text = '' }) {
+    const liveIcon = `
+        <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
+             alt="Live"
+             style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+    `;
+    return `${liveIcon}${text}`;
+}
+
+// #endregion
+
+// #region CARD TIMING (new – single source of truth)
+
+const DEFAULT_CARD_DURATION_MS = 60000; // 1 minute
+
+// #endregion
+
+// #region CARD FACTORY (unchanged)
 
 function createActivePermitsCardElement() {
     const card = document.createElement('section');
@@ -159,18 +178,39 @@ function createActivePermitsCardElement() {
     };
 }
 
+function createGenericCardElement(spec) {
+    const card = document.createElement('section');
+    card.className = `card card-${spec.id}`;
+    card.innerHTML = `
+        <div class="cardHeader">
+            <h2>${spec.icon || '✨'} ${spec.title}</h2>
+        </div>
+        <div class="cardBodyDivider"></div>
+        <div class="cardBody">
+            <div class="cardContent">
+                <div id="content-${spec.id}">Loading...</div>
+            </div>
+        </div>
+        <div class="cardFooterDivider"></div>
+        <div class="cardFooter" id="footer-${spec.id}"></div>
+    `;
+    return {
+        root: card,
+        content: card.querySelector(`#content-${spec.id}`),
+        footer: card.querySelector(`#footer-${spec.id}`)
+    };
+}
+
 // #endregion
 
 // #region CARD REGISTRY + UNIVERSAL UPDATER
 
 const BOARD_CARDS = [];
 
-// ────────────────────────────────────────────────
-// 1. Specialized card: Active Permits (kept exactly as-is)
-// ────────────────────────────────────────────────
+// Specialized card: Active Permits
 const ActivePermitsCard = {
     id: 'active-permits',
-    durationMs: 30000,
+    durationMs: DEFAULT_CARD_DURATION_MS,
 
     instance: null,
     lastSignature: null,
@@ -222,18 +262,13 @@ const ActivePermitsCard = {
 
         if (footer) {
             let text = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-            const liveIcon = `
-                <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif" 
-                     alt="Live" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
-            `;
-            text = `${liveIcon}${text}`;
             if (permitRegistryMeta?.updatedOn) {
                 text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             }
-            footer.innerHTML = text;
+            footer.innerHTML = renderLiveFooter({ text });
         }
 
-        // Scroll start (unchanged – critical for this card)
+        // Scroll start
         requestAnimationFrame(() => {
             if (this.instance?.scrollWrap) {
                 window.SkyOfficeBoard.autoScroll.start(
@@ -244,9 +279,7 @@ const ActivePermitsCard = {
         });
     },
 
-    onShow() {
-        // Reserved for future needs
-    },
+    onShow() {},
 
     onHide() {
         window.SkyOfficeBoard.autoScroll.stop();
@@ -255,59 +288,17 @@ const ActivePermitsCard = {
 
 BOARD_CARDS.push(ActivePermitsCard);
 
-// ────────────────────────────────────────────────
-// 2. Generic / simple cards factory (new)
-// ────────────────────────────────────────────────
-function createGenericCardElement(spec) {
-    const card = document.createElement('section');
-    card.className = `card card-${spec.id}`;
-    card.innerHTML = `
-        <div class="cardHeader">
-            <h2>${spec.icon || '✨'} ${spec.title}</h2>
-        </div>
-        <div class="cardBodyDivider"></div>
-        <div class="cardBody">
-            <div class="cardContent">
-                <div id="content-${spec.id}">Loading...</div>
-            </div>
-        </div>
-        <div class="cardFooterDivider"></div>
-        <div class="cardFooter" id="footer-${spec.id}"></div>
-    `;
-    return {
-        root: card,
-        content: card.querySelector(`#content-${spec.id}`),
-        footer: card.querySelector(`#footer-${spec.id}`)
-    };
-}
-
-// ────────────────────────────────────────────────
-// 3. Data-driven generic cards (add as many as you want)
-// ────────────────────────────────────────────────
+// Generic cards
 const GENERIC_CARD_SPECS = [
-    {
-        id: 'todays-highlights',
-        icon: '🌅',
-        title: 'Today’s Highlights',
-        // Optional: you can later add defaultContent, defaultFooter, etc.
-    },
-    {
-        id: 'kpi-dashboard',
-        icon: '📈',
-        title: 'Key Performance Indicators',
-    },
-    {
-        id: 'announcements',
-        icon: '📢',
-        title: 'Announcements',
-    },
-    // Add more here — zero code duplication
+    { id: 'todays-highlights', icon: '🌅', title: 'Today’s Highlights' },
+    { id: 'kpi-dashboard',     icon: '📈', title: 'Key Performance Indicators' },
+    { id: 'announcements',     icon: '📢', title: 'Announcements' },
 ];
 
 GENERIC_CARD_SPECS.forEach(spec => {
     BOARD_CARDS.push({
         ...spec,
-        durationMs: 30000,           // same default as Active Permits
+        durationMs: DEFAULT_CARD_DURATION_MS,
         instance: null,
 
         create() {
@@ -316,28 +307,20 @@ GENERIC_CARD_SPECS.forEach(spec => {
         },
 
         update(payload) {
-            // Placeholder — override per card later if needed
             if (this.instance?.content) {
                 this.instance.content.innerHTML = `<p>Content for ${this.title} (placeholder)</p>`;
             }
             if (this.instance?.footer) {
-                this.instance.footer.textContent = `Updated ${formatTimestamp(Date.now()/1000)}`;
+                const footerText = `Updated ${formatTimestamp(Date.now() / 1000)}`;
+                this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
             }
         },
 
-        onShow() {
-            // Optional per-card behavior
-        },
-
-        onHide() {
-            // Optional cleanup
-        }
+        onShow() {},
+        onHide() {}
     });
 });
 
-// ────────────────────────────────────────────────
-// Universal update (unchanged)
-// ────────────────────────────────────────────────
 function updateAllCards(payload) {
     BOARD_CARDS.forEach(card => {
         if (typeof card.update === 'function') {
@@ -348,7 +331,7 @@ function updateAllCards(payload) {
 
 // #endregion
 
-// #region AUTO-SCROLL (moved here, still global for simplicity)
+// #region AUTO-SCROLL (unchanged)
 
 window.SkyOfficeBoard = window.SkyOfficeBoard || {};
 
@@ -357,7 +340,7 @@ window.SkyOfficeBoard.autoScroll = {
     running: false,
     FPS: 60,
 
-    start(el, duration = 30000) {
+    start(el, duration = DEFAULT_CARD_DURATION_MS) {
         if (!el || this.running) return;
         const distance = el.scrollHeight - el.clientHeight;
         if (distance <= 0) return;
@@ -388,7 +371,7 @@ window.SkyOfficeBoard.autoScroll = {
 
 // #endregion
 
-// #region ROTATION CONTROLLER (simple version — only one card today)
+// #region ROTATION CONTROLLER (updated default fallback)
 
 let currentIndex = 0;
 let rotationTimer = null;
@@ -397,7 +380,6 @@ function showCard(index) {
     const host = document.getElementById('boardCardHost');
     if (!host) return;
 
-    // Cleanup previous card
     BOARD_CARDS.forEach(c => c.onHide?.());
 
     host.innerHTML = '';
@@ -412,12 +394,12 @@ function showCard(index) {
     rotationTimer = setTimeout(() => {
         currentIndex = (index + 1) % BOARD_CARDS.length;
         showCard(currentIndex);
-    }, card.durationMs || 30000);
+    }, card.durationMs || DEFAULT_CARD_DURATION_MS);
 }
 
 // #endregion
 
-// #region PAGE CONTROLLER
+// #region PAGE CONTROLLER (unchanged)
 
 window.SkyOfficeBoard = {
     ...window.SkyOfficeBoard,
