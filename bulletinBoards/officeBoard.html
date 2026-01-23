@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- #region HEAD-->
+
+<!-- #region HEAD -->
 <head>
 
     <!-- #region META & TITLE -->
@@ -22,54 +23,66 @@
 <!-- #region PAGE HEADER -->
 <div id="pageHeader" class="board-section">
 
-    <!-- LOGO / TITLE -->
+    <!-- #region LOGO / TITLE -->
     <div class="logoRow">
-        <img src="/skyesoft/assets/images/christyLogo.png" class="logo" alt="Christy Signs">
+        <img src="/skyesoft/assets/images/christyLogo.png"
+             class="logo"
+             alt="Christy Signs">
         <h1>Office Bulletin Board</h1>
     </div>
+    <!-- #endregion -->
 
-    <!-- HEADER STATUS BLOCK (HSB) -->
+    <!-- #region HEADER STATUS BLOCK -->
     <div class="headerStatusBlock">
 
-        <!-- WEATHER -->
+        <!-- Weather -->
         <div class="hsb-item">
-            <img src="/skyesoft/assets/images/icons/weather.png" class="hsb-icon">
+            <img src="/skyesoft/assets/images/icons/weather.png"
+                 class="hsb-icon"
+                 alt="Weather">
             <span class="hsb-label">Weather:</span>
             <span id="headerWeather" class="hsb-value">--°F – --</span>
         </div>
 
-        <!-- TIME -->
+        <!-- Time -->
         <div class="hsb-item">
-            <img src="/skyesoft/assets/images/icons/clock.png" class="hsb-icon" alt="">
+            <img src="/skyesoft/assets/images/icons/clock.png"
+                 class="hsb-icon"
+                 alt="Time">
             <span class="hsb-label">Time:</span>
             <span id="headerTime" class="hsb-value">--:--:--</span>
         </div>
 
-        <!-- INTERVAL -->
+        <!-- Interval -->
         <div class="hsb-item">
-            <img src="/skyesoft/assets/images/icons/hourglass.png" class="hsb-icon" alt="">
+            <img src="/skyesoft/assets/images/icons/hourglass.png"
+                 class="hsb-icon"
+                 alt="Interval">
             <span class="hsb-label">Interval:</span>
             <span id="headerInterval" class="hsb-value">--</span>
         </div>
 
     </div>
+    <!-- #endregion -->
 
 </div>
 <!-- #endregion -->
+
 
 <!-- #region PAGE BODY -->
 <div id="pageBody" class="board-section">
 
+    <!-- #region BOARD CARD HOST -->
     <!--
-      Board Card Host
-      =================
-      All board cards are injected dynamically by officeBoard.js.
-      No card HTML is authored here.
+        All board cards are injected dynamically by officeBoard.js.
+        No card HTML is authored here.
     -->
     <div id="boardCardHost"></div>
+    <!-- #endregion -->
 
 </div>
 <!-- #endregion -->
+
 
 <!-- #region PAGE FOOTER -->
 <div id="pageFooter" class="board-section">
@@ -85,13 +98,16 @@
 </div>
 <!-- #endregion -->
 
+
 <!-- #region SCRIPTS -->
 <script src="/skyesoft/assets/js/app.js?v=2025.12.01a"></script>
 <script src="/skyesoft/assets/js/sse.js?v=2026.01.18a"></script>
 <script src="/skyesoft/assets/js/pages/officeBoard.js?v=20260119-1a"></script>
 
 <script>
+    // #region PAGE INIT
     window.SkyeApp.startPage("officeBoard");
+    // #endregion
 </script>
 <!-- #endregion -->
 
