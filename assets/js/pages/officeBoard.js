@@ -9,6 +9,45 @@
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 
+// Resolve jurisdiction label from registry
+function resolveJurisdictionLabel(raw) {
+    if (!raw || !jurisdictionRegistry) return raw;
+
+    const norm = String(raw).trim().toUpperCase();
+
+    for (const key in jurisdictionRegistry) {
+        const entry = jurisdictionRegistry[key];
+        if (!entry) continue;
+
+        // Direct key match
+        if (key.toUpperCase() === norm) {
+            return entry.label;
+        }
+
+        // Alias match
+        if (Array.isArray(entry.aliases)) {
+            if (entry.aliases.map(a => a.toUpperCase()).includes(norm)) {
+                return entry.label;
+            }
+        }
+    }
+
+    // Fallback: title-case the raw value
+    return norm
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatStatus(status) {
+    if (!status) return '';
+
+    return String(status)
+        .toLowerCase()
+        .split('_')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+}
+
 // Jurisdiction Registry – loads city display labels
 fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
     .then(res => {
@@ -36,8 +75,12 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
     .then(data => {
         permitRegistryMeta = data.meta || null;
         console.log('✅ Permit registry meta loaded', permitRegistryMeta);
-        if (window.SkyOfficeBoard?.lastPermitSignature) {
-            window.SkyOfficeBoard.lastPermitSignature = null;
+
+        // 🔁 Re-render footer if permits already rendered
+        if (window.SkyOfficeBoard?.lastRenderedPermits) {
+            window.SkyOfficeBoard.updatePermitTable(
+                window.SkyOfficeBoard.lastRenderedPermits
+            );
         }
     })
     .catch(err => {
@@ -48,7 +91,7 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
 
 // #endregion
 
-//  #region SMART INTERVAL FORMATTER */
+//  #region SMART INTERVAL FORMATTER
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -61,9 +104,9 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-//  #endregion */
+//  #endregion
 
-// #region TIMESTAMP FORMATTER */
+// #region TIMESTAMP FORMATTER 
 // Phoenix MST (no DST) – consistent MM/DD/YY hh:mm AM/PM
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
@@ -75,9 +118,9 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-//  #endregion */
+//  #endregion
 
-// #region CARD FACTORY */
+// #region CARD FACTORY
 function createActivePermitsCard() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
@@ -107,9 +150,9 @@ function createActivePermitsCard() {
         footer: card.querySelector('#permitFooter')
     };
 }
-// #endregion */
+// #endregion
 
-// #region PAGE CONTROLLER */
+// #region PAGE CONTROLLER
 window.SkyOfficeBoard = {
     dom: { card: null, weather: null, time: null, interval: null, version: null },
     lastPermitSignature: null,
@@ -157,6 +200,7 @@ window.SkyOfficeBoard = {
     },
 
     updatePermitTable(activePermits) {
+        this.lastRenderedPermits = activePermits;
         const body = this.dom.card?.tableBody;
         const footer = this.dom.card?.footer;
         if (!body) return;
@@ -186,8 +230,8 @@ window.SkyOfficeBoard = {
                 <td>${p.wo}</td>
                 <td>${p.customer}</td>
                 <td>${p.jobsite}</td>
-                <td>${jurisdictionRegistry?.[p.jurisdiction]?.label || p.jurisdiction}</td>
-                <td>${p.status.replace(/_/g,' ')}</td>
+                <td>${resolveJurisdictionLabel(p.jurisdiction)}</td>
+                <td>${formatStatus(p.status)}</td>
             `;
             frag.appendChild(tr);
         });
@@ -210,8 +254,8 @@ window.SkyOfficeBoard = {
         this.updatePermitTable(payload.activePermits || []);
     }
 };
-// #endregion */
+// #endregion
 
-// #region REGISTER */
+// #region REGISTER
 window.SkyeApp.registerPage('officeBoard', window.SkyOfficeBoard);
-// #endregion */
+// #endregion
