@@ -139,37 +139,6 @@ function getStatusIcon(status) {
 }
 // #endregion
 
-// #region FOOTER ICON HELPER
-function getFooterIcon(key) {
-    if (!key) return '';
-
-    // Special case: force live.png for 'live' key
-    if (key.toLowerCase() === 'live') {
-        const liveUrl = 'https://www.skyelighting.com/skyesoft/assets/images/icons/live.png';
-        return `<img src="${liveUrl}" alt="Live indicator" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
-    }
-
-    // For other keys, use iconMap lookup (safe if iconMap missing)
-    if (!iconMap) return '';
-
-    const entry = Object.values(iconMap).find(e => 
-        (e.file && e.file.toLowerCase().includes(key.toLowerCase())) ||
-        (e.alt && e.alt.toLowerCase().includes(key.toLowerCase()))
-    );
-
-    if (!entry) return '';
-
-    if (entry.emoji) return entry.emoji + ' ';
-
-    if (entry.file) {
-        const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
-        return `<img src="${url}" alt="${entry.alt || 'icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
-    }
-
-    return '';
-}
-// #endregion
-
 // #region SMART INTERVAL FORMATTER
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
