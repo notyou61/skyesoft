@@ -42,6 +42,45 @@ function formatStatus(status) {
         .join(' ');
 }
 
+// Jurisdiction Registry – loads proper city/county labels (Mesa, Paradise Valley, etc.)
+fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    })
+    .then(data => {
+        jurisdictionRegistry = data;
+        console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
+        // Debug: confirm Paradise Valley is present
+        console.log('Paradise Valley label from registry:', data['paradiseValley']?.label || 'NOT FOUND');
+        // Re-render table if we already have permits
+        if (latestActivePermits.length > 0) {
+            window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
+        }
+    })
+    .catch(err => {
+        console.error('❌ Failed to load jurisdictionRegistry.json (CORS likely)', err);
+        jurisdictionRegistry = {};
+    });
+
+// Permit Registry Meta – total work orders + updated timestamp
+fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    })
+    .then(data => {
+        permitRegistryMeta = data.meta || null;
+        console.log('✅ Permit registry meta loaded', permitRegistryMeta);
+        if (latestActivePermits.length > 0) {
+            window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
+        }
+    })
+    .catch(err => {
+        console.error('❌ Failed to load permitRegistry.json (CORS likely)', err);
+        permitRegistryMeta = null;
+    });
+
 // #endregion
 
 // #region STATUS ICON HELPER
