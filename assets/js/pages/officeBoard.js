@@ -165,12 +165,15 @@ function createActivePermitsCardElement() {
 
 const BOARD_CARDS = [];
 
+// ────────────────────────────────────────────────
+// 1. Specialized card: Active Permits (kept exactly as-is)
+// ────────────────────────────────────────────────
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: 30000,
 
     instance: null,
-    lastSignature: null,  // moved here from global for better isolation
+    lastSignature: null,
 
     create() {
         this.instance = createActivePermitsCardElement();
@@ -196,7 +199,6 @@ const ActivePermitsCard = {
         if (latestActivePermits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
             footer && (footer.textContent = 'No permits found');
-            // No scroll needed when empty
             return;
         }
 
@@ -231,9 +233,7 @@ const ActivePermitsCard = {
             footer.innerHTML = text;
         }
 
-        // ────────────────────────────────────────────────
-        //  FIXED SCROLL START – moved here so it runs AFTER render
-        // ────────────────────────────────────────────────
+        // Scroll start (unchanged – critical for this card)
         requestAnimationFrame(() => {
             if (this.instance?.scrollWrap) {
                 window.SkyOfficeBoard.autoScroll.start(
@@ -242,12 +242,10 @@ const ActivePermitsCard = {
                 );
             }
         });
-        // ────────────────────────────────────────────────
     },
 
     onShow() {
-        // Keep this for future cards that might need setup on visibility
-        // But scroll start is now handled in update() where data is fresh
+        // Reserved for future needs
     },
 
     onHide() {
@@ -257,6 +255,89 @@ const ActivePermitsCard = {
 
 BOARD_CARDS.push(ActivePermitsCard);
 
+// ────────────────────────────────────────────────
+// 2. Generic / simple cards factory (new)
+// ────────────────────────────────────────────────
+function createGenericCardElement(spec) {
+    const card = document.createElement('section');
+    card.className = `card card-${spec.id}`;
+    card.innerHTML = `
+        <div class="cardHeader">
+            <h2>${spec.icon || '✨'} ${spec.title}</h2>
+        </div>
+        <div class="cardBodyDivider"></div>
+        <div class="cardBody">
+            <div class="cardContent">
+                <div id="content-${spec.id}">Loading...</div>
+            </div>
+        </div>
+        <div class="cardFooterDivider"></div>
+        <div class="cardFooter" id="footer-${spec.id}"></div>
+    `;
+    return {
+        root: card,
+        content: card.querySelector(`#content-${spec.id}`),
+        footer: card.querySelector(`#footer-${spec.id}`)
+    };
+}
+
+// ────────────────────────────────────────────────
+// 3. Data-driven generic cards (add as many as you want)
+// ────────────────────────────────────────────────
+const GENERIC_CARD_SPECS = [
+    {
+        id: 'todays-highlights',
+        icon: '🌅',
+        title: 'Today’s Highlights',
+        // Optional: you can later add defaultContent, defaultFooter, etc.
+    },
+    {
+        id: 'kpi-dashboard',
+        icon: '📈',
+        title: 'Key Performance Indicators',
+    },
+    {
+        id: 'announcements',
+        icon: '📢',
+        title: 'Announcements',
+    },
+    // Add more here — zero code duplication
+];
+
+GENERIC_CARD_SPECS.forEach(spec => {
+    BOARD_CARDS.push({
+        ...spec,
+        durationMs: 30000,           // same default as Active Permits
+        instance: null,
+
+        create() {
+            this.instance = createGenericCardElement(this);
+            return this.instance.root;
+        },
+
+        update(payload) {
+            // Placeholder — override per card later if needed
+            if (this.instance?.content) {
+                this.instance.content.innerHTML = `<p>Content for ${this.title} (placeholder)</p>`;
+            }
+            if (this.instance?.footer) {
+                this.instance.footer.textContent = `Updated ${formatTimestamp(Date.now()/1000)}`;
+            }
+        },
+
+        onShow() {
+            // Optional per-card behavior
+        },
+
+        onHide() {
+            // Optional cleanup
+        }
+    });
+});
+
+// ────────────────────────────────────────────────
+// Universal update (unchanged)
+// ────────────────────────────────────────────────
 function updateAllCards(payload) {
     BOARD_CARDS.forEach(card => {
         if (typeof card.update === 'function') {
