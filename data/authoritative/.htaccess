@@ -1,0 +1,5 @@
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "https://www.skyelighting.com"
+    Header set Access-Control-Allow-Methods "GET"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
