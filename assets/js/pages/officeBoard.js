@@ -42,43 +42,24 @@ function formatStatus(status) {
         .join(' ');
 }
 
-// Jurisdiction Registry – loads city display labels
-fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
-    .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    })
-    .then(data => {
-        jurisdictionRegistry = data;
-        console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
-        if (window.SkyOfficeBoard?.lastPermitSignature) {
-            window.SkyOfficeBoard.lastPermitSignature = null;
-        }
-    })
-    .catch(err => {
-        console.error('❌ Failed to load jurisdictionRegistry.json (CORS likely)', err);
-        jurisdictionRegistry = {};
-    });
+// #endregion
 
-// Permit Registry Meta – total work orders + updated timestamp
-fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
-    .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    })
-    .then(data => {
-        permitRegistryMeta = data.meta || null;
-        console.log('✅ Permit registry meta loaded', permitRegistryMeta);
-        // Re-render if we have permits
-        if (latestActivePermits.length > 0) {
-            window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
-        }
-    })
-    .catch(err => {
-        console.error('❌ Failed to load permitRegistry.json (CORS likely)', err);
-        permitRegistryMeta = null;
-    });
+// #region STATUS ICON HELPER
+function getStatusIcon(status) {
+    if (!status) return '';
 
+    const s = status.toLowerCase();
+
+    if (s.includes('under_review'))   return '⏳ ';
+    if (s.includes('need_to_submit')) return '🚨 ';
+    if (s.includes('submitted'))      return '✅ ';
+    if (s.includes('ready_to_issue')) return 'ℹ️ ';
+    if (s.includes('issued'))         return '🛡️ ';
+    if (s.includes('finaled'))        return '✔️ ';
+    if (s.includes('corrections'))    return '✏️ ';
+
+    return ''; // no icon for unknown
+}
 // #endregion
 
 // #region SMART INTERVAL FORMATTER
@@ -222,7 +203,7 @@ window.SkyOfficeBoard = {
                 <td>${p.customer}</td>
                 <td>${p.jobsite}</td>
                 <td>${resolveJurisdictionLabel(p.jurisdiction)}</td>
-                <td>${formatStatus(p.status)}</td>
+                <td>${getStatusIcon(p.status)}${formatStatus(p.status)}</td>
             `;
             frag.appendChild(tr);
         });
