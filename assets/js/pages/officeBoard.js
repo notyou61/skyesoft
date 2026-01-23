@@ -77,31 +77,7 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
     .catch(err => {
         console.error('❌ Failed to load permitRegistry.json (CORS likely)', err);
         permitRegistryMeta = null;
-        applyPermitRegistryFallback();
     });
-
-// Deferred fallback – only runs if fetch fails
-function applyPermitRegistryFallback() {
-    if (permitRegistryMeta !== null) return;
-
-    permitRegistryMeta = {
-        counts: { totalWorkOrders: 144 }, // update manually when count changes
-        updatedOn: 1769126400             // midnight 01/23/26 UTC
-    };
-
-    console.warn(
-        'TEMP: Using hardcoded permitRegistryMeta (CORS block). ' +
-        'Footer will show total + updated time. Remove when server fixed.'
-    );
-
-    // Force re-render with latest known permits
-    if (latestActivePermits.length > 0) {
-        console.log('Fallback applied → forcing footer re-render');
-        window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
-    } else {
-        console.warn('Fallback applied but no permits yet – waiting for next SSE');
-    }
-}
 
 // #endregion
 
@@ -214,7 +190,7 @@ window.SkyOfficeBoard = {
     },
 
     updatePermitTable(activePermits) {
-        latestActivePermits = activePermits || []; // update for fallback
+        latestActivePermits = activePermits || [];
 
         const body = this.dom.card?.tableBody;
         const footer = this.dom.card?.footer;
@@ -252,13 +228,9 @@ window.SkyOfficeBoard = {
         });
         body.appendChild(frag);
 
-        // Footer: active count + total + updated time (MST)
+        // Footer: active count + updated time (MST)
         if (footer) {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-
-            if (permitRegistryMeta?.counts?.totalWorkOrders != null) {
-                footerText += ` • ${permitRegistryMeta.counts.totalWorkOrders} total`;
-            }
 
             if (permitRegistryMeta?.updatedOn) {
                 footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
