@@ -317,20 +317,20 @@ window.SkyOfficeBoard = {
         });
         body.appendChild(frag);
 
-        // Footer: active count + LIVE icon + updated time (MST)
+        // Footer: LIVE icon + active count + updated time (MST)
         if (footer) {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
 
-            // LIVE icon from iconMap.json (live.png or emoji fallback)
-            const liveIcon = getFooterIcon('live');  // we'll define this helper below
+            // LIVE icon from iconMap or fallback to live.png
+            const liveIcon = getFooterIcon('live');
             footerText = `${liveIcon}${footerText}`;
 
             if (permitRegistryMeta?.updatedOn) {
                 footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             }
 
-            footer.textContent = footerText;
-            console.log('Footer updated:', footerText);
+            footer.innerHTML = footerText;  // ← Changed from .textContent to .innerHTML
+            console.log('Footer updated (HTML):', footerText);
         }
 
         requestAnimationFrame(() => {
