@@ -94,7 +94,7 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
 
     permitRegistryMeta = {
         counts: { totalWorkOrders: 144 }, // update this manually when count changes
-        updatedOn: 1768594417             // last known timestamp
+        updatedOn: 1769126400             // last known timestamp
     };
 
     console.warn(
