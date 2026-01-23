@@ -99,13 +99,14 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 .cardFooter {
-    flex: 0 0 24px;
+    flex: 0 0 28px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start; /* already left-aligned */
+    padding: 0;
+    line-height: 1;
     font-weight: 600;
     color: #333;
-    padding: 2px 0;
 }
 /* #endregion */
 
