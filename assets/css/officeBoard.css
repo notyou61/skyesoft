@@ -152,8 +152,12 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* Active Permits footer — left aligned, table-gutter aligned */
 .card-active-permits .cardFooter {
-    justify-content: flex-start;  /* KEY FIX */
-    padding-left: 16px;           /* matches td padding */
+    flex: 0 0 auto;              /* remove forced height */
+    display: flex;
+    align-items: flex-start;     /* key fix */
+    justify-content: flex-start;
+    padding: 4px 0 0 16px;       /* explicit top bias */
+    line-height: 1.1;            /* restore readable baseline */
 }
 
 /* Kill the spacer divider (retain structure, remove visual height) */
