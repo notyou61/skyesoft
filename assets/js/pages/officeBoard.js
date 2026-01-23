@@ -216,11 +216,7 @@ window.SkyOfficeBoard = {
             footerText += ` • ${permitRegistryMeta.counts.totalWorkOrders} total`;
         }
         if (permitRegistryMeta?.updatedOn) {
-            const freshness = (() => {
-                const minAgo = (Date.now() - permitRegistryMeta.updatedOn * 1000) / 60000;
-                return minAgo < 60 ? '🟢' : minAgo < 1440 ? '🟡' : '🔴';
-            })();
-            footerText += ` • ${freshness} Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
+            footerText += ` Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
         }
         if (footer) footer.textContent = footerText;
 
