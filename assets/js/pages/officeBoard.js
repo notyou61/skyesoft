@@ -139,6 +139,33 @@ function getStatusIcon(status) {
 }
 // #endregion
 
+// #region FOOTER ICON HELPER
+function getFooterIcon(key) {
+    if (!iconMap) return '';
+
+    // Find entry matching 'live' in file or alt
+    const entry = Object.values(iconMap).find(e => 
+        (e.file && e.file.toLowerCase().includes(key)) ||
+        (e.alt && e.alt.toLowerCase().includes(key))
+    );
+
+    if (!entry) return '';
+
+    // Prefer emoji if present
+    if (entry.emoji) {
+        return entry.emoji + ' ';
+    }
+
+    // Fallback to small image tag (live.png at 16px)
+    if (entry.file) {
+        const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+        return `<img src="${url}" alt="Live indicator" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
+    }
+
+    return '';
+}
+// #endregion
+
 // #region SMART INTERVAL FORMATTER
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
@@ -286,9 +313,13 @@ window.SkyOfficeBoard = {
         });
         body.appendChild(frag);
 
-        // Footer: active count + updated time (MST)
+        // Footer: active count + LIVE icon + updated time (MST)
         if (footer) {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
+
+            // LIVE icon from iconMap.json (live.png or emoji fallback)
+            const liveIcon = getFooterIcon('live');  // we'll define this helper below
+            footerText = `${liveIcon}${footerText}`;
 
             if (permitRegistryMeta?.updatedOn) {
                 footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
