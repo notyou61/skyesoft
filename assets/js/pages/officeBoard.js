@@ -107,7 +107,7 @@ function getStatusIcon(status) {
         'under_review':     'clock',          // ⏳ ⌛
         'need_to_submit':   'warning',        // ⚠️
         'submitted':        'clipboard',      // 📋
-        'ready_to_issue':   'calendar',       // 📅
+        'ready_to_issue':   'memo',           // memo.png (notes / ready document)
         'issued':           'shield',         // 🛡️
         'finaled':          'trophy',         // 🏆
         'corrections':      'tools'           // 🛠️
@@ -129,7 +129,7 @@ function getStatusIcon(status) {
         return entry.emoji + ' ';
     }
 
-    // Fallback to small image tag
+    // Fallback to small image tag (memo.png at 16px)
     if (entry.file) {
         const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
         return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
