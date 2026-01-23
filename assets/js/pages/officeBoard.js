@@ -9,6 +9,7 @@
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 let latestActivePermits = [];
+let iconMap = null;
 
 // Resolve jurisdiction label from registry (key or alias match)
 function resolveJurisdictionLabel(raw) {
@@ -42,7 +43,7 @@ function formatStatus(status) {
         .join(' ');
 }
 
-// Jurisdiction Registry – loads proper city/county labels (Mesa, Paradise Valley, etc.)
+// Jurisdiction Registry – loads city display labels
 fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
     .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -51,11 +52,8 @@ fetch('https://skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry
     .then(data => {
         jurisdictionRegistry = data;
         console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
-        // Debug: confirm Paradise Valley is present
-        console.log('Paradise Valley label from registry:', data['paradiseValley']?.label || 'NOT FOUND');
-        // Re-render table if we already have permits
-        if (latestActivePermits.length > 0) {
-            window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
+        if (window.SkyOfficeBoard?.lastPermitSignature) {
+            window.SkyOfficeBoard.lastPermitSignature = null;
         }
     })
     .catch(err => {
@@ -81,51 +79,60 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         permitRegistryMeta = null;
     });
 
+// Icon Map – loads emoji & file references for dynamic icons
+fetch('https://skyelighting.com/skyesoft/assets/data/iconMap.json', { cache: 'no-cache' })
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    })
+    .then(data => {
+        iconMap = data.icons;
+        console.log(`✅ Icon map loaded — ${Object.keys(iconMap).length} icons`);
+    })
+    .catch(err => {
+        console.error('❌ Failed to load iconMap.json (CORS likely)', err);
+        iconMap = {};
+    });
+
 // #endregion
 
 // #region STATUS ICON HELPER
-if (1 ==2) {
 function getStatusIcon(status) {
     if (!status) return '';
 
     const s = status.toLowerCase();
 
-    if (s.includes('under_review'))   return '⏳ ';
-    if (s.includes('need_to_submit')) return '🚨 ';
-    if (s.includes('submitted'))      return '✅ ';
-    if (s.includes('ready_to_issue')) return 'ℹ️ ';
-    if (s.includes('issued'))         return '🛡️ ';
-    if (s.includes('finaled'))        return '✔️ ';
-    if (s.includes('corrections'))    return '✏️ ';
+    // Semantic key mapping – matches keys/alt/file in iconMap.json
+    const keyMap = {
+        'under_review':     'clock',          // ⏳ or ⌛
+        'need_to_submit':   'warning',        // ⚠️
+        'submitted':        'clipboard',      // 📋
+        'ready_to_issue':   'calendar',       // 📅
+        'issued':           'shield',         // 🛡️
+        'finaled':          'trophy',         // 🏆
+        'corrections':      'tools'           // 🛠️
+    };
 
-    return ''; // no icon for unknown
-}
-}
-// #region STATUS ICON HELPER
-function getStatusIcon(status) {
-    if (!status || !iconMap) return '';
+    const iconKey = keyMap[s];
+    if (!iconKey || !iconMap) return '';
 
-    const s = status.toLowerCase();
-    const iconKey = statusIconKeyMap[s] || null;
-
-    if (!iconKey) return '';
-
-    const iconEntry = Object.values(iconMap).find(entry => 
-        entry.file?.toLowerCase().includes(iconKey) || 
-        entry.alt?.toLowerCase().includes(iconKey)
+    // Find best matching entry (file or alt contains the key)
+    const entry = Object.values(iconMap).find(e => 
+        (e.file && e.file.toLowerCase().includes(iconKey)) ||
+        (e.alt && e.alt.toLowerCase().includes(iconKey))
     );
 
-    if (!iconEntry) return '';
+    if (!entry) return '';
 
-    // Prefer emoji if available (fastest, no extra request)
-    if (iconEntry.emoji) {
-        return iconEntry.emoji + ' ';
+    // Prefer emoji (fastest, no extra request)
+    if (entry.emoji) {
+        return entry.emoji + ' ';
     }
 
-    // Fallback to image (full URL from Office repo)
-    if (iconEntry.file) {
-        const iconUrl = `https://skyelighting.com/skyesoft/assets/images/icons/${iconEntry.file}`;
-        return `<img src="${iconUrl}" alt="${iconEntry.alt || 'icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
+    // Fallback to small image tag
+    if (entry.file) {
+        const url = `https://skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+        return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
     }
 
     return '';
