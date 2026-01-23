@@ -149,6 +149,10 @@ body[data-page="officeBoard"] #boardCardHost {
     text-align: left;
 }
 
+#permitFooter {
+    padding-left: 16px; /* matches td left padding visually */
+}
+
 /* Left-align footer text for Active Permits card */
 .card-active-permits .cardFooter {
     text-align: left;
