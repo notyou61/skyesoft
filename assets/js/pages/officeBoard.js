@@ -317,12 +317,16 @@ window.SkyOfficeBoard = {
         });
         body.appendChild(frag);
 
-        // Footer: LIVE icon + active count + updated time (MST)
+        // Footer: animated LIVE icon + active count + updated time (MST)
         if (footer) {
             let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
 
-            // Bigger LIVE icon
-            const liveIcon = `<img src="https://www.skyelighting.com/skyesoft/assets/images/icons/live.png" alt="Live indicator" style="width:24px; height:24px; vertical-align:middle; margin-right:6px;">`;
+            // Hardcoded animated GIF – 24px size, centered, small margin
+            const liveIcon = `
+                <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif" 
+                    alt="Live indicator" 
+                    style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+            `;
             footerText = `${liveIcon}${footerText}`;
 
             if (permitRegistryMeta?.updatedOn) {
