@@ -212,12 +212,11 @@ window.SkyOfficeBoard = {
         body.appendChild(frag);
 
         let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-        if (permitRegistryMeta?.counts?.totalWorkOrders) {
-            footerText += ` • ${permitRegistryMeta.counts.totalWorkOrders} total`;
-        }
+
         if (permitRegistryMeta?.updatedOn) {
             footerText += ` Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
         }
+
         if (footer) footer.textContent = footerText;
 
         requestAnimationFrame(() => {
