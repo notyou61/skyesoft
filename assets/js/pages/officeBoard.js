@@ -127,7 +127,7 @@ function formatTimestamp(ts) {
 
 // #endregion
 
-// #region LIVE FOOTER HELPER (new – centralized)
+// #region LIVE FOOTER HELPER (unchanged)
 
 function renderLiveFooter({ text = '' }) {
     const liveIcon = `
@@ -140,9 +140,9 @@ function renderLiveFooter({ text = '' }) {
 
 // #endregion
 
-// #region CARD TIMING (new – single source of truth)
+// #region CARD TIMING (unchanged)
 
-const DEFAULT_CARD_DURATION_MS = 60000; // 1 minute
+const DEFAULT_CARD_DURATION_MS = 15000; // 1 minute 60000
 
 // #endregion
 
@@ -280,7 +280,6 @@ const ActivePermitsCard = {
     },
 
     onShow() {},
-
     onHide() {
         window.SkyOfficeBoard.autoScroll.stop();
     }
@@ -321,7 +320,11 @@ GENERIC_CARD_SPECS.forEach(spec => {
     });
 });
 
+// --- FIXED: Cache last payload and replay on rotation ---
+let lastBoardPayload = null;
+
 function updateAllCards(payload) {
+    lastBoardPayload = payload; // Cache it
     BOARD_CARDS.forEach(card => {
         if (typeof card.update === 'function') {
             card.update(payload);
@@ -371,7 +374,7 @@ window.SkyOfficeBoard.autoScroll = {
 
 // #endregion
 
-// #region ROTATION CONTROLLER (updated default fallback)
+// #region ROTATION CONTROLLER (FIXED: replay last payload after create)
 
 let currentIndex = 0;
 let rotationTimer = null;
@@ -388,6 +391,11 @@ function showCard(index) {
 
     const element = card.create();
     host.appendChild(element);
+
+    // 🔑 RE-APPLY LAST DATA AFTER CREATE
+    if (lastBoardPayload && typeof card.update === 'function') {
+        card.update(lastBoardPayload);
+    }
 
     card.onShow?.();
 
