@@ -1,36 +1,29 @@
 /* Skyesoft — officeBoard.js
    Office Bulletin Board Controller
-   Dynamic Card Model – Active Permits only (2026 edition)
+   Unified Card Model – 2026 refactored edition
    Phoenix, Arizona – MST timezone
 */
 
-// #region GLOBAL REGISTRIES
+// #region GLOBAL REGISTRIES (unchanged)
 
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
 
-// Resolve jurisdiction label from registry (key or alias match)
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
-
     const norm = String(raw).trim().toUpperCase();
-
     for (const key in jurisdictionRegistry) {
         const entry = jurisdictionRegistry[key];
         if (!entry) continue;
-
         if (key.toUpperCase() === norm) return entry.label;
-
         if (Array.isArray(entry.aliases)) {
             if (entry.aliases.some(a => a.toUpperCase() === norm)) {
                 return entry.label;
             }
         }
     }
-
-    // Fallback: title case
     return norm.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -43,119 +36,84 @@ function formatStatus(status) {
         .join(' ');
 }
 
-// Jurisdiction Registry – loads proper city/county labels
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
-    .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    })
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         jurisdictionRegistry = data;
         console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
-        if (window.SkyOfficeBoard?.lastPermitSignature) {
-            window.SkyOfficeBoard.lastPermitSignature = null;
-        }
+        window.SkyOfficeBoard?.lastPermitSignature && (window.SkyOfficeBoard.lastPermitSignature = null);
     })
     .catch(err => {
-        console.error('❌ Failed to load jurisdictionRegistry.json (CORS likely)', err);
+        console.error('❌ Failed to load jurisdictionRegistry.json', err);
         jurisdictionRegistry = {};
     });
 
-// Permit Registry Meta – total work orders + updated timestamp
 fetch('https://www.skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
-    .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    })
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         permitRegistryMeta = data.meta || null;
         console.log('✅ Permit registry meta loaded', permitRegistryMeta);
-        if (latestActivePermits.length > 0) {
-            window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
-        }
+        if (latestActivePermits.length > 0) window.SkyOfficeBoard?.updatePermitTable?.(latestActivePermits);
     })
     .catch(err => {
-        console.error('❌ Failed to load permitRegistry.json (CORS likely)', err);
+        console.error('❌ Failed to load permitRegistry.json', err);
         permitRegistryMeta = null;
     });
 
-// Icon Map – loads emoji & file references for dynamic status icons
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', { cache: 'no-cache' })
-    .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-    })
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         iconMap = data.icons;
         console.log(`✅ Icon map loaded — ${Object.keys(iconMap).length} icons`);
     })
     .catch(err => {
-        console.error('❌ Failed to load iconMap.json (CORS likely)', err);
+        console.error('❌ Failed to load iconMap.json', err);
         iconMap = {};
     });
 
 // #endregion
 
-// #region STATUS ICON HELPER
+// #region HELPERS (unchanged)
+
 function getStatusIcon(status) {
     if (!status) return '';
-
     const s = status.toLowerCase();
-
-    // Semantic key mapping – matches file/alt in iconMap.json
     const keyMap = {
-        'under_review':     'clock',          // ⏳ ⌛
-        'need_to_submit':   'warning',        // ⚠️
-        'submitted':        'clipboard',      // 📋
-        'ready_to_issue':   'memo',           // memo.png (notes / ready document)
-        'issued':           'shield',         // 🛡️
-        'finaled':          'trophy',         // 🏆
-        'corrections':      'tools'           // 🛠️
+        'under_review':     'clock',
+        'need_to_submit':   'warning',
+        'submitted':        'clipboard',
+        'ready_to_issue':   'memo',
+        'issued':           'shield',
+        'finaled':          'trophy',
+        'corrections':      'tools'
     };
-
     const iconKey = keyMap[s];
     if (!iconKey || !iconMap) return '';
-
-    // Find best matching entry
-    const entry = Object.values(iconMap).find(e => 
+    const entry = Object.values(iconMap).find(e =>
         (e.file && e.file.toLowerCase().includes(iconKey)) ||
         (e.alt && e.alt.toLowerCase().includes(iconKey))
     );
-
     if (!entry) return '';
-
-    // Prefer emoji if present (fastest)
-    if (entry.emoji) {
-        return entry.emoji + ' ';
-    }
-
-    // Fallback to small image tag (memo.png at 16px)
+    if (entry.emoji) return entry.emoji + ' ';
     if (entry.file) {
         const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
         return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
     }
-
     return '';
 }
-// #endregion
 
-// #region SMART INTERVAL FORMATTER
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
     const hours   = Math.floor(sec / 3600);  sec %= 3600;
     const minutes = Math.floor(sec / 60);
     const seconds = sec % 60;
-
     if (days > 0)    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
     if (hours > 0)   return `${hours}h ${minutes}m ${seconds}s`;
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-// #endregion
 
-// #region TIMESTAMP FORMATTER
-// Phoenix MST (no DST) – consistent MM/DD/YY hh:mm AM/PM
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -166,10 +124,12 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
+
 // #endregion
 
-// #region CARD FACTORY
-function createActivePermitsCard() {
+// #region CARD FACTORY (unchanged logic, now used inside card spec)
+
+function createActivePermitsCardElement() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
     card.innerHTML = `
@@ -198,77 +158,49 @@ function createActivePermitsCard() {
         footer: card.querySelector('#permitFooter')
     };
 }
+
 // #endregion
 
-// #region PAGE CONTROLLER
-window.SkyOfficeBoard = {
-    dom: { card: null, weather: null, time: null, interval: null, version: null },
-    lastPermitSignature: null,
-    prevPermitLength: 0,
+// #region CARD REGISTRY + UNIVERSAL UPDATER
 
-    autoScroll: {
-        timer: null, running: false, FPS: 60,
-        start(el, duration = 30000) {
-            if (!el || this.running) return;
-            const distance = el.scrollHeight - el.clientHeight;
-            if (distance <= 0) return;
-            const frames = Math.max(1, Math.round(duration / (1000 / this.FPS)));
-            const speed = distance / frames;
-            el.scrollTop = 0; this.running = true;
-            const step = () => {
-                if (!this.running) return;
-                el.scrollTop += speed;
-                if (el.scrollTop >= distance) {
-                    el.scrollTop = distance;
-                    this.running = false;
-                    return;
-                }
-                this.timer = requestAnimationFrame(step);
-            };
-            this.timer = requestAnimationFrame(step);
-        },
-        stop() {
-            if (this.timer) cancelAnimationFrame(this.timer);
-            this.timer = null; this.running = false;
-        }
+const BOARD_CARDS = [];
+
+const ActivePermitsCard = {
+    id: 'active-permits',
+    durationMs: 30000,
+
+    instance: null,
+
+    create() {
+        this.instance = createActivePermitsCardElement();
+        // Initial render (will be updated via payload soon)
+        return this.instance.root;
     },
 
-    start() { this.init(); },
+    update(payload) {
+        if (!payload?.activePermits) return;
+        latestActivePermits = payload.activePermits || [];
 
-    init() {
-        this.dom.pageBody = document.getElementById('boardCardHost');
-        if (!this.dom.pageBody) return;
-        this.dom.weather  = document.getElementById('headerWeather');
-        this.dom.time     = document.getElementById('headerTime');
-        this.dom.interval = document.getElementById('headerInterval');
-        this.dom.version  = document.getElementById('versionFooter');
-        this.dom.card = createActivePermitsCard();
-        this.dom.pageBody.appendChild(this.dom.card.root);
-        if (window.SkyeApp?.lastSSE) this.onSSE(window.SkyeApp.lastSSE);
-    },
-
-    updatePermitTable(activePermits) {
-        latestActivePermits = activePermits || [];
-
-        const body = this.dom.card?.tableBody;
-        const footer = this.dom.card?.footer;
+        const body = this.instance?.tableBody;
+        const footer = this.instance?.footer;
         if (!body) return;
 
-        const signature = Array.isArray(activePermits)
-            ? activePermits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}`).join('::')
+        const signature = Array.isArray(payload.activePermits)
+            ? payload.activePermits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}`).join('::')
             : 'empty';
-        if (signature === this.lastPermitSignature) return;
-        this.lastPermitSignature = signature;
+
+        // You can keep lastPermitSignature on the card if you prefer isolation
+        if (signature === this.lastSignature) return;
+        this.lastSignature = signature;
 
         body.innerHTML = '';
-        if (!Array.isArray(activePermits) || activePermits.length === 0) {
+        if (latestActivePermits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
-            if (footer) footer.textContent = 'No permits found';
-            this.autoScroll.stop();
+            footer && (footer.textContent = 'No permits found');
             return;
         }
 
-        const sorted = activePermits.slice().sort(
+        const sorted = latestActivePermits.slice().sort(
             (a,b) => (parseInt(a.wo,10)||0) - (parseInt(b.wo,10)||0)
         );
 
@@ -286,37 +218,159 @@ window.SkyOfficeBoard = {
         });
         body.appendChild(frag);
 
-        // Footer: animated LIVE icon + active count + updated time (MST)
         if (footer) {
-            let footerText = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-
-            // Hardcoded animated GIF – 24px size, centered, small margin
+            let text = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
             const liveIcon = `
                 <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif" 
-                    alt="Live indicator" 
-                    style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+                     alt="Live" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
             `;
-            footerText = `${liveIcon}${footerText}`;
-
+            text = `${liveIcon}${text}`;
             if (permitRegistryMeta?.updatedOn) {
-                footerText += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
+                text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             }
-
-            footer.innerHTML = footerText;
-            console.log('Footer updated:', footerText);
+            footer.innerHTML = text;
         }
+    },
 
-        requestAnimationFrame(() => {
-            this.autoScroll.start(this.dom.card.scrollWrap, 30000);
-        });
+    onShow() {
+        if (this.instance?.scrollWrap) {
+            window.SkyOfficeBoard.autoScroll.start(
+                this.instance.scrollWrap,
+                this.durationMs
+            );
+        }
+    },
+
+    onHide() {
+        window.SkyOfficeBoard.autoScroll.stop();
+    }
+};
+
+// Register the only card (for now)
+BOARD_CARDS.push(ActivePermitsCard);
+
+function updateAllCards(payload) {
+    BOARD_CARDS.forEach(card => {
+        if (typeof card.update === 'function') {
+            card.update(payload);
+        }
+    });
+}
+
+// #endregion
+
+// #region AUTO-SCROLL (moved here, still global for simplicity)
+
+window.SkyOfficeBoard = window.SkyOfficeBoard || {};
+
+window.SkyOfficeBoard.autoScroll = {
+    timer: null,
+    running: false,
+    FPS: 60,
+
+    start(el, duration = 30000) {
+        if (!el || this.running) return;
+        const distance = el.scrollHeight - el.clientHeight;
+        if (distance <= 0) return;
+        const frames = Math.max(1, Math.round(duration / (1000 / this.FPS)));
+        const speed = distance / frames;
+        el.scrollTop = 0;
+        this.running = true;
+
+        const step = () => {
+            if (!this.running) return;
+            el.scrollTop += speed;
+            if (el.scrollTop >= distance) {
+                el.scrollTop = distance;
+                this.running = false;
+                return;
+            }
+            this.timer = requestAnimationFrame(step);
+        };
+        this.timer = requestAnimationFrame(step);
+    },
+
+    stop() {
+        if (this.timer) cancelAnimationFrame(this.timer);
+        this.timer = null;
+        this.running = false;
+    }
+};
+
+// #endregion
+
+// #region ROTATION CONTROLLER (simple version — only one card today)
+
+let currentIndex = 0;
+let rotationTimer = null;
+
+function showCard(index) {
+    const host = document.getElementById('boardCardHost');
+    if (!host) return;
+
+    // Cleanup previous card
+    BOARD_CARDS.forEach(c => c.onHide?.());
+
+    host.innerHTML = '';
+    const card = BOARD_CARDS[index];
+    if (!card) return;
+
+    const element = card.create();
+    host.appendChild(element);
+
+    card.onShow?.();
+
+    rotationTimer = setTimeout(() => {
+        currentIndex = (index + 1) % BOARD_CARDS.length;
+        showCard(currentIndex);
+    }, card.durationMs || 30000);
+}
+
+// #endregion
+
+// #region PAGE CONTROLLER
+
+window.SkyOfficeBoard = {
+    ...window.SkyOfficeBoard,  // preserve any previous props if needed
+
+    dom: { card: null, weather: null, time: null, interval: null, version: null },
+
+    start() {
+        this.init();
+    },
+
+    init() {
+        this.dom.pageBody  = document.getElementById('boardCardHost');
+        this.dom.weather   = document.getElementById('headerWeather');
+        this.dom.time      = document.getElementById('headerTime');
+        this.dom.interval  = document.getElementById('headerInterval');
+        this.dom.version   = document.getElementById('versionFooter');
+
+        if (!this.dom.pageBody) return;
+
+        // Start showing the first (and currently only) card
+        showCard(0);
+
+        // If we already have SSE data, push it through
+        if (window.SkyeApp?.lastSSE) {
+            updateAllCards(window.SkyeApp.lastSSE);
+        }
+    },
+
+    // Keep for compatibility if anything external still calls it directly
+    updatePermitTable(activePermits) {
+        updateAllCards({ activePermits });
     },
 
     onSSE(payload) {
-        this.updatePermitTable(payload.activePermits || []);
+        updateAllCards(payload);
     }
 };
+
 // #endregion
 
 // #region REGISTER
+
 window.SkyeApp.registerPage('officeBoard', window.SkyOfficeBoard);
+
 // #endregion
