@@ -84,6 +84,7 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
 // #endregion
 
 // #region STATUS ICON HELPER
+if (1 ==2) {
 function getStatusIcon(status) {
     if (!status) return '';
 
@@ -98,6 +99,36 @@ function getStatusIcon(status) {
     if (s.includes('corrections'))    return '✏️ ';
 
     return ''; // no icon for unknown
+}
+}
+// #region STATUS ICON HELPER
+function getStatusIcon(status) {
+    if (!status || !iconMap) return '';
+
+    const s = status.toLowerCase();
+    const iconKey = statusIconKeyMap[s] || null;
+
+    if (!iconKey) return '';
+
+    const iconEntry = Object.values(iconMap).find(entry => 
+        entry.file?.toLowerCase().includes(iconKey) || 
+        entry.alt?.toLowerCase().includes(iconKey)
+    );
+
+    if (!iconEntry) return '';
+
+    // Prefer emoji if available (fastest, no extra request)
+    if (iconEntry.emoji) {
+        return iconEntry.emoji + ' ';
+    }
+
+    // Fallback to image (full URL from Office repo)
+    if (iconEntry.file) {
+        const iconUrl = `https://skyelighting.com/skyesoft/assets/images/icons/${iconEntry.file}`;
+        return `<img src="${iconUrl}" alt="${iconEntry.alt || 'icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
+    }
+
+    return '';
 }
 // #endregion
 
