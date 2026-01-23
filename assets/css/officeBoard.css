@@ -156,7 +156,7 @@ body[data-page="officeBoard"] #boardCardHost {
     display: flex;
     align-items: flex-start;     /* key fix */
     justify-content: flex-start;
-    padding: 4px 0 0 16px;       /* explicit top bias */
+    padding: 6px 0 0 16px;       /* explicit top bias */
     line-height: 1.1;            /* restore readable baseline */
 }
 
