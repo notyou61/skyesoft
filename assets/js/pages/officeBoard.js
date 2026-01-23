@@ -8,6 +8,8 @@
 
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
+let latestActivePermits = []; // newest SSE list (race-proof)
+
 
 // Resolve jurisdiction label from registry
 function resolveJurisdictionLabel(raw) {
@@ -89,23 +91,21 @@ fetch('https://skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.js
         applyPermitRegistryFallback();
     });
 
-    function applyPermitRegistryFallback() {
+function applyPermitRegistryFallback() {
     if (permitRegistryMeta !== null) return;
 
     permitRegistryMeta = {
-        counts: { totalWorkOrders: 144 }, // update this manually when count changes
-        updatedOn: 1769126400             // last known timestamp
+        updatedOn: 1768594417 // your last known timestamp
     };
 
     console.warn(
         'TEMP: Using hardcoded permitRegistryMeta (CORS block). ' +
-        'Footer will show total + updated time. Remove when fixed.'
+        'Footer will show updated time. Remove when fixed.'
     );
 
-    // Force footer re-render if we have data
-    if (window.SkyOfficeBoard?.lastRenderedPermits) {
-        console.log('Fallback applied → re-rendering footer');
-        window.SkyOfficeBoard.updatePermitTable(window.SkyOfficeBoard.lastRenderedPermits);
+    // Force footer re-render using most recent permits
+    if (latestActivePermits.length > 0 && window.SkyOfficeBoard?.updatePermitTable) {
+        window.SkyOfficeBoard.updatePermitTable(latestActivePermits);
     }
 }
 
@@ -272,6 +272,7 @@ window.SkyOfficeBoard = {
 
     onSSE(payload) {
         this.updatePermitTable(payload.activePermits || []);
+        this.updatePermitTable(latestActivePermits);
     }
 };
 // #endregion
