@@ -560,10 +560,11 @@ const TodaysHighlightsCard = {
         if (!payload) return;
 
         updateHighlightsCard(payload);
-        loadAndRenderSkyesoftTip();
     },
     // onShow / onHide hooks
-    onShow() {},
+    onShow() {
+        loadAndRenderSkyesoftTip();
+    },
     onHide() {}
 };
 
