@@ -193,9 +193,7 @@ function renderTodaysHighlightsSkeleton() {
     `;
 }
 // Update Today's Highlights card
-function updateHighlightsCard(payload) {
-    if (!payload?.time) return;
-
+function updateHighlightsCard(payload = lastBoardPayload) {
     const info = getLiveDateInfoFromSSE(payload);
     if (!info) return;
 
@@ -208,9 +206,7 @@ function updateHighlightsCard(payload) {
     if (remEl)  remEl.textContent  = info.daysRemaining;
 }
 // Update Tip of the Day
-function updateTipOfTheDay(payload) {
-    if (!payload?.time) return;
-
+function updateTipOfTheDay(payload = lastBoardPayload) {
     const now = getDateFromSSE(payload);
     if (!now || !window.glbVar?.tips?.length) return;
 
@@ -224,6 +220,15 @@ function updateTipOfTheDay(payload) {
     if (el && tip) {
         el.textContent = `💡 Tip of the Day: ${tip}`;
     }
+}
+// Build initial time payload from DOM
+function buildInitialTimePayload() {
+    const now = new Date();
+    return {
+        time: {
+            now: Math.floor(now.getTime() / 1000)
+        }
+    };
 }
 
 // #endregion
@@ -586,8 +591,15 @@ window.SkyOfficeBoard = {
 
         if (!this.dom.pageBody) return;
 
+        // ✅ Pre-hydrate from header time (NO loading state)
+        const initialPayload = buildInitialTimePayload();
+        if (initialPayload) {
+            lastBoardPayload = initialPayload;
+        }
+
         showCard(0);
 
+        // 🔁 Upgrade with real SSE when it arrives
         if (window.SkyeApp?.lastSSE) {
             updateAllCards(window.SkyeApp.lastSSE);
         }
