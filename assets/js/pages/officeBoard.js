@@ -142,8 +142,8 @@ function getLiveDateInfoFromSSE(payload) {
         month: 'long',
         day: 'numeric'
     });
-
-    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    // Calculate day of year and days remaining
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
     const oneDay = 1000 * 60 * 60 * 24;
     const dayOfYear = Math.floor((now - startOfYear) / oneDay);
 
@@ -430,6 +430,8 @@ const TodaysHighlightsCard = {
     },
     // 🔄 Reusable update function
     update(payload) {
+        if (!payload) return;
+
         updateHighlightsCard(payload);
         updateTipOfTheDay(payload);
 
@@ -439,7 +441,7 @@ const TodaysHighlightsCard = {
             });
         }
     },
-
+    // onShow / onHide hooks
     onShow() {},
     onHide() {}
 };
@@ -573,7 +575,7 @@ function showCard(index) {
 
 // #endregion
 
-// #region PAGE CONTROLLER (unchanged)
+// #region PAGE CONTROLLER
 
 window.SkyOfficeBoard = {
     ...window.SkyOfficeBoard,
@@ -581,7 +583,7 @@ window.SkyOfficeBoard = {
     dom: { card: null, weather: null, time: null, interval: null, version: null },
 
     start() { this.init(); },
-    // Initialize page
+
     init() {
         this.dom.pageBody  = document.getElementById('boardCardHost');
         this.dom.weather   = document.getElementById('headerWeather');
@@ -591,28 +593,34 @@ window.SkyOfficeBoard = {
 
         if (!this.dom.pageBody) return;
 
-        // 🔑 SEED INITIAL TIME PAYLOAD (before first render)
+        // 🔑 Seed payload once (time-only fallback)
         if (!lastBoardPayload) {
             lastBoardPayload = buildInitialTimePayload();
         }
 
+        // 🚦 Start first card (replays lastBoardPayload internally)
         showCard(0);
 
-        // 🔁 If SSE already exists, override seed
+        // 🔁 Hydrate all cards immediately
+        updateAllCards(lastBoardPayload);
+
+        // 🔁 If SSE already exists, override seed with live data
         if (window.SkyeApp?.lastSSE) {
-            updateAllCards(window.SkyeApp.lastSSE);
-        } else {
-            // 🔁 Populate cards immediately with seeded time
+            lastBoardPayload = window.SkyeApp.lastSSE;
             updateAllCards(lastBoardPayload);
         }
     },
-
+    // Update permit table externally
     updatePermitTable(activePermits) {
-        updateAllCards({ activePermits });
+        lastBoardPayload = {
+            ...lastBoardPayload,
+            activePermits
+        };
+        updateAllCards(lastBoardPayload);
     },
-
+    // SSE handler
     onSSE(payload) {
-        lastBoardPayload = payload; // 🔐 cache latest data
+        lastBoardPayload = payload;
         updateAllCards(payload);
     }
 };
