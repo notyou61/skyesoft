@@ -10,6 +10,7 @@ let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
+let lastBoardPayload = null; // 🔁 cache most recent SSE payload
 
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
@@ -320,8 +321,6 @@ GENERIC_CARD_SPECS.forEach(spec => {
     });
 });
 
-// --- FIXED: Cache last payload and replay on rotation ---
-let lastBoardPayload = null;
 
 function updateAllCards(payload) {
     lastBoardPayload = payload; // Cache it
@@ -383,6 +382,7 @@ function showCard(index) {
     const host = document.getElementById('boardCardHost');
     if (!host) return;
 
+    // Cleanup previous card state
     BOARD_CARDS.forEach(c => c.onHide?.());
 
     host.innerHTML = '';
@@ -392,12 +392,15 @@ function showCard(index) {
     const element = card.create();
     host.appendChild(element);
 
-    // 🔑 RE-APPLY LAST DATA AFTER CREATE
-    if (lastBoardPayload && typeof card.update === 'function') {
-        card.update(lastBoardPayload);
-    }
+    // ✅ IMPORTANT: replay data AFTER DOM + layout settle
+    requestAnimationFrame(() => {
+        if (lastBoardPayload && typeof card.update === 'function') {
+            console.log(`[showCard] Replaying payload to ${card.id}`);
+            card.update(lastBoardPayload);
+        }
 
-    card.onShow?.();
+        card.onShow?.();
+    });
 
     rotationTimer = setTimeout(() => {
         currentIndex = (index + 1) % BOARD_CARDS.length;
@@ -437,6 +440,7 @@ window.SkyOfficeBoard = {
     },
 
     onSSE(payload) {
+        lastBoardPayload = payload; // 🔐 cache latest data
         updateAllCards(payload);
     }
 };
