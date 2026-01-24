@@ -295,36 +295,36 @@ function updateHighlightsCard(payload = lastBoardPayload) {
 }
 // Load and render Skyesoft Tip
 function loadAndRenderSkyesoftTip() {
-    // Prevent duplicate loads
-    if (window.glbVar.tipsLoading) return;
-    // Window Tips loading flag
-    window.glbVar.tipsLoading = true;
-    // Mark as loading
     const el = document.getElementById('skyesoftTips');
     if (!el) return;
 
     // If tips already loaded → just render
-    // Window.glbVar used as single source of truth
     if (window.glbVar.tipsLoaded && window.glbVar.tips.length > 0) {
         renderRandomTip(el);
         return;
     }
-    // Otherwise load them
+
+    // Prevent duplicate fetches
+    if (window.glbVar.tipsLoading) return;
+    window.glbVar.tipsLoading = true;
+
     fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
         cache: 'no-cache'
     })
     .then(res => res.ok ? res.json() : Promise.reject(res.status))
     .then(data => {
-        if (!Array.isArray(data?.tips) || data.tips.length === 0) return;
-
-        window.glbVar.tips = data.tips;
-        window.glbVar.tipsLoaded = true;
-
-        console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
-        renderRandomTip(el);
+        if (Array.isArray(data?.tips) && data.tips.length > 0) {
+            window.glbVar.tips = data.tips;
+            window.glbVar.tipsLoaded = true;
+            console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
+            renderRandomTip(el);
+        }
     })
     .catch(err => {
         console.warn('⚠️ Failed to load Skyesoft tips', err);
+    })
+    .finally(() => {
+        window.glbVar.tipsLoading = false;
     });
 }
 // Update Skyesoft Tips display
