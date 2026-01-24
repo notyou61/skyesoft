@@ -159,6 +159,39 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
+// Render Today's Highlights skeleton
+function renderTodaysHighlightsSkeleton() {
+    return `
+        <div class="entry">
+            📅 <span id="todaysDate">—</span>
+            &nbsp;|&nbsp;
+            🗓️ Day <span id="dayOfYear">—</span>
+            (<span id="daysRemaining">—</span> remaining)
+        </div>
+
+        <div class="entry">
+            🌄 Sunrise: <span id="sunriseTime">—</span>
+            &nbsp;|&nbsp;
+            🌇 Sunset: <span id="sunsetTime">—</span>
+        </div>
+
+        <div class="entry">
+            🕒 Daylight: <span id="daylightTime">—</span>
+            &nbsp;|&nbsp;
+            🌌 Night: <span id="nightTime">—</span>
+        </div>
+
+        <div class="entry">
+            🎉 Next Holiday: <span id="nextHoliday">—</span>
+        </div>
+
+        <hr>
+
+        <div class="entry" id="tipOfTheDay">
+            💡 Tip of the Day: —
+        </div>
+    `;
+}
 // Update Today's Highlights card
 function updateHighlightsCard(payload) {
     if (!payload?.time) return;
