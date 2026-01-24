@@ -84,8 +84,10 @@ if (!$weatherKey) {
 $lat = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
 $lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
 
+$baseOW = rtrim($systemRegistry['api']['openWeatherBase'], '/');
+
 $oneCallUrl =
-    "https://api.openweathermap.org/data/3.0/onecall" .
+    "{$baseOW}/onecall" .
     "?lat={$lat}&lon={$lon}" .
     "&exclude=minutely,hourly,alerts" .
     "&units=imperial" .
