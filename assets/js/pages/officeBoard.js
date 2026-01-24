@@ -76,6 +76,12 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
 
 // #region HELPERS (unchanged)
 
+// ─────────────────────────────────────────────
+// Skyesoft Tips Controller (single source of truth)
+// ─────────────────────────────────────────────
+window.glbVar = window.glbVar || {};
+window.glbVar.tips = [];
+window.glbVar.tipsLoaded = false;
 // Gets status icon HTML based on status keyword
 function getStatusIcon(status) {
     if (!status) return '';
@@ -287,43 +293,50 @@ function updateHighlightsCard(payload = lastBoardPayload) {
             `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-// Skyesoft Tips Registry
-window.glbVar = window.glbVar || {};
-window.glbVar.tips = [];
-
-fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
-    cache: 'no-cache'
-})
-.then(res => res.ok ? res.json() : Promise.reject(res.status))
-.then(data => {
-    if (Array.isArray(data?.tips)) {
-        window.glbVar.tips = data.tips;
-        console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
-    }
-})
-.catch(err => {
-    console.warn('⚠️ Failed to load Skyesoft tips', err);
-    window.glbVar.tips = [];
-});
-
-// ─────────────────────────────────────────────
-// Update Skyesoft Tips (rotates per card show)
-// ─────────────────────────────────────────────
-function updateSkyesoftTips() {
-    const tips = window.glbVar?.tips;
-    if (!Array.isArray(tips) || tips.length === 0) return;
-
-    // Pick a random tip each time the card is shown
-    const tip = tips[Math.floor(Math.random() * tips.length)];
-    if (!tip?.text) return;
-
+// Load and render Skyesoft Tip
+function loadAndRenderSkyesoftTip() {
+    // Prevent duplicate loads
+    if (window.glbVar.tipsLoading) return;
+    // Window Tips loading flag
+    window.glbVar.tipsLoading = true;
+    // Mark as loading
     const el = document.getElementById('skyesoftTips');
     if (!el) return;
 
+    // If tips already loaded → just render
+    // Window.glbVar used as single source of truth
+    if (window.glbVar.tipsLoaded && window.glbVar.tips.length > 0) {
+        renderRandomTip(el);
+        return;
+    }
+    // Otherwise load them
+    fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
+        cache: 'no-cache'
+    })
+    .then(res => res.ok ? res.json() : Promise.reject(res.status))
+    .then(data => {
+        if (!Array.isArray(data?.tips) || data.tips.length === 0) return;
+
+        window.glbVar.tips = data.tips;
+        window.glbVar.tipsLoaded = true;
+
+        console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
+        renderRandomTip(el);
+    })
+    .catch(err => {
+        console.warn('⚠️ Failed to load Skyesoft tips', err);
+    });
+}
+// Update Skyesoft Tips display
+function renderRandomTip(el) {
+    const tips = window.glbVar.tips;
+    if (!tips.length) return;
+
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    if (!tip?.text) return;
+
     el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
-
-
 // Build initial time payload from DOM
 function buildInitialTimePayload() {
     const now = new Date();
@@ -547,13 +560,7 @@ const TodaysHighlightsCard = {
         if (!payload) return;
 
         updateHighlightsCard(payload);
-        updateSkyesoftTips(); // ✅ correct
-
-        if (this.instance?.footer) {
-            this.instance.footer.innerHTML = renderLiveFooter({
-                text: 'Auto-updated daily'
-            });
-        }
+        loadAndRenderSkyesoftTip();
     },
     // onShow / onHide hooks
     onShow() {},
