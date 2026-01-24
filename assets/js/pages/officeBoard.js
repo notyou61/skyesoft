@@ -128,9 +128,19 @@ function formatTimestamp(ts) {
 }
 //Get Date object from SSE payload
 function getDateFromSSE(payload) {
-    const ts = payload?.time?.now;
+    const ts = payload?.timeDateArray?.currentUnixTime;
     if (!ts) return null;
     return new Date(ts * 1000);
+}
+// Calculate daylight duration from sunrise and sunset strings
+function calculateDaylight(sunrise, sunset) {
+    if (!sunrise || !sunset) return null;
+    const toMinutes = t => {
+        const d = new Date(`1970-01-01 ${t}`);
+        return d.getHours() * 60 + d.getMinutes();
+    };
+    const minutes = toMinutes(sunset) - toMinutes(sunrise);
+    return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
 }
 //Get live date info from SSE payload
 function getLiveDateInfoFromSSE(payload) {
@@ -192,18 +202,96 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-// Update Today's Highlights card
+// Update Today's Highlights card (SSE-driven)
 function updateHighlightsCard(payload = lastBoardPayload) {
-    const info = getLiveDateInfoFromSSE(payload);
-    if (!info) return;
+    if (!payload) return;
+
+    // ─────────────────────────────
+    // DATE / DAY COUNTS
+    // ─────────────────────────────
+    const unix = payload?.timeDateArray?.currentUnixTime;
+    if (!unix) return;
+
+    const now = new Date(unix * 1000);
+
+    const formattedDate = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const dayOfYear =
+        Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+
+    const isLeapYear =
+        (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) ||
+        (now.getFullYear() % 400 === 0);
+
+    const daysInYear = isLeapYear ? 366 : 365;
+    const daysRemaining = daysInYear - dayOfYear;
 
     const dateEl = document.getElementById('todaysDate');
     const dayEl  = document.getElementById('dayOfYear');
     const remEl  = document.getElementById('daysRemaining');
 
-    if (dateEl) dateEl.textContent = info.formattedDate;
-    if (dayEl)  dayEl.textContent  = info.dayOfYear;
-    if (remEl)  remEl.textContent  = info.daysRemaining;
+    if (dateEl) dateEl.textContent = formattedDate;
+    if (dayEl)  dayEl.textContent  = dayOfYear;
+    if (remEl)  remEl.textContent  = daysRemaining;
+
+    // ─────────────────────────────
+    // SUNRISE / SUNSET
+    // ─────────────────────────────
+    const sunriseEl = document.getElementById('sunriseTime');
+    const sunsetEl  = document.getElementById('sunsetTime');
+
+    if (sunriseEl) {
+        sunriseEl.textContent =
+            payload?.weather?.sunrise ||
+            payload?.systemRegistry?.weather?.fallbackSunrise ||
+            '—';
+    }
+
+    if (sunsetEl) {
+        sunsetEl.textContent =
+            payload?.weather?.sunset ||
+            payload?.systemRegistry?.weather?.fallbackSunset ||
+            '—';
+    }
+
+    // ─────────────────────────────
+    // DAYLIGHT / NIGHT (derived)
+    // ─────────────────────────────
+    const daylightEl = document.getElementById('daylightTime');
+    const nightEl    = document.getElementById('nightTime');
+
+    const parseTime = (t) => {
+        if (!t) return null;
+        const d = new Date(`1970-01-01 ${t}`);
+        return d.getHours() * 3600 + d.getMinutes() * 60;
+    };
+
+    const sunriseSec = parseTime(payload?.weather?.sunrise);
+    const sunsetSec  = parseTime(payload?.weather?.sunset);
+
+    if (sunriseSec !== null && sunsetSec !== null && sunsetSec > sunriseSec) {
+        const daylightSeconds = sunsetSec - sunriseSec;
+        const nightSeconds = (24 * 3600) - daylightSeconds;
+
+        if (daylightEl) daylightEl.textContent = formatSmartInterval(daylightSeconds);
+        if (nightEl)    nightEl.textContent    = formatSmartInterval(nightSeconds);
+    }
+
+    // ─────────────────────────────
+    // NEXT HOLIDAY
+    // ─────────────────────────────
+    const holidayEl = document.getElementById('nextHoliday');
+    const nextHoliday = payload?.holidayState?.nextHoliday;
+
+    if (holidayEl && nextHoliday) {
+        holidayEl.textContent =
+            `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
+    }
 }
 // Update Tip of the Day
 function updateTipOfTheDay(payload = lastBoardPayload) {
