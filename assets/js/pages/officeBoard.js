@@ -76,6 +76,7 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
 
 // #region HELPERS (unchanged)
 
+// Gets status icon HTML based on status keyword
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -102,7 +103,7 @@ function getStatusIcon(status) {
     }
     return '';
 }
-
+//Formats seconds into smart interval string
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -114,7 +115,7 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-
+//Formats timestamp (in seconds) into MST date string
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -124,6 +125,72 @@ function formatTimestamp(ts) {
         hour: '2-digit', minute: '2-digit', hour12: true
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
+}
+//Get Date object from SSE payload
+function getDateFromSSE(payload) {
+    const ts = payload?.time?.now;
+    if (!ts) return null;
+    return new Date(ts * 1000);
+}
+//Get live date info from SSE payload
+function getLiveDateInfoFromSSE(payload) {
+    const now = getDateFromSSE(payload);
+    if (!now) return null;
+
+    const formattedDate = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor((now - startOfYear) / oneDay);
+
+    const isLeapYear =
+        (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) ||
+        (now.getFullYear() % 400 === 0);
+
+    const daysInYear = isLeapYear ? 366 : 365;
+
+    return {
+        formattedDate,
+        dayOfYear,
+        daysRemaining: daysInYear - dayOfYear
+    };
+}
+// Update Today's Highlights card
+function updateHighlightsCard(payload) {
+    if (!payload?.time) return;
+
+    const info = getLiveDateInfoFromSSE(payload);
+    if (!info) return;
+
+    const dateEl = document.getElementById('todaysDate');
+    const dayEl  = document.getElementById('dayOfYear');
+    const remEl  = document.getElementById('daysRemaining');
+
+    if (dateEl) dateEl.textContent = info.formattedDate;
+    if (dayEl)  dayEl.textContent  = info.dayOfYear;
+    if (remEl)  remEl.textContent  = info.daysRemaining;
+}
+// Update Tip of the Day
+function updateTipOfTheDay(payload) {
+    if (!payload?.time) return;
+
+    const now = getDateFromSSE(payload);
+    if (!now || !window.glbVar?.tips?.length) return;
+
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24));
+
+    const tips = window.glbVar.tips;
+    const tip  = tips[dayOfYear % tips.length];
+
+    const el = document.getElementById('tipOfTheDay');
+    if (el && tip) {
+        el.textContent = `💡 Tip of the Day: ${tip}`;
+    }
 }
 
 // #endregion
@@ -208,7 +275,9 @@ function createGenericCardElement(spec) {
 
 const BOARD_CARDS = [];
 
-// Specialized card: Active Permits
+/* ──────────────────────────────────────────────
+ * Specialized card: Active Permits
+ * ────────────────────────────────────────────── */
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: DEFAULT_CARD_DURATION_MS,
@@ -221,34 +290,49 @@ const ActivePermitsCard = {
         this.instance = createActivePermitsCardElement();
         return this.instance.root;
     },
-
+    // 🔄 Reusable update function
     update(payload) {
-        if (!payload?.activePermits) return;
-        latestActivePermits = payload.activePermits || [];
+        if (!payload || !Array.isArray(payload.activePermits)) return;
+
+        const permits = payload.activePermits;
+        latestActivePermits = permits;
 
         const body = this.instance?.tableBody;
         const footer = this.instance?.footer;
         if (!body) return;
 
-        const signature = Array.isArray(payload.activePermits)
-            ? payload.activePermits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}`).join('::')
+        // 🔑 Signature = visual identity of the table
+        const signature = permits.length
+            ? permits.map(p =>
+                `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`
+            ).join('::')
             : 'empty';
 
-        if (signature === this.lastSignature) return;
-        this.lastSignature = signature;
+        // If nothing changed visually, just update footer time and exit
+        if (signature === this.lastSignature) {
+            if (footer && permitRegistryMeta?.updatedOn) {
+                footer.innerHTML = renderLiveFooter({
+                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''} • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`
+                });
+            }
+            return;
+        }
 
+        this.lastSignature = signature;
         body.innerHTML = '';
-        if (latestActivePermits.length === 0) {
+
+        if (permits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
             footer && (footer.textContent = 'No permits found');
             return;
         }
 
-        const sorted = latestActivePermits.slice().sort(
-            (a,b) => (parseInt(a.wo,10)||0) - (parseInt(b.wo,10)||0)
+        const sorted = permits.slice().sort(
+            (a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
         );
 
         const frag = document.createDocumentFragment();
+
         sorted.forEach(p => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -260,6 +344,7 @@ const ActivePermitsCard = {
             `;
             frag.appendChild(tr);
         });
+
         body.appendChild(frag);
 
         if (footer) {
@@ -270,7 +355,7 @@ const ActivePermitsCard = {
             footer.innerHTML = renderLiveFooter({ text });
         }
 
-        // Scroll start
+        // 🔁 Restart scroll only after DOM mutation
         requestAnimationFrame(() => {
             if (this.instance?.scrollWrap) {
                 window.SkyOfficeBoard.autoScroll.start(
@@ -289,11 +374,46 @@ const ActivePermitsCard = {
 
 BOARD_CARDS.push(ActivePermitsCard);
 
-// Generic cards
+/* ──────────────────────────────────────────────
+ * Specialized card: Today’s Highlights
+ * ────────────────────────────────────────────── */
+const TodaysHighlightsCard = {
+    id: 'todays-highlights',
+    icon: '🌅',
+    title: 'Today’s Highlights',
+    durationMs: DEFAULT_CARD_DURATION_MS,
+
+    instance: null,
+
+    create() {
+        this.instance = createGenericCardElement(this);
+        this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
+        return this.instance.root;
+    },
+    // 🔄 Reusable update function
+    update(payload) {
+        updateHighlightsCard(payload);
+        updateTipOfTheDay(payload);
+
+        if (this.instance?.footer) {
+            this.instance.footer.innerHTML = renderLiveFooter({
+                text: 'Auto-updated daily'
+            });
+        }
+    },
+
+    onShow() {},
+    onHide() {}
+};
+
+BOARD_CARDS.push(TodaysHighlightsCard);
+
+/* ──────────────────────────────────────────────
+ * Generic cards (placeholders for now)
+ * ────────────────────────────────────────────── */
 const GENERIC_CARD_SPECS = [
-    { id: 'todays-highlights', icon: '🌅', title: 'Today’s Highlights' },
-    { id: 'kpi-dashboard',     icon: '📈', title: 'Key Performance Indicators' },
-    { id: 'announcements',     icon: '📢', title: 'Announcements' },
+    { id: 'kpi-dashboard', icon: '📈', title: 'Key Performance Indicators' },
+    { id: 'announcements', icon: '📢', title: 'Announcements' }
 ];
 
 GENERIC_CARD_SPECS.forEach(spec => {
@@ -307,13 +427,15 @@ GENERIC_CARD_SPECS.forEach(spec => {
             return this.instance.root;
         },
 
-        update(payload) {
+        update() {
             if (this.instance?.content) {
-                this.instance.content.innerHTML = `<p>Content for ${this.title} (placeholder)</p>`;
+                this.instance.content.innerHTML =
+                    `<p>${this.title} content coming soon</p>`;
             }
             if (this.instance?.footer) {
-                const footerText = `Updated ${formatTimestamp(Date.now() / 1000)}`;
-                this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
+                this.instance.footer.innerHTML = renderLiveFooter({
+                    text: `Updated ${formatTimestamp(Date.now() / 1000)}`
+                });
             }
         },
 
@@ -322,9 +444,11 @@ GENERIC_CARD_SPECS.forEach(spec => {
     });
 });
 
-
+/* ──────────────────────────────────────────────
+ * Universal SSE updater
+ * ────────────────────────────────────────────── */
 function updateAllCards(payload) {
-    lastBoardPayload = payload; // Cache it
+    lastBoardPayload = payload; // 🔁 cache for rotation replays
     BOARD_CARDS.forEach(card => {
         if (typeof card.update === 'function') {
             card.update(payload);
