@@ -217,6 +217,7 @@ const ActivePermitsCard = {
     lastSignature: null,
 
     create() {
+        this.lastSignature = null; // 🔑 reset per render
         this.instance = createActivePermitsCardElement();
         return this.instance.root;
     },
