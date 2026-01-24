@@ -1,0 +1,192 @@
+{
+  "skyesoftTips": {
+    "meta": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-01-24",
+      "rotation": "per-card",
+      "source": "Skyesoft Codex",
+      "intent": "operational-guidance"
+    },
+    "tips": [
+      {
+        "id": "TIP-001",
+        "text": "Measure twice, cut once — and review the permit before submitting.",
+        "category": "process",
+        "audience": "operations",
+        "tone": "practical"
+      },
+      {
+        "id": "TIP-002",
+        "text": "Clear drawings reduce review cycles more than faster follow-ups.",
+        "category": "permitting",
+        "audience": "design",
+        "tone": "strategic"
+      },
+      {
+        "id": "TIP-003",
+        "text": "If a jurisdiction feels slow, verify completeness before escalating.",
+        "category": "permitting",
+        "audience": "administration",
+        "tone": "calm"
+      },
+      {
+        "id": "TIP-004",
+        "text": "Photos attached to submittals prevent assumptions by reviewers.",
+        "category": "documentation",
+        "audience": "field",
+        "tone": "practical"
+      },
+      {
+        "id": "TIP-005",
+        "text": "Document decisions while they’re fresh — memory fades faster than email.",
+        "category": "communication",
+        "audience": "management",
+        "tone": "cautionary"
+      },
+
+      {
+        "id": "TIP-006",
+        "text": "A quick pre-call often saves a week of written corrections.",
+        "category": "communication",
+        "audience": "permitting",
+        "tone": "strategic"
+      },
+      {
+        "id": "TIP-007",
+        "text": "Assume reviewers are busy, not adversarial.",
+        "category": "mindset",
+        "audience": "all",
+        "tone": "calming"
+      },
+      {
+        "id": "TIP-008",
+        "text": "If it isn’t in writing, it isn’t agreed.",
+        "category": "risk",
+        "audience": "management",
+        "tone": "firm"
+      },
+      {
+        "id": "TIP-009",
+        "text": "Verify zoning early — it’s cheaper than redesigning later.",
+        "category": "planning",
+        "audience": "sales",
+        "tone": "preventive"
+      },
+      {
+        "id": "TIP-010",
+        "text": "A clean job folder saves everyone time downstream.",
+        "category": "organization",
+        "audience": "operations",
+        "tone": "practical"
+      },
+
+      {
+        "id": "TIP-011",
+        "text": "Permits don’t fail — assumptions do.",
+        "category": "mindset",
+        "audience": "all",
+        "tone": "reflective"
+      },
+      {
+        "id": "TIP-012",
+        "text": "Clarify sign count and elevations before submitting anything.",
+        "category": "permitting",
+        "audience": "design",
+        "tone": "preventive"
+      },
+      {
+        "id": "TIP-013",
+        "text": "Short emails beat long explanations when stakes are low.",
+        "category": "communication",
+        "audience": "all",
+        "tone": "practical"
+      },
+      {
+        "id": "TIP-014",
+        "text": "If a deadline matters, restate it clearly and early.",
+        "category": "communication",
+        "audience": "management",
+        "tone": "direct"
+      },
+      {
+        "id": "TIP-015",
+        "text": "Treat inspectors as partners in completion, not obstacles.",
+        "category": "field",
+        "audience": "install",
+        "tone": "collaborative"
+      },
+
+      {
+        "id": "TIP-016",
+        "text": "Always confirm who pays permit fees before invoicing.",
+        "category": "financial",
+        "audience": "administration",
+        "tone": "preventive"
+      },
+      {
+        "id": "TIP-017",
+        "text": "A delayed approval is better than a rushed rejection.",
+        "category": "strategy",
+        "audience": "sales",
+        "tone": "patient"
+      },
+      {
+        "id": "TIP-018",
+        "text": "Consistency beats speed when building trust with jurisdictions.",
+        "category": "relationships",
+        "audience": "permitting",
+        "tone": "long-term"
+      },
+      {
+        "id": "TIP-019",
+        "text": "When unsure, ask once — guessing costs more.",
+        "category": "risk",
+        "audience": "all",
+        "tone": "direct"
+      },
+      {
+        "id": "TIP-020",
+        "text": "Keep your file names boring and predictable.",
+        "category": "organization",
+        "audience": "all",
+        "tone": "practical"
+      },
+
+      {
+        "id": "TIP-021",
+        "text": "If it affects scope, log it immediately.",
+        "category": "project-management",
+        "audience": "management",
+        "tone": "firm"
+      },
+      {
+        "id": "TIP-022",
+        "text": "Never assume prior approvals still apply.",
+        "category": "compliance",
+        "audience": "permitting",
+        "tone": "cautionary"
+      },
+      {
+        "id": "TIP-023",
+        "text": "Re-read corrections before responding — most answers are already there.",
+        "category": "permitting",
+        "audience": "design",
+        "tone": "practical"
+      },
+      {
+        "id": "TIP-024",
+        "text": "One clear contact beats three partial ones.",
+        "category": "communication",
+        "audience": "all",
+        "tone": "strategic"
+      },
+      {
+        "id": "TIP-025",
+        "text": "MTCO isn’t slow — it’s efficient over time.",
+        "category": "mindset",
+        "audience": "all",
+        "tone": "philosophical"
+      }
+    ]
+  }
+}

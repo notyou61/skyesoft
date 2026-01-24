@@ -197,8 +197,8 @@ function renderTodaysHighlightsSkeleton() {
 
         <hr>
 
-        <div class="entry" id="tipOfTheDay">
-            💡 Tip of the Day: —
+        <div class="entry" id="skyesoftTips">
+            💡 Skyesoft Tip: —
         </div>
     `;
 }
@@ -248,16 +248,6 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     const sunriseUnix = payload?.weather?.sunriseUnix ?? null;
     const sunsetUnix  = payload?.weather?.sunsetUnix  ?? null;
 
-    const formatPhoenixTimeFromUnix = (unixSeconds) => {
-        if (!unixSeconds || isNaN(unixSeconds)) return null;
-        return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
-            timeZone: 'America/Phoenix',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    };
-
     const sunriseStr = formatPhoenixTimeFromUnix(sunriseUnix) || '—';
     const sunsetStr  = formatPhoenixTimeFromUnix(sunsetUnix)  || '—';
 
@@ -297,22 +287,43 @@ function updateHighlightsCard(payload = lastBoardPayload) {
             `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-// Update Tip of the Day
-function updateTipOfTheDay(payload = lastBoardPayload) {
-    const now = getDateFromSSE(payload);
-    if (!now || !window.glbVar?.tips?.length) return;
+// Skyesoft Tips Registry
+window.glbVar = window.glbVar || {};
+window.glbVar.tips = [];
 
-    const startOfYear = new Date(now.getFullYear(), 0, 0);
-    const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24));
-
-    const tips = window.glbVar.tips;
-    const tip  = tips[dayOfYear % tips.length];
-
-    const el = document.getElementById('tipOfTheDay');
-    if (el && tip) {
-        el.textContent = `💡 Tip of the Day: ${tip}`;
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
+    cache: 'no-cache'
+})
+.then(res => res.ok ? res.json() : Promise.reject(res.status))
+.then(data => {
+    if (Array.isArray(data?.tips)) {
+        window.glbVar.tips = data.tips;
+        console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
     }
+})
+.catch(err => {
+    console.warn('⚠️ Failed to load Skyesoft tips', err);
+    window.glbVar.tips = [];
+});
+
+// ─────────────────────────────────────────────
+// Update Skyesoft Tips (rotates per card show)
+// ─────────────────────────────────────────────
+function updateSkyesoftTips() {
+    const tips = window.glbVar?.tips;
+    if (!Array.isArray(tips) || tips.length === 0) return;
+
+    // Pick a random tip each time the card is shown
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    if (!tip?.text) return;
+
+    const el = document.getElementById('skyesoftTips');
+    if (!el) return;
+
+    el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
+
+
 // Build initial time payload from DOM
 function buildInitialTimePayload() {
     const now = new Date();
@@ -536,7 +547,7 @@ const TodaysHighlightsCard = {
         if (!payload) return;
 
         updateHighlightsCard(payload);
-        updateTipOfTheDay(payload);
+        updateSkyesoftTips(); // ✅ correct
 
         if (this.instance?.footer) {
             this.instance.footer.innerHTML = renderLiveFooter({
