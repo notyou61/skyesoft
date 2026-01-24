@@ -61,12 +61,12 @@ if ($envFile === null) {
     throw new RuntimeException("Missing WEATHER env file");
 }
 
-// Tolerant .env parser
+// Robust .env parser
 $env = [];
 foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
     $line = trim($line);
     if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;
-    if (!str_contains($line, '=')) continue;
+    if (strpos($line, '=') === false) continue;
 
     [$k, $v] = explode('=', $line, 2);
     $env[trim($k)] = trim($v, "\"'");
@@ -78,42 +78,51 @@ if (!$weatherKey) {
 }
 
 // ─────────────────────────────────────────────
-// Coordinates (Phoenix) + endpoint
+// Coordinates (Phoenix) + API base
 // ─────────────────────────────────────────────
 
 $lat = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
 $lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
 
-$baseOW = rtrim($systemRegistry['api']['openWeatherBase'], '/');
+$baseOW = rtrim($systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5', '/');
 
-$oneCallUrl =
-    "{$baseOW}/onecall" .
+// ─────────────────────────────────────────────
+// Guaranteed defaults (never undefined)
+// ─────────────────────────────────────────────
+
+$currentWeather = [
+    'temp'            => null,
+    'condition'       => null,
+    'icon'            => null,
+    'sunrise'         => null,
+    'sunset'          => null,
+    'sunriseUnix'     => null,
+    'sunsetUnix'      => null,
+    'daylightSeconds' => null,
+    'nightSeconds'    => null,
+    'source'          => 'openweathermap-unavailable'
+];
+
+$forecastDays = []; // always defined
+
+// ─────────────────────────────────────────────
+// Build URLs (FREE v2.5 endpoints)
+// ─────────────────────────────────────────────
+
+$currentUrl =
+    "{$baseOW}/weather" .
     "?lat={$lat}&lon={$lon}" .
-    "&exclude=minutely,hourly,alerts" .
+    "&units=imperial" .
+    "&appid={$weatherKey}";
+
+$forecastUrl =
+    "{$baseOW}/forecast" .
+    "?lat={$lat}&lon={$lon}" .
     "&units=imperial" .
     "&appid={$weatherKey}";
 
 // ─────────────────────────────────────────────
-// Defaults (guaranteed shape)
-// ─────────────────────────────────────────────
-
-$currentWeather = [
-    'temp'             => null,
-    'condition'        => null,
-    'icon'             => null,
-    'sunrise'          => null,
-    'sunset'           => null,
-    'sunriseUnix'      => null,
-    'sunsetUnix'       => null,
-    'daylightSeconds'  => null,
-    'nightSeconds'     => null,
-    'source'           => 'openweathermap-unavailable'
-];
-
-$forecastDays = []; // 🔑 always defined
-
-// ─────────────────────────────────────────────
-// Fetch weather (current + daily)
+// Fetch weather
 // ─────────────────────────────────────────────
 
 $ctx = stream_context_create([
@@ -122,29 +131,37 @@ $ctx = stream_context_create([
     ]
 ]);
 
-$response = @file_get_contents($oneCallUrl, false, $ctx);
-$weatherData = $response ? json_decode($response, true) : null;
+$currentRaw  = @file_get_contents($currentUrl, false, $ctx);
+$forecastRaw = @file_get_contents($forecastUrl, false, $ctx);
 
-if ($weatherData && isset($weatherData['current'])) {
+$currentData  = $currentRaw  ? json_decode($currentRaw, true)  : null;
+$forecastData = $forecastRaw ? json_decode($forecastRaw, true) : null;
 
-    // ───────── CURRENT WEATHER ─────────
+// ─────────────────────────────────────────────
+// CURRENT WEATHER (sunrise / sunset live here)
+// ─────────────────────────────────────────────
 
-    $sunriseUnix = (int) $weatherData['current']['sunrise'];
-    $sunsetUnix  = (int) $weatherData['current']['sunset'];
+if ($currentData && isset($currentData['main'])) {
 
-    $daylightSeconds = max(0, $sunsetUnix - $sunriseUnix);
-    $nightSeconds    = max(0, (86400 - $daylightSeconds));
+    $sunriseUnix = $currentData['sys']['sunrise'] ?? null;
+    $sunsetUnix  = $currentData['sys']['sunset']  ?? null;
+
+    $daylightSeconds = ($sunriseUnix && $sunsetUnix)
+        ? max(0, $sunsetUnix - $sunriseUnix)
+        : null;
+
+    $nightSeconds = ($daylightSeconds !== null)
+        ? max(0, 86400 - $daylightSeconds)
+        : null;
 
     $currentWeather = [
-        'temp'            => round($weatherData['current']['temp']),
-        'condition'       => $weatherData['current']['weather'][0]['description'] ?? null,
-        'icon'            => $weatherData['current']['weather'][0]['icon'] ?? null,
+        'temp'            => round($currentData['main']['temp']),
+        'condition'       => $currentData['weather'][0]['description'] ?? null,
+        'icon'            => $currentData['weather'][0]['icon'] ?? null,
 
-        // Display strings (Phoenix-safe)
-        'sunrise'         => date('g:i A', $sunriseUnix),
-        'sunset'          => date('g:i A', $sunsetUnix),
+        'sunrise'         => $sunriseUnix ? date('g:i A', $sunriseUnix) : null,
+        'sunset'          => $sunsetUnix  ? date('g:i A', $sunsetUnix)  : null,
 
-        // Canonical values
         'sunriseUnix'     => $sunriseUnix,
         'sunsetUnix'      => $sunsetUnix,
         'daylightSeconds' => $daylightSeconds,
@@ -152,24 +169,38 @@ if ($weatherData && isset($weatherData['current'])) {
 
         'source'          => 'openweathermap'
     ];
+}
 
-    // ───────── 3-DAY FORECAST ─────────
+// ─────────────────────────────────────────────
+// 3-DAY FORECAST (derived from /forecast)
+// ─────────────────────────────────────────────
 
+if ($forecastData && isset($forecastData['list'])) {
+
+    $seenDates = [];
     $labels = ['Today', 'Tomorrow'];
 
-    for ($i = 0; $i < 3; $i++) {
-        if (!isset($weatherData['daily'][$i])) continue;
+    foreach ($forecastData['list'] as $slot) {
 
-        $d = $weatherData['daily'][$i];
+        $date = date('Y-m-d', $slot['dt']);
+        $hour = (int) date('G', $slot['dt']);
 
-        $forecastDays[] = [
-            'dateUnix'  => $d['dt'],
-            'label'     => $labels[$i] ?? date('l', $d['dt']),
-            'high'      => round($d['temp']['max']),
-            'low'       => round($d['temp']['min']),
-            'condition' => $d['weather'][0]['description'] ?? null,
-            'icon'      => $d['weather'][0]['icon'] ?? null
-        ];
+        // Pick ~midday snapshot for each day
+        if ($hour === 12 && !isset($seenDates[$date])) {
+
+            $forecastDays[] = [
+                'dateUnix'  => $slot['dt'],
+                'label'     => $labels[count($forecastDays)] ?? date('l', $slot['dt']),
+                'high'      => round($slot['main']['temp_max']),
+                'low'       => round($slot['main']['temp_min']),
+                'condition' => $slot['weather'][0]['description'] ?? null,
+                'icon'      => $slot['weather'][0]['icon'] ?? null
+            ];
+
+            $seenDates[$date] = true;
+        }
+
+        if (count($forecastDays) === 3) break;
     }
 }
 
