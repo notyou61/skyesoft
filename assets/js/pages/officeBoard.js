@@ -581,7 +581,7 @@ window.SkyOfficeBoard = {
     dom: { card: null, weather: null, time: null, interval: null, version: null },
 
     start() { this.init(); },
-
+    // Initialize page
     init() {
         this.dom.pageBody  = document.getElementById('boardCardHost');
         this.dom.weather   = document.getElementById('headerWeather');
@@ -591,17 +591,19 @@ window.SkyOfficeBoard = {
 
         if (!this.dom.pageBody) return;
 
-        // ✅ Pre-hydrate from header time (NO loading state)
-        const initialPayload = buildInitialTimePayload();
-        if (initialPayload) {
-            lastBoardPayload = initialPayload;
+        // 🔑 SEED INITIAL TIME PAYLOAD (before first render)
+        if (!lastBoardPayload) {
+            lastBoardPayload = buildInitialTimePayload();
         }
 
         showCard(0);
 
-        // 🔁 Upgrade with real SSE when it arrives
+        // 🔁 If SSE already exists, override seed
         if (window.SkyeApp?.lastSSE) {
             updateAllCards(window.SkyeApp.lastSSE);
+        } else {
+            // 🔁 Populate cards immediately with seeded time
+            updateAllCards(lastBoardPayload);
         }
     },
 
