@@ -78,11 +78,11 @@ if (!$weatherKey) {
 }
 
 // ─────────────────────────────────────────────
-// Coordinates + API base (Phoenix)
+// Coordinates (Phoenix) + endpoint
 // ─────────────────────────────────────────────
 
-$lat  = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
-$lon  = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
+$lat = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
+$lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
 
 $oneCallUrl =
     "https://api.openweathermap.org/data/3.0/onecall" .
@@ -90,6 +90,25 @@ $oneCallUrl =
     "&exclude=minutely,hourly,alerts" .
     "&units=imperial" .
     "&appid={$weatherKey}";
+
+// ─────────────────────────────────────────────
+// Defaults (guaranteed shape)
+// ─────────────────────────────────────────────
+
+$currentWeather = [
+    'temp'             => null,
+    'condition'        => null,
+    'icon'             => null,
+    'sunrise'          => null,
+    'sunset'           => null,
+    'sunriseUnix'      => null,
+    'sunsetUnix'       => null,
+    'daylightSeconds'  => null,
+    'nightSeconds'     => null,
+    'source'           => 'openweathermap-unavailable'
+];
+
+$forecastDays = []; // 🔑 always defined
 
 // ─────────────────────────────────────────────
 // Fetch weather (current + daily)
@@ -104,166 +123,51 @@ $ctx = stream_context_create([
 $response = @file_get_contents($oneCallUrl, false, $ctx);
 $weatherData = $response ? json_decode($response, true) : null;
 
-if (!$weatherData || !isset($weatherData['current'])) {
-    throw new RuntimeException("Failed to fetch OpenWeather data");
-}
+if ($weatherData && isset($weatherData['current'])) {
 
-// ─────────────────────────────────────────────
-// CURRENT WEATHER
-// ─────────────────────────────────────────────
+    // ───────── CURRENT WEATHER ─────────
 
-$sunriseUnix = (int) $weatherData['current']['sunrise'];
-$sunsetUnix  = (int) $weatherData['current']['sunset'];
+    $sunriseUnix = (int) $weatherData['current']['sunrise'];
+    $sunsetUnix  = (int) $weatherData['current']['sunset'];
 
-$daylightSeconds = max(0, $sunsetUnix - $sunriseUnix);
-$nightSeconds    = max(0, (24 * 3600) - $daylightSeconds);
+    $daylightSeconds = max(0, $sunsetUnix - $sunriseUnix);
+    $nightSeconds    = max(0, (86400 - $daylightSeconds));
 
-$currentWeather = [
-    'temp'      => round($weatherData['current']['temp']),
-    'condition' => $weatherData['current']['weather'][0]['description'] ?? null,
-    'icon'      => $weatherData['current']['weather'][0]['icon'] ?? null,
+    $currentWeather = [
+        'temp'            => round($weatherData['current']['temp']),
+        'condition'       => $weatherData['current']['weather'][0]['description'] ?? null,
+        'icon'            => $weatherData['current']['weather'][0]['icon'] ?? null,
 
-    // Display strings
-    'sunrise' => date('g:i A', $sunriseUnix),
-    'sunset'  => date('g:i A', $sunsetUnix),
+        // Display strings (Phoenix-safe)
+        'sunrise'         => date('g:i A', $sunriseUnix),
+        'sunset'          => date('g:i A', $sunsetUnix),
 
-    // Canonical values (frontend-safe)
-    'sunriseUnix'      => $sunriseUnix,
-    'sunsetUnix'       => $sunsetUnix,
-    'daylightSeconds'  => $daylightSeconds,
-    'nightSeconds'     => $nightSeconds,
+        // Canonical values
+        'sunriseUnix'     => $sunriseUnix,
+        'sunsetUnix'      => $sunsetUnix,
+        'daylightSeconds' => $daylightSeconds,
+        'nightSeconds'    => $nightSeconds,
 
-    'source' => 'openweathermap'
-];
-
-// ─────────────────────────────────────────────
-// 3-DAY FORECAST
-// ─────────────────────────────────────────────
-
-$forecastDays = [];
-$labels = ['Today', 'Tomorrow'];
-
-for ($i = 0; $i < 3; $i++) {
-    if (!isset($weatherData['daily'][$i])) continue;
-
-    $d = $weatherData['daily'][$i];
-
-    $forecastDays[] = [
-        'dateUnix'  => $d['dt'],
-        'label'     => $labels[$i] ?? date('l', $d['dt']),
-        'high'      => round($d['temp']['max']),
-        'low'       => round($d['temp']['min']),
-        'condition' => $d['weather'][0]['description'] ?? null,
-        'icon'      => $d['weather'][0]['icon'] ?? null
+        'source'          => 'openweathermap'
     ];
-}
 
-#endregion
+    // ───────── 3-DAY FORECAST ─────────
 
-#region SECTION 3 — Public Helper Functions
-if (!function_exists('buildTimeContext')) {
-    function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
-    {
-        $nowUnix = (int)$dt->format("U");
-        $weekday = (int)$dt->format("N");
+    $labels = ['Today', 'Tomorrow'];
 
-        // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
-        $holidayState = resolveHolidayState($holidayPath, $dt);
-        $isHoliday = $holidayState["isHoliday"];
+    for ($i = 0; $i < 3; $i++) {
+        if (!isset($weatherData['daily'][$i])) continue;
 
-        if ($isHoliday) {
-            $calendarType = "holiday";
-        } elseif ($weekday >= 6) {
-            $calendarType = "weekend";
-        } else {
-            $calendarType = "workday";
-        }
+        $d = $weatherData['daily'][$i];
 
-        // --- Office Hours (HH:MM from registry) ---
-        list($startH, $startM) = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["start"]));
-        list($endH, $endM)     = array_map('intval', explode(":", $systemRegistry["schedule"]["officeHours"]["end"]));
-
-        $workStartSecs = $startH * 3600 + $startM * 60;
-        $workEndSecs   = $endH   * 3600 + $endM   * 60;
-        $nowSecs       = (int)$dt->format("G") * 3600 + (int)$dt->format("i") * 60 + (int)$dt->format("s");
-
-        // --- Compute Next Valid Work Start (skip weekends/holidays) ---
-        $next = clone $dt;
-        if ($nowSecs >= $workEndSecs) {
-            $next->modify("+1 day");
-        }
-        $next->setTime($startH, $startM, 0);
-
-        while (true) {
-            $w = (int)$next->format("N");
-            $h = resolveHolidayState($holidayPath, $next)["isHoliday"];
-            if ($h || $w >= 6) {
-                $next->modify("+1 day");
-                $next->setTime($startH, $startM, 0);
-                continue;
-            }
-            break;
-        }
-
-        $nextUnix = (int)$next->format("U");
-        $secondsToNextWork = max(0, $nextUnix - $nowUnix);
-
-        // =============================================================
-        // Determine Interval Key & End Time
-        // =============================================================
-        if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
-            $intervalKey = "worktime";
-            $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
-            $intervalEndUnix   = (clone $dt)->setTime($endH, $endM, 0)->format("U");
-            $secondsRemaining   = max(0, $intervalEndUnix - $nowUnix);
-        } elseif ($nowSecs < $workStartSecs && $calendarType === "workday") {
-            $intervalKey = "beforeWork";
-            $intervalEndUnix   = (clone $dt)->setTime($startH, $startM, 0)->format("U");
-            $intervalStartUnix = $nowUnix;
-            $secondsRemaining = max(0, $intervalEndUnix - $nowUnix);
-        } elseif ($calendarType === "workday") {
-            $intervalKey = "afterWork";
-            $intervalStartUnix = $nowUnix;
-            $intervalEndUnix   = $nextUnix;
-            $secondsRemaining  = $secondsToNextWork;
-        } else {
-            // Weekend or Holiday
-            $intervalKey = $calendarType; // "weekend" or "holiday"
-            $intervalStartUnix = $nowUnix;
-            $intervalEndUnix   = $nextUnix;
-            $secondsRemaining = $secondsToNextWork;
-        }
-
-        return [
-            "calendarType" => $calendarType,
-            "currentInterval" => [
-                "key" => $intervalKey,
-                "intervalStartUnix" => $intervalStartUnix,
-                "intervalEndUnix" => $intervalEndUnix,
-                "secondsIntoInterval" => max(0, $nowUnix - $intervalStartUnix),
-                "secondsRemainingInterval" => $secondsRemaining,
-                "source" => "TIS"
-            ],
-            "timeDateArray" => [
-                "currentUnixTime" => $nowUnix,
-                "currentLocalTime" => $dt->format("h:i:s A"),
-                "currentLocalTimeShort" => $dt->format("g:i A"),
-                "currentDate" => $dt->format("Y-m-d"),
-                "currentMonthNumber" => (int)$dt->format("n"),
-                "currentWeekdayNumber" => $weekday,
-                "currentDayNumber" => (int)$dt->format("j")
-            ],
-            "holidayState" => $holidayState
+        $forecastDays[] = [
+            'dateUnix'  => $d['dt'],
+            'label'     => $labels[$i] ?? date('l', $d['dt']),
+            'high'      => round($d['temp']['max']),
+            'low'       => round($d['temp']['min']),
+            'condition' => $d['weather'][0]['description'] ?? null,
+            'icon'      => $d['weather'][0]['icon'] ?? null
         ];
-    }
-}
-
-if (!function_exists('getTimeContext')) {
-    function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
-    {
-        $dt = new DateTime('@' . time());
-        $dt->setTimezone($tz);
-        return buildTimeContext($dt, $systemRegistry, $holidayPath);
     }
 }
 
