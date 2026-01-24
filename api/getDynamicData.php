@@ -44,68 +44,119 @@ $announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
-#region SECTION 2 — Weather Configuration
+#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST)
 
-// Env files stored outside public_html
+// ─────────────────────────────────────────────
+// Load WEATHER_API_KEY from secure env
+// ─────────────────────────────────────────────
+
 $envPathPrimary = dirname(dirname($root)) . "/secure/.env";
 $envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
 
-// Choose the first existing env file
-$envFile = null;
-if (file_exists($envPathPrimary)) {
-    $envFile = $envPathPrimary;
-} elseif (file_exists($envPathLocal)) {
-    $envFile = $envPathLocal;
-}
+$envFile = file_exists($envPathPrimary)
+    ? $envPathPrimary
+    : (file_exists($envPathLocal) ? $envPathLocal : null);
 
 if ($envFile === null) {
-    throw new RuntimeException("Missing WEATHER env file - checked:\n  • $envPathPrimary\n  • $envPathLocal");
+    throw new RuntimeException("Missing WEATHER env file");
 }
 
-// Custom .env parser - tolerant of comments, emojis, special chars
+// Tolerant .env parser
 $env = [];
-$lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-foreach ($lines as $lineNum => $line) {
+foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
     $line = trim($line);
-    
-    // Skip empty lines and comments (both ; and #, with or without emojis)
-    if ($line === '' || $line[0] === ';' || $line[0] === '#') {
-        continue;
-    }
-    
-    // Must contain at least one = sign
-    if (strpos($line, '=') === false) {
-        continue; // silently skip malformed lines (or log if you want)
-    }
-    
-    [$key, $value] = explode('=', $line, 2);
-    $key   = trim($key);
-    $value = trim($value);
-    
-    // Remove surrounding quotes if present (single or double)
-    if (str_starts_with($value, '"') && str_ends_with($value, '"')) {
-        $value = substr($value, 1, -1);
-    } elseif (str_starts_with($value, "'") && str_ends_with($value, "'")) {
-        $value = substr($value, 1, -1);
-    }
-    
-    $env[$key] = $value;
+    if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;
+    if (!str_contains($line, '=')) continue;
+
+    [$k, $v] = explode('=', $line, 2);
+    $env[trim($k)] = trim($v, "\"'");
 }
 
 $weatherKey = $env['WEATHER_API_KEY'] ?? null;
-if ($weatherKey === null) {
-    throw new RuntimeException("Missing or empty WEATHER_API_KEY in $envFile");
+if (!$weatherKey) {
+    throw new RuntimeException("Missing WEATHER_API_KEY");
 }
 
-// Weather coordinates and base URL from system registry
-$lat    = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484); // fallback: Phoenix, AZ
-$lon    = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
-$baseOW = $systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5';
+// ─────────────────────────────────────────────
+// Coordinates + API base (Phoenix)
+// ─────────────────────────────────────────────
 
-// Initialize weather state
-$currentWeather  = null;
-$lastWeatherUnix = 0;
+$lat  = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
+$lon  = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
+
+$oneCallUrl =
+    "https://api.openweathermap.org/data/3.0/onecall" .
+    "?lat={$lat}&lon={$lon}" .
+    "&exclude=minutely,hourly,alerts" .
+    "&units=imperial" .
+    "&appid={$weatherKey}";
+
+// ─────────────────────────────────────────────
+// Fetch weather (current + daily)
+// ─────────────────────────────────────────────
+
+$ctx = stream_context_create([
+    'http' => [
+        'timeout' => $systemRegistry['api']['timeoutSeconds'] ?? 6
+    ]
+]);
+
+$response = @file_get_contents($oneCallUrl, false, $ctx);
+$weatherData = $response ? json_decode($response, true) : null;
+
+if (!$weatherData || !isset($weatherData['current'])) {
+    throw new RuntimeException("Failed to fetch OpenWeather data");
+}
+
+// ─────────────────────────────────────────────
+// CURRENT WEATHER
+// ─────────────────────────────────────────────
+
+$sunriseUnix = (int) $weatherData['current']['sunrise'];
+$sunsetUnix  = (int) $weatherData['current']['sunset'];
+
+$daylightSeconds = max(0, $sunsetUnix - $sunriseUnix);
+$nightSeconds    = max(0, (24 * 3600) - $daylightSeconds);
+
+$currentWeather = [
+    'temp'      => round($weatherData['current']['temp']),
+    'condition' => $weatherData['current']['weather'][0]['description'] ?? null,
+    'icon'      => $weatherData['current']['weather'][0]['icon'] ?? null,
+
+    // Display strings
+    'sunrise' => date('g:i A', $sunriseUnix),
+    'sunset'  => date('g:i A', $sunsetUnix),
+
+    // Canonical values (frontend-safe)
+    'sunriseUnix'      => $sunriseUnix,
+    'sunsetUnix'       => $sunsetUnix,
+    'daylightSeconds'  => $daylightSeconds,
+    'nightSeconds'     => $nightSeconds,
+
+    'source' => 'openweathermap'
+];
+
+// ─────────────────────────────────────────────
+// 3-DAY FORECAST
+// ─────────────────────────────────────────────
+
+$forecastDays = [];
+$labels = ['Today', 'Tomorrow'];
+
+for ($i = 0; $i < 3; $i++) {
+    if (!isset($weatherData['daily'][$i])) continue;
+
+    $d = $weatherData['daily'][$i];
+
+    $forecastDays[] = [
+        'dateUnix'  => $d['dt'],
+        'label'     => $labels[$i] ?? date('l', $d['dt']),
+        'high'      => round($d['temp']['max']),
+        'low'       => round($d['temp']['min']),
+        'condition' => $d['weather'][0]['description'] ?? null,
+        'icon'      => $d['weather'][0]['icon'] ?? null
+    ];
+}
 
 #endregion
 
@@ -216,32 +267,6 @@ if (!function_exists('getTimeContext')) {
     }
 }
 
-if (!function_exists('getWeatherCached')) {
-    function getWeatherCached(int $now, string $baseOW, float $lat, float $lon, string $key): array
-    {
-        global $currentWeather, $lastWeatherUnix;
-
-        if ($currentWeather !== null && ($now - $lastWeatherUnix) < 600) {
-            return $currentWeather;
-        }
-
-        $json = json_decode(@file_get_contents(
-            "{$baseOW}/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}"
-        ), true);
-
-        $currentWeather = [
-            "temp"      => $json["main"]["temp"] ?? null,
-            "condition" => $json["weather"][0]["description"] ?? null,
-            "icon"      => $json["weather"][0]["icon"] ?? null,
-            "sunrise"   => isset($json["sys"]["sunrise"]) ? date("g:i A", $json["sys"]["sunrise"]) : null,
-            "sunset"    => isset($json["sys"]["sunset"]) ? date("g:i A", $json["sys"]["sunset"]) : null,
-            "source"    => "openweathermap"
-        ];
-
-        $lastWeatherUnix = $now;
-        return $currentWeather;
-    }
-}
 #endregion
 
 #region SECTION 4 — Build Time Context + Weather + Final Payload
@@ -249,15 +274,9 @@ if (!function_exists('getWeatherCached')) {
 // Compute time context
 $timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
 
-// Weather snapshot
-$now = time();
-$weather = getWeatherCached(
-    $now,
-    $systemRegistry["api"]["openWeatherBase"],
-    $systemRegistry["weather"]["latitude"],
-    $systemRegistry["weather"]["longitude"],
-    $weatherKey
-);
+// Weather already fetched above; just assemble final structure
+$weather = $currentWeather;
+$weather['forecast'] = $forecastDays;
 
 // ------------------------------------------------------------
 // Normalize active permits into flat array for frontend

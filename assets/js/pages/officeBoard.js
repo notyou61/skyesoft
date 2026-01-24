@@ -240,26 +240,16 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     if (remEl)  remEl.textContent  = daysRemaining;
 
     // ─────────────────────────────
-    // SUNRISE / SUNSET (Phoenix-safe)
+    // SUNRISE / SUNSET (NO FALLBACK DISPLAY)
     // ─────────────────────────────
     const sunriseEl = document.getElementById('sunriseTime');
     const sunsetEl  = document.getElementById('sunsetTime');
 
-    // Prefer unix seconds, fall back to configured defaults
-    const sunriseUnix =
-        payload?.weather?.sunriseUnix ??
-        payload?.weather?.sunrise ??
-        null;
+    const sunriseUnix = payload?.weather?.sunriseUnix ?? null;
+    const sunsetUnix  = payload?.weather?.sunsetUnix  ?? null;
 
-    const sunsetUnix =
-        payload?.weather?.sunsetUnix ??
-        payload?.weather?.sunset ??
-        null;
-
-    // Phoenix-forced formatter
     const formatPhoenixTimeFromUnix = (unixSeconds) => {
         if (!unixSeconds || isNaN(unixSeconds)) return null;
-
         return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
             timeZone: 'America/Phoenix',
             hour: 'numeric',
@@ -268,37 +258,32 @@ function updateHighlightsCard(payload = lastBoardPayload) {
         });
     };
 
-    const sunriseStr =
-        formatPhoenixTimeFromUnix(sunriseUnix) ||
-        payload?.systemRegistry?.weather?.fallbackSunrise ||
-        '—';
-
-    const sunsetStr =
-        formatPhoenixTimeFromUnix(sunsetUnix) ||
-        payload?.systemRegistry?.weather?.fallbackSunset ||
-        '—';
+    const sunriseStr = formatPhoenixTimeFromUnix(sunriseUnix) || '—';
+    const sunsetStr  = formatPhoenixTimeFromUnix(sunsetUnix)  || '—';
 
     if (sunriseEl) sunriseEl.textContent = sunriseStr;
     if (sunsetEl)  sunsetEl.textContent  = sunsetStr;
 
     // ─────────────────────────────
-    // DAYLIGHT / NIGHT (derived, correct)
+    // DAYLIGHT / NIGHT (ONLY WHEN VALID)
     // ─────────────────────────────
     const daylightEl = document.getElementById('daylightTime');
     const nightEl    = document.getElementById('nightTime');
 
-    if (sunriseUnix && sunsetUnix) {
+    if (sunriseUnix && sunsetUnix && !isNaN(sunriseUnix) && !isNaN(sunsetUnix)) {
         let daylightSeconds = sunsetUnix - sunriseUnix;
 
-        // Handle UTC rollover edge case
-        if (daylightSeconds < 0) {
-            daylightSeconds += 86400;
-        }
+        // rollover protection
+        if (daylightSeconds < 0) daylightSeconds += 86400;
 
         const nightSeconds = 86400 - daylightSeconds;
 
         if (daylightEl) daylightEl.textContent = formatSmartInterval(daylightSeconds);
         if (nightEl)    nightEl.textContent    = formatSmartInterval(nightSeconds);
+    } else {
+        // no real data yet → don’t show garbage
+        if (daylightEl) daylightEl.textContent = '—';
+        if (nightEl)    nightEl.textContent    = '—';
     }
 
     // ─────────────────────────────
