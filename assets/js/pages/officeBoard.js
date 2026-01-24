@@ -240,43 +240,62 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     if (remEl)  remEl.textContent  = daysRemaining;
 
     // ─────────────────────────────
-    // SUNRISE / SUNSET
+    // SUNRISE / SUNSET (Phoenix-safe)
     // ─────────────────────────────
     const sunriseEl = document.getElementById('sunriseTime');
     const sunsetEl  = document.getElementById('sunsetTime');
 
-    if (sunriseEl) {
-        sunriseEl.textContent =
-            payload?.weather?.sunrise ||
-            payload?.systemRegistry?.weather?.fallbackSunrise ||
-            '—';
-    }
+    // Prefer unix seconds, fall back to configured defaults
+    const sunriseUnix =
+        payload?.weather?.sunriseUnix ??
+        payload?.weather?.sunrise ??
+        null;
 
-    if (sunsetEl) {
-        sunsetEl.textContent =
-            payload?.weather?.sunset ||
-            payload?.systemRegistry?.weather?.fallbackSunset ||
-            '—';
-    }
+    const sunsetUnix =
+        payload?.weather?.sunsetUnix ??
+        payload?.weather?.sunset ??
+        null;
+
+    // Phoenix-forced formatter
+    const formatPhoenixTimeFromUnix = (unixSeconds) => {
+        if (!unixSeconds || isNaN(unixSeconds)) return null;
+
+        return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
+            timeZone: 'America/Phoenix',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
+    const sunriseStr =
+        formatPhoenixTimeFromUnix(sunriseUnix) ||
+        payload?.systemRegistry?.weather?.fallbackSunrise ||
+        '—';
+
+    const sunsetStr =
+        formatPhoenixTimeFromUnix(sunsetUnix) ||
+        payload?.systemRegistry?.weather?.fallbackSunset ||
+        '—';
+
+    if (sunriseEl) sunriseEl.textContent = sunriseStr;
+    if (sunsetEl)  sunsetEl.textContent  = sunsetStr;
 
     // ─────────────────────────────
-    // DAYLIGHT / NIGHT (derived)
+    // DAYLIGHT / NIGHT (derived, correct)
     // ─────────────────────────────
     const daylightEl = document.getElementById('daylightTime');
     const nightEl    = document.getElementById('nightTime');
 
-    const parseTime = (t) => {
-        if (!t) return null;
-        const d = new Date(`1970-01-01 ${t}`);
-        return d.getHours() * 3600 + d.getMinutes() * 60;
-    };
+    if (sunriseUnix && sunsetUnix) {
+        let daylightSeconds = sunsetUnix - sunriseUnix;
 
-    const sunriseSec = parseTime(payload?.weather?.sunrise);
-    const sunsetSec  = parseTime(payload?.weather?.sunset);
+        // Handle UTC rollover edge case
+        if (daylightSeconds < 0) {
+            daylightSeconds += 86400;
+        }
 
-    if (sunriseSec !== null && sunsetSec !== null && sunsetSec > sunriseSec) {
-        const daylightSeconds = sunsetSec - sunriseSec;
-        const nightSeconds = (24 * 3600) - daylightSeconds;
+        const nightSeconds = 86400 - daylightSeconds;
 
         if (daylightEl) daylightEl.textContent = formatSmartInterval(daylightSeconds);
         if (nightEl)    nightEl.textContent    = formatSmartInterval(nightSeconds);
@@ -317,6 +336,17 @@ function buildInitialTimePayload() {
             now: Math.floor(now.getTime() / 1000)
         }
     };
+}
+// Format Phoenix time from UNIX seconds
+function formatPhoenixTimeFromUnix(unixSeconds) {
+    if (!unixSeconds) return '—';
+
+    return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
+        timeZone: 'America/Phoenix',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
 }
 
 // #endregion
