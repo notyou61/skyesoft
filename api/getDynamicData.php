@@ -172,35 +172,73 @@ if ($currentData && isset($currentData['main'])) {
 }
 
 // ─────────────────────────────────────────────
-// 3-DAY FORECAST (derived from /forecast)
+// 3-DAY FORECAST (aggregated daily high / low)
 // ─────────────────────────────────────────────
 
 if ($forecastData && isset($forecastData['list'])) {
 
-    $seenDates = [];
-    $labels = ['Today', 'Tomorrow'];
+    $daily = [];
 
     foreach ($forecastData['list'] as $slot) {
 
-        $date = date('Y-m-d', $slot['dt']);
-        $hour = (int) date('G', $slot['dt']);
+        $dt = (int)$slot['dt'];
+        $dateKey = date('Y-m-d', $dt);
+        $hour = (int) date('G', $dt);
 
-        // Pick ~midday snapshot for each day
-        if ($hour === 12 && !isset($seenDates[$date])) {
-
-            $forecastDays[] = [
-                'dateUnix'  => $slot['dt'],
-                'label'     => $labels[count($forecastDays)] ?? date('l', $slot['dt']),
-                'high'      => round($slot['main']['temp_max']),
-                'low'       => round($slot['main']['temp_min']),
-                'condition' => $slot['weather'][0]['description'] ?? null,
-                'icon'      => $slot['weather'][0]['icon'] ?? null
+        if (!isset($daily[$dateKey])) {
+            $daily[$dateKey] = [
+                'dateUnix'  => strtotime($dateKey),
+                'high'      => null,
+                'low'       => null,
+                'icon'      => null,
+                'condition' => null,
+                'iconScore' => -999
             ];
-
-            $seenDates[$date] = true;
         }
 
-        if (count($forecastDays) === 3) break;
+        // Aggregate true daily high / low
+        $tMax = $slot['main']['temp_max'] ?? null;
+        $tMin = $slot['main']['temp_min'] ?? null;
+
+        if ($tMax !== null) {
+            $daily[$dateKey]['high'] = $daily[$dateKey]['high'] === null
+                ? $tMax
+                : max($daily[$dateKey]['high'], $tMax);
+        }
+
+        if ($tMin !== null) {
+            $daily[$dateKey]['low'] = $daily[$dateKey]['low'] === null
+                ? $tMin
+                : min($daily[$dateKey]['low'], $tMin);
+        }
+
+        // Prefer midday icon (12:00 local)
+        $score = -abs($hour - 12);
+        if ($score > $daily[$dateKey]['iconScore']) {
+            $daily[$dateKey]['icon'] = $slot['weather'][0]['icon'] ?? null;
+            $daily[$dateKey]['condition'] = $slot['weather'][0]['description'] ?? null;
+            $daily[$dateKey]['iconScore'] = $score;
+        }
+    }
+
+    ksort($daily);
+
+    $labels = ['Today', 'Tomorrow'];
+    $i = 0;
+
+    foreach ($daily as $dayKey => $d) {
+        if ($i >= 3) break;
+
+        $forecastDays[] = [
+            'dateUnix'  => $d['dateUnix'],
+            'label'     => $labels[$i] ?? date('l', strtotime($dayKey)),
+            'high'      => $d['high'] !== null ? round($d['high']) : null,
+            'low'       => $d['low']  !== null ? round($d['low'])  : null,
+            'condition' => $d['condition'],
+            'icon'      => $d['icon']
+        ];
+
+        $i++;
     }
 }
 
