@@ -1,18 +1,20 @@
 {
   "codex": {
-    "version": "1.1.0",
-    "lastUpdated": "2025-11-25",
-    "notes": "Local test"
+    "version": "1.1.1",
+    "lastUpdated": "2026-01-16",
+    "notes": "Footer standardization and card metadata alignment"
   },
+
   "system": {
-    "siteVersion": "0.9.0",
-    "deployTime": "2025-11-27T09:00:00-07:00",
+    "siteVersion": "0.9.1",
+    "deployTime": "2026-01-16T13:15:00-07:00",
     "commitHash": "local-dev",
     "state": "dev",
     "latestError": "ERR-00003",
     "activeErrors": 3,
     "errorTimestamp": 1766072237
   },
+
   "modules": {
     "weather": {
       "source": "OpenWeatherMap",
@@ -31,12 +33,13 @@
       "lastUpdatedUnix": 1766069980
     }
   },
+
   "cards": {
     "todays-highlights": {
       "modules": ["weather", "holidays", "tips"],
       "footer": {
         "mode": "auto",
-        "label": "Weather & tips"
+        "label": "Daily overview"
       }
     },
 
@@ -52,7 +55,7 @@
       "modules": [],
       "footer": {
         "mode": "manual",
-        "label": "KPI snapshot",
+        "label": "Performance metrics",
         "lastUpdatedUnix": 1766172000
       }
     },
@@ -61,6 +64,7 @@
       "modules": [],
       "footer": {
         "mode": "manual",
+        "label": "Internal announcements",
         "lastUpdatedUnix": 1766100000
       }
     }

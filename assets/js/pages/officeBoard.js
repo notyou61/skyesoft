@@ -505,10 +505,11 @@ function resolveCardFooter(cardId) {
 
     const label = footerCfg.label;
     const timeStr = formatTimestamp(lastUpdated);
-
+    // Return formatted footer
     return label
-        ? `ℹ️ ${label} • Updated ${timeStr}`
+        ? `${label} • Updated ${timeStr}`
         : `Updated ${timeStr}`;
+
 }
 
 // #endregion
