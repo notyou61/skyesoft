@@ -74,7 +74,7 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
 
 // #endregion
 
-// #region HELPERS (unchanged)
+// #region HELPERS
 
 // ─────────────────────────────────────────────
 // Skyesoft Tips Controller (single source of truth)
@@ -82,7 +82,7 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
-// Gets status icon HTML based on status keyword
+
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -109,7 +109,7 @@ function getStatusIcon(status) {
     }
     return '';
 }
-//Formats seconds into smart interval string
+
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -121,7 +121,7 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-//Formats timestamp (in seconds) into MST date string
+
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -132,13 +132,13 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-//Get Date object from SSE payload
+
 function getDateFromSSE(payload) {
     const ts = payload?.timeDateArray?.currentUnixTime;
     if (!ts) return null;
     return new Date(ts * 1000);
 }
-// Calculate daylight duration from sunrise and sunset strings
+
 function calculateDaylight(sunrise, sunset) {
     if (!sunrise || !sunset) return null;
     const toMinutes = t => {
@@ -148,7 +148,7 @@ function calculateDaylight(sunrise, sunset) {
     const minutes = toMinutes(sunset) - toMinutes(sunrise);
     return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
 }
-//Get live date info from SSE payload
+
 function getLiveDateInfoFromSSE(payload) {
     const now = getDateFromSSE(payload);
     if (!now) return null;
@@ -158,7 +158,6 @@ function getLiveDateInfoFromSSE(payload) {
         month: 'long',
         day: 'numeric'
     });
-    // Calculate day of year and days remaining
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const oneDay = 1000 * 60 * 60 * 24;
     const dayOfYear = Math.floor((now - startOfYear) / oneDay);
@@ -175,7 +174,7 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-// Render Today's Highlights skeleton
+
 function renderTodaysHighlightsSkeleton() {
     return `
         <div class="entry">
@@ -208,13 +207,10 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-// Update Today's Highlights card (SSE-driven)
+
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
 
-    // ─────────────────────────────
-    // DATE / DAY COUNTS
-    // ─────────────────────────────
     const unix = payload?.timeDateArray?.currentUnixTime;
     if (!unix) return;
 
@@ -227,8 +223,7 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     });
 
     const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const dayOfYear =
-        Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+    const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
 
     const isLeapYear =
         (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) ||
@@ -245,9 +240,6 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     if (dayEl)  dayEl.textContent  = dayOfYear;
     if (remEl)  remEl.textContent  = daysRemaining;
 
-    // ─────────────────────────────
-    // SUNRISE / SUNSET (NO FALLBACK DISPLAY)
-    // ─────────────────────────────
     const sunriseEl = document.getElementById('sunriseTime');
     const sunsetEl  = document.getElementById('sunsetTime');
 
@@ -260,74 +252,73 @@ function updateHighlightsCard(payload = lastBoardPayload) {
     if (sunriseEl) sunriseEl.textContent = sunriseStr;
     if (sunsetEl)  sunsetEl.textContent  = sunsetStr;
 
-    // ─────────────────────────────
-    // DAYLIGHT / NIGHT (ONLY WHEN VALID)
-    // ─────────────────────────────
     const daylightEl = document.getElementById('daylightTime');
     const nightEl    = document.getElementById('nightTime');
 
     if (sunriseUnix && sunsetUnix && !isNaN(sunriseUnix) && !isNaN(sunsetUnix)) {
         let daylightSeconds = sunsetUnix - sunriseUnix;
-
-        // rollover protection
         if (daylightSeconds < 0) daylightSeconds += 86400;
-
         const nightSeconds = 86400 - daylightSeconds;
 
         if (daylightEl) daylightEl.textContent = formatSmartInterval(daylightSeconds);
         if (nightEl)    nightEl.textContent    = formatSmartInterval(nightSeconds);
     } else {
-        // no real data yet → don’t show garbage
         if (daylightEl) daylightEl.textContent = '—';
         if (nightEl)    nightEl.textContent    = '—';
     }
 
-    // ─────────────────────────────
-    // NEXT HOLIDAY
-    // ─────────────────────────────
     const holidayEl = document.getElementById('nextHoliday');
     const nextHoliday = payload?.holidayState?.nextHoliday;
 
     if (holidayEl && nextHoliday) {
-        holidayEl.textContent =
-            `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
+        holidayEl.textContent = `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-// Load and render Skyesoft Tip
-function loadAndRenderSkyesoftTip() {
-    const el = document.getElementById('skyesoftTips');
-    if (!el) return;
 
-    // If tips already loaded → just render
+// Updated: accepts element parameter (preferred) or falls back to getElementById
+function loadAndRenderSkyesoftTip(providedEl = null) {
+    const el = providedEl || document.getElementById('skyesoftTips');
+    if (!el) {
+        console.warn('loadAndRenderSkyesoftTip: element not found');
+        return;
+    }
+
     if (window.glbVar.tipsLoaded && window.glbVar.tips.length > 0) {
         renderRandomTip(el);
         return;
     }
 
-    // Prevent duplicate fetches
     if (window.glbVar.tipsLoading) return;
     window.glbVar.tipsLoading = true;
 
     fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
         cache: 'no-cache'
     })
-    .then(res => res.ok ? res.json() : Promise.reject(res.status))
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    })
     .then(data => {
-        if (Array.isArray(data?.tips) && data.tips.length > 0) {
-            window.glbVar.tips = data.tips;
+        const tipsArray = data?.skyesoftTips?.tips || data?.tips;
+        if (Array.isArray(tipsArray) && tipsArray.length > 0) {
+            window.glbVar.tips = tipsArray;
             window.glbVar.tipsLoaded = true;
-            console.log(`💡 Skyesoft Tips loaded — ${data.tips.length} entries`);
+            console.log(`💡 Skyesoft Tips loaded — ${tipsArray.length} entries`);
             renderRandomTip(el);
+        } else {
+            console.warn('Tips JSON loaded but no valid tips array found');
         }
     })
     .catch(err => {
         console.warn('⚠️ Failed to load Skyesoft tips', err);
+        // Optional fallback display
+        el.textContent = '💡 Skyesoft Tip: Double-check drawings before submission.';
     })
     .finally(() => {
         window.glbVar.tipsLoading = false;
     });
 }
-// Update Skyesoft Tips display
+
 function renderRandomTip(el) {
     const tips = window.glbVar.tips;
     if (!tips.length) return;
@@ -337,7 +328,7 @@ function renderRandomTip(el) {
 
     el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
-// Build initial time payload from DOM
+
 function buildInitialTimePayload() {
     const now = new Date();
     return {
@@ -346,10 +337,9 @@ function buildInitialTimePayload() {
         }
     };
 }
-// Format Phoenix time from UNIX seconds
+
 function formatPhoenixTimeFromUnix(unixSeconds) {
     if (!unixSeconds) return '—';
-
     return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
         timeZone: 'America/Phoenix',
         hour: 'numeric',
@@ -373,9 +363,9 @@ function renderLiveFooter({ text = '' }) {
 
 // #endregion
 
-// #region CARD TIMING (unchanged)
+// #region CARD TIMING
 
-const DEFAULT_CARD_DURATION_MS = 15000; // 1 minute 60000
+const DEFAULT_CARD_DURATION_MS = 15000;
 
 // #endregion
 
@@ -440,22 +430,18 @@ function createGenericCardElement(spec) {
 
 const BOARD_CARDS = [];
 
-/* ──────────────────────────────────────────────
- * Specialized card: Active Permits
- * ────────────────────────────────────────────── */
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: DEFAULT_CARD_DURATION_MS,
-
     instance: null,
     lastSignature: null,
 
     create() {
-        this.lastSignature = null; // 🔑 reset per render
+        this.lastSignature = null;
         this.instance = createActivePermitsCardElement();
         return this.instance.root;
     },
-    // 🔄 Reusable update function
+
     update(payload) {
         if (!payload || !Array.isArray(payload.activePermits)) return;
 
@@ -466,14 +452,10 @@ const ActivePermitsCard = {
         const footer = this.instance?.footer;
         if (!body) return;
 
-        // 🔑 Signature = visual identity of the table
         const signature = permits.length
-            ? permits.map(p =>
-                `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`
-            ).join('::')
+            ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
             : 'empty';
 
-        // If nothing changed visually, just update footer time and exit
         if (signature === this.lastSignature) {
             if (footer && permitRegistryMeta?.updatedOn) {
                 footer.innerHTML = renderLiveFooter({
@@ -492,12 +474,9 @@ const ActivePermitsCard = {
             return;
         }
 
-        const sorted = permits.slice().sort(
-            (a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0)
-        );
+        const sorted = permits.slice().sort((a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0));
 
         const frag = document.createDocumentFragment();
-
         sorted.forEach(p => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -514,19 +493,13 @@ const ActivePermitsCard = {
 
         if (footer) {
             let text = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-            if (permitRegistryMeta?.updatedOn) {
-                text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
-            }
+            if (permitRegistryMeta?.updatedOn) text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             footer.innerHTML = renderLiveFooter({ text });
         }
 
-        // 🔁 Restart scroll only after DOM mutation
         requestAnimationFrame(() => {
             if (this.instance?.scrollWrap) {
-                window.SkyOfficeBoard.autoScroll.start(
-                    this.instance.scrollWrap,
-                    this.durationMs
-                );
+                window.SkyOfficeBoard.autoScroll.start(this.instance.scrollWrap, this.durationMs);
             }
         });
     },
@@ -539,9 +512,6 @@ const ActivePermitsCard = {
 
 BOARD_CARDS.push(ActivePermitsCard);
 
-/* ──────────────────────────────────────────────
- * Specialized card: Today’s Highlights
- * ────────────────────────────────────────────── */
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
     icon: '🌅',
@@ -549,30 +519,40 @@ const TodaysHighlightsCard = {
     durationMs: DEFAULT_CARD_DURATION_MS,
 
     instance: null,
+    tipElement: null,  // ← NEW: direct reference to the tip <div>
 
     create() {
         this.instance = createGenericCardElement(this);
         this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
+
+        // Capture reference immediately — synchronous and reliable
+        this.tipElement = this.instance.content.querySelector('#skyesoftTips');
+
+        if (!this.tipElement) {
+            console.warn("[TodaysHighlightsCard] #skyesoftTips not found after create()");
+        }
+
         return this.instance.root;
     },
-    // 🔄 Reusable update function
+
     update(payload) {
         if (!payload) return;
-
         updateHighlightsCard(payload);
     },
-    // onShow / onHide hooks
+
     onShow() {
-        loadAndRenderSkyesoftTip();
+        if (this.tipElement) {
+            loadAndRenderSkyesoftTip(this.tipElement);
+        } else {
+            console.warn("[TodaysHighlightsCard.onShow] tipElement is null — element missing");
+        }
     },
+
     onHide() {}
 };
 
 BOARD_CARDS.push(TodaysHighlightsCard);
 
-/* ──────────────────────────────────────────────
- * Generic cards (placeholders for now)
- * ────────────────────────────────────────────── */
 const GENERIC_CARD_SPECS = [
     { id: 'kpi-dashboard', icon: '📈', title: 'Key Performance Indicators' },
     { id: 'announcements', icon: '📢', title: 'Announcements' }
@@ -591,8 +571,7 @@ GENERIC_CARD_SPECS.forEach(spec => {
 
         update() {
             if (this.instance?.content) {
-                this.instance.content.innerHTML =
-                    `<p>${this.title} content coming soon</p>`;
+                this.instance.content.innerHTML = `<p>${this.title} content coming soon</p>`;
             }
             if (this.instance?.footer) {
                 this.instance.footer.innerHTML = renderLiveFooter({
@@ -606,11 +585,8 @@ GENERIC_CARD_SPECS.forEach(spec => {
     });
 });
 
-/* ──────────────────────────────────────────────
- * Universal SSE updater
- * ────────────────────────────────────────────── */
 function updateAllCards(payload) {
-    lastBoardPayload = payload; // 🔁 cache for rotation replays
+    lastBoardPayload = payload;
     BOARD_CARDS.forEach(card => {
         if (typeof card.update === 'function') {
             card.update(payload);
@@ -660,7 +636,7 @@ window.SkyOfficeBoard.autoScroll = {
 
 // #endregion
 
-// #region ROTATION CONTROLLER (FIXED: replay last payload after create)
+// #region ROTATION CONTROLLER
 
 let currentIndex = 0;
 let rotationTimer = null;
@@ -669,7 +645,6 @@ function showCard(index) {
     const host = document.getElementById('boardCardHost');
     if (!host) return;
 
-    // Cleanup previous card state
     BOARD_CARDS.forEach(c => c.onHide?.());
 
     host.innerHTML = '';
@@ -679,13 +654,11 @@ function showCard(index) {
     const element = card.create();
     host.appendChild(element);
 
-    // ✅ IMPORTANT: replay data AFTER DOM + layout settle
     requestAnimationFrame(() => {
         if (lastBoardPayload && typeof card.update === 'function') {
             console.log(`[showCard] Replaying payload to ${card.id}`);
             card.update(lastBoardPayload);
         }
-
         card.onShow?.();
     });
 
@@ -715,24 +688,20 @@ window.SkyOfficeBoard = {
 
         if (!this.dom.pageBody) return;
 
-        // 🔑 Seed payload once (time-only fallback)
         if (!lastBoardPayload) {
             lastBoardPayload = buildInitialTimePayload();
         }
 
-        // 🚦 Start first card (replays lastBoardPayload internally)
         showCard(0);
 
-        // 🔁 Hydrate all cards immediately
         updateAllCards(lastBoardPayload);
 
-        // 🔁 If SSE already exists, override seed with live data
         if (window.SkyeApp?.lastSSE) {
             lastBoardPayload = window.SkyeApp.lastSSE;
             updateAllCards(lastBoardPayload);
         }
     },
-    // Update permit table externally
+
     updatePermitTable(activePermits) {
         lastBoardPayload = {
             ...lastBoardPayload,
@@ -740,7 +709,7 @@ window.SkyOfficeBoard = {
         };
         updateAllCards(lastBoardPayload);
     },
-    // SSE handler
+
     onSSE(payload) {
         lastBoardPayload = payload;
         updateAllCards(payload);
