@@ -82,7 +82,7 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
-
+// Gernerate status icon HTML
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -109,7 +109,7 @@ function getStatusIcon(status) {
     }
     return '';
 }
-
+// Format interval in seconds to smart string
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -121,7 +121,7 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-
+// Format timestamp to Phoenix local time
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -132,13 +132,13 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-
+// Extract Date object from SSE payload
 function getDateFromSSE(payload) {
     const ts = payload?.timeDateArray?.currentUnixTime;
     if (!ts) return null;
     return new Date(ts * 1000);
 }
-
+// Calculate daylight duration from sunrise/sunset strings
 function calculateDaylight(sunrise, sunset) {
     if (!sunrise || !sunset) return null;
     const toMinutes = t => {
@@ -148,7 +148,7 @@ function calculateDaylight(sunrise, sunset) {
     const minutes = toMinutes(sunset) - toMinutes(sunrise);
     return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
 }
-
+// Get live date info from SSE payload
 function getLiveDateInfoFromSSE(payload) {
     const now = getDateFromSSE(payload);
     if (!now) return null;
@@ -174,7 +174,7 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-
+// Render skeleton HTML for Today's Highlights card
 function renderTodaysHighlightsSkeleton() {
     return `
         <div class="entry">
@@ -200,6 +200,27 @@ function renderTodaysHighlightsSkeleton() {
             🎉 Next Holiday: <span id="nextHoliday">—</span>
         </div>
 
+        <div class="entry forecast">
+            <div class="entry-label">📅 3-Day Forecast</div>
+            <div class="forecast-grid">
+                <div class="forecast-row">
+                    <span class="day">—</span>
+                    <span class="icon">—</span>
+                    <span class="temps">— / —</span>
+                </div>
+                <div class="forecast-row">
+                    <span class="day">—</span>
+                    <span class="icon">—</span>
+                    <span class="temps">— / —</span>
+                </div>
+                <div class="forecast-row">
+                    <span class="day">—</span>
+                    <span class="icon">—</span>
+                    <span class="temps">— / —</span>
+                </div>
+            </div>
+        </div>
+
         <hr>
 
         <div class="entry" id="skyesoftTips">
@@ -207,7 +228,7 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-
+// Update Today's Highlights card content
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
 
@@ -318,7 +339,7 @@ function loadAndRenderSkyesoftTip(providedEl = null) {
         window.glbVar.tipsLoading = false;
     });
 }
-
+// Helper to render a random tip into the provided element
 function renderRandomTip(el) {
     const tips = window.glbVar.tips;
     if (!tips.length) return;
@@ -328,7 +349,7 @@ function renderRandomTip(el) {
 
     el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
-
+// Build initial payload with current time
 function buildInitialTimePayload() {
     const now = new Date();
     return {
@@ -337,7 +358,7 @@ function buildInitialTimePayload() {
         }
     };
 }
-
+// Format UNIX timestamp to Phoenix local time
 function formatPhoenixTimeFromUnix(unixSeconds) {
     if (!unixSeconds) return '—';
     return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
@@ -345,6 +366,59 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
+    });
+}
+// Weather icon mapper
+function mapWeatherIcon(icon, condition = '') {
+    const map = {
+        sunny:          '☀️',
+        clear:          '☀️',
+        partly_cloudy:  '🌤️',
+        cloudy:         '☁️',
+        rain:           '🌧️',
+        storm:          '🌩️',
+        snow:           '❄️',
+        // Add more as needed later
+    };
+
+    const key = (icon || '').toLowerCase();
+    if (map[key]) return map[key];
+
+    const cond = (condition || '').toLowerCase();
+    if (cond.includes('rain') || cond.includes('shower')) return '🌧️';
+    if (cond.includes('thunder') || cond.includes('storm')) return '🌩️';
+    if (cond.includes('snow')) return '❄️';
+    if (cond.includes('cloud')) return '☁️';
+
+    return '🌡️'; // fallback neutral
+}
+// Render 3-day weather forecast into provided elements
+function renderThreeDayForecast(forecastEls, payload) {
+    const forecast = payload?.weather?.forecast;
+
+    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+        forecastEls.forEach(el => {
+            if (el.day)   el.day.textContent   = '—';
+            if (el.icon)  el.icon.textContent  = '—';
+            if (el.temps) el.temps.textContent = '— / —';
+        });
+        return;
+    }
+
+    forecast.slice(0, 3).forEach((dayData, i) => {
+        const { dateUnix, high, low, icon, condition } = dayData;
+
+        let label = '—';
+        if (i === 0) label = 'Today';
+        else if (i === 1) label = 'Tomorrow';
+        else if (dateUnix) {
+            const d = new Date(dateUnix * 1000);
+            label = d.toLocaleDateString('en-US', { weekday: 'long' });
+        }
+
+        forecastEls[i].day.textContent   = label;
+        forecastEls[i].icon.textContent  = mapWeatherIcon(icon, condition);
+        forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
     });
 }
 
@@ -428,8 +502,9 @@ function createGenericCardElement(spec) {
 
 // #region CARD REGISTRY + UNIVERSAL UPDATER
 
+//Initialize card registry
 const BOARD_CARDS = [];
-
+// ActivePermitsCard
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: DEFAULT_CARD_DURATION_MS,
@@ -509,9 +584,9 @@ const ActivePermitsCard = {
         window.SkyOfficeBoard.autoScroll.stop();
     }
 };
-
+// Register ActivePermitsCard
 BOARD_CARDS.push(ActivePermitsCard);
-
+// Const TodaysHighlightsCard (refactored with 3-day forecast)
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
     icon: '🌅',
@@ -519,17 +594,26 @@ const TodaysHighlightsCard = {
     durationMs: DEFAULT_CARD_DURATION_MS,
 
     instance: null,
-    tipElement: null,  // ← NEW: direct reference to the tip <div>
+    tipElement: null,
+    forecastElements: null,     // ← new
 
     create() {
         this.instance = createGenericCardElement(this);
         this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
 
-        // Capture reference immediately — synchronous and reliable
+        // Capture tip
         this.tipElement = this.instance.content.querySelector('#skyesoftTips');
 
-        if (!this.tipElement) {
-            console.warn("[TodaysHighlightsCard] #skyesoftTips not found after create()");
+        // Capture forecast rows (rotation-safe)
+        const forecastRows = this.instance.content.querySelectorAll('.forecast-row');
+        this.forecastElements = Array.from(forecastRows).map(row => ({
+            day:  row.querySelector('.day'),
+            icon: row.querySelector('.icon'),
+            temps: row.querySelector('.temps')
+        }));
+
+        if (this.forecastElements.length !== 3) {
+            console.warn("[TodaysHighlightsCard] Expected 3 forecast rows, got", this.forecastElements.length);
         }
 
         return this.instance.root;
@@ -537,14 +621,21 @@ const TodaysHighlightsCard = {
 
     update(payload) {
         if (!payload) return;
+
+        // Existing highlights update
         updateHighlightsCard(payload);
+
+        // New: 3-day forecast
+        if (this.forecastElements) {
+            renderThreeDayForecast(this.forecastElements, payload);
+        }
     },
 
     onShow() {
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
         } else {
-            console.warn("[TodaysHighlightsCard.onShow] tipElement is null — element missing");
+            console.warn("[TodaysHighlightsCard.onShow] tipElement is null");
         }
     },
 
