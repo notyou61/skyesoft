@@ -1,17 +1,68 @@
 {
-    "codex": {
-        "version": "1.1.0",
-        "lastUpdated": "2025-11-25",
-        "notes": "Local test"
+  "codex": {
+    "version": "1.1.0",
+    "lastUpdated": "2025-11-25",
+    "notes": "Local test"
+  },
+  "system": {
+    "siteVersion": "0.9.0",
+    "deployTime": "2025-11-27T09:00:00-07:00",
+    "commitHash": "local-dev",
+    "state": "dev",
+    "latestError": "ERR-00003",
+    "activeErrors": 3,
+    "errorTimestamp": 1766072237
+  },
+  "modules": {
+    "weather": {
+      "source": "OpenWeatherMap",
+      "lastUpdatedUnix": 1766161200
     },
-    "system": {
-        "siteVersion": "0.9.0",
-        "deployTime": "2025-11-27T09:00:00-07:00",
-        "commitHash": "local-dev",
-        "state": "dev",
-        "latestError": "ERR-00003",
-        "activeErrors": 3,
-        "errorTimestamp": 1766072237
+    "holidays": {
+      "source": "federal_holidays_dynamic.json",
+      "lastUpdatedUnix": 1765800000
     },
-    "modules": []
+    "tips": {
+      "source": "skyesoftTips.json",
+      "lastUpdatedUnix": 1766016000
+    },
+    "permits": {
+      "source": "permitRegistry.json",
+      "lastUpdatedUnix": 1766069980
+    }
+  },
+  "cards": {
+    "todays-highlights": {
+      "modules": ["weather", "holidays", "tips"],
+      "footer": {
+        "mode": "auto",
+        "label": "Weather & tips"
+      }
+    },
+
+    "active-permits": {
+      "modules": ["permits"],
+      "footer": {
+        "mode": "auto",
+        "label": "Active permits"
+      }
+    },
+
+    "kpi-dashboard": {
+      "modules": [],
+      "footer": {
+        "mode": "manual",
+        "label": "KPI snapshot",
+        "lastUpdatedUnix": 1766172000
+      }
+    },
+
+    "announcements": {
+      "modules": [],
+      "footer": {
+        "mode": "manual",
+        "lastUpdatedUnix": 1766100000
+      }
+    }
+  }
 }

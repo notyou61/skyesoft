@@ -14,6 +14,7 @@ let lastBoardPayload = null; // 🔁 cache most recent SSE payload
 let countdownTimer = null;
 let countdownRemainingMs = 0;
 let activeCountdownEl = null;
+let versionsMeta = null;
 
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
@@ -462,6 +463,51 @@ function stopCardCountdown() {
     countdownRemainingMs = 0;
     activeCountdownEl = null;
 }
+// Fetch versions meta
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
+    .then(data => {
+        versionsMeta = data;
+        console.log('✅ Versions meta loaded', data);
+    })
+    .catch(err => {
+        console.warn('⚠️ Failed to load versions.json', err);
+        versionsMeta = null;
+    });
+// Resolve card footer text based on versionsMeta
+function resolveCardFooter(cardId) {
+    if (!versionsMeta?.cards || !versionsMeta.cards[cardId]) return null;
+
+    const cardMeta = versionsMeta.cards[cardId];
+    const footerCfg = cardMeta.footer || {};
+    const modules = cardMeta.modules || [];
+
+    let lastUpdated = null;
+
+    // AUTO mode → derive from modules
+    if (footerCfg.mode === 'auto' && Array.isArray(modules)) {
+        modules.forEach(m => {
+            const ts = versionsMeta.modules?.[m]?.lastUpdatedUnix;
+            if (ts && (!lastUpdated || ts > lastUpdated)) {
+                lastUpdated = ts;
+            }
+        });
+    }
+
+    // MANUAL mode → use explicit timestamp
+    if (footerCfg.mode === 'manual' && footerCfg.lastUpdatedUnix) {
+        lastUpdated = footerCfg.lastUpdatedUnix;
+    }
+
+    if (!lastUpdated) return null;
+
+    const label = footerCfg.label;
+    const timeStr = formatTimestamp(lastUpdated);
+
+    return label
+        ? `ℹ️ ${label} • Updated ${timeStr}`
+        : `Updated ${timeStr}`;
+}
 
 // #endregion
 
@@ -676,10 +722,16 @@ const TodaysHighlightsCard = {
     },
 
     onShow() {
+        // 🔹 Skyesoft Tip load
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
         } else {
             console.warn("[TodaysHighlightsCard.onShow] tipElement is null");
+        }
+        // 🔹 Footer update from versions.json
+        const footerText = resolveCardFooter(this.id);
+        if (footerText && this.instance?.footer) {
+            this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
         }
     },
 
