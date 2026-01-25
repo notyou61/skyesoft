@@ -88,6 +88,7 @@ $lastWeatherUpdate = (int) ($versions['modules']['weather']['lastUpdatedUnix'] ?
 $now = time();
 $refreshInterval = 15 * 60;
 $shouldRefreshWeather = ($now - $lastWeatherUpdate) >= $refreshInterval;
+$weatherValid = false;
 
 // ─────────────────────────────────────────────
 // Cache path
@@ -110,13 +111,19 @@ $currentWeather = [
     'source'          => 'openweathermap-unavailable'
 ];
 $forecastDays = [];
-
+// Load from cache if valid
 if (!$shouldRefreshWeather && file_exists($cachePath)) {
     $cached = json_decode(file_get_contents($cachePath), true);
-    if (is_array($cached)) {
-        $currentWeather = $cached['current'] ?? $currentWeather;
-        $forecastDays   = $cached['forecast'] ?? $forecastDays;
-        $currentWeather['source'] = 'cache (' . date('g:i A', $lastWeatherUpdate) . ')';
+
+    if (
+        is_array($cached)
+        && isset($cached['current']['temp'])
+        && isset($cached['current']['sunriseUnix'])
+    ) {
+        $currentWeather = $cached['current'];
+        $forecastDays   = $cached['forecast'] ?? [];
+        $currentWeather['source'] = 'cache';
+        $weatherValid = true;
     }
 }
 
@@ -350,6 +357,17 @@ if (!function_exists('getTimeContext')) {
         $dt = new DateTime('@' . time());
         $dt->setTimezone($tz);
         return buildTimeContext($dt, $systemRegistry, $holidayPath);
+    }
+}
+
+// FINAL WEATHER SAFETY — never emit empty weather
+if (!$weatherValid && file_exists($cachePath)) {
+    $cached = json_decode(file_get_contents($cachePath), true);
+    if (is_array($cached) && isset($cached['current'])) {
+        $currentWeather = $cached['current'];
+        $forecastDays   = $cached['forecast'] ?? [];
+        $currentWeather['source'] = 'cache-fallback';
+        $weatherValid = true;
     }
 }
 
