@@ -44,7 +44,205 @@ $announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
-#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) // ───────────────────────────────────────────── // Load WEATHER_API_KEY from secure env // ───────────────────────────────────────────── $envPathPrimary = dirname(dirname($root)) . "/secure/.env"; $envPathLocal = dirname(dirname($root)) . "/secure/env.local"; $envFile = file_exists($envPathPrimary)     ? $envPathPrimary     : (file_exists($envPathLocal) ? $envPathLocal : null); if ($envFile === null) {     throw new RuntimeException("Missing WEATHER env file"); } // Robust .env parser $env = []; foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {     $line = trim($line);     if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;     if (strpos($line, '=') === false) continue;     [$k, $v] = explode('=', $line, 2);     $env[trim($k)] = trim($v, ""'"); } $weatherKey = $env['WEATHER_API_KEY'] ?? null; if (!$weatherKey) {     throw new RuntimeException("Missing WEATHER_API_KEY"); } // ───────────────────────────────────────────── // Coordinates (Phoenix) + API base // ───────────────────────────────────────────── $lat = (float) ($systemRegistry['weather']['latitude'] ?? 33.4484); $lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740); $baseOW = rtrim($systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5', '/'); // ───────────────────────────────────────────── // Guaranteed defaults (never undefined) // ───────────────────────────────────────────── $currentWeather = [     'temp' => null,     'condition' => null,     'icon' => null,     'sunrise' => null,     'sunset' => null,     'sunriseUnix' => null,     'sunsetUnix' => null,     'daylightSeconds' => null,     'nightSeconds' => null,     'source' => 'openweathermap-unavailable' ]; $forecastDays = []; // always defined // ───────────────────────────────────────────── // Build URLs (FREE v2.5 endpoints) // ───────────────────────────────────────────── $currentUrl =     "{$baseOW}/weather" .     "?lat={$lat}&lon={$lon}" .     "&units=imperial" .     "&appid={$weatherKey}"; $forecastUrl =     "{$baseOW}/forecast" .     "?lat={$lat}&lon={$lon}" .     "&units=imperial" .     "&appid={$weatherKey}"; // ───────────────────────────────────────────── // Fetch weather // ───────────────────────────────────────────── $ctx = stream_context_create([     'http' => [         'timeout' => $systemRegistry['api']['timeoutSeconds'] ?? 6     ] ]); $currentRaw = @file_get_contents($currentUrl, false, $ctx); $forecastRaw = @file_get_contents($forecastUrl, false, $ctx); $currentData = $currentRaw ? json_decode($currentRaw, true) : null; $forecastData = $forecastRaw ? json_decode($forecastRaw, true) : null; // ───────────────────────────────────────────── // CURRENT WEATHER (sunrise / sunset live here) // ───────────────────────────────────────────── if ($currentData && isset($currentData['main'])) {     $sunriseUnix = $currentData['sys']['sunrise'] ?? null;     $sunsetUnix = $currentData['sys']['sunset'] ?? null;     $daylightSeconds = ($sunriseUnix && $sunsetUnix)         ? max(0, $sunsetUnix - $sunriseUnix)         : null;     $nightSeconds = ($daylightSeconds !== null)         ? max(0, 86400 - $daylightSeconds)         : null;     $currentWeather = [         'temp' => round($currentData['main']['temp']),         'condition' => $currentData['weather'][0]['description'] ?? null,         'icon' => $currentData['weather'][0]['icon'] ?? null,         'sunrise' => $sunriseUnix ? date('g:i A', $sunriseUnix) : null,         'sunset' => $sunsetUnix ? date('g:i A', $sunsetUnix) : null,         'sunriseUnix' => $sunriseUnix,         'sunsetUnix' => $sunsetUnix,         'daylightSeconds' => $daylightSeconds,         'nightSeconds' => $nightSeconds,         'source' => 'openweathermap'     ]; } // ───────────────────────────────────────────── // 3-DAY FORECAST (aggregated daily high / low) // ───────────────────────────────────────────── if ($forecastData && isset($forecastData['list'])) {     $daily = [];     foreach ($forecastData['list'] as $slot) {         $dt = (int)$slot['dt'];         $dateKey = date('Y-m-d', $dt);         $hour = (int) date('G', $dt);         if (!isset($daily[$dateKey])) {             $daily[$dateKey] = [                 'dateUnix' => strtotime($dateKey),                 'high' => null,                 'low' => null,                 'icon' => null,                 'condition' => null,                 'iconScore' => -999             ];         }         // Aggregate true daily high / low         $tMax = $slot['main']['temp_max'] ?? null;         $tMin = $slot['main']['temp_min'] ?? null;         if ($tMax !== null) {             $daily[$dateKey]['high'] = $daily[$dateKey]['high'] === null                 ? $tMax                 : max($daily[$dateKey]['high'], $tMax);         }         if ($tMin !== null) {             $daily[$dateKey]['low'] = $daily[$dateKey]['low'] === null                 ? $tMin                 : min($daily[$dateKey]['low'], $tMin);         }         // Prefer midday icon (12:00 local)         $score = -abs($hour - 12);         if ($score > $daily[$dateKey]['iconScore']) {             $daily[$dateKey]['icon'] = $slot['weather'][0]['icon'] ?? null;             $daily[$dateKey]['condition'] = $slot['weather'][0]['description'] ?? null;             $daily[$dateKey]['iconScore'] = $score;         }     }     ksort($daily);     $labels = ['Today', 'Tomorrow'];     $i = 0;     foreach ($daily as $dayKey => $d) {         if ($i >= 3) break;         $forecastDays[] = [             'dateUnix' => $d['dateUnix'],             'label' => $labels[$i] ?? date('l', strtotime($dayKey)),             'high' => $d['high'] !== null ? round($d['high']) : null,             'low' => $d['low'] !== null ? round($d['low']) : null,             'condition' => $d['condition'],             'icon' => $d['icon']         ];         $i++;     } } #endregion
+#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST)
+
+// ─────────────────────────────────────────────
+// Load WEATHER_API_KEY from secure env
+// ─────────────────────────────────────────────
+
+$envPathPrimary = dirname(dirname($root)) . "/secure/.env";
+$envPathLocal   = dirname(dirname($root)) . "/secure/env.local";
+
+$envFile = file_exists($envPathPrimary)
+    ? $envPathPrimary
+    : (file_exists($envPathLocal) ? $envPathLocal : null);
+
+if ($envFile === null) {
+    throw new RuntimeException("Missing WEATHER env file");
+}
+
+// Robust .env parser
+$env = [];
+foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    $line = trim($line);
+    if ($line === '' || $line[0] === '#' || $line[0] === ';') continue;
+    if (strpos($line, '=') === false) continue;
+
+    [$k, $v] = explode('=', $line, 2);
+    $env[trim($k)] = trim($v, "\"'");
+}
+
+$weatherKey = $env['WEATHER_API_KEY'] ?? null;
+if (!$weatherKey) {
+    throw new RuntimeException("Missing WEATHER_API_KEY");
+}
+
+// ─────────────────────────────────────────────
+// Coordinates (Phoenix) + API base
+// ─────────────────────────────────────────────
+
+$lat = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
+$lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
+
+$baseOW = rtrim($systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5', '/');
+
+// ─────────────────────────────────────────────
+// Guaranteed defaults (never undefined)
+// ─────────────────────────────────────────────
+
+$currentWeather = [
+    'temp'            => null,
+    'condition'       => null,
+    'icon'            => null,
+    'sunrise'         => null,
+    'sunset'          => null,
+    'sunriseUnix'     => null,
+    'sunsetUnix'      => null,
+    'daylightSeconds' => null,
+    'nightSeconds'    => null,
+    'source'          => 'openweathermap-unavailable'
+];
+
+$forecastDays = []; // always defined
+
+// ─────────────────────────────────────────────
+// Build URLs (FREE v2.5 endpoints)
+// ─────────────────────────────────────────────
+
+$currentUrl =
+    "{$baseOW}/weather" .
+    "?lat={$lat}&lon={$lon}" .
+    "&units=imperial" .
+    "&appid={$weatherKey}";
+
+$forecastUrl =
+    "{$baseOW}/forecast" .
+    "?lat={$lat}&lon={$lon}" .
+    "&units=imperial" .
+    "&appid={$weatherKey}";
+
+// ─────────────────────────────────────────────
+// Fetch weather
+// ─────────────────────────────────────────────
+
+$ctx = stream_context_create([
+    'http' => [
+        'timeout' => $systemRegistry['api']['timeoutSeconds'] ?? 6
+    ]
+]);
+
+$currentRaw  = @file_get_contents($currentUrl, false, $ctx);
+$forecastRaw = @file_get_contents($forecastUrl, false, $ctx);
+
+$currentData  = $currentRaw  ? json_decode($currentRaw, true)  : null;
+$forecastData = $forecastRaw ? json_decode($forecastRaw, true) : null;
+
+// ─────────────────────────────────────────────
+// CURRENT WEATHER (sunrise / sunset live here)
+// ─────────────────────────────────────────────
+
+if ($currentData && isset($currentData['main'])) {
+
+    $sunriseUnix = $currentData['sys']['sunrise'] ?? null;
+    $sunsetUnix  = $currentData['sys']['sunset']  ?? null;
+
+    $daylightSeconds = ($sunriseUnix && $sunsetUnix)
+        ? max(0, $sunsetUnix - $sunriseUnix)
+        : null;
+
+    $nightSeconds = ($daylightSeconds !== null)
+        ? max(0, 86400 - $daylightSeconds)
+        : null;
+
+    $currentWeather = [
+        'temp'            => round($currentData['main']['temp']),
+        'condition'       => $currentData['weather'][0]['description'] ?? null,
+        'icon'            => $currentData['weather'][0]['icon'] ?? null,
+
+        'sunrise'         => $sunriseUnix ? date('g:i A', $sunriseUnix) : null,
+        'sunset'          => $sunsetUnix  ? date('g:i A', $sunsetUnix)  : null,
+
+        'sunriseUnix'     => $sunriseUnix,
+        'sunsetUnix'      => $sunsetUnix,
+        'daylightSeconds' => $daylightSeconds,
+        'nightSeconds'    => $nightSeconds,
+
+        'source'          => 'openweathermap'
+    ];
+}
+
+// ─────────────────────────────────────────────
+// 3-DAY FORECAST (aggregated daily high / low)
+// ─────────────────────────────────────────────
+
+if ($forecastData && isset($forecastData['list'])) {
+
+    $daily = [];
+
+    foreach ($forecastData['list'] as $slot) {
+
+        $dt = (int)$slot['dt'];
+        $dateKey = date('Y-m-d', $dt);
+        $hour = (int) date('G', $dt);
+
+        if (!isset($daily[$dateKey])) {
+            $daily[$dateKey] = [
+                'dateUnix'  => strtotime($dateKey),
+                'high'      => null,
+                'low'       => null,
+                'icon'      => null,
+                'condition' => null,
+                'iconScore' => -999
+            ];
+        }
+
+        // Aggregate true daily high / low
+        $tMax = $slot['main']['temp_max'] ?? null;
+        $tMin = $slot['main']['temp_min'] ?? null;
+
+        if ($tMax !== null) {
+            $daily[$dateKey]['high'] = $daily[$dateKey]['high'] === null
+                ? $tMax
+                : max($daily[$dateKey]['high'], $tMax);
+        }
+
+        if ($tMin !== null) {
+            $daily[$dateKey]['low'] = $daily[$dateKey]['low'] === null
+                ? $tMin
+                : min($daily[$dateKey]['low'], $tMin);
+        }
+
+        // Prefer midday icon (12:00 local)
+        $score = -abs($hour - 12);
+        if ($score > $daily[$dateKey]['iconScore']) {
+            $daily[$dateKey]['icon'] = $slot['weather'][0]['icon'] ?? null;
+            $daily[$dateKey]['condition'] = $slot['weather'][0]['description'] ?? null;
+            $daily[$dateKey]['iconScore'] = $score;
+        }
+    }
+
+    ksort($daily);
+
+    $labels = ['Today', 'Tomorrow'];
+    $i = 0;
+
+    foreach ($daily as $dayKey => $d) {
+        if ($i >= 3) break;
+
+        $forecastDays[] = [
+            'dateUnix'  => $d['dateUnix'],
+            'label'     => $labels[$i] ?? date('l', strtotime($dayKey)),
+            'high'      => $d['high'] !== null ? round($d['high']) : null,
+            'low'       => $d['low']  !== null ? round($d['low'])  : null,
+            'condition' => $d['condition'],
+            'icon'      => $d['icon']
+        ];
+
+        $i++;
+    }
+}
+
+#endregion
 
 #region SECTION 3 — Time Context (TIS)
 
