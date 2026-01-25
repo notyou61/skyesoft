@@ -79,7 +79,7 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
     });
 
 // Load versions metadata (used for card footers)
-fetch('https://skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
     .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         versionsMeta = data;
