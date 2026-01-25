@@ -47,6 +47,34 @@ $tz = new DateTimeZone("America/Phoenix");
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST)
 
 // ─────────────────────────────────────────────
+// Governance: load versions.json for weather freshness
+// ─────────────────────────────────────────────
+
+$versionsPath = $root . '/data/authoritative/versions.json';
+
+if (!file_exists($versionsPath)) {
+    $versions = ['modules' => ['weather' => ['lastUpdatedUnix' => 0]]];
+} else {
+    $raw = @file_get_contents($versionsPath);
+    $versions = $raw ? json_decode($raw, true) : null;
+    if (!is_array($versions) || !isset($versions['modules'])) {
+        $versions = ['modules' => []]; // malformed → safe fallback
+    }
+}
+
+$lastWeatherUpdate = (int) ($versions['modules']['weather']['lastUpdatedUnix'] ?? 0);
+$now = time();
+$WEATHER_TTL = 900; // 15 minutes
+
+$shouldRefreshWeather = ($now - $lastWeatherUpdate) >= $WEATHER_TTL;
+
+// ─────────────────────────────────────────────
+// Cache file for serving between refreshes
+// ─────────────────────────────────────────────
+
+$weatherCachePath = $root . '/data/runtimeEphemeral/weatherCache.json';
+
+// ─────────────────────────────────────────────
 // Load WEATHER_API_KEY from secure env
 // ─────────────────────────────────────────────
 
@@ -78,13 +106,19 @@ if (!$weatherKey) {
 }
 
 // ─────────────────────────────────────────────
-// Coordinates (Phoenix) + API base
+// Coordinates (Phoenix/Tempe area) + API base
 // ─────────────────────────────────────────────
 
 $lat = (float) ($systemRegistry['weather']['latitude']  ?? 33.4484);
 $lon = (float) ($systemRegistry['weather']['longitude'] ?? -112.0740);
 
 $baseOW = rtrim($systemRegistry['api']['openWeatherBase'] ?? 'https://api.openweathermap.org/data/2.5', '/');
+
+// ─────────────────────────────────────────────
+// Set timezone for correct local sunrise/sunset formatting
+// (Arizona does not observe DST)
+// ─────────────────────────────────────────────
+date_default_timezone_set('America/Phoenix');
 
 // ─────────────────────────────────────────────
 // Guaranteed defaults (never undefined)
@@ -100,146 +134,174 @@ $currentWeather = [
     'sunsetUnix'      => null,
     'daylightSeconds' => null,
     'nightSeconds'    => null,
-    'source'          => 'openweathermap-unavailable'
+    'source'          => 'openweathermap-unavailable',
+    'lastUpdated'     => $lastWeatherUpdate   // optional: expose freshness
 ];
 
-$forecastDays = []; // always defined
+$forecastDays = [];
 
 // ─────────────────────────────────────────────
-// Build URLs (FREE v2.5 endpoints)
+// Try to serve from cache if still fresh
 // ─────────────────────────────────────────────
 
-$currentUrl =
-    "{$baseOW}/weather" .
-    "?lat={$lat}&lon={$lon}" .
-    "&units=imperial" .
-    "&appid={$weatherKey}";
-
-$forecastUrl =
-    "{$baseOW}/forecast" .
-    "?lat={$lat}&lon={$lon}" .
-    "&units=imperial" .
-    "&appid={$weatherKey}";
-
-// ─────────────────────────────────────────────
-// Fetch weather
-// ─────────────────────────────────────────────
-
-$ctx = stream_context_create([
-    'http' => [
-        'timeout' => $systemRegistry['api']['timeoutSeconds'] ?? 6
-    ]
-]);
-
-$currentRaw  = @file_get_contents($currentUrl, false, $ctx);
-$forecastRaw = @file_get_contents($forecastUrl, false, $ctx);
-
-$currentData  = $currentRaw  ? json_decode($currentRaw, true)  : null;
-$forecastData = $forecastRaw ? json_decode($forecastRaw, true) : null;
-
-// ─────────────────────────────────────────────
-// CURRENT WEATHER (sunrise / sunset live here)
-// ─────────────────────────────────────────────
-
-if ($currentData && isset($currentData['main'])) {
-
-    $sunriseUnix = $currentData['sys']['sunrise'] ?? null;
-    $sunsetUnix  = $currentData['sys']['sunset']  ?? null;
-
-    $daylightSeconds = ($sunriseUnix && $sunsetUnix)
-        ? max(0, $sunsetUnix - $sunriseUnix)
-        : null;
-
-    $nightSeconds = ($daylightSeconds !== null)
-        ? max(0, 86400 - $daylightSeconds)
-        : null;
-
-    $currentWeather = [
-        'temp'            => round($currentData['main']['temp']),
-        'condition'       => $currentData['weather'][0]['description'] ?? null,
-        'icon'            => $currentData['weather'][0]['icon'] ?? null,
-
-        'sunrise'         => $sunriseUnix ? date('g:i A', $sunriseUnix) : null,
-        'sunset'          => $sunsetUnix  ? date('g:i A', $sunsetUnix)  : null,
-
-        'sunriseUnix'     => $sunriseUnix,
-        'sunsetUnix'      => $sunsetUnix,
-        'daylightSeconds' => $daylightSeconds,
-        'nightSeconds'    => $nightSeconds,
-
-        'source'          => 'openweathermap'
-    ];
+if (!$shouldRefreshWeather && file_exists($weatherCachePath)) {
+    $cachedRaw = @file_get_contents($weatherCachePath);
+    $cached = $cachedRaw ? json_decode($cachedRaw, true) : null;
+    if (is_array($cached)) {
+        $currentWeather = $cached['current']  ?? $currentWeather;
+        $forecastDays   = $cached['forecast'] ?? $forecastDays;
+        $currentWeather['source'] = 'cache';
+        $currentWeather['lastUpdated'] = $lastWeatherUpdate;
+    }
 }
 
 // ─────────────────────────────────────────────
-// 3-DAY FORECAST (aggregated daily high / low)
+// Only call API when TTL expired
 // ─────────────────────────────────────────────
 
-if ($forecastData && isset($forecastData['list'])) {
+if ($shouldRefreshWeather) {
 
-    $daily = [];
+    // ─────────────────────────────────────────────
+    // Build FREE v2.5 / Professional endpoints
+    // ─────────────────────────────────────────────
 
-    foreach ($forecastData['list'] as $slot) {
+    $currentUrl = "{$baseOW}/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$weatherKey}";
+    $forecastUrl = "{$baseOW}/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$weatherKey}";
 
-        $dt = (int)$slot['dt'];
-        $dateKey = date('Y-m-d', $dt);
-        $hour = (int) date('G', $dt);
+    // ─────────────────────────────────────────────
+    // Fetch with timeout
+    // ─────────────────────────────────────────────
 
-        if (!isset($daily[$dateKey])) {
-            $daily[$dateKey] = [
-                'dateUnix'  => strtotime($dateKey),
-                'high'      => null,
-                'low'       => null,
-                'icon'      => null,
-                'condition' => null,
-                'iconScore' => -999
-            ];
-        }
+    $ctx = stream_context_create([
+        'http' => ['timeout' => $systemRegistry['api']['timeoutSeconds'] ?? 6]
+    ]);
 
-        // Aggregate true daily high / low
-        $tMax = $slot['main']['temp_max'] ?? null;
-        $tMin = $slot['main']['temp_min'] ?? null;
+    $currentRaw  = @file_get_contents($currentUrl, false, $ctx);
+    $forecastRaw = @file_get_contents($forecastUrl, false, $ctx);
 
-        if ($tMax !== null) {
-            $daily[$dateKey]['high'] = $daily[$dateKey]['high'] === null
-                ? $tMax
-                : max($daily[$dateKey]['high'], $tMax);
-        }
+    $currentData  = $currentRaw  ? json_decode($currentRaw, true)  : null;
+    $forecastData = $forecastRaw ? json_decode($forecastRaw, true) : null;
 
-        if ($tMin !== null) {
-            $daily[$dateKey]['low'] = $daily[$dateKey]['low'] === null
-                ? $tMin
-                : min($daily[$dateKey]['low'], $tMin);
-        }
+    // ─────────────────────────────────────────────
+    // Parse CURRENT (valid response + main present)
+    // ─────────────────────────────────────────────
 
-        // Prefer midday icon (12:00 local)
-        $score = -abs($hour - 12);
-        if ($score > $daily[$dateKey]['iconScore']) {
-            $daily[$dateKey]['icon'] = $slot['weather'][0]['icon'] ?? null;
-            $daily[$dateKey]['condition'] = $slot['weather'][0]['description'] ?? null;
-            $daily[$dateKey]['iconScore'] = $score;
-        }
-    }
+    if (is_array($currentData) && isset($currentData['main'])) {
 
-    ksort($daily);
+        $sunriseUnix = $currentData['sys']['sunrise'] ?? null;
+        $sunsetUnix  = $currentData['sys']['sunset']  ?? null;
 
-    $labels = ['Today', 'Tomorrow'];
-    $i = 0;
+        $daylightSeconds = ($sunriseUnix && $sunsetUnix)
+            ? max(0, $sunsetUnix - $sunriseUnix)
+            : null;
 
-    foreach ($daily as $dayKey => $d) {
-        if ($i >= 3) break;
+        $nightSeconds = ($daylightSeconds !== null)
+            ? max(0, 86400 - $daylightSeconds)
+            : null;
 
-        $forecastDays[] = [
-            'dateUnix'  => $d['dateUnix'],
-            'label'     => $labels[$i] ?? date('l', strtotime($dayKey)),
-            'high'      => $d['high'] !== null ? round($d['high']) : null,
-            'low'       => $d['low']  !== null ? round($d['low'])  : null,
-            'condition' => $d['condition'],
-            'icon'      => $d['icon']
+        $currentWeather = [
+            'temp'            => round($currentData['main']['temp']),
+            'condition'       => $currentData['weather'][0]['description'] ?? null,
+            'icon'            => $currentData['weather'][0]['icon'] ?? null,
+            'sunrise'         => $sunriseUnix ? date('g:i A', $sunriseUnix) : null,
+            'sunset'          => $sunsetUnix  ? date('g:i A', $sunsetUnix)  : null,
+            'sunriseUnix'     => $sunriseUnix,
+            'sunsetUnix'      => $sunsetUnix,
+            'daylightSeconds' => $daylightSeconds,
+            'nightSeconds'    => $nightSeconds,
+            'source'          => 'openweathermap',
+            'lastUpdated'     => $now
         ];
 
-        $i++;
+        // ─────────────────────────────────────────────
+        // 3-DAY FORECAST — aggregate true daily min/max
+        // (Note: API gives 3-hourly temp_min/max → we roll them up)
+        // ─────────────────────────────────────────────
+
+        if (is_array($forecastData) && isset($forecastData['list'])) {
+
+            $daily = [];
+
+            foreach ($forecastData['list'] as $slot) {
+                $dt = (int) $slot['dt'];
+                $dateKey = date('Y-m-d', $dt);
+                $hour    = (int) date('G', $dt);
+
+                if (!isset($daily[$dateKey])) {
+                    $daily[$dateKey] = [
+                        'dateUnix'  => strtotime($dateKey),
+                        'high'      => null,
+                        'low'       => null,
+                        'icon'      => null,
+                        'condition' => null,
+                        'iconScore' => -999
+                    ];
+                }
+
+                $tMax = $slot['main']['temp_max'] ?? null;
+                $tMin = $slot['main']['temp_min'] ?? null;
+
+                if ($tMax !== null) {
+                    $daily[$dateKey]['high'] = ($daily[$dateKey]['high'] === null)
+                        ? $tMax
+                        : max($daily[$dateKey]['high'], $tMax);
+                }
+
+                if ($tMin !== null) {
+                    $daily[$dateKey]['low'] = ($daily[$dateKey]['low'] === null)
+                        ? $tMin
+                        : min($daily[$dateKey]['low'], $tMin);
+                }
+
+                // Prefer ~noon icon for representative daily condition
+                $score = -abs($hour - 12);
+                if ($score > $daily[$dateKey]['iconScore']) {
+                    $daily[$dateKey]['icon']      = $slot['weather'][0]['icon']      ?? null;
+                    $daily[$dateKey]['condition'] = $slot['weather'][0]['description'] ?? null;
+                    $daily[$dateKey]['iconScore'] = $score;
+                }
+            }
+
+            ksort($daily);
+
+            $labels = ['Today', 'Tomorrow'];
+            $i = 0;
+
+            foreach ($daily as $dayKey => $d) {
+                if ($i >= 3) break;
+
+                $forecastDays[] = [
+                    'dateUnix'  => $d['dateUnix'],
+                    'label'     => $labels[$i] ?? date('l', $d['dateUnix']),
+                    'high'      => $d['high'] !== null ? round($d['high']) : null,
+                    'low'       => $d['low']  !== null ? round($d['low'])  : null,
+                    'condition' => $d['condition'],
+                    'icon'      => $d['icon']
+                ];
+                $i++;
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // SUCCESS: atomic-ish update of versions + cache
+        // ─────────────────────────────────────────────
+
+        $versions['modules']['weather']['lastUpdatedUnix'] = $now;
+
+        // Write versions safely
+        $tmp = tempnam(dirname($versionsPath), 'vers');
+        file_put_contents($tmp, json_encode($versions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        rename($tmp, $versionsPath);
+
+        // Cache the final computed payload
+        $cacheTmp = tempnam(dirname($weatherCachePath), 'wcache');
+        file_put_contents($cacheTmp, json_encode([
+            'current'  => $currentWeather,
+            'forecast' => $forecastDays
+        ], JSON_PRETTY_PRINT));
+        rename($cacheTmp, $weatherCachePath);
     }
+    // ── API fail / invalid data ──→ retain old cache + old timestamp
 }
 
 #endregion

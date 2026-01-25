@@ -4,7 +4,6 @@
     "lastUpdated": "2026-01-16",
     "notes": "Footer standardization and card metadata alignment"
   },
-
   "system": {
     "siteVersion": "0.9.1",
     "deployTime": "2026-01-16T13:15:00-07:00",
@@ -14,7 +13,6 @@
     "activeErrors": 3,
     "errorTimestamp": 1766072237
   },
-
   "modules": {
     "weather": {
       "source": "OpenWeatherMap",
@@ -33,7 +31,6 @@
       "lastUpdatedUnix": 1766069980
     }
   },
-
   "cards": {
     "todays-highlights": {
       "modules": ["weather", "holidays", "tips"],
@@ -42,7 +39,6 @@
         "label": "Daily overview"
       }
     },
-
     "active-permits": {
       "modules": ["permits"],
       "footer": {
@@ -50,7 +46,6 @@
         "label": "Active permits"
       }
     },
-
     "kpi-dashboard": {
       "modules": [],
       "footer": {
@@ -59,7 +54,6 @@
         "lastUpdatedUnix": 1766172000
       }
     },
-
     "announcements": {
       "modules": [],
       "footer": {
