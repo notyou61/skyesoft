@@ -11,6 +11,9 @@ let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
 let lastBoardPayload = null; // 🔁 cache most recent SSE payload
+let countdownTimer = null;
+let countdownRemainingMs = 0;
+let activeCountdownEl = null;
 
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
@@ -421,6 +424,39 @@ function renderThreeDayForecast(forecastEls, payload) {
         forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
     });
 }
+// Start/stop card countdown timer
+function startCardCountdown(durationMs, el) {
+    stopCardCountdown();
+
+    if (!el || !durationMs) return;
+
+    countdownRemainingMs = durationMs;
+    activeCountdownEl = el;
+
+    const tick = () => {
+        if (!activeCountdownEl) return;
+
+        const seconds = Math.max(0, Math.ceil(countdownRemainingMs / 1000));
+        activeCountdownEl.textContent = `⏳ ${seconds}s`;
+
+        countdownRemainingMs -= 1000;
+
+        if (countdownRemainingMs <= 0) {
+            activeCountdownEl.textContent = '⏳ 0s';
+            stopCardCountdown();
+        }
+    };
+
+    tick(); // immediate render
+    countdownTimer = setInterval(tick, 1000);
+}
+// Stop card countdown
+function stopCardCountdown() {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = null;
+    countdownRemainingMs = 0;
+    activeCountdownEl = null;
+}
 
 // #endregion
 
@@ -449,7 +485,7 @@ function createActivePermitsCardElement() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
     card.innerHTML = `
-        <div class="cardHeader"><h2>📋 Active Permits</h2></div>
+        <div class="cardHeader"><h2>📋 Active Permits <span class="cardCountdown">—</span></h2></div>
         <div class="cardBodyDivider"></div>
         <div class="cardBody">
             <div class="cardContent" id="permitScrollWrap">
@@ -480,7 +516,10 @@ function createGenericCardElement(spec) {
     card.className = `card card-${spec.id}`;
     card.innerHTML = `
         <div class="cardHeader">
-            <h2>${spec.icon || '✨'} ${spec.title}</h2>
+            <h2>
+                ${spec.icon || '✨'} ${spec.title}
+                <span class="cardCountdown" aria-hidden="true">—</span>
+            </h2>
         </div>
         <div class="cardBodyDivider"></div>
         <div class="cardBody">
@@ -732,10 +771,12 @@ window.SkyOfficeBoard.autoScroll = {
 let currentIndex = 0;
 let rotationTimer = null;
 
+// Show Card Function
 function showCard(index) {
     const host = document.getElementById('boardCardHost');
     if (!host) return;
 
+    stopCardCountdown();
     BOARD_CARDS.forEach(c => c.onHide?.());
 
     host.innerHTML = '';
@@ -745,9 +786,12 @@ function showCard(index) {
     const element = card.create();
     host.appendChild(element);
 
+    // 🔹 countdown starts here
+    const countdownEl = element.querySelector('.cardCountdown');
+    startCardCountdown(card.durationMs || DEFAULT_CARD_DURATION_MS, countdownEl);
+
     requestAnimationFrame(() => {
         if (lastBoardPayload && typeof card.update === 'function') {
-            console.log(`[showCard] Replaying payload to ${card.id}`);
             card.update(lastBoardPayload);
         }
         card.onShow?.();
@@ -758,6 +802,7 @@ function showCard(index) {
         showCard(currentIndex);
     }, card.durationMs || DEFAULT_CARD_DURATION_MS);
 }
+
 
 // #endregion
 

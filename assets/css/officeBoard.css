@@ -141,6 +141,18 @@ body[data-page="officeBoard"] #boardCardHost {
 .cardContent::-webkit-scrollbar {
     display: none;
 }
+
+.cardCountdown {
+    float: right;
+    margin-left: 12px;
+    padding: 2px 8px;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #444;
+    background: #eef1f5;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+}
 /* #endregion */
 
 /* #region ACTIVE PERMITS — TABLE HEADER + DIVIDER REFINEMENT */
