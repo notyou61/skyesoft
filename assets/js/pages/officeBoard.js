@@ -187,6 +187,8 @@ function renderTodaysHighlightsSkeleton() {
             (<span id="daysRemaining">—</span> remaining)
         </div>
 
+        <hr class="card-divider">
+
         <div class="entry">
             🌄 Sunrise: <span id="sunriseTime">—</span>
             &nbsp;|&nbsp;
@@ -199,9 +201,13 @@ function renderTodaysHighlightsSkeleton() {
             🌌 Night: <span id="nightTime">—</span>
         </div>
 
+        <hr class="card-divider">
+
         <div class="entry">
             🎉 Next Holiday: <span id="nextHoliday">—</span>
         </div>
+
+        <hr class="card-divider">
 
         <div class="entry forecast">
             <div class="entry-label">📅 3-Day Forecast</div>
@@ -224,7 +230,7 @@ function renderTodaysHighlightsSkeleton() {
             </div>
         </div>
 
-        <hr>
+        <hr class="card-divider">
 
         <div class="entry" id="skyesoftTips">
             💡 Skyesoft Tip: —
@@ -298,7 +304,6 @@ function updateHighlightsCard(payload = lastBoardPayload) {
         holidayEl.textContent = `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-
 // Updated: accepts element parameter (preferred) or falls back to getElementById
 function loadAndRenderSkyesoftTip(providedEl = null) {
     const el = providedEl || document.getElementById('skyesoftTips');

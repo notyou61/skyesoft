@@ -153,6 +153,22 @@ body[data-page="officeBoard"] #boardCardHost {
     border-radius: 12px;
     letter-spacing: 0.5px;
 }
+
+.card-divider {
+    border: none;
+    height: 1px;
+    margin: 10px 0 12px;
+    background: linear-gradient(
+        to right,
+        transparent,
+        rgba(0, 0, 0, 0.15),
+        transparent
+    );
+}
+
+.cardContent .entry {
+    padding: 2px 0;
+}
 /* #endregion */
 
 /* #region ACTIVE PERMITS — TABLE HEADER + DIVIDER REFINEMENT */
