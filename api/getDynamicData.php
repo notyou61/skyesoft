@@ -241,7 +241,7 @@ if ($shouldRefreshWeather) {
 
 #endregion
 
-#region SECTION 3 — Time Context (TIS)
+#region SECTION 3 — Time Context (TIS)#region SECTION 3 — Time Context (TIS)
 
 /**
  * Build full time context snapshot
@@ -360,7 +360,21 @@ if (!function_exists('getTimeContext')) {
     }
 }
 
-// FINAL WEATHER SAFETY — never emit empty weather
+// Note: The final weather safety check has been MOVED to SECTION 4
+// right before assembling $weather — do not keep it here.
+
+#endregion
+
+#region SECTION 4 — Build Time Context + Weather + Final Payload
+
+// Compute time context
+$timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
+
+// ─────────────────────────────────────────────
+// FINAL WEATHER SAFETY BARRIER
+// Ensures weather never emits as 'openweathermap-unavailable' if any
+// valid cache exists. Runs immediately before payload assembly.
+// ─────────────────────────────────────────────
 if (!$weatherValid && file_exists($cachePath)) {
     $cached = json_decode(file_get_contents($cachePath), true);
     if (is_array($cached) && isset($cached['current'])) {
@@ -371,14 +385,7 @@ if (!$weatherValid && file_exists($cachePath)) {
     }
 }
 
-#endregion
-
-#region SECTION 4 — Build Time Context + Weather + Final Payload
-
-// Compute time context
-$timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
-
-// Weather already fetched above; just assemble final structure
+// Now safe to assemble final weather structure
 $weather = $currentWeather;
 $weather['forecast'] = $forecastDays;
 
@@ -389,9 +396,7 @@ $weather['forecast'] = $forecastDays;
 $permitList = [];
 
 if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"])) {
-
     foreach ($activePermits["workOrders"] as $wo) {
-
         // Optional filter: exclude finaled / issued if desired later
         $permitList[] = [
             "wo"           => $wo["workOrder"] ?? "",
@@ -401,7 +406,6 @@ if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"]
             "status"       => $wo["permit"]["status"] ?? ""
         ];
     }
-
 }
 
 // ------------------------------------------------------------
@@ -427,7 +431,6 @@ $payload = [
         "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown",
         "deployTime"  => $versions["system"]["deployTime"]  ?? null
     ]
-
 ];
 
 #endregion
