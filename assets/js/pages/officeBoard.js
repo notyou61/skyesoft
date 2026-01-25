@@ -508,21 +508,6 @@ function resolveCardFooter(cardId) {
         ? `ℹ️ ${label} • Updated ${timeStr}`
         : `Updated ${timeStr}`;
 }
-// Apply card footer (used in card onShow handlers)
-function applyCardFooter(card, instance) {
-    if (!card?.id || !instance?.footer) return;
-
-    // Active Permits manages its own footer (for now)
-    if (card.id === 'active-permits') return;
-
-    const footerText = resolveCardFooter(card.id);
-
-    if (footerText) {
-        instance.footer.innerHTML = renderLiveFooter({ text: footerText });
-    } else {
-        instance.footer.textContent = '';
-    }
-}
 
 // #endregion
 
@@ -670,23 +655,18 @@ const ActivePermitsCard = {
         });
 
         body.appendChild(frag);
-        // 🔹 Update footer
+
         if (footer) {
             let text = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
             if (permitRegistryMeta?.updatedOn) text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
             footer.innerHTML = renderLiveFooter({ text });
         }
-        // Request animation frame to ensure DOM is updated before onShow
+
         requestAnimationFrame(() => {
-            if (lastBoardPayload && typeof card.update === 'function') {
-                card.update(lastBoardPayload);
+            if (this.instance?.scrollWrap) {
+                window.SkyOfficeBoard.autoScroll.start(this.instance.scrollWrap, this.durationMs);
             }
-            // 🔹 Apply universal footer
-            applyCardFooter(card, card.instance);
-
-            card.onShow?.();
         });
-
     },
 
     onShow() {},
@@ -740,13 +720,18 @@ const TodaysHighlightsCard = {
             renderThreeDayForecast(this.forecastElements, payload);
         }
     },
-    // On show, load tip
+
     onShow() {
-        // 🔹 Skyesoft Tip load (card-specific responsibility)
+        // 🔹 Skyesoft Tip load
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
         } else {
             console.warn("[TodaysHighlightsCard.onShow] tipElement is null");
+        }
+        // 🔹 Footer update from versions.json
+        const footerText = resolveCardFooter(this.id);
+        if (footerText && this.instance?.footer) {
+            this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
         }
     },
 
