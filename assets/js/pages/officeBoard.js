@@ -4,17 +4,19 @@
    Phoenix, Arizona – MST timezone
 */
 
-// #region GLOBAL REGISTRIES (unchanged)
+// #region GLOBAL REGISTRIES
 
 let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
 let lastBoardPayload = null; // 🔁 cache most recent SSE payload
+let versionsMeta = null;
+
+// Countdown state (global, managed by rotation controller)
 let countdownTimer = null;
 let countdownRemainingMs = 0;
 let activeCountdownEl = null;
-let versionsMeta = null;
 
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
@@ -76,17 +78,26 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', {
         iconMap = {};
     });
 
+// Load versions metadata (used for card footers)
+fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
+    .then(data => {
+        versionsMeta = data;
+        console.log('✅ Versions meta loaded', data);
+    })
+    .catch(err => {
+        console.warn('⚠️ Failed to load versions.json', err);
+        versionsMeta = null;
+    });
+
 // #endregion
 
 // #region HELPERS
 
-// ─────────────────────────────────────────────
-// Skyesoft Tips Controller (single source of truth)
-// ─────────────────────────────────────────────
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
-// Gernerate status icon HTML
+
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -113,7 +124,7 @@ function getStatusIcon(status) {
     }
     return '';
 }
-// Format interval in seconds to smart string
+
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -125,7 +136,7 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-// Format timestamp to Phoenix local time
+
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -136,13 +147,13 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-// Extract Date object from SSE payload
+
 function getDateFromSSE(payload) {
     const ts = payload?.timeDateArray?.currentUnixTime;
     if (!ts) return null;
     return new Date(ts * 1000);
 }
-// Calculate daylight duration from sunrise/sunset strings
+
 function calculateDaylight(sunrise, sunset) {
     if (!sunrise || !sunset) return null;
     const toMinutes = t => {
@@ -152,7 +163,7 @@ function calculateDaylight(sunrise, sunset) {
     const minutes = toMinutes(sunset) - toMinutes(sunrise);
     return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
 }
-// Get live date info from SSE payload
+
 function getLiveDateInfoFromSSE(payload) {
     const now = getDateFromSSE(payload);
     if (!now) return null;
@@ -178,7 +189,7 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-// Render skeleton HTML for Today's Highlights card
+
 function renderTodaysHighlightsSkeleton() {
     return `
         <div class="entry">
@@ -238,7 +249,7 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-// Update Today's Highlights card content
+
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
 
@@ -305,7 +316,7 @@ function updateHighlightsCard(payload = lastBoardPayload) {
         holidayEl.textContent = `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-// Updated: accepts element parameter (preferred) or falls back to getElementById
+
 function loadAndRenderSkyesoftTip(providedEl = null) {
     const el = providedEl || document.getElementById('skyesoftTips');
     if (!el) {
@@ -341,14 +352,13 @@ function loadAndRenderSkyesoftTip(providedEl = null) {
     })
     .catch(err => {
         console.warn('⚠️ Failed to load Skyesoft tips', err);
-        // Optional fallback display
         el.textContent = '💡 Skyesoft Tip: Double-check drawings before submission.';
     })
     .finally(() => {
         window.glbVar.tipsLoading = false;
     });
 }
-// Helper to render a random tip into the provided element
+
 function renderRandomTip(el) {
     const tips = window.glbVar.tips;
     if (!tips.length) return;
@@ -358,7 +368,7 @@ function renderRandomTip(el) {
 
     el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
-// Build initial payload with current time
+
 function buildInitialTimePayload() {
     const now = new Date();
     return {
@@ -367,7 +377,7 @@ function buildInitialTimePayload() {
         }
     };
 }
-// Format UNIX timestamp to Phoenix local time
+
 function formatPhoenixTimeFromUnix(unixSeconds) {
     if (!unixSeconds) return '—';
     return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
@@ -377,7 +387,7 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour12: true
     });
 }
-// Weather icon mapper
+
 function mapWeatherIcon(icon, condition = '') {
     const map = {
         sunny:          '☀️',
@@ -387,7 +397,6 @@ function mapWeatherIcon(icon, condition = '') {
         rain:           '🌧️',
         storm:          '🌩️',
         snow:           '❄️',
-        // Add more as needed later
     };
 
     const key = (icon || '').toLowerCase();
@@ -399,9 +408,9 @@ function mapWeatherIcon(icon, condition = '') {
     if (cond.includes('snow')) return '❄️';
     if (cond.includes('cloud')) return '☁️';
 
-    return '🌡️'; // fallback neutral
+    return '🌡️';
 }
-// Render 3-day weather forecast into provided elements
+
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
 
@@ -430,7 +439,9 @@ function renderThreeDayForecast(forecastEls, payload) {
         forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
     });
 }
-// Start/stop card countdown timer
+
+// ── Countdown helpers ────────────────────────────────────────────────
+
 function startCardCountdown(durationMs, el) {
     stopCardCountdown();
 
@@ -453,30 +464,21 @@ function startCardCountdown(durationMs, el) {
         }
     };
 
-    tick(); // immediate render
+    tick(); // immediate
     countdownTimer = setInterval(tick, 1000);
 }
-// Stop card countdown
+
 function stopCardCountdown() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = null;
     countdownRemainingMs = 0;
     activeCountdownEl = null;
 }
-// Fetch versions meta
-fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
-    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
-    .then(data => {
-        versionsMeta = data;
-        console.log('✅ Versions meta loaded', data);
-    })
-    .catch(err => {
-        console.warn('⚠️ Failed to load versions.json', err);
-        versionsMeta = null;
-    });
-// Resolve card footer text based on versionsMeta
+
+// ── Card footer freshness resolver ──────────────────────────────────
+
 function resolveCardFooter(cardId) {
-    if (!versionsMeta?.cards || !versionsMeta.cards[cardId]) return null;
+    if (!versionsMeta?.cards?.[cardId]) return null;
 
     const cardMeta = versionsMeta.cards[cardId];
     const footerCfg = cardMeta.footer || {};
@@ -484,7 +486,7 @@ function resolveCardFooter(cardId) {
 
     let lastUpdated = null;
 
-    // AUTO mode → derive from modules
+    // AUTO: latest timestamp among used modules
     if (footerCfg.mode === 'auto' && Array.isArray(modules)) {
         modules.forEach(m => {
             const ts = versionsMeta.modules?.[m]?.lastUpdatedUnix;
@@ -494,7 +496,7 @@ function resolveCardFooter(cardId) {
         });
     }
 
-    // MANUAL mode → use explicit timestamp
+    // MANUAL: explicit timestamp
     if (footerCfg.mode === 'manual' && footerCfg.lastUpdatedUnix) {
         lastUpdated = footerCfg.lastUpdatedUnix;
     }
@@ -511,7 +513,7 @@ function resolveCardFooter(cardId) {
 
 // #endregion
 
-// #region LIVE FOOTER HELPER (unchanged)
+// #region LIVE FOOTER HELPER
 
 function renderLiveFooter({ text = '' }) {
     const liveIcon = `
@@ -530,7 +532,7 @@ const DEFAULT_CARD_DURATION_MS = 15000;
 
 // #endregion
 
-// #region CARD FACTORY (unchanged)
+// #region CARD FACTORY
 
 function createActivePermitsCardElement() {
     const card = document.createElement('section');
@@ -592,9 +594,8 @@ function createGenericCardElement(spec) {
 
 // #region CARD REGISTRY + UNIVERSAL UPDATER
 
-//Initialize card registry
 const BOARD_CARDS = [];
-// ActivePermitsCard
+
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: DEFAULT_CARD_DURATION_MS,
@@ -674,9 +675,9 @@ const ActivePermitsCard = {
         window.SkyOfficeBoard.autoScroll.stop();
     }
 };
-// Register ActivePermitsCard
+
 BOARD_CARDS.push(ActivePermitsCard);
-// Const TodaysHighlightsCard (refactored with 3-day forecast)
+
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
     icon: '🌅',
@@ -685,16 +686,14 @@ const TodaysHighlightsCard = {
 
     instance: null,
     tipElement: null,
-    forecastElements: null,     // ← new
+    forecastElements: null,
 
     create() {
         this.instance = createGenericCardElement(this);
         this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
 
-        // Capture tip
         this.tipElement = this.instance.content.querySelector('#skyesoftTips');
 
-        // Capture forecast rows (rotation-safe)
         const forecastRows = this.instance.content.querySelectorAll('.forecast-row');
         this.forecastElements = Array.from(forecastRows).map(row => ({
             day:  row.querySelector('.day'),
@@ -711,24 +710,20 @@ const TodaysHighlightsCard = {
 
     update(payload) {
         if (!payload) return;
-
-        // Existing highlights update
         updateHighlightsCard(payload);
-
-        // New: 3-day forecast
         if (this.forecastElements) {
             renderThreeDayForecast(this.forecastElements, payload);
         }
     },
 
     onShow() {
-        // 🔹 Skyesoft Tip load
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
         } else {
             console.warn("[TodaysHighlightsCard.onShow] tipElement is null");
         }
-        // 🔹 Footer update from versions.json
+
+        // Update footer from versions metadata
         const footerText = resolveCardFooter(this.id);
         if (footerText && this.instance?.footer) {
             this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
@@ -760,14 +755,16 @@ GENERIC_CARD_SPECS.forEach(spec => {
             if (this.instance?.content) {
                 this.instance.content.innerHTML = `<p>${this.title} content coming soon</p>`;
             }
-            if (this.instance?.footer) {
-                this.instance.footer.innerHTML = renderLiveFooter({
-                    text: `Updated ${formatTimestamp(Date.now() / 1000)}`
-                });
+            // Footer set in onShow() via versions.json
+        },
+
+        onShow() {
+            const footerText = resolveCardFooter(this.id);
+            if (footerText && this.instance?.footer) {
+                this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
             }
         },
 
-        onShow() {},
         onHide() {}
     });
 });
@@ -783,7 +780,7 @@ function updateAllCards(payload) {
 
 // #endregion
 
-// #region AUTO-SCROLL (unchanged)
+// #region AUTO-SCROLL
 
 window.SkyOfficeBoard = window.SkyOfficeBoard || {};
 
@@ -828,7 +825,6 @@ window.SkyOfficeBoard.autoScroll = {
 let currentIndex = 0;
 let rotationTimer = null;
 
-// Show Card Function
 function showCard(index) {
     const host = document.getElementById('boardCardHost');
     if (!host) return;
@@ -843,7 +839,7 @@ function showCard(index) {
     const element = card.create();
     host.appendChild(element);
 
-    // 🔹 countdown starts here
+    // Start visible countdown in header
     const countdownEl = element.querySelector('.cardCountdown');
     startCardCountdown(card.durationMs || DEFAULT_CARD_DURATION_MS, countdownEl);
 
@@ -859,7 +855,6 @@ function showCard(index) {
         showCard(currentIndex);
     }, card.durationMs || DEFAULT_CARD_DURATION_MS);
 }
-
 
 // #endregion
 
