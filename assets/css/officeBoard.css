@@ -156,12 +156,12 @@ body[data-page="officeBoard"] #boardCardHost {
 
 .card-divider {
     border: none;
-    height: 1px;
-    margin: 10px 0 12px;
+    height: 2px;
+    margin: 12px 0 14px;
     background: linear-gradient(
         to right,
         transparent,
-        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.25),
         transparent
     );
 }
@@ -262,7 +262,8 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 /* #endregion */
 
-/* #region KPI / Placeholder */
+/* #region CARD CONTENT — Sections & Emphasis */
+
 .kpi-placeholder {
     flex: 1 1 auto;
     display: flex;
@@ -272,9 +273,24 @@ body[data-page="officeBoard"] #boardCardHost {
     font-weight: 600;
     color: #666;
 }
+
+.entry.forecast {
+    padding-top: 6px;
+}
+
+#skyesoftTips {
+    font-style: italic;
+}
+
+.entry-label {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
 /* #endregion */
 
-/* #region Mobile Adjustments */
+/* #region Viewport Adjustments */
+
 @media (max-width: 600px) {
     .permit-table th,
     .permit-table td {
@@ -287,4 +303,17 @@ body[data-page="officeBoard"] #boardCardHost {
         font-size: 0.95em;
     }
 }
+
+@media (min-width: 1600px) {
+    .card-divider {
+        height: 1px;
+        background: linear-gradient(
+            to right,
+            transparent,
+            rgba(0, 0, 0, 0.18),
+            transparent
+        );
+    }
+}
+
 /* #endregion */
