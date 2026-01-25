@@ -504,19 +504,14 @@ function resolveCardFooter(cardId) {
     if (!lastUpdated) return null;
 
     const label = footerCfg.label;
-
-    const absoluteTime = formatTimestamp(lastUpdated);
-    const relativeTime = humanizeRelativeTime(lastUpdated);
-
-    const timeStr = `${absoluteTime} (${relativeTime})`;
-    // Return final footer string
+    const timeStr = formatTimestamp(lastUpdated);
+    // Return formatted footer
     return label
         ? `${label} • Updated ${timeStr}`
         : `Updated ${timeStr}`;
 
-
 }
-// Humanize relative time helper
+
 function humanizeRelativeTime(unixSeconds) {
     const seconds = Math.floor(Date.now() / 1000) - unixSeconds;
 
