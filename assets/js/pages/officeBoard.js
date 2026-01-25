@@ -504,38 +504,12 @@ function resolveCardFooter(cardId) {
     if (!lastUpdated) return null;
 
     const label = footerCfg.label;
-
-    const absoluteTime = formatTimestamp(lastUpdated);
-    const relativeTime = humanizeRelativeTime(lastUpdated);
-
-    // Example:
-    // "Updated 01/25/26 9:26 AM (8 minutes ago)"
-    const timeStr = `${absoluteTime} (${relativeTime})`;
-
+    const timeStr = formatTimestamp(lastUpdated);
+    // Return formatted footer
     return label
         ? `${label} • Updated ${timeStr}`
         : `Updated ${timeStr}`;
 
-}
-
-function humanizeRelativeTime(unixSeconds) {
-    const seconds = Math.floor(Date.now() / 1000) - unixSeconds;
-
-    const units = [
-        { label: 'month',   value: 60 * 60 * 24 * 30 },
-        { label: 'day',     value: 60 * 60 * 24 },
-        { label: 'hour',    value: 60 * 60 },
-        { label: 'minute',  value: 60 }
-    ];
-
-    for (const unit of units) {
-        const amount = Math.floor(seconds / unit.value);
-        if (amount >= 1) {
-            return `${amount} ${unit.label}${amount !== 1 ? 's' : ''} ago`;
-        }
-    }
-
-    return 'just now';
 }
 
 // #endregion
