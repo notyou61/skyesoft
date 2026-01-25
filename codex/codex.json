@@ -2134,49 +2134,67 @@
                     "No hardcoded holidays may appear in any module."
                 ]
             },
-            "weatherCacheStandard": {
+            "weatherDataGovernanceStandard": {
                 "title": {
                     "icon": 44,
-                    "text": "Weather Cache Standard"
+                    "text": "Weather Data Governance Standard"
                 },
                 "tier": 2,
                 "hierarchyOrder": 17,
                 "type": "Functional Standard",
                 "preamble": {
-                    "text": "Specifies the mandatory caching behavior for weather lookups. Ensures SSE performance, API reliability, and consistent UI refresh cadence."
+                    "text": "Defines the authoritative freshness model, caching behavior, and SSE delivery rules for weather data. Ensures controlled API usage, deterministic freshness, and UI stability across all consumers."
+                },
+                "authoritativeSource": {
+                    "freshnessLedger": "data/authoritative/versions.json",
+                    "modulePath": "modules.weather.lastUpdatedUnix",
+                    "semantics": "Timestamp reflects the last successfully parsed and validated weather payload from an external provider."
                 },
                 "rules": [
-                    "Weather cache file must be stored at assets/data/weatherCache.json.",
-                    "Cache refresh interval must be at least 10 minutes unless overridden by operationalConfig.",
-                    "If weather API fails, the last known cached value must be used (staleness warning after 20 minutes).",
-                    "Cache file must store: timestamp, rawResponse, normalized fields, provider, and source metadata.",
-                    "UI may not call the weather API independently; SSE is the single source of truth."
+                    "Weather data freshness must be governed exclusively by versions.json; no other file may assert authoritative timestamps.",
+                    "Weather API calls may occur only when current time exceeds lastUpdatedUnix by the configured refresh interval.",
+                    "The refresh interval must not be less than 15 minutes unless explicitly Codex-amended.",
+                    "The authoritative freshness timestamp must be updated only after a successful API fetch and validation.",
+                    "Failed or partial API responses must not update freshness timestamps."
                 ],
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "timestamp": {
-                            "type": "string"
-                        },
-                        "weather": {
-                            "type": "object"
-                        },
-                        "provider": {
-                            "type": "string"
-                        }
-                    }
+                "cacheBehavior": {
+                    "purpose": "Performance optimization and resilience between refresh intervals.",
+                    "location": "data/runtimeEphemeral/weatherCache.json",
+                    "authority": "Non-authoritative",
+                    "rules": [
+                        "Cache may be served when data is fresh or refresh is skipped.",
+                        "Cache may be served when API refresh fails.",
+                        "Cache must not override or mutate versions.json."
+                    ]
                 },
+                "payloadRequirements": {
+                    "mustInclude": [
+                        "source",
+                        "lastUpdatedUnix",
+                        "current conditions",
+                        "forecast array"
+                    ],
+                    "timestampType": "unix",
+                    "timezone": "local (derived at render time)"
+                },
+                "sseRules": [
+                    "SSE is the single delivery channel for weather data to the UI.",
+                    "Frontend code must not invoke external weather APIs directly.",
+                    "SSE must broadcast either live or cached data, never partial payloads."
+                ],
                 "validation": {
                     "enforcedBy": "modules/automation/sseIntegrityChecker.php",
                     "metrics": [
-                        "cache freshness",
-                        "missing fields",
-                        "staleness threshold"
+                        "authoritative freshness compliance",
+                        "refresh interval violations",
+                        "missing payload fields",
+                        "cache fallback frequency"
                     ]
                 },
                 "notes": [
-                    "Weather caching aligns with SSE Standard source-of-truth requirements.",
-                    "Over-polling external APIs is prohibited unless Codex-amended."
+                    "Weather caching is subordinate to freshness governance.",
+                    "All UI consumers must treat SSE payloads as read-only truth.",
+                    "Any deviation from this model requires a Codex amendment."
                 ]
             },
             "skyecrawlInterpretation": {
