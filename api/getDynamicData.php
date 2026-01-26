@@ -11,7 +11,7 @@ declare(strict_types=1);
 // ======================================================================
 
 // ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
-$envPath = $_SERVER['HOME'] . '/secure/.env';
+$envPath = dirname(__DIR__, 4) . '/secure/.env';
 
 if (file_exists($envPath) && is_readable($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -19,7 +19,6 @@ if (file_exists($envPath) && is_readable($envPath)) {
     foreach ($lines as $line) {
         $line = trim($line);
 
-        // Skip comments / blanks
         if ($line === '' || str_starts_with($line, '#')) continue;
         if (strpos($line, '=') === false) continue;
 
@@ -29,12 +28,12 @@ if (file_exists($envPath) && is_readable($envPath)) {
 
         putenv("$key=$value");
         $_ENV[$key]    = $value;
-        $_SERVER[$key] = $value; // extra safety for shared hosts
+        $_SERVER[$key] = $value; // for shared-host compatibility
     }
 
-    error_log("[env-loader] Loaded .env from /secure");
+    error_log("[env-loader] Loaded .env from $envPath");
 } else {
-    error_log("[env-loader] FAILED to load /secure/.env (missing / unreadable)");
+    error_log("[env-loader] FAILED to load .env at $envPath");
 }
 
 // ── Diagnostic output (TEMP — remove once verified) ─────────────────
