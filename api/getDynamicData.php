@@ -57,7 +57,11 @@ $now = time();
 
 // FORCE refresh if cache missing OR older than 24 hours (safety net)
 $forceRefresh = !file_exists($cachePath) || ($now - $lastWeatherUpdate > 86400);
-$shouldRefreshWeather = ($now - $lastWeatherUpdate >= 900) || $forceRefresh; // 15 min normal, force if missing/stale
+// Determine if we should refresh weather data
+$shouldRefreshWeather =
+    !$weatherValid ||
+    $forceRefresh ||
+    ($now - $lastWeatherUpdate >= 900); // 15 min normal, force if missing/stale
 
 // Default fallback
 $currentWeather = [
@@ -69,14 +73,25 @@ $currentWeather = [
 $forecastDays = [];
 $weatherValid = false;
 
-// Always try cache first
+// Always try cache first (validate contents, not just existence)
 if (file_exists($cachePath)) {
     $cached = json_decode(file_get_contents($cachePath), true);
-    if ($cached && isset($cached['current']['temp']) && $cached['current']['temp'] !== null) {
+
+    $cacheIsValid =
+        is_array($cached) &&
+        isset($cached['current']['temp']) &&
+        $cached['current']['temp'] !== null &&
+        isset($cached['current']['sunriseUnix']) &&
+        $cached['current']['sunriseUnix'] !== null;
+
+    if ($cacheIsValid) {
         $currentWeather = $cached['current'];
         $forecastDays   = $cached['forecast'] ?? [];
         $currentWeather['source'] = 'cache';
         $weatherValid = true;
+    } else {
+        // Cache exists but is invalid or empty → force live fetch
+        $weatherValid = false;
     }
 }
 
