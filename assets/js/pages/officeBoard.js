@@ -664,9 +664,12 @@ const ActivePermitsCard = {
 
             const countText = `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`;
 
+            const absoluteTime = formatTimestamp(updatedUnix);
+
             footer.innerHTML = renderLiveFooter({
-                text: `${countText} • Updated ${timeText}`
+                text: `${countText} • Updated ${absoluteTime} (${timeText})`
             });
+
         };
 
         // Signature match → just update footer (live ticking)
