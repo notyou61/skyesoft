@@ -656,7 +656,7 @@ const ActivePermitsCard = {
             if (!footer || !permitRegistryMeta?.updatedOn) return;
 
             const updatedUnix = permitRegistryMeta.updatedOn;
-            const nowUnix = sseData?.timeDateArray?.currentUnixTime;
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
 
             const timeText = nowUnix
                 ? humanizeRelativeTime(updatedUnix, nowUnix)
