@@ -56,12 +56,13 @@ $lastWeatherUpdate = (int)$versions['modules']['weather']['lastUpdatedUnix'];
 $now = time();
 
 // FORCE refresh if cache missing OR older than 24 hours (safety net)
-$forceRefresh = !file_exists($cachePath) || ($now - $lastWeatherUpdate > 86400);
-// Determine if we should refresh weather data
-$shouldRefreshWeather =
-    !$weatherValid ||
-    $forceRefresh ||
-    ($now - $lastWeatherUpdate >= 900); // 15 min normal, force if missing/stale
+$cacheExists = file_exists($cachePath) && filesize($cachePath) > 0;
+
+// Force refresh condition (not used directly, but for reference)
+$forceRefresh = !$cacheExists || ($now - $lastWeatherUpdate > 86400);
+
+// Allow refresh if cache invalid OR stale
+$shouldRefreshWeather = !$cacheExists || ($now - $lastWeatherUpdate >= 900);// 15 min normal, force if missing/stale
 
 // Default fallback
 $currentWeather = [
@@ -123,74 +124,125 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
         ]
     ]);
 
-    $rawCurrent  = file_get_contents($urlCurrent, false, $ctx);
-    $rawForecast = file_get_contents($urlForecast, false, $ctx);
+    $rawCurrent  = @file_get_contents($urlCurrent, false, $ctx);
+    $rawForecast = @file_get_contents($urlForecast, false, $ctx);
 
-    if ($rawCurrent !== false) {
+    $success = false;
+
+    if ($rawCurrent === false) {
+        error_log("[weather] file_get_contents failed (current) — likely network/SSL/allow_url_fopen/DNS issue");
+    } else {
         $data = json_decode($rawCurrent, true);
-        if ($data && isset($data['main']['temp'])) {
-            $sunrise = $data['sys']['sunrise'];
-            $sunset  = $data['sys']['sunset'];
+
+        if (
+            is_array($data) &&
+            isset($data['cod']) &&
+            (string)$data['cod'] === '200' &&           // string comparison — safer
+            isset($data['main']['temp'])
+        ) {
+            // ── SUCCESS PATH ──
+            $sunrise = $data['sys']['sunrise'] ?? null;
+            $sunset  = $data['sys']['sunset']  ?? null;
+
             $currentWeather = [
                 'temp'            => round($data['main']['temp']),
                 'condition'       => $data['weather'][0]['description'] ?? 'unknown',
-                'icon'            => $data['weather'][0]['icon'] ?? '01d',
-                'sunrise'         => date('g:i A', $sunrise),
-                'sunset'          => date('g:i A', $sunset),
+                'icon'            => $data['weather'][0]['icon']       ?? '01d',
+                'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
+                'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
                 'sunriseUnix'     => $sunrise,
                 'sunsetUnix'      => $sunset,
-                'daylightSeconds' => $sunset - $sunrise,
-                'nightSeconds'    => 86400 - ($sunset - $sunrise),
+                'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
+                'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
                 'source'          => 'openweathermap'
             ];
 
-            // Quick forecast parse (good enough)
+            // Forecast — best effort
+            $forecastDays = [];
+
             if ($rawForecast !== false) {
                 $f = json_decode($rawForecast, true);
-                if ($f && isset($f['list'])) {
+
+                if (
+                    is_array($f) &&
+                    isset($f['cod']) &&
+                    (string)$f['cod'] === '200' &&
+                    isset($f['list'])
+                ) {
                     $daily = [];
                     foreach ($f['list'] as $slot) {
                         $date = date('Y-m-d', $slot['dt']);
-                        if (!isset($daily[$date])) $daily[$date] = ['high' => -999, 'low' => 999, 'icon' => ''];
-                        $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
-                        $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
-                        if (date('G', $slot['dt']) == 12) $daily[$date]['icon'] = $slot['weather'][0]['icon'];
+                        if (!isset($daily[$date])) {
+                            $daily[$date] = ['high' => -999, 'low' => 999, 'icon' => ''];
+                        }
+                        $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max'] ?? -999);
+                        $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min'] ?? 999);
+                        if (date('G', $slot['dt']) == 12) {
+                            $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '01d';
+                        }
                     }
-                    $forecastDays = [];
+
                     $labels = ['Today', 'Tomorrow'];
                     $i = 0;
                     foreach ($daily as $date => $d) {
                         if ($i >= 3) break;
                         $forecastDays[] = [
-                            'label' => $labels[$i] ?? date('l', strtotime($date)),
-                            'high'  => round($d['high']),
-                            'low'   => round($d['low']),
-                            'icon'  => $d['icon'] ?: '01d',
-                            'condition' => 'Partly Cloudy' // placeholder
+                            'label'     => $labels[$i] ?? date('l', strtotime($date)),
+                            'high'      => round($d['high']),
+                            'low'       => round($d['low']),
+                            'icon'      => $d['icon'] ?: '01d',
+                            'condition' => 'Partly Cloudy' // placeholder — can be improved later
                         ];
                         $i++;
                     }
+                } else {
+                    error_log("[weather] forecast unavailable or invalid response — using cache fallback if present");
                 }
+            } else {
+                error_log("[weather] file_get_contents failed (forecast) — network issue");
             }
 
-            // WRITE CACHE + versions
-            file_put_contents($cachePath, json_encode([
-                'current' => $currentWeather,
-                'forecast' => $forecastDays
-            ], JSON_PRETTY_PRINT), LOCK_EX);
-            chmod($cachePath, 0644);
+            $success = true;
 
-            $versions['modules']['weather'] = ['lastUpdatedUnix' => $now, 'source' => 'openweathermap'];
-            file_put_contents($versionsPath, json_encode($versions, JSON_PRETTY_PRINT), LOCK_EX);
-
-            $weatherValid = true;
-            // Remove line below after it works once
-            error_log("[weather] SUCCESS — cache seeded at " . date('Y-m-d H:i:s'));
         } else {
-            error_log("[weather] API returned invalid JSON or no data");
+            // API returned error response (401, 429, 400, etc.)
+            error_log(
+                "[weather] current API error — cod=" .
+                ($data['cod']    ?? 'unknown') .
+                " msg=" .
+                ($data['message'] ?? 'none')
+            );
         }
-    } else {
-        error_log("[weather] file_get_contents failed — check API key / internet");
+    }
+
+    // ── Only write cache if we actually got valid current weather ──
+    if ($success) {
+        // Protect existing forecast if new one is empty
+        if (empty($forecastDays) && file_exists($cachePath)) {
+            $old = json_decode(file_get_contents($cachePath), true);
+            if (is_array($old) && !empty($old['forecast'])) {
+                $forecastDays = $old['forecast'];
+                error_log("[weather] forecast fetch failed — preserved previous forecast data");
+            }
+        }
+
+        $cacheContent = [
+            'current'  => $currentWeather,
+            'forecast' => $forecastDays
+        ];
+
+        file_put_contents($cachePath, json_encode($cacheContent, JSON_PRETTY_PRINT), LOCK_EX);
+        @chmod($cachePath, 0644);
+
+        $versions['modules']['weather'] = [
+            'lastUpdatedUnix' => $now,
+            'source'          => 'openweathermap'
+        ];
+        file_put_contents($versionsPath, json_encode($versions, JSON_PRETTY_PRINT), LOCK_EX);
+
+        $weatherValid = true;
+
+        error_log("[weather] SUCCESS — cache seeded at " . date('Y-m-d H:i:s'));
     }
 }
 
