@@ -147,13 +147,13 @@ function formatTimestamp(ts) {
     };
     return date.toLocaleString('en-US', opts).replace(',', '');
 }
-
+// get Date object from SSE payload
 function getDateFromSSE(payload) {
     const ts = payload?.timeDateArray?.currentUnixTime;
     if (!ts) return null;
     return new Date(ts * 1000);
 }
-
+// calculate daylight duration from sunrise/sunset strings (HH:MM AM/PM)
 function calculateDaylight(sunrise, sunset) {
     if (!sunrise || !sunset) return null;
     const toMinutes = t => {
@@ -163,7 +163,7 @@ function calculateDaylight(sunrise, sunset) {
     const minutes = toMinutes(sunset) - toMinutes(sunrise);
     return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
 }
-
+// get live date info from SSE payload
 function getLiveDateInfoFromSSE(payload) {
     const now = getDateFromSSE(payload);
     if (!now) return null;
@@ -249,7 +249,7 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-
+// update today's highlights card with live data
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
 
@@ -316,7 +316,7 @@ function updateHighlightsCard(payload = lastBoardPayload) {
         holidayEl.textContent = `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
     }
 }
-
+// load and render a random Skyesoft tip
 function loadAndRenderSkyesoftTip(providedEl = null) {
     const el = providedEl || document.getElementById('skyesoftTips');
     if (!el) {
@@ -358,7 +358,7 @@ function loadAndRenderSkyesoftTip(providedEl = null) {
         window.glbVar.tipsLoading = false;
     });
 }
-
+// render a random tip into the given element
 function renderRandomTip(el) {
     const tips = window.glbVar.tips;
     if (!tips.length) return;
@@ -368,7 +368,7 @@ function renderRandomTip(el) {
 
     el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
 }
-
+// build initial payload with current time
 function buildInitialTimePayload() {
     const now = new Date();
     return {
@@ -377,7 +377,7 @@ function buildInitialTimePayload() {
         }
     };
 }
-
+// format unix timestamp to Phoenix time string
 function formatPhoenixTimeFromUnix(unixSeconds) {
     if (!unixSeconds) return '—';
     return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
@@ -387,7 +387,7 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour12: true
     });
 }
-
+// map weather icon code to emoji
 function mapWeatherIcon(icon, condition = '') {
     const map = {
         sunny:          '☀️',
@@ -696,7 +696,22 @@ const ActivePermitsCard = {
         });
     },
 
-    onShow() {},
+    onShow() {
+        // Update footer with relative time of last permit update
+        const nowUnix = sseData.timeDateArray.currentUnixTime;
+
+        // choose the best available timestamp
+        const permitUnix =
+            permit.updatedAtUnix ||
+            permit.lastTouchedUnix ||
+            permit.createdAtUnix;
+
+        const footerText = permitUnix
+            ? humanizeRelativeTime(permitUnix, nowUnix)
+            : 'status updated';
+
+        this.instance.footer.innerText = footerText;
+    },
     onHide() {
         window.SkyOfficeBoard.autoScroll.stop();
     }
