@@ -44,77 +44,77 @@ $announcements  = json_decode(file_get_contents($paths["announcements"]), true);
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
 
-#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — FORCED SEED MODE
+#region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
-error_log('[env] WEATHER_API_KEY raw getenv = ' . var_export(getenv('WEATHER_API_KEY'), true));
-error_log('[env] $_ENV key exists = ' . (isset($_ENV['WEATHER_API_KEY']) ? 'yes' : 'no'));
-error_log('[env] $_SERVER key exists = ' . (isset($_SERVER['WEATHER_API_KEY']) ? 'yes' : 'no'));
-
-
-$cachePath = $root . '/data/runtimeEphemeral/weatherCache.json';
+$cachePath    = $root . '/data/runtimeEphemeral/weatherCache.json';
 $versionsPath = $root . '/data/authoritative/versions.json';
 
-// Load versions for timestamp
+// ── Load versions ──
 $versions = file_exists($versionsPath) ? json_decode(file_get_contents($versionsPath), true) : [];
 $versions['modules']['weather']['lastUpdatedUnix'] ??= 0;
 $lastWeatherUpdate = (int)$versions['modules']['weather']['lastUpdatedUnix'];
 $now = time();
 
-// FORCE refresh if cache missing OR older than 24 hours (safety net)
+// ── Cache status ──
 $cacheExists = file_exists($cachePath) && filesize($cachePath) > 0;
 
-// Force refresh condition (not used directly, but for reference)
-$forceRefresh = !$cacheExists || ($now - $lastWeatherUpdate > 86400);
-
-// Allow refresh if cache invalid OR stale
-$shouldRefreshWeather = !$cacheExists || ($now - $lastWeatherUpdate >= 900);// 15 min normal, force if missing/stale
-
-// Default fallback
+// ── Default fallback ──
 $currentWeather = [
-    'temp' => null, 'condition' => null, 'icon' => null,
-    'sunrise' => null, 'sunset' => null, 'sunriseUnix' => null, 'sunsetUnix' => null,
-    'daylightSeconds' => null, 'nightSeconds' => null,
-    'source' => 'openweathermap-unavailable'
+    'temp'            => null,
+    'condition'       => null,
+    'icon'            => null,
+    'sunrise'         => null,
+    'sunset'          => null,
+    'sunriseUnix'     => null,
+    'sunsetUnix'      => null,
+    'daylightSeconds' => null,
+    'nightSeconds'    => null,
+    'source'          => 'openweathermap-unavailable'
 ];
 $forecastDays = [];
 $weatherValid = false;
 
-// Always try cache first (validate contents, not just existence)
-if (file_exists($cachePath)) {
+// ── Try cache first ──
+if ($cacheExists) {
     $cached = json_decode(file_get_contents($cachePath), true);
 
-    $cacheIsValid =
-        is_array($cached) &&
-        isset($cached['current']['temp']) &&
-        $cached['current']['temp'] !== null &&
-        isset($cached['current']['sunriseUnix']) &&
-        $cached['current']['sunriseUnix'] !== null;
+    $cacheIsValid = is_array($cached)
+        && isset($cached['current']['temp']) && $cached['current']['temp'] !== null
+        && isset($cached['current']['sunriseUnix']) && $cached['current']['sunriseUnix'] !== null;
 
     if ($cacheIsValid) {
         $currentWeather = $cached['current'];
         $forecastDays   = $cached['forecast'] ?? [];
         $currentWeather['source'] = 'cache';
         $weatherValid = true;
+        error_log("[weather] Using valid cache (last updated: " . date('Y-m-d H:i:s', $lastWeatherUpdate) . ")");
     } else {
-        // Cache exists but is invalid or empty → force live fetch
-        $weatherValid = false;
+        error_log("[weather] Cache exists but invalid/empty → forcing bootstrap fetch");
     }
+} else {
+    error_log("[weather] No cache found → forcing bootstrap fetch");
 }
 
-// ────────────────────────────────────────────────
-// Weather API key (single source of truth)
-// ────────────────────────────────────────────────
+// ── API key check ──
 $weatherKey = trim(getenv('WEATHER_API_KEY') ?: '');
-
 if ($weatherKey === '') {
-    error_log('[weather][DIAG] WEATHER_API_KEY is EMPTY');
-    $shouldRefreshWeather = false; // hard stop — prevent bad calls
+    error_log('[weather][DIAG] WEATHER_API_KEY is EMPTY — cannot fetch');
 } else {
     error_log('[weather][DIAG] WEATHER_API_KEY present (len=' . strlen($weatherKey) . ')');
 }
 
-// LIVE FETCH — only if needed
-if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
+// ── Decide whether to fetch ──
+// Bootstrap: always fetch if no valid data
+// Refresh: only if stale (≥15 min) AND we have key
+$shouldFetch = $weatherKey !== ''
+    && (
+        !$weatherValid                       // Bootstrap: no good data → fetch NOW
+        || ($now - $lastWeatherUpdate >= 900) // Refresh: stale cache → update
+    );
+
+if ($shouldFetch) {
+    error_log("[weather] Fetch triggered: " . (!$weatherValid ? 'bootstrap (no valid data)' : 'refresh (stale ≥15min)'));
+
     $lat = 33.4484;
     $lon = -112.0740;
     $key = $weatherKey;
@@ -124,7 +124,7 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
 
     $ctx = stream_context_create([
         'http' => [
-            'timeout' => 12,
+            'timeout'       => 12,
             'ignore_errors' => true
         ]
     ]);
@@ -135,14 +135,14 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
     $success = false;
 
     if ($rawCurrent === false) {
-        error_log("[weather] file_get_contents failed (current) — likely network/SSL/allow_url_fopen/DNS issue");
+        error_log("[weather] file_get_contents failed (current) — network/SSL/allow_url_fopen/DNS? " . print_r(error_get_last(), true));
     } else {
         $data = json_decode($rawCurrent, true);
 
         if (
             is_array($data) &&
             isset($data['cod']) &&
-            (string)$data['cod'] === '200' &&           // string comparison — safer
+            (string)$data['cod'] === '200' &&
             isset($data['main']['temp'])
         ) {
             // ── SUCCESS PATH ──
@@ -167,7 +167,6 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
 
             if ($rawForecast !== false) {
                 $f = json_decode($rawForecast, true);
-
                 if (
                     is_array($f) &&
                     isset($f['cod']) &&
@@ -196,38 +195,32 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
                             'high'      => round($d['high']),
                             'low'       => round($d['low']),
                             'icon'      => $d['icon'] ?: '01d',
-                            'condition' => 'Partly Cloudy' // placeholder — can be improved later
+                            'condition' => 'Partly Cloudy' // placeholder
                         ];
                         $i++;
                     }
                 } else {
-                    error_log("[weather] forecast unavailable or invalid response — using cache fallback if present");
+                    error_log("[weather] forecast response invalid/unavailable — cod=" . ($f['cod'] ?? 'missing') . " msg=" . ($f['message'] ?? 'none'));
                 }
             } else {
                 error_log("[weather] file_get_contents failed (forecast) — network issue");
             }
 
             $success = true;
-
         } else {
-            // API returned error response (401, 429, 400, etc.)
-            error_log(
-                "[weather] current API error — cod=" .
-                ($data['cod']    ?? 'unknown') .
-                " msg=" .
-                ($data['message'] ?? 'none')
-            );
+            error_log("[weather] current API error — cod=" . ($data['cod'] ?? 'unknown') .
+                      " msg=" . ($data['message'] ?? 'none') .
+                      " sample=" . substr($rawCurrent, 0, 150));
         }
     }
 
-    // ── Only write cache if we actually got valid current weather ──
     if ($success) {
-        // Protect existing forecast if new one is empty
+        // Preserve old forecast on partial failure
         if (empty($forecastDays) && file_exists($cachePath)) {
             $old = json_decode(file_get_contents($cachePath), true);
             if (is_array($old) && !empty($old['forecast'])) {
                 $forecastDays = $old['forecast'];
-                error_log("[weather] forecast fetch failed — preserved previous forecast data");
+                error_log("[weather] forecast fetch failed — preserved previous forecast");
             }
         }
 
@@ -247,8 +240,12 @@ if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
 
         $weatherValid = true;
 
-        error_log("[weather] SUCCESS — cache seeded at " . date('Y-m-d H:i:s'));
+        error_log("[weather] SUCCESS — cache seeded/updated at " . date('Y-m-d H:i:s'));
+    } else {
+        error_log("[weather] Fetch failed — keeping fallback (will retry next run)");
     }
+} else {
+    error_log("[weather] No fetch needed: valid cache + not stale yet");
 }
 
 #endregion
