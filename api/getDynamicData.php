@@ -46,6 +46,11 @@ $tz = new DateTimeZone("America/Phoenix");
 
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — FORCED SEED MODE
 
+error_log('[env] WEATHER_API_KEY raw getenv = ' . var_export(getenv('WEATHER_API_KEY'), true));
+error_log('[env] $_ENV key exists = ' . (isset($_ENV['WEATHER_API_KEY']) ? 'yes' : 'no'));
+error_log('[env] $_SERVER key exists = ' . (isset($_SERVER['WEATHER_API_KEY']) ? 'yes' : 'no'));
+
+
 $cachePath = $root . '/data/runtimeEphemeral/weatherCache.json';
 $versionsPath = $root . '/data/authoritative/versions.json';
 
