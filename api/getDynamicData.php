@@ -47,14 +47,13 @@ $tz = new DateTimeZone("America/Phoenix");
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
 // ────────────────────────────────────────────────────────────────
-// SMOKE TEST v2 — Confirm we can reach OpenWeatherMap and get valid data
-// Run this FIRST — before cache, versions, or any other logic
+// SMOKE TEST v2 — Confirm we can reach OpenWeatherMap
 // ────────────────────────────────────────────────────────────────
 
 $smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
 
 if ($smokeKey === '') {
-    error_log("[weather-smoke] ERROR: WEATHER_API_KEY is empty or not set in environment");
+    error_log("[weather-smoke] ERROR: WEATHER_API_KEY is empty or not set");
 } else {
     error_log("[weather-smoke] API key loaded (length: " . strlen($smokeKey) . ")");
 
@@ -72,37 +71,35 @@ if ($smokeKey === '') {
     $raw = @file_get_contents($url, false, $ctx);
 
     if ($raw === false) {
-        error_log("[weather-smoke] FETCH FAILED — network, SSL, allow_url_fopen or DNS issue");
+        error_log("[weather-smoke] FETCH FAILED — network / SSL / allow_url_fopen issue");
         $err = error_get_last();
-        if ($err) error_log("[weather-smoke] error_get_last: " . $err['message']);
+        if ($err) error_log("[weather-smoke] error: " . $err['message']);
     } else {
         $data = json_decode($raw, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("[weather-smoke] JSON parse failed: " . json_last_error_msg());
-            error_log("[weather-smoke] Raw response (first 200 chars): " . substr($raw, 0, 200));
+            error_log("[weather-smoke] JSON parse error: " . json_last_error_msg());
         } elseif (!is_array($data) || !isset($data['cod'])) {
-            error_log("[weather-smoke] Invalid response structure — not a valid JSON object with 'cod'");
+            error_log("[weather-smoke] Invalid response — no 'cod' field");
         } else {
             $cod = $data['cod'];
-            $codType = gettype($cod);
-            $codStr = (string)$cod;
             $hasTemp = isset($data['main']['temp']);
+            $codStr = (string)$cod;
 
-            error_log("[weather-smoke] Response cod: $cod ($codType) | as string: '$codStr' | has temp: " . ($hasTemp ? 'YES' : 'NO'));
+            error_log("[weather-smoke] cod: $codStr | has temp: " . ($hasTemp ? 'YES' : 'NO'));
 
             if (($codStr === '200' || (int)$cod === 200) && $hasTemp) {
                 $temp = round($data['main']['temp']);
                 $desc = $data['weather'][0]['description'] ?? 'unknown';
-                error_log("[weather-smoke] SUCCESS — valid data received → Temp: {$temp}°F, {$desc}");
+                error_log("[weather-smoke] SUCCESS — Temp: {$temp}°F, $desc");
             } else {
-                $msg = $data['message'] ?? 'no message field';
-                error_log("[weather-smoke] FAILURE — cod = $codStr, message = '$msg'");
-                error_log("[weather-smoke] Raw response sample (first 300 chars): " . substr($raw, 0, 300));
+                $msg = $data['message'] ?? 'no message';
+                error_log("[weather-smoke] FAILURE — cod=$codStr, msg='$msg'");
             }
         }
     }
 }
+// ────────────────────────────────────────────────────────────────
 
 $cachePath    = $root . '/data/runtimeEphemeral/weatherCache.json';
 $versionsPath = $root . '/data/authoritative/versions.json';
