@@ -10,6 +10,14 @@ declare(strict_types=1);
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
+
+echo "<pre>";
+echo "getenv('OPENAI_API_KEY'): " . (getenv('OPENAI_API_KEY') ? 'present (len ' . strlen(getenv('OPENAI_API_KEY')) . ')' : 'EMPTY') . "\n";
+echo "getenv('WEATHER_API_KEY'): " . (getenv('WEATHER_API_KEY') ? 'present (len ' . strlen(getenv('WEATHER_API_KEY')) . ')' : 'EMPTY') . "\n";
+echo "OPENAI_API_KEY in _ENV: " . (isset($_ENV['OPENAI_API_KEY']) ? 'YES' : 'NO') . "\n";
+echo "WEATHER_API_KEY in _ENV: " . (isset($_ENV['WEATHER_API_KEY']) ? 'YES' : 'NO') . "\n";
+echo "</pre>";
+
 #region SECTION 0 — Dependencies
 require_once __DIR__ . '/holidayInterpreter.php';
 #endregion
