@@ -695,22 +695,21 @@ const ActivePermitsCard = {
             }
         });
     },
-
+    // On show, update footer with live data
     onShow() {
-        // Update footer with relative time of last permit update
-        const nowUnix = sseData.timeDateArray.currentUnixTime;
+        const footer = this.instance?.footer;
+        if (!footer) return;
 
-        // choose the best available timestamp
-        const permitUnix =
-            permit.updatedAtUnix ||
-            permit.lastTouchedUnix ||
-            permit.createdAtUnix;
+        const nowUnix = sseData?.timeDateArray?.currentUnixTime;
+        const updatedUnix = permitRegistryMeta?.updatedOn;
 
-        const footerText = permitUnix
-            ? humanizeRelativeTime(permitUnix, nowUnix)
-            : 'status updated';
+        if (!nowUnix || !updatedUnix) return;
 
-        this.instance.footer.innerText = footerText;
+        const count = latestActivePermits?.length ?? 0;
+
+        footer.innerHTML = renderLiveFooter({
+            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix, nowUnix)}`
+        });
     },
     onHide() {
         window.SkyOfficeBoard.autoScroll.stop();
