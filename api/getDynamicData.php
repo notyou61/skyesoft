@@ -146,6 +146,12 @@ if ($shouldFetch) {
     $key = $weatherKey;
 
     $urlCurrent  = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout'       => 12,
+            'ignore_errors' => true
+        ]
+    ]);
     $rawCurrent  = @file_get_contents($urlCurrent, false, $ctx);
 
     $success = false;
