@@ -649,9 +649,9 @@ const ActivePermitsCard = {
             : 'empty';
 
         if (signature === this.lastSignature) {
-            if (footer && permitRegistryMeta?.updatedOn) {
+            if (footer) {
                 footer.innerHTML = renderLiveFooter({
-                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''} • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`
+                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`
                 });
             }
             return;
@@ -700,15 +700,13 @@ const ActivePermitsCard = {
         const footer = this.instance?.footer;
         if (!footer) return;
 
-        const nowUnix = sseData?.timeDateArray?.currentUnixTime;
         const updatedUnix = permitRegistryMeta?.updatedOn;
-
-        if (!nowUnix || !updatedUnix) return;
+        if (!updatedUnix) return;
 
         const count = latestActivePermits?.length ?? 0;
 
         footer.innerHTML = renderLiveFooter({
-            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix, nowUnix)}`
+            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix)}`
         });
     },
     onHide() {
