@@ -410,7 +410,7 @@ function mapWeatherIcon(icon, condition = '') {
 
     return '🌡️';
 }
-
+// render 3-day weather forecast into given elements
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
 
@@ -427,11 +427,19 @@ function renderThreeDayForecast(forecastEls, payload) {
         const { dateUnix, high, low, icon, condition } = dayData;
 
         let label = '—';
-        if (i === 0) label = 'Today';
-        else if (i === 1) label = 'Tomorrow';
-        else if (dateUnix) {
-            const d = new Date(dateUnix * 1000);
-            label = d.toLocaleDateString('en-US', { weekday: 'long' });
+
+        if (dateUnix) {
+            const d  = new Date(dateUnix * 1000);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+
+            if (i === 0) {
+                label = `Today (${mm}/${dd})`;
+            } else if (i === 1) {
+                label = `Tomorrow (${mm}/${dd})`;
+            } else {
+                label = `Day After Next (${mm}/${dd})`;
+            }
         }
 
         forecastEls[i].day.textContent   = label;
