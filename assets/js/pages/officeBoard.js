@@ -426,20 +426,18 @@ function renderThreeDayForecast(forecastEls, payload) {
     forecast.slice(0, 3).forEach((dayData, i) => {
         const { dateUnix, high, low, icon, condition } = dayData;
 
-        let label = '—';
+        // Base label (never empty)
+        let label =
+            i === 0 ? 'Today' :
+            i === 1 ? 'Tomorrow' :
+            'Day After Next';
 
+        // Optional date suffix
         if (dateUnix) {
             const d  = new Date(dateUnix * 1000);
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-
-            if (i === 0) {
-                label = `Today (${mm}/${dd})`;
-            } else if (i === 1) {
-                label = `Tomorrow (${mm}/${dd})`;
-            } else {
-                label = `Day After Next (${mm}/${dd})`;
-            }
+            label += ` (${mm}/${dd})`;
         }
 
         forecastEls[i].day.textContent   = label;
