@@ -650,31 +650,40 @@ const ActivePermitsCard = {
         const signature = permits.length
             ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
             : 'empty';
-        // Signature match check
+
+        // ── Common footer rendering logic ──
+        const renderFooter = () => {
+            if (!footer || !permitRegistryMeta?.updatedOn) return;
+
+            const updatedUnix = permitRegistryMeta.updatedOn;
+            const nowUnix = sseData?.timeDateArray?.currentUnixTime;
+
+            const timeText = nowUnix
+                ? humanizeRelativeTime(updatedUnix, nowUnix)
+                : formatTimestamp(updatedUnix);
+
+            const countText = `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`;
+
+            footer.innerHTML = renderLiveFooter({
+                text: `${countText} • Updated ${timeText}`
+            });
+        };
+
+        // Signature match → just update footer (live ticking)
         if (signature === this.lastSignature) {
-            // Footer live update
-            if (footer && permitRegistryMeta?.updatedOn) {
-                const updatedUnix = permitRegistryMeta.updatedOn;
-                const nowUnix = sseData?.timeDateArray?.currentUnixTime;
-
-                const timeText = nowUnix
-                    ? humanizeRelativeTime(updatedUnix, nowUnix)
-                    : formatTimestamp(updatedUnix);
-
-                footer.innerHTML = renderLiveFooter({
-                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''} • Updated ${timeText}`
-                });
-            }
-            // Return
+            renderFooter();
             return;
         }
 
+        // ── Data changed → full rebuild ──
         this.lastSignature = signature;
         body.innerHTML = '';
 
         if (permits.length === 0) {
             body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
-            footer && (footer.textContent = 'No permits found');
+            if (footer) {
+                footer.textContent = 'No permits found';
+            }
             return;
         }
 
@@ -695,11 +704,8 @@ const ActivePermitsCard = {
 
         body.appendChild(frag);
 
-        if (footer) {
-            let text = `${sorted.length} active permit${sorted.length !== 1 ? 's' : ''}`;
-            if (permitRegistryMeta?.updatedOn) text += ` • Updated ${formatTimestamp(permitRegistryMeta.updatedOn)}`;
-            footer.innerHTML = renderLiveFooter({ text });
-        }
+        // Always use the same footer logic after rebuild
+        renderFooter();
 
         requestAnimationFrame(() => {
             if (this.instance?.scrollWrap) {
@@ -707,22 +713,11 @@ const ActivePermitsCard = {
             }
         });
     },
-    // On show, update footer with live data
+
     onShow() {
-        const footer = this.instance?.footer;
-        if (!footer) return;
-
-        const nowUnix = sseData?.timeDateArray?.currentUnixTime;
-        const updatedUnix = permitRegistryMeta?.updatedOn;
-
-        if (!nowUnix || !updatedUnix) return;
-
-        const count = latestActivePermits?.length ?? 0;
-
-        footer.innerHTML = renderLiveFooter({
-            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix, nowUnix)}`
-        });
+        // Footer is now fully driven by SSE → no need for extra logic here
     },
+
     onHide() {
         window.SkyOfficeBoard.autoScroll.stop();
     }
