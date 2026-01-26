@@ -189,63 +189,75 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-
+// Reder Today's Highlights skeleton
 function renderTodaysHighlightsSkeleton() {
     return `
-        <div class="entry">
-            📅 <span id="todaysDate">—</span>
-            &nbsp;|&nbsp;
-            🗓️ Day <span id="dayOfYear">—</span>
-            (<span id="daysRemaining">—</span> remaining)
-        </div>
+        <div class="highlights-grid">
 
-        <hr class="card-divider">
+            <!-- LEFT COLUMN -->
+            <div class="highlights-col left-col">
 
-        <div class="entry">
-            🌄 Sunrise: <span id="sunriseTime">—</span>
-            &nbsp;|&nbsp;
-            🌇 Sunset: <span id="sunsetTime">—</span>
-        </div>
-
-        <div class="entry">
-            🕒 Daylight: <span id="daylightTime">—</span>
-            &nbsp;|&nbsp;
-            🌌 Night: <span id="nightTime">—</span>
-        </div>
-
-        <hr class="card-divider">
-
-        <div class="entry">
-            🎉 Next Holiday: <span id="nextHoliday">—</span>
-        </div>
-
-        <hr class="card-divider">
-
-        <div class="entry forecast">
-            <div class="entry-label">📅 3-Day Forecast</div>
-            <div class="forecast-grid">
-                <div class="forecast-row">
-                    <span class="day">—</span>
-                    <span class="icon">—</span>
-                    <span class="temps">— / —</span>
+                <div class="entry">
+                    📅 <span id="todaysDate">—</span>
+                    &nbsp;|&nbsp;
+                    🗓️ Day <span id="dayOfYear">—</span>
+                    (<span id="daysRemaining">—</span> remaining)
                 </div>
-                <div class="forecast-row">
-                    <span class="day">—</span>
-                    <span class="icon">—</span>
-                    <span class="temps">— / —</span>
+
+                <hr class="card-divider">
+
+                <div class="entry">
+                    🌄 Sunrise: <span id="sunriseTime">—</span>
+                    &nbsp;|&nbsp;
+                    🌇 Sunset: <span id="sunsetTime">—</span>
                 </div>
-                <div class="forecast-row">
-                    <span class="day">—</span>
-                    <span class="icon">—</span>
-                    <span class="temps">— / —</span>
+
+                <div class="entry">
+                    🕒 Daylight: <span id="daylightTime">—</span>
+                    &nbsp;|&nbsp;
+                    🌌 Night: <span id="nightTime">—</span>
                 </div>
+
+                <hr class="card-divider">
+
+                <div class="entry">
+                    🎉 Next Holiday: <span id="nextHoliday">—</span>
+                </div>
+
             </div>
-        </div>
 
-        <hr class="card-divider">
+            <!-- RIGHT COLUMN -->
+            <div class="highlights-col right-col">
 
-        <div class="entry" id="skyesoftTips">
-            💡 Skyesoft Tip: —
+                <div class="entry forecast">
+                    <div class="entry-label">📅 3-Day Forecast</div>
+
+                    <div class="forecast-grid">
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="card-divider">
+
+                <div class="entry" id="skyesoftTips">
+                    💡 Skyesoft Tip: —
+                </div>
+
+            </div>
         </div>
     `;
 }

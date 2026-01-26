@@ -47,6 +47,22 @@ body[data-page="officeBoard"] #pageFooter {
 }
 /* #endregion */
 
+/* #region Today's Highlights Grid */
+.highlights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+/* #endregion */
+
+/* #region Today's Highlights Column */
+.highlights-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+/* #endregion */
+
 /* #region Board Section Wrapper */
 body[data-page="officeBoard"] .board-section {
     width: 100%;
