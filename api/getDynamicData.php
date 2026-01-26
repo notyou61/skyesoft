@@ -11,7 +11,7 @@ declare(strict_types=1);
 // ======================================================================
 
 // ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
-$envPath = dirname(__DIR__, 4) . '/secure/.env';
+$envPath = dirname(__DIR__, 3) . '/secure/.env';
 
 if (file_exists($envPath) && is_readable($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
