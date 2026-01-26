@@ -47,14 +47,20 @@ $tz = new DateTimeZone("America/Phoenix");
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
 // ────────────────────────────────────────────────────────────────
-// SMOKE TEST v2 — Confirm we can reach OpenWeatherMap
+// SMOKE TEST v2 — PRINT TO BROWSER + LOG
+// This will show results directly when you visit the URL
 // ────────────────────────────────────────────────────────────────
+
+echo "<pre style='background:#111; color:#0f0; padding:15px; font-family:monospace; border:1px solid #333;'>";
+echo "<strong>Weather API Smoke Test (run at " . date('Y-m-d H:i:s T') . ")</strong>\n\n";
 
 $smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
 
 if ($smokeKey === '') {
+    echo "[ERROR] WEATHER_API_KEY is empty or not set in environment\n";
     error_log("[weather-smoke] ERROR: WEATHER_API_KEY is empty or not set");
 } else {
+    echo "[OK] API key loaded (length: " . strlen($smokeKey) . ")\n";
     error_log("[weather-smoke] API key loaded (length: " . strlen($smokeKey) . ")");
 
     $lat = 33.4484;
@@ -71,34 +77,54 @@ if ($smokeKey === '') {
     $raw = @file_get_contents($url, false, $ctx);
 
     if ($raw === false) {
-        error_log("[weather-smoke] FETCH FAILED — network / SSL / allow_url_fopen issue");
+        echo "[FAIL] Fetch failed — likely network, SSL, allow_url_fopen or hosting restriction\n";
         $err = error_get_last();
-        if ($err) error_log("[weather-smoke] error: " . $err['message']);
+        if ($err) {
+            echo "Error details: " . $err['message'] . "\n";
+            error_log("[weather-smoke] FETCH FAILED: " . $err['message']);
+        }
     } else {
         $data = json_decode($raw, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
+            echo "[FAIL] JSON parse error: " . json_last_error_msg() . "\n";
+            echo "Raw response (first 200 chars): " . substr($raw, 0, 200) . "\n";
             error_log("[weather-smoke] JSON parse error: " . json_last_error_msg());
         } elseif (!is_array($data) || !isset($data['cod'])) {
-            error_log("[weather-smoke] Invalid response — no 'cod' field");
+            echo "[FAIL] Invalid response — no 'cod' field\n";
+            echo "Raw sample: " . substr($raw, 0, 200) . "\n";
         } else {
             $cod = $data['cod'];
             $hasTemp = isset($data['main']['temp']);
             $codStr = (string)$cod;
 
-            error_log("[weather-smoke] cod: $codStr | has temp: " . ($hasTemp ? 'YES' : 'NO'));
+            echo "[INFO] cod: $codStr  |  has temp: " . ($hasTemp ? 'YES' : 'NO') . "\n";
 
             if (($codStr === '200' || (int)$cod === 200) && $hasTemp) {
                 $temp = round($data['main']['temp']);
                 $desc = $data['weather'][0]['description'] ?? 'unknown';
+                $sunrise = date('g:i A', $data['sys']['sunrise'] ?? time());
+                $sunset  = date('g:i A', $data['sys']['sunset'] ?? time());
+                echo "[SUCCESS] Valid data received!\n";
+                echo "  Temperature: {$temp} °F\n";
+                echo "  Condition:  $desc\n";
+                echo "  Sunrise:    $sunrise\n";
+                echo "  Sunset:     $sunset\n";
                 error_log("[weather-smoke] SUCCESS — Temp: {$temp}°F, $desc");
             } else {
                 $msg = $data['message'] ?? 'no message';
+                echo "[FAILURE] cod = $codStr, message = '$msg'\n";
+                echo "Raw sample: " . substr($raw, 0, 300) . "\n";
                 error_log("[weather-smoke] FAILURE — cod=$codStr, msg='$msg'");
             }
         }
     }
 }
+
+echo "</pre>\n\n<hr>\n";
+
+// ────────────────────────────────────────────────────────────────
+// Rest of your normal SECTION 2 code continues below...
 // ────────────────────────────────────────────────────────────────
 
 $cachePath    = $root . '/data/runtimeEphemeral/weatherCache.json';
