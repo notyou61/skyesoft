@@ -10,6 +10,28 @@ declare(strict_types=1);
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
+// ── Load root-level .env file ──────────────────────────────────────
+$envPath = dirname(__DIR__, 3) . '/.env';
+
+if (file_exists($envPath) && is_readable($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (strpos($line, '=') === false) continue;
+
+        [$key, $value] = explode('=', $line, 2);
+        $key   = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+
+        putenv("$key=$value");
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;  // extra safety
+    }
+    error_log("[env-loader] Successfully loaded root .env: $envPath");
+} else {
+    error_log("[env-loader] Failed to load .env at $envPath (missing / not readable / permissions)");
+}
 
 echo "<pre>";
 echo "getenv('OPENAI_API_KEY'): " . (getenv('OPENAI_API_KEY') ? 'present (len ' . strlen(getenv('OPENAI_API_KEY')) . ')' : 'EMPTY') . "\n";
