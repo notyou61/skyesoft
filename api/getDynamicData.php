@@ -10,43 +10,6 @@ declare(strict_types=1);
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
-// ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
-$envPath = dirname(__DIR__, 3) . '/secure/.env';
-
-if (file_exists($envPath) && is_readable($envPath)) {
-    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-    foreach ($lines as $line) {
-        $line = trim($line);
-
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        if (strpos($line, '=') === false) continue;
-
-        [$key, $value] = explode('=', $line, 2);
-        $key   = trim($key);
-        $value = trim($value, " \t\n\r\0\x0B\"'");
-
-        putenv("$key=$value");
-        $_ENV[$key]    = $value;
-        $_SERVER[$key] = $value; // for shared-host compatibility
-    }
-
-    error_log("[env-loader] Loaded .env from $envPath");
-} else {
-    error_log("[env-loader] FAILED to load .env at $envPath");
-}
-
-// ── Diagnostic output (TEMP — remove once verified) ─────────────────
-echo "<pre>";
-echo "getenv('OPENAI_API_KEY'): " .
-     (getenv('OPENAI_API_KEY') ? 'present (len ' . strlen(getenv('OPENAI_API_KEY')) . ')' : 'EMPTY') . "\n";
-echo "getenv('WEATHER_API_KEY'): " .
-     (getenv('WEATHER_API_KEY') ? 'present (len ' . strlen(getenv('WEATHER_API_KEY')) . ')' : 'EMPTY') . "\n";
-echo "OPENAI_API_KEY in _ENV: " . (isset($_ENV['OPENAI_API_KEY']) ? 'YES' : 'NO') . "\n";
-echo "WEATHER_API_KEY in _ENV: " . (isset($_ENV['WEATHER_API_KEY']) ? 'YES' : 'NO') . "\n";
-echo "</pre>";
-
-
 #region SECTION 0 — Dependencies
 require_once __DIR__ . '/holidayInterpreter.php';
 #endregion
@@ -83,87 +46,31 @@ $tz = new DateTimeZone("America/Phoenix");
 
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
-// ────────────────────────────────────────────────────────────────
-// SMOKE TEST v2 — PRINT TO BROWSER + LOG
-// This will show results directly when you visit the URL
-// ────────────────────────────────────────────────────────────────
+// ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
+$envPath = dirname(__DIR__, 3) . '/secure/.env';
 
-echo "<pre style='background:#111; color:#0f0; padding:15px; font-family:monospace; border:1px solid #333;'>";
-echo "<strong>Weather API Smoke Test (run at " . date('Y-m-d H:i:s T') . ")</strong>\n\n";
+if (file_exists($envPath) && is_readable($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
-//$smokeKey = '0fd7b16fe667ade38033ebb5c871aab8';
+    foreach ($lines as $line) {
+        $line = trim($line);
 
-if ($smokeKey === '') {
-    echo "[ERROR] WEATHER_API_KEY is empty or not set in environment\n";
-    error_log("[weather-smoke] ERROR: WEATHER_API_KEY is empty or not set");
-} else {
-    echo "[OK] API key loaded (length: " . strlen($smokeKey) . ")\n";
-    error_log("[weather-smoke] API key loaded (length: " . strlen($smokeKey) . ")");
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (strpos($line, '=') === false) continue;
 
-    $lat = 33.4484;
-    $lon = -112.0740;
-    $url = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$smokeKey}";
+        [$key, $value] = explode('=', $line, 2);
+        $key   = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
 
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout'       => 10,
-            'ignore_errors' => true,
-        ]
-    ]);
-
-    $raw = @file_get_contents($url, false, $ctx);
-
-    if ($raw === false) {
-        echo "[FAIL] Fetch failed — likely network, SSL, allow_url_fopen or hosting restriction\n";
-        $err = error_get_last();
-        if ($err) {
-            echo "Error details: " . $err['message'] . "\n";
-            error_log("[weather-smoke] FETCH FAILED: " . $err['message']);
-        }
-    } else {
-        $data = json_decode($raw, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            echo "[FAIL] JSON parse error: " . json_last_error_msg() . "\n";
-            echo "Raw response (first 200 chars): " . substr($raw, 0, 200) . "\n";
-            error_log("[weather-smoke] JSON parse error: " . json_last_error_msg());
-        } elseif (!is_array($data) || !isset($data['cod'])) {
-            echo "[FAIL] Invalid response — no 'cod' field\n";
-            echo "Raw sample: " . substr($raw, 0, 200) . "\n";
-        } else {
-            $cod = $data['cod'];
-            $hasTemp = isset($data['main']['temp']);
-            $codStr = (string)$cod;
-
-            echo "[INFO] cod: $codStr  |  has temp: " . ($hasTemp ? 'YES' : 'NO') . "\n";
-
-            if (($codStr === '200' || (int)$cod === 200) && $hasTemp) {
-                $temp = round($data['main']['temp']);
-                $desc = $data['weather'][0]['description'] ?? 'unknown';
-                $sunrise = date('g:i A', $data['sys']['sunrise'] ?? time());
-                $sunset  = date('g:i A', $data['sys']['sunset'] ?? time());
-                echo "[SUCCESS] Valid data received!\n";
-                echo "  Temperature: {$temp} °F\n";
-                echo "  Condition:  $desc\n";
-                echo "  Sunrise:    $sunrise\n";
-                echo "  Sunset:     $sunset\n";
-                error_log("[weather-smoke] SUCCESS — Temp: {$temp}°F, $desc");
-            } else {
-                $msg = $data['message'] ?? 'no message';
-                echo "[FAILURE] cod = $codStr, message = '$msg'\n";
-                echo "Raw sample: " . substr($raw, 0, 300) . "\n";
-                error_log("[weather-smoke] FAILURE — cod=$codStr, msg='$msg'");
-            }
-        }
+        putenv("$key=$value");
+        $_ENV[$key]    = $value;
+        $_SERVER[$key] = $value; // for shared-host compatibility
     }
+
+    error_log("[env-loader] Loaded .env from $envPath");
+} else {
+    error_log("[env-loader] FAILED to load .env at $envPath");
 }
-
-echo "</pre>\n\n<hr>\n";
-
-// ────────────────────────────────────────────────────────────────
-// Rest of your normal SECTION 2 code continues below...
-// ────────────────────────────────────────────────────────────────
 
 $cachePath    = $root . '/data/runtimeEphemeral/weatherCache.json';
 $versionsPath = $root . '/data/authoritative/versions.json';
@@ -239,17 +146,7 @@ if ($shouldFetch) {
     $key = $weatherKey;
 
     $urlCurrent  = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
-    $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
-
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout'       => 12,
-            'ignore_errors' => true
-        ]
-    ]);
-
     $rawCurrent  = @file_get_contents($urlCurrent, false, $ctx);
-    $rawForecast = @file_get_contents($urlForecast, false, $ctx);
 
     $success = false;
 
