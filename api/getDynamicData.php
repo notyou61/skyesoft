@@ -187,7 +187,64 @@ if ($shouldFetch) {
             'source'          => 'openweathermap'
         ];
 
-            $success = true;
+        $success = true;
+
+        // ── Fetch 3-day forecast (best-effort, non-blocking) ──
+        $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
+        $rawForecast = @file_get_contents($urlForecast, false, $ctx);
+
+        if ($rawForecast !== false) {
+            $f = json_decode($rawForecast, true);
+
+            if (
+                is_array($f) &&
+                isset($f['cod']) &&
+                ((string)$f['cod'] === '200' || (int)$f['cod'] === 200) &&
+                isset($f['list']) && is_array($f['list'])
+            ) {
+                $daily = [];
+
+                foreach ($f['list'] as $slot) {
+                    $date = date('Y-m-d', $slot['dt']);
+
+                    if (!isset($daily[$date])) {
+                        $daily[$date] = [
+                            'high' => -INF,
+                            'low'  => INF,
+                            'icon' => null
+                        ];
+                    }
+
+                    $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
+                    $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
+
+                    // Prefer midday icon
+                    if (date('G', $slot['dt']) >= 11 && date('G', $slot['dt']) <= 14) {
+                        $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '04d';
+                    }
+                }
+
+                $i = 0;
+                foreach ($daily as $date => $d) {
+                    if ($i >= 3) break;
+
+                    $forecastDays[] = [
+                        'dateUnix' => strtotime($date),
+                        'high'     => round($d['high']),
+                        'low'      => round($d['low']),
+                        'icon'     => $d['icon'] ?? '04d'
+                    ];
+                    $i++;
+                }
+
+                error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
+            } else {
+                error_log("[weather] Forecast API returned invalid structure");
+            }
+        } else {
+            error_log("[weather] Forecast fetch failed (non-fatal)");
+        }
+
 
         } else {
             error_log("[weather] current API error — cod=" . ($data['cod'] ?? 'unknown') .
