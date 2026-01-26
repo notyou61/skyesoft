@@ -54,8 +54,8 @@ $tz = new DateTimeZone("America/Phoenix");
 echo "<pre style='background:#111; color:#0f0; padding:15px; font-family:monospace; border:1px solid #333;'>";
 echo "<strong>Weather API Smoke Test (run at " . date('Y-m-d H:i:s T') . ")</strong>\n\n";
 
-//$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
-$smokeKey = '0fd7b16fe667ade38033ebb5c871aab8';
+$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
+//$smokeKey = '0fd7b16fe667ade38033ebb5c871aab8';
 
 if ($smokeKey === '') {
     echo "[ERROR] WEATHER_API_KEY is empty or not set in environment\n";
@@ -221,74 +221,34 @@ if ($shouldFetch) {
     } else {
         $data = json_decode($rawCurrent, true);
 
-        if (
-            is_array($data) &&
-            isset($data['cod']) &&
-            (string)$data['cod'] === '200' &&
-            isset($data['main']['temp'])
-        ) {
-            // ── SUCCESS PATH ──
-            $sunrise = $data['sys']['sunrise'] ?? null;
-            $sunset  = $data['sys']['sunset']  ?? null;
+    if (
+        is_array($data) &&
+        array_key_exists('cod', $data) &&
+        ((string)$data['cod'] === '200' || (int)$data['cod'] === 200) &&
+        isset($data['main']) && is_array($data['main']) &&
+        array_key_exists('temp', $data['main']) && $data['main']['temp'] !== null
+    ) {
+        error_log("[weather] MAIN SUCCESS PATH — cod = " . $data['cod'] . ", temp = " . $data['main']['temp']);
 
-            $currentWeather = [
-                'temp'            => round($data['main']['temp']),
-                'condition'       => $data['weather'][0]['description'] ?? 'unknown',
-                'icon'            => $data['weather'][0]['icon']       ?? '01d',
-                'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
-                'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
-                'sunriseUnix'     => $sunrise,
-                'sunsetUnix'      => $sunset,
-                'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
-                'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
-                'source'          => 'openweathermap'
-            ];
+        // ── SUCCESS PATH ──
+        $sunrise = $data['sys']['sunrise'] ?? null;
+        $sunset  = $data['sys']['sunset']  ?? null;
 
-            // Forecast — best effort
-            $forecastDays = [];
-
-            if ($rawForecast !== false) {
-                $f = json_decode($rawForecast, true);
-                if (
-                    is_array($f) &&
-                    isset($f['cod']) &&
-                    (string)$f['cod'] === '200' &&
-                    isset($f['list'])
-                ) {
-                    $daily = [];
-                    foreach ($f['list'] as $slot) {
-                        $date = date('Y-m-d', $slot['dt']);
-                        if (!isset($daily[$date])) {
-                            $daily[$date] = ['high' => -999, 'low' => 999, 'icon' => ''];
-                        }
-                        $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max'] ?? -999);
-                        $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min'] ?? 999);
-                        if (date('G', $slot['dt']) == 12) {
-                            $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '01d';
-                        }
-                    }
-
-                    $labels = ['Today', 'Tomorrow'];
-                    $i = 0;
-                    foreach ($daily as $date => $d) {
-                        if ($i >= 3) break;
-                        $forecastDays[] = [
-                            'label'     => $labels[$i] ?? date('l', strtotime($date)),
-                            'high'      => round($d['high']),
-                            'low'       => round($d['low']),
-                            'icon'      => $d['icon'] ?: '01d',
-                            'condition' => 'Partly Cloudy' // placeholder
-                        ];
-                        $i++;
-                    }
-                } else {
-                    error_log("[weather] forecast response invalid/unavailable — cod=" . ($f['cod'] ?? 'missing') . " msg=" . ($f['message'] ?? 'none'));
-                }
-            } else {
-                error_log("[weather] file_get_contents failed (forecast) — network issue");
-            }
+        $currentWeather = [
+            'temp'            => round($data['main']['temp']),
+            'condition'       => $data['weather'][0]['description'] ?? 'unknown',
+            'icon'            => $data['weather'][0]['icon']       ?? '04d',
+            'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
+            'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
+            'sunriseUnix'     => $sunrise,
+            'sunsetUnix'      => $sunset,
+            'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
+            'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
+            'source'          => 'openweathermap'
+        ];
 
             $success = true;
+
         } else {
             error_log("[weather] current API error — cod=" . ($data['cod'] ?? 'unknown') .
                       " msg=" . ($data['message'] ?? 'none') .
