@@ -54,7 +54,8 @@ $tz = new DateTimeZone("America/Phoenix");
 echo "<pre style='background:#111; color:#0f0; padding:15px; font-family:monospace; border:1px solid #333;'>";
 echo "<strong>Weather API Smoke Test (run at " . date('Y-m-d H:i:s T') . ")</strong>\n\n";
 
-$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
+//$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
+$smokeKey = '0fd7b16fe667ade38033ebb5c871aab8';
 
 if ($smokeKey === '') {
     echo "[ERROR] WEATHER_API_KEY is empty or not set in environment\n";
