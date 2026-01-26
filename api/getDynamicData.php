@@ -47,20 +47,20 @@ $tz = new DateTimeZone("America/Phoenix");
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
 
 // ────────────────────────────────────────────────────────────────
-// IMMEDIATE API SMOKE TEST — run this first to confirm connectivity + key
-// Place this at the TOP of SECTION 2 — before cache or versions loading
+// SMOKE TEST v2 — Confirm we can reach OpenWeatherMap and get valid data
+// Run this FIRST — before cache, versions, or any other logic
 // ────────────────────────────────────────────────────────────────
 
-$testWeatherKey = trim(getenv('WEATHER_API_KEY') ?: '');
+$smokeKey = trim(getenv('WEATHER_API_KEY') ?: '');
 
-if ($testWeatherKey === '') {
-    error_log("[weather][SMOKE-TEST] CRITICAL: WEATHER_API_KEY is EMPTY or not set in environment");
+if ($smokeKey === '') {
+    error_log("[weather-smoke] ERROR: WEATHER_API_KEY is empty or not set in environment");
 } else {
-    error_log("[weather][SMOKE-TEST] API key found (length: " . strlen($testWeatherKey) . ")");
+    error_log("[weather-smoke] API key loaded (length: " . strlen($smokeKey) . ")");
 
     $lat = 33.4484;
     $lon = -112.0740;
-    $testUrl = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$testWeatherKey}";
+    $url = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$smokeKey}";
 
     $ctx = stream_context_create([
         'http' => [
@@ -69,36 +69,36 @@ if ($testWeatherKey === '') {
         ]
     ]);
 
-    $raw = @file_get_contents($testUrl, false, $ctx);
+    $raw = @file_get_contents($url, false, $ctx);
 
     if ($raw === false) {
+        error_log("[weather-smoke] FETCH FAILED — network, SSL, allow_url_fopen or DNS issue");
         $err = error_get_last();
-        error_log("[weather][SMOKE-TEST] FETCH FAILED — network/SSL/allow_url_fopen issue");
-        error_log("[weather][SMOKE-TEST] error_get_last: " . print_r($err, true));
+        if ($err) error_log("[weather-smoke] error_get_last: " . $err['message']);
     } else {
-        $len = strlen($raw);
-        error_log("[weather][SMOKE-TEST] Raw response length: $len bytes");
-
         $data = json_decode($raw, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("[weather][SMOKE-TEST] JSON decode failed: " . json_last_error_msg());
-            error_log("[weather][SMOKE-TEST] Raw sample (first 250 chars): " . substr($raw, 0, 250));
-        } elseif (!is_array($data)) {
-            error_log("[weather][SMOKE-TEST] Response is not a JSON object/array");
+            error_log("[weather-smoke] JSON parse failed: " . json_last_error_msg());
+            error_log("[weather-smoke] Raw response (first 200 chars): " . substr($raw, 0, 200));
+        } elseif (!is_array($data) || !isset($data['cod'])) {
+            error_log("[weather-smoke] Invalid response structure — not a valid JSON object with 'cod'");
         } else {
-            $cod = $data['cod'] ?? 'missing';
-            $msg = $data['message'] ?? 'no message';
-            $tempExists = isset($data['main']['temp']) ? 'YES' : 'NO';
+            $cod = $data['cod'];
+            $codType = gettype($cod);
+            $codStr = (string)$cod;
+            $hasTemp = isset($data['main']['temp']);
 
-            error_log("[weather][SMOKE-TEST] API response — cod: $cod | message: $msg | temp exists: $tempExists");
+            error_log("[weather-smoke] Response cod: $cod ($codType) | as string: '$codStr' | has temp: " . ($hasTemp ? 'YES' : 'NO'));
 
-            if ((string)$cod === '200' && $tempExists === 'YES') {
+            if (($codStr === '200' || (int)$cod === 200) && $hasTemp) {
                 $temp = round($data['main']['temp']);
-                error_log("[weather][SMOKE-TEST] SUCCESS — valid weather object received (temp ≈ $temp °F)");
+                $desc = $data['weather'][0]['description'] ?? 'unknown';
+                error_log("[weather-smoke] SUCCESS — valid data received → Temp: {$temp}°F, {$desc}");
             } else {
-                error_log("[weather][SMOKE-TEST] FAILURE — did not receive valid 200 + temp");
-                error_log("[weather][SMOKE-TEST] Raw sample (first 250 chars): " . substr($raw, 0, 250));
+                $msg = $data['message'] ?? 'no message field';
+                error_log("[weather-smoke] FAILURE — cod = $codStr, message = '$msg'");
+                error_log("[weather-smoke] Raw response sample (first 300 chars): " . substr($raw, 0, 300));
             }
         }
     }
