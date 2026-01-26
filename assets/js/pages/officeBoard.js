@@ -517,14 +517,17 @@ function resolveCardFooter(cardId) {
 
 }
 // Humanize relative time helper
-function humanizeRelativeTime(unixSeconds) {
-    const seconds = Math.floor(Date.now() / 1000) - unixSeconds;
+function humanizeRelativeTime(updatedUnix, referenceUnix = null) {
+    const now = referenceUnix ?? Math.floor(Date.now() / 1000);
+    const seconds = now - updatedUnix;
+
+    if (seconds < 0) return 'just now';
 
     const units = [
-        { label: 'month',   value: 60 * 60 * 24 * 30 },
-        { label: 'day',     value: 60 * 60 * 24 },
-        { label: 'hour',    value: 60 * 60 },
-        { label: 'minute',  value: 60 }
+        { label: 'month',  value: 60 * 60 * 24 * 30 },
+        { label: 'day',    value: 60 * 60 * 24 },
+        { label: 'hour',   value: 60 * 60 },
+        { label: 'minute', value: 60 }
     ];
 
     for (const unit of units) {
@@ -647,13 +650,22 @@ const ActivePermitsCard = {
         const signature = permits.length
             ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
             : 'empty';
-
+        // Signature match check
         if (signature === this.lastSignature) {
-            if (footer) {
+            // Footer live update
+            if (footer && permitRegistryMeta?.updatedOn) {
+                const updatedUnix = permitRegistryMeta.updatedOn;
+                const nowUnix = sseData?.timeDateArray?.currentUnixTime;
+
+                const timeText = nowUnix
+                    ? humanizeRelativeTime(updatedUnix, nowUnix)
+                    : formatTimestamp(updatedUnix);
+
                 footer.innerHTML = renderLiveFooter({
-                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`
+                    text: `${permits.length} active permit${permits.length !== 1 ? 's' : ''} • Updated ${timeText}`
                 });
             }
+            // Return
             return;
         }
 
@@ -700,13 +712,15 @@ const ActivePermitsCard = {
         const footer = this.instance?.footer;
         if (!footer) return;
 
+        const nowUnix = sseData?.timeDateArray?.currentUnixTime;
         const updatedUnix = permitRegistryMeta?.updatedOn;
-        if (!updatedUnix) return;
+
+        if (!nowUnix || !updatedUnix) return;
 
         const count = latestActivePermits?.length ?? 0;
 
         footer.innerHTML = renderLiveFooter({
-            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix)}`
+            text: `${count} active permit${count !== 1 ? 's' : ''} • Updated ${humanizeRelativeTime(updatedUnix, nowUnix)}`
         });
     },
     onHide() {
