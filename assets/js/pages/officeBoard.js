@@ -189,7 +189,7 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-// Reder Today's Highlights skeleton
+// Render Today's Highlights skeleton
 function renderTodaysHighlightsSkeleton() {
     return `
         <div class="highlights-grid">
@@ -399,7 +399,7 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour12: true
     });
 }
-// map weather icon code to emoji
+// Map weather icon code to emoji
 function mapWeatherIcon(icon, condition = '') {
     const map = {
         sunny:          '☀️',

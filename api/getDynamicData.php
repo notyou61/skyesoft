@@ -80,6 +80,22 @@ if (file_exists($cachePath)) {
     }
 }
 
+// ────────────────────────────────────────────────
+// Weather API diagnostics (safe for SSE)
+// ────────────────────────────────────────────────
+$key = $weatherKey; // already trimmed + verified
+
+if ($key === '') {
+    error_log('[weather] ABORT — missing WEATHER_API_KEY (live fetch skipped)');
+    $shouldRefreshWeather = false;
+}
+
+if ($weatherKey === '') {
+    error_log('[weather][DIAG] WEATHER_API_KEY is EMPTY');
+} else {
+    error_log('[weather][DIAG] WEATHER_API_KEY present (len=' . strlen($weatherKey) . ')');
+}
+
 // LIVE FETCH — only if needed
 if ($shouldRefreshWeather || !$weatherValid) {
     $lat = 33.4484; $lon = -112.0740;
