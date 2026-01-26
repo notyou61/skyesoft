@@ -81,30 +81,34 @@ if (file_exists($cachePath)) {
 }
 
 // ────────────────────────────────────────────────
-// Weather API diagnostics (safe for SSE)
+// Weather API key (single source of truth)
 // ────────────────────────────────────────────────
-$key = $weatherKey; // already trimmed + verified
-
-if ($key === '') {
-    error_log('[weather] ABORT — missing WEATHER_API_KEY (live fetch skipped)');
-    $shouldRefreshWeather = false;
-}
+$weatherKey = trim(getenv('WEATHER_API_KEY') ?: '');
 
 if ($weatherKey === '') {
     error_log('[weather][DIAG] WEATHER_API_KEY is EMPTY');
+    $shouldRefreshWeather = false; // hard stop — prevent bad calls
 } else {
     error_log('[weather][DIAG] WEATHER_API_KEY present (len=' . strlen($weatherKey) . ')');
 }
 
 // LIVE FETCH — only if needed
-if ($shouldRefreshWeather || !$weatherValid) {
-    $lat = 33.4484; $lon = -112.0740;
-    $key = trim($env['WEATHER_API_KEY'] ?? '');
-    $urlCurrent = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
+if (($shouldRefreshWeather || !$weatherValid) && $weatherKey !== '') {
+    $lat = 33.4484;
+    $lon = -112.0740;
+    $key = $weatherKey;
+
+    $urlCurrent  = "https://api.openweathermap.org/data/2.5/weather?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
     $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
 
-    $ctx = stream_context_create(['http' => ['timeout' => 12]]);
-    $rawCurrent = file_get_contents($urlCurrent, false, $ctx);
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 12,
+            'ignore_errors' => true
+        ]
+    ]);
+
+    $rawCurrent  = file_get_contents($urlCurrent, false, $ctx);
     $rawForecast = file_get_contents($urlForecast, false, $ctx);
 
     if ($rawCurrent !== false) {
