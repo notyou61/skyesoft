@@ -10,13 +10,16 @@ declare(strict_types=1);
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
-// ── Load root-level .env file ──────────────────────────────────────
-$envPath = dirname(__DIR__, 3) . '/.env';
+// ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
+$envPath = $_SERVER['HOME'] . '/secure/.env';
 
 if (file_exists($envPath) && is_readable($envPath)) {
     $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
     foreach ($lines as $line) {
         $line = trim($line);
+
+        // Skip comments / blanks
         if ($line === '' || str_starts_with($line, '#')) continue;
         if (strpos($line, '=') === false) continue;
 
@@ -25,20 +28,25 @@ if (file_exists($envPath) && is_readable($envPath)) {
         $value = trim($value, " \t\n\r\0\x0B\"'");
 
         putenv("$key=$value");
-        $_ENV[$key] = $value;
-        $_SERVER[$key] = $value;  // extra safety
+        $_ENV[$key]    = $value;
+        $_SERVER[$key] = $value; // extra safety for shared hosts
     }
-    error_log("[env-loader] Successfully loaded root .env: $envPath");
+
+    error_log("[env-loader] Loaded .env from /secure");
 } else {
-    error_log("[env-loader] Failed to load .env at $envPath (missing / not readable / permissions)");
+    error_log("[env-loader] FAILED to load /secure/.env (missing / unreadable)");
 }
 
+// ── Diagnostic output (TEMP — remove once verified) ─────────────────
 echo "<pre>";
-echo "getenv('OPENAI_API_KEY'): " . (getenv('OPENAI_API_KEY') ? 'present (len ' . strlen(getenv('OPENAI_API_KEY')) . ')' : 'EMPTY') . "\n";
-echo "getenv('WEATHER_API_KEY'): " . (getenv('WEATHER_API_KEY') ? 'present (len ' . strlen(getenv('WEATHER_API_KEY')) . ')' : 'EMPTY') . "\n";
+echo "getenv('OPENAI_API_KEY'): " .
+     (getenv('OPENAI_API_KEY') ? 'present (len ' . strlen(getenv('OPENAI_API_KEY')) . ')' : 'EMPTY') . "\n";
+echo "getenv('WEATHER_API_KEY'): " .
+     (getenv('WEATHER_API_KEY') ? 'present (len ' . strlen(getenv('WEATHER_API_KEY')) . ')' : 'EMPTY') . "\n";
 echo "OPENAI_API_KEY in _ENV: " . (isset($_ENV['OPENAI_API_KEY']) ? 'YES' : 'NO') . "\n";
 echo "WEATHER_API_KEY in _ENV: " . (isset($_ENV['WEATHER_API_KEY']) ? 'YES' : 'NO') . "\n";
 echo "</pre>";
+
 
 #region SECTION 0 — Dependencies
 require_once __DIR__ . '/holidayInterpreter.php';
