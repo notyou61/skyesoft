@@ -204,6 +204,13 @@ function renderTodaysHighlightsSkeleton() {
                     (<span id="daysRemaining">—</span> remaining)
                 </div>
 
+                <!-- ✅ NEW: Season Progress -->
+                <div class="entry highlight-season">
+                    ❄️ <span id="seasonName">—</span>
+                    — Day <span id="seasonDay">—</span>
+                    (<span id="seasonDaysLeft">—</span> days left)
+                </div>
+
                 <hr class="card-divider">
 
                 <div class="entry">
@@ -570,6 +577,50 @@ function applyHighlightsDensity(cardEl) {
         cardEl.classList.remove('dense');
     }
 }
+// Get Season Summary
+function getSeasonSummary(date = new Date()) {
+    const year = date.getFullYear();
+
+    const seasons = [
+        { name: 'Winter', start: new Date(year, 11, 21) }, // Dec 21
+        { name: 'Spring', start: new Date(year, 2, 20) },  // Mar 20
+        { name: 'Summer', start: new Date(year, 5, 21) },  // Jun 21
+        { name: 'Fall',   start: new Date(year, 8, 22) }   // Sep 22
+    ];
+
+    // Handle early January as Winter of previous year
+    if (date < seasons[1].start) {
+        seasons[0].start = new Date(year - 1, 11, 21);
+    }
+
+    let current, next;
+
+    for (let i = 0; i < seasons.length; i++) {
+        const start = seasons[i].start;
+        const nextStart = seasons[(i + 1) % seasons.length].start;
+
+        if (date >= start && date < nextStart) {
+            current = seasons[i];
+            next = seasons[(i + 1) % seasons.length];
+            break;
+        }
+    }
+
+    if (!current) {
+        current = seasons[0];
+        next = seasons[1];
+    }
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const dayOfSeason = Math.floor((date - current.start) / msPerDay) + 1;
+    const daysRemaining = Math.ceil((next.start - date) / msPerDay);
+
+    return {
+        name: current.name,
+        dayOfSeason,
+        daysRemaining
+    };
+}
 
 // #endregion
 
@@ -798,7 +849,22 @@ const TodaysHighlightsCard = {
             renderThreeDayForecast(this.forecastElements, payload);
         }
 
+        // ── NEW: Season progress (once per update) ──
+        const season = getSeasonSummary(
+            payload?.timeDateArray?.currentUnixTime
+        );
+
+        if (season) {
+            const seasonNameEl      = document.getElementById('seasonName');
+            const seasonDayEl       = document.getElementById('seasonDay');
+            const seasonDaysLeftEl  = document.getElementById('seasonDaysLeft');
+
+            if (seasonNameEl)     seasonNameEl.textContent     = season.name;
+            if (seasonDayEl)      seasonDayEl.textContent      = season.day;
+            if (seasonDaysLeftEl) seasonDaysLeftEl.textContent = season.daysRemaining;
+        }
     },
+
     // Show handler
     onShow() {
         // Apply Highlights Density mode
