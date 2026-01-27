@@ -188,6 +188,23 @@ body[data-page="officeBoard"] #boardCardHost {
 /* Card content entries: vertical padding */
 .cardContent .entry {
     padding: 2px 0;
+    font-size: 1.02em;     /* subtle, monitor-safe bump */
+    line-height: 1.45;     /* improves distance readability */
+}
+.cardContent .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-weight: 600;
+    font-size: 0.88em;
+    opacity: 0.9;
+
+    margin-top: 6px;
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 /* #endregion */
@@ -297,16 +314,6 @@ body[data-page="officeBoard"] #boardCardHost {
     margin-top: 4px;
 }
 
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    font-size: 0.85em;
-    opacity: 0.85;
-    margin-bottom: 1px;
-}
-
 .section-title {
     letter-spacing: 0.2px;
 }
@@ -315,6 +322,13 @@ body[data-page="officeBoard"] #boardCardHost {
     padding: 1px 0;
     font-size: 0.95em;
     line-height: 1.3;
+}
+
+/* Compact tip text refinement */
+#skyesoftTips {
+    font-style: italic;
+    font-size: 0.95em;
+    opacity: 0.9;
 }
 
 .kpi-placeholder {
@@ -331,10 +345,6 @@ body[data-page="officeBoard"] #boardCardHost {
     padding-top: 4px;
     max-height: 110px;
     overflow: hidden;
-}
-
-#skyesoftTips {
-    font-style: italic;
 }
 
 .entry-label {
@@ -356,6 +366,12 @@ body[data-page="officeBoard"] #boardCardHost {
     .highlights-list,
     .announcement-list {
         font-size: 0.95em;
+    }
+}
+
+@media (min-width: 1400px) {
+    .cardContent .section-header {
+        font-size: 0.9em;
     }
 }
 

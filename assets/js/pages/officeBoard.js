@@ -449,7 +449,8 @@ function renderRandomTip(el) {
     const tip = tips[Math.floor(Math.random() * tips.length)];
     if (!tip?.text) return;
 
-    el.textContent = `💡 Skyesoft Tip: ${tip.text}`;
+    // ❌ REMOVE emoji here
+    el.textContent = tip.text;
 }
 // build initial payload with current time
 function buildInitialTimePayload() {
@@ -887,11 +888,14 @@ const TodaysHighlightsCard = {
             const nameEl = document.getElementById('seasonName');
             const dayEl  = document.getElementById('seasonDay');
             const remEl  = document.getElementById('seasonDaysLeft');
+            const iconEl = document.getElementById('seasonIcon');
 
             if (nameEl) nameEl.textContent = season.name;
             if (dayEl)  dayEl.textContent  = season.day;
             if (remEl)  remEl.textContent  = season.daysRemaining;
+            if (iconEl) iconEl.textContent = getSeasonIcon(season.name);
         }
+
     },
     // Show handler
     onShow() {
