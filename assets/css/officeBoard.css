@@ -200,6 +200,16 @@ body[data-page="officeBoard"] #boardCardHost {
 .card-highlights.compact .cardBody {
     justify-content: flex-start;
 }
+/* Highlights column: vertical flex */
+.highlights-col {
+    display: flex;
+    flex-direction: column;
+}
+/* Highlights spacer: flexible grow */
+.highlights-spacer {
+    flex-grow: 1;
+}
+
 
 /* #endregion */
 
