@@ -268,6 +268,45 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
+// Get Season Summary 
+function getSeasonSummary(unixSeconds) {
+    if (!unixSeconds || isNaN(unixSeconds)) return null;
+
+    const date = new Date(unixSeconds * 1000);
+    const year = date.getFullYear();
+
+    // Meteorological seasons (predictable, signage-friendly)
+    const seasons = [
+        { name: 'Winter', start: new Date(year, 11, 1),  end: new Date(year + 1, 2, 1) },
+        { name: 'Spring', start: new Date(year, 2, 1),   end: new Date(year, 5, 1) },
+        { name: 'Summer', start: new Date(year, 5, 1),   end: new Date(year, 8, 1) },
+        { name: 'Fall',   start: new Date(year, 8, 1),   end: new Date(year, 11, 1) }
+    ];
+
+    let currentSeason = seasons.find(s => date >= s.start && date < s.end);
+
+    // Jan / Feb → Winter of previous year
+    if (!currentSeason) {
+        currentSeason = {
+            name: 'Winter',
+            start: new Date(year - 1, 11, 1),
+            end:   new Date(year, 2, 1)
+        };
+    }
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const dayOfSeason =
+        Math.floor((date - currentSeason.start) / msPerDay) + 1;
+
+    const totalDays =
+        Math.floor((currentSeason.end - currentSeason.start) / msPerDay);
+
+    return {
+        name: currentSeason.name,
+        day: dayOfSeason,
+        daysRemaining: totalDays - dayOfSeason
+    };
+}
 // Update today's highlights card with live data
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
@@ -849,56 +888,19 @@ const TodaysHighlightsCard = {
             renderThreeDayForecast(this.forecastElements, payload);
         }
 
-        // ── NEW: Season progress (once per update) ──
-        function getSeasonSummary(unixSeconds) {
-            if (!unixSeconds || isNaN(unixSeconds)) return null;
+        // ── Season display (once per update) ──
+        const unixTime = payload?.timeDateArray?.currentUnixTime;
+        const season = getSeasonSummary(unixTime);
 
-            // Normalize input → Date
-            const date = new Date(unixSeconds * 1000);
+        if (season) {
+            const nameEl = document.getElementById('seasonName');
+            const dayEl  = document.getElementById('seasonDay');
+            const remEl  = document.getElementById('seasonDaysRemaining');
 
-            const year = date.getFullYear();
-
-            // Meteorological seasons (fixed, predictable, signage-friendly)
-            const seasons = [
-                { name: 'Winter', start: new Date(year, 11, 1),  end: new Date(year + 1, 2, 1) }, // Dec 1 – Feb 28/29
-                { name: 'Spring', start: new Date(year, 2, 1),   end: new Date(year, 5, 1) },     // Mar 1 – May 31
-                { name: 'Summer', start: new Date(year, 5, 1),   end: new Date(year, 8, 1) },     // Jun 1 – Aug 31
-                { name: 'Fall',   start: new Date(year, 8, 1),   end: new Date(year, 11, 1) }     // Sep 1 – Nov 30
-            ];
-
-            let currentSeason = null;
-
-            for (const s of seasons) {
-                if (date >= s.start && date < s.end) {
-                    currentSeason = s;
-                    break;
-                }
-            }
-
-            // Handle January / February (belongs to Winter of previous year)
-            if (!currentSeason) {
-                currentSeason = seasons[0]; // Winter
-                currentSeason.start = new Date(year - 1, 11, 1);
-                currentSeason.end   = new Date(year, 2, 1);
-            }
-
-            const msInDay = 1000 * 60 * 60 * 24;
-
-            const dayOfSeason =
-                Math.floor((date - currentSeason.start) / msInDay) + 1;
-
-            const totalDays =
-                Math.floor((currentSeason.end - currentSeason.start) / msInDay);
-
-            const daysRemaining = totalDays - dayOfSeason;
-
-            return {
-                name: currentSeason.name,
-                day: dayOfSeason,
-                daysRemaining
-            };
+            if (nameEl) nameEl.textContent = season.name;
+            if (dayEl)  dayEl.textContent  = season.day;
+            if (remEl)  remEl.textContent  = season.daysRemaining;
         }
-
     },
 
     // Show handler
