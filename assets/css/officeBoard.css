@@ -241,6 +241,9 @@ body[data-page="officeBoard"] #boardCardHost {
     line-height: 1.2;
 }
 
+.card.card-todays-highlights {
+    align-self: flex-start;
+}
 
 /* #endregion */
 
