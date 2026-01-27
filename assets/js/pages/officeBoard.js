@@ -189,76 +189,76 @@ function getLiveDateInfoFromSSE(payload) {
         daysRemaining: daysInYear - dayOfYear
     };
 }
-// Render Today's Highlights skeleton
+// Render Today's Highlights skeleton (monitor-safe, sectioned)
 function renderTodaysHighlightsSkeleton() {
     return `
         <div class="highlights-grid">
 
-        <!-- LEFT COLUMN -->
-        <div class="highlights-col left-col">
+            <!-- LEFT COLUMN -->
+            <div class="highlights-col left-col">
 
-            <!-- 📅 DATE -->
-            <div class="entry section-header">
-                📅 Today
+                <!-- 📅 DATE -->
+                <div class="section-block">
+                    <div class="section-header">
+                        📅 <span class="section-title">Today</span>
+                    </div>
+                    <div class="entry compact">
+                        <span id="todaysDate">—</span>
+                        &nbsp;|&nbsp;
+                        🗓️ Day <span id="dayOfYear">—</span>
+                        (<span id="daysRemaining">—</span> remaining)
+                    </div>
+                </div>
+
+                <!-- ❄️ SEASON -->
+                <div class="section-block">
+                    <div class="section-header">
+                        <span id="seasonIcon">❄️</span>
+                        <span class="section-title">Season</span>
+                    </div>
+                    <div class="entry compact highlight-season">
+                        <span id="seasonName">—</span>
+                        — Day <span id="seasonDay">—</span>
+                        (<span id="seasonDaysLeft">—</span> days left)
+                    </div>
+                </div>
+
+                <!-- 🌄 SUN & LIGHT -->
+                <div class="section-block">
+                    <div class="section-header">
+                        🌄 <span class="section-title">Sun & Light</span>
+                    </div>
+                    <div class="entry compact">
+                        Sunrise: <span id="sunriseTime">—</span>
+                        &nbsp;|&nbsp;
+                        Sunset: <span id="sunsetTime">—</span>
+                    </div>
+                    <div class="entry compact">
+                        Daylight: <span id="daylightTime">—</span>
+                        &nbsp;|&nbsp;
+                        Night: <span id="nightTime">—</span>
+                    </div>
+                </div>
+
+                <!-- 🎉 UPCOMING -->
+                <div class="section-block">
+                    <div class="section-header">
+                        🎉 <span class="section-title">Upcoming</span>
+                    </div>
+                    <div class="entry compact">
+                        <span id="nextHoliday">—</span>
+                    </div>
+                </div>
+
             </div>
-
-            <div class="entry">
-                <span id="todaysDate">—</span>
-                &nbsp;|&nbsp;
-                🗓️ Day <span id="dayOfYear">—</span>
-                (<span id="daysRemaining">—</span> remaining)
-            </div>
-
-            <hr class="card-divider">
-
-            <!-- ❄️ SEASON -->
-            <div class="entry section-header">
-                ❄️ Season
-            </div>
-
-            <div class="entry highlight-season">
-                <span id="seasonName">—</span>
-                — Day <span id="seasonDay">—</span>
-                (<span id="seasonDaysLeft">—</span> days left)
-            </div>
-
-            <hr class="card-divider">
-
-            <!-- 🌄 SUN & LIGHT -->
-            <div class="entry section-header">
-                🌄 Sun & Light
-            </div>
-
-            <div class="entry">
-                🌄 Sunrise: <span id="sunriseTime">—</span>
-                &nbsp;|&nbsp;
-                🌇 Sunset: <span id="sunsetTime">—</span>
-            </div>
-
-            <div class="entry">
-                🕒 Daylight: <span id="daylightTime">—</span>
-                &nbsp;|&nbsp;
-                🌌 Night: <span id="nightTime">—</span>
-            </div>
-
-            <hr class="card-divider">
-
-            <!-- 🎉 HOLIDAY -->
-            <div class="entry section-header">
-                🎉 Upcoming
-            </div>
-
-            <div class="entry">
-                <span id="nextHoliday">—</span>
-            </div>
-
-        </div>
 
             <!-- RIGHT COLUMN -->
             <div class="highlights-col right-col">
 
-                <div class="entry forecast">
-                    <div class="entry-label">📅 3-Day Forecast</div>
+                <div class="section-block">
+                    <div class="section-header">
+                        📅 <span class="section-title">3-Day Forecast</span>
+                    </div>
 
                     <div class="forecast-grid">
                         <div class="forecast-row">
@@ -279,13 +279,17 @@ function renderTodaysHighlightsSkeleton() {
                     </div>
                 </div>
 
-                <hr class="card-divider">
-
-                <div class="entry" id="skyesoftTips">
-                    💡 Skyesoft Tip: —
+                <div class="section-block">
+                    <div class="section-header">
+                        💡 <span class="section-title">Skyesoft Tip</span>
+                    </div>
+                    <div class="entry compact" id="skyesoftTips">
+                        —
+                    </div>
                 </div>
 
             </div>
+
         </div>
     `;
 }
