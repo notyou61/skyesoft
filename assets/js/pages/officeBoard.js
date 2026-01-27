@@ -569,6 +569,20 @@ function humanizeRelativeTime(updatedUnix, referenceUnix = null) {
 
     return 'just now';
 }
+// Apply Highlights Density
+function applyHighlightsDensity(cardEl) {
+    if (!cardEl) return;
+
+    const vh = window.innerHeight;
+
+    // Office monitors / TVs
+    if (vh >= 900) {
+        cardEl.classList.add('dense');
+    } else {
+        cardEl.classList.remove('dense');
+    }
+}
+
 
 // #endregion
 
@@ -804,6 +818,8 @@ const TodaysHighlightsCard = {
     },
     // Show handler
     onShow() {
+        // Apply Highlights Density mode
+        applyHighlightsDensity(this.instance.root)
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
         } else {

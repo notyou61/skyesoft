@@ -210,6 +210,21 @@ body[data-page="officeBoard"] #boardCardHost {
     flex-grow: 1;
 }
 
+.card.dense .entry {
+    margin-bottom: 4px;
+}
+
+.card.dense .card-divider {
+    margin: 6px 0;
+}
+
+.card.dense .forecast-row {
+    margin-bottom: 2px;
+}
+
+.card.dense #skyesoftTips {
+    margin-top: 6px;
+}
 
 /* #endregion */
 
