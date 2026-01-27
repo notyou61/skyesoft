@@ -844,14 +844,14 @@ const TodaysHighlightsCard = {
             renderThreeDayForecast(this.forecastElements, payload);
         }
 
-        // ── Season display (once per update) ──
+        // ── Season display (authoritative SSE time) ──
         const unixTime = payload?.timeDateArray?.currentUnixTime;
-        const season = getSeasonSummary(unixTime);
+        const season = getSeasonSummaryFromUnix(unixTime);
 
         if (season) {
             const nameEl = document.getElementById('seasonName');
             const dayEl  = document.getElementById('seasonDay');
-            const remEl  = document.getElementById('seasonDaysRemaining');
+            const remEl  = document.getElementById('seasonDaysLeft');
 
             if (nameEl) nameEl.textContent = season.name;
             if (dayEl)  dayEl.textContent  = season.day;
