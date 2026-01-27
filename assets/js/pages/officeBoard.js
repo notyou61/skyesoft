@@ -204,6 +204,9 @@ function renderTodaysHighlightsSkeleton() {
                     (<span id="daysRemaining">—</span> remaining)
                 </div>
 
+                <!-- ✅ Divider ABOVE season -->
+                <hr class="card-divider">
+
                 <!-- ✅ NEW: Season Progress -->
                 <div class="entry highlight-season">
                     ❄️ <span id="seasonName">—</span>
@@ -814,7 +817,7 @@ const TodaysHighlightsCard = {
     instance: null,
     tipElement: null,
     forecastElements: null,
-
+    // Create handler
     create() {
         this.instance = createGenericCardElement(this);
         this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
@@ -858,7 +861,6 @@ const TodaysHighlightsCard = {
             if (remEl)  remEl.textContent  = season.daysRemaining;
         }
     },
-
     // Show handler
     onShow() {
         // Apply Highlights Density mode
