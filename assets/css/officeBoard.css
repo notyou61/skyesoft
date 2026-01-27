@@ -145,6 +145,8 @@ body[data-page="officeBoard"] #boardCardHost {
 /* #endregion */
 
 /* #region Card Content (the only scrolling surface) */
+
+/* Card content area: no scrollbar */
 .cardContent {
     flex: 1 1 auto;
     min-height: 0;
@@ -153,11 +155,11 @@ body[data-page="officeBoard"] #boardCardHost {
     padding: 2px 0;            /* vertical only */
     scrollbar-width: none;
 }
-
+/* CardContent webkit-scrollbar */
 .cardContent::-webkit-scrollbar {
     display: none;
 }
-
+/* Card Countdown */
 .cardCountdown {
     float: right;
     margin-left: 12px;
@@ -169,7 +171,7 @@ body[data-page="officeBoard"] #boardCardHost {
     border-radius: 12px;
     letter-spacing: 0.5px;
 }
-
+/* Card content divider: subtle gradient line */
 .card-divider {
     border: none;
     height: 2px;
@@ -181,10 +183,24 @@ body[data-page="officeBoard"] #boardCardHost {
         transparent
     );
 }
-
+/* Card content entries: vertical padding */
 .cardContent .entry {
     padding: 2px 0;
 }
+/* Card Highlights: compact vertical bias when content is sparse */
+.card-highlights.compact .cardContent {
+    justify-content: flex-start;
+    padding-top: 4px;
+}
+/* Card Highlights: highlights list Margin */
+.card-highlights.compact .highlights-list {
+    margin-top: 4px;
+}
+/* Optional: reduce perceived bottom air */
+.card-highlights.compact .cardBody {
+    justify-content: flex-start;
+}
+
 /* #endregion */
 
 /* #region ACTIVE PERMITS — TABLE HEADER + DIVIDER REFINEMENT */

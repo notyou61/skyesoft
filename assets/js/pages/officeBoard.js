@@ -97,7 +97,19 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', 
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
+// Toggle compact highlights mode based on content height
+function toggleCompactHighlights(cardInstance) {
+    if (!cardInstance?.root || !cardInstance?.content) return;
 
+    const content = cardInstance.content;
+    const card = cardInstance.root;
+
+    // Measure after layout
+    const isSparse = content.scrollHeight < content.clientHeight * 0.6;
+
+    card.classList.toggle('compact', isSparse);
+}
+// get status icon HTML from status string
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
@@ -124,7 +136,7 @@ function getStatusIcon(status) {
     }
     return '';
 }
-
+// format seconds into smart interval string
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
     const days    = Math.floor(sec / 86400); sec %= 86400;
@@ -261,7 +273,7 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-// update today's highlights card with live data
+// Update today's highlights card with live data
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
 
@@ -775,15 +787,22 @@ const TodaysHighlightsCard = {
 
         return this.instance.root;
     },
-
+    // Update with live data
     update(payload) {
         if (!payload) return;
+
         updateHighlightsCard(payload);
+
         if (this.forecastElements) {
             renderThreeDayForecast(this.forecastElements, payload);
         }
-    },
 
+        // 🔹 Compact mode check AFTER content is rendered
+        requestAnimationFrame(() => {
+            toggleCompactHighlights(this.instance);
+        });
+    },
+    // Show handler
     onShow() {
         if (this.tipElement) {
             loadAndRenderSkyesoftTip(this.tipElement);
@@ -797,7 +816,7 @@ const TodaysHighlightsCard = {
             this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
         }
     },
-
+    // Hide handler
     onHide() {}
 };
 
