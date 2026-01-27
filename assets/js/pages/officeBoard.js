@@ -97,27 +97,6 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', 
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
-// Toggle compact highlights mode based on unused vertical space
-function toggleCompactHighlights(cardInstance) {
-    if (!cardInstance?.root) return;
-
-    const card    = cardInstance.root;
-    const body    = card.querySelector('.cardBody');
-    const content = card.querySelector('.cardContent');
-
-    if (!body || !content) return;
-
-    // Measure unused vertical space
-    const unused = body.clientHeight - content.scrollHeight;
-
-    // Threshold tuned for cards (TV + laptop safe)
-    const SPARSE_THRESHOLD = 120; // px
-
-    const isSparse = unused > SPARSE_THRESHOLD;
-
-    card.classList.toggle('compact', isSparse);
-    card.classList.toggle('dense', isSparse);
-}
 // get status icon HTML from status string
 function getStatusIcon(status) {
     if (!status) return '';
@@ -592,22 +571,6 @@ function applyHighlightsDensity(cardEl) {
     }
 }
 
-function applyCompactIfSparse(cardEl) {
-    if (!cardEl) return;
-
-    const body = cardEl.querySelector('.cardBody');
-    const content = cardEl.querySelector('.cardContent');
-    if (!body || !content) return;
-
-    // How much vertical space is unused?
-    const unused = body.clientHeight - content.scrollHeight;
-
-    // Threshold: tweak once, works everywhere
-    const SPARSE_THRESHOLD = 120; // px
-
-    cardEl.classList.toggle('compact', unused > SPARSE_THRESHOLD);
-}
-
 // #endregion
 
 // #region LIVE FOOTER HELPER
@@ -835,10 +798,6 @@ const TodaysHighlightsCard = {
             renderThreeDayForecast(this.forecastElements, payload);
         }
 
-        // ⬇️ THIS is what makes your CSS come alive
-        requestAnimationFrame(() => {
-            applyCompactIfSparse(this.instance?.root);
-        });
     },
     // Show handler
     onShow() {

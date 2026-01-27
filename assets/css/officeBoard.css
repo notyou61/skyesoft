@@ -187,63 +187,6 @@ body[data-page="officeBoard"] #boardCardHost {
 .cardContent .entry {
     padding: 2px 0;
 }
-/* Card Highlights: compact vertical bias when content is sparse */
-.card-highlights.compact .cardContent {
-    justify-content: flex-start;
-    padding-top: 4px;
-}
-/* Card Highlights: highlights list Margin */
-.card-highlights.compact .highlights-list {
-    margin-top: 4px;
-}
-/* Optional: reduce perceived bottom air */
-.card-highlights.compact .cardBody {
-    justify-content: flex-start;
-}
-/* Highlights column: vertical flex */
-.highlights-col {
-    display: flex;
-    flex-direction: column;
-}
-/* Highlights spacer: flexible grow */
-.highlights-spacer {
-    flex-grow: 1;
-}
-
-.card.dense .entry {
-    margin-bottom: 4px;
-}
-
-.card.dense hr.card-divider,
-.card.dense .cardBodyDivider,
-.card.dense .cardFooterDivider {
-    margin: 6px 0;
-}
-
-.card.dense .forecast-row {
-    margin-bottom: 2px;
-}
-
-.card.dense #skyesoftTips {
-    margin-top: 6px;
-}
-
-.card.dense .highlights-grid {
-    row-gap: 6px;
-}
-
-.card.dense .entry {
-    margin-bottom: 4px;
-    line-height: 1.25;
-}
-
-.card.dense .forecast-row {
-    line-height: 1.2;
-}
-
-.card.card-todays-highlights {
-    align-self: flex-start;
-}
 
 /* #endregion */
 
