@@ -194,47 +194,65 @@ function renderTodaysHighlightsSkeleton() {
     return `
         <div class="highlights-grid">
 
-            <!-- LEFT COLUMN -->
-            <div class="highlights-col left-col">
+        <!-- LEFT COLUMN -->
+        <div class="highlights-col left-col">
 
-                <div class="entry">
-                    📅 <span id="todaysDate">—</span>
-                    &nbsp;|&nbsp;
-                    🗓️ Day <span id="dayOfYear">—</span>
-                    (<span id="daysRemaining">—</span> remaining)
-                </div>
-
-                <!-- ✅ Divider ABOVE season -->
-                <hr class="card-divider">
-
-                <!-- ✅ NEW: Season Progress -->
-                <div class="entry highlight-season">
-                    ❄️ <span id="seasonName">—</span>
-                    — Day <span id="seasonDay">—</span>
-                    (<span id="seasonDaysLeft">—</span> days left)
-                </div>
-
-                <hr class="card-divider">
-
-                <div class="entry">
-                    🌄 Sunrise: <span id="sunriseTime">—</span>
-                    &nbsp;|&nbsp;
-                    🌇 Sunset: <span id="sunsetTime">—</span>
-                </div>
-
-                <div class="entry">
-                    🕒 Daylight: <span id="daylightTime">—</span>
-                    &nbsp;|&nbsp;
-                    🌌 Night: <span id="nightTime">—</span>
-                </div>
-
-                <hr class="card-divider">
-
-                <div class="entry">
-                    🎉 Next Holiday: <span id="nextHoliday">—</span>
-                </div>
-
+            <!-- 📅 DATE -->
+            <div class="entry section-header">
+                📅 Today
             </div>
+
+            <div class="entry">
+                <span id="todaysDate">—</span>
+                &nbsp;|&nbsp;
+                🗓️ Day <span id="dayOfYear">—</span>
+                (<span id="daysRemaining">—</span> remaining)
+            </div>
+
+            <hr class="card-divider">
+
+            <!-- ❄️ SEASON -->
+            <div class="entry section-header">
+                ❄️ Season
+            </div>
+
+            <div class="entry highlight-season">
+                <span id="seasonName">—</span>
+                — Day <span id="seasonDay">—</span>
+                (<span id="seasonDaysLeft">—</span> days left)
+            </div>
+
+            <hr class="card-divider">
+
+            <!-- 🌄 SUN & LIGHT -->
+            <div class="entry section-header">
+                🌄 Sun & Light
+            </div>
+
+            <div class="entry">
+                🌄 Sunrise: <span id="sunriseTime">—</span>
+                &nbsp;|&nbsp;
+                🌇 Sunset: <span id="sunsetTime">—</span>
+            </div>
+
+            <div class="entry">
+                🕒 Daylight: <span id="daylightTime">—</span>
+                &nbsp;|&nbsp;
+                🌌 Night: <span id="nightTime">—</span>
+            </div>
+
+            <hr class="card-divider">
+
+            <!-- 🎉 HOLIDAY -->
+            <div class="entry section-header">
+                🎉 Upcoming
+            </div>
+
+            <div class="entry">
+                <span id="nextHoliday">—</span>
+            </div>
+
+        </div>
 
             <!-- RIGHT COLUMN -->
             <div class="highlights-col right-col">
@@ -617,6 +635,16 @@ function applyHighlightsDensity(cardEl) {
         cardEl.classList.add('dense');
     } else {
         cardEl.classList.remove('dense');
+    }
+}
+// Get Season Icon
+function getSeasonIcon(seasonName) {
+    switch (seasonName) {
+        case 'Winter': return '❄️';
+        case 'Spring': return '🌱';
+        case 'Summer': return '☀️';
+        case 'Fall':   return '🍂';
+        default:       return '📆';
     }
 }
 

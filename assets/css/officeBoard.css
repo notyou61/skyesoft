@@ -59,7 +59,7 @@ body[data-page="officeBoard"] #pageFooter {
 .highlights-col {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 /* #endregion */
 
@@ -175,7 +175,7 @@ body[data-page="officeBoard"] #boardCardHost {
 .card-divider {
     border: none;
     height: 2px;
-    margin: 12px 0 14px;
+    margin: 6px 0 8px;
     background: linear-gradient(
         to right,
         transparent,
@@ -282,14 +282,22 @@ body[data-page="officeBoard"] #boardCardHost {
 
 .highlight-season {
     font-size: 0.9em;
-    opacity: 0.75;
-    margin-top: 6px;
-    letter-spacing: 0.2px;
+    opacity: 0.8;
+    margin-top: 2px;
 }
 
 /* #endregion */
 
 /* #region CARD CONTENT — Sections & Emphasis */
+
+/* Section headers inside cards */
+.section-header {
+    font-weight: 600;
+    opacity: 0.85;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    letter-spacing: 0.3px;
+}
 
 .kpi-placeholder {
     flex: 1 1 auto;
