@@ -969,6 +969,9 @@ const KPICard = {
     },
     // Update
     update(payload) {
+        //
+        console.log('[KPI payload]', payload?.kpi);
+        // Payload Condtional
         if (!payload?.kpi?.permits) return;
 
         const breakdown = payload.kpi.permits.statusBreakdown || {};
