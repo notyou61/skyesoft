@@ -673,12 +673,12 @@ function renderLiveFooter({ text = '' }) {
 
 // #region CARD TIMING
 
-const DEFAULT_CARD_DURATION_MS = 10000;
+const DEFAULT_CARD_DURATION_MS = 60000;
 
 // #endregion
 
 // #region CARD FACTORY
-
+// Create Active Permits Card Element
 function createActivePermitsCardElement() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
@@ -708,7 +708,7 @@ function createActivePermitsCardElement() {
         footer: card.querySelector('#permitFooter')
     };
 }
-
+// Create Generic Card Element
 function createGenericCardElement(spec) {
     const card = document.createElement('section');
     card.className = `card card-${spec.id}`;
