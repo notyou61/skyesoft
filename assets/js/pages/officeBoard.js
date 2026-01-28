@@ -139,7 +139,6 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);

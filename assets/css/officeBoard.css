@@ -453,27 +453,27 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 /* ─────────────────────────────────────────────
-   KPI ZEBRA ROWS (match permit table tone)
+   KPI ZEBRA ROWS — DENSITY TUNED (kiosk-safe)
    ───────────────────────────────────────────── */
-
+/* Zebra dashboard entry */
 .card-kpi-dashboard .highlights-col .entry {
-    padding: 6px 8px;
-    border-radius: 6px;
+    padding: 4px 6px;          /* ↓ was 6px 8px */
+    line-height: 1.25;         /* tighter vertical rhythm */
+    border-radius: 4px;        /* ↓ was 6px */
 }
-
 /* Zebra striping */
 .card-kpi-dashboard .highlights-col .entry:nth-child(even) {
-    background-color: #edf2ff; /* same as table odd rows */
+    background-color: #edf2ff;
 }
-
+/* Zebra striping */
 .card-kpi-dashboard .highlights-col .entry:nth-child(odd) {
     background-color: #ffffff;
 }
-
-/* Section headers should NOT be zebra-striped */
+/* Section headers stay clean */
 .card-kpi-dashboard .section-header {
     background: none !important;
-    padding-left: 0;
+    padding: 0;
+    margin-top: 6px;
 }
 
 /* #endregion */
