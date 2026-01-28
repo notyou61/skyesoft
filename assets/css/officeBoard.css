@@ -477,6 +477,12 @@ body[data-page="officeBoard"] #boardCardHost {
     white-space: nowrap;
 }
 
+/* Allow KPI card content to scroll if content exceeds height */
+.card-kpi-dashboard .cardContent {
+    overflow-y: auto;
+    mask-image: linear-gradient(to bottom, black 90%, transparent);
+}
+
 /* #endregion */
 
 /* #region Viewport Adjustments */
