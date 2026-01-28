@@ -150,7 +150,7 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
-
+// format UNIX timestamp to Phoenix time string
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
     const date = new Date(ts * 1000);
@@ -543,9 +543,7 @@ function renderThreeDayForecast(forecastEls, payload) {
         forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
     });
 }
-
-// ── Countdown helpers ────────────────────────────────────────────────
-
+// Start card countdown timer
 function startCardCountdown(durationMs, el) {
     stopCardCountdown();
 
@@ -571,16 +569,14 @@ function startCardCountdown(durationMs, el) {
     tick(); // immediate
     countdownTimer = setInterval(tick, 1000);
 }
-
+//Stop card countdown timer
 function stopCardCountdown() {
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = null;
     countdownRemainingMs = 0;
     activeCountdownEl = null;
 }
-
-// ── Card footer freshness resolver ──────────────────────────────────
-
+// Resolve card footer text from versions metadata
 function resolveCardFooter(cardId) {
     if (!versionsMeta?.cards?.[cardId]) return null;
 
@@ -666,6 +662,35 @@ function getSeasonIcon(seasonName) {
         default:       return '📆';
     }
 }
+// Render KPI Card
+function renderKPICard(kpi) {
+    if (!kpi?.permits) return;
+
+    console.log('📊 KPI update received', kpi.permits);
+
+    // TEMP: no DOM writes yet
+}
+// Update KPI card with live data
+function updateKPICard(payload = lastBoardPayload) {
+    if (!payload?.kpi) return;
+
+    const kpi = payload.kpi;
+
+    // Example: permit status breakdown
+    const breakdown = kpi?.permits?.statusBreakdown;
+    if (!breakdown) return;
+
+    Object.entries(breakdown).forEach(([status, count]) => {
+        const el = document.querySelector(`[data-kpi-status="${status}"]`);
+        if (el) el.textContent = count;
+    });
+
+    // Meta / freshness (optional)
+    const updatedEl = document.getElementById('kpiLastUpdated');
+    if (updatedEl && kpi.meta?.updatedOn) {
+        updatedEl.textContent = humanizeRelativeTime(kpi.meta.updatedOn);
+    }
+}
 
 // #endregion
 
@@ -689,7 +714,7 @@ const DEFAULT_CARD_DURATION_MS = 15000;
 // #endregion
 
 // #region CARD FACTORY
-
+// Create Active Permits Card Element
 function createActivePermitsCardElement() {
     const card = document.createElement('section');
     card.className = 'card card-active-permits';
@@ -719,7 +744,7 @@ function createActivePermitsCardElement() {
         footer: card.querySelector('#permitFooter')
     };
 }
-
+// Create Generic Card Element
 function createGenericCardElement(spec) {
     const card = document.createElement('section');
     card.className = `card card-${spec.id}`;
@@ -854,7 +879,7 @@ const ActivePermitsCard = {
 };
 
 BOARD_CARDS.push(ActivePermitsCard);
-
+// Today's Highlights Card
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
     icon: '🌅',
@@ -930,14 +955,72 @@ const TodaysHighlightsCard = {
     // Hide handler
     onHide() {}
 };
+// KPI Dashboard Card
+const KPICard = {
+    id: 'kpi-dashboard',
+    icon: '📊',
+    title: 'Permit KPIs',
+    durationMs: DEFAULT_CARD_DURATION_MS,
+    instance: null,
 
+    create() {
+        this.instance = createGenericCardElement(this);
+
+        // KPI skeleton (At-a-glance + performance)
+        this.instance.content.innerHTML = `
+            <div class="kpi-grid">
+                <div class="kpi-section">
+                    <h3>📌 At a Glance</h3>
+                    <div class="kpi-row">
+                        ${Object.keys(permitRegistryMeta?.statusBreakdown || {}).map(status => `
+                            <div class="kpi-item">
+                                <span class="kpi-icon">${getStatusIcon(status)}</span>
+                                <span class="kpi-label">${formatStatus(status)}</span>
+                                <span class="kpi-value" data-kpi-status="${status}">—</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="kpi-section">
+                    <h3>📈 Performance</h3>
+                    <div class="kpi-metric">
+                        Avg Notes per Permit:
+                        <span id="kpiAvgNotes">—</span>
+                    </div>
+                    <div class="kpi-metric">
+                        Avg Turnaround:
+                        <span id="kpiAvgTurnaround">—</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return this.instance.root;
+    },
+
+    update(payload) {
+        updateKPICard(payload);
+    },
+
+    onShow() {
+        const footerText = resolveCardFooter(this.id);
+        if (footerText && this.instance?.footer) {
+            this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
+        }
+    },
+
+    onHide() {}
+};
+// Today's Highlights Card
 BOARD_CARDS.push(TodaysHighlightsCard);
-
+// KPI Dashboard Card
+BOARD_CARDS.push(KPICard);
+// Generic placeholder cards
 const GENERIC_CARD_SPECS = [
-    { id: 'kpi-dashboard', icon: '📈', title: 'Key Performance Indicators' },
     { id: 'announcements', icon: '📢', title: 'Announcements' }
 ];
-
+// Create generic cards from specs
 GENERIC_CARD_SPECS.forEach(spec => {
     BOARD_CARDS.push({
         ...spec,
@@ -966,7 +1049,7 @@ GENERIC_CARD_SPECS.forEach(spec => {
         onHide() {}
     });
 });
-
+// Universal updater for all cardss
 function updateAllCards(payload) {
     lastBoardPayload = payload;
     BOARD_CARDS.forEach(card => {
