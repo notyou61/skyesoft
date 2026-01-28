@@ -948,16 +948,18 @@ const KPICard = {
                 <!-- LEFT COLUMN -->
                 <div class="highlights-col">
                     <div class="entry section-header">
-                        📌 At a Glance
+                        <span aria-hidden="true">📌</span> At a Glance
                     </div>
-                    <div class="entry kpi-summary">
-                        📦 Total Permits
-                        <strong id="kpiTotalPermits" style="float:right;">—</strong>
+                    <div class="entry kpi-row kpi-total">
+                        <span>📦 Total Permits</span>
+                        <strong id="kpiTotalPermits">—</strong>
                     </div>
                     ${PERMIT_STATUSES.map(status => `
-                        <div class="entry kpi-status">
-                            ${getStatusIcon(status)} ${formatStatus(status)}
-                            <strong data-kpi-status="${status}" style="float:right;">—</strong>
+                        <div class="entry kpi-row">
+                            <span class="kpi-label-wrap">
+                                ${getStatusIcon(status)} ${formatStatus(status)}
+                            </span>
+                            <strong data-kpi-status="${status}">—</strong>
                         </div>
                     `).join('')}
                 </div>
@@ -966,13 +968,13 @@ const KPICard = {
                     <div class="entry section-header">
                         📈 Performance
                     </div>
-                    <div class="entry">
-                        Avg Notes per Permit
-                        <strong id="kpiAvgNotes" style="float:right;">—</strong>
+                    <div class="entry kpi-row">
+                        <span>Avg Notes per Permit</span>
+                        <strong id="kpiAvgNotes">—</strong>
                     </div>
-                    <div class="entry">
-                        Avg Turnaround
-                        <strong id="kpiAvgTurnaround" style="float:right;">—</strong>
+                    <div class="entry kpi-row">
+                        <span>Avg Turnaround</span>
+                        <strong id="kpiAvgTurnaround">—</strong>
                     </div>
                 </div>
             </div>

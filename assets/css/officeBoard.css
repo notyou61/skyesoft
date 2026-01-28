@@ -376,49 +376,69 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* Section headers */
 .card-kpi-dashboard .kpi-section h3 {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     font-size: 0.95em;
     font-weight: 600;
     opacity: 0.9;
 }
 
 /* ─────────────────────────────────────────────
-   STATUS GRID
+   STATUS LIST (zebra rows, Highlights-style)
    ───────────────────────────────────────────── */
 
 .card-kpi-dashboard .status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
+/* Each KPI row (like Highlights entries) */
 .card-kpi-dashboard .kpi-item {
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 8px;
-    padding: 10px 8px;
-    text-align: center;
-    line-height: 1.15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 6px 10px;          /* density tuned */
+    line-height: 1.2;
+    border-radius: 6px;          /* match card softness */
+}
+
+/* Zebra striping */
+.card-kpi-dashboard .kpi-item:nth-child(odd) {
+    background: #ffffff;
+}
+
+.card-kpi-dashboard .kpi-item:nth-child(even) {
+    background: #edf2ff;
+}
+
+/* Left side group: icon + label */
+.card-kpi-dashboard .kpi-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
 .card-kpi-dashboard .kpi-icon {
-    display: block;
-    font-size: 1.1em;
-    margin-bottom: 4px;
+    font-size: 1.0em;
+    line-height: 1;
 }
 
 .card-kpi-dashboard .kpi-label {
-    display: block;
-    font-size: 0.72em;
-    opacity: 0.7;
-    margin-bottom: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-size: 0.95em;
+    font-weight: 600;
+    opacity: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
+/* Right side value */
 .card-kpi-dashboard .kpi-value {
-    display: block;
-    font-size: 1.6em;
-    font-weight: 600;
+    font-size: 1.05em;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 /* Zero-state (quiet, not hidden) */
@@ -426,16 +446,21 @@ body[data-page="officeBoard"] #boardCardHost {
     opacity: 0.35;
 }
 
+/* Total permits row: slightly emphasized */
+.card-kpi-dashboard .kpi-item.kpi-total {
+    background: #f3f4f6 !important;
+}
+
 /* ─────────────────────────────────────────────
-   PERFORMANCE METRICS
+   PERFORMANCE METRICS (keep compact)
    ───────────────────────────────────────────── */
 
 .card-kpi-dashboard .kpi-metric {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px dashed rgba(255,255,255,0.15);
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.15);
 }
 
 .card-kpi-dashboard .kpi-metric:last-child {
@@ -443,47 +468,13 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 .card-kpi-dashboard .metric-label {
-    font-size: 0.85em;
-    opacity: 0.7;
+    font-size: 0.92em;
+    opacity: 0.8;
 }
 
 .card-kpi-dashboard .metric-value {
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
-}
-
-/* ─────────────────────────────────────────────
-   KPI ZEBRA ROWS — DENSITY TUNED (kiosk-safe)
-   ───────────────────────────────────────────── */
-/* Zebra dashboard entry */
-.card-kpi-dashboard .highlights-col .entry {
-    padding: 4px 6px;          /* ↓ was 6px 8px */
-    line-height: 1.25;         /* tighter vertical rhythm */
-    border-radius: 4px;        /* ↓ was 6px */
-}
-/* Zebra striping */
-.card-kpi-dashboard .highlights-col .entry:nth-child(even) {
-    background-color: #edf2ff;
-}
-/* Zebra striping */
-.card-kpi-dashboard .highlights-col .entry:nth-child(odd) {
-    background-color: #ffffff;
-}
-/* Section headers stay clean */
-.card-kpi-dashboard .section-header {
-    background: none !important;
-    padding: 0;
-    margin-top: 6px;
-}
-/* Compact Total Permits row */
-.card-kpi-dashboard .kpi-total {
-    padding: 2px 6px;
-    margin-bottom: 4px;
-    line-height: 1.15;
-}
-/* Compact Total Permits Total / Value */
-.card-kpi-dashboard .kpi-total .kpi-value {
-    font-size: 1.4em; /* was 1.6em */
 }
 
 /* #endregion */
