@@ -452,6 +452,30 @@ body[data-page="officeBoard"] #boardCardHost {
     white-space: nowrap;
 }
 
+/* ─────────────────────────────────────────────
+   KPI ZEBRA ROWS (match permit table tone)
+   ───────────────────────────────────────────── */
+
+.card-kpi-dashboard .highlights-col .entry {
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+/* Zebra striping */
+.card-kpi-dashboard .highlights-col .entry:nth-child(even) {
+    background-color: #edf2ff; /* same as table odd rows */
+}
+
+.card-kpi-dashboard .highlights-col .entry:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Section headers should NOT be zebra-striped */
+.card-kpi-dashboard .section-header {
+    background: none !important;
+    padding-left: 0;
+}
+
 /* #endregion */
 
 /* #region Viewport Adjustments */
