@@ -10,6 +10,7 @@
     const PERMIT_STATUSES = [
         'need_to_submit',
         'submitted',
+        'qc_passed',
         'under_review',
         'corrections',
         'ready_to_issue',
@@ -100,14 +101,17 @@ window.glbVar.tipsLoaded = false;
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
+    // Key Map
     const keyMap = {
-        'under_review':     'clock',
-        'need_to_submit':   'warning',
-        'submitted':        'clipboard',
-        'ready_to_issue':   'memo',
-        'issued':           'shield',
-        'finaled':          'trophy',
-        'corrections':      'tools'
+        'need_to_submit':   'warning',     // ⚠️
+        'submitted':        'clipboard',   // 📋
+        'qc_passed':        'target',      // 🎯 (passed / approved)
+        'under_review':     'clock',       // ⏰
+        'corrections':      'tools',       // 🛠️
+        'ready_to_issue':   'memo',        // 📝
+        'issued':           'shield',      // 🛡️
+        'inspections':      'camera',      // 📷
+        'finaled':          'trophy'       // 🏆
     };
     const iconKey = keyMap[s];
     if (!iconKey || !iconMap) return '';
