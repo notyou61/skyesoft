@@ -1,6 +1,6 @@
 /* Skyesoft — officeBoard.js
    Office Bulletin Board Controller
-   Unified Card Model – 2026 refactored edition (bugfix)
+   Unified Card Model – 2026 refactored edition
    Phoenix, Arizona – MST timezone
 */
 
@@ -10,17 +10,13 @@ let jurisdictionRegistry = null;
 let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
-let lastBoardPayload = null;
+let lastBoardPayload = null; // 🔁 cache most recent SSE payload
 let versionsMeta = null;
 
+// Countdown state (global, managed by rotation controller)
 let countdownTimer = null;
 let countdownRemainingMs = 0;
 let activeCountdownEl = null;
-
-const PERMIT_STATUSES = [
-    'need_to_submit', 'submitted', 'qc_passed', 'under_review', 'corrections',
-    'ready_to_issue', 'issued', 'inspections', 'finaled'
-];
 
 function resolveJurisdictionLabel(raw) {
     if (!raw || !jurisdictionRegistry) return raw;
@@ -29,8 +25,10 @@ function resolveJurisdictionLabel(raw) {
         const entry = jurisdictionRegistry[key];
         if (!entry) continue;
         if (key.toUpperCase() === norm) return entry.label;
-        if (Array.isArray(entry.aliases) && entry.aliases.some(a => a.toUpperCase() === norm)) {
-            return entry.label;
+        if (Array.isArray(entry.aliases)) {
+            if (entry.aliases.some(a => a.toUpperCase() === norm)) {
+                return entry.label;
+            }
         }
     }
     return norm.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -45,250 +43,887 @@ function formatStatus(status) {
         .join(' ');
 }
 
-// ── Load registries ────────────────────────────────────────────────────────────
-
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/jurisdictionRegistry.json', { cache: 'no-cache' })
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         jurisdictionRegistry = data;
-        console.log(`✅ Jurisdiction registry loaded (${Object.keys(data).length} entries)`);
+        console.log(`✅ Jurisdiction registry loaded — ${Object.keys(data).length} entries`);
         window.SkyOfficeBoard?.lastPermitSignature && (window.SkyOfficeBoard.lastPermitSignature = null);
     })
     .catch(err => {
-        console.error('❌ jurisdictionRegistry.json failed', err);
+        console.error('❌ Failed to load jurisdictionRegistry.json', err);
         jurisdictionRegistry = {};
     });
 
 fetch('https://www.skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         permitRegistryMeta = data.meta || null;
         console.log('✅ Permit registry meta loaded', permitRegistryMeta);
-        if (latestActivePermits.length) window.SkyOfficeBoard?.updatePermitTable?.(latestActivePermits);
+        if (latestActivePermits.length > 0) window.SkyOfficeBoard?.updatePermitTable?.(latestActivePermits);
     })
     .catch(err => {
-        console.error('❌ permitRegistry.json failed', err);
+        console.error('❌ Failed to load permitRegistry.json', err);
         permitRegistryMeta = null;
     });
 
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', { cache: 'no-cache' })
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         iconMap = data.icons;
-        console.log(`✅ Icon map loaded (${Object.keys(iconMap).length} icons)`);
+        console.log(`✅ Icon map loaded — ${Object.keys(iconMap).length} icons`);
     })
     .catch(err => {
-        console.error('❌ iconMap.json failed', err);
+        console.error('❌ Failed to load iconMap.json', err);
         iconMap = {};
     });
 
+// Load versions metadata (used for card footers)
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/versions.json', { cache: 'no-cache' })
-    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
     .then(data => {
         versionsMeta = data;
         console.log('✅ Versions meta loaded', data);
     })
     .catch(err => {
-        console.warn('⚠️ versions.json failed', err);
+        console.warn('⚠️ Failed to load versions.json', err);
         versionsMeta = null;
     });
 
-// #endregion HELPERS ─────────────────────────────────────────────────────────────
+// #endregion
+
+// #region HELPERS
 
 window.glbVar = window.glbVar || {};
 window.glbVar.tips = [];
 window.glbVar.tipsLoaded = false;
-
+// get status icon HTML from status string
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
     const keyMap = {
-        need_to_submit: 'warning', submitted: 'clipboard', qc_passed: 'check',
-        under_review: 'clock', corrections: 'tools', ready_to_issue: 'memo',
-        issued: 'shield', inspections: 'search', finaled: 'trophy'
+        'under_review':     'clock',
+        'need_to_submit':   'warning',
+        'submitted':        'clipboard',
+        'ready_to_issue':   'memo',
+        'issued':           'shield',
+        'finaled':          'trophy',
+        'corrections':      'tools'
     };
     const iconKey = keyMap[s];
     if (!iconKey || !iconMap) return '';
-
     const entry = Object.values(iconMap).find(e =>
-        (e.file?.toLowerCase().includes(iconKey)) || (e.alt?.toLowerCase().includes(iconKey))
+        (e.file && e.file.toLowerCase().includes(iconKey)) ||
+        (e.alt && e.alt.toLowerCase().includes(iconKey))
     );
     if (!entry) return '';
     if (entry.emoji) return entry.emoji + ' ';
     if (entry.file) {
-        return `<img src="https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}" alt="${entry.alt || 'icon'}" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">`;
+        const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
+        return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
     }
     return '';
 }
-
+// format seconds into smart interval string
 function formatSmartInterval(totalSeconds) {
     let sec = Math.max(0, totalSeconds);
-    const d = Math.floor(sec / 86400); sec %= 86400;
-    const h = Math.floor(sec / 3600);  sec %= 3600;
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    if (d) return `${d}d ${h}h ${m}m ${s}s`;
-    if (h) return `${h}h ${m}m ${s}s`;
-    if (m) return `${m}m ${s}s`;
-    return `${s}s`;
+    const days    = Math.floor(sec / 86400); sec %= 86400;
+    const hours   = Math.floor(sec / 3600);  sec %= 3600;
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    if (days > 0)    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if (hours > 0)   return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
 }
 
 function formatTimestamp(ts) {
     if (!ts) return '--/--/-- --:--';
-    return new Date(ts * 1000).toLocaleString('en-US', {
+    const date = new Date(ts * 1000);
+    const opts = {
         timeZone: 'America/Phoenix',
         month: '2-digit', day: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit', hour12: true
-    }).replace(',', '');
+    };
+    return date.toLocaleString('en-US', opts).replace(',', '');
 }
+// get Date object from SSE payload
+function getDateFromSSE(payload) {
+    const ts = payload?.timeDateArray?.currentUnixTime;
+    if (!ts) return null;
+    return new Date(ts * 1000);
+}
+// calculate daylight duration from sunrise/sunset strings (HH:MM AM/PM)
+function calculateDaylight(sunrise, sunset) {
+    if (!sunrise || !sunset) return null;
+    const toMinutes = t => {
+        const d = new Date(`1970-01-01 ${t}`);
+        return d.getHours() * 60 + d.getMinutes();
+    };
+    const minutes = toMinutes(sunset) - toMinutes(sunrise);
+    return minutes > 0 ? formatSmartInterval(minutes * 60) : null;
+}
+// get live date info from SSE payload
+function getLiveDateInfoFromSSE(payload) {
+    const now = getDateFromSSE(payload);
+    if (!now) return null;
 
-function formatPhoenixTimeFromUnix(unix) {
-    if (!unix) return '—';
-    return new Date(unix * 1000).toLocaleTimeString('en-US', {
-        timeZone: 'America/Phoenix',
-        hour: 'numeric', minute: '2-digit', hour12: true
+    const formattedDate = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
     });
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor((now - startOfYear) / oneDay);
+
+    const isLeapYear =
+        (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) ||
+        (now.getFullYear() % 400 === 0);
+
+    const daysInYear = isLeapYear ? 366 : 365;
+
+    return {
+        formattedDate,
+        dayOfYear,
+        daysRemaining: daysInYear - dayOfYear
+    };
 }
+// Render Today's Highlights skeleton (monitor-safe, sectioned)
+function renderTodaysHighlightsSkeleton() {
+    return `
+        <div class="highlights-grid">
 
-// ... (rest of helper functions remain the same – getDateFromSSE, calculateDaylight, getLiveDateInfoFromSSE, renderTodaysHighlightsSkeleton, getSeasonSummaryFromUnix, updateHighlightsCard, loadAndRenderSkyesoftTip, renderRandomTip, mapWeatherIcon, renderThreeDayForecast, startCardCountdown, stopCardCountdown, resolveCardFooter, humanizeRelativeTime, applyHighlightsDensity, getSeasonIcon, renderLiveFooter)
+            <!-- LEFT COLUMN -->
+            <div class="highlights-col left-col">
 
-// For brevity I'm not repeating every helper function here again — they are unchanged except for the textContent fixes in updateHighlightsCard below.
+                <!-- 📅 DATE -->
+                <div class="section-block">
+                    <div class="section-header">
+                        📅 <span class="section-title">Today</span>
+                    </div>
+                    <div class="entry compact">
+                        <span id="todaysDate">—</span>
+                        &nbsp;|&nbsp;
+                        🗓️ Day <span id="dayOfYear">—</span>
+                        (<span id="daysRemaining">—</span> remaining)
+                    </div>
+                </div>
 
+                <!-- ❄️ SEASON -->
+                <div class="section-block">
+                    <div class="section-header">
+                        <span id="seasonIcon">❄️</span>
+                        <span class="section-title">Season</span>
+                    </div>
+                    <div class="entry compact highlight-season">
+                        <span id="seasonName">—</span>
+                        — Day <span id="seasonDay">—</span>
+                        (<span id="seasonDaysLeft">—</span> days left)
+                    </div>
+                </div>
+
+                <!-- 🌄 SUN & LIGHT -->
+                <div class="section-block">
+                    <div class="section-header">
+                        🌄 <span class="section-title">Sun & Light</span>
+                    </div>
+                    <div class="entry compact">
+                        Sunrise: <span id="sunriseTime">—</span>
+                        &nbsp;|&nbsp;
+                        Sunset: <span id="sunsetTime">—</span>
+                    </div>
+                    <div class="entry compact">
+                        Daylight: <span id="daylightTime">—</span>
+                        &nbsp;|&nbsp;
+                        Night: <span id="nightTime">—</span>
+                    </div>
+                </div>
+
+                <!-- 🎉 UPCOMING -->
+                <div class="section-block">
+                    <div class="section-header">
+                        🎉 <span class="section-title">Upcoming</span>
+                    </div>
+                    <div class="entry compact">
+                        <span id="nextHoliday">—</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="highlights-col right-col">
+
+                <div class="section-block">
+                    <div class="section-header">
+                        📅 <span class="section-title">3-Day Forecast</span>
+                    </div>
+
+                    <div class="forecast-grid">
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                        <div class="forecast-row">
+                            <span class="day">—</span>
+                            <span class="icon">—</span>
+                            <span class="temps">— / —</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-block">
+                    <div class="section-header">
+                        💡 <span class="section-title">Skyesoft Tip</span>
+                    </div>
+                    <div class="entry compact" id="skyesoftTips">
+                        —
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    `;
+}
+// Get Season Summary from UNIX time (SSE-safe)
+function getSeasonSummaryFromUnix(unixSeconds) {
+    if (!unixSeconds || isNaN(unixSeconds)) return null;
+
+    const date = new Date(unixSeconds * 1000);
+    const year = date.getFullYear();
+
+    // Meteorological seasons (signage-friendly)
+    const seasons = [
+        { name: 'Winter', start: new Date(year, 11, 1), end: new Date(year + 1, 2, 1) },
+        { name: 'Spring', start: new Date(year, 2, 1),  end: new Date(year, 5, 1) },
+        { name: 'Summer', start: new Date(year, 5, 1),  end: new Date(year, 8, 1) },
+        { name: 'Fall',   start: new Date(year, 8, 1),  end: new Date(year, 11, 1) }
+    ];
+
+    let current = seasons.find(s => date >= s.start && date < s.end);
+
+    // Jan / Feb → Winter of previous year
+    if (!current) {
+        current = {
+            name: 'Winter',
+            start: new Date(year - 1, 11, 1),
+            end:   new Date(year, 2, 1)
+        };
+    }
+
+    const msPerDay = 86400000;
+    const dayOfSeason =
+        Math.floor((date - current.start) / msPerDay) + 1;
+
+    const totalDays =
+        Math.floor((current.end - current.start) / msPerDay);
+
+    return {
+        name: current.name,
+        day: dayOfSeason,
+        daysRemaining: totalDays - dayOfSeason
+    };
+}
+// Update today's highlights card with live data
 function updateHighlightsCard(payload = lastBoardPayload) {
     if (!payload) return;
+
     const unix = payload?.timeDateArray?.currentUnixTime;
     if (!unix) return;
 
     const now = new Date(unix * 1000);
-    const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const formattedDate = now.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
 
     const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const dayOfYear = Math.floor((now - startOfYear) / 86400000) + 1;
-    const isLeap = (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) || (now.getFullYear() % 400 === 0);
-    const daysInYear = isLeap ? 366 : 365;
+    const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+
+    const isLeapYear =
+        (now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) ||
+        (now.getFullYear() % 400 === 0);
+
+    const daysInYear = isLeapYear ? 366 : 365;
     const daysRemaining = daysInYear - dayOfYear;
 
-    const dateEl   = document.getElementById('todaysDate');
-    const dayEl    = document.getElementById('dayOfYear');
-    const remEl    = document.getElementById('daysRemaining');
+    const dateEl = document.getElementById('todaysDate');
+    const dayEl  = document.getElementById('dayOfYear');
+    const remEl  = document.getElementById('daysRemaining');
+
     if (dateEl) dateEl.textContent = formattedDate;
     if (dayEl)  dayEl.textContent  = dayOfYear;
     if (remEl)  remEl.textContent  = daysRemaining;
 
     const sunriseEl = document.getElementById('sunriseTime');
     const sunsetEl  = document.getElementById('sunsetTime');
-    sunriseEl && (sunriseEl.textContent = formatPhoenixTimeFromUnix(payload?.weather?.sunriseUnix) || '—');
-    sunsetEl  && (sunsetEl.textContent  = formatPhoenixTimeFromUnix(payload?.weather?.sunsetUnix)  || '—');
 
-    const dlEl = document.getElementById('daylightTime');
-    const ntEl = document.getElementById('nightTime');
-    const sr = payload?.weather?.sunriseUnix;
-    const ss = payload?.weather?.sunsetUnix;
-    if (sr && ss && !isNaN(sr) && !isNaN(ss)) {
-        let daylightSec = ss - sr;
-        if (daylightSec < 0) daylightSec += 86400;
-        const nightSec = 86400 - daylightSec;
-        dlEl && (dlEl.textContent = formatSmartInterval(daylightSec));
-        ntEl && (ntEl.textContent = formatSmartInterval(nightSec));
+    const sunriseUnix = payload?.weather?.sunriseUnix ?? null;
+    const sunsetUnix  = payload?.weather?.sunsetUnix  ?? null;
+
+    const sunriseStr = formatPhoenixTimeFromUnix(sunriseUnix) || '—';
+    const sunsetStr  = formatPhoenixTimeFromUnix(sunsetUnix)  || '—';
+
+    if (sunriseEl) sunriseEl.textContent = sunriseStr;
+    if (sunsetEl)  sunsetEl.textContent  = sunsetStr;
+
+    const daylightEl = document.getElementById('daylightTime');
+    const nightEl    = document.getElementById('nightTime');
+
+    if (sunriseUnix && sunsetUnix && !isNaN(sunriseUnix) && !isNaN(sunsetUnix)) {
+        let daylightSeconds = sunsetUnix - sunriseUnix;
+        if (daylightSeconds < 0) daylightSeconds += 86400;
+        const nightSeconds = 86400 - daylightSeconds;
+
+        if (daylightEl) daylightEl.textContent = formatSmartInterval(daylightSeconds);
+        if (nightEl)    nightEl.textContent    = formatSmartInterval(nightSeconds);
     } else {
-        dlEl && (dlEl.textContent = '—');
-        ntEl && (ntEl.textContent = '—');
+        if (daylightEl) daylightEl.textContent = '—';
+        if (nightEl)    nightEl.textContent    = '—';
     }
 
-    const holEl = document.getElementById('nextHoliday');
-    const hol = payload?.holidayState?.nextHoliday;
-    if (holEl && hol) {
-        holEl.textContent = `${hol.name} (${hol.daysAway} days)`;
+    const holidayEl = document.getElementById('nextHoliday');
+    const nextHoliday = payload?.holidayState?.nextHoliday;
+
+    if (holidayEl && nextHoliday) {
+        holidayEl.textContent = `${nextHoliday.name} (${nextHoliday.daysAway} days)`;
+    }
+}
+// load and render a random Skyesoft tip
+function loadAndRenderSkyesoftTip(providedEl = null) {
+    const el = providedEl || document.getElementById('skyesoftTips');
+    if (!el) {
+        console.warn('loadAndRenderSkyesoftTip: element not found');
+        return;
+    }
+
+    if (window.glbVar.tipsLoaded && window.glbVar.tips.length > 0) {
+        renderRandomTip(el);
+        return;
+    }
+
+    if (window.glbVar.tipsLoading) return;
+    window.glbVar.tipsLoading = true;
+
+    fetch('https://www.skyelighting.com/skyesoft/data/authoritative/skyesoftTips.json', {
+        cache: 'no-cache'
+    })
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+    })
+    .then(data => {
+        const tipsArray = data?.skyesoftTips?.tips || data?.tips;
+        if (Array.isArray(tipsArray) && tipsArray.length > 0) {
+            window.glbVar.tips = tipsArray;
+            window.glbVar.tipsLoaded = true;
+            console.log(`💡 Skyesoft Tips loaded — ${tipsArray.length} entries`);
+            renderRandomTip(el);
+        } else {
+            console.warn('Tips JSON loaded but no valid tips array found');
+        }
+    })
+    .catch(err => {
+        console.warn('⚠️ Failed to load Skyesoft tips', err);
+        el.textContent = '💡 Skyesoft Tip: Double-check drawings before submission.';
+    })
+    .finally(() => {
+        window.glbVar.tipsLoading = false;
+    });
+}
+// render a random tip into the given element
+function renderRandomTip(el) {
+    const tips = window.glbVar.tips;
+    if (!tips.length) return;
+
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    if (!tip?.text) return;
+
+    // ❌ REMOVE emoji here
+    el.textContent = tip.text;
+}
+// build initial payload with current time
+function buildInitialTimePayload() {
+    const now = new Date();
+    return {
+        time: {
+            now: Math.floor(now.getTime() / 1000)
+        }
+    };
+}
+// format unix timestamp to Phoenix time string
+function formatPhoenixTimeFromUnix(unixSeconds) {
+    if (!unixSeconds) return '—';
+    return new Date(unixSeconds * 1000).toLocaleTimeString('en-US', {
+        timeZone: 'America/Phoenix',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+// Map weather icon code to emoji
+function mapWeatherIcon(icon, condition = '') {
+    const map = {
+        sunny:          '☀️',
+        clear:          '☀️',
+        partly_cloudy:  '🌤️',
+        cloudy:         '☁️',
+        rain:           '🌧️',
+        storm:          '🌩️',
+        snow:           '❄️',
+    };
+
+    const key = (icon || '').toLowerCase();
+    if (map[key]) return map[key];
+
+    const cond = (condition || '').toLowerCase();
+    if (cond.includes('rain') || cond.includes('shower')) return '🌧️';
+    if (cond.includes('thunder') || cond.includes('storm')) return '🌩️';
+    if (cond.includes('snow')) return '❄️';
+    if (cond.includes('cloud')) return '☁️';
+
+    return '🌡️';
+}
+// render 3-day weather forecast into given elements
+function renderThreeDayForecast(forecastEls, payload) {
+    const forecast = payload?.weather?.forecast;
+
+    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+        forecastEls.forEach(el => {
+            if (el.day)   el.day.textContent   = '—';
+            if (el.icon)  el.icon.textContent  = '—';
+            if (el.temps) el.temps.textContent = '— / —';
+        });
+        return;
+    }
+
+    forecast.slice(0, 3).forEach((dayData, i) => {
+        const { dateUnix, high, low, icon, condition } = dayData;
+
+        // Base label (never empty)
+        let label =
+            i === 0 ? 'Today' :
+            i === 1 ? 'Tomorrow' :
+            'Day After Next';
+
+        // Optional date suffix
+        if (dateUnix) {
+            const d  = new Date(dateUnix * 1000);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            label += ` (${mm}/${dd})`;
+        }
+
+        forecastEls[i].day.textContent   = label;
+        forecastEls[i].icon.textContent  = mapWeatherIcon(icon, condition);
+        forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+    });
+}
+
+// ── Countdown helpers ────────────────────────────────────────────────
+
+function startCardCountdown(durationMs, el) {
+    stopCardCountdown();
+
+    if (!el || !durationMs) return;
+
+    countdownRemainingMs = durationMs;
+    activeCountdownEl = el;
+
+    const tick = () => {
+        if (!activeCountdownEl) return;
+
+        const seconds = Math.max(0, Math.ceil(countdownRemainingMs / 1000));
+        activeCountdownEl.textContent = `⏳ ${seconds}s`;
+
+        countdownRemainingMs -= 1000;
+
+        if (countdownRemainingMs <= 0) {
+            activeCountdownEl.textContent = '⏳ 0s';
+            stopCardCountdown();
+        }
+    };
+
+    tick(); // immediate
+    countdownTimer = setInterval(tick, 1000);
+}
+
+function stopCardCountdown() {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = null;
+    countdownRemainingMs = 0;
+    activeCountdownEl = null;
+}
+
+// ── Card footer freshness resolver ──────────────────────────────────
+
+function resolveCardFooter(cardId) {
+    if (!versionsMeta?.cards?.[cardId]) return null;
+
+    const cardMeta = versionsMeta.cards[cardId];
+    const footerCfg = cardMeta.footer || {};
+    const modules = cardMeta.modules || [];
+
+    let lastUpdated = null;
+
+    // AUTO: latest timestamp among used modules
+    if (footerCfg.mode === 'auto' && Array.isArray(modules)) {
+        modules.forEach(m => {
+            const ts = versionsMeta.modules?.[m]?.lastUpdatedUnix;
+            if (ts && (!lastUpdated || ts > lastUpdated)) {
+                lastUpdated = ts;
+            }
+        });
+    }
+
+    // MANUAL: explicit timestamp
+    if (footerCfg.mode === 'manual' && footerCfg.lastUpdatedUnix) {
+        lastUpdated = footerCfg.lastUpdatedUnix;
+    }
+
+    if (!lastUpdated) return null;
+
+    const label = footerCfg.label;
+
+    const absoluteTime = formatTimestamp(lastUpdated);
+    const relativeTime = humanizeRelativeTime(lastUpdated);
+
+    const timeStr = `${absoluteTime} (${relativeTime})`;
+    // Return final footer string
+    return label
+        ? `${label} • Updated ${timeStr}`
+        : `Updated ${timeStr}`;
+
+
+}
+// Humanize relative time helper
+function humanizeRelativeTime(updatedUnix, referenceUnix = null) {
+    const now = referenceUnix ?? Math.floor(Date.now() / 1000);
+    const seconds = now - updatedUnix;
+
+    if (seconds < 0) return 'just now';
+
+    const units = [
+        { label: 'month',  value: 60 * 60 * 24 * 30 },
+        { label: 'day',    value: 60 * 60 * 24 },
+        { label: 'hour',   value: 60 * 60 },
+        { label: 'minute', value: 60 }
+    ];
+
+    for (const unit of units) {
+        const amount = Math.floor(seconds / unit.value);
+        if (amount >= 1) {
+            return `${amount} ${unit.label}${amount !== 1 ? 's' : ''} ago`;
+        }
+    }
+
+    return 'just now';
+}
+// Apply Highlights Density
+function applyHighlightsDensity(cardEl) {
+    if (!cardEl) return;
+
+    const vh = window.innerHeight;
+
+    // Office monitors / TVs
+    if (vh >= 900) {
+        cardEl.classList.add('dense');
+    } else {
+        cardEl.classList.remove('dense');
+    }
+}
+// Get Season Icon
+function getSeasonIcon(seasonName) {
+    switch (seasonName) {
+        case 'Winter': return '❄️';
+        case 'Spring': return '🌱';
+        case 'Summer': return '☀️';
+        case 'Fall':   return '🍂';
+        default:       return '📆';
     }
 }
 
-// ── KPI Card (clean & fixed) ──────────────────────────────────────────────────
+// #endregion
 
-const KPICard = {
-    id: 'kpi-dashboard',
-    icon: '📊',
-    title: 'Permit KPIs',
-    durationMs: 15000,
+// #region LIVE FOOTER HELPER
+
+function renderLiveFooter({ text = '' }) {
+    const liveIcon = `
+        <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
+             alt="Live"
+             style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+    `;
+    return `${liveIcon}${text}`;
+}
+
+// #endregion
+
+// #region CARD TIMING
+
+const DEFAULT_CARD_DURATION_MS = 60000;
+
+// #endregion
+
+// #region CARD FACTORY
+
+function createActivePermitsCardElement() {
+    const card = document.createElement('section');
+    card.className = 'card card-active-permits';
+    card.innerHTML = `
+        <div class="cardHeader"><h2>📋 Active Permits <span class="cardCountdown">—</span></h2></div>
+        <div class="cardBodyDivider"></div>
+        <div class="cardBody">
+            <div class="cardContent" id="permitScrollWrap">
+                <table class="permit-table">
+                    <thead><tr>
+                        <th>WO</th><th>Customer</th><th>Jobsite</th>
+                        <th>Jurisdiction</th><th>Status</th>
+                    </tr></thead>
+                    <tbody id="permitTableBody">
+                        <tr><td colspan="5">Loading permits…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="cardFooterDivider"></div>
+        <div class="cardFooter" id="permitFooter">Loading…</div>
+    `;
+    return {
+        root: card,
+        scrollWrap: card.querySelector('#permitScrollWrap'),
+        tableBody: card.querySelector('#permitTableBody'),
+        footer: card.querySelector('#permitFooter')
+    };
+}
+
+function createGenericCardElement(spec) {
+    const card = document.createElement('section');
+    card.className = `card card-${spec.id}`;
+    card.innerHTML = `
+        <div class="cardHeader">
+            <h2>
+                ${spec.icon || '✨'} ${spec.title}
+                <span class="cardCountdown" aria-hidden="true">—</span>
+            </h2>
+        </div>
+        <div class="cardBodyDivider"></div>
+        <div class="cardBody">
+            <div class="cardContent">
+                <div id="content-${spec.id}">Loading...</div>
+            </div>
+        </div>
+        <div class="cardFooterDivider"></div>
+        <div class="cardFooter" id="footer-${spec.id}"></div>
+    `;
+    return {
+        root: card,
+        content: card.querySelector(`#content-${spec.id}`),
+        footer: card.querySelector(`#footer-${spec.id}`)
+    };
+}
+
+// #endregion
+
+// #region CARD REGISTRY + UNIVERSAL UPDATER
+
+const BOARD_CARDS = [];
+
+const ActivePermitsCard = {
+    id: 'active-permits',
+    durationMs: DEFAULT_CARD_DURATION_MS,
     instance: null,
+    lastSignature: null,
 
     create() {
-        this.instance = createGenericCardElement(this);
-        this.instance.content.innerHTML = `
-            <div class="kpi-grid two-col">
-                <div class="kpi-section at-a-glance">
-                    <h3>📌 At a Glance</h3>
-                    <div class="kpi-row status-grid">
-                        ${PERMIT_STATUSES.map(s => `
-                            <div class="kpi-item">
-                                <div class="kpi-icon">${getStatusIcon(s)}</div>
-                                <div class="kpi-label">${formatStatus(s)}</div>
-                                <div class="kpi-value" data-kpi-status="${s}">—</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                <div class="kpi-section performance">
-                    <h3>📈 Performance</h3>
-                    <div class="kpi-metric">
-                        <span class="metric-label">Avg Notes / Permit</span>
-                        <span id="kpiAvgNotes" class="metric-value">—</span>
-                    </div>
-                    <div class="kpi-metric">
-                        <span class="metric-label">Avg Turnaround</span>
-                        <span id="kpiAvgTurnaround" class="metric-value">—</span>
-                    </div>
-                </div>
-            </div>
-        `;
+        this.lastSignature = null;
+        this.instance = createActivePermitsCardElement();
         return this.instance.root;
     },
 
     update(payload) {
-        if (!payload?.kpi?.permits) return;
+        if (!payload || !Array.isArray(payload.activePermits)) return;
 
-        const breakdown = payload.kpi.permits.statusBreakdown || {};
-        PERMIT_STATUSES.forEach(status => {
-            const el = document.querySelector(`[data-kpi-status="${status}"]`);
-            if (el) {
-                const count = Number(breakdown[status]);
-                el.textContent = Number.isInteger(count) ? count : '—';
-                el.classList.toggle('zero', count === 0);
+        const permits = payload.activePermits;
+        latestActivePermits = permits;
+
+        const body = this.instance?.tableBody;
+        const footer = this.instance?.footer;
+        if (!body) return;
+
+        const signature = permits.length
+            ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
+            : 'empty';
+
+        // ── Common footer rendering logic ──
+        const renderFooter = () => {
+            if (!footer || !permitRegistryMeta?.updatedOn) return;
+
+            const updatedUnix = permitRegistryMeta.updatedOn;
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+
+            const timeText = nowUnix
+                ? humanizeRelativeTime(updatedUnix, nowUnix)
+                : formatTimestamp(updatedUnix);
+
+            const countText = `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`;
+
+            const absoluteTime = formatTimestamp(updatedUnix);
+
+            footer.innerHTML = renderLiveFooter({
+                text: `${countText} • Updated ${absoluteTime} (${timeText})`
+            });
+
+        };
+
+        // Signature match → just update footer (live ticking)
+        if (signature === this.lastSignature) {
+            renderFooter();
+            return;
+        }
+
+        // ── Data changed → full rebuild ──
+        this.lastSignature = signature;
+        body.innerHTML = '';
+
+        if (permits.length === 0) {
+            body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
+            if (footer) {
+                footer.textContent = 'No permits found';
             }
+            return;
+        }
+
+        const sorted = permits.slice().sort((a, b) => (parseInt(a.wo, 10) || 0) - (parseInt(b.wo, 10) || 0));
+
+        const frag = document.createDocumentFragment();
+        sorted.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${p.wo}</td>
+                <td>${p.customer}</td>
+                <td>${p.jobsite}</td>
+                <td>${resolveJurisdictionLabel(p.jurisdiction)}</td>
+                <td>${getStatusIcon(p.status)}${formatStatus(p.status)}</td>
+            `;
+            frag.appendChild(tr);
         });
 
-        const perf = payload.kpi.permits.performance || {};
-        const notesEl = document.getElementById('kpiAvgNotes');
-        if (notesEl && Number.isFinite(perf.avgNotesPerPermit)) {
-            notesEl.textContent = perf.avgNotesPerPermit.toFixed(1);
-        }
+        body.appendChild(frag);
 
-        const turnEl = document.getElementById('kpiAvgTurnaround');
-        if (turnEl && Number.isFinite(perf.avgTurnaroundSeconds)) {
-            turnEl.textContent = formatSmartInterval(perf.avgTurnaroundSeconds);
-        }
+        // Always use the same footer logic after rebuild
+        renderFooter();
+
+        requestAnimationFrame(() => {
+            if (this.instance?.scrollWrap) {
+                window.SkyOfficeBoard.autoScroll.start(this.instance.scrollWrap, this.durationMs);
+            }
+        });
     },
 
     onShow() {
+        // Footer is now fully driven by SSE → no need for extra logic here
+    },
+
+    onHide() {
+        window.SkyOfficeBoard.autoScroll.stop();
+    }
+};
+
+BOARD_CARDS.push(ActivePermitsCard);
+
+const TodaysHighlightsCard = {
+    id: 'todays-highlights',
+    icon: '🌅',
+    title: 'Today’s Highlights',
+    durationMs: DEFAULT_CARD_DURATION_MS,
+
+    instance: null,
+    tipElement: null,
+    forecastElements: null,
+    // Create handler
+    create() {
+        this.instance = createGenericCardElement(this);
+        this.instance.content.innerHTML = renderTodaysHighlightsSkeleton();
+
+        this.tipElement = this.instance.content.querySelector('#skyesoftTips');
+
+        const forecastRows = this.instance.content.querySelectorAll('.forecast-row');
+        this.forecastElements = Array.from(forecastRows).map(row => ({
+            day:  row.querySelector('.day'),
+            icon: row.querySelector('.icon'),
+            temps: row.querySelector('.temps')
+        }));
+
+        if (this.forecastElements.length !== 3) {
+            console.warn("[TodaysHighlightsCard] Expected 3 forecast rows, got", this.forecastElements.length);
+        }
+
+        return this.instance.root;
+    },
+    // Update with live data
+    update(payload) {
+        if (!payload) return;
+
+        updateHighlightsCard(payload);
+
+        if (this.forecastElements) {
+            renderThreeDayForecast(this.forecastElements, payload);
+        }
+
+        // ── Season display (authoritative SSE time) ──
+        const unixTime = payload?.timeDateArray?.currentUnixTime;
+        const season = getSeasonSummaryFromUnix(unixTime);
+
+        if (season) {
+            const nameEl = document.getElementById('seasonName');
+            const dayEl  = document.getElementById('seasonDay');
+            const remEl  = document.getElementById('seasonDaysLeft');
+            const iconEl = document.getElementById('seasonIcon');
+
+            if (nameEl) nameEl.textContent = season.name;
+            if (dayEl)  dayEl.textContent  = season.day;
+            if (remEl)  remEl.textContent  = season.daysRemaining;
+            if (iconEl) iconEl.textContent = getSeasonIcon(season.name);
+        }
+
+    },
+    // Show handler
+    onShow() {
+        // Apply Highlights Density mode
+        applyHighlightsDensity(this.instance.root)
+        if (this.tipElement) {
+            loadAndRenderSkyesoftTip(this.tipElement);
+        } else {
+            console.warn("[TodaysHighlightsCard.onShow] tipElement is null");
+        }
+
+        // Update footer from versions metadata
         const footerText = resolveCardFooter(this.id);
         if (footerText && this.instance?.footer) {
             this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
         }
     },
-
+    // Hide handler
     onHide() {}
 };
 
-// ── The rest of the file remains unchanged ─────────────────────────────────────
+BOARD_CARDS.push(TodaysHighlightsCard);
 
-// (ActivePermitsCard, TodaysHighlightsCard, BOARD_CARDS array population,
-//  updateAllCards, autoScroll, rotation controller, page controller, registerPage)
-
-BOARD_CARDS.push(KPICard);
-// Generic placeholder cards
 const GENERIC_CARD_SPECS = [
+    { id: 'kpi-dashboard', icon: '📈', title: 'Key Performance Indicators' },
     { id: 'announcements', icon: '📢', title: 'Announcements' }
 ];
-// Create generic cards from specs
+
 GENERIC_CARD_SPECS.forEach(spec => {
     BOARD_CARDS.push({
         ...spec,
@@ -317,7 +952,7 @@ GENERIC_CARD_SPECS.forEach(spec => {
         onHide() {}
     });
 });
-// Universal updater for all cardss
+
 function updateAllCards(payload) {
     lastBoardPayload = payload;
     BOARD_CARDS.forEach(card => {
