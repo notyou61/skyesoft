@@ -769,12 +769,16 @@ const ActivePermitsCard = {
             if (!footer) return;
 
             const updatedUnix = payload?.kpi?.meta?.generatedOn;
-            const permitsCount = permits.length;
 
-            // Fallback if KPI meta is unavailable
+            // Prefer SoT™ total count
+            const totalPermits =
+                payload?.permitRegistry?.totalCount ??
+                payload?.kpi?.atAGlance?.totalActive ??
+                permits.length;
+
             if (!updatedUnix) {
                 footer.innerHTML = renderLiveFooter({
-                    text: `${permitsCount} total permit${permitsCount !== 1 ? 's' : ''} • Timestamp unavailable`
+                    text: `${totalPermits} total permit${totalPermits !== 1 ? 's' : ''} • Timestamp unavailable`
                 });
                 return;
             }
@@ -788,10 +792,9 @@ const ActivePermitsCard = {
             const absoluteTime = formatTimestamp(updatedUnix);
 
             footer.innerHTML = renderLiveFooter({
-                text: `${permitsCount} active permit${permitsCount !== 1 ? 's' : ''} • Updated ${absoluteTime} (${relativeTime})`
+                text: `${totalPermits} total permit${totalPermits !== 1 ? 's' : ''} • Updated ${absoluteTime} (${relativeTime})`
             });
         };
-
 
         // Signature match → just update footer (live ticking)
         if (signature === this.lastSignature) {
