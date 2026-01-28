@@ -475,6 +475,16 @@ body[data-page="officeBoard"] #boardCardHost {
     padding: 0;
     margin-top: 6px;
 }
+/* Compact Total Permits row */
+.card-kpi-dashboard .kpi-total {
+    padding: 2px 6px;
+    margin-bottom: 4px;
+    line-height: 1.15;
+}
+/* Compact Total Permits Total / Value */
+.card-kpi-dashboard .kpi-total .kpi-value {
+    font-size: 1.4em; /* was 1.6em */
+}
 
 /* #endregion */
 
