@@ -352,6 +352,10 @@ body[data-page="officeBoard"] #boardCardHost {
     opacity: 0.85;
 }
 
+.kpi-zero {
+    opacity: 0.35;
+}
+
 /* #endregion */
 
 /* #region Viewport Adjustments */
