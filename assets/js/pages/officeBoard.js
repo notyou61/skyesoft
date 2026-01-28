@@ -5,9 +5,20 @@
 */
 
 // #region GLOBAL REGISTRIES
+    
+    // Permit Statuses
+    const PERMIT_STATUSES = [
+        'need_to_submit',
+        'submitted',
+        'under_review',
+        'corrections',
+        'ready_to_issue',
+        'issued',
+        'inspections',
+        'finaled'
+    ];
 
 let jurisdictionRegistry = null;
-let permitRegistryMeta = null;
 let latestActivePermits = [];
 let iconMap = null;
 let lastBoardPayload = null; // 🔁 cache most recent SSE payload
@@ -53,18 +64,6 @@ fetch('https://www.skyelighting.com/skyesoft/data/authoritative/jurisdictionRegi
     .catch(err => {
         console.error('❌ Failed to load jurisdictionRegistry.json', err);
         jurisdictionRegistry = {};
-    });
-
-fetch('https://www.skyelighting.com/skyesoft/data/runtimeEphemeral/permitRegistry.json', { cache: 'no-cache' })
-    .then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`))
-    .then(data => {
-        permitRegistryMeta = data.meta || null;
-        console.log('✅ Permit registry meta loaded', permitRegistryMeta);
-        if (latestActivePermits.length > 0) window.SkyOfficeBoard?.updatePermitTable?.(latestActivePermits);
-    })
-    .catch(err => {
-        console.error('❌ Failed to load permitRegistry.json', err);
-        permitRegistryMeta = null;
     });
 
 fetch('https://www.skyelighting.com/skyesoft/data/authoritative/iconMap.json', { cache: 'no-cache' })
@@ -736,8 +735,9 @@ function createGenericCardElement(spec) {
 
 // #region CARD REGISTRY + UNIVERSAL UPDATER
 
+// Initialize Board Cards
 const BOARD_CARDS = [];
-
+// Active Permit Card
 const ActivePermitsCard = {
     id: 'active-permits',
     durationMs: DEFAULT_CARD_DURATION_MS,
@@ -764,26 +764,34 @@ const ActivePermitsCard = {
             ? permits.map(p => `${p.wo}|${p.status}|${p.jurisdiction}|${p.customer}|${p.jobsite}`).join('::')
             : 'empty';
 
-        // ── Common footer rendering logic ──
+        // ── Common footer rendering logic (KPI-authoritative) ──
         const renderFooter = () => {
-            if (!footer || !permitRegistryMeta?.updatedOn) return;
+            if (!footer) return;
 
-            const updatedUnix = permitRegistryMeta.updatedOn;
+            const updatedUnix = payload?.kpi?.meta?.generatedOn;
+            const permitsCount = permits.length;
+
+            // Fallback if KPI meta is unavailable
+            if (!updatedUnix) {
+                footer.innerHTML = renderLiveFooter({
+                    text: `${permitsCount} active permit${permitsCount !== 1 ? 's' : ''} • Timestamp unavailable`
+                });
+                return;
+            }
+
             const nowUnix = payload?.timeDateArray?.currentUnixTime;
 
-            const timeText = nowUnix
+            const relativeTime = nowUnix
                 ? humanizeRelativeTime(updatedUnix, nowUnix)
                 : formatTimestamp(updatedUnix);
-
-            const countText = `${permits.length} active permit${permits.length !== 1 ? 's' : ''}`;
 
             const absoluteTime = formatTimestamp(updatedUnix);
 
             footer.innerHTML = renderLiveFooter({
-                text: `${countText} • Updated ${absoluteTime} (${timeText})`
+                text: `${permitsCount} active permit${permitsCount !== 1 ? 's' : ''} • Updated ${absoluteTime} (${relativeTime})`
             });
-
         };
+
 
         // Signature match → just update footer (live ticking)
         if (signature === this.lastSignature) {
@@ -838,9 +846,9 @@ const ActivePermitsCard = {
         window.SkyOfficeBoard.autoScroll.stop();
     }
 };
-
+// Board Cards (Push Active Permts Card)
 BOARD_CARDS.push(ActivePermitsCard);
-
+// Today's Highlights Card
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
     icon: '🌅',
@@ -916,43 +924,133 @@ const TodaysHighlightsCard = {
     // Hide handler
     onHide() {}
 };
+// KPI Card
+const KPICard = {
+    id: 'kpi-dashboard',
+    icon: '📊',
+    title: 'Permit KPIs',
+    durationMs: DEFAULT_CARD_DURATION_MS,
+    instance: null,
+    // Create
+    create() {
+        // Instace
+        this.instance = createGenericCardElement(this);
+        // Inner HTML
+        this.instance.content.innerHTML = `
+            <div class="kpi-grid two-col">
+                <div class="kpi-section">
+                    <h3>📌 At a Glance</h3>
+                    <div class="kpi-row status-grid">
+                        ${PERMIT_STATUSES.map(status => `
+                            <div class="kpi-item">
+                                <span class="kpi-icon">${getStatusIcon(status)}</span>
+                                <span class="kpi-label">${formatStatus(status)}</span>
+                                <span class="kpi-value" data-kpi-status="${status}">—</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
 
+                <div class="kpi-section">
+                    <h3>📈 Performance</h3>
+                    <div class="kpi-metric">
+                        Avg Notes per Permit:
+                        <span id="kpiAvgNotes">—</span>
+                    </div>
+                    <div class="kpi-metric">
+                        Avg Turnaround:
+                        <span id="kpiAvgTurnaround">—</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Return                 
+        return this.instance.root;
+    },
+    // Update
+    update(payload) {
+        if (!payload?.kpi?.permits) return;
+
+        const breakdown = payload.kpi.permits.statusBreakdown || {};
+
+        PERMIT_STATUSES.forEach(status => {
+            const el = document.querySelector(`[data-kpi-status="${status}"]`);
+            if (el) {
+                el.textContent = Number.isInteger(breakdown[status])
+                    ? breakdown[status]
+                    : '—';
+            }
+        });
+
+        const perf = payload.kpi.permits.performance || {};
+
+        const notesEl = document.getElementById('kpiAvgNotes');
+        if (notesEl && Number.isFinite(perf.avgNotesPerPermit)) {
+            notesEl.textContent = perf.avgNotesPerPermit.toFixed(1);
+        }
+
+        const turnEl = document.getElementById('kpiAvgTurnaround');
+        if (turnEl && Number.isFinite(perf.avgTurnaroundSeconds)) {
+            turnEl.textContent = formatSmartInterval(perf.avgTurnaroundSeconds);
+        }
+    },
+    // On Show
+    onShow() {
+        const updatedUnix = lastBoardPayload?.kpi?.meta?.generatedOn;
+        if (!updatedUnix || !this.instance?.footer) return;
+
+        const nowUnix = lastBoardPayload?.timeDateArray?.currentUnixTime;
+        const relative = nowUnix
+            ? humanizeRelativeTime(updatedUnix, nowUnix)
+            : formatTimestamp(updatedUnix);
+
+        const absolute = formatTimestamp(updatedUnix);
+
+        this.instance.footer.innerHTML = renderLiveFooter({
+            text: `KPI snapshot updated ${absolute} (${relative})`
+        });
+    },
+    // On Hide
+    onHide() {}
+};
+// Board Cards (Push Today's Highlights Card)
 BOARD_CARDS.push(TodaysHighlightsCard);
-
+// Board Cards (Push KPI Card)
+BOARD_CARDS.push(KPICard);
+// Generic Card Spec
 const GENERIC_CARD_SPECS = [
-    { id: 'kpi-dashboard', icon: '📈', title: 'Key Performance Indicators' },
     { id: 'announcements', icon: '📢', title: 'Announcements' }
 ];
-
+// Genric Card Specs (For Each)
 GENERIC_CARD_SPECS.forEach(spec => {
     BOARD_CARDS.push({
         ...spec,
         durationMs: DEFAULT_CARD_DURATION_MS,
         instance: null,
-
+        // Create
         create() {
             this.instance = createGenericCardElement(this);
             return this.instance.root;
         },
-
+        // Update
         update() {
             if (this.instance?.content) {
                 this.instance.content.innerHTML = `<p>${this.title} content coming soon</p>`;
             }
             // Footer set in onShow() via versions.json
         },
-
+        // On Show
         onShow() {
             const footerText = resolveCardFooter(this.id);
             if (footerText && this.instance?.footer) {
                 this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
             }
         },
-
+        // On Hide
         onHide() {}
     });
 });
-
+// Update All Cards Function
 function updateAllCards(payload) {
     lastBoardPayload = payload;
     BOARD_CARDS.forEach(card => {

@@ -352,10 +352,87 @@ body[data-page="officeBoard"] #boardCardHost {
     opacity: 0.85;
 }
 
-.kpi-zero {
+/* #endregion */
+
+/* #region CARD CONTENT — KPI Layout & Grid */
+
+/* ─────────────────────────────────────────────
+   KPI CARD – LAYOUT
+   ───────────────────────────────────────────── */
+
+.card-kpi-dashboard .kpi-grid.two-col {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+/* Stack on smaller screens */
+@media (max-width: 1100px) {
+    .card-kpi-dashboard .kpi-grid.two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ─────────────────────────────────────────────
+   STATUS GRID
+   ───────────────────────────────────────────── */
+
+.card-kpi-dashboard .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.card-kpi-dashboard .kpi-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.card-kpi-dashboard .kpi-icon {
+    font-size: 1.1em;
+    margin-bottom: 4px;
+}
+
+.card-kpi-dashboard .kpi-label {
+    font-size: 0.75em;
+    opacity: 0.75;
+    margin-bottom: 2px;
+}
+
+.card-kpi-dashboard .kpi-value {
+    font-size: 1.6em;
+    font-weight: 600;
+}
+
+/* Zero-state (quiet, not hidden) */
+.card-kpi-dashboard .kpi-value.zero {
     opacity: 0.35;
 }
 
+/* ─────────────────────────────────────────────
+   PERFORMANCE METRICS
+   ───────────────────────────────────────────── */
+
+.card-kpi-dashboard .kpi-metric {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.15);
+}
+
+.card-kpi-dashboard .kpi-metric:last-child {
+    border-bottom: none;
+}
+
+.card-kpi-dashboard .metric-label {
+    opacity: 0.7;
+}
+
+.card-kpi-dashboard .metric-value {
+    font-weight: 600;
+}
 /* #endregion */
 
 /* #region Viewport Adjustments */
