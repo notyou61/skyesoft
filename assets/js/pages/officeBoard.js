@@ -670,7 +670,7 @@ function renderLiveFooter({ text = '' }) {
 
 // #region CARD TIMING
 
-const DEFAULT_CARD_DURATION_MS = 60000;
+const DEFAULT_CARD_DURATION_MS = 15000;
 
 // #endregion
 
