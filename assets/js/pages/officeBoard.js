@@ -945,35 +945,36 @@ const KPICard = {
         this.instance = createGenericCardElement(this);
         // Inner HTML
         this.instance.content.innerHTML = `
-            <div class="kpi-grid two-col">
-                <div class="kpi-section">
-                    <h3>📌 At a Glance</h3>
-                    <div class="kpi-item kpi-total">
-                        <span class="kpi-icon">📦</span>
-                        <span class="kpi-label">Total Permits</span>
-                        <span class="kpi-value" id="kpiTotalPermits">—</span>
+            <div class="highlights-grid kpi-grid">
+                <!-- LEFT COLUMN -->
+                <div class="highlights-col">
+                    <div class="entry section-header">
+                        📌 At a Glance
                     </div>
-                    <div class="kpi-row status-grid">
-                        ${PERMIT_STATUSES.map(status => `
-                            <div class="kpi-item">
-                                <span class="kpi-icon">${getStatusIcon(status)}</span>
-                                <span class="kpi-label">${formatStatus(status)}</span>
-                                <span class="kpi-value" data-kpi-status="${status}">—</span>
-                            </div>
-                        `).join('')}
+                    <div class="entry kpi-summary">
+                        📦 Total Permits
+                        <strong id="kpiTotalPermits" style="float:right;">—</strong>
                     </div>
+                    ${PERMIT_STATUSES.map(status => `
+                        <div class="entry kpi-status">
+                            ${getStatusIcon(status)} ${formatStatus(status)}
+                            <strong data-kpi-status="${status}" style="float:right;">—</strong>
+                        </div>
+                    `).join('')}
                 </div>
-
-                <div class="kpi-section">
-                    <h3>📈 Performance</h3>
-                        <div class="kpi-metric">
-                            <span class="metric-label">Avg Notes per Permit</span>
-                            <span class="metric-value" id="kpiAvgNotes">—</span>
-                        </div>
-                        <div class="kpi-metric">
-                            <span class="metric-label">Avg Turnaround</span>
-                            <span class="metric-value" id="kpiAvgTurnaround">—</span>
-                        </div>
+                <!-- RIGHT COLUMN -->
+                <div class="highlights-col">
+                    <div class="entry section-header">
+                        📈 Performance
+                    </div>
+                    <div class="entry">
+                        Avg Notes per Permit
+                        <strong id="kpiAvgNotes" style="float:right;">—</strong>
+                    </div>
+                    <div class="entry">
+                        Avg Turnaround
+                        <strong id="kpiAvgTurnaround" style="float:right;">—</strong>
+                    </div>
                 </div>
             </div>
         `;
