@@ -954,14 +954,14 @@ const KPICard = {
 
                 <div class="kpi-section">
                     <h3>📈 Performance</h3>
-                    <div class="kpi-metric">
-                        Avg Notes per Permit:
-                        <span id="kpiAvgNotes">—</span>
-                    </div>
-                    <div class="kpi-metric">
-                        Avg Turnaround:
-                        <span id="kpiAvgTurnaround">—</span>
-                    </div>
+                        <div class="kpi-metric">
+                            <span class="metric-label">Avg Notes per Permit</span>
+                            <span class="metric-value" id="kpiAvgNotes">—</span>
+                        </div>
+                        <div class="kpi-metric">
+                            <span class="metric-label">Avg Turnaround</span>
+                            <span class="metric-value" id="kpiAvgTurnaround">—</span>
+                        </div>
                 </div>
             </div>
         `;
@@ -971,43 +971,75 @@ const KPICard = {
     // Update
     update(payload) {
         console.log('[KPI payload]', payload?.kpi);
-        // KPI Payload 
+
+        // ── Guard: require KPI payload ──
         if (!payload?.kpi) return;
 
+        // ── Guard: card must be mounted before rendering ──
+        if (!this.instance || !this.instance.content) return;
+
+        // ── Build stable signature (post-mount only) ──
         const signature = JSON.stringify({
-            status: payload.kpi.statusBreakdown,
-            perf: payload.kpi.performance,
-            glance: payload.kpi.atAGlance
+            status: payload.kpi.statusBreakdown || {},
+            perf: payload.kpi.performance || {},
+            glance: payload.kpi.atAGlance || {}
         });
 
-        if (signature === this.lastSignature) return;
+        // Skip if nothing materially changed
+        if (this.lastSignature === signature) return;
         this.lastSignature = signature;
 
-        // ── Status Breakdown ──
+        /* ─────────────────────────────
+        STATUS BREAKDOWN
+        ───────────────────────────── */
+
         const breakdown = payload.kpi.statusBreakdown || {};
 
         PERMIT_STATUSES.forEach(status => {
-            const el = document.querySelector(`[data-kpi-status="${status}"]`);
-            if (el) {
-                const value = breakdown[status];
-                el.textContent = Number.isInteger(value) ? value : '—';
+            const el = this.instance.root.querySelector(
+                `[data-kpi-status="${status}"]`
+            );
+
+            if (!el) return;
+
+            const value = breakdown[status];
+
+            if (Number.isInteger(value)) {
+                el.textContent = value;
+                el.classList.toggle('zero', value === 0);
+            } else {
+                el.textContent = '—';
+                el.classList.remove('zero');
             }
         });
 
-        // ── Performance Metrics ──
-        const notesEl = document.getElementById('kpiAvgNotes');
+        /* ─────────────────────────────
+        PERFORMANCE METRICS
+        ───────────────────────────── */
+
+        const notesEl = this.instance.root.querySelector('#kpiAvgNotes');
         const avgNotes = payload.kpi.performance?.averageNotesPerPermit;
-        if (notesEl && Number.isFinite(avgNotes)) {
-            notesEl.textContent = avgNotes.toFixed(1);
+
+        if (notesEl) {
+            notesEl.textContent = Number.isFinite(avgNotes)
+                ? avgNotes.toFixed(1)
+                : '—';
         }
 
-        const turnEl = document.getElementById('kpiAvgTurnaround');
+        const turnEl = this.instance.root.querySelector('#kpiAvgTurnaround');
         const avgDays = payload.kpi.atAGlance?.averageTurnaroundDays;
-        if (turnEl && Number.isFinite(avgDays)) {
-            turnEl.textContent = `${avgDays.toFixed(1)} days`;
+
+        if (turnEl) {
+            turnEl.textContent = Number.isFinite(avgDays)
+                ? `${avgDays.toFixed(1)} days`
+                : '—';
         }
-        // Footer / Payload KPI Meta Conditional
-        if (this.instance?.footer && payload.kpi.meta?.generatedOn) {
+
+        /* ─────────────────────────────
+        FOOTER (KPI META AUTHORITATIVE)
+        ───────────────────────────── */
+
+        if (this.instance.footer && payload.kpi.meta?.generatedOn) {
             const updatedUnix = payload.kpi.meta.generatedOn;
             const nowUnix = payload?.timeDateArray?.currentUnixTime;
 
@@ -1021,7 +1053,6 @@ const KPICard = {
                 text: `KPI snapshot updated ${absolute} (${relative})`
             });
         }
-
     },
     // On Show
     onShow() {
