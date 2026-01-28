@@ -948,6 +948,11 @@ const KPICard = {
             <div class="kpi-grid two-col">
                 <div class="kpi-section">
                     <h3>📌 At a Glance</h3>
+                    <div class="kpi-item kpi-total">
+                        <span class="kpi-icon">📦</span>
+                        <span class="kpi-label">Total Permits</span>
+                        <span class="kpi-value" id="kpiTotalPermits">—</span>
+                    </div>
                     <div class="kpi-row status-grid">
                         ${PERMIT_STATUSES.map(status => `
                             <div class="kpi-item">
@@ -977,74 +982,82 @@ const KPICard = {
     },
     // Update
     update(payload) {
-    // ── Guard: require KPI payload ──
-    if (!payload?.kpi) return;
-    if (!this.instance || !this.instance.root) return;
+        // ── Guard: require KPI payload ──
+        if (!payload?.kpi) return;
+        if (!this.instance || !this.instance.root) return;
 
-    const breakdown = payload.kpi.statusBreakdown || {};
+        const breakdown = payload.kpi.statusBreakdown || {};
 
-    /* ─────────────────────────────
-       STATUS BREAKDOWN (always render)
-       ───────────────────────────── */
+        // ── Total Permits (authoritative) ──
+        const totalEl = this.instance.root.querySelector('#kpiTotalPermits');
 
-    PERMIT_STATUSES.forEach(status => {
-        const el = this.instance.root.querySelector(
-            `[data-kpi-status="${status}"]`
-        );
-        if (!el) return;
+        if (totalEl) {
+            const total = Object.values(breakdown)
+                .filter(v => Number.isInteger(v))
+                .reduce((sum, v) => sum + v, 0);
 
-        const value = breakdown[status];
-
-        if (Number.isInteger(value)) {
-            el.textContent = value;
-            el.classList.toggle('zero', value === 0);
-        } else {
-            el.textContent = '—';
-            el.classList.remove('zero');
+            totalEl.textContent = total;
         }
-    });
 
-    /* ─────────────────────────────
-       PERFORMANCE (placeholder-safe)
-       ───────────────────────────── */
+        /* ─────────────────────────────
+        STATUS BREAKDOWN (always render)
+        ───────────────────────────── */
+        PERMIT_STATUSES.forEach(status => {
+            const el = this.instance.root.querySelector(
+                `[data-kpi-status="${status}"]`
+            );
+            if (!el) return;
 
-    const notesEl = this.instance.root.querySelector('#kpiAvgNotes');
-    const avgNotes = payload.kpi.performance?.averageNotesPerPermit;
+            const value = breakdown[status];
 
-    if (notesEl) {
-        notesEl.textContent = Number.isFinite(avgNotes)
-            ? avgNotes.toFixed(1)
-            : '—';
-    }
-
-    const turnEl = this.instance.root.querySelector('#kpiAvgTurnaround');
-    const avgDays = payload.kpi.atAGlance?.averageTurnaroundDays;
-
-    if (turnEl) {
-        turnEl.textContent = Number.isFinite(avgDays)
-            ? `${avgDays.toFixed(1)} days`
-            : '—';
-    }
-
-    /* ─────────────────────────────
-       FOOTER (meta-authoritative)
-       ───────────────────────────── */
-
-    if (this.instance.footer && payload.kpi.meta?.generatedOn) {
-        const updatedUnix = payload.kpi.meta.generatedOn;
-        const nowUnix = payload?.timeDateArray?.currentUnixTime;
-
-        const relative = nowUnix
-            ? humanizeRelativeTime(updatedUnix, nowUnix)
-            : formatTimestamp(updatedUnix);
-
-        const absolute = formatTimestamp(updatedUnix);
-
-        this.instance.footer.innerHTML = renderLiveFooter({
-            text: `KPI snapshot updated ${absolute} (${relative})`
+            if (Number.isInteger(value)) {
+                el.textContent = value;
+                el.classList.toggle('zero', value === 0);
+            } else {
+                el.textContent = '—';
+                el.classList.remove('zero');
+            }
         });
-    }
-},
+
+        /* ─────────────────────────────
+        PERFORMANCE (placeholder-safe)
+        ───────────────────────────── */
+        const notesEl = this.instance.root.querySelector('#kpiAvgNotes');
+        const avgNotes = payload.kpi.performance?.averageNotesPerPermit;
+
+        if (notesEl) {
+            notesEl.textContent = Number.isFinite(avgNotes)
+                ? avgNotes.toFixed(1)
+                : '—';
+        }
+
+        const turnEl = this.instance.root.querySelector('#kpiAvgTurnaround');
+        const avgDays = payload.kpi.atAGlance?.averageTurnaroundDays;
+
+        if (turnEl) {
+            turnEl.textContent = Number.isFinite(avgDays)
+                ? `${avgDays.toFixed(1)} days`
+                : '—';
+        }
+
+        /* ─────────────────────────────
+        FOOTER (meta-authoritative)
+        ───────────────────────────── */
+        if (this.instance.footer && payload.kpi.meta?.generatedOn) {
+            const updatedUnix = payload.kpi.meta.generatedOn;
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+
+            const relative = nowUnix
+                ? humanizeRelativeTime(updatedUnix, nowUnix)
+                : formatTimestamp(updatedUnix);
+
+            const absolute = formatTimestamp(updatedUnix);
+
+            this.instance.footer.innerHTML = renderLiveFooter({
+                text: `KPI snapshot updated ${absolute} (${relative})`
+            });
+        }
+    },
     // On Show
     onShow() {
         const updatedUnix = lastBoardPayload?.kpi?.meta?.generatedOn;
