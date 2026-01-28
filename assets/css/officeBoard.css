@@ -356,6 +356,21 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* #region CARD CONTENT — KPI Layout & Grid */
 
+/* KPI card must not be flex-compressed */
+.card-kpi-dashboard {
+    flex: 0 0 auto;
+    min-height: 420px;
+}
+
+/* KPI card scrolling contract */
+.card-kpi-dashboard .cardBody {
+    overflow: hidden;
+}
+
+.card-kpi-dashboard .cardContent {
+    overflow-y: auto;
+}
+
 /* ─────────────────────────────────────────────
    KPI CARD – LAYOUT
    ───────────────────────────────────────────── */
@@ -383,27 +398,23 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 /* ─────────────────────────────────────────────
-   STATUS LIST (zebra rows, Highlights-style)
+   STATUS LIST (Highlights-style zebra rows)
    ───────────────────────────────────────────── */
 
 .card-kpi-dashboard .status-grid {
     display: flex;
     flex-direction: column;
-    gap: 0;
 }
 
-/* Each KPI row (like Highlights entries) */
 .card-kpi-dashboard .kpi-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    padding: 6px 10px;          /* density tuned */
+    padding: 6px 10px;
     line-height: 1.2;
-    border-radius: 6px;          /* match card softness */
+    border-radius: 6px;
 }
 
-/* Zebra striping */
 .card-kpi-dashboard .kpi-item:nth-child(odd) {
     background: #ffffff;
 }
@@ -412,47 +423,17 @@ body[data-page="officeBoard"] #boardCardHost {
     background: #edf2ff;
 }
 
-/* Left side group: icon + label */
-.card-kpi-dashboard .kpi-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.card-kpi-dashboard .kpi-icon {
-    font-size: 1.0em;
-    line-height: 1;
-}
-
-.card-kpi-dashboard .kpi-label {
-    font-size: 0.95em;
-    font-weight: 600;
-    opacity: 0.9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Right side value */
-.card-kpi-dashboard .kpi-value {
-    font-size: 1.05em;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-/* Zero-state (quiet, not hidden) */
 .card-kpi-dashboard .kpi-value.zero {
     opacity: 0.35;
 }
 
-/* Total permits row: slightly emphasized */
+/* Total row emphasis */
 .card-kpi-dashboard .kpi-item.kpi-total {
     background: #f3f4f6 !important;
 }
 
 /* ─────────────────────────────────────────────
-   PERFORMANCE METRICS (keep compact)
+   PERFORMANCE METRICS
    ───────────────────────────────────────────── */
 
 .card-kpi-dashboard .kpi-metric {
@@ -465,22 +446,6 @@ body[data-page="officeBoard"] #boardCardHost {
 
 .card-kpi-dashboard .kpi-metric:last-child {
     border-bottom: none;
-}
-
-.card-kpi-dashboard .metric-label {
-    font-size: 0.92em;
-    opacity: 0.8;
-}
-
-.card-kpi-dashboard .metric-value {
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-/* Allow KPI card content to scroll if content exceeds height */
-.card-kpi-dashboard .cardContent {
-    overflow-y: auto;
-    mask-image: linear-gradient(to bottom, black 90%, transparent);
 }
 
 /* #endregion */
