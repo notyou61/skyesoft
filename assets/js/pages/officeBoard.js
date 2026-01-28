@@ -101,26 +101,40 @@ window.glbVar.tipsLoaded = false;
 function getStatusIcon(status) {
     if (!status) return '';
     const s = status.toLowerCase();
+
     const keyMap = {
-        'under_review':     'clock',
+        // Intake
         'need_to_submit':   'warning',
         'submitted':        'clipboard',
+
+        // Review / internal
+        'qc_passed':        'check',
+        'under_review':     'clock',
+        'corrections':      'tools',
+
+        // Authority actions
         'ready_to_issue':   'memo',
         'issued':           'shield',
-        'finaled':          'trophy',
-        'corrections':      'tools'
+        'inspections':      'search',
+
+        // Completion
+        'finaled':          'trophy'
     };
+
     const iconKey = keyMap[s];
     if (!iconKey || !iconMap) return '';
+
     const entry = Object.values(iconMap).find(e =>
         (e.file && e.file.toLowerCase().includes(iconKey)) ||
-        (e.alt && e.alt.toLowerCase().includes(iconKey))
+        (e.alt  && e.alt.toLowerCase().includes(iconKey))
     );
+
     if (!entry) return '';
     if (entry.emoji) return entry.emoji + ' ';
     if (entry.file) {
         const url = `https://www.skyelighting.com/skyesoft/assets/images/icons/${entry.file}`;
-        return `<img src="${url}" alt="${entry.alt || 'status icon'}" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;">`;
+        return `<img src="${url}" alt="${entry.alt || 'status icon'}"
+                     style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">`;
     }
     return '';
 }

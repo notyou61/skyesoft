@@ -22,7 +22,7 @@ $paths = [
     "versions"       => $root . "/data/authoritative/versions.json",
     "holiday"        => $root . "/data/authoritative/holidayRegistry.json",
     "systemRegistry" => $root . "/data/authoritative/systemRegistry.json",
-    "kpi"            => $root . "/data/runtimeEphemeral/kpi.json",
+    "kpi"            => $root . "/data/authoritative/kpiRegistry.json",
     "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "announcements"  => $root . "/data/runtimeEphemeral/announcements.json",
 ];
