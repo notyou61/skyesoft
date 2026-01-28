@@ -364,6 +364,7 @@ body[data-page="officeBoard"] #boardCardHost {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 24px;
+    align-items: start;
 }
 
 /* Stack on smaller screens */
@@ -371,6 +372,14 @@ body[data-page="officeBoard"] #boardCardHost {
     .card-kpi-dashboard .kpi-grid.two-col {
         grid-template-columns: 1fr;
     }
+}
+
+/* Section headers */
+.card-kpi-dashboard .kpi-section h3 {
+    margin: 0 0 12px;
+    font-size: 0.95em;
+    font-weight: 600;
+    opacity: 0.9;
 }
 
 /* ─────────────────────────────────────────────
@@ -388,20 +397,26 @@ body[data-page="officeBoard"] #boardCardHost {
     border-radius: 8px;
     padding: 10px 8px;
     text-align: center;
+    line-height: 1.15;
 }
 
 .card-kpi-dashboard .kpi-icon {
+    display: block;
     font-size: 1.1em;
     margin-bottom: 4px;
 }
 
 .card-kpi-dashboard .kpi-label {
-    font-size: 0.75em;
-    opacity: 0.75;
+    display: block;
+    font-size: 0.72em;
+    opacity: 0.7;
     margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .card-kpi-dashboard .kpi-value {
+    display: block;
     font-size: 1.6em;
     font-weight: 600;
 }
@@ -418,6 +433,7 @@ body[data-page="officeBoard"] #boardCardHost {
 .card-kpi-dashboard .kpi-metric {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 10px 0;
     border-bottom: 1px dashed rgba(255,255,255,0.15);
 }
@@ -427,12 +443,15 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 .card-kpi-dashboard .metric-label {
+    font-size: 0.85em;
     opacity: 0.7;
 }
 
 .card-kpi-dashboard .metric-value {
     font-weight: 600;
+    white-space: nowrap;
 }
+
 /* #endregion */
 
 /* #region Viewport Adjustments */

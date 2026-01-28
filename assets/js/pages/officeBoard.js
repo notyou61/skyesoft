@@ -931,6 +931,7 @@ const KPICard = {
     title: 'Permit KPIs',
     durationMs: DEFAULT_CARD_DURATION_MS,
     instance: null,
+    lastSignature: null,
     // Create
     create() {
         // Instace
@@ -969,33 +970,58 @@ const KPICard = {
     },
     // Update
     update(payload) {
-        //
         console.log('[KPI payload]', payload?.kpi);
-        // Payload Condtional
-        if (!payload?.kpi?.permits) return;
+        // KPI Payload 
+        if (!payload?.kpi) return;
 
-        const breakdown = payload.kpi.permits.statusBreakdown || {};
+        const signature = JSON.stringify({
+            status: payload.kpi.statusBreakdown,
+            perf: payload.kpi.performance,
+            glance: payload.kpi.atAGlance
+        });
+
+        if (signature === this.lastSignature) return;
+        this.lastSignature = signature;
+
+        // ── Status Breakdown ──
+        const breakdown = payload.kpi.statusBreakdown || {};
 
         PERMIT_STATUSES.forEach(status => {
             const el = document.querySelector(`[data-kpi-status="${status}"]`);
             if (el) {
-                el.textContent = Number.isInteger(breakdown[status])
-                    ? breakdown[status]
-                    : '—';
+                const value = breakdown[status];
+                el.textContent = Number.isInteger(value) ? value : '—';
             }
         });
 
-        const perf = payload.kpi.permits.performance || {};
-
+        // ── Performance Metrics ──
         const notesEl = document.getElementById('kpiAvgNotes');
-        if (notesEl && Number.isFinite(perf.avgNotesPerPermit)) {
-            notesEl.textContent = perf.avgNotesPerPermit.toFixed(1);
+        const avgNotes = payload.kpi.performance?.averageNotesPerPermit;
+        if (notesEl && Number.isFinite(avgNotes)) {
+            notesEl.textContent = avgNotes.toFixed(1);
         }
 
         const turnEl = document.getElementById('kpiAvgTurnaround');
-        if (turnEl && Number.isFinite(perf.avgTurnaroundSeconds)) {
-            turnEl.textContent = formatSmartInterval(perf.avgTurnaroundSeconds);
+        const avgDays = payload.kpi.atAGlance?.averageTurnaroundDays;
+        if (turnEl && Number.isFinite(avgDays)) {
+            turnEl.textContent = `${avgDays.toFixed(1)} days`;
         }
+        // Footer / Payload KPI Meta Conditional
+        if (this.instance?.footer && payload.kpi.meta?.generatedOn) {
+            const updatedUnix = payload.kpi.meta.generatedOn;
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+
+            const relative = nowUnix
+                ? humanizeRelativeTime(updatedUnix, nowUnix)
+                : formatTimestamp(updatedUnix);
+
+            const absolute = formatTimestamp(updatedUnix);
+
+            this.instance.footer.innerHTML = renderLiveFooter({
+                text: `KPI snapshot updated ${absolute} (${relative})`
+            });
+        }
+
     },
     // On Show
     onShow() {
