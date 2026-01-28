@@ -990,7 +990,9 @@ const KPICard = {
 
         const breakdown = payload.kpi.statusBreakdown || {};
 
-        // ── Total Permits (authoritative) ──
+        /* ─────────────────────────────
+        TOTAL PERMITS (authoritative)
+        ───────────────────────────── */
         const totalEl = this.instance.root.querySelector('#kpiTotalPermits');
 
         if (totalEl) {
@@ -1002,7 +1004,8 @@ const KPICard = {
         }
 
         /* ─────────────────────────────
-        STATUS BREAKDOWN (always render)
+        STATUS BREAKDOWN
+        Auto-collapse zero / empty rows
         ───────────────────────────── */
         PERMIT_STATUSES.forEach(status => {
             const el = this.instance.root.querySelector(
@@ -1010,14 +1013,25 @@ const KPICard = {
             );
             if (!el) return;
 
+            const row = el.closest('.kpi-row');
             const value = breakdown[status];
 
             if (Number.isInteger(value)) {
                 el.textContent = value;
                 el.classList.toggle('zero', value === 0);
+
+                // Hide rows with zero count
+                if (row) {
+                    row.style.display = value === 0 ? 'none' : '';
+                }
             } else {
                 el.textContent = '—';
                 el.classList.remove('zero');
+
+                // Hide rows with non-numeric values
+                if (row) {
+                    row.style.display = 'none';
+                }
             }
         });
 

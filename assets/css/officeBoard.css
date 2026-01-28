@@ -448,6 +448,11 @@ body[data-page="officeBoard"] #boardCardHost {
     border-bottom: none;
 }
 
+.card-kpi-dashboard .highlights-col {
+    max-height: 100%;
+    overflow-y: auto;
+}
+
 /* #endregion */
 
 /* #region Viewport Adjustments */
