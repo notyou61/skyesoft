@@ -358,8 +358,8 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* KPI card must not be flex-compressed */
 .card-kpi-dashboard {
-    flex: 0 0 auto;
-    min-height: 420px;
+    flex: 1 1 auto;
+    min-height: 0;          /* allow internal layout to decide */
 }
 
 /* KPI card scrolling contract */
@@ -368,7 +368,7 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 .card-kpi-dashboard .cardContent {
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 /* ─────────────────────────────────────────────
@@ -449,8 +449,8 @@ body[data-page="officeBoard"] #boardCardHost {
 }
 
 .card-kpi-dashboard .highlights-col {
-    max-height: 100%;
-    overflow-y: auto;
+    overflow-y: visible;   /* 🔑 critical */
+    flex: 0 0 auto;
 }
 
 /* #endregion */
