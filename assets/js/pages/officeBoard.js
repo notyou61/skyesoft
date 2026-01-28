@@ -774,7 +774,7 @@ const ActivePermitsCard = {
             // Fallback if KPI meta is unavailable
             if (!updatedUnix) {
                 footer.innerHTML = renderLiveFooter({
-                    text: `${permitsCount} active permit${permitsCount !== 1 ? 's' : ''} • Timestamp unavailable`
+                    text: `${permitsCount} total permit${permitsCount !== 1 ? 's' : ''} • Timestamp unavailable`
                 });
                 return;
             }
@@ -804,7 +804,7 @@ const ActivePermitsCard = {
         body.innerHTML = '';
 
         if (permits.length === 0) {
-            body.innerHTML = `<tr><td colspan="5">No active permits</td></tr>`;
+            body.innerHTML = `<tr><td colspan="5">No permits</td></tr>`;
             if (footer) {
                 footer.textContent = 'No permits found';
             }
