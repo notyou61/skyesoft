@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "source": "monitor.php",
+    "type": "ephemeral-derived-state",
+    "generatedAt": 1769725800,
+    "lastUpdatedAt": 1769725800,
+    "signature": "placeholder-v1",
+    "notes": "Permit News is derived system state. This file is regenerated and does not retain history."
+  },
+  "breaking": null,
+  "headline": {
+    "headline": "Permits News",
+    "body": "Automated permit updates are coming soon.",
+    "generatedAt": 1769725800,
+    "type": "placeholder"
+  },
+  "rundowns": {
+    "oldestActive": null,
+    "fastestTurnarounds": [],
+    "mostActiveJurisdiction": null,
+    "countsByJurisdiction": [],
+    "countsByStatus": []
+  }
+}

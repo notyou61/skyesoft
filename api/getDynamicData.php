@@ -6,7 +6,7 @@ declare(strict_types=1);
 //  Version: 1.0.0
 //  Last Updated: 2025-11-29
 //  Codex Tier: 4 — Backend Module
-//  Provides: TIS + Weather + KPI + Permits + Announcements + Site Meta
+//  Provides: TIS + Weather + KPI + Permits + Permit News + Site Meta
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
@@ -24,7 +24,7 @@ $paths = [
     "systemRegistry" => $root . "/data/authoritative/systemRegistry.json",
     "kpi"            => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
-    "announcements"  => $root . "/data/runtimeEphemeral/announcements.json",
+    "permitNews"     => $root . "/data/runtimeEphemeral/permitNews.json",
 ];
 
 foreach ($paths as $key => $path) {
@@ -39,7 +39,7 @@ $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true)
 
 $kpi            = json_decode(file_get_contents($paths["kpi"]), true);
 $activePermits  = json_decode(file_get_contents($paths["permits"]), true);
-$announcements  = json_decode(file_get_contents($paths["announcements"]), true);
+$permitNews = json_decode(file_get_contents($paths["permitNews"]), true);
 
 $tz = new DateTimeZone("America/Phoenix");
 #endregion
@@ -466,15 +466,9 @@ $payload = [
     "timeDateArray"   => $timeContext["timeDateArray"],
     "holidayState"    => $timeContext["holidayState"],
     "weather"         => $weather,
-
     "kpi"             => $kpi,
-
     "activePermits"   => $permitList,
-
-    "announcements"   => is_array($announcements)
-        ? (isset($announcements["announcements"]) ? $announcements["announcements"] : $announcements)
-        : [],
-
+    "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta" => [
         "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown",
         "deployTime"  => $versions["system"]["deployTime"]  ?? null

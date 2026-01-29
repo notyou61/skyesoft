@@ -1099,7 +1099,7 @@ BOARD_CARDS.push(TodaysHighlightsCard);
 BOARD_CARDS.push(KPICard);
 // Generic Card Spec
 const GENERIC_CARD_SPECS = [
-    { id: 'announcements', icon: '📢', title: 'Announcements' }
+    { id: 'permit-news', icon: '📰', title: 'Permits News' }
 ];
 // Genric Card Specs (For Each)
 GENERIC_CARD_SPECS.forEach(spec => {
@@ -1113,11 +1113,34 @@ GENERIC_CARD_SPECS.forEach(spec => {
             return this.instance.root;
         },
         // Update
-        update() {
-            if (this.instance?.content) {
+        update(payload) {
+            // User check
+            if (!this.instance?.content) return;
+            // Permit News card only (v1)
+            if (this.id !== 'permit-news') {
                 this.instance.content.innerHTML = `<p>${this.title} content coming soon</p>`;
+                return;
             }
-            // Footer set in onShow() via versions.json
+            // Load permitNews
+            var permitNews = payload?.permitNews || null;
+            var headline = permitNews?.headline || null;
+            // Empty state
+            if (!permitNews || !headline) {
+                this.instance.content.innerHTML = `
+                    <div class="entry">
+                        <div class="entry-title">Permits News</div>
+                        <div class="entry-body">No permit news available.</div>
+                    </div>
+                `;
+                return;
+            }
+            // Render headline (placeholder-safe)
+            this.instance.content.innerHTML = `
+                <div class="entry">
+                    <div class="entry-title">${headline.headline || 'Permits News'}</div>
+                    <div class="entry-body">${headline.body || ''}</div>
+                </div>
+            `;
         },
         // On Show
         onShow() {
