@@ -1144,22 +1144,14 @@ const PermitNewsCard = {
         return this.instance.root;
     },
     // Internal footer renderer (DRY + truthful)
-    renderFooter(payload, newsMeta) {
-        if (!this.instance?.footer || !newsMeta) return;
-
-        const updatedUnix =
-            newsMeta.lastUpdatedAt ??
-            newsMeta.generatedAt;
-
-        if (!updatedUnix) return;
+    renderFooter(payload) {
+        if (!this.instance?.footer) return;
 
         const nowUnix = payload?.timeDateArray?.currentUnixTime;
+        if (!nowUnix) return;
 
-        const relative = nowUnix
-            ? humanizeRelativeTime(updatedUnix, nowUnix)
-            : formatTimestamp(updatedUnix);
-
-        const absolute = formatTimestamp(updatedUnix);
+        const absolute = formatTimestamp(nowUnix);
+        const relative = 'just now';
 
         this.instance.footer.innerHTML = renderLiveFooter({
             text: `AI-generated permit news • Updated ${absolute} (${relative})`
