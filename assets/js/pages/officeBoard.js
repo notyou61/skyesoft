@@ -139,9 +139,17 @@ function formatSmartInterval(totalSeconds) {
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
 }
+// normalize unix timestamp (seconds vs milliseconds)
+function normalizeUnixSeconds(ts) {
+    const n = Number(ts);
+    if (!Number.isFinite(n)) return null;
+    // Heuristic: milliseconds are typically 13 digits
+    return n > 1_000_000_000_000 ? Math.floor(n / 1000) : Math.floor(n);
+}
 function formatTimestamp(ts) {
-    if (!ts) return '--/--/-- --:--';
-    const date = new Date(ts * 1000);
+    const unix = normalizeUnixSeconds(ts);
+    if (!unix) return '--/--/-- --:--';
+    const date = new Date(unix * 1000);
     const opts = {
         timeZone: 'America/Phoenix',
         month: '2-digit', day: '2-digit', year: '2-digit',
@@ -610,8 +618,14 @@ function resolveCardFooter(cardId) {
 }
 // Humanize relative time helper
 function humanizeRelativeTime(updatedUnix, referenceUnix = null) {
-    const now = referenceUnix ?? Math.floor(Date.now() / 1000);
-    const seconds = now - updatedUnix;
+    const updated = normalizeUnixSeconds(updatedUnix);
+    const ref = referenceUnix != null
+        ? normalizeUnixSeconds(referenceUnix)
+        : Math.floor(Date.now() / 1000);
+
+    if (!updated || !ref) return 'just now';
+
+    const seconds = ref - updated;
 
     if (seconds < 0) return 'just now';
 
@@ -1144,16 +1158,24 @@ const PermitNewsCard = {
         return this.instance.root;
     },
     // Internal footer renderer (DRY + truthful)
-    renderFooter(payload) {
+    renderFooter(payload, newsMeta) {
         if (!this.instance?.footer) return;
 
-        const nowUnix = payload?.timeDateArray?.currentUnixTime;
-        if (!nowUnix) return;
+        const meta = newsMeta || payload?.permitNews?.meta || null;
+        const updatedUnix =
+            meta?.lastUpdatedAt ??
+            meta?.generatedAt ??
+            null;
 
-        const absolute = formatTimestamp(nowUnix);
+        const nowUnix =
+            payload?.timeDateArray?.currentUnixTime ??
+            Math.floor(Date.now() / 1000);
+
+        const absolute = formatTimestamp(updatedUnix);
+        const relative = humanizeRelativeTime(updatedUnix, nowUnix);
 
         this.instance.footer.innerHTML = renderLiveFooter({
-            text: `AI-generated permit news • Updated ${absolute} (live)`
+            text: `AI-generated permit news • Updated ${absolute} (${relative})`
         });
     },
     // Update
@@ -1166,6 +1188,8 @@ const PermitNewsCard = {
 
         // Signature guard (prevents unnecessary DOM updates)
         if (meta.signature && meta.signature === this.lastSignature) {
+            // Keep footer fresh even when content signature is unchanged
+            this.renderFooter(payload, meta);
             return;
         }
         this.lastSignature = meta.signature || null;
