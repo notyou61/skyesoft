@@ -1143,56 +1143,17 @@ const PermitNewsCard = {
 
         return this.instance.root;
     },
-    // Update
-    update(payload) {
-        if (!payload?.permitNews) return;
-        if (!this.instance?.root) return;
-
-        const news = payload.permitNews;
-        const headline = news.headline;
-
-        const titleEl = this.instance.root.querySelector('#permitNewsHeadline');
-        const bodyEl  = this.instance.root.querySelector('#permitNewsBody');
-
-        if (!headline || !titleEl || !bodyEl) return;
-
-        titleEl.textContent = headline.headline || 'Permits News';
-        bodyEl.textContent  = headline.body || '';
-        // Footer (meta-authoritative)
-        if (this.instance.footer && news.meta) {
-            const updatedUnix =
-                news.meta.lastUpdatedAt ??
-                news.meta.generatedAt;
-
-            if (!updatedUnix) return;
-
-            const nowUnix = payload?.timeDateArray?.currentUnixTime;
-
-            const relative = nowUnix
-                ? humanizeRelativeTime(updatedUnix, nowUnix)
-                : formatTimestamp(updatedUnix);
-
-            const absolute = formatTimestamp(updatedUnix);
-
-            const permitCount = payload?.activePermits?.length ?? 0;
-
-            this.instance.footer.innerHTML = renderLiveFooter({
-                text: `${permitCount} total permits • Updated ${absolute} (${relative})`
-            });
-        }
-    },
-    // On Show
-    onShow() {
-        const news = lastBoardPayload?.permitNews;
-        if (!news || !this.instance?.footer) return;
+    // Internal footer renderer (DRY)
+    renderFooter(payload, newsMeta) {
+        if (!this.instance?.footer || !newsMeta) return;
 
         const updatedUnix =
-            news.meta?.lastUpdatedAt ??
-            news.meta?.generatedAt;
+            newsMeta.lastUpdatedAt ??
+            newsMeta.generatedAt;
 
         if (!updatedUnix) return;
 
-        const nowUnix = lastBoardPayload?.timeDateArray?.currentUnixTime;
+        const nowUnix = payload?.timeDateArray?.currentUnixTime;
 
         const relative = nowUnix
             ? humanizeRelativeTime(updatedUnix, nowUnix)
@@ -1201,16 +1162,46 @@ const PermitNewsCard = {
         const absolute = formatTimestamp(updatedUnix);
 
         const permitCount =
-            lastBoardPayload?.activePermits?.length ?? 0;
+            payload?.activePermits?.length ?? 0;
 
         this.instance.footer.innerHTML = renderLiveFooter({
             text: `${permitCount} total permits • Updated ${absolute} (${relative})`
         });
     },
-    // On Hide
-    onHide() {
 
-    }
+    // Update
+    update(payload) {
+        if (!payload?.permitNews || !this.instance?.root) return;
+
+        const news = payload.permitNews;
+        const meta = news.meta || {};
+        const headline = news.headline;
+
+        // Signature guard (prevents unnecessary DOM updates)
+        if (meta.signature && meta.signature === this.lastSignature) {
+            return;
+        }
+        this.lastSignature = meta.signature || null;
+
+        const titleEl = this.instance.root.querySelector('#permitNewsHeadline');
+        const bodyEl  = this.instance.root.querySelector('#permitNewsBody');
+        if (!titleEl || !bodyEl) return;
+        // Placeholder-safe rendering
+        titleEl.textContent = headline?.headline || 'Permits News';
+        bodyEl.textContent  = headline?.body || 'No permit news available.';
+        // Footer
+        this.renderFooter(payload, meta);
+    },
+    // On Show
+    onShow() {
+        if (!lastBoardPayload?.permitNews) return;
+        this.renderFooter(
+            lastBoardPayload,
+            lastBoardPayload.permitNews.meta
+        );
+    },
+    // On Hide
+    onHide() {}
 };
 // Board Cards (Push Active Permts Card)
 BOARD_CARDS.push(ActivePermitsCard);
