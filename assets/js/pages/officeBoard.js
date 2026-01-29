@@ -1140,7 +1140,7 @@ const PermitNewsCard = {
             <div class="highlights-grid">
                 <div class="highlights-col">
                     <div class="entry section-header">
-                        📰 Latest Update
+                        🌐 Latest Update
                     </div>
 
                     <div class="entry" id="permitNewsEntry">
