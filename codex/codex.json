@@ -2034,6 +2034,97 @@
                     ]
                 }
             },
+            "standardPermitsNews": {
+                "title": {
+                    "icon": 21,
+                    "text": "Permits News Standard"
+                },
+                "tier": 2,
+                "status": "active",
+                "scope": "system",
+                "description": "Defines the structure, lifecycle, and governance of permit-derived news within Skyesoft. This standard establishes how operational permit data is transformed into timely, factual news without introducing interpretation, history, or editorial bias.",
+                "principles": [
+                    "Permits News is derived, not primary",
+                    "News reflects either action or measurable stasis",
+                    "No historical news log is maintained",
+                    "Timeliness is enforced mechanically, not editorially",
+                    "Narrative authority is constrained and observable"
+                ],
+                "sourceOfTruth": {
+                    "file": "permitNews.json",
+                    "type": "ephemeral-derived-state",
+                    "authority": "monitor.php",
+                    "notes": "The permitNews.json file represents current system news only. It is fully regenerated and overwritten by the monitor process and does not retain historical entries."
+                },
+                "newsTypes": {
+                    "action": {
+                    "label": "Action News",
+                    "trigger": "Permit state transition or system event",
+                    "breaking": true,
+                    "notes": "Action News is generated only when a measurable state change occurs (status change, approval, fee payment, resumed movement)."
+                    },
+                    "nonAction": {
+                    "label": "Non-Action News (Rundowns)",
+                    "trigger": "Time, comparison, or aggregate state",
+                    "breaking": false,
+                    "notes": "Non-Action News summarizes current system conditions when no recent action has occurred. These are presented as rundowns rather than events."
+                    }
+                },
+                "breakingRules": {
+                    "definition": "Breaking News indicates a recent, verified permit action.",
+                    "ttlMinutes": 90,
+                    "constraints": [
+                    "Only one Breaking News item may exist at a time",
+                    "Breaking status expires automatically after TTL",
+                    "Breaking status does not persist as historical record",
+                    "New Breaking News supersedes any existing Breaking News"
+                    ]
+                },
+                "rundowns": {
+                    "definition": "Rundowns are continuously updated measurements representing the current state of the permit system.",
+                    "examples": [
+                    "Oldest active application",
+                    "Fastest completed review turnaround",
+                    "Jurisdiction with the most active applications",
+                    "Counts of applications by jurisdiction or status"
+                    ],
+                    "rules": [
+                    "Rundowns are records, not events",
+                    "Rundowns are updated in place by the monitor",
+                    "Rundowns must be factual, comparative, and non-predictive",
+                    "Rundowns are eligible for rotation in the UI when no Action News is active"
+                    ]
+                },
+                "aiGovernance": {
+                    "role": "editorial-synthesis",
+                    "allowed": [
+                    "Summarizing verified state changes",
+                    "Grouping related permit actions",
+                    "Producing neutral, factual headlines"
+                    ],
+                    "forbidden": [
+                    "Assigning blame or intent",
+                    "Predicting outcomes",
+                    "Editorializing delays or performance",
+                    "Creating urgency beyond measurable events"
+                    ],
+                    "promptLocation": "codex/prompts/permit-news-generator.md",
+                    "notes": "AI prompts governing permit news generation are policy artifacts and must reside in the Codex prompts directory, not embedded in monitor logic."
+                },
+                "sseIntegration": {
+                    "required": true,
+                    "behavior": "Permit News is emitted as part of the SSE payload and updates live based on monitor output.",
+                    "changeDetection": "UI components must re-render only when the permitNews signature changes."
+                },
+                "enforcement": {
+                    "authority": "monitor.php",
+                    "validation": [
+                    "Breaking TTL enforcement",
+                    "Derived-only content validation",
+                    "Schema and signature consistency"
+                    ]
+                }
+            },
             "sseStandard": {
                 "title": {
                     "icon": 44,
