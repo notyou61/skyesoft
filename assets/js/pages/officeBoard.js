@@ -1143,7 +1143,7 @@ const PermitNewsCard = {
 
         return this.instance.root;
     },
-    // Internal footer renderer (DRY)
+    // Internal footer renderer (DRY + truthful)
     renderFooter(payload, newsMeta) {
         if (!this.instance?.footer || !newsMeta) return;
 
@@ -1161,14 +1161,10 @@ const PermitNewsCard = {
 
         const absolute = formatTimestamp(updatedUnix);
 
-        const permitCount =
-            payload?.activePermits?.length ?? 0;
-
         this.instance.footer.innerHTML = renderLiveFooter({
-            text: `${permitCount} total permits • Updated ${absolute} (${relative})`
+            text: `AI-generated permit news • Updated ${absolute} (${relative})`
         });
     },
-
     // Update
     update(payload) {
         if (!payload?.permitNews || !this.instance?.root) return;
