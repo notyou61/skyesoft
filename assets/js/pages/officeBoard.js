@@ -1151,10 +1151,9 @@ const PermitNewsCard = {
         if (!nowUnix) return;
 
         const absolute = formatTimestamp(nowUnix);
-        const relative = 'just now';
 
         this.instance.footer.innerHTML = renderLiveFooter({
-            text: `AI-generated permit news • Updated ${absolute} (${relative})`
+            text: `AI-generated permit news • Updated ${absolute} (live)`
         });
     },
     // Update
