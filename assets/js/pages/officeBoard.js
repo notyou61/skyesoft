@@ -654,6 +654,26 @@ function getSeasonIcon(seasonName) {
         default:       return '📆';
     }
 }
+// Create Permit New Card
+function createPermitNewsCard(card) {
+    const root = document.createElement('div');
+    root.className = 'board-card';
+    root.id = card.id;
+
+    const header = document.createElement('div');
+    header.className = 'cardHeader';
+    header.textContent = card.title;
+
+    const content = document.createElement('div');
+    content.className = 'cardContent';
+
+    const footer = document.createElement('div');
+    footer.className = 'cardFooter';
+
+    root.append(header, content, footer);
+
+    return { root, content, footer };
+}
 
 // #endregion
 
@@ -737,7 +757,6 @@ function createGenericCardElement(spec) {
 // #endregion
 
 // #region CARD REGISTRY + UNIVERSAL UPDATER
-
 // Initialize Board Cards
 const BOARD_CARDS = [];
 // Active Permit Card
@@ -852,8 +871,6 @@ const ActivePermitsCard = {
         window.SkyOfficeBoard.autoScroll.stop();
     }
 };
-// Board Cards (Push Active Permts Card)
-BOARD_CARDS.push(ActivePermitsCard);
 // Today's Highlights Card
 const TodaysHighlightsCard = {
     id: 'todays-highlights',
@@ -1093,66 +1110,116 @@ const KPICard = {
     // On Hide
     onHide() {}
 };
+// Permit News Card
+const PermitNewsCard = {
+    id: 'permit-news',
+    icon: '📰',
+    title: 'Permits News',
+    durationMs: DEFAULT_CARD_DURATION_MS,
+    instance: null,
+    lastSignature: null,
+    // Create
+    create() {
+        this.instance = createGenericCardElement(this);
+
+        this.instance.content.innerHTML = `
+            <div class="highlights-grid">
+                <div class="highlights-col">
+                    <div class="entry section-header">
+                        📰 Latest Update
+                    </div>
+
+                    <div class="entry" id="permitNewsEntry">
+                        <div class="entry-title" id="permitNewsHeadline">
+                            Coming Soon
+                        </div>
+                        <div class="entry-body" id="permitNewsBody">
+                            Permit system news will appear here.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return this.instance.root;
+    },
+    // Update
+    update(payload) {
+        if (!payload?.permitNews) return;
+        if (!this.instance?.root) return;
+
+        const news = payload.permitNews;
+        const headline = news.headline;
+
+        const titleEl = this.instance.root.querySelector('#permitNewsHeadline');
+        const bodyEl  = this.instance.root.querySelector('#permitNewsBody');
+
+        if (!headline || !titleEl || !bodyEl) return;
+
+        titleEl.textContent = headline.headline || 'Permits News';
+        bodyEl.textContent  = headline.body || '';
+        // Footer (meta-authoritative)
+        if (this.instance.footer && news.meta) {
+            const updatedUnix =
+                news.meta.lastUpdatedAt ??
+                news.meta.generatedAt;
+
+            if (!updatedUnix) return;
+
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+
+            const relative = nowUnix
+                ? humanizeRelativeTime(updatedUnix, nowUnix)
+                : formatTimestamp(updatedUnix);
+
+            const absolute = formatTimestamp(updatedUnix);
+
+            const permitCount = payload?.activePermits?.length ?? 0;
+
+            this.instance.footer.innerHTML = renderLiveFooter({
+                text: `${permitCount} total permits • Updated ${absolute} (${relative})`
+            });
+        }
+    },
+    // On Show
+    onShow() {
+        const news = lastBoardPayload?.permitNews;
+        if (!news || !this.instance?.footer) return;
+
+        const updatedUnix =
+            news.meta?.lastUpdatedAt ??
+            news.meta?.generatedAt;
+
+        if (!updatedUnix) return;
+
+        const nowUnix = lastBoardPayload?.timeDateArray?.currentUnixTime;
+
+        const relative = nowUnix
+            ? humanizeRelativeTime(updatedUnix, nowUnix)
+            : formatTimestamp(updatedUnix);
+
+        const absolute = formatTimestamp(updatedUnix);
+
+        const permitCount =
+            lastBoardPayload?.activePermits?.length ?? 0;
+
+        this.instance.footer.innerHTML = renderLiveFooter({
+            text: `${permitCount} total permits • Updated ${absolute} (${relative})`
+        });
+    },
+    // On Hide
+    onHide() {
+
+    }
+};
+// Board Cards (Push Active Permts Card)
+BOARD_CARDS.push(ActivePermitsCard);
 // Board Cards (Push Today's Highlights Card)
 BOARD_CARDS.push(TodaysHighlightsCard);
 // Board Cards (Push KPI Card)
 BOARD_CARDS.push(KPICard);
-// Generic Card Spec
-const GENERIC_CARD_SPECS = [
-    { id: 'permit-news', icon: '📰', title: 'Permits News' }
-];
-// Genric Card Specs (For Each)
-GENERIC_CARD_SPECS.forEach(spec => {
-    BOARD_CARDS.push({
-        ...spec,
-        durationMs: DEFAULT_CARD_DURATION_MS,
-        instance: null,
-        // Create
-        create() {
-            this.instance = createGenericCardElement(this);
-            return this.instance.root;
-        },
-        // Update
-        update(payload) {
-            // User check
-            if (!this.instance?.content) return;
-            // Permit News card only (v1)
-            if (this.id !== 'permit-news') {
-                this.instance.content.innerHTML = `<p>${this.title} content coming soon</p>`;
-                return;
-            }
-            // Load permitNews
-            var permitNews = payload?.permitNews || null;
-            var headline = permitNews?.headline || null;
-            // Empty state
-            if (!permitNews || !headline) {
-                this.instance.content.innerHTML = `
-                    <div class="entry">
-                        <div class="entry-title">Permits News</div>
-                        <div class="entry-body">No permit news available.</div>
-                    </div>
-                `;
-                return;
-            }
-            // Render headline (placeholder-safe)
-            this.instance.content.innerHTML = `
-                <div class="entry">
-                    <div class="entry-title">${headline.headline || 'Permits News'}</div>
-                    <div class="entry-body">${headline.body || ''}</div>
-                </div>
-            `;
-        },
-        // On Show
-        onShow() {
-            const footerText = resolveCardFooter(this.id);
-            if (footerText && this.instance?.footer) {
-                this.instance.footer.innerHTML = renderLiveFooter({ text: footerText });
-            }
-        },
-        // On Hide
-        onHide() {}
-    });
-});
+// Board Cards (Push Permit News Card)
+BOARD_CARDS.push(PermitNewsCard);
 // Update All Cards Function
 function updateAllCards(payload) {
     lastBoardPayload = payload;
@@ -1162,7 +1229,6 @@ function updateAllCards(payload) {
         }
     });
 }
-
 // #endregion
 
 // #region AUTO-SCROLL
