@@ -2191,6 +2191,80 @@
                     "text": "Any alternate transport (WebSockets, polling, hybrid streaming) requires formal Codex amendment."
                 }
             },
+            "actionMonitorStandard": {
+                "title": {
+                    "icon": 40,
+                    "text": "Action Monitor Standard"
+                },
+                "tier": 2,
+                "hierarchyOrder": 10,
+                "type": "Functional Standard",
+                "purpose": {
+                    "text": "Define how client-initiated actions trigger downstream system awareness updates, ensuring that authoritative state changes are reflected immediately in the Server-Sent Events (SSE) stream and derived UI state."
+                },
+                "definition": {
+                    "text": "An Action Monitor is a controlled execution step invoked after a successful client-side action that mutates authoritative system state. Its role is to signal, not observe."
+                },
+                "executionModel": {
+                    "trigger": "client-side action completion",
+                    "invocation": "server-side PHP hook",
+                    "timing": "synchronous with or immediately following state mutation"
+                },
+                "governs": [
+                    "Permit state transitions",
+                    "Fee postings",
+                    "Notes creation",
+                    "Status changes",
+                    "Derived state refresh signaling"
+                ],
+                "operationalRules": [
+                    "Action Monitors must only run after a confirmed state change",
+                    "Action Monitors must not poll or watch system state",
+                    "Action Monitors must not generate authoritative timestamps",
+                    "Action Monitors must emit awareness signals, not narrative conclusions",
+                    "Action Monitors must be deterministic per action"
+                ],
+                "sseIntegration": {
+                    "required": true,
+                    "behavior": "After execution, the Action Monitor must cause the SSE stream to reflect the updated system state.",
+                    "constraints": [
+                        "All updates must flow through getDynamicData.php",
+                        "No direct client-side SSE mutation is permitted",
+                        "Signals must be source-labeled as action-derived"
+                    ]
+                },
+                "derivedStateInteraction": {
+                    "permitted": [
+                        "Trigger regeneration of ephemeral derived state (e.g., permitNews.json)",
+                        "Invalidate cached summaries",
+                        "Update derived signatures"
+                    ],
+                    "prohibited": [
+                        "Maintaining historical timelines",
+                        "Reconstructing prior state",
+                        "Generating narrative without a triggering action"
+                    ]
+                },
+                "relationshipToAI": {
+                    "text": "AI may be invoked after an Action Monitor signal to summarize or contextualize the resulting state change. AI must never participate in action validation, timing, or trigger conditions."
+                },
+                "sourceOfTruthRules": [
+                    "Authoritative data remains the sole source of truth",
+                    "Action Monitor output is a signal of completion, not correctness",
+                    "SSE remains the operational source of truth for live state"
+                ],
+                "validation": {
+                    "enforcedBy": "modules/automation/actionIntegrityChecker.php",
+                    "metrics": [
+                        "signal completeness",
+                        "latency from action to SSE update",
+                        "duplicate trigger rate"
+                    ]
+                },
+                "exceptionPolicy": {
+                    "text": "Any Action Monitor that initiates state change, polling behavior, or narrative generation requires explicit Codex amendment."
+                }
+            },
             "holidayInterpretation": {
                 "title": {
                     "icon": 52,
