@@ -1,85 +1,98 @@
 /* Skyesoft — index.js
    Command Interface Controller
-   Phase 0: Authentication Gate Only
+   Phase 0: Authentication Gate Only – Header/Footer Display Driver
 */
-// SkyeApp
+
+// #region SkyeApp Page Object
 window.SkyIndex = {
-    // Page lifecycle entry
+    dom: null,  // Cached DOM references – set in init()
+    // #endregion
+
+    // #region Lifecycle Methods
     start() {
         this.init();
     },
 
-    // Initialization (display-only, no authority)
     init() {
-        // Document Dom
         this.dom = {
-            time: document.getElementById('headerTime'),
-            weather: document.getElementById('headerWeather'),
+            time:     document.getElementById('headerTime'),
+            weather:  document.getElementById('headerWeather'),
             interval: document.getElementById('headerInterval'),
-            year: document.getElementById('footerYear'),
-            version: document.getElementById('footerVersion')
+            year:     document.getElementById('footerYear'),
+            version:  document.getElementById('footerVersion')
         };
-        // No clocks
-        // No SSE connection
-        // No derived state
-        // Header/footer react to SSE only
-    },
 
-    // SSE event router (read-only reactions)
+        // Early DOM sanity check (useful during development / HTML changes)
+        if (!this.dom.time || !this.dom.weather) {
+            console.warn('[SkyIndex] Missing one or more header/footer DOM elements');
+        }
+
+        // Note: No local timers or SSE setup – SSE is handled globally via sse.js
+    },
+    // #endregion
+
+    // #region SSE Event Handling
     onSSE(event) {
-        if (!event || !event.type) return; // Guard invalid events
+        if (!event?.type) return;
 
         switch (event.type) {
-
-            // Time update (display-only)
             case 'time:update':
                 this.updateTime(event.payload);
                 break;
 
-            // Weather update (display-only)
             case 'weather:update':
                 this.updateWeather(event.payload);
                 break;
 
-            // Interval / phase update
             case 'interval:update':
                 this.updateInterval(event.payload);
                 break;
 
-            // Meta update (version, year)
             case 'meta:update':
                 this.updateMeta(event.payload);
                 break;
+
+            default:
+                // Optional debug line – uncomment during development if needed
+                // console.debug('[SkyIndex] Ignored unknown SSE type:', event.type);
+                break;
         }
     },
-    // Update header time display
+    // #endregion
+
+    // #region Display Update Methods
     updateTime(data) {
-        const el = document.getElementById('headerTime');
-        if (el && data?.display) el.textContent = data.display;
+        if (this.dom?.time && data?.display) {
+            this.dom.time.textContent = data.display;
+        }
     },
-    // Update header weather display
+
     updateWeather(data) {
-        const el = document.getElementById('headerWeather');
-        if (el && data?.summary) el.textContent = data.summary;
+        if (this.dom?.weather && data?.summary) {
+            this.dom.weather.textContent = data.summary;
+        }
     },
-    // Update header interval display
+
     updateInterval(data) {
-        const el = document.getElementById('headerInterval');
-        if (el && data?.label) el.textContent = data.label;
+        if (this.dom?.interval && data?.label) {
+            this.dom.interval.textContent = data.label;
+        }
     },
-    // Update footer metadata
+
     updateMeta(data) {
-        // Footer year
-        if (data?.year) {
-            const y = document.getElementById('footerYear');
-            if (y) y.textContent = data.year;
+        if (!data) return;
+
+        if (data.year && this.dom?.year) {
+            this.dom.year.textContent = data.year;
         }
-        // Footer version
-        if (data?.version) {
-            const v = document.getElementById('footerVersion');
-            if (v) v.textContent = data.version;
+
+        if (data.version && this.dom?.version) {
+            this.dom.version.textContent = data.version;
         }
-    }
+    },
+    // #endregion
 };
-// Register page with SkyeApp lifecycle
-window.SkyeApp.registerPage('index', window.SkyIndex);
+
+// #region Page Registration
+window.SkyeApp?.registerPage?.('index', window.SkyIndex);
+// #endregion

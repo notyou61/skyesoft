@@ -4,7 +4,7 @@
    MTCO-aligned • Monitor-safe • Single-focus kiosk pattern
    January 2026
    ============================================================ */
-   
+
 /* #region Index Page Viewport Contract */
 body[data-page="index"] {
     display: flex;
@@ -41,7 +41,7 @@ body[data-page="index"] .board-section {
     margin: 0;
     background: #fff;
     border-radius: 12px;
-    padding: 6px;
+    padding: 8px;                     /* slightly increased from 6px for better edge comfort */
     box-shadow: 0 4px 12px rgba(0,0,0,0.10);
     flex: 1 1 auto;
     min-height: 0;
@@ -53,9 +53,9 @@ body[data-page="index"] .board-section {
 /* #region Card Container (full height) */
 body[data-page="index"] .card {
     background: #f7f7f7;
-    border-radius: 12px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.10);
-    padding: 6px;
+    border-radius: 10px;              /* slightly softer than 12px for login feel */
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    padding: 16px;                    /* generous outer padding — biggest visual win */
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -65,11 +65,19 @@ body[data-page="index"] .card {
 
 /* #region Card Header */
 body[data-page="index"] .cardHeader {
-    flex: 0 0 30px;
+    flex: 0 0 56px;                   /* taller & more commanding than 30px */
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 2px 0;
+    justify-content: center;          /* centered title looks better for login/command */
+    padding: 0 16px;
+    border-bottom: 1px solid #e0e0e0; /* subtle separation — common in auth UIs */
+}
+
+body[data-page="index"] .cardHeader h2 {
+    margin: 0;
+    font-size: 1.55rem;               /* prominent but not overwhelming */
+    font-weight: 700;
+    color: #1e293b;
 }
 /* #endregion */
 
@@ -83,18 +91,31 @@ body[data-page="index"] .cardBody {
 }
 /* #endregion */
 
-/* #region Card Content (scrolling surface) */
+/* #region Card Content (scrolling surface + centering) */
 body[data-page="index"] .cardContent {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 2px 0;
+    padding: 32px 24px;               /* much more comfortable padding */
     scrollbar-width: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;          /* vertical center — critical for login placeholder */
+    align-items: center;
+    text-align: center;
 }
 
 body[data-page="index"] .cardContent::-webkit-scrollbar {
     display: none;
+}
+
+body[data-page="index"] .cardContent p,
+body[data-page="index"] .cardContent div.placeholder {
+    max-width: 480px;
+    line-height: 1.55;
+    color: #4b5563;
+    font-size: 1.1rem;
 }
 /* #endregion */
 
