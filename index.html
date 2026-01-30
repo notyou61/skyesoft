@@ -1,76 +1,101 @@
-<!-- 
+<!--
   Skyesoft — index.html
   Command Interface Entry Point
-  Governed AI Interaction Shell
+  Governed AI Interaction Shell (Login → Command Interface)
+  Phoenix, Arizona – MST timezone
 -->
 
+<!-- #region HEAD -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
+    <!-- #region META & TITLE -->
     <meta charset="utf-8">
     <title>Login</title>
     <link rel="icon" type="image/x-icon" href="/skyesoft/assets/images/favicon.ico">
+    <!-- #endregion -->
 
+    <!-- #region STYLESHEETS -->
     <link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
     <link rel="stylesheet" href="/skyesoft/assets/css/officeBoard.css">
+    <!-- #endregion -->
 
 </head>
+<!-- #endregion -->
 
+<!-- #region BODY -->
 <body data-page="index">
+<!-- #endregion -->
 
-<!-- PAGE HEADER (identical to officeBoard) -->
+<!-- #region PAGE HEADER -->
 <div id="pageHeader" class="board-section">
 
+    <!-- #region LOGO / TITLE -->
     <div class="logoRow">
         <img src="/skyesoft/assets/images/christyLogo.png"
              class="logo"
              alt="Christy Signs">
         <h1 id="pageTitle">Login</h1>
     </div>
+    <!-- #endregion -->
 
+    <!-- #region HEADER STATUS BLOCK -->
     <div class="headerStatusBlock">
 
+        <!-- Weather -->
         <div class="hsb-item">
             <img src="/skyesoft/assets/images/icons/weather.png"
-                 class="hsb-icon">
+                 class="hsb-icon"
+                 alt="Weather">
             <span class="hsb-label">Weather:</span>
             <span id="headerWeather" class="hsb-value">--°F – --</span>
         </div>
 
+        <!-- Time -->
         <div class="hsb-item">
             <img src="/skyesoft/assets/images/icons/clock.png"
-                 class="hsb-icon">
+                 class="hsb-icon"
+                 alt="Time">
             <span class="hsb-label">Time:</span>
             <span id="headerTime" class="hsb-value">--:--:--</span>
         </div>
 
+        <!-- Interval -->
         <div class="hsb-item">
             <img src="/skyesoft/assets/images/icons/hourglass.png"
-                 class="hsb-icon">
+                 class="hsb-icon"
+                 alt="Interval">
             <span class="hsb-label">Interval:</span>
             <span id="headerInterval" class="hsb-value">--</span>
         </div>
 
     </div>
-</div>
+    <!-- #endregion -->
 
-<!-- PAGE BODY -->
+</div>
+<!-- #endregion -->
+
+<!-- #region PAGE BODY -->
 <div id="pageBody" class="board-section">
 
-    <!-- Login Interface -->
+    <!-- #region LOGIN INTERFACE -->
     <section id="loginInterface">
-        <!-- populated by index.js -->
+        <!-- rendered by index.js -->
     </section>
+    <!-- #endregion -->
 
-    <!-- Command Interface -->
+    <!-- #region COMMAND INTERFACE -->
     <section id="commandInterface" hidden>
-        <!-- populated by index.js -->
+        <!-- rendered by index.js -->
     </section>
+    <!-- #endregion -->
 
 </div>
+<!-- #endregion -->
 
-<!-- PAGE FOOTER (identical) -->
+<!-- #region PAGE FOOTER -->
 <div id="pageFooter" class="board-section">
 
     <div id="footerCopyright">
@@ -82,8 +107,9 @@
     </div>
 
 </div>
+<!-- #endregion -->
 
-<!-- SCRIPTS -->
+<!-- #region SCRIPTS -->
 <script src="/skyesoft/assets/js/app.js?v=2025.12.01a"></script>
 <script src="/skyesoft/assets/js/sse.js?v=2026.01.18a"></script>
 <script src="/skyesoft/assets/js/pages/index.js?v=20260130-1a"></script>
@@ -91,6 +117,9 @@
 <script>
     window.SkyeApp?.registerPage && window.SkyeApp.start?.();
 </script>
+<!-- #endregion -->
 
+<!-- #region END BODY -->
 </body>
 </html>
+<!-- #endregion -->
