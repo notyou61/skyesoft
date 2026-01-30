@@ -1,0 +1,109 @@
+/* ============================================================
+   INDEX PAGE STYLESHEET
+   Login → Command Interface Layout Contract
+   MTCO-aligned • Monitor-safe • Single-focus kiosk pattern
+   January 2026
+   ============================================================ */
+   
+/* #region Index Page Viewport Contract */
+body[data-page="index"] {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+/* #endregion */
+
+/* #region Page Header & Footer Sizing */
+body[data-page="index"] #pageHeader,
+body[data-page="index"] #pageFooter {
+    flex: 0 0 auto;
+}
+/* #endregion */
+
+/* #region Page Body Expansion */
+body[data-page="index"] #pageBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    overflow: hidden;
+}
+/* #endregion */
+
+/* #region Board Section Wrapper */
+body[data-page="index"] .board-section {
+    width: 100%;
+    margin: 0;
+    background: #fff;
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+/* #endregion */
+
+/* #region Card Container (full height) */
+body[data-page="index"] .card {
+    background: #f7f7f7;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.10);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+/* #endregion */
+
+/* #region Card Header */
+body[data-page="index"] .cardHeader {
+    flex: 0 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+/* #endregion */
+
+/* #region Card Body */
+body[data-page="index"] .cardBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+/* #endregion */
+
+/* #region Card Content (scrolling surface) */
+body[data-page="index"] .cardContent {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2px 0;
+    scrollbar-width: none;
+}
+
+body[data-page="index"] .cardContent::-webkit-scrollbar {
+    display: none;
+}
+/* #endregion */
+
+/* #region Login & Command Interface Sections */
+body[data-page="index"] #loginInterface,
+body[data-page="index"] #commandInterface {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+/* #endregion */
