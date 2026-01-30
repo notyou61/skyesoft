@@ -30,32 +30,32 @@ body[data-page="index"] #pageBody {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 12px;
+    padding: 16px;                    /* increased breathing room around the white card */
     overflow: hidden;
 }
 /* #endregion */
 
-/* #region Board Section Wrapper */
+/* #region Board Section Wrapper (main white container) */
 body[data-page="index"] .board-section {
     width: 100%;
     margin: 0;
     background: #fff;
     border-radius: 12px;
-    padding: 8px;                     /* slightly increased from 6px for better edge comfort */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 /* #endregion */
 
-/* #region Card Container (full height) */
+/* #region Card Container (the login/command card) */
 body[data-page="index"] .card {
-    background: #f7f7f7;
-    border-radius: 10px;              /* slightly softer than 12px for login feel */
-    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-    padding: 16px;                    /* generous outer padding — biggest visual win */
+    background: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 24px;
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -65,23 +65,25 @@ body[data-page="index"] .card {
 
 /* #region Card Header */
 body[data-page="index"] .cardHeader {
-    flex: 0 0 56px;                   /* taller & more commanding than 30px */
+    flex: 0 0 68px;                   /* taller → better visual weight */
     display: flex;
     align-items: center;
-    justify-content: center;          /* centered title looks better for login/command */
-    padding: 0 16px;
-    border-bottom: 1px solid #e0e0e0; /* subtle separation — common in auth UIs */
+    justify-content: center;
+    padding: 0 24px;
+    background: #ffffff;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0;
 }
 
 body[data-page="index"] .cardHeader h2 {
     margin: 0;
-    font-size: 1.55rem;               /* prominent but not overwhelming */
+    font-size: 1.7rem;
     font-weight: 700;
     color: #1e293b;
 }
 /* #endregion */
 
-/* #region Card Body */
+/* #region Card Body & Content */
 body[data-page="index"] .cardBody {
     flex: 1 1 auto;
     min-height: 0;
@@ -89,19 +91,17 @@ body[data-page="index"] .cardBody {
     flex-direction: column;
     overflow: hidden;
 }
-/* #endregion */
 
-/* #region Card Content (scrolling surface + centering) */
 body[data-page="index"] .cardContent {
     flex: 1 1 auto;
-    min-height: 0;
+    min-height: 280px;                /* prevents collapse when almost empty */
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 32px 24px;               /* much more comfortable padding */
+    padding: 48px 32px;               /* generous → comfortable reading & form space */
     scrollbar-width: none;
     display: flex;
     flex-direction: column;
-    justify-content: center;          /* vertical center — critical for login placeholder */
+    justify-content: center;          /* centers short content vertically */
     align-items: center;
     text-align: center;
 }
@@ -110,12 +110,12 @@ body[data-page="index"] .cardContent::-webkit-scrollbar {
     display: none;
 }
 
-body[data-page="index"] .cardContent p,
-body[data-page="index"] .cardContent div.placeholder {
-    max-width: 480px;
-    line-height: 1.55;
+body[data-page="index"] .cardContent p {
+    max-width: 540px;
+    margin: 0 auto;
+    font-size: 1.18rem;
+    line-height: 1.6;
     color: #4b5563;
-    font-size: 1.1rem;
 }
 /* #endregion */
 
