@@ -155,3 +155,5 @@ window.SkyIndex = {
 // #region 🧾 Page Registration
 window.SkyeApp?.registerPage?.('index', window.SkyIndex);
 // #endregion
+
+console.log('[SkyIndex] registered with SkyeApp:', window.SkyeApp);
