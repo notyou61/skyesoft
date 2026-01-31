@@ -115,6 +115,22 @@ body[data-page="index"] #boardCardHost {
 .cardContent::-webkit-scrollbar {
     display: none;
 }
+
+.cardBodyDivider {
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        rgba(0,0,0,0.05),
+        rgba(0,0,0,0.18),
+        rgba(0,0,0,0.05)
+    );
+}
+
+.cardFooterDivider {
+    height: 1px;
+    background: rgba(0,0,0,0.08);
+}
+
 /* #endregion */
 
 /* #region 🔐 Login Card */

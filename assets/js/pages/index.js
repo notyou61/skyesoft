@@ -43,35 +43,42 @@ window.SkyIndex = {
     },
 
     renderLoginCard() {
+        if (!this.cardHost) return;
         this.clearCards();
 
-        const card = document.createElement('div');
-        card.className = 'card';
+        const card = document.createElement('section');
+        card.className = 'card card-portal-auth';
 
         card.innerHTML = `
             <div class="cardHeader">
-                <h2>🔒 Authentication Required</h2>
+                <h2>🔐 Authentication Required</h2>
             </div>
+
+            <div class="cardBodyDivider"></div>
+
             <div class="cardBody">
                 <div class="cardContent">
 
-                    <p style="text-align:center; font-size:1.1em; color:#555; margin-top:40px;">
+                    <p class="loginIntro">
                         Please sign in to access the Skyesoft Portal.
                     </p>
 
-                    <div style="max-width:360px; margin:40px auto 0;">
-                        <input type="text" placeholder="Username"
-                               style="width:100%; padding:10px; margin-bottom:12px;" />
-
-                        <input type="password" placeholder="Password"
-                               style="width:100%; padding:10px; margin-bottom:16px;" />
-
-                        <button class="crud1" style="width:100%;">
-                            Sign In
-                        </button>
+                    <div class="loginCard">
+                        <form class="loginForm">
+                            <input type="text" placeholder="Email address" />
+                            <input type="password" placeholder="Password" />
+                            <button class="crud1 loginButton">Sign In</button>
+                            <div class="loginError" hidden></div>
+                        </form>
                     </div>
 
                 </div>
+            </div>
+
+            <div class="cardFooterDivider"></div>
+
+            <div class="cardFooter">
+                🔒 Authentication required to continue
             </div>
         `;
 
