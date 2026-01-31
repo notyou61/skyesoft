@@ -4,6 +4,8 @@
    Header / Footer driven exclusively by SSE
 */
 
+console.log('[SkyIndex] index.js loaded');
+
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
