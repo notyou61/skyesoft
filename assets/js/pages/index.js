@@ -1,33 +1,22 @@
 /* Skyesoft — index.js
-   🧠 Portal Interface Controller
+   🧠 Command / Portal Interface Controller
    Phase 1: Card-Based Bootstrap (Login → Command Interface)
    Header / Footer driven exclusively by SSE
 */
 
-console.log('[SkyIndex] index.js loaded');
-
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
-    // #region 🧠 Cached DOM & State
-    // Centralized DOM references and lightweight view state
+    // #region 🧠 Cached DOM State
     dom: null,
-
-    // Primary host for dynamically injected portal cards
     cardHost: null,
-
-    // Portal view state: 'login' | 'command'
-    state: 'login',
     // #endregion
 
-    // #region 🚀 Lifecycle Methods
-    start() {
-        console.log('[SkyIndex] start() called');
-        this.init();
-        this.renderLoginCard()
-    },
-
+    // #region 🚀 Page Init (called by app.js)
     init() {
+
+        console.log('[SkyIndex] init() fired');
+
         this.dom = {
             time:     document.getElementById('headerTime'),
             weather:  document.getElementById('headerWeather'),
@@ -38,35 +27,22 @@ window.SkyIndex = {
 
         this.cardHost = document.getElementById('boardCardHost');
 
-        // Development sanity check
         if (!this.cardHost) {
             console.error('[SkyIndex] Missing #boardCardHost — index.html shell invalid');
+            return;
         }
-    },
-    // #endregion
 
-    // #region 🔁 View Transitions
-    showLogin() {
-        this.state = 'login';
+        // Default state: Login
         this.renderLoginCard();
     },
-
-    showCommandInterface() {
-        this.state = 'command';
-        this.renderCommandInterfaceCard();
-    },
     // #endregion
 
-    // #region 🧱 Card Rendering Utilities
+    // #region 🧱 Card Rendering
     clearCards() {
-        if (this.cardHost) {
-            this.cardHost.innerHTML = '';
-        }
+        this.cardHost.innerHTML = '';
     },
 
     renderLoginCard() {
-        if (!this.cardHost) return;
-
         this.clearCards();
 
         const card = document.createElement('div');
@@ -74,58 +50,62 @@ window.SkyIndex = {
 
         card.innerHTML = `
             <div class="cardHeader">
-                <h2>🔒 Login</h2>
+                <h2>🔒 Authentication Required</h2>
             </div>
-
             <div class="cardBody">
-                <div class="cardContent loginCard">
-                    <div class="loginIntro">
+                <div class="cardContent">
+
+                    <p style="text-align:center; font-size:1.1em; color:#555; margin-top:40px;">
                         Please sign in to access the Skyesoft Portal.
-                    </div>
-                    <form id="loginForm" class="loginForm" autocomplete="off">
-                        <input
-                            type="text"
-                            id="loginUsername"
-                            placeholder="Username"
-                            required
-                        />
-                        <input
-                            type="password"
-                            id="loginPassword"
-                            placeholder="Password"
-                            required
-                        />
-                        <button type="submit" class="crud1 loginButton">
+                    </p>
+
+                    <div style="max-width:360px; margin:40px auto 0;">
+                        <input type="text" placeholder="Username"
+                               style="width:100%; padding:10px; margin-bottom:12px;" />
+
+                        <input type="password" placeholder="Password"
+                               style="width:100%; padding:10px; margin-bottom:16px;" />
+
+                        <button class="crud1" style="width:100%;">
                             Sign In
                         </button>
+                    </div>
 
-                        <div id="loginError" class="loginError" hidden>
-                            Invalid username or password.
-                        </div>
-                    </form>
                 </div>
             </div>
         `;
 
         this.cardHost.appendChild(card);
+    },
 
-        // Stub handler (will be replaced with real auth)
-        const form = card.querySelector('#loginForm');
-        form?.addEventListener('submit', (e) => {
-            e.preventDefault();
+    renderCommandInterfaceCard() {
+        this.clearCards();
 
-            // TEMP: simulate successful login
-            this.showCommandInterface();
-        });
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        card.innerHTML = `
+            <div class="cardHeader">
+                <h2>🧠 Skyesoft Command Interface</h2>
+            </div>
+            <div class="cardBody">
+                <div class="cardContent">
+                    <p style="text-align:center; font-size:1.1em; color:#666; margin-top:40px;">
+                        Command environment initialized.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        this.cardHost.appendChild(card);
     },
     // #endregion
 
-    // #region 📡 SSE Event Handling (Display Only)
+    // #region 📡 SSE Event Handling
     onSSE(event) {
         if (!event?.type) return;
 
         switch (event.type) {
-
             case 'time:update':
                 this.dom?.time && (this.dom.time.textContent = event.payload.display);
                 break;
@@ -153,7 +133,5 @@ window.SkyIndex = {
 // #endregion
 
 // #region 🧾 Page Registration
-window.SkyeApp?.registerPage?.('index', window.SkyIndex);
+window.SkyeApp.registerPage('index', window.SkyIndex);
 // #endregion
-
-console.log('[SkyIndex] registered with SkyeApp:', window.SkyeApp);
