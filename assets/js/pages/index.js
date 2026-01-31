@@ -20,8 +20,9 @@ window.SkyIndex = {
 
     // #region 🚀 Lifecycle Methods
     start() {
+        console.log('[SkyIndex] start() called');
         this.init();
-        this.showLogin();
+        this.renderLoginCard()
     },
 
     init() {
@@ -76,11 +77,9 @@ window.SkyIndex = {
 
             <div class="cardBody">
                 <div class="cardContent loginCard">
-
                     <div class="loginIntro">
                         Please sign in to access the Skyesoft Portal.
                     </div>
-
                     <form id="loginForm" class="loginForm" autocomplete="off">
                         <input
                             type="text"
@@ -88,14 +87,12 @@ window.SkyIndex = {
                             placeholder="Username"
                             required
                         />
-
                         <input
                             type="password"
                             id="loginPassword"
                             placeholder="Password"
                             required
                         />
-
                         <button type="submit" class="crud1 loginButton">
                             Sign In
                         </button>
@@ -104,7 +101,6 @@ window.SkyIndex = {
                             Invalid username or password.
                         </div>
                     </form>
-
                 </div>
             </div>
         `;
