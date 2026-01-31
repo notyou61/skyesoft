@@ -1,15 +1,15 @@
 /* ============================================================
-   INDEX PAGE STYLESHEET
-   Login → Command Interface Layout Contract
-   MTCO-aligned • Monitor-safe • Single-focus kiosk pattern
+   INDEX / PORTAL STYLESHEET
+   Skyesoft Command Interface
+   Derived from officeBoard.css
+   MTCO-aligned • Full-viewport • Card-first layout
    January 2026
    ============================================================ */
 
-/* #region Index Page Viewport Contract */
-body[data-page="index"] {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+/* #region 🌐 Root Viewport Lock */
+html,
+body {
+    height: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
@@ -17,74 +17,85 @@ body[data-page="index"] {
 }
 /* #endregion */
 
-/* #region Page Header & Footer Sizing */
-body[data-page="index"] #pageHeader,
-body[data-page="index"] #pageFooter {
-    flex: 0 0 auto;
+/* #region 🧱 Page Layout Contract */
+body[data-page="index"] {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 12px;
 }
-/* #endregion */
 
-/* #region Page Body Expansion */
+body[data-page="index"] #pageHeader {
+    flex: 0 0 auto;
+    margin-bottom: 16px;
+}
+
 body[data-page="index"] #pageBody {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 16px;                    /* increased breathing room around the white card */
+    padding: 6px;
     overflow: hidden;
+}
+
+body[data-page="index"] #pageFooter {
+    flex: 0 0 auto;
+    margin-top: 16px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 0.9rem;
 }
 /* #endregion */
 
-/* #region Board Section Wrapper (main white container) */
+/* #region 🧱 Section Wrapper */
 body[data-page="index"] .board-section {
     width: 100%;
     margin: 0;
-    background: #fff;
+    background: #ffffff;
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    padding: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+}
+/* #endregion */
+
+/* #region 🗂️ Card Host */
+body[data-page="index"] #boardCardHost {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    gap: 12px;
 }
 /* #endregion */
 
-/* #region Card Container (the login/command card) */
-body[data-page="index"] .card {
-    background: #f8f9fa;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    padding: 24px;
+/* #region 🧱 Card Contract */
+.card {
+    background: #f7f7f7;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.10);
+    padding: 6px;
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
 }
-/* #endregion */
 
-/* #region Card Header */
-body[data-page="index"] .cardHeader {
-    flex: 0 0 68px;                   /* taller → better visual weight */
+.cardHeader {
+    flex: 0 0 30px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 24px;
-    background: #ffffff;
-    border-bottom: 1px solid #dee2e6;
-    border-radius: 10px 10px 0 0;
+    justify-content: space-between;
+    padding: 2px 0;
 }
 
-body[data-page="index"] .cardHeader h2 {
-    margin: 0;
-    font-size: 1.7rem;
+.cardHeader h2 {
+    font-size: 1.35rem;
     font-weight: 700;
-    color: #1e293b;
+    margin: 0;
 }
-/* #endregion */
 
-/* #region Card Body & Content */
-body[data-page="index"] .cardBody {
+.cardBody {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -92,39 +103,16 @@ body[data-page="index"] .cardBody {
     overflow: hidden;
 }
 
-body[data-page="index"] .cardContent {
+.cardContent {
     flex: 1 1 auto;
-    min-height: 280px;                /* prevents collapse when almost empty */
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 48px 32px;               /* generous → comfortable reading & form space */
+    padding: 8px 0;
     scrollbar-width: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;          /* centers short content vertically */
-    align-items: center;
-    text-align: center;
 }
 
-body[data-page="index"] .cardContent::-webkit-scrollbar {
+.cardContent::-webkit-scrollbar {
     display: none;
-}
-
-body[data-page="index"] .cardContent p {
-    max-width: 540px;
-    margin: 0 auto;
-    font-size: 1.18rem;
-    line-height: 1.6;
-    color: #4b5563;
-}
-/* #endregion */
-
-/* #region Login & Command Interface Sections */
-body[data-page="index"] #loginInterface,
-body[data-page="index"] #commandInterface {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
 }
 /* #endregion */
