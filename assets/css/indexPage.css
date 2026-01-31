@@ -69,6 +69,29 @@ body[data-page="index"] #boardCardHost {
 }
 /* #endregion */
 
+/* #region 🧾 Card Footer (SoT-aligned) */
+body[data-page="index"] .cardFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 16px;        /* match officeBoard vertical rhythm */
+    font-size: 0.9rem;
+    font-weight: 700;          /* bold like officeBoard */
+    color: #111;
+
+    line-height: 1.4;
+}
+/* #endregion */
+
+/* #region ➖ Card Footer Divider */
+body[data-page="index"] .cardFooterDivider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.12);
+    margin: 0;
+}
+/* #endregion */
+
 /* #region 🧱 Card Contract */
 .card {
     background: #f7f7f7;
