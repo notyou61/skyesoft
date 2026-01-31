@@ -1,129 +1,125 @@
 <!--
-  Skyesoft — index.html
-  Command Interface Entry Point
-  Governed AI Interaction Shell (Login → Command Interface)
-  Phoenix, Arizona – MST timezone
+  🧠 Skyesoft — index.html
+  ⌨️ Command Interface Entry Point
+  🧩 Governed AI Interaction Shell (Login → Command Interface)
+  📍 Phoenix, Arizona – MST timezone
 -->
 
+<!-- #region 🏷️ HTML TAG -->
 <!DOCTYPE html>
 <html lang="en">
+<!-- #endregion -->
 
+<!-- #region 🧠 HEAD -->
 <head>
-    <!-- #region META & TITLE -->
+
+    <!-- #region 🧾 META & TITLE -->
     <meta charset="utf-8">
-    <title>Login</title>
+    <title>Skyesoft Command Interface</title>
     <link rel="icon" type="image/x-icon" href="/skyesoft/assets/images/favicon.ico">
     <!-- #endregion -->
 
-    <!-- #region STYLESHEETS -->
+    <!-- #region 🎨 STYLESHEETS -->
     <link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
-    <link rel="stylesheet" href="/skyesoft/assets/css/indexPage.css">
+    <link rel="stylesheet" href="/skyesoft/assets/css/officeBoard.css">
     <!-- #endregion -->
+
 </head>
+<!-- #endregion -->
 
+<!-- #region 🧍 BODY TAG -->
 <body data-page="index">
+<!-- #endregion -->
 
-    <!-- #region PAGE HEADER -->
-    <div id="pageHeader" class="board-section">
+<!-- #region 🏢 PAGE HEADER -->
+<div id="pageHeader" class="board-section">
 
-        <!-- #region LOGO / TITLE -->
-        <div class="logoRow">
-            <img src="/skyesoft/assets/images/christyLogo.png"
-                 class="logo"
-                 alt="Christy Signs">
-            <h1 id="pageTitle">Login</h1>
+    <!-- #region 🏷️ LOGO / TITLE -->
+    <div class="logoRow">
+        <img src="/skyesoft/assets/images/christyLogo.png"
+             class="logo"
+             alt="Christy Signs">
+        <h1>Skyesoft Command Interface</h1>
+    </div>
+    <!-- #endregion -->
+
+    <!-- #region 📊 HEADER STATUS BLOCK -->
+    <div class="headerStatusBlock">
+
+        <!-- 🌤️ Weather -->
+        <div class="hsb-item">
+            <img src="/skyesoft/assets/images/icons/weather.png"
+                 class="hsb-icon"
+                 alt="Weather">
+            <span class="hsb-label">Weather:</span>
+            <span id="headerWeather" class="hsb-value">--°F – --</span>
         </div>
-        <!-- #endregion -->
 
-        <!-- #region HEADER STATUS BLOCK -->
-        <div class="headerStatusBlock">
-            <div class="hsb-item">
-                <img src="/skyesoft/assets/images/icons/weather.png"
-                     class="hsb-icon"
-                     alt="Weather">
-                <span class="hsb-label">Weather:</span>
-                <span id="headerWeather" class="hsb-value">--°F – --</span>
-            </div>
-
-            <div class="hsb-item">
-                <img src="/skyesoft/assets/images/icons/clock.png"
-                     class="hsb-icon"
-                     alt="Time">
-                <span class="hsb-label">Time:</span>
-                <span id="headerTime" class="hsb-value">--:--:--</span>
-            </div>
-
-            <div class="hsb-item">
-                <img src="/skyesoft/assets/images/icons/hourglass.png"
-                     class="hsb-icon"
-                     alt="Interval">
-                <span class="hsb-label">Interval:</span>
-                <span id="headerInterval" class="hsb-value">--</span>
-            </div>
+        <!-- ⏰ Time -->
+        <div class="hsb-item">
+            <img src="/skyesoft/assets/images/icons/clock.png"
+                 class="hsb-icon"
+                 alt="Time">
+            <span class="hsb-label">Time:</span>
+            <span id="headerTime" class="hsb-value">--:--:--</span>
         </div>
-        <!-- #endregion -->
+
+        <!-- ⏳ Interval -->
+        <div class="hsb-item">
+            <img src="/skyesoft/assets/images/icons/hourglass.png"
+                 class="hsb-icon"
+                 alt="Interval">
+            <span class="hsb-label">Interval:</span>
+            <span id="headerInterval" class="hsb-value">--</span>
+        </div>
 
     </div>
     <!-- #endregion -->
 
-    <!-- #region PAGE BODY -->
-    <div id="pageBody" class="board-section">
+</div>
+<!-- #endregion -->
 
-        <!-- #region LOGIN INTERFACE -->
-        <section id="loginInterface" class="active">
-            <div class="card">
-                <div class="cardHeader">
-                    <h2>Authentication Required</h2>
-                </div>
-                <div class="cardBody">
-                    <div class="cardContent">
-                        <p>Please authenticate to access the Skyesoft Command Interface.</p>
-                        <!-- index.js will replace this content with the actual login form -->
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- #endregion -->
+<!-- #region 🧱 PAGE BODY -->
+<div id="pageBody" class="board-section">
 
-        <!-- #region COMMAND INTERFACE -->
-        <section id="commandInterface" hidden>
-            <div class="card">
-                <div class="cardHeader">
-                    <h2>Command Interface</h2>
-                </div>
-                <div class="cardBody">
-                    <div class="cardContent">
-                        <p>Initializing secure command environment...</p>
-                        <!-- index.js will replace this content with the command interface -->
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- #endregion -->
+    <!-- #region 🗂️ COMMAND CARD HOST -->
+    <!--
+        All command interface cards are injected dynamically by index.js.
+        No static card HTML is authored here.
+    -->
+    <div id="boardCardHost"></div>
+    <!-- #endregion -->
 
+</div>
+<!-- #endregion -->
+
+<!-- #region 🧾 PAGE FOOTER -->
+<div id="pageFooter" class="board-section">
+
+    <div id="footerCopyright">
+        © <span id="footerYear"></span> Maychris Corporation
     </div>
-    <!-- #endregion -->
 
-    <!-- #region PAGE FOOTER -->
-    <div id="pageFooter" class="board-section">
-        <div id="footerCopyright">
-            © <span id="footerYear"></span> Maychris Corporation
-        </div>
-        <div id="versionFooter">
-            v<span id="footerVersion">--</span>
-        </div>
+    <div id="versionFooter">
+        v<span id="footerVersion">--</span>
     </div>
-    <!-- #endregion -->
 
-    <!-- #region SCRIPTS -->
-    <script src="/skyesoft/assets/js/app.js?v=2025.12.01a"></script>
-    <script src="/skyesoft/assets/js/sse.js?v=2026.01.18a"></script>
-    <script src="/skyesoft/assets/js/pages/index.js?v=20260130-1a"></script>
+</div>
+<!-- #endregion -->
 
-    <script>
-        window.SkyeApp?.registerPage && window.SkyeApp.start?.();
-    </script>
-    <!-- #endregion -->
+<!-- #region 🧠 SCRIPTS -->
+<script src="/skyesoft/assets/js/app.js?v=2025.12.01a"></script>
+<script src="/skyesoft/assets/js/sse.js?v=2026.01.18a"></script>
+<script src="/skyesoft/assets/js/pages/index.js?v=20260131-1a"></script>
 
+<script>
+    // #region 🚀 PAGE INIT
+    window.SkyeApp?.registerPage && window.SkyeApp.start?.();
+    // #endregion
+</script>
+<!-- #endregion -->
+
+<!-- #region 🛑 ENDING BODY HTML TAG -->
 </body>
 </html>
+<!-- #endregion -->
