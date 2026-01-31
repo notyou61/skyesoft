@@ -1,5 +1,5 @@
 /* Skyesoft — index.js
-   🧠 Command / Portal Interface Controller
+   🧠 Portal Interface Controller
    Phase 1: Card-Based Bootstrap (Login → Command Interface)
    Header / Footer driven exclusively by SSE
 */
@@ -7,19 +7,21 @@
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
-    // #region 🧠 Cached DOM State
-    // Centralized element references captured at init()
-    // Prevents repeated DOM queries and stabilizes render flow
+    // #region 🧠 Cached DOM & State
+    // Centralized DOM references and lightweight view state
     dom: null,
 
-    // Primary host for all dynamically injected cards (login / command)
+    // Primary host for dynamically injected portal cards
     cardHost: null,
+
+    // Portal view state: 'login' | 'command'
+    state: 'login',
     // #endregion
 
     // #region 🚀 Lifecycle Methods
     start() {
         this.init();
-        this.renderLoginCard();
+        this.showLogin();
     },
 
     init() {
@@ -33,14 +35,26 @@ window.SkyIndex = {
 
         this.cardHost = document.getElementById('boardCardHost');
 
-        // Development safety check
+        // Development sanity check
         if (!this.cardHost) {
             console.error('[SkyIndex] Missing #boardCardHost — index.html shell invalid');
         }
     },
     // #endregion
 
-    // #region 🧱 Card Rendering
+    // #region 🔁 View Transitions
+    showLogin() {
+        this.state = 'login';
+        this.renderLoginCard();
+    },
+
+    showCommandInterface() {
+        this.state = 'command';
+        this.renderCommandInterfaceCard();
+    },
+    // #endregion
+
+    // #region 🧱 Card Rendering Utilities
     clearCards() {
         if (this.cardHost) {
             this.cardHost.innerHTML = '';
@@ -62,14 +76,16 @@ window.SkyIndex = {
             <div class="cardBody">
                 <div class="cardContent">
                     <p style="text-align:center; font-size:1.1em; color:#555; margin-top:40px;">
-                        Please sign in to access the Skyesoft Command Interface.
+                        Please sign in to access the Skyesoft Portal.
                     </p>
 
                     <div style="max-width:360px; margin:40px auto 0;">
-                        <input type="text" placeholder="Username"
+                        <input type="text"
+                               placeholder="Username"
                                style="width:100%; padding:10px; margin-bottom:12px;" />
 
-                        <input type="password" placeholder="Password"
+                        <input type="password"
+                               placeholder="Password"
                                style="width:100%; padding:10px; margin-bottom:16px;" />
 
                         <button class="crud1" style="width:100%;">
@@ -81,6 +97,12 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
+
+        // Temporary stub login handler
+        const loginButton = card.querySelector('button');
+        loginButton?.addEventListener('click', () => {
+            this.showCommandInterface();
+        });
     },
 
     renderCommandInterfaceCard() {
