@@ -45,17 +45,13 @@ window.SkyIndex = {
     renderLoginCard() {
         if (!this.cardHost) return;
         this.clearCards();
-
         const card = document.createElement('section');
         card.className = 'card card-portal-auth';
-
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🔐 Authentication Required</h2>
             </div>
-
             <div class="cardBodyDivider"></div>
-
             <div class="cardBody">
                 <div class="cardContent">
 
@@ -74,14 +70,16 @@ window.SkyIndex = {
 
                 </div>
             </div>
-
             <div class="cardFooterDivider"></div>
-
             <div class="cardFooter">
+                <img
+                    src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
+                    alt="Live"
+                    style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"
+                >
                 🔒 Authentication required to continue
             </div>
         `;
-
         this.cardHost.appendChild(card);
     },
 
