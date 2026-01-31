@@ -82,12 +82,30 @@
 <!-- #region 🧱 PAGE BODY -->
 <div id="pageBody" class="board-section">
 
-    <!-- #region 🗂️ COMMAND CARD HOST -->
-    <!--
-        All command interface cards are injected dynamically by index.js.
-        No static card HTML is authored here.
-    -->
-    <div id="boardCardHost"></div>
+    <!-- #region 📄 BODY PANEL -->
+    <div class="bodyPanel">
+
+        <!-- #region 🧭 BODY HEADER -->
+        <div class="bodyHeader">
+            <span class="bodyTitle">🔐 Portal Access</span>
+        </div>
+        <div class="bodyDivider"></div>
+        <!-- #endregion -->
+
+        <!-- #region 🗂️ BODY CONTENT -->
+        <div class="bodyContent">
+            <div id="boardCardHost"></div>
+        </div>
+        <!-- #endregion -->
+
+        <!-- #region 🧾 BODY FOOTER -->
+        <div class="bodyDivider"></div>
+        <div class="bodyFooter">
+            <span class="bodyMeta">Authentication required to continue</span>
+        </div>
+        <!-- #endregion -->
+
+    </div>
     <!-- #endregion -->
 
 </div>
