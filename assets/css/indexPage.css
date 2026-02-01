@@ -70,19 +70,20 @@ body[data-page="index"] #boardCardHost {
 /* #endregion */
 
 /* #region 🧾 Card Footer — MATCH officeBoard SoT */
-.cardFooter {
+body[data-page="index"] .cardFooter {
+    flex: 0 0 auto;              /* allow growth if needed */
+    min-height: 28px;            /* preserve alignment baseline */
+
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-start;
 
-    padding: 10px 16px;
+    padding: 0;
+    line-height: 1;
+    font-weight: 600;
     font-size: 0.9rem;
-    font-weight: 700;
-    color: #111;
-
-    line-height: 1.4;
+    color: #333;
 }
-
 /* #endregion */
 
 /* #region ➖ Card Footer Divider */
