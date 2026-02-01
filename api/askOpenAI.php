@@ -356,14 +356,24 @@ if ($type === "skyebot") {
 #endregion
 
 #region SECTION 8 — Output
+// Log raw response for debugging
+error_log('ASK_OPENAI RESPONSE RAW: ' . var_export($response, true));
+
+// Fallback for empty responses
+if (!isset($response) || trim($response) === '') {
+    $response = "⚠ AI returned no usable response.";
+}
+
+// Final output
 echo json_encode([
     "success"             => true,
     "role"                => "askOpenAI",
     "type"                => $type,
     "narrativeGenerated"  => $narrativeGenerated,
-    "response"            => $response,
+    "response"            => trim($response),
     "reportUpdated"       => $narrativeGenerated ? $reportPath : null
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 
+// Exit
 exit;
 #endregion
