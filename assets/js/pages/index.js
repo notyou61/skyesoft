@@ -242,10 +242,44 @@ window.SkyIndex = {
                 break;
 
             default:
-                this.appendSystemLine('Unrecognized command.');
+                this.sendToAI(text);
+                break;
         }
     },
     // #endregion
+
+    // #region 🤖 AI Command Execution
+    sendToAI(prompt) {
+        this.appendSystemLine('Thinking…');
+
+        fetch('/skyesoft/api/askOpenAI.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                source: 'portal-command'
+            })
+        })
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(data => {
+            if (data?.response) {
+                this.appendSystemLine(data.response);
+            } else {
+                this.appendSystemLine('⚠ No response from AI.');
+            }
+        })
+        .catch(err => {
+            console.error('[SkyIndex] AI error:', err);
+            this.appendSystemLine('❌ AI request failed.');
+        });
+    },
+    // #endregion
+
 
     // #region 🧠 Intent Detection
     detectIntent(text) {
