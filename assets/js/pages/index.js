@@ -236,50 +236,55 @@ window.SkyIndex = {
         const intent = this.detectIntent(text);
 
         switch (intent) {
+
             case 'logout':
                 this.appendSystemLine('Logging out…');
                 setTimeout(() => this.logout('command'), 300);
                 break;
 
             default:
-                this.sendToAI(text);
-                break;
+                this.executeAICommand(text);
         }
     },
     // #endregion
 
     // #region 🤖 AI Command Execution
-    sendToAI(prompt) {
+    async executeAICommand(prompt) {
+
         this.appendSystemLine('Thinking…');
 
-        fetch('/skyesoft/api/askOpenAI.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                source: 'portal-command'
-            })
-        })
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(data => {
-            if (data?.response) {
-                this.appendSystemLine(data.response);
-            } else {
-                this.appendSystemLine('⚠ No response from AI.');
+        try {
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    source: 'portal',
+                    type: 'command'
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
             }
-        })
-        .catch(err => {
+
+            const data = await res.json();
+
+            if (!data || !data.response) {
+                this.appendSystemLine('⚠ No response from AI.');
+                return;
+            }
+
+            this.appendSystemLine(data.response);
+
+        } catch (err) {
             console.error('[SkyIndex] AI error:', err);
             this.appendSystemLine('❌ AI request failed.');
-        });
+        }
     },
     // #endregion
-
 
     // #region 🧠 Intent Detection
     detectIntent(text) {
