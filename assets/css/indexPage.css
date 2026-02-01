@@ -69,18 +69,18 @@ body[data-page="index"] #boardCardHost {
 }
 /* #endregion */
 
-/* #region 🧾 Card Footer (SoT-aligned) */
+/* #region 🧾 Card Footer — MATCH officeBoard SoT */
 body[data-page="index"] .cardFooter {
+    flex: 0 0 28px;              /* critical: fixes vertical drift */
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: flex-start;
 
-    padding: 10px 16px;        /* match officeBoard vertical rhythm */
+    padding: 0;                  /* match officeBoard */
+    line-height: 1;
+    font-weight: 600;            /* match officeBoard */
     font-size: 0.9rem;
-    font-weight: 700;          /* bold like officeBoard */
-    color: #111;
-
-    line-height: 1.4;
+    color: #333;
 }
 /* #endregion */
 
