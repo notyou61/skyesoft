@@ -12,6 +12,21 @@ window.SkyIndex = {
     cardHost: null,
     // #endregion
 
+    // #region 🛠️ Command Output Helpers
+    appendSystemLine(text) {
+        if (!this.cardHost) return; // future-proof
+        const output = this.cardHost.querySelector('.commandOutput');
+        if (!output) return;
+
+        const line = document.createElement('p');
+        line.className = 'commandLine system';
+        line.textContent = text;
+
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+    },
+    // #endregion
+
     // #region 🚀 Page Init (called by app.js)
     init() {
 
@@ -138,11 +153,29 @@ window.SkyIndex = {
                         </p>
                     </div>
                 </div>
-
                 <!-- Command Prompt -->
                 <div class="composer">
                     <div class="composerSurface">
 
+                        <!-- Leading (Attach) -->
+                        <div class="composerLeading">
+                            <button
+                                class="composerAttach"
+                                type="button"
+                                aria-label="Attach files"
+                                title="Attach files"
+                            >
+                                ＋
+                            </button>
+                            <input
+                                type="file"
+                                class="composerFileInput"
+                                multiple
+                                hidden
+                            >
+                        </div>
+
+                        <!-- Primary Input -->
                         <div class="composerPrimary">
                             <div
                                 class="composerInput"
@@ -152,6 +185,7 @@ window.SkyIndex = {
                             ></div>
                         </div>
 
+                        <!-- Trailing (Send) -->
                         <div class="composerTrailing">
                             <button class="composerSend" aria-label="Run command">
                                 ⏎
@@ -171,6 +205,25 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
+
+        // Attach file handler
+        const attachBtn  = card.querySelector('.composerAttach');
+        const fileInput  = card.querySelector('.composerFileInput');
+
+        attachBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (!fileInput.files.length) return;
+
+            const files = Array.from(fileInput.files).map(f => f.name).join(', ');
+
+            this.appendSystemLine(`Attached file(s): ${files}`);
+
+            // Reset so same file can be re-selected
+            fileInput.value = '';
+        });
 
         // Autofocus prompt
         card.querySelector('.composerInput')?.focus();
