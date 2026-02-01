@@ -110,7 +110,7 @@ window.SkyIndex = {
             this.handleLoginSubmit(form);
         });
     },
-
+    // Render Command Interface Card
     renderCommandInterfaceCard() {
         this.clearCards();
 
@@ -124,11 +124,24 @@ window.SkyIndex = {
 
             <div class="cardBodyDivider"></div>
 
-            <div class="cardBody">
-                <div class="cardContent">
-                    <p style="text-align:center; font-size:1.1em; color:#666; margin-top:40px;">
-                        Command environment initialized.
-                    </p>
+            <div class="cardBody cardBody--command">
+                <div class="cardContent cardContent--command">
+                    <div class="commandOutput">
+                        <p class="commandLine system">
+                            Command environment initialized.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Command Prompt -->
+                <div class="commandPrompt">
+                    <span class="promptSymbol">›</span>
+                    <input
+                        type="text"
+                        class="commandInput"
+                        placeholder="Enter command…"
+                        autocomplete="off"
+                    />
                 </div>
             </div>
 
@@ -140,6 +153,9 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
+
+        // Autofocus prompt
+        card.querySelector('.commandInput')?.focus();
     },
     // #endregion
 
