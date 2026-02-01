@@ -157,41 +157,17 @@ window.SkyIndex = {
                 <div class="composer">
                     <div class="composerSurface">
 
-                        <!-- Leading (Attach) -->
-                        <div class="composerLeading">
-                            <button
-                                class="composerAttach"
-                                type="button"
-                                aria-label="Attach files"
-                                title="Attach files"
-                            >
-                                ＋
-                            </button>
-                            <input
-                                type="file"
-                                class="composerFileInput"
-                                multiple
-                                hidden
-                            >
-                        </div>
+                        <button class="composerBtn composerPlus" type="button" aria-label="Attach files">+</button>
 
-                        <!-- Primary Input -->
                         <div class="composerPrimary">
-                            <div
-                                class="composerInput"
-                                contenteditable="true"
-                                data-placeholder="Type a command…"
-                                spellcheck="false"
-                            ></div>
+                        <div class="composerInput" contenteditable="true"
+                            data-placeholder="Type a command..."
+                            spellcheck="false"></div>
                         </div>
 
-                        <!-- Trailing (Send) -->
-                        <div class="composerTrailing">
-                            <button class="composerSend" aria-label="Run command">
-                                ⏎
-                            </button>
-                        </div>
+                        <button class="composerBtn composerSend" type="button" aria-label="Run command">⏎</button>
 
+                        <input class="composerFile" type="file" multiple hidden>
                     </div>
                 </div>
 
