@@ -201,6 +201,16 @@ body[data-page="index"] .cardFooterDivider {
 
 /* #endregion */
 
+/* #region 🔐 Login Card Centering */
+body[data-page="index"] .cardContent--centered {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* vertical center */
+    align-items: center;       /* horizontal center */
+    text-align: center;
+}
+/* #endregion */
+
 /* #region 🔐 Login Card */
 
 .loginCard {

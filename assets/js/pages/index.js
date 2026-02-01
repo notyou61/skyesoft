@@ -53,7 +53,7 @@ window.SkyIndex = {
             </div>
             <div class="cardBodyDivider"></div>
             <div class="cardBody">
-                <div class="cardContent">
+                <div class="cardContent cardContent--centered">
 
                     <p class="loginIntro">
                         Please sign in to access the Skyesoft Portal.
