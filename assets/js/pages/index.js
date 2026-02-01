@@ -147,11 +147,7 @@ window.SkyIndex = {
             <div class="cardBody cardBody--command">
 
                 <div class="cardContent cardContent--command">
-                    <div class="commandOutput">
-                        <p class="commandLine system">
-                            Command environment initialized.
-                        </p>
-                    </div>
+                    <div class="commandOutput"></div>
                 </div>
                 <!-- Command Prompt -->
                 <div class="composer">
@@ -183,8 +179,13 @@ window.SkyIndex = {
         this.cardHost.appendChild(card);
 
         // Attach file handler
-        const attachBtn  = card.querySelector('.composerAttach');
-        const fileInput  = card.querySelector('.composerFileInput');
+        const attachBtn = card.querySelector('.composerPlus');
+        const fileInput = card.querySelector('.composerFile');
+
+        if (!attachBtn || !fileInput) {
+            console.warn('[SkyIndex] Composer file controls not found');
+            return;
+        }
 
         attachBtn.addEventListener('click', () => {
             fileInput.click();
@@ -193,7 +194,9 @@ window.SkyIndex = {
         fileInput.addEventListener('change', () => {
             if (!fileInput.files.length) return;
 
-            const files = Array.from(fileInput.files).map(f => f.name).join(', ');
+            const files = Array.from(fileInput.files)
+                .map(f => f.name)
+                .join(', ');
 
             this.appendSystemLine(`Attached file(s): ${files}`);
 
