@@ -32,15 +32,14 @@ window.SkyIndex = {
             return;
         }
 
-        // Restore auth state if present
+        // Restore auth state
         if (this.isAuthenticated()) {
-            document.body.setAttribute('data-auth', 'true'); // ✅ FIX
+            document.body.setAttribute('data-auth', 'true');
             this.renderCommandInterfaceCard();
         } else {
             document.body.removeAttribute('data-auth');
             this.renderLoginCard();
         }
-
     },
     // #endregion
 
@@ -61,17 +60,20 @@ window.SkyIndex = {
         this.cardHost.innerHTML = '';
     },
 
+    // #region 🔐 Login Card
     renderLoginCard() {
-        if (!this.cardHost) return;
         this.clearCards();
 
         const card = document.createElement('section');
         card.className = 'card card-portal-auth';
+
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🔐 Authentication Required</h2>
             </div>
+
             <div class="cardBodyDivider"></div>
+
             <div class="cardBody">
                 <div class="cardContent cardContent--centered">
 
@@ -90,7 +92,9 @@ window.SkyIndex = {
 
                 </div>
             </div>
+
             <div class="cardFooterDivider"></div>
+
             <div class="cardFooter">
                 <img
                     src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
@@ -103,14 +107,15 @@ window.SkyIndex = {
 
         this.cardHost.appendChild(card);
 
-        // Attach login handler
         const form = card.querySelector('.loginForm');
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleLoginSubmit(form);
         });
     },
-    // Render Command Interface Card
+    // #endregion
+
+    // #region 🧠 Command Interface Card
     renderCommandInterfaceCard() {
         this.clearCards();
 
@@ -125,6 +130,7 @@ window.SkyIndex = {
             <div class="cardBodyDivider"></div>
 
             <div class="cardBody cardBody--command">
+
                 <div class="cardContent cardContent--command">
                     <div class="commandOutput">
                         <p class="commandLine system">
@@ -134,16 +140,28 @@ window.SkyIndex = {
                 </div>
 
                 <!-- Command Prompt -->
-                <div class="commandPrompt">
-                    <span class="promptSymbol">›</span>
-                    <input
-                        type="text"
-                        class="commandInput"
-                        placeholder="Enter command…"
-                        autocomplete="off"
-                    />
+                <div class="composer">
+                    <div class="composerSurface">
+
+                        <div class="composerPrimary">
+                            <div
+                                class="composerInput"
+                                contenteditable="true"
+                                data-placeholder="Type a command…"
+                                spellcheck="false"
+                            ></div>
+                        </div>
+
+                        <div class="composerTrailing">
+                            <button class="composerSend" aria-label="Run command">
+                                ⏎
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
-            </div>
+
+            </div> <!-- /cardBody -->
 
             <div class="cardFooterDivider"></div>
 
@@ -155,7 +173,7 @@ window.SkyIndex = {
         this.cardHost.appendChild(card);
 
         // Autofocus prompt
-        card.querySelector('.commandInput')?.focus();
+        card.querySelector('.composerInput')?.focus();
     },
     // #endregion
 
@@ -165,7 +183,6 @@ window.SkyIndex = {
         const pass  = form.querySelector('input[type="password"]').value.trim();
         const error = form.querySelector('.loginError');
 
-        // Faux credentials (Phase 1)
         if (email === 'steve@christysigns.com' && pass === 'password123') {
             error.hidden = true;
             this.setAuthenticated();
