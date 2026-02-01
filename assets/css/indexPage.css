@@ -208,6 +208,8 @@ body[data-page="index"] .cardContent--centered {
     justify-content: center;   /* vertical center */
     align-items: center;       /* horizontal center */
     text-align: center;
+
+    transform: translateY(-6vh); /* optical center (slightly above true center) */
 }
 /* #endregion */
 
