@@ -60,11 +60,10 @@ window.SkyIndex = {
                     </p>
 
                     <div class="loginCard">
-                        <form class="loginForm">
-                            <input type="text" placeholder="Email address" />
-                            <input type="password" placeholder="Password" />
-                            <button class="crud1 loginButton">Sign In</button>
-                            <div class="loginError" hidden></div>
+                        <form class="loginForm d-flex flex-column align-items-center gap-2">
+                            <input class="form-control" type="email" placeholder="Email address">
+                            <input class="form-control" type="password" placeholder="Password">
+                            <button class="btn">Sign In</button>
                         </form>
                     </div>
 
