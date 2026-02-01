@@ -34,10 +34,13 @@ window.SkyIndex = {
 
         // Restore auth state if present
         if (this.isAuthenticated()) {
+            document.body.setAttribute('data-auth', 'true'); // ✅ FIX
             this.renderCommandInterfaceCard();
         } else {
+            document.body.removeAttribute('data-auth');
             this.renderLoginCard();
         }
+
     },
     // #endregion
 
