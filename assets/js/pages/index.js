@@ -121,6 +121,9 @@ window.SkyIndex = {
             <div class="cardHeader">
                 <h2>🧠 Skyesoft Command Interface</h2>
             </div>
+
+            <div class="cardBodyDivider"></div>
+
             <div class="cardBody">
                 <div class="cardContent">
                     <p style="text-align:center; font-size:1.1em; color:#666; margin-top:40px;">
@@ -128,6 +131,9 @@ window.SkyIndex = {
                     </p>
                 </div>
             </div>
+
+            <div class="cardFooterDivider"></div>
+
             <div class="cardFooter">
                 🟢 Authenticated • Ready
             </div>
