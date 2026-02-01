@@ -69,11 +69,9 @@ body[data-page="index"] #boardCardHost {
 }
 /* #endregion */
 
-/* #region 🧾 Card Footer — MATCH officeBoard SoT */
+/* #region 🧾 Card Footer — EXACT MATCH OfficeBoard */
 body[data-page="index"] .cardFooter {
-    flex: 0 0 auto;              /* allow growth if needed */
-    min-height: 28px;            /* preserve alignment baseline */
-
+    flex: 0 0 28px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -81,7 +79,6 @@ body[data-page="index"] .cardFooter {
     padding: 0;
     line-height: 1;
     font-weight: 600;
-    font-size: 0.9rem;
     color: #333;
 }
 /* #endregion */
