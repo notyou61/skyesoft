@@ -32,8 +32,24 @@ window.SkyIndex = {
             return;
         }
 
-        // Default state: Login
-        this.renderLoginCard();
+        // Restore auth state if present
+        if (this.isAuthenticated()) {
+            this.renderCommandInterfaceCard();
+        } else {
+            this.renderLoginCard();
+        }
+    },
+    // #endregion
+
+    // #region 🔐 Auth State
+    isAuthenticated() {
+        return sessionStorage.getItem('skyesoft.auth') === 'true';
+    },
+
+    setAuthenticated() {
+        sessionStorage.setItem('skyesoft.auth', 'true');
+        document.body.setAttribute('data-auth', 'true');
+        this.transitionToCommandInterface();
     },
     // #endregion
 
@@ -45,6 +61,7 @@ window.SkyIndex = {
     renderLoginCard() {
         if (!this.cardHost) return;
         this.clearCards();
+
         const card = document.createElement('section');
         card.className = 'card card-portal-auth';
         card.innerHTML = `
@@ -61,9 +78,10 @@ window.SkyIndex = {
 
                     <div class="loginCard">
                         <form class="loginForm d-flex flex-column align-items-center gap-2">
-                            <input class="form-control" type="email" placeholder="Email address">
-                            <input class="form-control" type="password" placeholder="Password">
-                            <button class="btn">Sign In</button>
+                            <input class="form-control" type="email" placeholder="Email address" required>
+                            <input class="form-control" type="password" placeholder="Password" required>
+                            <button class="btn" type="submit">Sign In</button>
+                            <div class="loginError" hidden></div>
                         </form>
                     </div>
 
@@ -79,14 +97,22 @@ window.SkyIndex = {
                 🔒 Authentication required to continue
             </div>
         `;
+
         this.cardHost.appendChild(card);
+
+        // Attach login handler
+        const form = card.querySelector('.loginForm');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLoginSubmit(form);
+        });
     },
 
     renderCommandInterfaceCard() {
         this.clearCards();
 
-        const card = document.createElement('div');
-        card.className = 'card';
+        const card = document.createElement('section');
+        card.className = 'card card-command';
 
         card.innerHTML = `
             <div class="cardHeader">
@@ -99,9 +125,40 @@ window.SkyIndex = {
                     </p>
                 </div>
             </div>
+            <div class="cardFooter">
+                🟢 Authenticated • Ready
+            </div>
         `;
 
         this.cardHost.appendChild(card);
+    },
+    // #endregion
+
+    // #region 🔑 Login Logic (Faux)
+    handleLoginSubmit(form) {
+        const email = form.querySelector('input[type="email"]').value.trim();
+        const pass  = form.querySelector('input[type="password"]').value.trim();
+        const error = form.querySelector('.loginError');
+
+        // Faux credentials (Phase 1)
+        if (email === 'steve@christysigns.com' && pass === 'password123') {
+            error.hidden = true;
+            this.setAuthenticated();
+        } else {
+            error.textContent = 'Invalid email or password';
+            error.hidden = false;
+        }
+    },
+    // #endregion
+
+    // #region 🔁 Transition
+    transitionToCommandInterface() {
+        this.cardHost.style.opacity = '0';
+
+        setTimeout(() => {
+            this.renderCommandInterfaceCard();
+            this.cardHost.style.opacity = '1';
+        }, 180);
     },
     // #endregion
 
