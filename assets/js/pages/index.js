@@ -204,8 +204,64 @@ window.SkyIndex = {
             fileInput.value = '';
         });
 
+        const input = card.querySelector('.composerInput');
+        const sendBtn = card.querySelector('.composerSend');
+
+        const submitCommand = () => {
+            const text = input.textContent.trim();
+            if (!text) return;
+
+            input.textContent = '';
+            this.handleCommand(text);
+        };
+
+        sendBtn.addEventListener('click', submitCommand);
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitCommand();
+            }
+        });
+
         // Autofocus prompt
         card.querySelector('.composerInput')?.focus();
+    },
+    // #endregion
+
+    // #region 🧠 Command Router
+    handleCommand(text) {
+        this.appendSystemLine(`> ${text}`);
+
+        const intent = this.detectIntent(text);
+
+        switch (intent) {
+            case 'logout':
+                this.appendSystemLine('Logging out…');
+                setTimeout(() => this.logout('command'), 300);
+                break;
+
+            default:
+                this.appendSystemLine('Unrecognized command.');
+        }
+    },
+    // #endregion
+
+    // #region 🧠 Intent Detection
+    detectIntent(text) {
+        const t = text.toLowerCase();
+
+        if (
+            t === 'logout' ||
+            t === 'log out' ||
+            t === 'sign out' ||
+            t === 'exit' ||
+            t === 'quit'
+        ) {
+            return 'logout';
+        }
+
+        return 'unknown';
     },
     // #endregion
 
@@ -262,8 +318,20 @@ window.SkyIndex = {
                 }
                 break;
         }
-    }
+    },
     // #endregion
+
+    // #region 🔓 Logout
+    logout(reason = 'User requested logout') {
+        console.log('[SkyIndex] Logout:', reason);
+
+        sessionStorage.removeItem('skyesoft.auth');
+        document.body.removeAttribute('data-auth');
+
+        this.clearCards();
+        this.renderLoginCard();
+    },
+// #endregion
 };
 // #endregion
 
