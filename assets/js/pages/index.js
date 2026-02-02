@@ -74,17 +74,18 @@ window.SkyIndex = {
     clearCards() {
         this.cardHost.innerHTML = '';
     },
+    // #endregion
 
+    // #region 🧹 Session Surface Control
     clearSessionSurface() {
         if (!this.cardHost) return;
 
-        // Clear all command cards / output
-        this.cardHost.innerHTML = '';
+        const output = this.cardHost.querySelector('.commandOutput');
+        if (output) {
+            output.innerHTML = '';
+        }
 
-        // Optional: reset command interface state if re-rendered
-        this.renderCommandInterfaceCard();
-
-        console.log('[SkyIndex] Session surface cleared');
+        console.log('[SkyIndex] Command output cleared');
     },
     // #endregion
 
