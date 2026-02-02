@@ -74,6 +74,18 @@ window.SkyIndex = {
     clearCards() {
         this.cardHost.innerHTML = '';
     },
+
+    clearSessionSurface() {
+        if (!this.cardHost) return;
+
+        // Clear all command cards / output
+        this.cardHost.innerHTML = '';
+
+        // Optional: reset command interface state if re-rendered
+        this.renderCommandInterfaceCard();
+
+        console.log('[SkyIndex] Session surface cleared');
+    },
     // #endregion
 
     // #region 🔐 Login Card
@@ -238,6 +250,10 @@ window.SkyIndex = {
 
         switch (intent) {
 
+            case 'clear':
+                this.clearSessionSurface();
+                break;
+
             case 'logout':
                 this.appendSystemLine('Logging out…');
                 setTimeout(() => this.logout('command'), 300);
@@ -282,6 +298,15 @@ window.SkyIndex = {
     // #region 🧠 Intent Detection
     detectIntent(text) {
         const t = text.toLowerCase();
+
+        if (
+            t === 'clear' ||
+            t === 'clear screen' ||
+            t === 'clear my screen' ||
+            t === 'reset'
+        ) {
+            return 'clear';
+        }
 
         if (
             t === 'logout' ||
