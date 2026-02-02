@@ -85,6 +85,13 @@ window.SkyIndex = {
             output.innerHTML = '';
         }
 
+        // Subtle Easter egg (1 in 10)
+        if (Math.random() < 0.1) {
+            this.appendSystemLine('✨ The sky is clear.');
+        } else {
+            this.appendSystemLine('🟢 Skyesoft ready.');
+        }
+
         console.log('[SkyIndex] Command output cleared');
     },
     // #endregion
