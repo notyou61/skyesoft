@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// load environment FIRST
-skyesoftLoadEnv();
-
 // ======================================================================
 //  Skyesoft — askOpenAI.php
 //  Version: 1.3.1
@@ -22,9 +19,12 @@ skyesoftLoadEnv();
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
-header("Content-Type: application/json; charset=UTF-8");
-
 #region SECTION 0 — Fail Handler
+
+skyesoftLoadEnv();
+// Header
+header("Content-Type: application/json; charset=UTF-8");
+// AI Fail Function
 function aiFail(string $msg): never {
     echo json_encode([
         "success" => false,
@@ -92,7 +92,17 @@ function loadStandingOrders(): string {
         JSON_UNESCAPED_SLASHES
     );
 }
+function loadSemanticIntentPrompt(): string
+{
+    $root = dirname(__DIR__);
+    $path = "$root/prompts/semanticIntent.prompt.md";
 
+    if (!file_exists($path)) {
+        return "";
+    }
+
+    return trim(file_get_contents($path));
+}
 function getCodexVersion(): string {
     $root = dirname(__DIR__);
     $codexPath = "$root/codex/codex.json";
@@ -109,7 +119,6 @@ function getCodexVersion(): string {
         ?? "pending"
     );
 }
-
 function inferSalutation(string $firstName, string $lastName): ?string
 {
 
@@ -157,6 +166,18 @@ Standing Orders (JSON):
 
 {$basePrompt}
 PROMPT;
+}
+function injectSemanticIntentContext(string $basePrompt): string
+{
+    $semanticPrompt = loadSemanticIntentPrompt();
+
+    if ($semanticPrompt === "") {
+        return injectStandingOrders($basePrompt);
+    }
+
+    return injectStandingOrders(
+        $semanticPrompt . "\n\n" . $basePrompt
+    );
 }
 #endregion
 
@@ -385,7 +406,11 @@ PROMPT;
 }
 #endregion
 
-#region SECTION 7 — Skyebot Mode
+#region SECTION 7 — Skyebot & Semantic Intent Modes
+
+// ------------------------------------------------------
+// SKYEBOT — Conversational / Informational Responses
+// ------------------------------------------------------
 if ($type === "skyebot") {
 
     $query = $_GET["userQuery"] ?? ($argv[3] ?? null);
@@ -393,12 +418,59 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
-    $prompt = "Skyebot response requested:\n{$query}\n\nPre-SIS posture.";
+    $basePrompt = <<<PROMPT
+Skyebot response requested.
+
+User Input:
+{$query}
+
+Pre-SIS posture.
+Respond conversationally.
+Do not imply authority, execution, or persistence.
+PROMPT;
+
     $response = callOpenAI(
-        injectStandingOrders($prompt),
+        injectStandingOrders($basePrompt),
         $apiKey
     );
 }
+
+
+// ------------------------------------------------------
+// SEMANTIC INTENT — Non-Binding Advisory Interpretation
+// ------------------------------------------------------
+if ($type === "semantic_intent") {
+
+    $query = $_GET["userQuery"] ?? ($argv[3] ?? null);
+    if (!$query) {
+        aiFail("userQuery required for semantic intent mode.");
+    }
+
+    $basePrompt = <<<PROMPT
+Analyze the following user input and return semantic intent metadata only.
+
+User Input:
+{$query}
+PROMPT;
+
+    $response = callOpenAI(
+        injectSemanticIntentContext($basePrompt),
+        $apiKey
+    );
+
+    // Enforce JSON-only response
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        aiFail("Semantic intent response was not valid JSON.");
+    }
+
+    // Normalize response to canonical JSON
+    $response = json_encode(
+        $decoded,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
+}
+
 #endregion
 
 #region SECTION 8 — Output
