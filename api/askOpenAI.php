@@ -80,9 +80,16 @@ PROMPT;
 
     $fullPrompt = injectStandingOrders($basePrompt);
 
-    $apiKey = getenv("OPENAI_API_KEY");
-    if (!$apiKey) {
-        return null;
+    $apiKey = getenv("OPENAI_API_KEY") ?: null;
+
+    if ($apiKey === null) {
+        http_response_code(500);
+        echo json_encode([
+            "success" => false,
+            "role"    => "askOpenAI",
+            "error"   => "❌ OPENAI_API_KEY environment variable is not set or is empty"
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
