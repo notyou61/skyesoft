@@ -98,8 +98,11 @@ function loadSemanticIntentPrompt(): string
     $path = "$root/prompts/semanticIntent.prompt.md";
 
     if (!file_exists($path)) {
+        error_log("[semantic-intent] PROMPT FILE NOT FOUND at $path");
         return "";
     }
+
+    error_log("[semantic-intent] PROMPT FILE LOADED: $path");
 
     return trim(file_get_contents($path));
 }
