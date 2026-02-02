@@ -20,7 +20,6 @@ declare(strict_types=1);
 // ======================================================================
 
 #region SECTION 0 — Fail Handler
-
 skyesoftLoadEnv();
 // Header
 header("Content-Type: application/json; charset=UTF-8");
@@ -36,7 +35,6 @@ function aiFail(string $msg): never {
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
-
 function skyesoftLoadEnv(): void
 {
     $envPath = dirname(__DIR__, 3) . '/secure/.env';
@@ -63,7 +61,6 @@ function skyesoftLoadEnv(): void
 
     error_log("[env-loader] Loaded .env from $envPath");
 }
-
 function skyesoftGetEnv(string $key): ?string
 {
     $val = getenv($key);
@@ -72,7 +69,6 @@ function skyesoftGetEnv(string $key): ?string
     if (!empty($_SERVER[$key])) return trim($_SERVER[$key]);
     return null;
 }
-
 function loadStandingOrders(): string {
     $root = dirname(__DIR__);
     $codexPath = "$root/codex/codex.json";
@@ -152,7 +148,48 @@ PROMPT;
     }
 
     return null;
+}function loadSseSnapshot(): ?array
+{
+    $url = "https://www.skyelighting.com/skyesoft/api/sse.php";
+
+    $context = stream_context_create([
+        "http" => [
+            "timeout" => 2
+        ]
+    ]);
+
+    $raw = @file_get_contents($url, false, $context);
+    if (!$raw) {
+        return null;
+    }
+
+    // Strip "data: " prefix if present
+    $raw = preg_replace('/^data:\s*/', '', trim($raw));
+
+    $json = json_decode($raw, true);
+    return is_array($json) ? $json : null;
+}function extractPermitContext(array $sse): string
+{
+    $kpi = $sse["kpi"]["atAGlance"] ?? [];
+    $breakdown = $sse["kpi"]["statusBreakdown"] ?? [];
+
+    return <<<TEXT
+Operational Permit Snapshot (read-only, current):
+
+- Total active permits: {$kpi["totalActive"]}
+- Oldest outstanding: {$kpi["oldestOutstandingDays"]} days
+- Average turnaround: {$kpi["averageTurnaroundDays"]} days
+
+Status breakdown:
+- Under review: {$breakdown["under_review"]}
+- Corrections: {$breakdown["corrections"]}
+- Ready to issue: {$breakdown["ready_to_issue"]}
+- Issued: {$breakdown["issued"]}
+
+Source: SSE snapshot (not persisted)
+TEXT;
 }
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
