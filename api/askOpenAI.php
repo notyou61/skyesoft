@@ -150,7 +150,7 @@ PROMPT;
     return null;
 }function loadSseSnapshot(): ?array
 {
-    $url = "https://www.skyelighting.com/skyesoft/api/sse.php";
+    $url = "https://www.skyelighting.com/skyesoft/api/sse.php?mode=snapshot";
 
     $context = stream_context_create([
         "http" => [
