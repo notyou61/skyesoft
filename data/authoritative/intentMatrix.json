@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "objectType": "intentMatrix",
+    "version": "0.1.0",
+    "status": "preSIS",
+    "authoritative": true,
+    "generatedBy": "human",
+    "notes": "Defines advisory intent routing. No execution authority."
+  },
+  "intents": [
+    {
+      "intent": "clear_session_surface",
+      "routesTo": ["ui"],
+      "priority": 1,
+      "description": "User requests clearing the visible interaction surface without affecting persistence."
+    }
+  ]
+}

@@ -58,6 +58,26 @@ If only one intent is reasonably dominant, return exactly one intent.
 
 ---
 
+## Recognized Intent Classes (Non-Exhaustive)
+
+Some user intents may relate to managing the **interaction surface** rather than requesting information.
+
+Examples of such intent classes include:
+- Requests to clear, reset, or restart the visible interaction context
+- Requests to remove prior conversation content from view
+- Requests to begin a fresh interaction without implying data deletion or persistence changes
+
+When a user expresses such meaning, the appropriate intent classification is:
+
+clear_session_surface
+
+This intent refers only to the **user-facing session surface** and does not imply:
+- data deletion
+- persistence changes
+- system resets
+- historical erasure
+
+
 ## Output Schema Enforcement (Non-Negotiable)
 
 You MUST return JSON that conforms **exactly** to the schema below.
