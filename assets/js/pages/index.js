@@ -74,6 +74,7 @@ window.SkyIndex = {
     clearCards() {
         this.cardHost.innerHTML = '';
     },
+    // #endregion
 
     // #region 🔐 Login Card
     renderLoginCard() {
@@ -254,17 +255,9 @@ window.SkyIndex = {
         this.appendSystemLine('Thinking…');
 
         try {
-            const res = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    source: 'portal',
-                    type: 'command'
-                })
-            });
+            const res = await fetch(
+                `/skyesoft/api/askOpenAI.php?ai=true&type=skyebot&userQuery=${encodeURIComponent(prompt)}`
+            );
 
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
@@ -272,7 +265,7 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            if (!data || !data.response) {
+            if (!data?.response) {
                 this.appendSystemLine('⚠ No response from AI.');
                 return;
             }
