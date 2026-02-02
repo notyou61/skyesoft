@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// load environment FIRST
+skyesoftLoadEnv();
+
 // ======================================================================
 //  Skyesoft — askOpenAI.php
 //  Version: 1.3.1
@@ -19,20 +22,7 @@ declare(strict_types=1);
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
-//sheader("Content-Type: application/json; charset=UTF-8");
-
-skyesoftLoadEnv();
-
-$key = skyesoftGetEnv("OPENAI_API_KEY");
-
-header('Content-Type: text/plain');
-
-if ($key === null) {
-    echo "❌ OPENAI_API_KEY NOT FOUND\n";
-} else {
-    echo "✅ OPENAI_API_KEY FOUND (length: " . strlen($key) . ")\n";
-}
-exit;
+header("Content-Type: application/json; charset=UTF-8");
 
 #region SECTION 0 — Fail Handler
 function aiFail(string $msg): never {
@@ -136,8 +126,6 @@ PROMPT;
     if ($apiKey === null) {
         aiFail("OPENAI_API_KEY not available in PHP environment.");
     }
-
-    //$apiKey = getenv("OPENAI_API_KEY") ?: null;
 
     $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
 
@@ -315,18 +303,9 @@ if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
 #region SECTION 5 — Input Resolution
 $root   = dirname(__DIR__);
 
-$apiKey = getenv("OPENAI_API_KEY");
-var_dump($apiKey);     // ← add this
-exit;                  // ← add this
-
-$apiKey = getenv("OPENAI_API_KEY");
-
-if ($apiKey === false || $apiKey === '') {
-    $apiKey = null;
-}
-
+$apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 if ($apiKey === null) {
-    aiFail("OPENAI_API_KEY environment variable is not set or is empty. Cannot call OpenAI.");
+    aiFail("OPENAI_API_KEY not available.");
 }
 
 $type   = $_GET["type"] ?? ($argv[1] ?? "narrative");
