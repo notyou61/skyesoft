@@ -21,6 +21,19 @@ declare(strict_types=1);
 
 //sheader("Content-Type: application/json; charset=UTF-8");
 
+skyesoftLoadEnv();
+
+$key = skyesoftGetEnv("OPENAI_API_KEY");
+
+header('Content-Type: text/plain');
+
+if ($key === null) {
+    echo "❌ OPENAI_API_KEY NOT FOUND\n";
+} else {
+    echo "✅ OPENAI_API_KEY FOUND (length: " . strlen($key) . ")\n";
+}
+exit;
+
 #region SECTION 0 — Fail Handler
 function aiFail(string $msg): never {
     echo json_encode([
@@ -33,6 +46,43 @@ function aiFail(string $msg): never {
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
+
+function skyesoftLoadEnv(): void
+{
+    $envPath = dirname(__DIR__, 3) . '/secure/.env';
+
+    if (!file_exists($envPath) || !is_readable($envPath)) {
+        error_log("[env-loader] FAILED to load .env at $envPath");
+        return;
+    }
+
+    foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+            continue;
+        }
+
+        [$key, $value] = explode('=', $line, 2);
+        $key   = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+
+        putenv("$key=$value");
+        $_ENV[$key]    = $value;
+        $_SERVER[$key] = $value;
+    }
+
+    error_log("[env-loader] Loaded .env from $envPath");
+}
+
+function skyesoftGetEnv(string $key): ?string
+{
+    $val = getenv($key);
+    if ($val !== false && trim($val) !== '') return trim($val);
+    if (!empty($_ENV[$key])) return trim($_ENV[$key]);
+    if (!empty($_SERVER[$key])) return trim($_SERVER[$key]);
+    return null;
+}
+
 function loadStandingOrders(): string {
     $root = dirname(__DIR__);
     $codexPath = "$root/codex/codex.json";
@@ -72,7 +122,8 @@ function getCodexVersion(): string {
 
 function inferSalutation(string $firstName, string $lastName): ?string
 {
-    $basePrompt = <<<PROMPT
+
+$basePrompt = <<<PROMPT
 Given the name "{$firstName} {$lastName}", infer the most likely professional salutation for business correspondence.
 
 Respond with ONLY "Mr." or "Ms." — nothing else.
@@ -80,17 +131,13 @@ PROMPT;
 
     $fullPrompt = injectStandingOrders($basePrompt);
 
-    $apiKey = getenv("OPENAI_API_KEY") ?: null;
+    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
     if ($apiKey === null) {
-        http_response_code(500);
-        echo json_encode([
-            "success" => false,
-            "role"    => "askOpenAI",
-            "error"   => "❌ OPENAI_API_KEY environment variable is not set or is empty"
-        ], JSON_UNESCAPED_SLASHES);
-        exit;
+        aiFail("OPENAI_API_KEY not available in PHP environment.");
     }
+
+    //$apiKey = getenv("OPENAI_API_KEY") ?: null;
 
     $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
 
