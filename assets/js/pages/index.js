@@ -251,13 +251,15 @@ window.SkyIndex = {
         switch (intent) {
 
             case 'clear':
+                // 🚫 DO NOT show Thinking…
+                // 🚫 DO NOT call AI
                 this.clearSessionSurface();
-                break;
+                return;
 
             case 'logout':
                 this.appendSystemLine('Logging out…');
                 setTimeout(() => this.logout('command'), 300);
-                break;
+                return;
 
             default:
                 this.executeAICommand(text);
