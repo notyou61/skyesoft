@@ -188,6 +188,22 @@ Status breakdown:
 
 Source: SSE snapshot (not persisted)
 TEXT;
+}function extractTimeContext(array $sse): string
+{
+    $time = $sse["timeDateArray"]["currentLocalTime"] ?? null;
+    $date = $sse["timeDateArray"]["currentDate"] ?? null;
+
+    if (!$time || !$date) {
+        return "";
+    }
+
+    return <<<TEXT
+Current system time (from SSE snapshot):
+- Date: {$date}
+- Local Time: {$time}
+
+This information is current as of the snapshot and is read-only.
+TEXT;
 }
 
 #endregion
@@ -467,16 +483,23 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
+    $sse = loadSseSnapshot();
+    $timeContext = $sse ? extractTimeContext($sse) : "";
+
     $basePrompt = <<<PROMPT
-Skyebot response requested.
+    Skyebot response requested.
 
-User Input:
-{$query}
+    {$timeContext}
 
-Pre-SIS posture.
-Respond conversationally.
-Do not imply authority, execution, or persistence.
-PROMPT;
+    User Input:
+    {$query}
+
+    Pre-SIS posture.
+    Respond conversationally.
+    Base answers only on provided context.
+    If context is missing, say so explicitly.
+    PROMPT;
+
 
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
