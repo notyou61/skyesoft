@@ -267,7 +267,20 @@ if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
 
 #region SECTION 5 — Input Resolution
 $root   = dirname(__DIR__);
+
 $apiKey = getenv("OPENAI_API_KEY");
+var_dump($apiKey);     // ← add this
+exit;                  // ← add this
+
+$apiKey = getenv("OPENAI_API_KEY");
+
+if ($apiKey === false || $apiKey === '') {
+    $apiKey = null;
+}
+
+if ($apiKey === null) {
+    aiFail("OPENAI_API_KEY environment variable is not set or is empty. Cannot call OpenAI.");
+}
 
 $type   = $_GET["type"] ?? ($argv[1] ?? "narrative");
 $aiFlag =
