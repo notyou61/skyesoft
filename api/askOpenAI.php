@@ -495,10 +495,24 @@ if ($type === "skyebot") {
     {$query}
 
     Pre-SIS posture.
-    Respond conversationally.
-    Base answers only on provided context.
-    If context is missing, say so explicitly.
-    PROMPT;
+
+    First, interpret the user's intent.
+
+    If the intent is:
+    - conversational (e.g., greetings)
+    - interaction or interface related (e.g., "clear my screen")
+    - meta or system-oriented
+
+    You may respond directly without external or retrieved context.
+
+    If the intent is informational or factual:
+    - Use provided SSE or retrieved context when available.
+    - If required context is missing, state that clearly.
+
+    Do NOT assume all queries require retrieval.
+    Do NOT invent facts.
+    Respond conversationally and naturally.
+PROMPT;
 
 
     $response = callOpenAI(
