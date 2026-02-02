@@ -139,7 +139,7 @@ PROMPT;
         aiFail("OPENAI_API_KEY not available in PHP environment.");
     }
 
-    $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4o-mini');
+    $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
 
     if (!$response) {
         return null;
@@ -188,7 +188,8 @@ function injectSemanticIntentContext(string $basePrompt): string
 function callOpenAI(
     string $prompt,
     ?string $apiKey,
-    string $model = "gpt-4o-mini"
+    string $model = "gpt-4.1",
+    ?array $responseFormat = null
 ): ?string {
 
     if (!$apiKey) {
@@ -201,25 +202,33 @@ function callOpenAI(
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
+    // Build payload (allows optional response_format)
+    $payload = [
+        "model" => $model,
+        "messages" => [
+            [
+                "role"    => "system",
+                "content" => "You are a precise, Codex-aligned assistant."
+            ],
+            [
+                "role"    => "user",
+                "content" => $prompt
+            ]
+        ],
+        "max_tokens"  => 600,
+        "temperature" => 0.1
+    ];
+
+    // Optional: strict JSON schema / structured output enforcement
+    if (is_array($responseFormat)) {
+        $payload["response_format"] = $responseFormat;
+    }
+
     curl_setopt_array($ch, [
         CURLOPT_URL            => "https://api.openai.com/v1/chat/completions",
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode([
-            "model" => $model,
-            "messages" => [
-                [
-                    "role"    => "system",
-                    "content" => "You are a precise, Codex-aligned assistant."
-                ],
-                [
-                    "role"    => "user",
-                    "content" => $prompt
-                ]
-            ],
-            "max_tokens"  => 600,
-            "temperature" => 0.1
-        ]),
+        CURLOPT_POSTFIELDS     => json_encode($payload),
         CURLOPT_HTTPHEADER => [
             "Content-Type: application/json",
             "Authorization: Bearer {$apiKey}"
@@ -438,7 +447,6 @@ PROMPT;
     );
 }
 
-
 // ------------------------------------------------------
 // SEMANTIC INTENT — Non-Binding Advisory Interpretation
 // ------------------------------------------------------
@@ -456,18 +464,43 @@ User Input:
 {$query}
 PROMPT;
 
+    $semanticIntentSchema = [
+        "type" => "json_schema",
+        "json_schema" => [
+            "name" => "semantic_intent",
+            "schema" => [
+                "type" => "object",
+                "additionalProperties" => false,
+                "required" => ["intent", "confidence", "reasoning"],
+                "properties" => [
+                    "intent" => [
+                        "type" => "string"
+                    ],
+                    "confidence" => [
+                        "type" => "number",
+                        "minimum" => 0,
+                        "maximum" => 1
+                    ],
+                    "reasoning" => [
+                        "type" => "string"
+                    ]
+                ]
+            ]
+        ]
+    ];
+
     $response = callOpenAI(
         injectSemanticIntentContext($basePrompt),
-        $apiKey
+        $apiKey,
+        "gpt-4.1",                 // important
+        $semanticIntentSchema
     );
 
-    // Enforce JSON-only response
     $decoded = json_decode($response, true);
     if (!is_array($decoded)) {
         aiFail("Semantic intent response was not valid JSON.");
     }
 
-    // Normalize response to canonical JSON
     $response = json_encode(
         $decoded,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
