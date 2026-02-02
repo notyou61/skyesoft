@@ -304,6 +304,7 @@ window.SkyIndex = {
 
         if (
             t === 'clear' ||
+            t === 'cls' ||
             t === 'clear screen' ||
             t === 'clear my screen' ||
             t === 'reset'
