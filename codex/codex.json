@@ -3002,84 +3002,66 @@
                     ]
                 }
             },
-            "chatHistoryArchitecture": {
-                "title": {
-                    "icon": 16,
-                    "text": "Chat History Architecture Standard"
-                },
-                "type": "standard",
-                "tier": 2,
-                "hierarchyOrder": 14,
-                "description": "Defines the authoritative structure for message logging, recall logic, audit traceability, and temporal continuity.",
-                "rules": [
-                    "Logs stored as {sessionId, messages: [{role, content, timestamp, codexRefs, sseState}]}.",
-                    "Retention: 30 days; auto-purge inactive sessions.",
-                    "Recall: Context window limited to last 10 messages or 4000 tokens.",
-                    "Audit: All logs immutable; access restricted to Archivist role.",
-                    "Storage: /reports/chat/history-{sessionId}.json."
-                ],
-                "schema": {
-                    "chatLog": {
-                        "type": "object",
-                        "properties": {
-                            "sessionId": {
-                                "type": "string"
-                            },
-                            "messages": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "role": {
-                                            "type": "string",
-                                            "enum": [
-                                                "user",
-                                                "assistant"
-                                            ]
-                                        },
-                                        "content": {
-                                            "type": "string"
-                                        },
-                                        "timestamp": {
-                                            "type": "string"
-                                        },
-                                        "codexRefs": {
-                                            "type": "array"
-                                        },
-                                        "sseState": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "required": [
-                                        "role",
-                                        "content",
-                                        "timestamp"
-                                    ]
-                                }
-                            },
-                            "metadata": {
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "sessionId",
-                            "messages"
-                        ]
+            "promptLedgerArchitecture": {
+            "title": {
+                "icon": 16,
+                "text": "Prompt Ledger Architecture Standard"
+            },
+            "type": "standard",
+            "tier": 2,
+            "hierarchyOrder": 14,
+            "description": "Defines the minimal, authoritative structure for recording user prompt inputs and system replies for auditability and historical reference. The Prompt Ledger is descriptive only and does not govern execution, routing, reuse, or authority.",
+            "rules": [
+                "Each prompt entry must be recorded exactly as submitted.",
+                "Each entry must include a unique identifier and timestamp.",
+                "If a reply is generated, it may be recorded verbatim.",
+                "Prompt and reply records must not imply correctness, reuse eligibility, or authority.",
+                "Ledger entries are append-only and immutable once recorded."
+            ],
+            "schema": {
+                "promptEntry": {
+                "type": "object",
+                "properties": {
+                    "promptId": {
+                    "type": "string",
+                    "description": "Unique identifier for the prompt entry."
+                    },
+                    "promptText": {
+                    "type": "string",
+                    "description": "Exact user-submitted text."
+                    },
+                    "promptTimestamp": {
+                    "type": "string",
+                    "format": "iso8601",
+                    "description": "Time the prompt was received."
+                    },
+                    "actorId": {
+                    "type": "string",
+                    "description": "Optional identifier of the submitting actor."
+                    },
+                    "replyText": {
+                    "type": "string",
+                    "description": "Exact system response produced for this prompt."
+                    },
+                    "replyTimestamp": {
+                    "type": "string",
+                    "format": "iso8601",
+                    "description": "Time the reply was generated."
                     }
                 },
-                "examples": {
-                    "valid": [
-                        "{ \"sessionId\": \"sess-123\", \"messages\": [{ \"role\": \"user\", \"content\": \"Query\", \"timestamp\": \"2025-11-25T10:00:00Z\" }] }"
-                    ],
-                    "invalid": [
-                        "{ \"messages\": [{ \"role\": \"system\" }] }"
-                    ]
-                },
-                "validation": {
-                    "enforcedBy": "modules/historyValidator.php",
-                    "frequency": "post-log",
-                    "action": "Encrypt and append; reject malformed entries"
+                "required": [
+                    "promptId",
+                    "promptText",
+                    "promptTimestamp"
+                ],
+                "additionalProperties": false
                 }
+            },
+            "notes": [
+                "Recording a reply does not imply that the response is authoritative or reusable.",
+                "The Prompt Ledger does not determine future responses.",
+                "Semantic matching or reuse requires explicit, separate governance."
+            ]
             },
             "codeManagement": {
                 "title": {

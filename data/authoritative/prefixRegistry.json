@@ -86,6 +86,12 @@
       "domain": "auditViolations",
       "description": "Optional identifiers for referencing individual audit violations detected during operational or governance audits. Violations are immutable observations, not error entities, and have no lifecycle or resolution state.",
       "example": "VIO-0001"
+    },
+    {
+      "key": "PRL",
+      "category": "prompt-ledger",
+      "description": "Prompt Ledger entries recording user prompts and system replies.",
+      "example": "PRL-000018"
     }
   ]
 }

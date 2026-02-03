@@ -205,6 +205,51 @@ Current system time (from SSE snapshot):
 This information is current as of the snapshot and is read-only.
 TEXT;
 }
+function appendPromptLedgerEntry(array $entry): void
+{
+    $root = dirname(__DIR__);
+    $ledgerPath = "$root/reports/promptLedger.json";
+
+    // Initialize ledger if missing
+    if (!file_exists($ledgerPath)) {
+        $initial = [
+            "meta" => [
+                "objectType"     => "promptLedger",
+                "schemaVersion"  => "1.0.0",
+                "codexTier"      => 2,
+                "createdAt"      => time(),
+                "lastUpdatedAt"  => time()
+            ],
+            "entries" => []
+        ];
+        file_put_contents(
+            $ledgerPath,
+            json_encode($initial, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
+    }
+
+    $ledger = json_decode(file_get_contents($ledgerPath), true);
+    if (!is_array($ledger) || !isset($ledger["entries"])) {
+        error_log("[prompt-ledger] Invalid ledger structure");
+        return;
+    }
+
+    // Determine next PRL ID
+    $count = count($ledger["entries"]) + 1;
+    $entry["promptId"] = sprintf("PRL-%06d", $count);
+
+    // Enforce unix timestamp
+    $entry["createdUnixTime"] = $entry["createdUnixTime"] ?? time();
+
+    // Append (append-only)
+    $ledger["entries"][] = $entry;
+    $ledger["meta"]["lastUpdatedAt"] = time();
+
+    file_put_contents(
+        $ledgerPath,
+        json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+}
 
 #endregion
 
@@ -673,6 +718,7 @@ PROMPT;
 #endregion
 
 #region SECTION 8 — Output
+
 // Log raw response for debugging
 error_log('ASK_OPENAI RESPONSE RAW: ' . var_export($response, true));
 
@@ -681,7 +727,45 @@ if (!isset($response) || trim($response) === '') {
     $response = "⚠ AI returned no usable response.";
 }
 
+// ────────────────────────────────────────────────────────────────
+// Prompt Ledger — append factual record (non-authoritative)
+// ────────────────────────────────────────────────────────────────
+
+try {
+
+    // Load ledger to determine next sequential ID
+    $ledgerPath = dirname(__DIR__) . "/reports/promptLedger.json";
+    $ledgerData = json_decode(file_get_contents($ledgerPath), true);
+
+    $nextNumber = is_array($ledgerData["entries"] ?? null)
+        ? count($ledgerData["entries"]) + 1
+        : 1;
+
+    $promptId = sprintf("PRL-%06d", $nextNumber);
+
+    $ledgerEntry = [
+        "promptId"         => $promptId,
+        "userId"           => 1, // placeholder until auth system is live
+        "promptText"       => $query ?? null,
+        "responseText"     => trim($response),
+        "intent"           => $intentMeta["intent"] ?? "unknown",
+        "intentConfidence" => $intentMeta["confidence"] ?? null,
+        "sseUsed"          => !empty($contextBlocks),
+        "sseKeys"          => array_keys($contextBlocks ?? []),
+        "createdUnixTime"  => time()
+    ];
+
+    appendPromptLedgerEntry($ledgerEntry);
+
+} catch (Throwable $e) {
+    // Ledger failure must NEVER block response
+    error_log("[prompt-ledger] append failed: " . $e->getMessage());
+}
+
+// ────────────────────────────────────────────────────────────────
 // Final output
+// ────────────────────────────────────────────────────────────────
+
 echo json_encode([
     "success"             => true,
     "role"                => "askOpenAI",
@@ -693,4 +777,5 @@ echo json_encode([
 
 // Exit
 exit;
+
 #endregion

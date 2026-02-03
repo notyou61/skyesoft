@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "objectType": "promptLedger",
+    "schemaVersion": "1.0.0",
+    "codexTier": 2,
+    "description": "Append-only ledger recording user prompts and optional system replies for auditability and historical reference only.",
+    "governance": {
+      "authoritative": true,
+      "binding": false,
+      "mutable": false
+    },
+    "createdUnixTime": 1770154510,
+    "lastUpdatedUnixTime": 1770154510,
+    "notes": [
+      "Entries are descriptive only.",
+      "Presence of a reply does not imply correctness, reuse, or authority.",
+      "Ledger does not govern routing, execution, or inference.",
+      "All timestamps are stored as Unix time (seconds)."
+    ]
+  },
+  "entries": []
+}
