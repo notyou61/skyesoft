@@ -60,6 +60,8 @@ If only one intent is reasonably dominant, return exactly one intent.
 
 ## Recognized Intent Classes (Non-Exhaustive)
 
+These examples are illustrative only and do not imply a fixed, complete, or authoritative intent taxonomy.
+
 Some user intents may relate to managing the **interaction surface** rather than requesting information.
 
 Examples of such intent classes include:
@@ -67,7 +69,7 @@ Examples of such intent classes include:
 - Requests to remove prior conversation content from view
 - Requests to begin a fresh interaction without implying data deletion or persistence changes
 
-When a user expresses such meaning, the appropriate intent classification is:
+When a user expresses such meaning, one reasonable semantic interpretation of the intent is:
 
 clear_session_surface
 
@@ -77,6 +79,7 @@ This intent refers only to the **user-facing session surface** and does not impl
 - system resets
 - historical erasure
 
+---
 
 ## Output Schema Enforcement (Non-Negotiable)
 
