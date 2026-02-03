@@ -483,43 +483,115 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
-    $sse = loadSseSnapshot();
-    $timeContext = $sse ? extractTimeContext($sse) : "";
+    // ======================================================
+    // HANDOFF BOUNDARY
+    // Semantic Intent (AI advisory) → Context Gating (PHP)
+    // ======================================================
 
-    $basePrompt = <<<PROMPT
-    Skyebot response requested.
+    // 1) Obtain semantic intent advisory (non-binding)
+    $intentPrompt = <<<PROMPT
+Analyze the following user input and return semantic intent metadata only.
 
-    {$timeContext}
-
-    User Input:
-    {$query}
-
-    Pre-SIS posture.
-
-    First, interpret the user's intent.
-
-    If the intent is:
-    - conversational (e.g., greetings)
-    - interaction or interface related (e.g., "clear my screen")
-    - meta or system-oriented
-
-    You may respond directly without external or retrieved context.
-
-    If the intent is informational or factual:
-    - Use provided SSE or retrieved context when available.
-    - If required context is missing, state that clearly.
-
-    Do NOT assume all queries require retrieval.
-    Do NOT invent facts.
-    Respond conversationally and naturally.
+User Input:
+{$query}
 PROMPT;
 
+    $semanticIntentSchema = [
+        "type" => "json_schema",
+        "json_schema" => [
+            "name" => "semantic_intent",
+            "schema" => [
+                "type" => "object",
+                "additionalProperties" => false,
+                "required" => ["intent", "confidence", "reasoning"],
+                "properties" => [
+                    "intent" => ["type" => "string"],
+                    "confidence" => [
+                        "type" => "number",
+                        "minimum" => 0,
+                        "maximum" => 1
+                    ],
+                    "reasoning" => ["type" => "string"]
+                ]
+            ]
+        ]
+    ];
+
+    $intentRaw = callOpenAI(
+        injectSemanticIntentContext($intentPrompt),
+        $apiKey,
+        "gpt-4.1",
+        $semanticIntentSchema
+    );
+
+    $intentMeta = json_decode($intentRaw ?? "", true);
+    if (!is_array($intentMeta)) {
+        $intentMeta = [
+            "intent" => "uncertain",
+            "confidence" => 0.0,
+            "reasoning" => "Intent could not be reliably inferred."
+        ];
+    }
+
+    // Audit log (advisory only)
+    error_log("[skyebot:intent] " . json_encode([
+        "intent" => $intentMeta["intent"],
+        "confidence" => $intentMeta["confidence"]
+    ], JSON_UNESCAPED_SLASHES));
+
+    // 2) PHP decides which SSE context (if any) is allowed
+    $sse = loadSseSnapshot();
+    $contextBlocks = [];
+
+    // Minimal, conservative rule:
+    // SSE context is NOT assumed — only injected if clearly relevant
+    if ($sse && ($intentMeta["confidence"] ?? 0) >= 0.80) {
+
+        switch ($intentMeta["intent"]) {
+
+            case "time_query":
+                $contextBlocks[] = extractTimeContext($sse);
+                break;
+
+            case "permit_status":
+            case "permit_overview":
+                $contextBlocks[] = extractPermitContext($sse);
+                break;
+
+            // interaction / UI / conversational intents get no SSE
+            default:
+                // no context injected
+                break;
+        }
+    }
+
+    $contextText = implode("\n\n", array_filter($contextBlocks));
+
+    // ======================================================
+    // Final Skyebot Prompt (bounded, authorized inputs only)
+    // ======================================================
+
+    $basePrompt = <<<PROMPT
+Skyebot response requested.
+
+{$contextText}
+
+User Input:
+{$query}
+
+Pre-SIS posture.
+- Respond conversationally and clearly.
+- Do NOT invent facts.
+- If required context is missing, say so explicitly.
+- Do NOT imply persistence, execution, or authority.
+PROMPT;
 
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey
     );
 }
+
 
 // ------------------------------------------------------
 // SEMANTIC INTENT — Non-Binding Advisory Interpretation
@@ -547,17 +619,13 @@ PROMPT;
                 "additionalProperties" => false,
                 "required" => ["intent", "confidence", "reasoning"],
                 "properties" => [
-                    "intent" => [
-                        "type" => "string"
-                    ],
+                    "intent" => ["type" => "string"],
                     "confidence" => [
                         "type" => "number",
                         "minimum" => 0,
                         "maximum" => 1
                     ],
-                    "reasoning" => [
-                        "type" => "string"
-                    ]
+                    "reasoning" => ["type" => "string"]
                 ]
             ]
         ]
@@ -566,11 +634,11 @@ PROMPT;
     $response = callOpenAI(
         injectSemanticIntentContext($basePrompt),
         $apiKey,
-        "gpt-4.1",                 // important
+        "gpt-4.1",
         $semanticIntentSchema
     );
 
-    $decoded = json_decode($response, true);
+    $decoded = json_decode($response ?? "", true);
     if (!is_array($decoded)) {
         aiFail("Semantic intent response was not valid JSON.");
     }
