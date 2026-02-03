@@ -2695,9 +2695,12 @@
                 "type": "standard",
                 "tier": 2,
                 "hierarchyOrder": 11,
-                "description": "Specifies rules for contextual reasoning, use of Codex doctrine, and integration of SSE data within AI-driven responses.",
+                "description": "Specifies rules for contextual reasoning, use of Codex doctrine, and controlled integration of SSE data within AI-driven responses.",
                 "rules": [
-                    "AI prompts must include Codex context and SSE state as fixed inputs.",
+                    "AI prompts must include Codex context as fixed, read-only input.",
+                    "SSE state must be provided as fixed, read-only input **when application logic determines it is relevant to the user’s intent**.",
+                    "Absence of SSE context is valid and must not be interpreted as missing or unavailable data.",
+                    "The AI may not request, assume, or expand SSE context beyond what is explicitly provided.",
                     "Reasoning must validate against Meta principles before output generation.",
                     "AI may only augment; no rule creation or doctrinal overrides allowed.",
                     "Error handling: Inconsistencies trigger Parliamentarian escalation.",
@@ -2705,35 +2708,37 @@
                 ],
                 "schema": {
                     "promptTemplate": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "template": {
-                                "type": "string"
-                            },
-                            "variables": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
-                            },
-                            "codexRefs": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
-                            }
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                        "type": "string"
+                        },
+                        "template": {
+                        "type": "string"
+                        },
+                        "variables": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
                         }
+                        },
+                        "codexRefs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                        }
+                    }
                     }
                 },
                 "examples": {
                     "valid": [
-                        "Template: 'Based on Codex {article}, interpret {query} with SSE {state}.'"
+                    "Template: 'Based on Codex {article}, interpret {query} with SSE {state}.'",
+                    "Template: 'Respond to {query} using Codex doctrine. No SSE context was provided.'"
                     ],
                     "invalid": [
-                        "Template without codexRefs."
+                    "Template without codexRefs.",
+                    "Template that assumes SSE data not explicitly supplied."
                     ]
                 },
                 "validation": {
@@ -2818,7 +2823,8 @@
                 "description": "Governs prompt interpretation, intent routing, semantic clarity, and Codex-aligned reasoning without relying on keyword matching.",
                 "rules": [
                     "Intent detection must use semantic embeddings; no regex or keyword fallback.",
-                    "Routing matrix: Map intents to modules (e.g., 'query' \u2192 skyebotCore, 'generate' \u2192 documentStandard).",
+                    "Routing matrix: Map semantic intents to eligible response modules (e.g., 'query' → skyebotCore, 'generate' → documentStandard). Intent routing does not determine data inclusion or context availability.",
+                    "Semantic intent output is advisory only and must not determine retrieval scope, SSE inclusion, or data availability; such decisions remain the responsibility of application logic.",
                     "Clarity score > 0.8 required; low scores prompt clarification questions.",
                     "Reasoning chain: Retrieve \u2192 Validate Codex \u2192 Generate \u2192 Cite sources.",
                     "Routing defined in assets/data/intentMatrix.json."
