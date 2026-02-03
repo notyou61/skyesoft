@@ -734,7 +734,8 @@ if (!isset($response) || trim($response) === '') {
 try {
 
     // Load ledger to determine next sequential ID
-    $ledgerPath = dirname(__DIR__) . "/reports/promptLedger.json";
+    $root = dirname(__DIR__);
+    $ledgerPath = $root . "/data/authoritative/promptLedger.json";
     $ledgerData = json_decode(file_get_contents($ledgerPath), true);
 
     $nextNumber = is_array($ledgerData["entries"] ?? null)
