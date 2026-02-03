@@ -483,12 +483,11 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
-    // ======================================================
-    // HANDOFF BOUNDARY
-    // Semantic Intent (AI advisory) → Context Gating (PHP)
-    // ======================================================
+    // ────────────────────────────────────────────────────────────────
+    // Always classify semantic intent first — this is now internal
+    // Advisory only — PHP still makes all gating decisions
+    // ────────────────────────────────────────────────────────────────
 
-    // 1) Obtain semantic intent advisory (non-binding)
     $intentPrompt = <<<PROMPT
 Analyze the following user input and return semantic intent metadata only.
 
@@ -517,59 +516,75 @@ PROMPT;
         ]
     ];
 
+    // Using a lightweight model for intent detection (fast + cheap)
     $intentRaw = callOpenAI(
         injectSemanticIntentContext($intentPrompt),
         $apiKey,
-        "gpt-4.1",
+        "gpt-4o-mini",           // ← changed from gpt-4.1 — revert if you prefer
         $semanticIntentSchema
     );
 
     $intentMeta = json_decode($intentRaw ?? "", true);
-    if (!is_array($intentMeta)) {
+
+    // Robust fallback if parsing fails or structure is invalid
+    if (!is_array($intentMeta) || !isset($intentMeta['intent']) || !isset($intentMeta['confidence'])) {
         $intentMeta = [
-            "intent" => "uncertain",
+            "intent"     => "uncertain",
             "confidence" => 0.0,
-            "reasoning" => "Intent could not be reliably inferred."
+            "reasoning"  => "Intent classification failed or response was not valid structured output."
         ];
     }
 
-    // Audit log (advisory only)
+    // Better logging: include truncated query + reasoning for debugging
     error_log("[skyebot:intent] " . json_encode([
-        "intent" => $intentMeta["intent"],
-        "confidence" => $intentMeta["confidence"]
+        "query"      => substr($query, 0, 100) . (strlen($query) > 100 ? "…" : ""),
+        "intent"     => $intentMeta["intent"],
+        "confidence" => $intentMeta["confidence"],
+        "reasoning"  => substr($intentMeta["reasoning"] ?? "", 0, 160) . (strlen($intentMeta["reasoning"] ?? "") > 160 ? "…" : "")
     ], JSON_UNESCAPED_SLASHES));
 
-    // 2) PHP decides which SSE context (if any) is allowed
+    // ────────────────────────────────────────────────────────────────
+    // PHP gating: decide which SSE context blocks are allowed
+    // ────────────────────────────────────────────────────────────────
+
     $sse = loadSseSnapshot();
     $contextBlocks = [];
 
-    // Minimal, conservative rule:
-    // SSE context is NOT assumed — only injected if clearly relevant
-    if ($sse && ($intentMeta["confidence"] ?? 0) >= 0.80) {
+    $confidenceThreshold = 0.80; // can be adjusted later (0.75? 0.85?)
+
+    if ($sse && ($intentMeta["confidence"] ?? 0) >= $confidenceThreshold) {
 
         switch ($intentMeta["intent"]) {
 
             case "time_query":
+            case "current_time":
+            case "what_time_is_it":
                 $contextBlocks[] = extractTimeContext($sse);
                 break;
 
             case "permit_status":
             case "permit_overview":
+            case "my_permit":
                 $contextBlocks[] = extractPermitContext($sse);
                 break;
 
-            // interaction / UI / conversational intents get no SSE
+            // Add more cases here when you define new intents
+            // case "location_query":
+            // case "weather":
+            //     $contextBlocks[] = extractLocationContext($sse);
+            //     break;
+
             default:
-                // no context injected
+                // Most intents (chat, jokes, opinions, UI questions…) get NO context
                 break;
         }
     }
 
     $contextText = implode("\n\n", array_filter($contextBlocks));
 
-    // ======================================================
-    // Final Skyebot Prompt (bounded, authorized inputs only)
-    // ======================================================
+    // ────────────────────────────────────────────────────────────────
+    // Final prompt to Skyebot — now includes authorized context only
+    // ────────────────────────────────────────────────────────────────
 
     $basePrompt = <<<PROMPT
 Skyebot response requested.
@@ -589,12 +604,16 @@ PROMPT;
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey
+        // ← add model name, temperature, max_tokens etc. here if you normally do
     );
+
+    // Your normal output logic goes here (echo $response, stream, etc.)
 }
 
 
 // ------------------------------------------------------
 // SEMANTIC INTENT — Non-Binding Advisory Interpretation
+// (kept for debugging / direct calls if you still need it)
 // ------------------------------------------------------
 if ($type === "semantic_intent") {
 
@@ -634,7 +653,7 @@ PROMPT;
     $response = callOpenAI(
         injectSemanticIntentContext($basePrompt),
         $apiKey,
-        "gpt-4.1",
+        "gpt-4o-mini",               // ← also changed here for consistency
         $semanticIntentSchema
     );
 
@@ -647,6 +666,8 @@ PROMPT;
         $decoded,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     );
+
+    // Assuming you echo or return $response here in your original code
 }
 
 #endregion
