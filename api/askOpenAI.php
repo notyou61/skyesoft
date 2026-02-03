@@ -756,7 +756,22 @@ try {
         "createdUnixTime"  => time()
     ];
 
-    appendPromptLedgerEntry($ledgerEntry);
+    // Append entry
+    $ledgerData["entries"][] = $ledgerEntry;
+
+    // Update meta timestamp
+    $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
+
+    // Write back to disk (authoritative write)
+    $result = file_put_contents(
+        $ledgerPath,
+        json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+    );
+
+    if ($result === false) {
+        throw new RuntimeException("Failed to write promptLedger.json");
+    }
+
 
 } catch (Throwable $e) {
     // Ledger failure must NEVER block response
