@@ -470,8 +470,9 @@ $payload = [
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta" => [
-        "siteVersion" => $versions["system"]["siteVersion"] ?? "unknown",
-        "deployTime"  => $versions["system"]["deployTime"]  ?? null
+        "siteVersion"      => $versions["system"]["siteVersion"] ?? "unknown",
+        "deployTime"       => $versions["system"]["deployTime"]  ?? null,
+        "updateAvailable"  => (bool)($versions["system"]["updateAvailable"] ?? false)
     ]
 ];
 
