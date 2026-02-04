@@ -4,6 +4,47 @@
    Header / Footer driven exclusively by SSE
 */
 
+// #region 🔔 Version Update Indicator Controller
+window.SkyVersion = {
+
+    timeoutId: null,
+
+    show(durationMs = 60000) {
+        const versionEl = document.getElementById('versionFooter');
+        if (!versionEl) {
+            console.warn('[SkyVersion] #versionFooter not found');
+            return;
+        }
+
+        // Prevent duplicates
+        if (versionEl.querySelector('.versionUpdateDot')) {
+            return;
+        }
+
+        const dot = document.createElement('span');
+        dot.className = 'versionUpdateDot';
+        dot.title = 'Update applied';
+
+        versionEl.appendChild(dot);
+
+        // Auto-remove
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+        }
+
+        this.timeoutId = setTimeout(() => {
+            this.hide();
+        }, durationMs);
+    },
+
+    hide() {
+        const dot = document.querySelector('#versionFooter .versionUpdateDot');
+        if (dot) dot.remove();
+        this.timeoutId = null;
+    }
+};
+// #endregion
+
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
