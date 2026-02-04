@@ -130,26 +130,33 @@ body {
 /* #region Version Update Indicator */
 #versionFooter {
     position: relative;
-    padding-left: 16px; /* reserve space for dot */
+    padding-left: 64px; /* space for label */
 }
 
 #versionFooter.hasUpdate::before {
-    content: '';
+    content: 'UPDATED';
     position: absolute;
     left: 0;
     top: 50%;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #16a34a;
     transform: translateY(-50%);
-    animation: versionPulse 1.2s ease-in-out infinite;
+
+    font-size: 0.65em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+
+    color: #15803d; /* calm green */
+    background: rgba(22, 163, 74, 0.12);
+    padding: 2px 6px;
+    border-radius: 6px;
+
+    animation: versionPulse 1.4s ease-in-out infinite;
 }
 
 @keyframes versionPulse {
-    0%   { opacity: 0.3; transform: translateY(-50%) scale(0.9); }
-    50%  { opacity: 1;   transform: translateY(-50%) scale(1.2); }
-    100% { opacity: 0.3; transform: translateY(-50%) scale(0.9); }
+    0%   { opacity: 0.35; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.35; }
 }
 /* #endregion */
 
