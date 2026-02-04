@@ -128,22 +128,28 @@ body {
 /* #endregion */
 
 /* #region Version Update Indicator */
-#versionFooter.hasUpdate::after {
+#versionFooter {
+    position: relative;
+    padding-left: 16px; /* reserve space for dot */
+}
+
+#versionFooter.hasUpdate::before {
     content: '';
-    display: inline-block;
+    position: absolute;
+    left: 0;
+    top: 50%;
     width: 8px;
     height: 8px;
-    margin-left: 8px;
     border-radius: 50%;
     background-color: #16a34a;
+    transform: translateY(-50%);
     animation: versionPulse 1.2s ease-in-out infinite;
-    vertical-align: middle;
 }
 
 @keyframes versionPulse {
-    0%   { opacity: 0.3; transform: scale(0.9); }
-    50%  { opacity: 1;   transform: scale(1.2); }
-    100% { opacity: 0.3; transform: scale(0.9); }
+    0%   { opacity: 0.3; transform: translateY(-50%) scale(0.9); }
+    50%  { opacity: 1;   transform: translateY(-50%) scale(1.2); }
+    100% { opacity: 0.3; transform: translateY(-50%) scale(0.9); }
 }
 /* #endregion */
 
