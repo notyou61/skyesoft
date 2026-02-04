@@ -27,6 +27,19 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🧩 UI Action Registry
+    uiActionRegistry: {
+        logout() {
+            SkyIndex.appendSystemLine('Logging out…');
+            setTimeout(() => SkyIndex.logout('ui_action'), 300);
+        },
+
+        clear_screen() {
+            SkyIndex.clearSessionSurface();
+        }
+    },
+    // #endregion
+
     // #region 🚀 Page Init (called by app.js)
     init() {
 
@@ -253,25 +266,7 @@ window.SkyIndex = {
     // #region 🧠 Command Router
     handleCommand(text) {
         this.appendSystemLine(`> ${text}`);
-
-        const intent = this.detectIntent(text);
-
-        switch (intent) {
-
-            case 'clear':
-                // 🚫 DO NOT show Thinking…
-                // 🚫 DO NOT call AI
-                this.clearSessionSurface();
-                return;
-
-            case 'logout':
-                this.appendSystemLine('Logging out…');
-                setTimeout(() => this.logout('command'), 300);
-                return;
-
-            default:
-                this.executeAICommand(text);
-        }
+        this.executeAICommand(text);
     },
     // #endregion
 
@@ -291,45 +286,31 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            if (!data?.response) {
-                this.appendSystemLine('⚠ No response from AI.');
+            // 🧠 UI ACTION SHORT-CIRCUIT (NO HARDCODING)
+            if (data?.type === 'ui_action') {
+                const handler = this.uiActionRegistry[data.action];
+
+                if (typeof handler === 'function') {
+                    handler();
+                    return;
+                }
+
+                console.warn('[SkyIndex] Unhandled UI action:', data.action);
                 return;
             }
 
-            this.appendSystemLine(data.response);
+            // Normal AI response
+            if (data?.response) {
+                this.appendSystemLine(data.response);
+                return;
+            }
+
+            this.appendSystemLine('⚠ No response from AI.');
 
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
             this.appendSystemLine('❌ AI request failed.');
         }
-    },
-    // #endregion
-
-    // #region 🧠 Intent Detection
-    detectIntent(text) {
-        const t = text.toLowerCase();
-
-        if (
-            t === 'clear' ||
-            t === 'cls' ||
-            t === 'clear screen' ||
-            t === 'clear my screen' ||
-            t === 'reset'
-        ) {
-            return 'clear';
-        }
-
-        if (
-            t === 'logout' ||
-            t === 'log out' ||
-            t === 'sign out' ||
-            t === 'exit' ||
-            t === 'quit'
-        ) {
-            return 'logout';
-        }
-
-        return 'unknown';
     },
     // #endregion
 
