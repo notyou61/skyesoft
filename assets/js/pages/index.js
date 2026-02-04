@@ -275,9 +275,6 @@ window.SkyIndex = {
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
 
-        // Show thinking ONLY for AI-routed commands
-        this.appendSystemLine('Thinking…');
-
         try {
             const res = await fetch(
                 `/skyesoft/api/askOpenAI.php?ai=true&type=skyebot&userQuery=${encodeURIComponent(prompt)}`
@@ -298,25 +295,24 @@ window.SkyIndex = {
 
                 if (typeof handler === 'function') {
                     handler();
-                    return; // 🔒 HARD STOP — UI actions are terminal
+                    return; // 🔒 terminal
                 }
 
                 console.warn('[SkyIndex] Unhandled UI action:', data.action);
-                return; // 🔒 No fallthrough
+                return;
             }
 
             // ─────────────────────────────────────────────
-            // 🤖 Normal AI response
+            // 🤖 AI RESPONSE PATH ONLY
             // ─────────────────────────────────────────────
+            this.appendSystemLine('Thinking…');
+
             if (typeof data?.response === 'string' && data.response.trim() !== '') {
                 this.appendSystemLine(data.response);
                 return;
             }
 
-            // ─────────────────────────────────────────────
-            // ⚠ Silent guard — no UI noise for non-responses
-            // ─────────────────────────────────────────────
-            console.warn('[SkyIndex] Empty or non-action response:', data);
+            console.warn('[SkyIndex] Empty AI response:', data);
 
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
