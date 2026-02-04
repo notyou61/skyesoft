@@ -91,7 +91,7 @@ function loadStandingOrders(): string {
 function loadSemanticIntentPrompt(): string
 {
     $root = dirname(__DIR__);
-    $path = "$root/prompts/semanticIntent.prompt.md";
+    $path = "$root/codex/prompts/semanticIntent.prompt.md";
 
     if (!file_exists($path)) {
         error_log("[semantic-intent] PROMPT FILE NOT FOUND at $path");
@@ -99,13 +99,12 @@ function loadSemanticIntentPrompt(): string
     }
 
     error_log("[semantic-intent] PROMPT FILE LOADED: $path");
-
     return trim(file_get_contents($path));
 }
 function loadResponseGenerationPrompt(): string
 {
     $root = dirname(__DIR__);
-    $path = "$root/prompts/responseGeneration.prompt.md";
+    $path = "$root/codex/prompts/responseGeneration.prompt.md";
 
     if (!file_exists($path)) {
         error_log("[response-generation] PROMPT FILE NOT FOUND at $path");
