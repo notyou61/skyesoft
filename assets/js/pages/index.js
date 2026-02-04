@@ -275,6 +275,9 @@ window.SkyIndex = {
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
 
+        // UI state only — NOT part of the transcript
+        this.setThinking(true);
+
         try {
             const res = await fetch(
                 `/skyesoft/api/askOpenAI.php?ai=true&type=skyebot&userQuery=${encodeURIComponent(prompt)}`
@@ -286,36 +289,34 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            // ─────────────────────────────────────────────
-            // 🧠 UI ACTION SHORT-CIRCUIT (SERVER-AUTHORITATIVE)
-            // ─────────────────────────────────────────────
+            // 🧠 UI ACTION SHORT-CIRCUIT
             if (data?.type === 'ui_action') {
 
-                const handler = this.uiActionRegistry?.[data.action];
+                this.setThinking(false);
 
+                const handler = this.uiActionRegistry?.[data.action];
                 if (typeof handler === 'function') {
                     handler();
-                    return; // 🔒 terminal
+                    return;
                 }
 
-                console.warn('[SkyIndex] Unhandled UI action:', data.action);
+                this.appendSystemLine('⚠ Unhandled UI action.');
                 return;
             }
 
-            // ─────────────────────────────────────────────
-            // 🤖 AI RESPONSE PATH ONLY
-            // ─────────────────────────────────────────────
-            this.appendSystemLine('Thinking…');
-
+            // 🤖 Normal AI response
             if (typeof data?.response === 'string' && data.response.trim() !== '') {
+                this.setThinking(false);
                 this.appendSystemLine(data.response);
                 return;
             }
 
-            console.warn('[SkyIndex] Empty AI response:', data);
+            this.setThinking(false);
+            this.appendSystemLine('⚠ No response from AI.');
 
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
+            this.setThinking(false);
             this.appendSystemLine('❌ AI request failed.');
         }
     },
