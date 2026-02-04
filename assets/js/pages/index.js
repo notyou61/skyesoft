@@ -11,7 +11,7 @@ window.SkyIndex = {
     dom: null,
     cardHost: null,
     // #endregion
-
+    
     // #region 🛠️ Command Output Helpers
     appendSystemLine(text) {
         if (!this.cardHost) return; // future-proof
@@ -27,16 +27,18 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧩 UI Action Registry
+    // #region 🧩 UI Action Registry (SERVER-AUTHORITATIVE)
     uiActionRegistry: {
-        logout() {
-            SkyIndex.appendSystemLine('Logging out…');
-            setTimeout(() => SkyIndex.logout('ui_action'), 300);
-        },
 
         clear_screen() {
             SkyIndex.clearSessionSurface();
+        },
+
+        logout() {
+            SkyIndex.appendSystemLine('Logging out…');
+            setTimeout(() => SkyIndex.logout('ui_action'), 300);
         }
+
     },
     // #endregion
 
@@ -273,6 +275,7 @@ window.SkyIndex = {
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
 
+        // Show thinking ONLY for AI-routed commands
         this.appendSystemLine('Thinking…');
 
         try {
@@ -286,9 +289,12 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            // 🧠 UI ACTION SHORT-CIRCUIT (NO HARDCODING)
+            // ─────────────────────────────────────────────
+            // 🧠 UI ACTION SHORT-CIRCUIT (SERVER-DRIVEN)
+            // ─────────────────────────────────────────────
             if (data?.type === 'ui_action') {
-                const handler = this.uiActionRegistry[data.action];
+
+                const handler = this.uiActionRegistry?.[data.action];
 
                 if (typeof handler === 'function') {
                     handler();
@@ -296,15 +302,19 @@ window.SkyIndex = {
                 }
 
                 console.warn('[SkyIndex] Unhandled UI action:', data.action);
+                this.appendSystemLine('⚠ Unhandled UI action.');
                 return;
             }
 
-            // Normal AI response
-            if (data?.response) {
+            // ─────────────────────────────────────────────
+            // 🤖 Normal AI response
+            // ─────────────────────────────────────────────
+            if (typeof data?.response === 'string' && data.response.trim() !== '') {
                 this.appendSystemLine(data.response);
                 return;
             }
 
+            // Graceful empty response
             this.appendSystemLine('⚠ No response from AI.');
 
         } catch (err) {

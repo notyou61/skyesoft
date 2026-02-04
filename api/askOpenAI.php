@@ -318,7 +318,7 @@ function callOpenAI(
         "messages" => [
             [
                 "role"    => "system",
-                "content" => "You are a precise, Codex-aligned assistant."
+                "content" => injectStandingOrders("You are a precise, Codex-aligned assistant.")
             ],
             [
                 "role"    => "user",
