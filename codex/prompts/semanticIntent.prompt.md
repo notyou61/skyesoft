@@ -58,6 +58,27 @@ If only one intent is reasonably dominant, return exactly one intent.
 
 ---
 
+## UI Command Intents
+
+Some user inputs are **UI-level commands**, not questions.
+
+These express a directive to change the **interaction surface**, rather than a request for information.
+
+When phrased as clear commands, classify the following as **high-confidence UI intents**:
+
+- logout, log out, sign out, exit  
+  → intent: "ui_logout"
+
+- clear, clear screen, reset chat  
+  → intent: "ui_clear"
+
+Rules:
+- Only classify as ui_* when the user intent is a command, not a question.
+- Questions like “how do I log out?” are NOT ui_logout.
+- Confidence should generally be ≥ 0.9 for clear commands.
+
+---
+
 ## Recognized Intent Classes (Non-Exhaustive)
 
 These examples are illustrative only and do not imply a fixed, complete, or authoritative intent taxonomy.
