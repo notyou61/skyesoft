@@ -588,15 +588,53 @@ PROMPT;
         ];
     }
 
-    // Log intent (telemetry only)
+    $intent     = $intentMeta["intent"] ?? "unknown";
+    $confidence = (float)($intentMeta["confidence"] ?? 0.0);
+
+    // ────────────────────────────────────────────────────────────────
+    // 2. UI ACTIONS — handled BEFORE response generation
+    //    (Commands, not informational queries)
+    // ────────────────────────────────────────────────────────────────
+
+    $uiClearThreshold  = 0.80;
+    $uiLogoutThreshold = 0.90;
+
+    if ($intent === "ui_clear" && $confidence >= $uiClearThreshold) {
+
+        echo json_encode([
+            "success" => true,
+            "role"    => "askOpenAI",
+            "type"    => "ui_action",
+            "action"  => "clear_screen"
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
+
+    if ($intent === "ui_logout" && $confidence >= $uiLogoutThreshold) {
+
+        echo json_encode([
+            "success" => true,
+            "role"    => "askOpenAI",
+            "type"    => "ui_action",
+            "action"  => "logout"
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Telemetry logging (non-binding, debug only)
+    // ────────────────────────────────────────────────────────────────
+
     error_log("[skyebot:intent] " . json_encode([
         "query"      => substr($query, 0, 100),
-        "intent"     => $intentMeta["intent"] ?? "unknown",
-        "confidence" => $intentMeta["confidence"] ?? null
+        "intent"     => $intent,
+        "confidence" => $confidence
     ], JSON_UNESCAPED_SLASHES));
 
     // ────────────────────────────────────────────────────────────────
-    // 2. Load Authoritative Context (SSE) — NO INTERPRETATION
+    // 3. Load Authoritative Context (SSE) — RAW, UNINTERPRETED
     // ────────────────────────────────────────────────────────────────
 
     $sseSnapshot = loadSseSnapshot();
@@ -606,7 +644,7 @@ PROMPT;
         : "No authoritative context is available.";
 
     // ────────────────────────────────────────────────────────────────
-    // 3. Load Response Generation Prompt (Universal)
+    // 4. Load Response Generation Prompt (Universal)
     // ────────────────────────────────────────────────────────────────
 
     $responsePrompt = loadResponseGenerationPrompt();
@@ -615,7 +653,8 @@ PROMPT;
     }
 
     // ────────────────────────────────────────────────────────────────
-    // 4. Build Final Prompt (Authority-First, AI-Decides-Relevance)
+    // 5. Build Final Prompt
+    //    (Authority-first, AI decides relevance & phrasing)
     // ────────────────────────────────────────────────────────────────
 
     $basePrompt = <<<PROMPT
