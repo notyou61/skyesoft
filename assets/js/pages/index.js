@@ -409,11 +409,17 @@ window.SkyIndex = {
                 break;
 
             case 'meta:update':
+                // Payload Year
                 if (event.payload.year && this.dom?.year) {
                     this.dom.year.textContent = event.payload.year;
                 }
+                // Payload Version
                 if (event.payload.version && this.dom?.version) {
                     this.dom.version.textContent = event.payload.version;
+                }
+                // 🔔 Version update indicator (SSE-driven)
+                if (event.payload.updateAvailable === true && window.SkyVersion) {
+                    SkyVersion.show(60000); // 1 minute
                 }
                 break;
         }
