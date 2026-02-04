@@ -4053,6 +4053,16 @@
                         "If auditResults.json is deleted after launch, this constitutes a critical governance violation."
                     ]
                 },
+                "nonAuthoritativeLedgers": {
+                    "description": "Defines the treatment of observational and non-governed ledgers at system initialization.",
+                    "rules": [
+                        "promptLedger.json is classified as a non-authoritative, observational ledger.",
+                        "promptLedger.json must begin from an empty state at the start of any governed lifecycle.",
+                        "All entries created prior to SIS execution are non-canonical and must not persist into the governed operational lifecycle.",
+                        "promptLedger.json is explicitly excluded from SIS-governed Sources of Truth and Merkle verification.",
+                        "At official system launch, promptLedger.json must either be reset or archived outside the governed repository by explicit human decision."
+                    ]
+                },
                 "auditMetaRules": {
                     "description": "Defines immutable and mutable fields within auditResults.json meta block.",
                     "rules": [
