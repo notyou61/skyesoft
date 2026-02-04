@@ -58,6 +58,24 @@ If only one intent is reasonably dominant, return exactly one intent.
 
 ---
 
+### Imperative Equivalence
+
+User expressions that clearly request an action to occur
+(even when phrased as a desire or request) should be interpreted
+as commands if no alternative interpretation is stronger.
+
+Examples:
+- "I want to log out"
+- "Can you log me out"
+- "Please log me out"
+
+When the user’s meaning is that the action should occur now,
+and no informational answer is being requested, this qualifies
+as a UI command intent.
+
+Confidence should reflect certainty of intent, not grammatical form.
+
+
 ## UI Command Intents
 
 Some user inputs are **UI-level commands**, not questions.
