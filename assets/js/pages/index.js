@@ -393,6 +393,8 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
+        //
+        console.log('[SkyIndex] onSSE fired:', event);
         if (!event?.type) return;
 
         switch (event.type) {
