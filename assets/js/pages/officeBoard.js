@@ -4,6 +4,43 @@
    Phoenix, Arizona – MST timezone
 */
 
+// #region 🔔 Version Update Indicator Controller
+window.SkyVersion = {
+
+    timeoutId: null,
+
+    show(durationMs = 60000) {
+        const versionEl = document.getElementById('versionFooter');
+        if (!versionEl) {
+            console.warn('[SkyVersion] #versionFooter not found');
+            return;
+        }
+
+        // Prevent duplicates
+        if (versionEl.querySelector('.versionUpdateBadge')) return;
+
+        const badge = document.createElement('span');
+        badge.className = 'versionUpdateBadge';
+        badge.textContent = 'Updated';
+
+        // Insert as LEADING element
+        versionEl.prepend(badge);
+
+        if (this.timeoutId) clearTimeout(this.timeoutId);
+
+        this.timeoutId = setTimeout(() => {
+            this.hide();
+        }, durationMs);
+    },
+
+    hide() {
+        const badge = document.querySelector('#versionFooter .versionUpdateBadge');
+        if (badge) badge.remove();
+        this.timeoutId = null;
+    }
+};
+// #endregion
+
 // #region GLOBAL REGISTRIES
     
     // Permit Statuses
