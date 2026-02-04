@@ -15,6 +15,14 @@ assets/data/weatherCache.json
 assets/data/errorRegistry.json
 assets/data/repositoryAudit.json
 
+# === Authoritative Runtime Ledgers (NEVER version-controlled) ===
+# These are append-only, runtime-generated state.
+# They are audit records, not governed artifacts.
+assets/data/authoritative/promptLedger.json
+
+# Allow ledger templates (schema-only, no data)
+!assets/data/authoritative/promptLedger.template.json
+
 # Generated reports
 reports/**/*.json
 
