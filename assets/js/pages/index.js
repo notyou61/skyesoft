@@ -408,21 +408,26 @@ window.SkyIndex = {
                 this.dom?.interval && (this.dom.interval.textContent = event.payload.label);
                 break;
 
-            case 'meta:update':
-                // Payload Year
-                if (event.payload.year && this.dom?.year) {
-                    this.dom.year.textContent = event.payload.year;
+            case 'meta:update': {
+
+                const meta = event.payload?.siteMeta;
+
+                if (!meta) break;
+
+                // Version text
+                if (meta.siteVersion && this.dom?.version) {
+                    this.dom.version.textContent = meta.siteVersion;
                 }
-                // Payload Version
-                if (event.payload.version && this.dom?.version) {
-                    this.dom.version.textContent = event.payload.version;
+
+                // 🔔 Update indicator
+                if (meta.updateAvailable === true) {
+                    window.SkyVersion?.show(60000);
                 }
-                // 🔔 Version update indicator (SSE-driven)
-                if (event.payload.updateAvailable === true && window.SkyVersion) {
-                    SkyVersion.show(60000); // 1 minute
-                }
+
                 break;
+            }
         }
+
     },
     // #endregion
 
