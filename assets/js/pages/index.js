@@ -290,7 +290,7 @@ window.SkyIndex = {
             const data = await res.json();
 
             // ─────────────────────────────────────────────
-            // 🧠 UI ACTION SHORT-CIRCUIT (SERVER-DRIVEN)
+            // 🧠 UI ACTION SHORT-CIRCUIT (SERVER-AUTHORITATIVE)
             // ─────────────────────────────────────────────
             if (data?.type === 'ui_action') {
 
@@ -298,12 +298,11 @@ window.SkyIndex = {
 
                 if (typeof handler === 'function') {
                     handler();
-                    return;
+                    return; // 🔒 HARD STOP — UI actions are terminal
                 }
 
                 console.warn('[SkyIndex] Unhandled UI action:', data.action);
-                this.appendSystemLine('⚠ Unhandled UI action.');
-                return;
+                return; // 🔒 No fallthrough
             }
 
             // ─────────────────────────────────────────────
@@ -314,8 +313,10 @@ window.SkyIndex = {
                 return;
             }
 
-            // Graceful empty response
-            this.appendSystemLine('⚠ No response from AI.');
+            // ─────────────────────────────────────────────
+            // ⚠ Silent guard — no UI noise for non-responses
+            // ─────────────────────────────────────────────
+            console.warn('[SkyIndex] Empty or non-action response:', data);
 
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
