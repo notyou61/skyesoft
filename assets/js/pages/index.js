@@ -27,6 +27,17 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region ⏳ Thinking State (UI-only, non-transcript)
+    setThinking(isThinking) {
+        const footer = this.cardHost?.querySelector('.cardFooter');
+        if (!footer) return;
+
+        footer.textContent = isThinking
+            ? '⏳ Thinking…'
+            : '🟢 Authenticated • Ready';
+    },
+    // #endregion
+
     // #region 🧩 UI Action Registry (SERVER-AUTHORITATIVE)
     uiActionRegistry: {
 
@@ -275,7 +286,6 @@ window.SkyIndex = {
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
 
-        // UI state only — NOT part of the transcript
         this.setThinking(true);
 
         try {
@@ -291,10 +301,8 @@ window.SkyIndex = {
 
             // 🧠 UI ACTION SHORT-CIRCUIT
             if (data?.type === 'ui_action') {
-
-                this.setThinking(false);
-
                 const handler = this.uiActionRegistry?.[data.action];
+
                 if (typeof handler === 'function') {
                     handler();
                     return;
@@ -306,18 +314,19 @@ window.SkyIndex = {
 
             // 🤖 Normal AI response
             if (typeof data?.response === 'string' && data.response.trim() !== '') {
-                this.setThinking(false);
                 this.appendSystemLine(data.response);
                 return;
             }
 
-            this.setThinking(false);
             this.appendSystemLine('⚠ No response from AI.');
 
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
-            this.setThinking(false);
             this.appendSystemLine('❌ AI request failed.');
+
+        } finally {
+            // ✅ SINGLE, GUARANTEED CLEANUP
+            this.setThinking(false);
         }
     },
     // #endregion
