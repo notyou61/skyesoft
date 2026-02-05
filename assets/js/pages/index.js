@@ -393,43 +393,36 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        //
         console.log('[SkyIndex] onSSE fired:', event);
-        if (!event?.type) return;
+        if (!event) return;
 
-        switch (event.type) {
-            case 'time:update':
-                this.dom?.time && (this.dom.time.textContent = event.payload.display);
-                break;
+        // Header fields (state-based)
+        event.timeDateArray?.currentLocalTimeShort &&
+            this.dom?.time &&
+            (this.dom.time.textContent = event.timeDateArray.currentLocalTimeShort);
 
-            case 'weather:update':
-                this.dom?.weather && (this.dom.weather.textContent = event.payload.summary);
-                break;
+        event.weather?.condition &&
+            this.dom?.weather &&
+            (this.dom.weather.textContent = event.weather.condition);
 
-            case 'interval:update':
-                this.dom?.interval && (this.dom.interval.textContent = event.payload.label);
-                break;
+        event.currentInterval?.key &&
+            this.dom?.interval &&
+            (this.dom.interval.textContent = event.currentInterval.key);
 
-            case 'meta:update': {
+        // 🔔 SITE META (this is the fix)
+        const meta = event.siteMeta;
 
-                const meta = event.payload?.siteMeta;
-
-                if (!meta) break;
-
-                // Version text
-                if (meta.siteVersion && this.dom?.version) {
-                    this.dom.version.textContent = meta.siteVersion;
-                }
-
-                // 🔔 Update indicator
-                if (meta.updateAvailable === true) {
-                    window.SkyVersion?.show(60000);
-                }
-
-                break;
-            }
+        if (meta?.siteVersion && this.dom?.version) {
+            this.dom.version.textContent = meta.siteVersion;
         }
 
+        if (meta?.updateAvailable === true) {
+            window.SkyVersion?.show(60000);
+        }
+
+        if (meta?.updateAvailable === false) {
+            window.SkyVersion?.hide();
+        }
     },
     // #endregion
 
