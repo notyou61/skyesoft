@@ -14,6 +14,11 @@ body {
     padding: 0;
     overflow: hidden;
     box-sizing: border-box;
+
+    /* Typography baseline */
+    font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    color: #111;
 }
 /* #endregion */
 
@@ -331,7 +336,8 @@ body[data-page="index"] .bodyMeta {
     flex: 1;
     overflow-y: auto;
     padding: 16px 20px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* inherit body font (Arial) */
     font-size: 0.95rem;
     line-height: 1.45;
 }
@@ -349,6 +355,7 @@ body[data-page="index"] .bodyMeta {
 
 .commandLine.system {
     color: #555;
+    font-weight: 500; /* subtle emphasis instead of monospace */
 }
 
 .commandLine::before {
@@ -367,7 +374,6 @@ body[data-page="index"] .bodyMeta {
 }
 
 .promptSymbol {
-    font-family: ui-monospace, monospace;
     font-size: 1.1rem;
     color: #666;
 }
@@ -378,7 +384,7 @@ body[data-page="index"] .bodyMeta {
     outline: none;
     background: transparent;
 
-    font-family: ui-monospace, monospace;
+    /* inherit Arial */
     font-size: 1rem;
     color: #111;
 }
