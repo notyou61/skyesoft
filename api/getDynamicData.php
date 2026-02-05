@@ -55,7 +55,7 @@ if (file_exists($paths["sentinel"])) {
         $runCount    = (int)($sentinelRaw["runCount"] ?? 0);
 
         // Determine health
-        $ageSeconds = time() - $lastRunUnix;
+        $ageSeconds = max(0, time() - $lastRunUnix);
 
         if ($ageSeconds <= 90) {
             $status = "ok";
@@ -65,12 +65,16 @@ if (file_exists($paths["sentinel"])) {
             $status = "offline";
         }
 
+        // Phoenix-local formatting (authoritative)
+        $dtSentinel = new DateTime('@' . $lastRunUnix);
+        $dtSentinel->setTimezone($tz);
+
         $sentinelMeta = [
-            "lastRunUnix"   => $lastRunUnix,
-            "lastRunLocal"  => date("h:i:s A", $lastRunUnix),
-            "runCount"      => $runCount,
-            "ageSeconds"    => $ageSeconds,
-            "status"        => $status
+            "lastRunUnix"  => $lastRunUnix,
+            "lastRunLocal" => $dtSentinel->format("h:i:s A"),
+            "runCount"     => $runCount,
+            "ageSeconds"   => $ageSeconds,
+            "status"       => $status
         ];
     }
 }
