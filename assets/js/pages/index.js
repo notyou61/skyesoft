@@ -393,21 +393,50 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        console.log('[SkyIndex] onSSE fired:', event);
+        // Sanity check
         if (!event) return;
 
-        // Header fields (state-based)
-        event.timeDateArray?.currentLocalTimeShort &&
-            this.dom?.time &&
-            (this.dom.time.textContent = event.timeDateArray.currentLocalTimeShort);
+        // 🕒 Time — short local time (e.g. 4:52 AM)
+        if (event.timeDateArray?.currentLocalTimeShort && this.dom?.time) {
+            this.dom.time.textContent = event.timeDateArray.currentLocalTimeShort;
+        }
 
-        event.weather?.condition &&
-            this.dom?.weather &&
-            (this.dom.weather.textContent = event.weather.condition);
+        // 🌤 Weather — temp + condition (e.g. 63°F — Clear sky)
+        if (event.weather && this.dom?.weather) {
+            const { temp, condition } = event.weather;
 
-        event.currentInterval?.key &&
-            this.dom?.interval &&
-            (this.dom.interval.textContent = event.currentInterval.key);
+            if (temp !== null && condition) {
+                this.dom.weather.textContent = `${temp}°F — ${condition}`;
+            }
+        }
+
+        // ⏳ Interval — label + remaining time (e.g. Before Work • 2h 38m)
+        if (event.currentInterval && this.dom?.interval) {
+            const { key, secondsRemainingInterval } = event.currentInterval;
+
+            const labelMap = {
+                beforeWork: 'Before Work',
+                worktime:   'Worktime',
+                afterWork:  'After Work',
+                weekend:    'Weekend',
+                holiday:    'Holiday'
+            };
+
+            const label = labelMap[key] ?? key;
+
+            if (typeof secondsRemainingInterval === 'number') {
+                const hrs  = Math.floor(secondsRemainingInterval / 3600);
+                const mins = Math.floor((secondsRemainingInterval % 3600) / 60);
+
+                this.dom.interval.textContent =
+                    hrs > 0
+                        ? `${label} • ${hrs}h ${mins}m`
+                        : `${label} • ${mins}m`;
+            } else {
+                // Fallback: just the label
+                this.dom.interval.textContent = label;
+            }
+        }
 
         // 🔔 SITE META (this is the fix)
         const meta = event.siteMeta;
