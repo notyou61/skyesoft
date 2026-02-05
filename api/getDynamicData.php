@@ -509,7 +509,7 @@ $payload = [
     "siteMeta" => [
         "siteVersion"      => $versions["system"]["siteVersion"] ?? "unknown",
         "deployTime"       => $versions["system"]["deployTime"]  ?? null,
-        "updateAvailable"  => (bool)($versions["system"]["updateAvailable"] ?? false)
+        "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
     ],
     // Sentinel Runtime Meta
     "sentinelMeta"    => $sentinelMeta

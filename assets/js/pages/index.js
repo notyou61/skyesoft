@@ -469,11 +469,11 @@ window.SkyIndex = {
             this.dom.version.textContent = meta.siteVersion;
         }
 
-        if (meta?.updateAvailable === true) {
+        if (meta?.updateOccurred === true) {
             window.SkyVersion?.show(60000);
         }
 
-        if (meta?.updateAvailable === false) {
+        if (meta?.updateOccurred === false) {
             window.SkyVersion?.hide();
         }
     },

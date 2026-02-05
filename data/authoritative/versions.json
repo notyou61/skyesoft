@@ -12,7 +12,7 @@
     "latestError": "ERR-00003",
     "activeErrors": 3,
     "errorTimestamp": 1766072237,
-    "updateAvailable": true
+    "updateOccurred": true
   },
   "modules": {
     "weather": {
