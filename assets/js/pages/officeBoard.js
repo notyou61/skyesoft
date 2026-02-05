@@ -1390,8 +1390,70 @@ window.SkyOfficeBoard = {
 
     onSSE(payload) {
         lastBoardPayload = payload;
+
+        /* ─────────────────────────────
+        HEADER: Weather / Time / Interval
+        Canonical formatting (matches index)
+        ───────────────────────────── */
+
+        // 🌤 Weather
+        if (payload.weather && this.dom?.weather) {
+            const temp = payload.weather.temp;
+            const cond = payload.weather.condition;
+            this.dom.weather.textContent =
+                Number.isFinite(temp)
+                    ? `${temp}°F — ${cond}`
+                    : cond;
+        }
+
+        // ⏰ Time (HH:MM:SS AM/PM with leading zeros)
+        if (payload.timeDateArray?.currentUnixTime && this.dom?.time) {
+            const d = new Date(payload.timeDateArray.currentUnixTime * 1000);
+
+            const hh = String(d.getHours() % 12 || 12).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+
+            this.dom.time.textContent = `${hh}:${mm}:${ss} ${ampm}`;
+        }
+
+        // ⏳ Interval (label + hh mm ss, padded)
+        if (payload.currentInterval && this.dom?.interval) {
+            const { key, secondsRemainingInterval } = payload.currentInterval;
+
+            const labelMap = {
+                beforeWork: 'Before Work',
+                worktime:   'Worktime',
+                afterWork:  'After Work',
+                weekend:    'Weekend',
+                holiday:    'Holiday'
+            };
+
+            const label = labelMap[key] ?? key;
+
+            if (Number.isFinite(secondsRemainingInterval)) {
+                const total = secondsRemainingInterval;
+
+                const hrs  = Math.floor(total / 3600);
+                const mins = Math.floor((total % 3600) / 60);
+                const secs = total % 60;
+
+                const hStr = String(hrs).padStart(2, '0');
+                const mStr = String(mins).padStart(2, '0');
+                const sStr = String(secs).padStart(2, '0');
+
+                this.dom.interval.textContent =
+                    `${label} • ${hStr}h ${mStr}m ${sStr}s`;
+            } else {
+                this.dom.interval.textContent = label;
+            }
+        }
+
+        // Continue normal updates
         updateAllCards(payload);
     }
+
 };
 
 // #endregion
