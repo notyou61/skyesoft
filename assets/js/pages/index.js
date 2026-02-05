@@ -422,7 +422,7 @@ window.SkyIndex = {
             }
         }
 
-        // ⏳ Interval — label + remaining time (e.g. Before Work • 2h 38m 12s)
+        // ⏳ Interval — label + remaining time (e.g. Before Work • 02h 08m 12s)
         if (event.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = event.currentInterval;
 
@@ -435,6 +435,7 @@ window.SkyIndex = {
             };
 
             const label = labelMap[key] ?? key;
+            const pad = n => String(n).padStart(2, '0');
 
             if (typeof secondsRemainingInterval === 'number') {
                 const total = secondsRemainingInterval;
@@ -443,22 +444,23 @@ window.SkyIndex = {
                 const mins = Math.floor((total % 3600) / 60);
                 const secs = total % 60;
 
-                let timeStr = '';
+                let timeStr;
 
                 if (hrs > 0) {
-                    timeStr = `${hrs}h ${mins}m ${secs}s`;
+                    timeStr = `${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
                 } else if (mins > 0) {
-                    timeStr = `${mins}m ${secs}s`;
+                    timeStr = `${pad(mins)}m ${pad(secs)}s`;
                 } else {
-                    timeStr = `${secs}s`;
+                    timeStr = `${pad(secs)}s`;
                 }
 
-                this.dom.interval.textContent = `${label} • ${timeStr}`;
+                this.dom.interval.textContent = `${label} - ${timeStr}`;
             } else {
                 // Fallback: just the label
                 this.dom.interval.textContent = label;
             }
         }
+
 
         // 🔔 SITE META (this is the fix)
         const meta = event.siteMeta;
