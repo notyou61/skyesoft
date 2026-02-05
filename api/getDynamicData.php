@@ -25,9 +25,11 @@ $paths = [
     "kpi"            => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"     => $root . "/data/runtimeEphemeral/permitNews.json",
+     "sentinel"      => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
 ];
 
 foreach ($paths as $key => $path) {
+    if ($key === "sentinel") continue; // Sentinel is optional
     if (!file_exists($path)) {
         throw new RuntimeException("Missing {$key} at {$path}");
     }
@@ -42,6 +44,37 @@ $activePermits  = json_decode(file_get_contents($paths["permits"]), true);
 $permitNews = json_decode(file_get_contents($paths["permitNews"]), true);
 
 $tz = new DateTimeZone("America/Phoenix");
+
+$sentinelMeta = null;
+
+if (file_exists($paths["sentinel"])) {
+    $sentinelRaw = json_decode(file_get_contents($paths["sentinel"]), true);
+
+    if (is_array($sentinelRaw) && isset($sentinelRaw["lastRunUnix"])) {
+        $lastRunUnix = (int)$sentinelRaw["lastRunUnix"];
+        $runCount    = (int)($sentinelRaw["runCount"] ?? 0);
+
+        // Determine health
+        $ageSeconds = time() - $lastRunUnix;
+
+        if ($ageSeconds <= 90) {
+            $status = "ok";
+        } elseif ($ageSeconds <= 300) {
+            $status = "stale";
+        } else {
+            $status = "offline";
+        }
+
+        $sentinelMeta = [
+            "lastRunUnix"   => $lastRunUnix,
+            "lastRunLocal"  => date("h:i:s A", $lastRunUnix),
+            "runCount"      => $runCount,
+            "ageSeconds"    => $ageSeconds,
+            "status"        => $status
+        ];
+    }
+}
+
 #endregion
 
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
@@ -473,7 +506,9 @@ $payload = [
         "siteVersion"      => $versions["system"]["siteVersion"] ?? "unknown",
         "deployTime"       => $versions["system"]["deployTime"]  ?? null,
         "updateAvailable"  => (bool)($versions["system"]["updateAvailable"] ?? false)
-    ]
+    ],
+    // Sentinel Runtime Meta
+    "sentinelMeta"    => $sentinelMeta
 ];
 
 #endregion
