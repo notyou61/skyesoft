@@ -410,7 +410,7 @@ window.SkyIndex = {
             }
         }
 
-        // ⏳ Interval — label + remaining time (e.g. Before Work • 2h 38m)
+        // ⏳ Interval — label + remaining time (e.g. Before Work • 2h 38m 12s)
         if (event.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = event.currentInterval;
 
@@ -425,13 +425,23 @@ window.SkyIndex = {
             const label = labelMap[key] ?? key;
 
             if (typeof secondsRemainingInterval === 'number') {
-                const hrs  = Math.floor(secondsRemainingInterval / 3600);
-                const mins = Math.floor((secondsRemainingInterval % 3600) / 60);
+                const total = secondsRemainingInterval;
 
-                this.dom.interval.textContent =
-                    hrs > 0
-                        ? `${label} • ${hrs}h ${mins}m`
-                        : `${label} • ${mins}m`;
+                const hrs  = Math.floor(total / 3600);
+                const mins = Math.floor((total % 3600) / 60);
+                const secs = total % 60;
+
+                let timeStr = '';
+
+                if (hrs > 0) {
+                    timeStr = `${hrs}h ${mins}m ${secs}s`;
+                } else if (mins > 0) {
+                    timeStr = `${mins}m ${secs}s`;
+                } else {
+                    timeStr = `${secs}s`;
+                }
+
+                this.dom.interval.textContent = `${label} • ${timeStr}`;
             } else {
                 // Fallback: just the label
                 this.dom.interval.textContent = label;
