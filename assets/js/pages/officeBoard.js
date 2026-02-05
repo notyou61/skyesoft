@@ -1387,14 +1387,11 @@ window.SkyOfficeBoard = {
         };
         updateAllCards(lastBoardPayload);
     },
-
+    
+    // SSE Handler
     onSSE(payload) {
+        // Update global payload reference
         lastBoardPayload = payload;
-
-        /* ─────────────────────────────
-        HEADER: Weather / Time / Interval
-        Canonical formatting (matches index)
-        ───────────────────────────── */
 
         // 🌤 Weather
         if (payload.weather && this.dom?.weather) {
@@ -1444,7 +1441,7 @@ window.SkyOfficeBoard = {
                 const sStr = String(secs).padStart(2, '0');
 
                 this.dom.interval.textContent =
-                    `${label} • ${hStr}h ${mStr}m ${sStr}s`;
+                    `${label} - ${hStr}h ${mStr}m ${sStr}s`;
             } else {
                 this.dom.interval.textContent = label;
             }
