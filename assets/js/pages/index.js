@@ -396,9 +396,21 @@ window.SkyIndex = {
         // Sanity check
         if (!event) return;
 
-        // 🕒 Time — short local time (e.g. 4:52 AM)
-        if (event.timeDateArray?.currentLocalTimeShort && this.dom?.time) {
-            this.dom.time.textContent = event.timeDateArray.currentLocalTimeShort;
+        // ⏰ Time — HH:MM:SS AM (always 2 digits)
+        if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
+            const d = new Date(event.timeDateArray.currentUnixTime * 1000);
+
+            const hh = d.getHours();
+            const mm = d.getMinutes();
+            const ss = d.getSeconds();
+
+            const hour12 = hh % 12 || 12;
+            const ampm   = hh >= 12 ? 'PM' : 'AM';
+
+            const pad = n => String(n).padStart(2, '0');
+
+            this.dom.time.textContent =
+                `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
         }
 
         // 🌤 Weather — temp + condition (e.g. 63°F — Clear sky)
