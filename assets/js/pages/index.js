@@ -461,21 +461,30 @@ window.SkyIndex = {
             }
         }
 
+        // 🔭 SENTINEL META — authoritative runtime signal
+        const sentinel = event.sentinelMeta;
 
-        // 🔔 SITE META (this is the fix)
-        const meta = event.siteMeta;
-
-        if (meta?.siteVersion && this.dom?.version) {
-            this.dom.version.textContent = meta.siteVersion;
+        // Always show site version if present
+        if (event.siteMeta?.siteVersion && this.dom?.version) {
+            this.dom.version.textContent = event.siteMeta.siteVersion;
         }
 
-        if (meta?.updateOccurred === true) {
-            window.SkyVersion?.show(60000);
+        // No sentinel data → do nothing (unknown state)
+        if (!sentinel || sentinel.status === "offline") {
+            window.SkyVersion?.hide();
+            return;
         }
 
-        if (meta?.updateOccurred === false) {
+        // Fresh sentinel + recent run implies deploy activity
+        if (sentinel.status === "ok" && sentinel.ageSeconds <= 90) {
+            window.SkyVersion?.show({
+                mode: "deploy-occurred",
+                autoHideMs: 60000
+            });
+        } else {
             window.SkyVersion?.hide();
         }
+
     },
     // #endregion
 

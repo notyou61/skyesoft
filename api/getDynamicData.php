@@ -482,7 +482,6 @@ $permitList = [];
 
 if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"])) {
     foreach ($activePermits["workOrders"] as $wo) {
-        // Optional filter: exclude finaled / issued if desired later
         $permitList[] = [
             "wo"           => $wo["workOrder"] ?? "",
             "customer"     => $wo["customer"] ?? "",
@@ -491,6 +490,23 @@ if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"]
             "status"       => $wo["permit"]["status"] ?? ""
         ];
     }
+}
+
+// ------------------------------------------------------------
+// Site Meta — Canonical (Unix-only, Sentinel-aligned)
+// ------------------------------------------------------------
+$deployUnix = (int)($versions["system"]["deployUnix"] ?? 0);
+
+$siteMeta = [
+    "siteVersion"    => $versions["system"]["siteVersion"] ?? "unknown",
+    "deployUnix"     => $deployUnix ?: null,
+    "updateOccurred" => (bool)($versions["system"]["updateOccurred"] ?? false)
+];
+
+// Derived, presentation-only (non-authoritative)
+if ($deployUnix > 0) {
+    $siteMeta["deployLocal"]      = date("Y-m-d h:i:s A", $deployUnix);
+    $siteMeta["deployAgeSeconds"] = time() - $deployUnix;
 }
 
 // ------------------------------------------------------------
@@ -506,11 +522,7 @@ $payload = [
     "kpi"             => $kpi,
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
-    "siteMeta" => [
-        "siteVersion"      => $versions["system"]["siteVersion"] ?? "unknown",
-        "deployTime"       => $versions["system"]["deployTime"]  ?? null,
-        "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
-    ],
+    "siteMeta"        => $siteMeta,
     // Sentinel Runtime Meta
     "sentinelMeta"    => $sentinelMeta
 ];
