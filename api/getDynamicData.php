@@ -511,15 +511,25 @@ if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"]
 }
 
 // ------------------------------------------------------------
-// Site Meta — Canonical (Unix-only, Sentinel-aligned)
+// Site Meta — Canonical (Unix-only, UI-aligned)
 // ------------------------------------------------------------
-$deployUnix = (int)($versions["system"]["deployUnix"] ?? 0);
+$lastUpdateUnix = (int)(
+    $versions["system"]["lastUpdateUnix"]
+    ?? $versions["system"]["deployUnix"]
+    ?? 0
+);
 
 $siteMeta = [
-    "siteVersion"    => $versions["system"]["siteVersion"] ?? "unknown",
-    "deployUnix"     => $deployUnix ?: null,
-    "updateOccurred" => (bool)($versions["system"]["updateOccurred"] ?? false)
+    "siteVersion"     => $versions["system"]["siteVersion"] ?? "unknown",
+    "lastUpdateUnix"  => $lastUpdateUnix ?: null,
+    "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
 ];
+
+// Derived, presentation-only (non-authoritative)
+if ($lastUpdateUnix > 0) {
+    $siteMeta["lastUpdateLocal"]      = date("Y-m-d h:i:s A", $lastUpdateUnix);
+    $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
+}
 
 // Derived, presentation-only (non-authoritative)
 if ($deployUnix > 0) {
