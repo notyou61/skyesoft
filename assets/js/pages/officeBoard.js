@@ -725,7 +725,7 @@ function createPermitNewsCard(card) {
 
     return { root, content, footer };
 }
-// Format Version Footer
+// Format Version Footer (stable, non-jittery "ago")
 function formatVersionFooter(siteMeta, referenceUnix) {
     if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
         return `v${siteMeta?.siteVersion ?? '—'}`;
@@ -733,6 +733,7 @@ function formatVersionFooter(siteMeta, referenceUnix) {
 
     const updatedUnix = siteMeta.lastUpdateUnix;
     const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
+    const delta = Math.max(0, refUnix - updatedUnix);
 
     // Absolute date/time (MM/DD/YY h:mm AM/PM)
     const d = new Date(updatedUnix * 1000);
@@ -747,26 +748,43 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         hour12: true
     });
 
-    // Relative age (two-digit + space + unit + "ago")
-    let delta = Math.max(0, refUnix - updatedUnix);
+    // ─────────────────────────────────────
+    // AGO RULES (no seconds, stable units)
+    // ─────────────────────────────────────
+    let agoStr;
 
-    let value, unit;
-    if (delta < 3600) {
-        value = Math.floor(delta / 60);
-        unit = 'min';
+    if (delta < 60) {
+        agoStr = 'less than a minute ago';
+
+    } else if (delta < 3600) {
+        const mins = Math.floor(delta / 60);
+        agoStr = `${String(mins).padStart(2, '0')} min ago`;
+
+    } else if (delta < 6 * 3600) {
+        // Allow two units ONLY between 1–6 hours
+        const hrs  = Math.floor(delta / 3600);
+        const mins = Math.floor((delta % 3600) / 60);
+        agoStr = `${String(hrs).padStart(2, '0')} hrs ${String(mins).padStart(2, '0')} min ago`;
+
     } else if (delta < 86400) {
-        value = Math.floor(delta / 3600);
-        unit = 'hrs';
+        const hrs = Math.floor(delta / 3600);
+        agoStr = `${String(hrs).padStart(2, '0')} hrs ago`;
+
+    } else if (delta < 30 * 86400) {
+        const days = Math.floor(delta / 86400);
+        agoStr = `${String(days).padStart(2, '0')} days ago`;
+
+    } else if (delta < 365 * 86400) {
+        const months = Math.floor(delta / (30 * 86400));
+        agoStr = `${String(months).padStart(2, '0')} mos ago`;
+
     } else {
-        value = Math.floor(delta / 86400);
-        unit = 'days';
+        const years = Math.floor(delta / (365 * 86400));
+        agoStr = years <= 1 ? 'over 1 yr ago' : `over ${years} yrs ago`;
     }
 
-    const padded = String(value).padStart(2, '0');
-
-    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${padded} ${unit} ago)`;
+    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
-
 // #endregion
 
 // #region LIVE FOOTER HELPER
