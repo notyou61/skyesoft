@@ -125,7 +125,7 @@ window.SkyIndex = {
             weather:  document.getElementById('headerWeather'),
             interval: document.getElementById('headerInterval'),
             year:     document.getElementById('footerYear'),
-            version:  document.getElementById('footerVersion')
+            version:  document.getElementById('versionFooter')
         };
 
         this.cardHost = document.getElementById('boardCardHost');
