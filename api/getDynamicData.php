@@ -73,19 +73,24 @@ if (file_exists($paths["sentinel"])) {
         $dtSentinel = new DateTime('@' . $lastRunUnix);
         $dtSentinel->setTimezone($tz);
 
+        // Baseline state (prime run awareness)
+        $baselineEstablished = ($initialRunUnix > 0);
+
         $sentinelMeta = [
-            "initialRunUnix" => $initialRunUnix > 0 ? $initialRunUnix : null,
-            "lastRunUnix"    => $lastRunUnix,
-            "lastRunLocal"   => $dtSentinel->format("h:i:s A"),
-            "runCount"       => $runCount,
-            "ageSeconds"     => $ageSeconds,
-            "status"         => $status
+            "baselineEstablished" => $baselineEstablished,
+            "initialRunUnix"      => $baselineEstablished ? $initialRunUnix : null,
+            "lastRunUnix"         => $lastRunUnix,
+            "lastRunLocal"        => $dtSentinel->format("h:i:s A"),
+            "runCount"            => $runCount,
+            "ageSeconds"          => $ageSeconds,
+            "status"              => $status
         ];
 
         // Derived metrics (statistical, read-only)
-        if ($initialRunUnix > 0 && $runCount > 1) {
+        if ($baselineEstablished && $runCount > 1) {
             $uptimeSeconds = $now - $initialRunUnix;
-            $sentinelMeta["uptimeSeconds"]         = $uptimeSeconds;
+
+            $sentinelMeta["uptimeSeconds"] = $uptimeSeconds;
             $sentinelMeta["averageIntervalSeconds"] =
                 (int)round($uptimeSeconds / ($runCount - 1));
         }
