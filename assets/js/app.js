@@ -108,35 +108,6 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
-/* #region VERSION FOOTER (canonical, Unix-first) */
-window.SkyeApp.updateVersionFooter = function (payload) {
-    const el = document.getElementById("versionFooter");
-    if (!el) return;
-
-    const meta = payload?.siteMeta;
-    if (!meta?.siteVersion) {
-        el.textContent = "v—";
-        return;
-    }
-
-    const parts = [`v${meta.siteVersion}`];
-
-    // Update date (YYYY-MM-DD)
-    if (typeof meta.lastUpdateUnix === "number") {
-        const d = new Date(meta.lastUpdateUnix * 1000);
-        const dateStr = d.toISOString().slice(0, 10);
-        parts.push(dateStr);
-
-        // Humanized age
-        const now = Math.floor(Date.now() / 1000);
-        const ageSeconds = Math.max(0, now - meta.lastUpdateUnix);
-        parts.push(humanizeAgoCompact(ageSeconds));
-    }
-
-    el.textContent = parts.join(" · ");
-};
-/* #endregion */
-
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
