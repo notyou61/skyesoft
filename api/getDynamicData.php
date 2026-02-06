@@ -25,7 +25,7 @@ $paths = [
     "kpi"            => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"     => $root . "/data/runtimeEphemeral/permitNews.json",
-     "sentinel"      => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
+    "sentinel"       => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
 ];
 
 foreach ($paths as $key => $path) {
@@ -48,15 +48,19 @@ $tz = new DateTimeZone("America/Phoenix");
 $sentinelMeta = null;
 
 if (file_exists($paths["sentinel"])) {
+    // Load sentinel state (observational only)
     $sentinelRaw = json_decode(file_get_contents($paths["sentinel"]), true);
 
     if (is_array($sentinelRaw) && isset($sentinelRaw["lastRunUnix"])) {
-        $lastRunUnix = (int)$sentinelRaw["lastRunUnix"];
-        $runCount    = (int)($sentinelRaw["runCount"] ?? 0);
+        $now            = time();
+        $lastRunUnix    = (int)$sentinelRaw["lastRunUnix"];
+        $initialRunUnix = (int)($sentinelRaw["initialRunUnix"] ?? 0);
+        $runCount       = (int)($sentinelRaw["runCount"] ?? 0);
 
-        // Determine health
-        $ageSeconds = max(0, time() - $lastRunUnix);
+        // Age since last heartbeat
+        $ageSeconds = max(0, $now - $lastRunUnix);
 
+        // Health classification
         if ($ageSeconds <= 90) {
             $status = "ok";
         } elseif ($ageSeconds <= 300) {
@@ -65,17 +69,26 @@ if (file_exists($paths["sentinel"])) {
             $status = "offline";
         }
 
-        // Phoenix-local formatting (authoritative)
+        // Phoenix-local formatting (presentation only)
         $dtSentinel = new DateTime('@' . $lastRunUnix);
         $dtSentinel->setTimezone($tz);
 
         $sentinelMeta = [
-            "lastRunUnix"  => $lastRunUnix,
-            "lastRunLocal" => $dtSentinel->format("h:i:s A"),
-            "runCount"     => $runCount,
-            "ageSeconds"   => $ageSeconds,
-            "status"       => $status
+            "initialRunUnix" => $initialRunUnix > 0 ? $initialRunUnix : null,
+            "lastRunUnix"    => $lastRunUnix,
+            "lastRunLocal"   => $dtSentinel->format("h:i:s A"),
+            "runCount"       => $runCount,
+            "ageSeconds"     => $ageSeconds,
+            "status"         => $status
         ];
+
+        // Derived metrics (statistical, read-only)
+        if ($initialRunUnix > 0 && $runCount > 1) {
+            $uptimeSeconds = $now - $initialRunUnix;
+            $sentinelMeta["uptimeSeconds"]         = $uptimeSeconds;
+            $sentinelMeta["averageIntervalSeconds"] =
+                (int)round($uptimeSeconds / ($runCount - 1));
+        }
     }
 }
 
