@@ -422,6 +422,8 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
+        console.log('[SkyIndex] SSE keys:', Object.keys(event || {}));
+        console.log('[SkyIndex] siteMeta:', event?.siteMeta);
         // Sanity check
         if (!event) return;
 
