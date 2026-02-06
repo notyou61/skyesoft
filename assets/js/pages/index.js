@@ -41,7 +41,6 @@ function formatVersionFooter(siteMeta, referenceUnix) {
 
     const updatedUnix = siteMeta.lastUpdateUnix;
     const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
-    const delta = Math.max(0, refUnix - updatedUnix);
 
     // Absolute date/time
     const d = new Date(updatedUnix * 1000);
@@ -56,26 +55,33 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         hour12: true
     });
 
-    // Relative age (minutes granularity, no seconds)
+    // Relative age (single unit, stable)
+    const deltaSeconds = Math.max(0, refUnix - updatedUnix);
+
     let value, unit;
 
-    if (delta < 3600) {
-        value = Math.floor(delta / 60);
+    if (deltaSeconds < 3600) {
+        value = Math.floor(deltaSeconds / 60);
         unit = 'min';
-    } else if (delta < 86400) {
-        value = Math.floor(delta / 3600);
+    } else if (deltaSeconds < 86400) {
+        value = Math.floor(deltaSeconds / 3600);
         unit = 'hrs';
-    } else if (delta < 31536000) {
-        value = Math.floor(delta / 86400);
+    } else if (deltaSeconds < 2592000) {
+        value = Math.floor(deltaSeconds / 86400);
         unit = 'days';
+    } else if (deltaSeconds < 31536000) {
+        value = Math.floor(deltaSeconds / 2592000);
+        unit = 'mos';
     } else {
-        return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (over 1 yr ago)`;
+        value = Math.floor(deltaSeconds / 31536000);
+        unit = 'yrs';
     }
 
     const padded = String(value).padStart(2, '0');
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${padded} ${unit} ago)`;
 }
+
 // #endregion
 
 // #region 🔔 Version Update Indicator Controller
