@@ -4,35 +4,6 @@
    Header / Footer driven exclusively by SSE
 */
 
-// #region ⏱️ Time Humanization (UI-only, fixed-width)
-function humanizeAgoCompact(seconds) {
-    seconds = Math.max(0, Math.floor(seconds));
-    const pad2 = n => String(Math.min(n, 99)).padStart(2, "0");
-
-    if (seconds < 60) {
-        return `${pad2(seconds)}sec`;
-    }
-
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) {
-        return `${pad2(minutes)}min`;
-    }
-
-    const hours = Math.floor(seconds / 3600);
-    if (hours < 24) {
-        return `${pad2(hours)}hrs`;
-    }
-
-    const days = Math.floor(seconds / 86400);
-    if (days < 30) {
-        return `${pad2(days)}day`;
-    }
-
-    const months = Math.floor(days / 30);
-    return `${pad2(months)}mon`;
-}
-// #endregion
-
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
 function formatVersionFooter(siteMeta, referenceUnix) {
     if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
@@ -55,31 +26,30 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         hour12: true
     });
 
-    // Relative age (single unit, stable)
+    // Relative age (hrs + min, no seconds)
     const deltaSeconds = Math.max(0, refUnix - updatedUnix);
 
-    let value, unit;
+    let agoStr = '';
 
     if (deltaSeconds < 3600) {
-        value = Math.floor(deltaSeconds / 60);
-        unit = 'min';
+        const mins = Math.floor(deltaSeconds / 60);
+        agoStr = `${String(mins).padStart(2, '0')} min ago`;
     } else if (deltaSeconds < 86400) {
-        value = Math.floor(deltaSeconds / 3600);
-        unit = 'hrs';
+        const hrs  = Math.floor(deltaSeconds / 3600);
+        const mins = Math.floor((deltaSeconds % 3600) / 60);
+        agoStr = `${String(hrs).padStart(2, '0')} hrs ${String(mins).padStart(2, '0')} min ago`;
     } else if (deltaSeconds < 2592000) {
-        value = Math.floor(deltaSeconds / 86400);
-        unit = 'days';
+        const days = Math.floor(deltaSeconds / 86400);
+        agoStr = `${String(days).padStart(2, '0')} days ago`;
     } else if (deltaSeconds < 31536000) {
-        value = Math.floor(deltaSeconds / 2592000);
-        unit = 'mos';
+        const mos = Math.floor(deltaSeconds / 2592000);
+        agoStr = `${String(mos).padStart(2, '0')} mos ago`;
     } else {
-        value = Math.floor(deltaSeconds / 31536000);
-        unit = 'yrs';
+        const yrs = Math.floor(deltaSeconds / 31536000);
+        agoStr = `${String(yrs).padStart(2, '0')} yrs ago`;
     }
 
-    const padded = String(value).padStart(2, '0');
-
-    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${padded} ${unit} ago)`;
+    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
 
 // #endregion
