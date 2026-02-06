@@ -725,6 +725,22 @@ function createPermitNewsCard(card) {
 
     return { root, content, footer };
 }
+// Format Version Footer
+function formatVersionFooter(siteMeta, referenceUnix) {
+    if (!siteMeta?.siteVersion) return 'v—';
+
+    const version = siteMeta.siteVersion;
+
+    if (!siteMeta.lastUpdateUnix) {
+        return `v${version}`;
+    }
+
+    const updatedUnix = normalizeUnixSeconds(siteMeta.lastUpdateUnix);
+    const absolute = formatTimestamp(updatedUnix);
+    const relative = humanizeRelativeTime(updatedUnix, referenceUnix);
+
+    return `v${version} • ${absolute} (${relative})`;
+}
 
 // #endregion
 
@@ -1363,6 +1379,13 @@ window.SkyOfficeBoard = {
         this.dom.time      = document.getElementById('headerTime');
         this.dom.interval  = document.getElementById('headerInterval');
         this.dom.version   = document.getElementById('versionFooter');
+
+        // 📦 Version Footer (authoritative SSE)
+        if (this.dom?.version && payload.siteMeta) {
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+            this.dom.version.textContent =
+                formatVersionFooter(payload.siteMeta, nowUnix);
+        }
 
         if (!this.dom.pageBody) return;
 
