@@ -727,19 +727,44 @@ function createPermitNewsCard(card) {
 }
 // Format Version Footer
 function formatVersionFooter(siteMeta, referenceUnix) {
-    if (!siteMeta?.siteVersion) return 'v—';
-
-    const version = siteMeta.siteVersion;
-
-    if (!siteMeta.lastUpdateUnix) {
-        return `v${version}`;
+    if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
+        return `v${siteMeta?.siteVersion ?? '—'}`;
     }
 
-    const updatedUnix = normalizeUnixSeconds(siteMeta.lastUpdateUnix);
-    const absolute = formatTimestamp(updatedUnix);
-    const relative = humanizeRelativeTime(updatedUnix, referenceUnix);
+    const updatedUnix = siteMeta.lastUpdateUnix;
+    const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
 
-    return `v${version} • ${absolute} (${relative})`;
+    // Absolute date/time (MM/DD/YY h:mm AM/PM)
+    const d = new Date(updatedUnix * 1000);
+    const dateStr = d.toLocaleDateString(undefined, {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+    });
+    const timeStr = d.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    // Relative age (two-digit + space + unit + "ago")
+    let delta = Math.max(0, refUnix - updatedUnix);
+
+    let value, unit;
+    if (delta < 3600) {
+        value = Math.floor(delta / 60);
+        unit = 'min';
+    } else if (delta < 86400) {
+        value = Math.floor(delta / 3600);
+        unit = 'hrs';
+    } else {
+        value = Math.floor(delta / 86400);
+        unit = 'days';
+    }
+
+    const padded = String(value).padStart(2, '0');
+
+    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${padded} ${unit} ago)`;
 }
 
 // #endregion
