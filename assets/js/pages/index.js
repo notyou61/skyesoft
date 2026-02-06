@@ -4,6 +4,35 @@
    Header / Footer driven exclusively by SSE
 */
 
+// #region ⏱️ Time Humanization (UI-only, fixed-width)
+function humanizeAgoCompact(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+    const pad2 = n => String(Math.min(n, 99)).padStart(2, "0");
+
+    if (seconds < 60) {
+        return `${pad2(seconds)}sec`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+        return `${pad2(minutes)}min`;
+    }
+
+    const hours = Math.floor(seconds / 3600);
+    if (hours < 24) {
+        return `${pad2(hours)}hrs`;
+    }
+
+    const days = Math.floor(seconds / 86400);
+    if (days < 30) {
+        return `${pad2(days)}day`;
+    }
+
+    const months = Math.floor(days / 30);
+    return `${pad2(months)}mon`;
+}
+// #endregion
+
 // #region 🔔 Version Update Indicator Controller
 window.SkyVersion = {
 
@@ -464,18 +493,30 @@ window.SkyIndex = {
         // 🔭 SENTINEL META — authoritative runtime signal
         const sentinel = event.sentinelMeta;
 
-        // Always show site version if present
-        if (event.siteMeta?.siteVersion && this.dom?.version) {
-            this.dom.version.textContent = event.siteMeta.siteVersion;
+        // 📦 Site Version + Last Update (footer, UI-only)
+        if (this.dom?.version && event.siteMeta?.siteVersion) {
+
+            const version = event.siteMeta.siteVersion;
+            let suffix = '';
+
+            if (typeof event.siteMeta.lastUpdateUnix === 'number') {
+                const now = Math.floor(Date.now() / 1000);
+                const ageSeconds = Math.max(0, now - event.siteMeta.lastUpdateUnix);
+
+                suffix = ` · ${humanizeAgoCompact(ageSeconds)}`;
+            }
+
+            this.dom.version.textContent = `${version}${suffix}`;
         }
 
-        // No sentinel data → do nothing (unknown state)
+        // 🔭 Sentinel Meta — runtime health + deploy signal
         if (!sentinel || sentinel.status === "offline") {
+            // Unknown or offline → hide version update indicator
             window.SkyVersion?.hide();
             return;
         }
 
-        // Fresh sentinel + recent run implies deploy activity
+        // 🚀 Fresh sentinel + recent run implies deploy activity
         if (sentinel.status === "ok" && sentinel.ageSeconds <= 90) {
             window.SkyVersion?.show({
                 mode: "deploy-occurred",
