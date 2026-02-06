@@ -33,6 +33,51 @@ function humanizeAgoCompact(seconds) {
 }
 // #endregion
 
+// #region ⏱️ Format Version Footer (canonical, shared behavior)
+function formatVersionFooter(siteMeta, referenceUnix) {
+    if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
+        return `v${siteMeta?.siteVersion ?? '—'}`;
+    }
+
+    const updatedUnix = siteMeta.lastUpdateUnix;
+    const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
+    const delta = Math.max(0, refUnix - updatedUnix);
+
+    // Absolute date/time
+    const d = new Date(updatedUnix * 1000);
+    const dateStr = d.toLocaleDateString(undefined, {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+    });
+    const timeStr = d.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    // Relative age (minutes granularity, no seconds)
+    let value, unit;
+
+    if (delta < 3600) {
+        value = Math.floor(delta / 60);
+        unit = 'min';
+    } else if (delta < 86400) {
+        value = Math.floor(delta / 3600);
+        unit = 'hrs';
+    } else if (delta < 31536000) {
+        value = Math.floor(delta / 86400);
+        unit = 'days';
+    } else {
+        return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (over 1 yr ago)`;
+    }
+
+    const padded = String(value).padStart(2, '0');
+
+    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${padded} ${unit} ago)`;
+}
+// #endregion
+
 // #region 🔔 Version Update Indicator Controller
 window.SkyVersion = {
 
@@ -422,8 +467,6 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        //console.log('[SkyIndex] SSE keys:', Object.keys(event || {}));
-        //console.log('[SkyIndex] siteMeta:', event?.siteMeta);
         // Sanity check
         if (!event) return;
 
@@ -495,20 +538,11 @@ window.SkyIndex = {
         // 🔭 SENTINEL META — authoritative runtime signal
         const sentinel = event.sentinelMeta;
 
-        // 📦 Site Version + Last Update (footer, UI-only)
-        if (this.dom?.version && event.siteMeta?.siteVersion) {
-
-            const version = event.siteMeta.siteVersion;
-            let suffix = '';
-
-            if (typeof event.siteMeta.lastUpdateUnix === 'number') {
-                const now = Math.floor(Date.now() / 1000);
-                const ageSeconds = Math.max(0, now - event.siteMeta.lastUpdateUnix);
-
-                suffix = ` · ${humanizeAgoCompact(ageSeconds)}`;
-            }
-
-            this.dom.version.textContent = `${version}${suffix}`;
+        // 📦 Site Version Footer (canonical, shared)
+        if (this.dom?.version && event.siteMeta) {
+            const nowUnix = event?.timeDateArray?.currentUnixTime;
+            this.dom.version.textContent =
+                formatVersionFooter(event.siteMeta, nowUnix);
         }
 
         // 🔭 Sentinel Meta — runtime health + deploy signal
