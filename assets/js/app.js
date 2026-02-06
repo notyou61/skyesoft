@@ -108,29 +108,25 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
-/* #region VERSION FOOTER */
+/* #region VERSION FOOTER (canonical, Unix-first) */
 window.SkyeApp.updateVersionFooter = function (payload) {
     const el = document.getElementById("versionFooter");
     if (!el) return;
 
-    const version = payload?.siteMeta?.siteVersion;
-    const deployTime = payload?.siteMeta?.deployTime;
-
-    if (!version) {
+    const meta = payload?.siteMeta;
+    if (!meta?.siteVersion) {
         el.textContent = "v—";
         return;
     }
 
-    // Format deploy date → YYYY-MM-DD
-    let deployedStr = "";
-    if (deployTime) {
-        const d = new Date(deployTime);
-        if (!isNaN(d)) {
-            deployedStr = ` · deployed ${d.toISOString().slice(0, 10)}`;
-        }
+    let suffix = "";
+    if (typeof meta.lastUpdateUnix === "number") {
+        const now = Math.floor(Date.now() / 1000);
+        const ageSeconds = Math.max(0, now - meta.lastUpdateUnix);
+        suffix = ` · ${humanizeAgoCompact(ageSeconds)}`;
     }
 
-    el.textContent = `v${version}${deployedStr}`;
+    el.textContent = `v${meta.siteVersion}${suffix}`;
 };
 /* #endregion */
 
