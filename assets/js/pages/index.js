@@ -51,7 +51,6 @@ function formatVersionFooter(siteMeta, referenceUnix) {
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
-
 // #endregion
 
 // #region 🔔 Version Update Indicator Controller
