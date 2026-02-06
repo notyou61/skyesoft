@@ -1380,11 +1380,9 @@ window.SkyOfficeBoard = {
         this.dom.interval  = document.getElementById('headerInterval');
         this.dom.version   = document.getElementById('versionFooter');
 
-        // 📦 Version Footer (authoritative SSE)
-        if (this.dom?.version && payload.siteMeta) {
-            const nowUnix = payload?.timeDateArray?.currentUnixTime;
-            this.dom.version.textContent =
-                formatVersionFooter(payload.siteMeta, nowUnix);
+        // Safe placeholder only
+        if (this.dom.version) {
+            this.dom.version.textContent = 'v—';
         }
 
         if (!this.dom.pageBody) return;
@@ -1394,9 +1392,9 @@ window.SkyOfficeBoard = {
         }
 
         showCard(0);
-
         updateAllCards(lastBoardPayload);
 
+        // If SSE already arrived before init
         if (window.SkyeApp?.lastSSE) {
             lastBoardPayload = window.SkyeApp.lastSSE;
             updateAllCards(lastBoardPayload);
@@ -1415,6 +1413,13 @@ window.SkyOfficeBoard = {
     onSSE(payload) {
         // Update global payload reference
         lastBoardPayload = payload;
+
+        // 📦 Version Footer (authoritative SSE)
+        if (this.dom?.version && payload.siteMeta) {
+            const nowUnix = payload?.timeDateArray?.currentUnixTime;
+            this.dom.version.textContent =
+                formatVersionFooter(payload.siteMeta, nowUnix);
+        }
 
         // 🌤 Weather
         if (payload.weather && this.dom?.weather) {
