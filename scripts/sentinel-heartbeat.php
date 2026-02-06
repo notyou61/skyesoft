@@ -1,26 +1,33 @@
 <?php
 // scripts/sentinel-heartbeat.php
+// Canonical Sentinel Writer (Lifecycle-Aware)
 
 $statePath = __DIR__ . '/../data/runtimeEphemeral/sentinelState.json';
+$now = time();
 
-$state = [
-    'lastRunUnix' => time(),
-    'runCount'    => 0
-];
+// Load existing state if present
+$state = file_exists($statePath)
+    ? json_decode(file_get_contents($statePath), true)
+    : [];
 
-if (file_exists($statePath)) {
-    $existing = json_decode(file_get_contents($statePath), true);
-    if (is_array($existing)) {
-        $state['runCount'] = (int)($existing['runCount'] ?? 0);
-    }
+// Establish prime run (baseline)
+if (!isset($state['initialRunUnix']) || (int)$state['initialRunUnix'] === 0) {
+    $state['initialRunUnix'] = $now;
+    $state['runCount'] = 0; // reset baseline intentionally
 }
 
-$state['runCount']++;
+// Heartbeat update
+$state['lastRunUnix'] = $now;
+$state['runCount']    = (int)($state['runCount'] ?? 0) + 1;
 
+// Persist canonical state
 file_put_contents(
     $statePath,
     json_encode($state, JSON_PRETTY_PRINT)
 );
 
-// Optional tiny response for manual testing
-echo json_encode(['status' => 'ok']);
+// Minimal response (manual / cron-safe)
+echo json_encode([
+    'status' => 'ok',
+    'runCount' => $state['runCount']
+]);
