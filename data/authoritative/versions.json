@@ -6,13 +6,10 @@
   },
   "system": {
     "siteVersion": "0.9.1",
-    "deployTime": "2026-01-16T13:15:00-07:00",
+    "lastUpdateUnix": 1770402603,
+    "updateOccurred": true,
     "commitHash": "local-dev",
-    "state": "dev",
-    "latestError": "ERR-00003",
-    "activeErrors": 3,
-    "errorTimestamp": 1766072237,
-    "updateOccurred": true
+    "state": "dev"
   },
   "modules": {
     "weather": {
