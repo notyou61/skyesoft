@@ -119,14 +119,21 @@ window.SkyeApp.updateVersionFooter = function (payload) {
         return;
     }
 
-    let suffix = "";
+    const parts = [`v${meta.siteVersion}`];
+
+    // Update date (YYYY-MM-DD)
     if (typeof meta.lastUpdateUnix === "number") {
+        const d = new Date(meta.lastUpdateUnix * 1000);
+        const dateStr = d.toISOString().slice(0, 10);
+        parts.push(dateStr);
+
+        // Humanized age
         const now = Math.floor(Date.now() / 1000);
         const ageSeconds = Math.max(0, now - meta.lastUpdateUnix);
-        suffix = ` · ${humanizeAgoCompact(ageSeconds)}`;
+        parts.push(humanizeAgoCompact(ageSeconds));
     }
 
-    el.textContent = `v${meta.siteVersion}${suffix}`;
+    el.textContent = parts.join(" · ");
 };
 /* #endregion */
 
