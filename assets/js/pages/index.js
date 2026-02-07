@@ -15,12 +15,17 @@ function formatVersionFooter(siteMeta, referenceUnix) {
 
     // Absolute date/time
     const d = new Date(updatedUnix * 1000);
-    const dateStr = d.toLocaleDateString(undefined, {
+    const TZ = 'America/Phoenix';
+
+    const dateStr = d.toLocaleDateString('en-US', {
+        timeZone: TZ,
         month: '2-digit',
         day: '2-digit',
         year: '2-digit'
     });
-    const timeStr = d.toLocaleTimeString(undefined, {
+
+    const timeStr = d.toLocaleTimeString('en-US', {
+        timeZone: TZ,
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
@@ -515,7 +520,9 @@ window.SkyIndex = {
 
         // 📦 Site Version Footer (canonical, shared)
         if (this.dom?.version && event.siteMeta) {
-            const nowUnix = event?.timeDateArray?.currentUnixTime;
+            const nowUnix =
+            event?.timeDateArray?.currentUnixTime ??
+            Math.floor(Date.now() / 1000);
             this.dom.version.textContent =
                 formatVersionFooter(event.siteMeta, nowUnix);
         }
@@ -528,15 +535,12 @@ window.SkyIndex = {
         }
 
         // 🚀 Update indicator — explicit update + fresh sentinel
-        if (
-            event.siteMeta?.updateOccurred === true &&
-            sentinel?.status === "ok" &&
-            sentinel.ageSeconds <= 90
-        ) {
+        if (event.siteMeta?.updateOccurred === true) {
             window.SkyVersion?.show(60000);
         } else {
             window.SkyVersion?.hide();
         }
+
 
     },
     // #endregion
