@@ -137,41 +137,6 @@ if ($Commit) {
     Write-Host "Committed and pushed v$newVersion (updateOccurred=true)" -ForegroundColor Green
 }
 
-# ===============================
-# Version Bump + Update Signal
-# ===============================
-$versionsPath = Join-Path $PSScriptRoot "..\data\authoritative\versions.json"
-
-$versions = Get-Content $versionsPath | ConvertFrom-Json
-
-# Parse semantic version x.y.z
-$parts = $versions.system.siteVersion -split '\.'
-$major = [int]$parts[0]
-$minor = [int]$parts[1]
-$patch = [int]$parts[2] + 1
-
-$newVersion = "$major.$minor.$patch"
-$nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
-
-# ✅ ADD THESE TWO LINES RIGHT HERE
-$commitHash = git rev-parse --short HEAD
-$versions.system.commitHash = $commitHash
-
-# Apply canonical updates
-$versions.system.siteVersion    = $newVersion
-$versions.system.lastUpdateUnix = $nowUnix
-$versions.system.updateOccurred = $true
-
-# Persist version update
-$versions | ConvertTo-Json -Depth 6 | Set-Content $versionsPath
-
-# ===============================
-# Final Commit (single source of truth)
-# ===============================
-git add .
-git commit -m "$commitMessage"
-git push origin main
-
 # --- OFFICE confirmation gate ---
 if ($machineRole -eq 'OFFICE' -and $Deploy) {
     $confirm = Read-Host 'You are deploying from OFFICE. Continue? (Y/N)'
