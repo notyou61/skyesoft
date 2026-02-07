@@ -42,7 +42,9 @@ function formatVersionFooter(siteMeta) {
     } else {
         agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
-
+    //
+    console.log('Formatting with TZ:', TZ, 'Date:', d, 'Delta:', deltaSeconds);
+    // Return
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
 // #endregion
