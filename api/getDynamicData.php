@@ -552,12 +552,6 @@ if ($lastUpdateUnix > 0) {
     $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
 }
 
-// Derived, presentation-only (non-authoritative)
-if ($deployUnix > 0) {
-    $siteMeta["deployLocal"]      = date("Y-m-d h:i:s A", $deployUnix);
-    $siteMeta["deployAgeSeconds"] = time() - $deployUnix;
-}
-
 // ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
 // ------------------------------------------------------------

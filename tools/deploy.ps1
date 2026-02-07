@@ -55,46 +55,86 @@ if ($dirty -and -not $Commit) {
 
 Write-Host 'Git state verified against SoT.'
 
-# --- Commit phase ---
+# --- Commit message generation ---
+$commitMessage = $null
+
+$changed = git status --porcelain
+if ($Commit -and $changed) {
+
+    Write-Host 'Generating commit message via AI...' -ForegroundColor Cyan
+
+    $diff = git diff --stat
+    $commitMessage = php scripts/commitNarrator.php "$diff"
+
+    if ([string]::IsNullOrWhiteSpace($commitMessage)) {
+        Write-Error 'AI commit narrator returned empty message. Commit aborted.'
+        exit 1
+    }
+
+    Write-Host ''
+    Write-Host 'Proposed commit message:' -ForegroundColor Green
+    Write-Host '--------------------------------'
+    Write-Host $commitMessage
+    Write-Host '--------------------------------'
+}
+
 # --- Commit phase ---
 if ($Commit) {
 
     $changed = git status --porcelain
-    if ($changed) {
-
-        git add .
-        git commit -m "$commitMessage"
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error 'Git commit failed.'
-            exit 1
-        }
-
-        # ===============================
-        # Version Bump + Update Signal
-        # ===============================
-        $versionsPath = Join-Path $PSScriptRoot "..\data\authoritative\versions.json"
-
-        $versions = Get-Content $versionsPath | ConvertFrom-Json
-
-        $parts = $versions.system.siteVersion -split '\.'
-        $newVersion = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
-
-        $nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
-        $commitHash = git rev-parse --short HEAD
-
-        $versions.system.siteVersion    = $newVersion
-        $versions.system.lastUpdateUnix = $nowUnix
-        $versions.system.updateOccurred = $true
-        $versions.system.commitHash     = $commitHash
-
-        $versions | ConvertTo-Json -Depth 6 | Set-Content $versionsPath
-
-        git add $versionsPath
-        git commit --amend --no-edit
-
-        git push origin main
+    if (-not $changed) {
+        Write-Host 'No changes to commit.' -ForegroundColor Yellow
+        return
     }
+
+    # 🔒 Commit message guard (CRITICAL)
+    if ([string]::IsNullOrWhiteSpace($commitMessage)) {
+        Write-Error 'Commit message is empty or invalid. Commit aborted.'
+        exit 1
+    }
+
+    # ===============================
+    # Version Bump + Update Signal
+    # ===============================
+    $versionsPath = Join-Path $PSScriptRoot "..\data\authoritative\versions.json"
+
+    if (-not (Test-Path $versionsPath)) {
+        Write-Error "versions.json not found at $versionsPath"
+        exit 1
+    }
+
+    $versions = Get-Content $versionsPath | ConvertFrom-Json
+
+    # Parse semantic version x.y.z
+    $parts = $versions.system.siteVersion -split '\.'
+    $major = [int]$parts[0]
+    $minor = [int]$parts[1]
+    $patch = [int]$parts[2] + 1
+
+    $newVersion = "$major.$minor.$patch"
+    $nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
+
+    # Apply canonical updates
+    $versions.system.siteVersion    = $newVersion
+    $versions.system.lastUpdateUnix = $nowUnix
+    $versions.system.updateOccurred = $true
+
+    # Persist version update
+    $versions | ConvertTo-Json -Depth 6 | Set-Content $versionsPath
+
+    # ===============================
+    # Final Commit (single source of truth)
+    # ===============================
+    git add .
+    git commit -m "$commitMessage"
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error 'Git commit failed.'
+        exit 1
+    }
+
+    git push origin main
+    Write-Host "Committed and pushed v$newVersion (updateOccurred=true)" -ForegroundColor Green
 }
 
 # ===============================

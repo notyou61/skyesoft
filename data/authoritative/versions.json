@@ -1,64 +1,74 @@
 {
-  "codex": {
-    "version": "1.1.1",
-    "lastUpdated": "2026-01-16",
-    "notes": "Footer standardization and card metadata alignment"
-  },
-  "system": {
-    "siteVersion": "0.9.1",
-    "lastUpdateUnix": 1770402603,
-    "updateOccurred": true,
-    "commitHash": "local-dev",
-    "state": "dev"
-  },
-  "modules": {
-    "weather": {
-      "source": "OpenWeatherMap",
-      "lastUpdatedUnix": 1766161200
-    },
-    "holidays": {
-      "source": "federal_holidays_dynamic.json",
-      "lastUpdatedUnix": 1765800000
-    },
-    "tips": {
-      "source": "skyesoftTips.json",
-      "lastUpdatedUnix": 1766016000
-    },
-    "permits": {
-      "source": "permitRegistry.json",
-      "lastUpdatedUnix": 1766069980
-    }
-  },
-  "cards": {
-    "todays-highlights": {
-      "modules": ["weather", "holidays", "tips"],
-      "footer": {
-        "mode": "auto",
-        "label": "Daily overview"
-      }
-    },
-    "active-permits": {
-      "modules": ["permits"],
-      "footer": {
-        "mode": "auto",
-        "label": "Active permits"
-      }
-    },
-    "kpi-dashboard": {
-      "modules": [],
-      "footer": {
-        "mode": "manual",
-        "label": "Performance metrics",
-        "lastUpdatedUnix": 1766172000
-      }
-    },
-    "announcements": {
-      "modules": [],
-      "footer": {
-        "mode": "manual",
-        "label": "Internal announcements",
-        "lastUpdatedUnix": 1766100000
-      }
-    }
-  }
+    "codex":  {
+                  "version":  "1.1.1",
+                  "lastUpdated":  "2026-01-16",
+                  "notes":  "Footer standardization and card metadata alignment"
+              },
+    "system":  {
+                   "siteVersion":  "0.9.3",
+                   "lastUpdateUnix":  1770450367,
+                   "updateOccurred":  true,
+                   "commitHash":  "1a4be9b0",
+                   "state":  "dev"
+               },
+    "modules":  {
+                    "weather":  {
+                                    "source":  "OpenWeatherMap",
+                                    "lastUpdatedUnix":  1766161200
+                                },
+                    "holidays":  {
+                                     "source":  "federal_holidays_dynamic.json",
+                                     "lastUpdatedUnix":  1765800000
+                                 },
+                    "tips":  {
+                                 "source":  "skyesoftTips.json",
+                                 "lastUpdatedUnix":  1766016000
+                             },
+                    "permits":  {
+                                    "source":  "permitRegistry.json",
+                                    "lastUpdatedUnix":  1766069980
+                                }
+                },
+    "cards":  {
+                  "todays-highlights":  {
+                                            "modules":  [
+                                                            "weather",
+                                                            "holidays",
+                                                            "tips"
+                                                        ],
+                                            "footer":  {
+                                                           "mode":  "auto",
+                                                           "label":  "Daily overview"
+                                                       }
+                                        },
+                  "active-permits":  {
+                                         "modules":  [
+                                                         "permits"
+                                                     ],
+                                         "footer":  {
+                                                        "mode":  "auto",
+                                                        "label":  "Active permits"
+                                                    }
+                                     },
+                  "kpi-dashboard":  {
+                                        "modules":  [
+
+                                                    ],
+                                        "footer":  {
+                                                       "mode":  "manual",
+                                                       "label":  "Performance metrics",
+                                                       "lastUpdatedUnix":  1766172000
+                                                   }
+                                    },
+                  "announcements":  {
+                                        "modules":  [
+
+                                                    ],
+                                        "footer":  {
+                                                       "mode":  "manual",
+                                                       "label":  "Internal announcements",
+                                                       "lastUpdatedUnix":  1766100000
+                                                   }
+                                    }
+              }
 }
