@@ -125,11 +125,24 @@ window.SkyeApp.handleSSE = function (payload) {
         console.error("❌ routeSSEToPage failed:", err);
     }
 
-    try {
-        this.updateVersionFooter(payload);
-    } catch (err) {
-        console.error("❌ updateVersionFooter failed:", err);
-    }
+    window.SkyeApp.handleSSE = function (payload) {
+
+        this.lastSSE = payload;
+
+        try {
+            this.updateHSB(payload);
+        } catch (err) {
+            console.error("❌ updateHSB failed:", err);
+        }
+
+        try {
+            this.routeSSEToPage(payload);
+        } catch (err) {
+            console.error("❌ routeSSEToPage failed:", err);
+        }
+
+    };
+
 };
 /* #endregion */
 
