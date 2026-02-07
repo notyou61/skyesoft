@@ -56,54 +56,81 @@ if ($dirty -and -not $Commit) {
 Write-Host 'Git state verified against SoT.'
 
 # --- Commit phase ---
+# --- Commit phase ---
 if ($Commit) {
 
     $changed = git status --porcelain
-    if (-not $changed) {
-        Write-Host 'No changes to commit.' -ForegroundColor Yellow
-    }
-    else {
-        Write-Host 'Changes detected:' -ForegroundColor Cyan
-        git status --short
+    if ($changed) {
 
-        Write-Host 'Generating commit message via AI...' -ForegroundColor Cyan
-        $diff = git diff --stat
-        $commitMessage = php scripts/commitNarrator.php "$diff"
+        git add .
+        git commit -m "$commitMessage"
 
-        if (-not $commitMessage) {
-            Write-Error 'Commit narrator failed. Commit aborted.'
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error 'Git commit failed.'
             exit 1
         }
 
-        Write-Host ''
-        Write-Host 'Proposed commit message:' -ForegroundColor Green
-        Write-Host '--------------------------------'
-        Write-Host $commitMessage
-        Write-Host '--------------------------------'
+        # ===============================
+        # Version Bump + Update Signal
+        # ===============================
+        $versionsPath = Join-Path $PSScriptRoot "..\data\authoritative\versions.json"
 
-        $confirm = Read-Host 'Proceed with commit? (Y/N)'
-        if ($confirm -ne 'Y') {
-            Write-Host 'Commit cancelled by user.' -ForegroundColor Yellow
-            exit 0
-        }
+        $versions = Get-Content $versionsPath | ConvertFrom-Json
 
-        if (-not $DryRun) {
-            git add .
-            git commit -m "$commitMessage"
+        $parts = $versions.system.siteVersion -split '\.'
+        $newVersion = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
 
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error 'Git commit failed.'
-                exit 1
-            }
+        $nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
+        $commitHash = git rev-parse --short HEAD
 
-            git push origin main
-            Write-Host 'Commit pushed to Git SoT™.' -ForegroundColor Green
-        }
-        else {
-            Write-Host 'DRY RUN: Commit skipped.' -ForegroundColor Yellow
-        }
+        $versions.system.siteVersion    = $newVersion
+        $versions.system.lastUpdateUnix = $nowUnix
+        $versions.system.updateOccurred = $true
+        $versions.system.commitHash     = $commitHash
+
+        $versions | ConvertTo-Json -Depth 6 | Set-Content $versionsPath
+
+        git add $versionsPath
+        git commit --amend --no-edit
+
+        git push origin main
     }
 }
+
+# ===============================
+# Version Bump + Update Signal
+# ===============================
+
+$versionsPath = Join-Path $PSScriptRoot "..\data\authoritative\versions.json"
+
+if (-not (Test-Path $versionsPath)) {
+    Write-Error "versions.json not found at $versionsPath"
+    exit 1
+}
+
+$versions = Get-Content $versionsPath | ConvertFrom-Json
+
+# Parse semantic version x.y.z
+$parts = $versions.system.siteVersion -split '\.'
+$major = [int]$parts[0]
+$minor = [int]$parts[1]
+$patch = [int]$parts[2] + 1
+
+$newVersion = "$major.$minor.$patch"
+$nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
+$commitHash = git rev-parse --short HEAD
+
+# Apply canonical updates
+$versions.system.siteVersion    = $newVersion
+$versions.system.lastUpdateUnix = $nowUnix
+$versions.system.updateOccurred = $true
+$versions.system.commitHash     = $commitHash
+
+# Persist
+$versions | ConvertTo-Json -Depth 6 | Set-Content $versionsPath
+
+Write-Host "Version updated to v$newVersion (updateOccurred=true)" -ForegroundColor Green
+
 
 # --- OFFICE confirmation gate ---
 if ($machineRole -eq 'OFFICE' -and $Deploy) {

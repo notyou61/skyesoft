@@ -527,12 +527,13 @@ window.SkyIndex = {
             return;
         }
 
-        // 🚀 Fresh sentinel + recent run implies deploy activity
-        if (sentinel.status === "ok" && sentinel.ageSeconds <= 90) {
-            window.SkyVersion?.show({
-                mode: "deploy-occurred",
-                autoHideMs: 60000
-            });
+        // 🚀 Update indicator — explicit update + fresh sentinel
+        if (
+            event.siteMeta?.updateOccurred === true &&
+            sentinel?.status === "ok" &&
+            sentinel.ageSeconds <= 90
+        ) {
+            window.SkyVersion?.show(60000);
         } else {
             window.SkyVersion?.hide();
         }
