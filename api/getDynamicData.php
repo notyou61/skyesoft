@@ -522,24 +522,6 @@ $lastUpdateUnix = (int)(
 // ------------------------------------------------------------
 // Update Decay — Canonical (server-authoritative)
 // ------------------------------------------------------------
-$now = time();
-
-if (
-    isset($versions["system"]["updateOccurred"], $versions["system"]["lastUpdateUnix"]) &&
-    $versions["system"]["updateOccurred"] === true &&
-    is_int($versions["system"]["lastUpdateUnix"]) &&
-    ($now - $versions["system"]["lastUpdateUnix"]) > 60
-) {
-    // Expire update window
-    $versions["system"]["updateOccurred"] = false;
-
-    // Persist decay (authoritative)
-    file_put_contents(
-        $paths["versions"],
-        json_encode($versions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    );
-}
-
 $siteMeta = [
     "siteVersion"     => $versions["system"]["siteVersion"] ?? "unknown",
     "lastUpdateUnix"  => $lastUpdateUnix ?: null,
