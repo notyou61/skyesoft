@@ -5,17 +5,15 @@
 */
 
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
-function formatVersionFooter(siteMeta, referenceUnix) {
+function formatVersionFooter(siteMeta) {
     if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
         return `v${siteMeta?.siteVersion ?? '—'}`;
     }
 
-    const updatedUnix = siteMeta.lastUpdateUnix;
-    const refUnix = Math.floor(Date.now() / 1000);
-
     const TZ = 'America/Phoenix';
 
-    const d = new Date(updatedUnix * 1000);
+    // Absolute time (display only)
+    const d = new Date(siteMeta.lastUpdateUnix * 1000);
 
     const dateStr = d.toLocaleDateString('en-US', {
         timeZone: TZ,
@@ -31,20 +29,18 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         hour12: true
     });
 
-    const deltaSeconds = Math.max(0, refUnix - updatedUnix);
+    // ✅ SERVER-AUTHORITATIVE AGE
+    const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
 
-    let agoStr = '';
-
+    let agoStr;
     if (deltaSeconds < 3600) {
-        const mins = Math.floor(deltaSeconds / 60);
-        agoStr = `${String(mins).padStart(2, '0')} min ago`;
+        agoStr = `${String(Math.floor(deltaSeconds / 60)).padStart(2,'0')} min ago`;
     } else if (deltaSeconds < 86400) {
         const hrs  = Math.floor(deltaSeconds / 3600);
         const mins = Math.floor((deltaSeconds % 3600) / 60);
-        agoStr = `${String(hrs).padStart(2, '0')} hrs ${String(mins).padStart(2, '0')} min ago`;
+        agoStr = `${String(hrs).padStart(2,'0')} hrs ${String(mins).padStart(2,'0')} min ago`;
     } else {
-        const days = Math.floor(deltaSeconds / 86400);
-        agoStr = `${String(days).padStart(2, '0')} days ago`;
+        agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
