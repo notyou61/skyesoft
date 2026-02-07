@@ -13,9 +13,9 @@ function formatVersionFooter(siteMeta, referenceUnix) {
     const updatedUnix = siteMeta.lastUpdateUnix;
     const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
 
-    // Absolute date/time
-    const d = new Date(updatedUnix * 1000);
     const TZ = 'America/Phoenix';
+
+    const d = new Date(updatedUnix * 1000);
 
     const dateStr = d.toLocaleDateString('en-US', {
         timeZone: TZ,
@@ -31,7 +31,6 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         hour12: true
     });
 
-    // Relative age (hrs + min, no seconds)
     const deltaSeconds = Math.max(0, refUnix - updatedUnix);
 
     let agoStr = '';
@@ -43,15 +42,9 @@ function formatVersionFooter(siteMeta, referenceUnix) {
         const hrs  = Math.floor(deltaSeconds / 3600);
         const mins = Math.floor((deltaSeconds % 3600) / 60);
         agoStr = `${String(hrs).padStart(2, '0')} hrs ${String(mins).padStart(2, '0')} min ago`;
-    } else if (deltaSeconds < 2592000) {
+    } else {
         const days = Math.floor(deltaSeconds / 86400);
         agoStr = `${String(days).padStart(2, '0')} days ago`;
-    } else if (deltaSeconds < 31536000) {
-        const mos = Math.floor(deltaSeconds / 2592000);
-        agoStr = `${String(mos).padStart(2, '0')} mos ago`;
-    } else {
-        const yrs = Math.floor(deltaSeconds / 31536000);
-        agoStr = `${String(yrs).padStart(2, '0')} yrs ago`;
     }
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
