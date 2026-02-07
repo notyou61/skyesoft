@@ -11,7 +11,7 @@ function formatVersionFooter(siteMeta, referenceUnix) {
     }
 
     const updatedUnix = siteMeta.lastUpdateUnix;
-    const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
+    const refUnix = Math.floor(Date.now() / 1000);
 
     const TZ = 'America/Phoenix';
 
@@ -517,7 +517,7 @@ window.SkyIndex = {
             event?.timeDateArray?.currentUnixTime ??
             Math.floor(Date.now() / 1000);
             this.dom.version.textContent =
-                formatVersionFooter(event.siteMeta, nowUnix);
+                formatVersionFooter(event.siteMeta);
         }
 
         // 🔭 Sentinel Meta — runtime health + deploy signal
