@@ -21,12 +21,12 @@ $paths = [
     "versions"          => $root . "/data/authoritative/versions.json",
     "holiday"           => $root . "/data/authoritative/holidayRegistry.json",
     "systemRegistry"    => $root . "/data/authoritative/systemRegistry.json",
-    "roadmap"           => $root . "/data/authoritative/roadmap.json",
-    "roadmapDetailed"   => $root . "/data/authoritative/roadmapDetailed.json",
+    "roadmap"           => $root . "/planning/roadmap.json",
+    "roadmapDetailed"   => $root . "/planning/roadmapDetailed.json",
     "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
-    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
+    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json"
 ];
 
 foreach ($paths as $key => $path) {
