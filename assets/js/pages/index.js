@@ -531,6 +531,10 @@ window.SkyIndex = {
         } else {
             window.SkyVersion?.hide();
         }
+        //
+        console.log('Raw SSE siteMeta:', event.siteMeta);
+        console.log('Computed local time:', d.toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
+        console.log('Current client local time:', new Date().toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
 
 
     },
