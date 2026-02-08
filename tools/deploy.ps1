@@ -112,7 +112,7 @@ if ($Commit) {
     $patch = [int]$parts[2] + 1
 
     $newVersion = "$major.$minor.$patch"
-    $nowUnix = [int][double]::Parse((Get-Date -UFormat %s))
+    $nowUnix = [int][DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
     # Apply canonical updates
     $versions.system.siteVersion    = $newVersion
