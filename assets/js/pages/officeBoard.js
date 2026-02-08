@@ -785,6 +785,24 @@ function formatVersionFooter(siteMeta, referenceUnix) {
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
+// ⏳ Canonical Interval Formatter (DD HH MM SS, padded, no leading nulls)
+function formatIntervalDHMS(totalSeconds) {
+    const pad = n => String(n).padStart(2, '0');
+
+    const days = Math.floor(totalSeconds / 86400);
+    const hrs  = Math.floor((totalSeconds % 86400) / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    const parts = [];
+
+    if (days > 0) parts.push(`${pad(days)}d`);
+    if (hrs  > 0 || parts.length) parts.push(`${pad(hrs)}h`);
+    if (mins > 0 || parts.length) parts.push(`${pad(mins)}m`);
+    parts.push(`${pad(secs)}s`);
+
+    return parts.join(' ');
+}
 // #endregion
 
 // #region LIVE FOOTER HELPER
@@ -1486,7 +1504,7 @@ window.SkyOfficeBoard = {
             this.dom.time.textContent = `${hh}:${mm}:${ss} ${ampm}`;
         }
 
-        // ⏳ Interval (label + hh mm ss, padded)
+        // ⏳ Interval — label + remaining time (DD HH MM SS, padded, no leading nulls)
         if (payload.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = payload.currentInterval;
 
@@ -1501,19 +1519,10 @@ window.SkyOfficeBoard = {
             const label = labelMap[key] ?? key;
 
             if (Number.isFinite(secondsRemainingInterval)) {
-                const total = secondsRemainingInterval;
-
-                const hrs  = Math.floor(total / 3600);
-                const mins = Math.floor((total % 3600) / 60);
-                const secs = total % 60;
-
-                const hStr = String(hrs).padStart(2, '0');
-                const mStr = String(mins).padStart(2, '0');
-                const sStr = String(secs).padStart(2, '0');
-
-                this.dom.interval.textContent =
-                    `${label} - ${hStr}h ${mStr}m ${sStr}s`;
+                const timeStr = formatIntervalDHMS(secondsRemainingInterval);
+                this.dom.interval.textContent = `${label} - ${timeStr}`;
             } else {
+                // Fallback: just the label
                 this.dom.interval.textContent = label;
             }
         }
