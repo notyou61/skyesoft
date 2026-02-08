@@ -43,7 +43,7 @@ function formatVersionFooter(siteMeta) {
         agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
     //
-    console.log('Formatting with TZ:', TZ, 'Date:', d, 'Delta:', deltaSeconds);
+    //console.log('Formatting with TZ:', TZ, 'Date:', d, 'Delta:', deltaSeconds);
     // Return
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
@@ -441,17 +441,9 @@ window.SkyIndex = {
         // Sanity check first — always do this before accessing anything
         if (!event) return;
 
-        // Safe debug logs — use event.siteMeta
-        console.log('SSE received at client local time:', 
-            new Date().toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
-        
-        if (event.siteMeta) {
-            console.log('Update age reported:', event.siteMeta.lastUpdateAgeSeconds, 's');
-            console.log('Computed current age:', 
-                Math.floor(Date.now() / 1000) - event.siteMeta.lastUpdateUnix);
-        } else {
-            console.log('No siteMeta in this SSE event');
-        }
+        console.log('ISO (UTC):', d.toISOString());
+        console.log('Phoenix:', d.toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' }));
+        console.log('UTC:', d.toLocaleTimeString('en-US', { timeZone: 'UTC' }));
 
         // ⏰ Time — HH:MM:SS AM (always 2 digits)
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
