@@ -530,7 +530,9 @@ $siteMeta = [
 
 // Derived, presentation-only (non-authoritative)
 if ($lastUpdateUnix > 0) {
-    $siteMeta["lastUpdateLocal"]      = date("Y-m-d h:i:s A", $lastUpdateUnix);
+    $dt = new DateTime('@' . $lastUpdateUnix);
+    $dt->setTimezone(new DateTimeZone("America/Phoenix"));
+    $siteMeta["lastUpdateLocal"] = $dt->format("Y-m-d h:i:s A");
     $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
 }
 
