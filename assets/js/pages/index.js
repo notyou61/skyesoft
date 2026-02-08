@@ -104,11 +104,17 @@ window.SkyVersion = {
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
+
     // #region 🧠 Cached DOM State
     dom: null,
     cardHost: null,
     // #endregion
-    
+
+    // #region 📦 SSE Snapshot Cache (authoritative)
+    lastSSE: null,
+    activeDomain: null,
+    // #endregion
+
     // #region 🛠️ Command Output Helpers
     appendSystemLine(text) {
         if (!this.cardHost) return; // future-proof
@@ -291,8 +297,18 @@ window.SkyIndex = {
             <div class="cardBody cardBody--command">
 
                 <div class="cardContent cardContent--command">
+
+                    <div class="domainSurface" hidden>
+                        <div class="domainHeader">
+                            <div class="domainTitle"></div>
+                            <button class="domainClose btn btn-sm" type="button">✕</button>
+                        </div>
+                        <div class="domainBody"></div>
+                    </div>
+
                     <div class="commandOutput"></div>
                 </div>
+
                 <!-- Command Prompt -->
                 <div class="composer">
                     <div class="composerSurface">
@@ -300,9 +316,9 @@ window.SkyIndex = {
                         <button class="composerBtn composerPlus" type="button" aria-label="Attach files">+</button>
 
                         <div class="composerPrimary">
-                        <div class="composerInput" contenteditable="true"
-                            data-placeholder="Type a command..."
-                            spellcheck="false"></div>
+                            <div class="composerInput" contenteditable="true"
+                                data-placeholder="Type a command..."
+                                spellcheck="false"></div>
                         </div>
 
                         <button class="composerBtn composerSend" type="button" aria-label="Run command">⏎</button>
@@ -321,6 +337,17 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
+
+        // #region 🧱 Domain Surface DOM Registration
+        this.dom.domainSurface = card.querySelector('.domainSurface');
+        this.dom.domainTitle   = card.querySelector('.domainTitle');
+        this.dom.domainBody    = card.querySelector('.domainBody');
+
+        const closeBtn = card.querySelector('.domainClose');
+        closeBtn?.addEventListener('click', () => {
+            this.hideDomain();
+        });
+        // #endregion
 
         // Attach file handler
         const attachBtn = card.querySelector('.composerPlus');
@@ -344,7 +371,6 @@ window.SkyIndex = {
 
             this.appendSystemLine(`Attached file(s): ${files}`);
 
-            // Reset so same file can be re-selected
             fileInput.value = '';
         });
 
@@ -368,7 +394,6 @@ window.SkyIndex = {
             }
         });
 
-        // Autofocus prompt
         card.querySelector('.composerInput')?.focus();
     },
     // #endregion
@@ -457,6 +482,11 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
+        // Cache last authoritative snapshot (for UI actions like "show roadmap")
+        this.lastSSE = event;
+        //
+        console.log('[SSE] cached keys:', Object.keys(this.lastSSE || {}));
+
         // Sanity check first — always do this before accessing anything
         if (!event) return;
 

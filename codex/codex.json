@@ -3002,66 +3002,171 @@
                     ]
                 }
             },
-            "promptLedgerArchitecture": {
-            "title": {
-                "icon": 16,
-                "text": "Prompt Ledger Architecture Standard"
-            },
-            "type": "standard",
-            "tier": 2,
-            "hierarchyOrder": 14,
-            "description": "Defines the minimal, authoritative structure for recording user prompt inputs and system replies for auditability and historical reference. The Prompt Ledger is descriptive only and does not govern execution, routing, reuse, or authority.",
-            "rules": [
-                "Each prompt entry must be recorded exactly as submitted.",
-                "Each entry must include a unique identifier and timestamp.",
-                "If a reply is generated, it may be recorded verbatim.",
-                "Prompt and reply records must not imply correctness, reuse eligibility, or authority.",
-                "Ledger entries are append-only and immutable once recorded."
-            ],
-            "schema": {
-                "promptEntry": {
-                "type": "object",
-                "properties": {
-                    "promptId": {
-                    "type": "string",
-                    "description": "Unique identifier for the prompt entry."
+            "streamedListDomainArchitecture": {
+                "title": {
+                    "icon": 20,
+                    "text": "Streamed List Domain Architecture Standard"
+                },
+                "type": "standard",
+                "tier": 2,
+                "hierarchyOrder": 15,
+                "description": "Defines the authoritative architecture for representing, streaming, displaying, and updating list-based system domains within Skyesoft. Streamed List Domains are hierarchical or flat collections of addressable nodes that are continuously distributed via Server-Sent Events (SSE) and rendered by the UI as read-only views, with all mutations governed by explicit commands and server-side writes.",
+                "principles": [
+                    "All list-based domains are server-authoritative and streamed via SSE.",
+                    "The UI never fetches, mutates, or derives list state independently.",
+                    "User interaction expresses intent, not data access or mutation.",
+                    "Edits are applied only through governed commands and reflected via SSE.",
+                    "AI components may assist with intent interpretation but hold no authority over list state."
+                ],
+                "rules": [
+                    "Any domain whose records are editable must be included in the SSE payload.",
+                    "List Domains must be streamed as complete snapshots, not partial deltas.",
+                    "Clients must render list state exclusively from the SSE stream.",
+                    "No list data may be mutated client-side, including optimistic updates.",
+                    "All updates to List Domains must result in a subsequent SSE emission.",
+                    "Visibility and focus of a List Domain are UI concerns and do not alter authoritative state."
+                ],
+                "domainModel": {
+                    "listDomain": {
+                    "type": "object",
+                    "properties": {
+                        "meta": {
+                        "type": "object",
+                        "description": "Descriptive metadata for the list domain.",
+                        "properties": {
+                            "domain": { "type": "string" },
+                            "version": { "type": "string" },
+                            "lastUpdateUnix": { "type": "integer" },
+                            "title": { "type": "string" }
+                        },
+                        "required": ["domain"]
+                        },
+                        "nodes": {
+                        "type": "array",
+                        "description": "Flat collection of addressable nodes composing the list domain.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "Globally unique identifier for the node within its domain."
+                            },
+                            "type": {
+                                "type": "string",
+                                "description": "Semantic classification of the node (e.g., phase, task, entity, permit)."
+                            },
+                            "parentId": {
+                                "type": ["string", "null"],
+                                "description": "Identifier of the parent node, if hierarchical."
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Optional domain-defined status indicator."
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "Primary human-readable label for rendering."
+                            },
+                            "children": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "Ordered list of child node identifiers."
+                            },
+                            "data": {
+                                "type": "object",
+                                "description": "Domain-specific data payload. Structure is governed by the domain, not this standard."
+                            }
+                            },
+                            "required": ["id", "type", "label"],
+                            "additionalProperties": false
+                        }
+                        }
                     },
-                    "promptText": {
-                    "type": "string",
-                    "description": "Exact user-submitted text."
-                    },
-                    "promptTimestamp": {
-                    "type": "string",
-                    "format": "iso8601",
-                    "description": "Time the prompt was received."
-                    },
-                    "actorId": {
-                    "type": "string",
-                    "description": "Optional identifier of the submitting actor."
-                    },
-                    "replyText": {
-                    "type": "string",
-                    "description": "Exact system response produced for this prompt."
-                    },
-                    "replyTimestamp": {
-                    "type": "string",
-                    "format": "iso8601",
-                    "description": "Time the reply was generated."
+                    "required": ["nodes"],
+                    "additionalProperties": false
                     }
                 },
-                "required": [
-                    "promptId",
-                    "promptText",
-                    "promptTimestamp"
+                "interactionModel": [
+                    "Natural language prompts requesting list visibility are interpreted as UI display intents.",
+                    "Display intents do not fetch data and do not alter authoritative state.",
+                    "The UI reveals or focuses on a List Domain already present in the SSE stream.",
+                    "Editing interactions open governed modal interfaces bound to specific nodes.",
+                    "Saving an edit emits a command; the UI updates only upon receiving updated SSE state."
                 ],
-                "additionalProperties": false
-                }
+                "nonGoals": [
+                    "This standard does not define business rules for any specific domain.",
+                    "This standard does not govern database technology (JSON vs SQL).",
+                    "This standard does not authorize inline or free-form editing.",
+                    "This standard does not grant AI authority to mutate list state.",
+                    "This standard does not define permissions or access control policies."
+                ],
+                "notes": [
+                    "The Roadmap is the canonical reference implementation of a Streamed List Domain.",
+                    "Future domains such as entities, locations, contacts, permits, violations, and documents must conform to this standard.",
+                    "Prompt recording related to list display or edits may be governed separately under the Prompt Ledger Architecture.",
+                    "This standard intentionally separates authoritative state from UI visibility and navigation concerns."
+                ]
             },
-            "notes": [
-                "Recording a reply does not imply that the response is authoritative or reusable.",
-                "The Prompt Ledger does not determine future responses.",
-                "Semantic matching or reuse requires explicit, separate governance."
-            ]
+            "promptLedgerArchitecture": {
+                "title": {
+                    "icon": 16,
+                    "text": "Prompt Ledger Architecture Standard"
+                },
+                "type": "standard",
+                "tier": 2,
+                "hierarchyOrder": 14,
+                "description": "Defines the minimal, authoritative structure for recording user prompt inputs and system replies for auditability and historical reference. The Prompt Ledger is descriptive only and does not govern execution, routing, reuse, or authority.",
+                "rules": [
+                    "Each prompt entry must be recorded exactly as submitted.",
+                    "Each entry must include a unique identifier and timestamp.",
+                    "If a reply is generated, it may be recorded verbatim.",
+                    "Prompt and reply records must not imply correctness, reuse eligibility, or authority.",
+                    "Ledger entries are append-only and immutable once recorded."
+                ],
+                "schema": {
+                    "promptEntry": {
+                    "type": "object",
+                    "properties": {
+                        "promptId": {
+                        "type": "string",
+                        "description": "Unique identifier for the prompt entry."
+                        },
+                        "promptText": {
+                        "type": "string",
+                        "description": "Exact user-submitted text."
+                        },
+                        "promptTimestamp": {
+                        "type": "string",
+                        "format": "iso8601",
+                        "description": "Time the prompt was received."
+                        },
+                        "actorId": {
+                        "type": "string",
+                        "description": "Optional identifier of the submitting actor."
+                        },
+                        "replyText": {
+                        "type": "string",
+                        "description": "Exact system response produced for this prompt."
+                        },
+                        "replyTimestamp": {
+                        "type": "string",
+                        "format": "iso8601",
+                        "description": "Time the reply was generated."
+                        }
+                    },
+                    "required": [
+                        "promptId",
+                        "promptText",
+                        "promptTimestamp"
+                    ],
+                    "additionalProperties": false
+                    }
+                },
+                "notes": [
+                    "Recording a reply does not imply that the response is authoritative or reusable.",
+                    "The Prompt Ledger does not determine future responses.",
+                    "Semantic matching or reuse requires explicit, separate governance."
+                ]
             },
             "codeManagement": {
                 "title": {
