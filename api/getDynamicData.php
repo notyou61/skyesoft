@@ -548,6 +548,11 @@ $payload = [
     "holidayState"    => $timeContext["holidayState"],
     "weather"         => $weather,
     "kpi"             => $kpi,
+    // Roadmap (authoritative, SSE-streamed, editable)
+    "roadmap" => [
+        "summary"  => $roadmap,
+        "detailed" => $roadmapDetailed
+    ],
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
