@@ -29,6 +29,7 @@ declare(strict_types=1);
  *  Still planned:
  *   • Optional exposure of update window remaining seconds
  *   • Sentinel policy registry for additional lifecycle rules
+ *   • Test!
  * ===================================================================== */
 
 $now = time();
