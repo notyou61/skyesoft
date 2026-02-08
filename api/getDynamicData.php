@@ -17,14 +17,16 @@ require_once __DIR__ . '/holidayInterpreter.php';
 $root = dirname(__DIR__);
 
 $paths = [
-    "codex"          => $root . "/codex/codex.json",
-    "versions"       => $root . "/data/authoritative/versions.json",
-    "holiday"        => $root . "/data/authoritative/holidayRegistry.json",
-    "systemRegistry" => $root . "/data/authoritative/systemRegistry.json",
-    "kpi"            => $root . "/data/runtimeEphemeral/kpiRegistry.json",
-    "permits"        => $root . "/data/runtimeEphemeral/permitRegistry.json",
-    "permitNews"     => $root . "/data/runtimeEphemeral/permitNews.json",
-    "sentinel"       => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
+    "codex"             => $root . "/codex/codex.json",
+    "versions"          => $root . "/data/authoritative/versions.json",
+    "holiday"           => $root . "/data/authoritative/holidayRegistry.json",
+    "systemRegistry"    => $root . "/data/authoritative/systemRegistry.json",
+    "roadmap"           => $root . "/data/authoritative/roadmap.json",
+    "roadmapDetailed"   => $root . "/data/authoritative/roadmapDetailed.json",
+    "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
+    "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
+    "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
+    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json" // 👈 NEW
 ];
 
 foreach ($paths as $key => $path) {
@@ -37,10 +39,12 @@ foreach ($paths as $key => $path) {
 $codex          = json_decode(file_get_contents($paths["codex"]), true);
 $versions       = json_decode(file_get_contents($paths["versions"]), true);
 $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
+$roadmap         = json_decode(file_get_contents($paths["roadmap"]), true);
+$roadmapDetailed = json_decode(file_get_contents($paths["roadmapDetailed"]), true);
 
 $kpi            = json_decode(file_get_contents($paths["kpi"]), true);
 $activePermits  = json_decode(file_get_contents($paths["permits"]), true);
-$permitNews = json_decode(file_get_contents($paths["permitNews"]), true);
+$permitNews     = json_decode(file_get_contents($paths["permitNews"]), true);
 
 $tz = new DateTimeZone("America/Phoenix");
 
