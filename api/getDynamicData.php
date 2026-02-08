@@ -528,17 +528,11 @@ $siteMeta = [
     "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
 ];
 
-// Assign Timezone for presentation formatting (non-authoritative, read-only)
-$tz = new DateTimeZone('America/Phoenix');
 // Derived, presentation-only (non-authoritative)
 if ($lastUpdateUnix > 0) {
-    $dt = new DateTime('@' . $lastUpdateUnix);
-    $dt->setTimezone($tz);
-
-    $siteMeta["lastUpdateLocal"]      = $dt->format("Y-m-d h:i:s A");
+    $siteMeta["lastUpdateLocal"]      = date("Y-m-d h:i:s A", $lastUpdateUnix);
     $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
 }
-
 
 // ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
