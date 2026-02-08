@@ -109,6 +109,93 @@ window.SkyIndex = {
     cardHost: null,
     // #endregion
 
+    // #region 📘 Domain Surface Control
+    showDomain(domainKey) {
+        if (!this.lastSSE) {
+            this.appendSystemLine('⚠ No live data available.');
+            return;
+        }
+
+        const rawDomain = this.lastSSE[domainKey];
+        if (!rawDomain) {
+            this.appendSystemLine(`⚠ Domain not available: ${domainKey}`);
+            return;
+        }
+
+        const model = DomainAdapter.normalize(domainKey, rawDomain);
+
+        this.activeDomain = domainKey;
+        this.renderDomain(domainKey, model);
+    },
+
+    hideDomain() {
+        this.activeDomain = null;
+        if (this.dom?.domainSurface) {
+            this.dom.domainSurface.hidden = true;
+            this.dom.domainBody.innerHTML = '';
+        }
+    },
+    // #endregion
+
+    // #region 📘 Domain Rendering
+    renderDomain(domainKey, model) {
+        if (!this.dom?.domainSurface) return;
+
+        this.activeDomain = domainKey;
+
+        this.dom.domainTitle.textContent =
+            model.title ?? domainKey;
+
+        this.dom.domainBody.innerHTML = '';
+        this.dom.domainSurface.hidden = false;
+
+        // Delegate to Workflowy renderer
+        this.renderWorkflowyOutline(model.nodes);
+    },
+    // #endregion
+
+    // #region 🗂 Workflowy-style Outline Renderer
+    renderWorkflowyOutline(nodes) {
+        const ul = document.createElement('ul');
+        ul.className = 'wf-outline';
+
+        nodes.forEach(node => {
+            ul.appendChild(this.renderWorkflowyNode(node));
+        });
+
+        this.dom.domainBody.appendChild(ul);
+    },
+
+    renderWorkflowyNode(node) {
+        const li = document.createElement('li');
+        li.className = 'wf-node';
+
+        const line = document.createElement('div');
+        line.className = 'wf-line';
+        line.textContent = node.text;
+
+        li.appendChild(line);
+
+        if (Array.isArray(node.children) && node.children.length > 0) {
+            const childList = document.createElement('ul');
+            childList.hidden = true;
+
+            node.children.forEach(child => {
+                childList.appendChild(this.renderWorkflowyNode(child));
+            });
+
+            line.addEventListener('click', () => {
+                childList.hidden = !childList.hidden;
+                li.classList.toggle('collapsed', childList.hidden);
+            });
+
+            li.appendChild(childList);
+        }
+
+        return li;
+    },
+    // #endregion
+
     // #region 📦 SSE Snapshot Cache (authoritative)
     lastSSE: null,
     activeDomain: null,
@@ -420,7 +507,7 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            // 🧠 UI ACTION SHORT-CIRCUIT
+            // 🧠 UI ACTION SHORT-CIRCUIT (authoritative, immediate)
             if (data?.type === 'ui_action') {
                 const handler = this.uiActionRegistry?.[data.action];
 
@@ -433,7 +520,31 @@ window.SkyIndex = {
                 return;
             }
 
-            // 🤖 Normal AI response
+            // 📘 DOMAIN INTENT (presentation delegated to UI + SSE)
+            if (typeof data?.intent === 'string') {
+
+                // Known streamed domains only (extensible)
+                const streamedDomains = new Set([
+                    'roadmap',
+                    'entities',
+                    'locations',
+                    'contacts',
+                    'orders',
+                    'permits',
+                    'violations'
+                ]);
+
+                if (data.intent.startsWith('show_')) {
+                    const domainKey = data.intent.replace('show_', '');
+
+                    if (streamedDomains.has(domainKey)) {
+                        this.showDomain(domainKey);
+                        return;
+                    }
+                }
+            }
+
+            // 🤖 TEXTUAL RESPONSE (non-streamed, informational)
             if (typeof data?.response === 'string' && data.response.trim() !== '') {
                 this.appendSystemLine(data.response);
                 return;
