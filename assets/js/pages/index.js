@@ -42,16 +42,6 @@ function formatVersionFooter(siteMeta) {
     } else {
         agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
-    // 🔍 Sanity check — REMOVE after verification
-    console.log('ISO (UTC):', d.toISOString());
-    console.log(
-    'Phoenix:',
-    d.toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })
-    );
-    console.log(
-    'UTC:',
-    d.toLocaleTimeString('en-US', { timeZone: 'UTC' })
-    );
 
     // Return
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
