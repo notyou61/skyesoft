@@ -48,6 +48,26 @@ function formatVersionFooter(siteMeta) {
 }
 // #endregion
 
+// #region ⏳ Interval Formatter (DHMS, canonical)
+function formatIntervalDHMS(totalSeconds) {
+    const pad = n => String(n).padStart(2, '0');
+
+    const days = Math.floor(totalSeconds / 86400);
+    const hrs  = Math.floor((totalSeconds % 86400) / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    const parts = [];
+
+    if (days > 0) parts.push(`${pad(days)}d`);
+    if (hrs  > 0 || parts.length) parts.push(`${pad(hrs)}h`);
+    if (mins > 0 || parts.length) parts.push(`${pad(mins)}m`);
+    parts.push(`${pad(secs)}s`);
+
+    return parts.join(' ');
+}
+// #endregion
+
 // #region 🔔 Version Update Indicator Controller
 window.SkyVersion = {
 
@@ -466,7 +486,7 @@ window.SkyIndex = {
             }
         }
 
-        // ⏳ Interval — label + remaining time (e.g. Before Work • 02h 08m 12s)
+        // ⏳ Interval — label + remaining time (e.g. Weekend - 01d 02h 18m 25s)
         if (event.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = event.currentInterval;
 
@@ -479,25 +499,9 @@ window.SkyIndex = {
             };
 
             const label = labelMap[key] ?? key;
-            const pad = n => String(n).padStart(2, '0');
 
             if (typeof secondsRemainingInterval === 'number') {
-                const total = secondsRemainingInterval;
-
-                const hrs  = Math.floor(total / 3600);
-                const mins = Math.floor((total % 3600) / 60);
-                const secs = total % 60;
-
-                let timeStr;
-
-                if (hrs > 0) {
-                    timeStr = `${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
-                } else if (mins > 0) {
-                    timeStr = `${pad(mins)}m ${pad(secs)}s`;
-                } else {
-                    timeStr = `${pad(secs)}s`;
-                }
-
+                const timeStr = formatIntervalDHMS(secondsRemainingInterval);
                 this.dom.interval.textContent = `${label} - ${timeStr}`;
             } else {
                 // Fallback: just the label
