@@ -104,7 +104,6 @@ window.SkyVersion = {
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
-
     // #region 🧠 Cached DOM State
     dom: null,
     cardHost: null,
@@ -540,29 +539,29 @@ window.SkyIndex = {
         }
 
         // 🔭 SENTINEL META — authoritative runtime signal
-            const sentinel = event.sentinelMeta;
+        const sentinel = event.sentinelMeta;
 
-            // 📦 Site Version Footer (canonical, shared)
-            if (this.dom?.version && event.siteMeta) {
-                const nowUnix =
-                    event?.timeDateArray?.currentUnixTime ??
-                    Math.floor(Date.now() / 1000);
-                this.dom.version.textContent =
-                    formatVersionFooter(event.siteMeta);
-            }
+        // 📦 Site Version Footer (canonical, shared)
+        if (this.dom?.version && event.siteMeta) {
+            const nowUnix =
+                event?.timeDateArray?.currentUnixTime ??
+                Math.floor(Date.now() / 1000);
+            this.dom.version.textContent =
+                formatVersionFooter(event.siteMeta);
+        }
 
-            // 🔭 Sentinel Meta — runtime health + deploy signal
-            if (!sentinel || sentinel.status === "offline") {
-                window.SkyVersion?.hide();
-                return;
-            }
+        // 🔭 Sentinel Meta — runtime health + deploy signal
+        if (!sentinel || sentinel.status === "offline") {
+            window.SkyVersion?.hide();
+            return;
+        }
 
-            // 🚀 Update indicator — explicit update + fresh sentinel
-            if (event.siteMeta?.updateOccurred === true) {
-                window.SkyVersion?.show(60000);
-            } else {
-                window.SkyVersion?.hide();
-            }
+        // 🚀 Update indicator — explicit update + fresh sentinel
+        if (event.siteMeta?.updateOccurred === true) {
+            window.SkyVersion?.show(60000);
+        } else {
+            window.SkyVersion?.hide();
+        }
     },
     // #endregion
 
