@@ -41,6 +41,39 @@ window.SkyVersion = {
 };
 // #endregion
 
+// #region 🔔 OfficeBoard Version Update Indicator
+window.OfficeBoardVersion = {
+
+    timeoutId: null,
+
+    show(durationMs = 60000) {
+        const el = document.getElementById('versionFooter');
+        if (!el) {
+            console.warn('[OfficeBoardVersion] #versionFooter not found');
+            return;
+        }
+
+        el.classList.add('hasUpdate');
+
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+        }
+
+        this.timeoutId = setTimeout(() => {
+            this.hide();
+        }, durationMs);
+    },
+
+    hide() {
+        const el = document.getElementById('versionFooter');
+        if (el) {
+            el.classList.remove('hasUpdate');
+        }
+        this.timeoutId = null;
+    }
+};
+// #endregion
+
 // #region GLOBAL REGISTRIES
     
     // Permit Statuses
@@ -1477,9 +1510,15 @@ window.SkyOfficeBoard = {
 
         // 📦 Version Footer (authoritative SSE)
         if (this.dom?.version && payload.siteMeta) {
-            const nowUnix = payload?.timeDateArray?.currentUnixTime;
             this.dom.version.textContent =
-                formatVersionFooter(payload.siteMeta, nowUnix);
+                formatVersionFooter(payload.siteMeta);
+        }
+
+        // 🔔 Update notice — deploy signal
+        if (payload.siteMeta?.updateOccurred === true) {
+            window.OfficeBoardVersion?.show(60000);
+        } else {
+            window.OfficeBoardVersion?.hide();
         }
 
         // 🌤 Weather
