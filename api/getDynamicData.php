@@ -513,27 +513,25 @@ if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"]
 // ------------------------------------------------------------
 // Site Meta — Canonical (Unix-only, UI-aligned)
 // ------------------------------------------------------------
-$lastUpdateUnix = (int)(
-    $versions["system"]["lastUpdateUnix"]
-    ?? $versions["system"]["deployUnix"]
-    ?? 0
-);
+// Use current server time for live heartbeat / last response indicator
+$lastUpdateUnix = time();  // current UTC Unix timestamp
 
-// ------------------------------------------------------------
-// Update Decay — Canonical (server-authoritative)
-// ------------------------------------------------------------
 $siteMeta = [
     "siteVersion"     => $versions["system"]["siteVersion"] ?? "unknown",
-    "lastUpdateUnix"  => $lastUpdateUnix ?: null,
-    "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
+    "lastUpdateUnix"  => $lastUpdateUnix,
+    "updateOccurred"  => true,  // always trigger highlight briefly on fresh heartbeat
+    // Optional: keep a separate deploy marker if you want to track real changes
+    //"lastDeployUnix"  => (int)($versions["system"]["lastUpdateUnix"] ?? $versions["system"]["deployUnix"] ?? 0),
 ];
 
 // Derived, presentation-only (non-authoritative)
 if ($lastUpdateUnix > 0) {
+    // Use Phoenix timezone for correct local display in SSE (matches client)
     $dt = new DateTime('@' . $lastUpdateUnix);
     $dt->setTimezone(new DateTimeZone("America/Phoenix"));
-    $siteMeta["lastUpdateLocal"] = $dt->format("Y-m-d h:i:s A");
-    $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
+
+    $siteMeta["lastUpdateLocal"]      = $dt->format("Y-m-d h:i:s A");  // e.g. "2026-02-07 05:46:xx PM"
+    $siteMeta["lastUpdateAgeSeconds"] = 0;  // always ~0 since it's now
 }
 
 // ------------------------------------------------------------
