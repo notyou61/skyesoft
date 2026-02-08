@@ -438,12 +438,20 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        //
-        console.log('Raw lastUpdateUnix from SSE:', siteMeta.lastUpdateUnix);
-        console.log('Current client Unix approx:', Math.floor(Date.now() / 1000));
-        console.log('Computed delta manually:', Math.floor(Date.now() / 1000) - siteMeta.lastUpdateUnix);
-        // Sanity check
+        // Sanity check first — always do this before accessing anything
         if (!event) return;
+
+        // Safe debug logs — use event.siteMeta
+        console.log('SSE received at client local time:', 
+            new Date().toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
+        
+        if (event.siteMeta) {
+            console.log('Update age reported:', event.siteMeta.lastUpdateAgeSeconds, 's');
+            console.log('Computed current age:', 
+                Math.floor(Date.now() / 1000) - event.siteMeta.lastUpdateUnix);
+        } else {
+            console.log('No siteMeta in this SSE event');
+        }
 
         // ⏰ Time — HH:MM:SS AM (always 2 digits)
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
@@ -511,32 +519,29 @@ window.SkyIndex = {
         }
 
         // 🔭 SENTINEL META — authoritative runtime signal
-        const sentinel = event.sentinelMeta;
+            const sentinel = event.sentinelMeta;
 
-        // 📦 Site Version Footer (canonical, shared)
-        if (this.dom?.version && event.siteMeta) {
-            const nowUnix =
-            event?.timeDateArray?.currentUnixTime ??
-            Math.floor(Date.now() / 1000);
-            this.dom.version.textContent =
-                formatVersionFooter(event.siteMeta);
-        }
+            // 📦 Site Version Footer (canonical, shared)
+            if (this.dom?.version && event.siteMeta) {
+                const nowUnix =
+                    event?.timeDateArray?.currentUnixTime ??
+                    Math.floor(Date.now() / 1000);
+                this.dom.version.textContent =
+                    formatVersionFooter(event.siteMeta);
+            }
 
-        // 🔭 Sentinel Meta — runtime health + deploy signal
-        if (!sentinel || sentinel.status === "offline") {
-            // Unknown or offline → hide version update indicator
-            window.SkyVersion?.hide();
-            return;
-        }
+            // 🔭 Sentinel Meta — runtime health + deploy signal
+            if (!sentinel || sentinel.status === "offline") {
+                window.SkyVersion?.hide();
+                return;
+            }
 
-        // 🚀 Update indicator — explicit update + fresh sentinel
-        if (event.siteMeta?.updateOccurred === true) {
-            window.SkyVersion?.show(60000);
-        } else {
-            window.SkyVersion?.hide();
-        }
-
-
+            // 🚀 Update indicator — explicit update + fresh sentinel
+            if (event.siteMeta?.updateOccurred === true) {
+                window.SkyVersion?.show(60000);
+            } else {
+                window.SkyVersion?.hide();
+            }
     },
     // #endregion
 
