@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — getDynamicData.php
-//  Version: 1.0.0
-//  Last Updated: 2025-11-29
-//  Codex Tier: 4 — Backend Module
+//  Version: 1.0.1
+//  Last Updated: 2026-02-08  Codex Tier: 4 — Backend Module
 //  Provides: TIS + Weather + KPI + Permits + Permit News + Site Meta
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
