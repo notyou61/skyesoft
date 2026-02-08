@@ -42,8 +42,17 @@ function formatVersionFooter(siteMeta) {
     } else {
         agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
-    //
-    //console.log('Formatting with TZ:', TZ, 'Date:', d, 'Delta:', deltaSeconds);
+    // 🔍 Sanity check — REMOVE after verification
+    console.log('ISO (UTC):', d.toISOString());
+    console.log(
+    'Phoenix:',
+    d.toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })
+    );
+    console.log(
+    'UTC:',
+    d.toLocaleTimeString('en-US', { timeZone: 'UTC' })
+    );
+
     // Return
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
@@ -440,10 +449,6 @@ window.SkyIndex = {
     onSSE(event) {
         // Sanity check first — always do this before accessing anything
         if (!event) return;
-
-        console.log('ISO (UTC):', d.toISOString());
-        console.log('Phoenix:', d.toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' }));
-        console.log('UTC:', d.toLocaleTimeString('en-US', { timeZone: 'UTC' }));
 
         // ⏰ Time — HH:MM:SS AM (always 2 digits)
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
