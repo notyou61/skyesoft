@@ -438,6 +438,10 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
+        //
+        console.log('Raw lastUpdateUnix from SSE:', siteMeta.lastUpdateUnix);
+        console.log('Current client Unix approx:', Math.floor(Date.now() / 1000));
+        console.log('Computed delta manually:', Math.floor(Date.now() / 1000) - siteMeta.lastUpdateUnix);
         // Sanity check
         if (!event) return;
 
@@ -531,10 +535,6 @@ window.SkyIndex = {
         } else {
             window.SkyVersion?.hide();
         }
-        //
-        console.log('Raw SSE siteMeta:', event.siteMeta);
-        console.log('Computed local time:', d.toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
-        console.log('Current client local time:', new Date().toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
 
 
     },
