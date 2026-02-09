@@ -27,35 +27,29 @@ function renderPhase(node, presentation, iconMap) {
     const wrapper = document.createElement('div');
     wrapper.className = 'outline-phase';
 
-    /* ---------- Phase Header ---------- */
-
+    /* ---------- Header ---------- */
     const header = document.createElement('div');
     header.className = 'phase-header';
 
-    let expanded = false;           // collapsed by default
+    let expanded = false;
     let taskList = null;
-    let caret = null;
 
-    /* Caret (expand / collapse indicator) */
-    if (node.children?.length > 0) {
-        caret = document.createElement('span');
-        caret.className = 'node-caret';
-        caret.textContent = '▶';
-        header.appendChild(caret);
-    }
+    /* Caret — ALWAYS rendered */
+    const caret = document.createElement('span');
+    caret.className = 'node-caret';
+    caret.textContent = node.children?.length ? '▶' : ''; // empty if no children
+    header.appendChild(caret);
 
-    /* Phase Icon */
-    header.appendChild(
-        renderIcon(node.iconId ?? 'phase', iconMap)
-    );
+    /* Icon — ALWAYS after caret */
+    header.appendChild(renderIcon(node.iconId, iconMap));
 
-    /* Phase Title */
+    /* Title */
     const title = document.createElement('span');
     title.className = 'phase-title';
     title.textContent = node.label || '(Untitled)';
     header.appendChild(title);
 
-    /* Phase Status Badge */
+    /* Status */
     if (node.status) {
         const status = document.createElement('span');
         status.className = `status-badge ${node.status}`;
@@ -63,7 +57,7 @@ function renderPhase(node, presentation, iconMap) {
         header.appendChild(status);
     }
 
-    /* Edit Control */
+    /* Edit */
     if (presentation?.nodeTypes?.phase?.editable) {
         const edit = document.createElement('a');
         edit.href = '#';
@@ -71,52 +65,48 @@ function renderPhase(node, presentation, iconMap) {
         edit.textContent = 'Edit';
         edit.addEventListener('click', e => {
             e.stopPropagation();
-
-            if (typeof window.editPhase === 'function') {
-                window.editPhase(e, node);
-            }
+            // modal hook later
         });
         header.appendChild(edit);
     }
 
     wrapper.appendChild(header);
 
-    /* ---------- Phase Children (Tasks) ---------- */
 
+    /* ---------- Phase Children (Tasks) ---------- */
     if (node.children?.length > 0) {
+
         taskList = document.createElement('ul');
         taskList.className = 'task-list';
-        taskList.style.display = 'none'; // collapsed by default
+        taskList.style.display = 'none';
 
         node.children.forEach(task => {
             const li = document.createElement('li');
             li.className = 'task-item';
-
-            li.appendChild(renderIcon(task.iconId, iconMap));
-
-            const label = document.createElement('span');
-            label.textContent = task.label || '(No title)';
-            li.appendChild(label);
-
+            li.textContent = task.label || '(No title)';
             taskList.appendChild(li);
         });
 
         wrapper.appendChild(taskList);
 
-        /* ---------- Expand / Collapse Logic ---------- */
+        caret.addEventListener('click', e => {
+            e.stopPropagation();
 
-        header.style.cursor = 'pointer';
-        header.addEventListener('click', () => {
             expanded = !expanded;
 
-            if (caret) {
-                caret.textContent = expanded ? '▼' : '▶';
-            }
-
+            caret.textContent = expanded ? '▼' : '▶';
             taskList.style.display = expanded ? 'block' : 'none';
             wrapper.classList.toggle('expanded', expanded);
         });
+
+
+    } else {
+        // Caret
+        caret.style.visibility = 'hidden';
+        // No children → no toggle behavior
+        header.style.cursor = 'default';
     }
+
 
     return wrapper;
 }
@@ -124,13 +114,15 @@ function renderPhase(node, presentation, iconMap) {
 
 /* #region Utilities */
 function renderIcon(iconId, iconMap) {
-    if (!iconId || !iconMap?.[iconId]) {
-        return document.createElement('span'); // empty placeholder
-    }
 
-    const span = document.createElement('span');
+    // Ensure we can resolve both numeric and string keys
+    var key = (iconId === 0 || iconId) ? String(iconId) : null;
+    var glyph = (key && iconMap && iconMap[key]) ? iconMap[key] : null;
+
+    var span = document.createElement('span');
     span.className = 'node-icon';
-    span.textContent = iconMap[iconId];
+    span.textContent = glyph ? glyph : ''; // empty if not found
+
     return span;
 }
 
