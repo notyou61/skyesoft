@@ -22,23 +22,26 @@
 
 <script type="module">
 /* ============================================================
- *  Generic Streamed List Surface
+ *  Generic Streamed List Surface (CANONICAL)
  * ============================================================ */
 
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
+import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
 
 /* ---- Config ------------------------------------------------ */
 
 const domainKey = 'roadmap';
 const domainUrl = '/skyesoft/data/authoritative/roadmap.json';
 const presentationUrl = '/skyesoft/data/authoritative/presentationRegistry.json';
+const iconMapUrl = '/skyesoft/assets/data/iconMap.json';
 
 /* ---- Bootstrap -------------------------------------------- */
 
 Promise.all([
   fetch(domainUrl).then(r => r.json()),
-  fetch(presentationUrl).then(r => r.json())
-]).then(([domainData, presentationRegistry]) => {
+  fetch(presentationUrl).then(r => r.json()),
+  fetch(iconMapUrl).then(r => r.json())
+]).then(([domainData, presentationRegistry, iconMap]) => {
 
   const adapted = adaptStreamedDomain(domainKey, domainData);
   if (!adapted) {
@@ -48,114 +51,18 @@ Promise.all([
 
   document.getElementById('domainTitle').textContent = adapted.title;
 
-  const presentation = presentationRegistry.domains[domainKey];
-  renderOutline(adapted.nodes, presentation);
-
-});
-
-/* ---- Renderer --------------------------------------------- */
-
-function renderOutline(nodes, presentation) {
   const container = document.getElementById('outlineContainer');
-  container.innerHTML = '';
 
-  nodes.forEach(node => {
-    container.appendChild(renderNode(node, presentation));
-  });
-}
+  renderOutline(
+    container,
+    adapted,
+    presentationRegistry,
+    iconMap
+  );
 
-function renderNode(node, presentation) {
-
-  const nodeType = node.children ? 'phase' : 'task';
-  const rules = resolvePresentation(presentation, nodeType);
-
-  const wrapper = document.createElement('div');
-  wrapper.className = nodeType;
-
-  const header = document.createElement('div');
-  header.className = `${nodeType}-header`;
-  header.textContent = node.label;
-
-  /* Status badge (if present) */
-  if (node.status) {
-    const status = document.createElement('span');
-    status.className = `status ${node.status}`;
-    status.textContent =
-      node.status === 'complete' ? '✓ Complete' :
-      node.status === 'in-progress' ? '⏳ In Progress' :
-      'Pending';
-    header.appendChild(status);
-  }
-
-  /* Edit link */
-  if (rules.editable) {
-    const edit = document.createElement('a');
-    edit.href = '#';
-    edit.className = 'edit-link';
-    edit.textContent = 'Edit';
-    edit.onclick = e => editPhase(e, node);
-    header.appendChild(edit);
-  }
-
-  wrapper.appendChild(header);
-
-  /* Children */
-  if (node.children?.length) {
-    const list = document.createElement('ul');
-    list.className = 'tasks';
-    list.style.display = rules.defaultExpanded ? 'block' : 'none';
-
-    node.children.forEach(child => {
-      const li = document.createElement('li');
-      li.textContent = child.label;
-      list.appendChild(li);
-    });
-
-    if (rules.collapsible) {
-      header.onclick = () => {
-        list.style.display =
-          list.style.display === 'block' ? 'none' : 'block';
-      };
-    }
-
-    wrapper.appendChild(list);
-  }
-
-  return wrapper;
-}
-
-/* ---- Presentation Resolver -------------------------------- */
-
-function resolvePresentation(domainConfig, nodeType) {
-  return {
-    ...domainConfig.defaults,
-    ...domainConfig.nodeTypes[nodeType]
-  };
-}
-
-/* ---- Modal Wiring (unchanged contract) -------------------- */
-
-function editPhase(event, node) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  document.getElementById('editModalHeaderName').textContent = node.label;
-  document.getElementById('editPhaseId').value = node.id;
-  document.getElementById('editPhaseName').value = node.label;
-  document.getElementById('editPhaseStatus').value = node.status ?? '';
-  document.getElementById('editPhaseOutput').value = '';
-
-  document.getElementById('editModal').style.display = 'block';
-}
-
-window.closeEditModal = function () {
-  document.getElementById('editModal').style.display = 'none';
-};
-
-window.savePhaseEdits = function () {
-  closeEditModal();
-  alert('Edit saved (test surface only)');
-};
+}).catch(err => {
+  console.error('Streamed list bootstrap failed:', err);
+});
 </script>
 
 <!-- =======================
@@ -200,6 +107,32 @@ window.savePhaseEdits = function () {
 
   </div>
 </div>
+
+<script>
+/* ---- Modal Wiring (unchanged contract) -------------------- */
+
+window.editPhase = function (event, node) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  document.getElementById('editModalHeaderName').textContent = node.label;
+  document.getElementById('editPhaseId').value = node.id;
+  document.getElementById('editPhaseName').value = node.label;
+  document.getElementById('editPhaseStatus').value = node.status ?? '';
+  document.getElementById('editPhaseOutput').value = '';
+
+  document.getElementById('editModal').style.display = 'block';
+};
+
+window.closeEditModal = function () {
+  document.getElementById('editModal').style.display = 'none';
+};
+
+window.savePhaseEdits = function () {
+  closeEditModal();
+  alert('Edit saved (test surface only)');
+};
+</script>
 
 </body>
 </html>
