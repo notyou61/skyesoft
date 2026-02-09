@@ -89,16 +89,12 @@ function renderPhase(node, presentation, iconMap) {
 
         wrapper.appendChild(taskList);
 
-        caret.addEventListener('click', e => {
-            e.stopPropagation();
-
+        header.addEventListener('click', () => {
             expanded = !expanded;
-
             caret.textContent = expanded ? '▼' : '▶';
             taskList.style.display = expanded ? 'block' : 'none';
             wrapper.classList.toggle('expanded', expanded);
         });
-
 
     } else {
         // Caret
