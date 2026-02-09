@@ -287,6 +287,24 @@ body {
   • Styling conveys hierarchy + status at a glance
 */
 
+/* ---------- TOP-LEVEL OUTLINE LIST RESET (AUTHORITATIVE) ---------- */
+
+.outline {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.outline > li {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.outline > li::marker {
+    content: none;
+}
+
 /* ---------- Bullet Neutralization (Critical) ---------- */
 
 /* Ensure no list semantics leak into phase rows */
@@ -298,12 +316,6 @@ body {
 
 .outline-phase {
     display: block;
-}
-
-/* Defensive: kill any implicit <li> behavior */
-.outline-phase::marker,
-.phase-header::marker {
-    content: none;
 }
 
 .phase-header {
