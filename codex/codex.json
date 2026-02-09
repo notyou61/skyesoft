@@ -367,7 +367,7 @@
                     },
                     "quadrants": {
                     "highAuthorityPersistent": "Authoritative",
-                    "highAuthorityEphemeral": "RuntimeEphemeral",
+                    "highAuthorityEphemeral": "RuntimleEphemera",
                     "lowAuthorityPersistent": "RecordOrDocumentSource",
                     "lowAuthorityEphemeral": "DerivedOutput"
                     },
@@ -3137,7 +3137,10 @@
                     "This standard intentionally separates authoritative state from UI visibility and navigation concerns.",
                     "Nodes may optionally include declarative presentation metadata to guide consistent UI behavior. Such metadata conveys semantic intent only and must not encode styling, layout, icons, or markup.",
                     "Presentation metadata is optional and may be safely ignored by renderers without affecting authoritative state or data integrity.",
-                    "The `type` field defines domain semantics, while `meta.presentation.nodeRole` defines UI interpretation and may differ from domain classification."
+                    "The `type` field defines domain semantics, while `meta.presentation.nodeRole` defines UI interpretation and may differ from domain classification.",
+                    "A centralized Presentation Registry may define default semantic presentation behavior for list domains and node types. This registry is authoritative for UI behavior but must remain semantic-only and independent of visual implementation.",
+                    "Presentation intent for Streamed List Domains must be derived from a governed Presentation Registry keyed by domain and node type. Per-node presentation metadata, when present, may only refine or override registry defaults and must conform to the same semantic constraints.",
+                    "Per-node presentation metadata is intended for exceptional cases only and must not be used as a substitute for registry-defined defaults."
                 ]
             },
             "promptLedgerArchitecture": {

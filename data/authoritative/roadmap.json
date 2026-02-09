@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "creationDate": "2025-11-25",
+    "lastUpdate": "2026-02-09",
+    "currentVersion": "1.4.0",
+    "domain": "roadmap",
+    "title": "Skyesoft Rebuild Roadmap",
+    "description": "Canonical execution roadmap aligned with Codex v1.1.0 governance, SSE-first architecture, governed AI workflows, SQL migration, Document Engine consolidation, and the System Initialization Standard (SIS). This roadmap represents the authoritative planning state for the Skyesoft rebuild."
+  },
+
+  "phases": [
+    {
+      "id": "phase0",
+      "name": "Codex + Sovereignty Foundation",
+      "status": "complete",
+      "tasks": [
+        "Codex upgraded to v1.1.0 with Meta, Constitution, Tier-2 Standards, and Tier-3 Modules",
+        "Document Engine created; legacy individual document modules removed",
+        "Repository Standard ratified (canonical directory structure, camelCase enforcement)",
+        "Semantic Responder Standard approved",
+        "RAG Framework Standard approved",
+        "AI Integration Standard approved",
+        "Skyebot constitutional prompt schema created (semantic, RAG-aware, SSE-aware)",
+        "Parliamentarian Review logic created and embedded into askOpenAI.php",
+        "Deployment sovereignty reaffirmed: Skyesoft operates solely on skyelighting.com (GoDaddy)",
+        "Codex Page Registry framework approved (all UI pages must be registered)"
+      ],
+      "output": "Codex v1.1.0 finalized — the system’s constitutional and sovereignty foundations are complete"
+    },
+
+    {
+      "id": "phase1",
+      "name": "Repository and Core Governance Alignment",
+      "status": "in-progress",
+      "tasks": [
+        "Finalize auditor implementation for criticalArtifactPresence violations using governed artifact requirements",
+        "Finalize auditor implementation for jurisdictionalRuleConformance based on authoritative jurisdiction sources",
+        "Define structured facts schemas for criticalArtifactPresence violations",
+        "Define structured facts schemas for jurisdictionalRuleConformance violations",
+        "Implement Sentinel handling for new violation classes with deterministic identityHash derivation",
+        "Implement Mutator handling rules for criticalArtifactPresence (advisory or humanRequired only)",
+        "Implement Mutator handling rules for jurisdictionalRuleConformance (humanRequired only)",
+        "Register criticalArtifactPresence and jurisdictionalRuleConformance in violationClasses registry",
+        "Validate end-to-end detection → record → re-audit behavior for new violation classes",
+        "Confirm no UI, SSE, or state mutation occurs as part of these validations"
+      ],
+      "output": "Core governance violation classes implemented, registered, and validated with deterministic detection and controlled reconciliation behavior"
+    },
+
+    {
+      "id": "phase2",
+      "name": "Live SSE and Operational Dashboard Integration",
+      "status": "pending",
+      "tasks": [
+        "Deploy the production Server-Sent Events (SSE) stream with full Tier-2 Codex compliance",
+        "Enforce exclusive SSE sourcing for dashboard state: time, weather, holiday status, TIS phase, and versionContext",
+        "Validate Time Interval Standards (TIS) transitions using holidayRegistry.json and SSE-provided day-of-week",
+        "Verify weather update cadence and caching behavior in accordance with operationalConfig rules",
+        "Implement stale-signal detection and user-visible warnings for SSE delays exceeding 5 seconds",
+        "Enable sseIntegrityChecker.php to continuously validate SSE health, schema, and payload integrity",
+        "Validate officeBoard.html under live SSE conditions with zero console errors and consistent rendering"
+      ],
+      "output": "Office Board operates as a fully real-time, SSE-driven operational dashboard governed by Codex standards"
+    },
+
+    {
+      "id": "phase3",
+      "name": "Governance Enforcement Loop Activation",
+      "status": "in-progress",
+      "tasks": [
+        "Finalize violationClasses registry with complete schemas, categories, and narrative guidance",
+        "Ensure Auditor emits violations using only structured facts (no inferred data)",
+        "Confirm Sentinel produces deterministic violation batches with stable identityHash derivation",
+        "Validate Merkle integrity detection using governed Codex artifacts and observed state only",
+        "Validate repository inventory conformance against governed inventory manifest",
+        "Ensure Mutator performs only governed corrective actions (no silent state mutation)",
+        "Enforce invariant checks preventing spurious or duplicate resolutions",
+        "Record resolution metadata with verifiable before/after facts and timestamps",
+        "Integrate AI-assisted resolution narratives using governed prompts only",
+        "Confirm all resolved violations remain historically immutable in auditResults.json",
+        "Validate full loop: detect → record → reconcile → resolve → re-audit"
+      ],
+      "output": "Auditor, Sentinel, and Mutator operate as a closed governance loop with deterministic detection, controlled reconciliation, and verifiable resolution records"
+    },
+
+    {
+      "id": "phase4",
+      "name": "Human Decision Surface & Governed Intervention UI",
+      "status": "pending",
+      "tasks": [
+        "Define resolutionModes per violationClass (automated | humanRequired | advisory)",
+        "Extend violation schema to flag humanDecisionRequired states",
+        "Design governed decision prompts for non-automatable violations",
+        "Implement Mutator pause behavior when human approval is required",
+        "Create Index page UI for reviewing active violations and resolution context",
+        "Display violation facts, impact scope, and governed options without remediation bias",
+        "Allow authorized human actor to approve, reject, defer, or escalate a resolution",
+        "Record human decisions as immutable resolution events with actor attribution",
+        "Ensure rejected resolutions do not mutate governed state",
+        "Integrate decision outcomes back into auditResults.json without overwriting history",
+        "Validate governance authority boundaries (developer vs system vs AI)",
+        "Confirm full traceability from violation → decision → outcome"
+      ],
+      "output": "A governed human-in-the-loop interface enabling authoritative decisions without compromising Codex integrity or audit traceability"
+    },
+
+    {
+      "id": "phase5",
+      "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
+      "status": "pending",
+      "tasks": [
+        "Skyebot parses email signatures and user prompts into structured contact data",
+        "Enforce Prefix Registry for ENT-, LOC-, and CNT- identifiers",
+        "Prevent duplication of entity, location, or contact records based on Codex rules",
+        "Store new contacts in JSON interim database until SQL migration",
+        "Integrate RAG retrieval from Codex and skyesoft-data.json for context alignment",
+        "Use Document Engine to generate contact confirmation documents when applicable",
+        "Ensure Parliamentarian validates all write-side actions before allowing storage"
+      ],
+      "output": "AI-powered semantic contact creation with prefix-controlled identity management"
+    },
+
+    {
+      "id": "phase6",
+      "name": "Database Migration (JSON → SQL)",
+      "status": "pending",
+      "tasks": [
+        "Design SQLite schema for entities, locations, contacts, permits, and documents",
+        "Include entity type definitions: company, jurisdiction, client, vendor",
+        "Enforce referential integrity for all links: entity → location → contact",
+        "Migrate JSON records into SQL in canonical order: entities → locations → contacts → documents",
+        "Define SQL-based lineage tracking for Document Engine outputs",
+        "Update officeBoard and backend modules to read SQL instead of JSON for metrics",
+        "Validate database as the unified SOT for structured data"
+      ],
+      "output": "Unified relational Skyesoft data layer with strict referential integrity"
+    },
+
+    {
+      "id": "phase7",
+      "name": "Document Engine Activation",
+      "status": "pending",
+      "tasks": [
+        "Activate Document Engine as the single module for all document types",
+        "Implement render pipeline for HTML/PDF creation using Tier-2 Document Standards",
+        "Bind Document Catalog entries: permitFeeReport, photoSurvey, workOrderRequest, etc.",
+        "Add document lineage indexing into documentIndex.json and SQL",
+        "Restore floating header/footer and spacing doctrine for all documents",
+        "Migrate any legacy templates into Codex-aligned templates",
+        "Confirm documents follow icon rules, spacing rules, and section semantics"
+      ],
+      "output": "Professional-grade, Codex-governed document automation via one unified engine"
+    },
+
+    {
+      "id": "phase8",
+      "name": "System Initialization Standard (SIS)",
+      "status": "pending",
+      "tasks": [
+        "Prepare clean environment for first launch (remove test and legacy JSON data)",
+        "Initialize mandatory SOT files: errorRegistry.json, repositoryAudit.json, versions.json",
+        "Run initial Merkle Integrity Sequence (MIS): merkleBuild → merkleVerify",
+        "Execute zero-state repositoryAuditor.php to confirm structural compliance",
+        "Initialize SSE system: getDynamicData.php, getVersions.php, sse.php health check",
+        "Register all active UI pages in pageRegistry.json",
+        "Run Skyebot initialization routine (Parliamentarian, prompt engine, RAG layer)",
+        "Generate System Initialization Certificate (SIC) stored under codex/meta/"
+      ],
+      "output": "Skyesoft enters canonical operational state with clean data, verified SOT, validated structure, and initialized live systems"
+    }
+  ],
+
+  "summaryTimeline": [
+    { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
+    { "phase": 1, "result": "Governance violation detection and reconciliation operational" },
+    { "phase": 2, "result": "Real-time SSE dashboard operational" },
+    { "phase": 3, "result": "Auditor, Sentinel, and Mutator governance loop active" },
+    { "phase": 4, "result": "Governed human decision surface implemented" },
+    { "phase": 5, "result": "AI-driven contact intake and automation active" },
+    { "phase": 6, "result": "SQL backbone ensures long-term structured data integrity" },
+    { "phase": 7, "result": "Document Engine unified and production-ready" },
+    { "phase": 8, "result": "System Initialization Standard complete; Skyesoft enters production readiness" }
+  ]
+}

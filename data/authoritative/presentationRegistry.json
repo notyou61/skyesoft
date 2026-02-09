@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "domain": "presentationRegistry",
+    "version": "1.0.0",
+    "lastUpdateUnix": 1770604800,
+    "description": "Centralized semantic presentation registry governing how Streamed List Domains are interpreted by the UI. This registry defines default, non-visual presentation intent by domain and node type. It contains no styling, layout, icon, or markup instructions."
+  },
+  "domains": {
+    "roadmap": {
+      "description": "Presentation semantics for the Skyesoft Rebuild Roadmap Streamed List Domain.",
+
+      "defaults": {
+        "collapsible": false,
+        "defaultExpanded": false,
+        "emphasis": "normal"
+      },
+
+      "nodeTypes": {
+        "phase": {
+          "nodeRole": "section",
+          "collapsible": true,
+          "defaultExpanded": false,
+          "emphasis": "primary",
+          "allowsChildren": true,
+          "editable": true
+        },
+
+        "task": {
+          "nodeRole": "item",
+          "collapsible": false,
+          "emphasis": "secondary",
+          "allowsChildren": false,
+          "editable": false
+        }
+      }
+    }
+  }
+}
