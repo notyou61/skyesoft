@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <title>Skyesoft Roadmap – Test View</title>
 
+<link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
+<link rel="stylesheet" href="/skyesoft/assets/css/indexPage.css">
+
+
 <style>
   body {
     font-family: Arial, Helvetica, sans-serif;
@@ -187,42 +191,68 @@
   }
 </script>
 
-<!-- Edit Phase Modal -->
-<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000;">
-  <div style="
-    background:#fff;
-    max-width:500px;
-    margin:10% auto;
-    padding:20px;
-    border-radius:6px;
-  ">
-    <h3>Edit Phase</h3>
+<!-- Edit Phase Modal (Skyesoft Page Contract) -->
+<div id="editModal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;">
 
-    <input type="hidden" id="editPhaseId">
+  <div class="bodyPanel"
+       style="
+         max-width:640px;
+         margin:8vh auto;
+         max-height:84vh;
+       ">
 
-    <label>
-      Phase Name
-      <input id="editPhaseName" type="text" style="width:100%; margin-bottom:10px;">
-    </label>
-
-    <label>
-      Status
-      <select id="editPhaseStatus" style="width:100%; margin-bottom:10px;">
-        <option value="complete">Complete</option>
-        <option value="in-progress">In Progress</option>
-        <option value="pending">Pending</option>
-      </select>
-    </label>
-
-    <label>
-      Output Summary
-      <textarea id="editPhaseOutput" rows="3" style="width:100%; margin-bottom:10px;"></textarea>
-    </label>
-
-    <div style="text-align:right;">
-      <button onclick="closeEditModal()">Cancel</button>
-      <button onclick="savePhaseEdits()">Save</button>
+    <!-- HEADER -->
+    <div class="bodyHeader">
+      <div class="bodyTitle">
+        ✏️ Edit Phase
+      </div>
     </div>
+
+    <div class="bodyDivider"></div>
+
+    <!-- BODY -->
+    <div class="bodyContent" style="align-items:flex-start;">
+      <div style="width:100%; max-width:480px;">
+
+        <input type="hidden" id="editPhaseId">
+
+        <div style="margin-bottom:14px;">
+          <label>Phase Name</label>
+          <input id="editPhaseName"
+                 type="text"
+                 class="form-control">
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label>Status</label>
+          <select id="editPhaseStatus" class="form-control">
+            <option value="complete">Complete</option>
+            <option value="in-progress">In Progress</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Output Summary</label>
+          <textarea id="editPhaseOutput"
+                    rows="4"
+                    class="form-control"
+                    style="max-width:none;"></textarea>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="bodyDivider"></div>
+
+    <!-- FOOTER -->
+    <div class="bodyFooter"
+         style="justify-content:flex-end; gap:10px;">
+      <button class="btn" onclick="closeEditModal()">Cancel</button>
+      <button class="btn" onclick="savePhaseEdits()">Save</button>
+    </div>
+
   </div>
 </div>
 
