@@ -7,31 +7,15 @@
   },
   "domains": {
     "roadmap": {
-      "description": "Presentation semantics for the Skyesoft Rebuild Roadmap Streamed List Domain.",
-
       "defaults": {
-        "collapsible": false,
-        "defaultExpanded": false,
-        "emphasis": "normal"
+        "collapsible": true,
+        "defaultExpanded": false
       },
-
       "nodeTypes": {
         "phase": {
-          "nodeRole": "section",
-          "collapsible": true,
-          "defaultExpanded": false,
-          "emphasis": "primary",
-          "allowsChildren": true,
           "editable": true
         },
-
-        "task": {
-          "nodeRole": "item",
-          "collapsible": false,
-          "emphasis": "secondary",
-          "allowsChildren": false,
-          "editable": false
-        }
+        "task": {}
       }
     }
   }

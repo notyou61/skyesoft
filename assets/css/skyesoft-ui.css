@@ -287,36 +287,34 @@ body {
   • Styling conveys hierarchy + status at a glance
 */
 
-.outline {
-    max-width: 960px;
-    padding-top: 8px;
-    font-family: Arial, Helvetica, sans-serif;
-}
+/* ---------- Bullet Neutralization (Critical) ---------- */
 
-/* ---------- Phase Node ---------- */
+/* Ensure no list semantics leak into phase rows */
+.outline,
+.outline-phase,
+.outline-phase * {
+    list-style: none;
+}
 
 .outline-phase {
-    margin-bottom: 18px;
+    display: block;
 }
 
-/* Phase header = interactive row (NO bullets) */
+/* Defensive: kill any implicit <li> behavior */
+.outline-phase::marker,
+.phase-header::marker {
+    content: none;
+}
+
 .phase-header {
     display: flex;
     align-items: center;
     gap: 8px;
 
-    font-size: 1.05em;
-    font-weight: 600;
-    line-height: 1.4;
-
-    list-style: none;          /* hard kill bullets */
     cursor: pointer;
     padding: 4px 6px;
 }
 
-.phase-header::marker {
-    content: none;             /* defensive */
-}
 
 .phase-header:hover {
     background: rgba(0,0,0,0.04);
@@ -330,16 +328,20 @@ body {
 /* ---------- Caret (Expand / Collapse) ---------- */
 
 .node-caret {
+    flex: 0 0 14px;
     width: 14px;
+
     text-align: center;
     font-size: 0.75em;
     user-select: none;
+
     opacity: 0.75;
 }
 
 .outline-phase.expanded .node-caret {
     opacity: 1;
 }
+
 
 /* ---------- Icons ---------- */
 

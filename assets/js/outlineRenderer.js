@@ -69,7 +69,10 @@ function renderPhase(node, presentation, iconMap) {
         edit.textContent = 'Edit';
         edit.addEventListener('click', e => {
             e.stopPropagation();
-            // TODO: attach modal / editor handler
+
+            if (typeof window.editPhase === 'function') {
+                window.editPhase(e, node);
+            }
         });
         header.appendChild(edit);
     }
