@@ -188,17 +188,24 @@ body {
   overflow: hidden;         /* keeps header/footer corners clean */
 }
 
-#editModal .bodyHeader,
+/* Body Header */
+#editModal .bodyHeader {
+  padding: 14px 20px;              /* match footer rhythm */
+  background: #f3f4f6;             /* same as footer */
+  border-bottom: 1px solid #ddd;   /* divider line */
+}
+/* Body Title */
+#editModal .bodyTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.3;
+}
+/* Body Content */
 #editModal .bodyContent,
+/* Body Footer */
 #editModal .bodyFooter {
   background: #fff;         /* B: force white in all sections */
   color: #000;              /* C: force black */
-}
-
-#editModal .bodyTitle {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.3;
 }
 
 /* BODY */
