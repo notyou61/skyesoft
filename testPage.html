@@ -167,6 +167,9 @@
     const phase = phaseData[phaseId];
     if (!phase) return;
 
+    document.querySelector("#editModal .bodyTitle").textContent =
+      "Edit Phase — " + phase.name;
+
     document.getElementById("editPhaseId").value = phase.id;
     document.getElementById("editPhaseName").value = phase.name;
     document.getElementById("editPhaseStatus").value = phase.status;
@@ -174,6 +177,7 @@
 
     document.getElementById("editModal").style.display = "block";
   }
+
 
   function closeEditModal() {
     document.getElementById("editModal").style.display = "none";

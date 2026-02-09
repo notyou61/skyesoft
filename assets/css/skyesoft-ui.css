@@ -177,3 +177,54 @@ body {
     }
 }
 /* #endregion */
+
+/* #region Modal Page Overrides */
+
+/* Modal container alignment */
+#editModal .bodyPanel {
+  width: 720px;
+  max-width: 90vw;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+
+/* Header should feel like index page */
+#editModal .bodyHeader {
+  padding: 14px 18px;
+}
+
+#editModal .bodyTitle {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Body layout consistency */
+#editModal .bodyContent {
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Form controls spacing */
+#editModal label {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: block;
+}
+
+#editModal .form-control {
+  width: 100%;
+}
+
+/* Footer alignment like index page */
+#editModal .bodyFooter {
+  padding: 12px 18px;
+  background: #f5f5f5;
+  border-top: 1px solid #ddd;
+}
+
+/* Button spacing */
+#editModal .bodyFooter .btn {
+  min-width: 90px;
+}
+/* #endregion */
