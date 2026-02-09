@@ -2,166 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Skyesoft Roadmap – Test View</title>
+<title>Skyesoft — Streamed List Test Surface</title>
 
 <link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
 <link rel="stylesheet" href="/skyesoft/assets/css/indexPage.css">
-
 </head>
 
 <body>
 
 <div class="roadmap">
   <div class="roadmap-header">
-    <h2>Skyesoft Roadmap</h2>
-    <a href="#" class="create-link">＋ Create Phase</a>
+    <h2 id="domainTitle">Loading…</h2>
+    <a href="#" class="create-link">＋ Create</a>
   </div>
 
-  <!-- Phase 0 -->
-  <div class="phase">
-    <div class="phase-header" onclick="toggleTasks(this)">
-      <span class="icon">📚</span>
-      Codex + Sovereignty Foundation
-      <span class="status complete">✓ Complete</span>
-      <a href="#" class="edit-link" onclick="editPhase(event, 'phase0')">Edit</a>
-    </div>
-    <ul class="tasks">
-      <li>Codex upgraded with Constitution, Meta, Tier-2 Standards, and Tier-3 Modules</li>
-      <li><span class="task-icon">•</span>Document Engine architecture ratified; legacy module fragmentation removed</li>
-      <li><span class="task-icon">•</span>Repository Standard adopted (canonical directory structure + naming enforcement)</li>
-    </ul>
-  </div>
-
-  <!-- Phase 1 -->
-  <div class="phase">
-    <div class="phase-header" onclick="toggleTasks(this)">
-      <span class="icon">📚</span>
-      Repository + UI Infrastructure Alignment
-      <span class="status in-progress">⏳ In Progress</span>
-      <a href="#" class="edit-link" onclick="editPhase(event, 'phase1')">Edit</a>
-    </div>
-    <ul class="tasks">
-      <li><span class="task-icon">•</span>Synchronize repository with canonical structure defined in Repository Standard</li>
-      <li><span class="task-icon">•</span>Enforce camelCase naming across all files and directories</li>
-    </ul>
-  </div>
-
+  <!-- Generic streamed list container -->
+  <div id="outlineContainer"></div>
 </div>
 
-<script>
-  function toggleTasks(header) {
-    const tasks = header.nextElementSibling;
-    tasks.style.display = tasks.style.display === 'block' ? 'none' : 'block';
+<script type="module">
+/* ============================================================
+ *  Generic Streamed List Surface
+ * ============================================================ */
+
+import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
+
+/* ---- Config ------------------------------------------------ */
+
+const domainKey = 'roadmap';
+const domainUrl = '/skyesoft/data/authoritative/roadmap.json';
+const presentationUrl = '/skyesoft/data/authoritative/presentationRegistry.json';
+
+/* ---- Bootstrap -------------------------------------------- */
+
+Promise.all([
+  fetch(domainUrl).then(r => r.json()),
+  fetch(presentationUrl).then(r => r.json())
+]).then(([domainData, presentationRegistry]) => {
+
+  const adapted = adaptStreamedDomain(domainKey, domainData);
+  if (!adapted) {
+    console.error('Domain adaptation failed');
+    return;
   }
 
-  const phaseData = {
-    phase0: {
-      id: "phase0",
-      name: "Codex + Sovereignty Foundation",
-      status: "complete",
-      output: "Codex structural foundation finalized — the system’s constitutional layer is stable"
-    },
-    phase1: {
-      id: "phase1",
-      name: "Repository + UI Infrastructure Alignment",
-      status: "in-progress",
-      output: "Repository, UI, Codex, RNV, and SSE pipeline aligned with Codex governance"
+  document.getElementById('domainTitle').textContent = adapted.title;
+
+  const presentation = presentationRegistry.domains[domainKey];
+  renderOutline(adapted.nodes, presentation);
+
+});
+
+/* ---- Renderer --------------------------------------------- */
+
+function renderOutline(nodes, presentation) {
+  const container = document.getElementById('outlineContainer');
+  container.innerHTML = '';
+
+  nodes.forEach(node => {
+    container.appendChild(renderNode(node, presentation));
+  });
+}
+
+function renderNode(node, presentation) {
+
+  const nodeType = node.children ? 'phase' : 'task';
+  const rules = resolvePresentation(presentation, nodeType);
+
+  const wrapper = document.createElement('div');
+  wrapper.className = nodeType;
+
+  const header = document.createElement('div');
+  header.className = `${nodeType}-header`;
+  header.textContent = node.label;
+
+  /* Status badge (if present) */
+  if (node.status) {
+    const status = document.createElement('span');
+    status.className = `status ${node.status}`;
+    status.textContent =
+      node.status === 'complete' ? '✓ Complete' :
+      node.status === 'in-progress' ? '⏳ In Progress' :
+      'Pending';
+    header.appendChild(status);
+  }
+
+  /* Edit link */
+  if (rules.editable) {
+    const edit = document.createElement('a');
+    edit.href = '#';
+    edit.className = 'edit-link';
+    edit.textContent = 'Edit';
+    edit.onclick = e => editPhase(e, node);
+    header.appendChild(edit);
+  }
+
+  wrapper.appendChild(header);
+
+  /* Children */
+  if (node.children?.length) {
+    const list = document.createElement('ul');
+    list.className = 'tasks';
+    list.style.display = rules.defaultExpanded ? 'block' : 'none';
+
+    node.children.forEach(child => {
+      const li = document.createElement('li');
+      li.textContent = child.label;
+      list.appendChild(li);
+    });
+
+    if (rules.collapsible) {
+      header.onclick = () => {
+        list.style.display =
+          list.style.display === 'block' ? 'none' : 'block';
+      };
     }
+
+    wrapper.appendChild(list);
+  }
+
+  return wrapper;
+}
+
+/* ---- Presentation Resolver -------------------------------- */
+
+function resolvePresentation(domainConfig, nodeType) {
+  return {
+    ...domainConfig.defaults,
+    ...domainConfig.nodeTypes[nodeType]
   };
+}
 
-  function editPhase(event, phaseId) {
-    event.stopPropagation();
+/* ---- Modal Wiring (unchanged contract) -------------------- */
 
-    const phase = phaseData[phaseId];
-    if (!phase) return;
+function editPhase(event, node) {
+  event.preventDefault();
+  event.stopPropagation();
 
-    document.getElementById("editModalHeaderName").textContent = phase.name;
+  document.getElementById('editModalHeaderName').textContent = node.label;
+  document.getElementById('editPhaseId').value = node.id;
+  document.getElementById('editPhaseName').value = node.label;
+  document.getElementById('editPhaseStatus').value = node.status ?? '';
+  document.getElementById('editPhaseOutput').value = '';
 
-    document.getElementById("editPhaseId").value = phase.id;
-    document.getElementById("editPhaseName").value = phase.name;
-    document.getElementById("editPhaseStatus").value = phase.status;
-    document.getElementById("editPhaseOutput").value = phase.output;
+  document.getElementById('editModal').style.display = 'block';
+}
 
-    document.getElementById("editModal").style.display = "block";
-  }
+window.closeEditModal = function () {
+  document.getElementById('editModal').style.display = 'none';
+};
 
-
-  function closeEditModal() {
-    document.getElementById("editModal").style.display = "none";
-  }
-
-  function savePhaseEdits() {
-    const id = document.getElementById("editPhaseId").value;
-
-    phaseData[id].name = document.getElementById("editPhaseName").value;
-    phaseData[id].status = document.getElementById("editPhaseStatus").value;
-    phaseData[id].output = document.getElementById("editPhaseOutput").value;
-
-    closeEditModal();
-    location.reload(); // for now — later we re-render dynamically
-  }
+window.savePhaseEdits = function () {
+  closeEditModal();
+  alert('Edit saved (test surface only)');
+};
 </script>
 
-<!-- Edit Phase Modal (Skyesoft Page Contract) -->
+<!-- =======================
+     Modal (PRESERVED)
+======================= -->
 <div id="editModal"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;">
 
-  <div class="bodyPanel"
-       style="
-         max-width:640px;
-         margin:8vh auto;
-         max-height:84vh;
-       ">
+  <div class="bodyPanel" style="max-width:640px; margin:8vh auto; max-height:84vh;">
 
-    <!-- HEADER -->
     <div class="bodyHeader">
       <div class="bodyTitle">
-        <span id="editModalHeaderAction" style="font-weight:700;">Edit Phase</span>
-        <span id="editModalHeaderSep"> — </span>
-        <span id="editModalHeaderName" style="font-weight:400;"></span>
+        <strong>Edit Phase</strong> — <span id="editModalHeaderName"></span>
       </div>
     </div>
 
     <div class="bodyDivider"></div>
 
-    <!-- BODY -->
     <div class="bodyContent">
-      <div style="width:100%; max-width:480px;">
+      <input type="hidden" id="editPhaseId">
 
-        <input type="hidden" id="editPhaseId">
+      <label>Phase Name</label>
+      <input id="editPhaseName" class="form-control">
 
-        <div style="margin-bottom:14px;">
-          <label>Phase Name</label>
-          <input id="editPhaseName"
-                 type="text"
-                 class="form-control">
-        </div>
+      <label>Status</label>
+      <select id="editPhaseStatus" class="form-control">
+        <option value="complete">Complete</option>
+        <option value="in-progress">In Progress</option>
+        <option value="pending">Pending</option>
+      </select>
 
-        <div style="margin-bottom:14px;">
-          <label>Status</label>
-          <select id="editPhaseStatus" class="form-control">
-            <option value="complete">Complete</option>
-            <option value="in-progress">In Progress</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Output Summary</label>
-          <textarea id="editPhaseOutput"
-                    rows="4"
-                    class="form-control"
-                    style="max-width:none;"></textarea>
-        </div>
-
-      </div>
+      <label>Output Summary</label>
+      <textarea id="editPhaseOutput" rows="4" class="form-control"></textarea>
     </div>
 
     <div class="bodyDivider"></div>
 
-    <!-- FOOTER -->
-    <div class="bodyFooter"
-         style="justify-content:flex-end; gap:10px;">
+    <div class="bodyFooter">
       <button class="btn" onclick="closeEditModal()">Cancel</button>
       <button class="btn" onclick="savePhaseEdits()">Save</button>
     </div>
