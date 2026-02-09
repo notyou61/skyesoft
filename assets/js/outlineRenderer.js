@@ -45,7 +45,9 @@ function renderPhase(node, presentation, iconMap) {
     }
 
     /* Phase Icon */
-    header.appendChild(renderIcon(node.iconId, iconMap));
+    header.appendChild(
+        renderIcon(node.iconId ?? 'phase', iconMap)
+    );
 
     /* Phase Title */
     const title = document.createElement('span');
