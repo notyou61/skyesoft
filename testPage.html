@@ -6,209 +6,162 @@
 
 <link rel="stylesheet" href="/skyesoft/assets/css/skyesoft-ui.css">
 <link rel="stylesheet" href="/skyesoft/assets/css/indexPage.css">
+
 </head>
 
 <body>
 
 <div class="roadmap">
   <div class="roadmap-header">
-    <h2 id="roadmapTitle">Skyesoft Roadmap</h2>
+    <h2>Skyesoft Roadmap</h2>
     <a href="#" class="create-link">＋ Create Phase</a>
   </div>
 
-  <!-- Outline rendered here -->
-  <div id="roadmapContainer"></div>
+  <!-- Phase 0 -->
+  <div class="phase">
+    <div class="phase-header" onclick="toggleTasks(this)">
+      <span class="icon">📚</span>
+      Codex + Sovereignty Foundation
+      <span class="status complete">✓ Complete</span>
+      <a href="#" class="edit-link" onclick="editPhase(event, 'phase0')">Edit</a>
+    </div>
+    <ul class="tasks">
+      <li>Codex upgraded with Constitution, Meta, Tier-2 Standards, and Tier-3 Modules</li>
+      <li><span class="task-icon">•</span>Document Engine architecture ratified; legacy module fragmentation removed</li>
+      <li><span class="task-icon">•</span>Repository Standard adopted (canonical directory structure + naming enforcement)</li>
+    </ul>
+  </div>
+
+  <!-- Phase 1 -->
+  <div class="phase">
+    <div class="phase-header" onclick="toggleTasks(this)">
+      <span class="icon">📚</span>
+      Repository + UI Infrastructure Alignment
+      <span class="status in-progress">⏳ In Progress</span>
+      <a href="#" class="edit-link" onclick="editPhase(event, 'phase1')">Edit</a>
+    </div>
+    <ul class="tasks">
+      <li><span class="task-icon">•</span>Synchronize repository with canonical structure defined in Repository Standard</li>
+      <li><span class="task-icon">•</span>Enforce camelCase naming across all files and directories</li>
+    </ul>
+  </div>
+
 </div>
 
-<!-- =========================================================
-     Script (Tier-2 compliant)
-========================================================== -->
-<script type="module">
+<script>
+  function toggleTasks(header) {
+    const tasks = header.nextElementSibling;
+    tasks.style.display = tasks.style.display === 'block' ? 'none' : 'block';
+  }
 
-/* ----------------------------------------
-   Imports
------------------------------------------ */
-import {
-  adaptStreamedDomain
-} from "/skyesoft/assets/js/domainAdapter.js";
-
-/* ----------------------------------------
-   Load authoritative data + registry
------------------------------------------ */
-Promise.all([
-  fetch("/skyesoft/data/authoritative/roadmap.json").then(r => r.json()),
-  fetch("/skyesoft/data/authoritative/presentationRegistry.json").then(r => r.json())
-]).then(([roadmapData, presentationRegistry]) => {
-
-  const outline = adaptStreamedDomain("roadmap", roadmapData);
-  if (!outline) return;
-
-  document.getElementById("roadmapTitle").textContent = outline.title;
-
-  const domainPresentation =
-    presentationRegistry.domains.roadmap;
-
-  renderOutline(outline.nodes, domainPresentation);
-});
-
-/* ----------------------------------------
-   Presentation resolver
------------------------------------------ */
-function resolvePresentation(domainConfig, nodeType, nodeMeta = {}) {
-  return {
-    ...domainConfig.defaults,
-    ...domainConfig.nodeTypes[nodeType],
-    ...(nodeMeta.presentation || {})
+  const phaseData = {
+    phase0: {
+      id: "phase0",
+      name: "Codex + Sovereignty Foundation",
+      status: "complete",
+      output: "Codex structural foundation finalized — the system’s constitutional layer is stable"
+    },
+    phase1: {
+      id: "phase1",
+      name: "Repository + UI Infrastructure Alignment",
+      status: "in-progress",
+      output: "Repository, UI, Codex, RNV, and SSE pipeline aligned with Codex governance"
+    }
   };
-}
 
-/* ----------------------------------------
-   Generic outline renderer
------------------------------------------ */
-function renderOutline(nodes, domainPresentation) {
-  const container = document.getElementById("roadmapContainer");
-  container.innerHTML = "";
+  function editPhase(event, phaseId) {
+    event.stopPropagation();
 
-  nodes.forEach(node =>
-    renderNode(node, domainPresentation, container)
-  );
-}
+    const phase = phaseData[phaseId];
+    if (!phase) return;
 
-/* ----------------------------------------
-   Recursive node renderer (Workflowy-style)
------------------------------------------ */
-function renderNode(node, domainPresentation, parentEl) {
+    document.getElementById("editModalHeaderName").textContent = phase.name;
 
-  const nodeType =
-    node.children && node.children.length
-      ? "phase"
-      : "task";
+    document.getElementById("editPhaseId").value = phase.id;
+    document.getElementById("editPhaseName").value = phase.name;
+    document.getElementById("editPhaseStatus").value = phase.status;
+    document.getElementById("editPhaseOutput").value = phase.output;
 
-  const presentation =
-    resolvePresentation(domainPresentation, nodeType);
-
-  const wrapper = document.createElement("div");
-  wrapper.className = nodeType;
-
-  const header = document.createElement("div");
-  header.className = `${nodeType}-header`;
-  header.textContent = node.label;
-
-  /* Status (phase only) */
-  if (node.status) {
-    const status = document.createElement("span");
-    status.className = `status ${node.status}`;
-    status.textContent =
-      node.status === "complete"
-        ? "✓ Complete"
-        : node.status === "in-progress"
-        ? "⏳ In Progress"
-        : "Pending";
-    header.appendChild(status);
+    document.getElementById("editModal").style.display = "block";
   }
 
-  /* Edit action */
-  if (presentation.editable) {
-    const edit = document.createElement("a");
-    edit.href = "#";
-    edit.className = "edit-link";
-    edit.textContent = "Edit";
-    edit.onclick = e => editPhase(e, node);
-    header.appendChild(edit);
+
+  function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
   }
 
-  wrapper.appendChild(header);
+  function savePhaseEdits() {
+    const id = document.getElementById("editPhaseId").value;
 
-  /* Children */
-  if (presentation.collapsible && node.children?.length) {
+    phaseData[id].name = document.getElementById("editPhaseName").value;
+    phaseData[id].status = document.getElementById("editPhaseStatus").value;
+    phaseData[id].output = document.getElementById("editPhaseOutput").value;
 
-    const list = document.createElement("ul");
-    list.style.display =
-      presentation.defaultExpanded ? "block" : "none";
-
-    header.onclick = () => {
-      list.style.display =
-        list.style.display === "block" ? "none" : "block";
-    };
-
-    node.children.forEach(child =>
-      renderNode(child, domainPresentation, list)
-    );
-
-    wrapper.appendChild(list);
+    closeEditModal();
+    location.reload(); // for now — later we re-render dynamically
   }
-
-  parentEl.appendChild(wrapper);
-}
-
-/* ----------------------------------------
-   Modal wiring (preserved)
------------------------------------------ */
-function editPhase(event, node) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  document.getElementById("editModalHeaderName").textContent =
-    node.label;
-
-  document.getElementById("editPhaseId").value = node.id;
-  document.getElementById("editPhaseName").value = node.label;
-  document.getElementById("editPhaseStatus").value = node.status ?? "";
-  document.getElementById("editPhaseOutput").value = "";
-
-  document.getElementById("editModal").style.display = "block";
-}
-
-window.closeEditModal = function () {
-  document.getElementById("editModal").style.display = "none";
-};
-
-window.savePhaseEdits = function () {
-  closeEditModal();
-  alert("Edit saved (test mode only)");
-};
-
 </script>
 
-<!-- =========================================================
-     Edit Phase Modal (unchanged, validated)
-========================================================== -->
+<!-- Edit Phase Modal (Skyesoft Page Contract) -->
 <div id="editModal"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;">
-  <div class="bodyPanel"
-       style="max-width:640px; margin:8vh auto; max-height:84vh;">
 
+  <div class="bodyPanel"
+       style="
+         max-width:640px;
+         margin:8vh auto;
+         max-height:84vh;
+       ">
+
+    <!-- HEADER -->
     <div class="bodyHeader">
       <div class="bodyTitle">
-        <strong>Edit Phase</strong> —
-        <span id="editModalHeaderName"></span>
+        <span id="editModalHeaderAction" style="font-weight:700;">Edit Phase</span>
+        <span id="editModalHeaderSep"> — </span>
+        <span id="editModalHeaderName" style="font-weight:400;"></span>
       </div>
     </div>
 
     <div class="bodyDivider"></div>
 
+    <!-- BODY -->
     <div class="bodyContent">
-      <input type="hidden" id="editPhaseId">
+      <div style="width:100%; max-width:480px;">
 
-      <label>Phase Name</label>
-      <input id="editPhaseName" class="form-control">
+        <input type="hidden" id="editPhaseId">
 
-      <label>Status</label>
-      <select id="editPhaseStatus" class="form-control">
-        <option value="complete">Complete</option>
-        <option value="in-progress">In Progress</option>
-        <option value="pending">Pending</option>
-      </select>
+        <div style="margin-bottom:14px;">
+          <label>Phase Name</label>
+          <input id="editPhaseName"
+                 type="text"
+                 class="form-control">
+        </div>
 
-      <label>Output Summary</label>
-      <textarea id="editPhaseOutput"
-                rows="4"
-                class="form-control"></textarea>
+        <div style="margin-bottom:14px;">
+          <label>Status</label>
+          <select id="editPhaseStatus" class="form-control">
+            <option value="complete">Complete</option>
+            <option value="in-progress">In Progress</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Output Summary</label>
+          <textarea id="editPhaseOutput"
+                    rows="4"
+                    class="form-control"
+                    style="max-width:none;"></textarea>
+        </div>
+
+      </div>
     </div>
 
     <div class="bodyDivider"></div>
 
-    <div class="bodyFooter">
+    <!-- FOOTER -->
+    <div class="bodyFooter"
+         style="justify-content:flex-end; gap:10px;">
       <button class="btn" onclick="closeEditModal()">Cancel</button>
       <button class="btn" onclick="savePhaseEdits()">Save</button>
     </div>
