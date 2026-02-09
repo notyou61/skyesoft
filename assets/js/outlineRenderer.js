@@ -1,159 +1,130 @@
 /* =====================================================================
  *  Skyesoft — outlineRenderer.js
- *  Tier-3 UI Rendering Layer
+ *  Tier-2 UI Infrastructure
  *
  *  Role:
- *   • Render an adapted outline model into the DOM
+ *   • Render an adapted outline model to the DOM
  *
  *  Guarantees:
  *   • Domain-agnostic
  *   • Stateless
- *   • Pure rendering (no data mutation)
- *   • No authoritative assumptions
- *
- *  Inputs:
- *   • Adapted outline (from domainAdapter)
- *   • Presentation registry
- *   • Icon map
- *
- *  This is the ONLY place where:
- *   • icons appear
- *   • hierarchy appears
- *   • collapsibility appears
+ *   • No data mutation
+ *   • Presentation-registry governed
  * ===================================================================== */
 
-/* #region PUBLIC API */
-
-/**
- * Render a semantic outline into a container.
- *
- * @param {HTMLElement} container
- * @param {{ title: string, nodes: Array }} outline
- * @param {object} presentationRegistry
- * @param {object} iconMap
- */
-export function renderOutline(container, outline, presentationRegistry, iconMap) {
-    if (!container || !outline) return;
+export function renderOutline(
+    container,
+    adaptedDomain,
+    presentationRegistry,
+    iconMap
+) {
+    if (!container || !adaptedDomain) return;
 
     container.innerHTML = '';
 
-    if (outline.title) {
-        const titleEl = document.createElement('h2');
-        titleEl.textContent = outline.title;
-        container.appendChild(titleEl);
-    }
+    const domainKey = adaptedDomain.domainKey ?? 'roadmap';
+    const domainPresentation = presentationRegistry.domains[domainKey];
 
-    const domainConfig =
-        presentationRegistry?.domains?.roadmap ?? null;
-
-    outline.nodes.forEach(node => {
+    adaptedDomain.nodes.forEach(node => {
         container.appendChild(
-            renderNode(node, domainConfig, iconMap)
+            renderNode(node, domainPresentation, iconMap)
         );
     });
 }
 
-/* #endregion */
+/* ------------------------------------------------------------------ */
 
+function renderNode(node, presentation, iconMap) {
 
-/* #region NODE RENDERING */
-
-function renderNode(node, domainConfig, iconMap, depth = 0) {
-    const nodeTypeConfig =
-        domainConfig?.nodeTypes?.[node.type] ?? {};
-
-    const resolved = {
-        collapsible: nodeTypeConfig.collapsible ?? false,
-        defaultExpanded: nodeTypeConfig.defaultExpanded ?? true,
-        editable: nodeTypeConfig.editable ?? false
-    };
+    const nodeType = node.type;
+    const rules = resolvePresentation(presentation, nodeType);
 
     const wrapper = document.createElement('div');
-    wrapper.className = `outline-node depth-${depth}`;
+    wrapper.className = `outline-node ${nodeType}`;
 
-    /* Header row */
+    /* Header */
     const header = document.createElement('div');
     header.className = 'outline-header';
 
     /* Icon */
-    if (node.iconId != null && iconMap[node.iconId]) {
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'outline-icon';
-        iconSpan.textContent = iconMap[node.iconId];
-        header.appendChild(iconSpan);
+    if (node.iconId && iconMap[node.iconId]) {
+        const icon = document.createElement('span');
+        icon.className = 'outline-icon';
+        icon.textContent = iconMap[node.iconId];
+        header.appendChild(icon);
     }
 
     /* Label */
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'outline-label';
-    labelSpan.textContent = node.label;
-    header.appendChild(labelSpan);
+    const label = document.createElement('span');
+    label.className = 'outline-label';
+    label.textContent = node.label;
+    header.appendChild(label);
 
     /* Status */
     if (node.status) {
-        const statusSpan = document.createElement('span');
-        statusSpan.className = `outline-status ${node.status}`;
-        statusSpan.textContent = formatStatus(node.status);
-        header.appendChild(statusSpan);
+        const status = document.createElement('span');
+        status.className = `status ${node.status}`;
+        status.textContent =
+            node.status === 'complete' ? '✓ Complete' :
+            node.status === 'in-progress' ? '⏳ In Progress' :
+            'Pending';
+        header.appendChild(status);
     }
 
     /* Edit */
-    if (resolved.editable) {
+    if (rules.editable && nodeType === 'phase') {
         const edit = document.createElement('a');
         edit.href = '#';
         edit.className = 'edit-link';
         edit.textContent = 'Edit';
-        edit.onclick = e => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.editPhase?.(e, node);
-        };
+        edit.onclick = e => window.editPhase(e, node);
         header.appendChild(edit);
     }
 
     wrapper.appendChild(header);
 
     /* Children */
-    if (Array.isArray(node.children) && node.children.length) {
-        const childrenContainer = document.createElement('div');
-        childrenContainer.className = 'outline-children';
-        childrenContainer.style.display =
-            resolved.defaultExpanded ? 'block' : 'none';
+    if (node.children?.length) {
+        const list = document.createElement('ul');
+        list.className = 'outline-children';
+        list.style.display = rules.defaultExpanded ? 'block' : 'none';
 
         node.children.forEach(child => {
-            childrenContainer.appendChild(
-                renderNode(child, domainConfig, iconMap, depth + 1)
-            );
+            const li = document.createElement('li');
+            li.className = 'outline-child';
+
+            if (child.iconId && iconMap[child.iconId]) {
+                const icon = document.createElement('span');
+                icon.className = 'outline-icon';
+                icon.textContent = iconMap[child.iconId];
+                li.appendChild(icon);
+            }
+
+            const text = document.createElement('span');
+            text.textContent = child.label;
+            li.appendChild(text);
+
+            list.appendChild(li);
         });
 
-        if (resolved.collapsible) {
-            header.style.cursor = 'pointer';
+        if (rules.collapsible) {
             header.onclick = () => {
-                childrenContainer.style.display =
-                    childrenContainer.style.display === 'none'
-                        ? 'block'
-                        : 'none';
+                list.style.display =
+                    list.style.display === 'block' ? 'none' : 'block';
             };
         }
 
-        wrapper.appendChild(childrenContainer);
+        wrapper.appendChild(list);
     }
 
     return wrapper;
 }
 
-/* #endregion */
+/* ------------------------------------------------------------------ */
 
-
-/* #region HELPERS */
-
-function formatStatus(status) {
-    switch (status) {
-        case 'complete': return '✓ Complete';
-        case 'in-progress': return '⏳ In Progress';
-        case 'pending': return 'Pending';
-        default: return status;
-    }
+function resolvePresentation(domainConfig, nodeType) {
+    return {
+        ...domainConfig.defaults,
+        ...domainConfig.nodeTypes[nodeType]
+    };
 }
-
-/* #endregion */

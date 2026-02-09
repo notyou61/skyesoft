@@ -118,9 +118,11 @@ export function adaptStreamedDomain(domainKey, domainData) {
         .filter(Boolean); // defensive: drop invalid nodes
 
     return {
+        domainKey,
         title: schema.title(domainData),
-        nodes
+        nodes: rootItems.map(item => schema.mapNode(item, schema))
     };
+
 }
 
 /* #endregion */
