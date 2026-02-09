@@ -23,27 +23,59 @@
 /**
  * Declarative schema registry for streamed list domains.
  * Each schema provides mapping instructions only.
+ *
+ * Icon policy:
+ *  • Adapter may emit iconId values (numeric) as semantic hints
+ *  • Rendering resolves iconId → glyph via iconMap.json
+ *  • No styling, no markup, no emoji hardcoding here
  */
 const streamedDomainSchemas = {
 
     roadmap: {
+
+        // Domain title
         title: (domain) =>
             domain?.meta?.title ?? 'Roadmap',
 
+        // Root collection
         root: (domain) =>
             domain?.phases ?? [],
 
-        mapNode: (phase) => ({
+        // Node type mapping (stable + scalable)
+        nodeTypes: {
+            phase: {
+                type: 'phase',
+                iconId: 20 // Roadmap / list domain icon (resolved via iconMap)
+            },
+            task: {
+                type: 'task',
+                iconId: 7 // Task / bullet icon (resolved via iconMap)
+            }
+        },
+
+        // Phase → outline node
+        mapNode: (phase, schema) => ({
+
             id: phase.id,
+            type: schema.nodeTypes.phase.type,
+            iconId: schema.nodeTypes.phase.iconId,
+
             label: phase.name,
             status: phase.status,
+
+            // Children (tasks)
             children: (phase.tasks ?? []).map((task, idx) => ({
+
                 id: `${phase.id}:task:${idx}`,
+                type: schema.nodeTypes.task.type,
+                iconId: schema.nodeTypes.task.iconId,
+
                 label: task
             }))
         })
     }
 
+    // 🔒 Future domains register here without touching adapter logic.
 };
 
 /* #endregion */
@@ -66,9 +98,10 @@ export function adaptStreamedDomain(domainKey, domainData) {
     const rootItems = schema.root(domainData);
     if (!Array.isArray(rootItems)) return null;
 
+    // Adapt
     return {
         title: schema.title(domainData),
-        nodes: rootItems.map(schema.mapNode)
+        nodes: rootItems.map(item => schema.mapNode(item, schema))
     };
 }
 
