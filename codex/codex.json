@@ -3075,6 +3075,36 @@
                             "data": {
                                 "type": "object",
                                 "description": "Domain-specific data payload. Structure is governed by the domain, not this standard."
+                            },
+                            "meta": {
+                                "type": "object",
+                                "description": "Declarative, presentation-related metadata used by the UI renderer to ensure consistent, non-arbitrary display behavior. This metadata conveys semantic intent only and does not contain styling, layout, or markup instructions.",
+                                "properties": {
+                                    "presentation": {
+                                    "type": "object",
+                                    "description": "ARIA-like semantic hints that inform UI behavior and emphasis without defining visual implementation.",
+                                    "properties": {
+                                        "nodeRole": {
+                                        "type": "string",
+                                        "description": "Semantic role of the node within the list (e.g., section, item, container)."
+                                        },
+                                        "emphasis": {
+                                        "type": "string",
+                                        "description": "Relative semantic importance of the node (e.g., primary, secondary, muted)."
+                                        },
+                                        "collapsible": {
+                                        "type": "boolean",
+                                        "description": "Indicates whether the node may be expanded or collapsed by the UI."
+                                        },
+                                        "defaultExpanded": {
+                                        "type": "boolean",
+                                        "description": "Indicates the default expansion state when the list is first rendered."
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                    }
+                                },
+                                "additionalProperties": false
                             }
                             },
                             "required": ["id", "type", "label"],
@@ -3104,7 +3134,10 @@
                     "The Roadmap is the canonical reference implementation of a Streamed List Domain.",
                     "Future domains such as entities, locations, contacts, permits, violations, and documents must conform to this standard.",
                     "Prompt recording related to list display or edits may be governed separately under the Prompt Ledger Architecture.",
-                    "This standard intentionally separates authoritative state from UI visibility and navigation concerns."
+                    "This standard intentionally separates authoritative state from UI visibility and navigation concerns.",
+                    "Nodes may optionally include declarative presentation metadata to guide consistent UI behavior. Such metadata conveys semantic intent only and must not encode styling, layout, icons, or markup.",
+                    "Presentation metadata is optional and may be safely ignored by renderers without affecting authoritative state or data integrity.",
+                    "The `type` field defines domain semantics, while `meta.presentation.nodeRole` defines UI interpretation and may differ from domain classification."
                 ]
             },
             "promptLedgerArchitecture": {

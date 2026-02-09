@@ -178,39 +178,62 @@ body {
 }
 /* #endregion */
 
-/* #region Modal Page Overrides */
+/* #region Modal Page */
 
-/* Modal — Step A/B/C */
+/* ============================================================
+   MODAL PAGE CONTRACT
+   Mirrors Page Layout: Header • Body • Footer
+   Canonical Skyesoft Modal Styling
+   ============================================================ */
+
+/* Modal Overlay */
+#editModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+}
+
+/* Modal Panel */
 #editModal .bodyPanel {
-  border-radius: 10px;      /* A: rounded corners */
-  background: #fff;         /* B: white panel */
-  color: #000;              /* C: black text */
-  overflow: hidden;         /* keeps header/footer corners clean */
+  max-width: 640px;
+  max-height: 84vh;
+  margin: 8vh auto;
+
+  background: #fff;
+  color: #000;
+
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-/* Body Header */
+/* ============================================================
+   HEADER
+   ============================================================ */
+
 #editModal .bodyHeader {
-  padding: 14px 20px;              /* match footer rhythm */
-  background: #f3f4f6;             /* same as footer */
-  border-bottom: 1px solid #ddd;   /* divider line */
+  padding: 14px 20px;
+  background: #f3f4f6;
+  border-bottom: 1px solid #ddd;
 }
-/* Body Title */
+
 #editModal .bodyTitle {
   margin: 0;
   font-size: 18px;
   line-height: 1.3;
-}
-/* Body Content */
-#editModal .bodyContent,
-/* Body Footer */
-#editModal .bodyFooter {
-  background: #fff;         /* B: force white in all sections */
-  color: #000;              /* C: force black */
+  font-weight: 400; /* base weight; bold applied selectively */
 }
 
-/* BODY */
+/* ============================================================
+   BODY
+   ============================================================ */
+
 #editModal .bodyContent {
   padding: 24px 20px;
+  background: #fff;
+  color: #000;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -231,10 +254,15 @@ body {
   margin-bottom: 18px;
 }
 
-/* FOOTER */
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
 #editModal .bodyFooter {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+
   padding: 14px 20px;
   background: #f3f4f6;
   border-top: 1px solid #ddd;
@@ -243,4 +271,8 @@ body {
 #editModal .bodyFooter .btn {
   min-width: 100px;
 }
-/* #endregion */
+
+/* ============================================================
+   END MODAL PAGE CONTRACT
+   ============================================================ */
+   /* #endregion */
