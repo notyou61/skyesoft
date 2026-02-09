@@ -167,8 +167,8 @@
     const phase = phaseData[phaseId];
     if (!phase) return;
 
-    document.querySelector("#editModal .bodyTitle").textContent =
-      "Edit Phase — " + phase.name;
+  document.querySelector("#editModal .bodyTitle").innerHTML =
+    'Edit Phase<br><span style="font-weight:400;color:#555;">' + phase.name + '</span>';
 
     document.getElementById("editPhaseId").value = phase.id;
     document.getElementById("editPhaseName").value = phase.name;
@@ -216,7 +216,7 @@
     <div class="bodyDivider"></div>
 
     <!-- BODY -->
-    <div class="bodyContent" style="align-items:flex-start;">
+    <div class="bodyContent">
       <div style="width:100%; max-width:480px;">
 
         <input type="hidden" id="editPhaseId">
