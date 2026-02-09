@@ -12,126 +12,176 @@
 
 <div class="roadmap">
   <div class="roadmap-header">
-    <h2>Skyesoft Roadmap</h2>
+    <h2 id="roadmapTitle">Skyesoft Roadmap</h2>
     <a href="#" class="create-link">＋ Create Phase</a>
   </div>
 
-  <!-- Roadmap rendered here -->
+  <!-- Outline rendered here -->
   <div id="roadmapContainer"></div>
 </div>
 
-<script>
+<!-- =========================================================
+     Script (Tier-2 compliant)
+========================================================== -->
+<script type="module">
+
 /* ----------------------------------------
-   Load authoritative roadmap + presentation
+   Imports
+----------------------------------------- */
+import {
+  adaptStreamedDomain
+} from "/skyesoft/assets/js/domainAdapter.js";
+
+/* ----------------------------------------
+   Load authoritative data + registry
 ----------------------------------------- */
 Promise.all([
   fetch("/skyesoft/data/authoritative/roadmap.json").then(r => r.json()),
-  fetch("/skyesoft/data/authoritative/presentation.json").then(r => r.json())
-]).then(([roadmap, presentation]) => {
-  renderRoadmap(roadmap, presentation);
+  fetch("/skyesoft/data/authoritative/presentationRegistry.json").then(r => r.json())
+]).then(([roadmapData, presentationRegistry]) => {
+
+  const outline = adaptStreamedDomain("roadmap", roadmapData);
+  if (!outline) return;
+
+  document.getElementById("roadmapTitle").textContent = outline.title;
+
+  const domainPresentation =
+    presentationRegistry.domains.roadmap;
+
+  renderOutline(outline.nodes, domainPresentation);
 });
 
 /* ----------------------------------------
-   Renderer
+   Presentation resolver
 ----------------------------------------- */
-function renderRoadmap(roadmap, presentation) {
-  const container = document.getElementById("roadmapContainer");
-  container.innerHTML = "";
-
-  const domainConfig = presentation.domains.roadmap;
-  const phasePresentation = domainConfig.nodeTypes.phase;
-  const taskPresentation = domainConfig.nodeTypes.task;
-
-  roadmap.phases.forEach(phase => {
-    const phaseEl = document.createElement("div");
-    phaseEl.className = "phase";
-
-    /* Phase header */
-    const header = document.createElement("div");
-    header.className = "phase-header";
-    header.textContent = phase.name;
-
-    if (phasePresentation.collapsible) {
-      header.onclick = () => {
-        tasksEl.style.display =
-          tasksEl.style.display === "block" ? "none" : "block";
-      };
-    }
-
-    /* Status */
-    const status = document.createElement("span");
-    status.className = `status ${phase.status}`;
-    status.textContent =
-      phase.status === "complete"
-        ? "✓ Complete"
-        : phase.status === "in-progress"
-        ? "⏳ In Progress"
-        : "Pending";
-    header.appendChild(status);
-
-    /* Edit link */
-    if (phasePresentation.editable) {
-      const edit = document.createElement("a");
-      edit.href = "#";
-      edit.className = "edit-link";
-      edit.textContent = "Edit";
-      edit.onclick = e => editPhase(e, phase);
-      header.appendChild(edit);
-    }
-
-    phaseEl.appendChild(header);
-
-    /* Tasks */
-    const tasksEl = document.createElement("ul");
-    tasksEl.className = "tasks";
-    tasksEl.style.display = phasePresentation.defaultExpanded ? "block" : "none";
-
-    phase.tasks.forEach(task => {
-      const li = document.createElement("li");
-      li.textContent = task;
-      tasksEl.appendChild(li);
-    });
-
-    phaseEl.appendChild(tasksEl);
-    container.appendChild(phaseEl);
-  });
+function resolvePresentation(domainConfig, nodeType, nodeMeta = {}) {
+  return {
+    ...domainConfig.defaults,
+    ...domainConfig.nodeTypes[nodeType],
+    ...(nodeMeta.presentation || {})
+  };
 }
 
 /* ----------------------------------------
-   Modal wiring (unchanged behavior)
+   Generic outline renderer
 ----------------------------------------- */
-function editPhase(event, phase) {
+function renderOutline(nodes, domainPresentation) {
+  const container = document.getElementById("roadmapContainer");
+  container.innerHTML = "";
+
+  nodes.forEach(node =>
+    renderNode(node, domainPresentation, container)
+  );
+}
+
+/* ----------------------------------------
+   Recursive node renderer (Workflowy-style)
+----------------------------------------- */
+function renderNode(node, domainPresentation, parentEl) {
+
+  const nodeType =
+    node.children && node.children.length
+      ? "phase"
+      : "task";
+
+  const presentation =
+    resolvePresentation(domainPresentation, nodeType);
+
+  const wrapper = document.createElement("div");
+  wrapper.className = nodeType;
+
+  const header = document.createElement("div");
+  header.className = `${nodeType}-header`;
+  header.textContent = node.label;
+
+  /* Status (phase only) */
+  if (node.status) {
+    const status = document.createElement("span");
+    status.className = `status ${node.status}`;
+    status.textContent =
+      node.status === "complete"
+        ? "✓ Complete"
+        : node.status === "in-progress"
+        ? "⏳ In Progress"
+        : "Pending";
+    header.appendChild(status);
+  }
+
+  /* Edit action */
+  if (presentation.editable) {
+    const edit = document.createElement("a");
+    edit.href = "#";
+    edit.className = "edit-link";
+    edit.textContent = "Edit";
+    edit.onclick = e => editPhase(e, node);
+    header.appendChild(edit);
+  }
+
+  wrapper.appendChild(header);
+
+  /* Children */
+  if (presentation.collapsible && node.children?.length) {
+
+    const list = document.createElement("ul");
+    list.style.display =
+      presentation.defaultExpanded ? "block" : "none";
+
+    header.onclick = () => {
+      list.style.display =
+        list.style.display === "block" ? "none" : "block";
+    };
+
+    node.children.forEach(child =>
+      renderNode(child, domainPresentation, list)
+    );
+
+    wrapper.appendChild(list);
+  }
+
+  parentEl.appendChild(wrapper);
+}
+
+/* ----------------------------------------
+   Modal wiring (preserved)
+----------------------------------------- */
+function editPhase(event, node) {
   event.preventDefault();
   event.stopPropagation();
 
-  document.getElementById("editModalHeaderName").textContent = phase.name;
-  document.getElementById("editPhaseId").value = phase.id;
-  document.getElementById("editPhaseName").value = phase.name;
-  document.getElementById("editPhaseStatus").value = phase.status;
-  document.getElementById("editPhaseOutput").value = phase.output;
+  document.getElementById("editModalHeaderName").textContent =
+    node.label;
+
+  document.getElementById("editPhaseId").value = node.id;
+  document.getElementById("editPhaseName").value = node.label;
+  document.getElementById("editPhaseStatus").value = node.status ?? "";
+  document.getElementById("editPhaseOutput").value = "";
 
   document.getElementById("editModal").style.display = "block";
 }
 
-function closeEditModal() {
+window.closeEditModal = function () {
   document.getElementById("editModal").style.display = "none";
-}
+};
 
-function savePhaseEdits() {
-  // Test page only — real edits will be governed commands + SSE
+window.savePhaseEdits = function () {
   closeEditModal();
   alert("Edit saved (test mode only)");
-}
+};
+
 </script>
 
-<!-- Edit Phase Modal (unchanged, already validated) -->
+<!-- =========================================================
+     Edit Phase Modal (unchanged, validated)
+========================================================== -->
 <div id="editModal"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;">
-  <div class="bodyPanel" style="max-width:640px; margin:8vh auto; max-height:84vh;">
+  <div class="bodyPanel"
+       style="max-width:640px; margin:8vh auto; max-height:84vh;">
 
     <div class="bodyHeader">
       <div class="bodyTitle">
-        <strong>Edit Phase</strong> — <span id="editModalHeaderName"></span>
+        <strong>Edit Phase</strong> —
+        <span id="editModalHeaderName"></span>
       </div>
     </div>
 
@@ -151,7 +201,9 @@ function savePhaseEdits() {
       </select>
 
       <label>Output Summary</label>
-      <textarea id="editPhaseOutput" rows="4" class="form-control"></textarea>
+      <textarea id="editPhaseOutput"
+                rows="4"
+                class="form-control"></textarea>
     </div>
 
     <div class="bodyDivider"></div>
