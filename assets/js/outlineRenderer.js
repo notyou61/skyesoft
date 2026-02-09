@@ -122,9 +122,13 @@ function renderPhase(node, presentation, iconMap) {
 
 /* #region Utilities */
 function renderIcon(iconId, iconMap) {
+    if (!iconId || !iconMap?.[iconId]) {
+        return document.createElement('span'); // empty placeholder
+    }
+
     const span = document.createElement('span');
     span.className = 'node-icon';
-    span.textContent = iconMap?.[iconId] ?? '•';
+    span.textContent = iconMap[iconId];
     return span;
 }
 
