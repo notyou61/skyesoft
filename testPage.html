@@ -89,6 +89,11 @@
   .task-icon {
     margin-right: 6px;
   }
+
+  .phase-header:hover {
+  background:#f2f4f8;
+}
+
 </style>
 </head>
 
@@ -137,13 +142,89 @@
     tasks.style.display = tasks.style.display === 'block' ? 'none' : 'block';
   }
 
+  const phaseData = {
+    phase0: {
+      id: "phase0",
+      name: "Codex + Sovereignty Foundation",
+      status: "complete",
+      output: "Codex structural foundation finalized — the system’s constitutional layer is stable"
+    },
+    phase1: {
+      id: "phase1",
+      name: "Repository + UI Infrastructure Alignment",
+      status: "in-progress",
+      output: "Repository, UI, Codex, RNV, and SSE pipeline aligned with Codex governance"
+    }
+  };
+
   function editPhase(event, phaseId) {
     event.stopPropagation();
-    alert('Edit phase: ' + phaseId);
-    // Later:
-    // openEditModal(phaseId)
+
+    const phase = phaseData[phaseId];
+    if (!phase) return;
+
+    document.getElementById("editPhaseId").value = phase.id;
+    document.getElementById("editPhaseName").value = phase.name;
+    document.getElementById("editPhaseStatus").value = phase.status;
+    document.getElementById("editPhaseOutput").value = phase.output;
+
+    document.getElementById("editModal").style.display = "block";
+  }
+
+  function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
+  }
+
+  function savePhaseEdits() {
+    const id = document.getElementById("editPhaseId").value;
+
+    phaseData[id].name = document.getElementById("editPhaseName").value;
+    phaseData[id].status = document.getElementById("editPhaseStatus").value;
+    phaseData[id].output = document.getElementById("editPhaseOutput").value;
+
+    closeEditModal();
+    location.reload(); // for now — later we re-render dynamically
   }
 </script>
+
+<!-- Edit Phase Modal -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000;">
+  <div style="
+    background:#fff;
+    max-width:500px;
+    margin:10% auto;
+    padding:20px;
+    border-radius:6px;
+  ">
+    <h3>Edit Phase</h3>
+
+    <input type="hidden" id="editPhaseId">
+
+    <label>
+      Phase Name
+      <input id="editPhaseName" type="text" style="width:100%; margin-bottom:10px;">
+    </label>
+
+    <label>
+      Status
+      <select id="editPhaseStatus" style="width:100%; margin-bottom:10px;">
+        <option value="complete">Complete</option>
+        <option value="in-progress">In Progress</option>
+        <option value="pending">Pending</option>
+      </select>
+    </label>
+
+    <label>
+      Output Summary
+      <textarea id="editPhaseOutput" rows="3" style="width:100%; margin-bottom:10px;"></textarea>
+    </label>
+
+    <div style="text-align:right;">
+      <button onclick="closeEditModal()">Cancel</button>
+      <button onclick="savePhaseEdits()">Save</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
