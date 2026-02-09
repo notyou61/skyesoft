@@ -373,4 +373,27 @@ body {
     font-weight: 400;
 }
 
+/* ---------- Nodes ---------- */
+.node-caret {
+    width: 14px;
+    text-align: center;
+    font-size: 0.8em;
+    user-select: none;
+}
+
+.phase-header {
+    gap: 8px;
+}
+
+.phase-header:hover {
+    background: rgba(0,0,0,0.04);
+    border-radius: 6px;
+}
+
+.task-list {
+    margin-left: 28px;
+    padding-left: 14px;
+}
+
+
 /* #endregion */

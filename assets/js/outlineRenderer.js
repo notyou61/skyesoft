@@ -28,13 +28,25 @@ function renderPhase(node, presentation, iconMap) {
     const header = document.createElement('div');
     header.className = 'phase-header';
 
+    let expanded = false;           // collapsed by default
+    let taskList = null;
+    let caret = null;
+
+    // Caret (only shown when there are children)
+    if (node.children?.length > 0) {
+        caret = document.createElement('span');
+        caret.className = 'node-caret';
+        caret.textContent = '▶';
+        header.appendChild(caret);
+    }
+
     // Icon
     header.appendChild(renderIcon(node.iconId, iconMap));
 
     // Title
     const title = document.createElement('span');
     title.className = 'phase-title';
-    title.textContent = node.label;
+    title.textContent = node.label || '(Untitled)';
     header.appendChild(title);
 
     // Status
@@ -45,22 +57,27 @@ function renderPhase(node, presentation, iconMap) {
         header.appendChild(status);
     }
 
-    // Edit
+    // Edit link (stops propagation so it doesn't toggle collapse)
     if (presentation?.nodeTypes?.phase?.editable) {
         const edit = document.createElement('a');
         edit.href = '#';
         edit.className = 'edit-link';
         edit.textContent = 'Edit';
+        edit.addEventListener('click', e => {
+            e.stopPropagation();
+            // TODO: later → real edit handler / modal / form
+        });
         header.appendChild(edit);
     }
 
     wrapper.appendChild(header);
 
-    /* ---------- Tasks ---------- */
+    /* ---------- Tasks / Children ---------- */
 
-    if (node.children?.length) {
-        const list = document.createElement('ul');
-        list.className = 'task-list';
+    if (node.children?.length > 0) {
+        taskList = document.createElement('ul');
+        taskList.className = 'task-list';
+        taskList.style.display = 'none'; // collapsed by default
 
         node.children.forEach(task => {
             const li = document.createElement('li');
@@ -69,17 +86,35 @@ function renderPhase(node, presentation, iconMap) {
             li.appendChild(renderIcon(task.iconId, iconMap));
 
             const label = document.createElement('span');
-            label.textContent = task.label;
+            label.textContent = task.label || '(No title)';
             li.appendChild(label);
 
-            list.appendChild(li);
+            taskList.appendChild(li);
         });
 
-        wrapper.appendChild(list);
+        wrapper.appendChild(taskList);
+
+        /* ---------- Toggle Logic ---------- */
+
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            expanded = !expanded;
+
+            if (caret) {
+                caret.textContent = expanded ? '▼' : '▶';
+            }
+
+            taskList.style.display = expanded ? 'block' : 'none';
+
+            // Optional: helps with CSS transitions / styling
+            wrapper.classList.toggle('expanded', expanded);
+        });
     }
 
     return wrapper;
 }
+
+/* ---------- Utilities ---------- */
 
 function renderIcon(iconId, iconMap) {
     const span = document.createElement('span');
@@ -89,9 +124,11 @@ function renderIcon(iconId, iconMap) {
 }
 
 function statusLabel(status) {
-    switch (status) {
-        case 'complete': return '✓ Complete';
+    switch (status?.toLowerCase()) {
+        case 'complete':    return '✓ Complete';
         case 'in-progress': return '⏳ In Progress';
-        default: return 'Pending';
+        case 'blocked':     return '⚠ Blocked';
+        case 'failed':      return '✗ Failed';
+        default:            return 'Pending';
     }
 }
