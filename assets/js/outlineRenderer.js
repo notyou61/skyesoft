@@ -89,8 +89,11 @@ function renderPhase(node, presentation, iconMap) {
 
         wrapper.appendChild(taskList);
 
-        header.addEventListener('click', () => {
+        caret.addEventListener('click', e => {
+            e.stopPropagation();
+
             expanded = !expanded;
+
             caret.textContent = expanded ? '▼' : '▶';
             taskList.style.display = expanded ? 'block' : 'none';
             wrapper.classList.toggle('expanded', expanded);
