@@ -8,6 +8,7 @@
  *   • No domain knowledge
  * ===================================================================== */
 
+/* #region Public API */
 export function renderOutline(container, adapted, presentation, iconMap) {
     if (!container || !adapted) return;
 
@@ -18,12 +19,15 @@ export function renderOutline(container, adapted, presentation, iconMap) {
         container.appendChild(renderPhase(node, presentation, iconMap));
     });
 }
+/* #endregion */
+
+/* #region Phase Rendering */
 
 function renderPhase(node, presentation, iconMap) {
     const wrapper = document.createElement('div');
     wrapper.className = 'outline-phase';
 
-    /* ---------- Header ---------- */
+    /* ---------- Phase Header ---------- */
 
     const header = document.createElement('div');
     header.className = 'phase-header';
@@ -32,7 +36,7 @@ function renderPhase(node, presentation, iconMap) {
     let taskList = null;
     let caret = null;
 
-    // Caret (only shown when there are children)
+    /* Caret (expand / collapse indicator) */
     if (node.children?.length > 0) {
         caret = document.createElement('span');
         caret.className = 'node-caret';
@@ -40,16 +44,16 @@ function renderPhase(node, presentation, iconMap) {
         header.appendChild(caret);
     }
 
-    // Icon
+    /* Phase Icon */
     header.appendChild(renderIcon(node.iconId, iconMap));
 
-    // Title
+    /* Phase Title */
     const title = document.createElement('span');
     title.className = 'phase-title';
     title.textContent = node.label || '(Untitled)';
     header.appendChild(title);
 
-    // Status
+    /* Phase Status Badge */
     if (node.status) {
         const status = document.createElement('span');
         status.className = `status-badge ${node.status}`;
@@ -57,7 +61,7 @@ function renderPhase(node, presentation, iconMap) {
         header.appendChild(status);
     }
 
-    // Edit link (stops propagation so it doesn't toggle collapse)
+    /* Edit Control */
     if (presentation?.nodeTypes?.phase?.editable) {
         const edit = document.createElement('a');
         edit.href = '#';
@@ -65,14 +69,14 @@ function renderPhase(node, presentation, iconMap) {
         edit.textContent = 'Edit';
         edit.addEventListener('click', e => {
             e.stopPropagation();
-            // TODO: later → real edit handler / modal / form
+            // TODO: attach modal / editor handler
         });
         header.appendChild(edit);
     }
 
     wrapper.appendChild(header);
 
-    /* ---------- Tasks / Children ---------- */
+    /* ---------- Phase Children (Tasks) ---------- */
 
     if (node.children?.length > 0) {
         taskList = document.createElement('ul');
@@ -94,7 +98,7 @@ function renderPhase(node, presentation, iconMap) {
 
         wrapper.appendChild(taskList);
 
-        /* ---------- Toggle Logic ---------- */
+        /* ---------- Expand / Collapse Logic ---------- */
 
         header.style.cursor = 'pointer';
         header.addEventListener('click', () => {
@@ -105,17 +109,15 @@ function renderPhase(node, presentation, iconMap) {
             }
 
             taskList.style.display = expanded ? 'block' : 'none';
-
-            // Optional: helps with CSS transitions / styling
             wrapper.classList.toggle('expanded', expanded);
         });
     }
 
     return wrapper;
 }
+/* #endregion */
 
-/* ---------- Utilities ---------- */
-
+/* #region Utilities */
 function renderIcon(iconId, iconMap) {
     const span = document.createElement('span');
     span.className = 'node-icon';
@@ -132,3 +134,4 @@ function statusLabel(status) {
         default:            return 'Pending';
     }
 }
+/* #endregion */

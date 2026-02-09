@@ -299,18 +299,46 @@ body {
     margin-bottom: 18px;
 }
 
+/* Phase header = interactive row (NO bullets) */
 .phase-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 
     font-size: 1.05em;
     font-weight: 600;
     line-height: 1.4;
+
+    list-style: none;          /* hard kill bullets */
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.phase-header::marker {
+    content: none;             /* defensive */
+}
+
+.phase-header:hover {
+    background: rgba(0,0,0,0.04);
+    border-radius: 6px;
 }
 
 .phase-title {
     flex: 1;
+}
+
+/* ---------- Caret (Expand / Collapse) ---------- */
+
+.node-caret {
+    width: 14px;
+    text-align: center;
+    font-size: 0.75em;
+    user-select: none;
+    opacity: 0.75;
+}
+
+.outline-phase.expanded .node-caret {
+    opacity: 1;
 }
 
 /* ---------- Icons ---------- */
@@ -319,6 +347,7 @@ body {
     width: 20px;
     text-align: center;
     flex: 0 0 20px;
+    opacity: 0.9;
 }
 
 /* ---------- Status Badge ---------- */
@@ -349,18 +378,25 @@ body {
 /* ---------- Edit Action ---------- */
 
 .edit-link {
+    margin-left: 12px;
     font-size: 0.75em;
-    margin-left: 10px;
     text-decoration: underline;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.edit-link:hover {
+    opacity: 0.8;
 }
 
 /* ---------- Task List ---------- */
 
 .task-list {
     margin-top: 6px;
-    margin-left: 28px;
-    padding-left: 14px;
+    margin-left: 36px;     /* clear visual indent from phase */
+    padding-left: 0;
+
+    list-style: none;      /* icons act as bullets */
 }
 
 .task-item {
@@ -372,28 +408,5 @@ body {
     font-size: 0.95em;
     font-weight: 400;
 }
-
-/* ---------- Nodes ---------- */
-.node-caret {
-    width: 14px;
-    text-align: center;
-    font-size: 0.8em;
-    user-select: none;
-}
-
-.phase-header {
-    gap: 8px;
-}
-
-.phase-header:hover {
-    background: rgba(0,0,0,0.04);
-    border-radius: 6px;
-}
-
-.task-list {
-    margin-left: 28px;
-    padding-left: 14px;
-}
-
 
 /* #endregion */
