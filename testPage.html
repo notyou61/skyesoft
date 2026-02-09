@@ -167,8 +167,7 @@
     const phase = phaseData[phaseId];
     if (!phase) return;
 
-  document.querySelector("#editModal .bodyTitle").innerHTML =
-    'Edit Phase<br><span style="font-weight:400;color:#555;">' + phase.name + '</span>';
+    document.getElementById("editModalHeaderName").textContent = phase.name;
 
     document.getElementById("editPhaseId").value = phase.id;
     document.getElementById("editPhaseName").value = phase.name;
@@ -209,7 +208,9 @@
     <!-- HEADER -->
     <div class="bodyHeader">
       <div class="bodyTitle">
-        ✏️ Edit Phase
+        <span id="editModalHeaderAction" style="font-weight:700;">Edit Phase</span>
+        <span id="editModalHeaderSep"> — </span>
+        <span id="editModalHeaderName" style="font-weight:400;"></span>
       </div>
     </div>
 

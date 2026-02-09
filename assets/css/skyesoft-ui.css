@@ -180,19 +180,19 @@ body {
 
 /* #region Modal Page Overrides */
 
+/* Modal — Step A/B/C */
 #editModal .bodyPanel {
-  width: 760px;
-  max-width: 92vw;
-  border-radius: 6px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  border-radius: 10px;      /* A: rounded corners */
+  background: #fff;         /* B: white panel */
+  color: #000;              /* C: black text */
+  overflow: hidden;         /* keeps header/footer corners clean */
 }
 
-/* HEADER */
-#editModal .bodyHeader {
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  background: #f3f4f6;
+#editModal .bodyHeader,
+#editModal .bodyContent,
+#editModal .bodyFooter {
+  background: #fff;         /* B: force white in all sections */
+  color: #000;              /* C: force black */
 }
 
 #editModal .bodyTitle {
