@@ -28,10 +28,10 @@ const streamedDomainSchemas = {
 
     roadmap: {
         title: (domain) =>
-            domain?.summary?.meta?.title ?? 'Roadmap',
+            domain?.meta?.title ?? 'Roadmap',
 
         root: (domain) =>
-            domain?.summary?.phases ?? [],
+            domain?.phases ?? [],
 
         mapNode: (phase) => ({
             id: phase.id,
@@ -44,8 +44,6 @@ const streamedDomainSchemas = {
         })
     }
 
-    // 🔒 Future domains (entities, permits, violations, etc.)
-    // are registered here without touching adapter logic.
 };
 
 /* #endregion */
