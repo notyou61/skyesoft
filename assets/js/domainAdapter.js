@@ -19,7 +19,6 @@
  * ===================================================================== */
 
 /* #region DOMAIN SCHEMA REGISTRY */
-
 /**
  * Declarative schema registry for streamed list domains.
  *
@@ -92,12 +91,9 @@ const streamedDomainSchemas = {
     // 🔒 Future domains (entities, permits, violations, etc.)
     // are registered here without touching adapter logic.
 };
-
 /* #endregion */
 
-
 /* #region DOMAIN ADAPTER */
-
 /**
  * Adapts a streamed domain payload into a universal outline model.
  *
@@ -124,12 +120,9 @@ export function adaptStreamedDomain(domainKey, domainData) {
     };
 
 }
-
 /* #endregion */
 
-
 /* #region SCHEMA REGISTRY ACCESS */
-
 /**
  * Introspection helper (UI-safe).
  * Allows the UI to discover which domains are outline-renderable.

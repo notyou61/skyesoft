@@ -3,116 +3,77 @@
  *  Tier-2 UI Infrastructure
  *
  *  Role:
- *   • Render an adapted outline model to the DOM
- *
- *  Guarantees:
- *   • Domain-agnostic
- *   • Stateless
- *   • No data mutation
- *   • Presentation-registry governed
+ *   • Render outline nodes produced by domainAdapter
+ *   • Apply presentation + iconMap
+ *   • No domain knowledge
  * ===================================================================== */
 
-export function renderOutline(
-    container,
-    adaptedDomain,
-    presentationRegistry,
-    iconMap
-) {
-    if (!container || !adaptedDomain) return;
+export function renderOutline(container, adapted, presentation, iconMap) {
+    if (!container || !adapted) return;
 
     container.innerHTML = '';
+    container.classList.add('outline');
 
-    const domainKey = adaptedDomain.domainKey ?? 'roadmap';
-    const domainPresentation = presentationRegistry.domains[domainKey];
-
-    adaptedDomain.nodes.forEach(node => {
-        container.appendChild(
-            renderNode(node, domainPresentation, iconMap)
-        );
+    adapted.nodes.forEach(node => {
+        container.appendChild(renderPhase(node, presentation, iconMap));
     });
 }
 
-/* ------------------------------------------------------------------ */
-
-function renderNode(node, presentation, iconMap) {
-
-    const nodeType = node.type;
-    const rules = resolvePresentation(presentation, nodeType);
-
+function renderPhase(node, presentation, iconMap) {
     const wrapper = document.createElement('div');
-    wrapper.className = `outline-node ${nodeType}`;
+    wrapper.className = 'outline-phase';
 
-    /* Header */
+    /* ---------- Header ---------- */
+
     const header = document.createElement('div');
-    header.className = 'outline-header';
+    header.className = 'phase-header';
 
-    /* Icon */
-    if (node.iconId && iconMap[node.iconId]) {
-        const icon = document.createElement('span');
-        icon.className = 'outline-icon';
-        icon.textContent = iconMap[node.iconId];
-        header.appendChild(icon);
-    }
+    // Icon
+    header.appendChild(renderIcon(node.iconId, iconMap));
 
-    /* Label */
-    const label = document.createElement('span');
-    label.className = 'outline-label';
-    label.textContent = node.label;
-    header.appendChild(label);
+    // Title
+    const title = document.createElement('span');
+    title.className = 'phase-title';
+    title.textContent = node.label;
+    header.appendChild(title);
 
-    /* Status */
+    // Status
     if (node.status) {
         const status = document.createElement('span');
-        status.className = `status ${node.status}`;
-        status.textContent =
-            node.status === 'complete' ? '✓ Complete' :
-            node.status === 'in-progress' ? '⏳ In Progress' :
-            'Pending';
+        status.className = `status-badge ${node.status}`;
+        status.textContent = statusLabel(node.status);
         header.appendChild(status);
     }
 
-    /* Edit */
-    if (rules.editable && nodeType === 'phase') {
+    // Edit
+    if (presentation?.nodeTypes?.phase?.editable) {
         const edit = document.createElement('a');
         edit.href = '#';
         edit.className = 'edit-link';
         edit.textContent = 'Edit';
-        edit.onclick = e => window.editPhase(e, node);
         header.appendChild(edit);
     }
 
     wrapper.appendChild(header);
 
-    /* Children */
+    /* ---------- Tasks ---------- */
+
     if (node.children?.length) {
         const list = document.createElement('ul');
-        list.className = 'outline-children';
-        list.style.display = rules.defaultExpanded ? 'block' : 'none';
+        list.className = 'task-list';
 
-        node.children.forEach(child => {
+        node.children.forEach(task => {
             const li = document.createElement('li');
-            li.className = 'outline-child';
+            li.className = 'task-item';
 
-            if (child.iconId && iconMap[child.iconId]) {
-                const icon = document.createElement('span');
-                icon.className = 'outline-icon';
-                icon.textContent = iconMap[child.iconId];
-                li.appendChild(icon);
-            }
+            li.appendChild(renderIcon(task.iconId, iconMap));
 
-            const text = document.createElement('span');
-            text.textContent = child.label;
-            li.appendChild(text);
+            const label = document.createElement('span');
+            label.textContent = task.label;
+            li.appendChild(label);
 
             list.appendChild(li);
         });
-
-        if (rules.collapsible) {
-            header.onclick = () => {
-                list.style.display =
-                    list.style.display === 'block' ? 'none' : 'block';
-            };
-        }
 
         wrapper.appendChild(list);
     }
@@ -120,11 +81,17 @@ function renderNode(node, presentation, iconMap) {
     return wrapper;
 }
 
-/* ------------------------------------------------------------------ */
+function renderIcon(iconId, iconMap) {
+    const span = document.createElement('span');
+    span.className = 'node-icon';
+    span.textContent = iconMap?.[iconId] ?? '•';
+    return span;
+}
 
-function resolvePresentation(domainConfig, nodeType) {
-    return {
-        ...domainConfig.defaults,
-        ...domainConfig.nodeTypes[nodeType]
-    };
+function statusLabel(status) {
+    switch (status) {
+        case 'complete': return '✓ Complete';
+        case 'in-progress': return '⏳ In Progress';
+        default: return 'Pending';
+    }
 }
