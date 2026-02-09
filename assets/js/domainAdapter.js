@@ -22,60 +22,75 @@
 
 /**
  * Declarative schema registry for streamed list domains.
- * Each schema provides mapping instructions only.
  *
  * Icon policy:
- *  • Adapter may emit iconId values (numeric) as semantic hints
+ *  • Adapter may emit iconId values as semantic hints
  *  • Rendering resolves iconId → glyph via iconMap.json
- *  • No styling, no markup, no emoji hardcoding here
+ *  • No styling, markup, or emoji hardcoding here
  */
 const streamedDomainSchemas = {
 
     roadmap: {
 
-        // Domain title
+        /* ---------------------------------
+         * Domain metadata
+         * --------------------------------- */
+
         title: (domain) =>
             domain?.meta?.title ?? 'Roadmap',
 
-        // Root collection
-        root: (domain) =>
-            domain?.phases ?? [],
+        /* ---------------------------------
+         * Root selector
+         * --------------------------------- */
 
-        // Node type mapping (stable + scalable)
+        root: (domain) =>
+            Array.isArray(domain?.phases) ? domain.phases : [],
+
+        /* ---------------------------------
+         * Node type registry (semantic only)
+         * --------------------------------- */
+
         nodeTypes: {
             phase: {
                 type: 'phase',
-                iconId: 20 // Roadmap / list domain icon (resolved via iconMap)
+                iconId: 20   // roadmap / section icon
             },
             task: {
                 type: 'task',
-                iconId: 7 // Task / bullet icon (resolved via iconMap)
+                iconId: 7    // bullet / task icon
             }
         },
 
-        // Phase → outline node
-        mapNode: (phase, schema) => ({
+        /* ---------------------------------
+         * Mapping: Phase → Outline Node
+         * --------------------------------- */
 
-            id: phase.id,
-            type: schema.nodeTypes.phase.type,
-            iconId: schema.nodeTypes.phase.iconId,
+        mapNode: (phase, schema) => {
 
-            label: phase.name,
-            status: phase.status,
+            if (!phase || !phase.id) return null;
 
-            // Children (tasks)
-            children: (phase.tasks ?? []).map((task, idx) => ({
+            return {
+                id: phase.id,
+                type: schema.nodeTypes.phase.type,
+                iconId: schema.nodeTypes.phase.iconId,
 
-                id: `${phase.id}:task:${idx}`,
-                type: schema.nodeTypes.task.type,
-                iconId: schema.nodeTypes.task.iconId,
+                label: phase.name ?? '',
+                status: phase.status ?? null,
 
-                label: task
-            }))
-        })
+                children: Array.isArray(phase.tasks)
+                    ? phase.tasks.map((task, idx) => ({
+                        id: `${phase.id}:task:${idx}`,
+                        type: schema.nodeTypes.task.type,
+                        iconId: schema.nodeTypes.task.iconId,
+                        label: task
+                    }))
+                    : []
+            };
+        }
     }
 
-    // 🔒 Future domains register here without touching adapter logic.
+    // 🔒 Future domains (entities, permits, violations, etc.)
+    // are registered here without touching adapter logic.
 };
 
 /* #endregion */
@@ -98,10 +113,13 @@ export function adaptStreamedDomain(domainKey, domainData) {
     const rootItems = schema.root(domainData);
     if (!Array.isArray(rootItems)) return null;
 
-    // Adapt
+    const nodes = rootItems
+        .map(item => schema.mapNode(item, schema))
+        .filter(Boolean); // defensive: drop invalid nodes
+
     return {
         title: schema.title(domainData),
-        nodes: rootItems.map(item => schema.mapNode(item, schema))
+        nodes
     };
 }
 
@@ -111,8 +129,8 @@ export function adaptStreamedDomain(domainKey, domainData) {
 /* #region SCHEMA REGISTRY ACCESS */
 
 /**
- * Introspection helper (optional, UI-safe).
- * Allows the UI to know which domains are outline-renderable.
+ * Introspection helper (UI-safe).
+ * Allows the UI to discover which domains are outline-renderable.
  */
 export function getAvailableStreamedDomains() {
     return Object.keys(streamedDomainSchemas);

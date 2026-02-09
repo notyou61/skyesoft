@@ -7,7 +7,6 @@
     "title": "Skyesoft Rebuild Roadmap",
     "description": "Canonical execution roadmap aligned with Codex v1.1.0 governance, SSE-first architecture, governed AI workflows, SQL migration, Document Engine consolidation, and the System Initialization Standard (SIS). This roadmap represents the authoritative planning state for the Skyesoft rebuild."
   },
-
   "phases": [
     {
       "id": "phase0",
@@ -27,7 +26,6 @@
       ],
       "output": "Codex v1.1.0 finalized — the system’s constitutional and sovereignty foundations are complete"
     },
-
     {
       "id": "phase1",
       "name": "Repository and Core Governance Alignment",
@@ -46,7 +44,6 @@
       ],
       "output": "Core governance violation classes implemented, registered, and validated with deterministic detection and controlled reconciliation behavior"
     },
-
     {
       "id": "phase2",
       "name": "Live SSE and Operational Dashboard Integration",
@@ -62,7 +59,6 @@
       ],
       "output": "Office Board operates as a fully real-time, SSE-driven operational dashboard governed by Codex standards"
     },
-
     {
       "id": "phase3",
       "name": "Governance Enforcement Loop Activation",
@@ -82,7 +78,6 @@
       ],
       "output": "Auditor, Sentinel, and Mutator operate as a closed governance loop with deterministic detection, controlled reconciliation, and verifiable resolution records"
     },
-
     {
       "id": "phase4",
       "name": "Human Decision Surface & Governed Intervention UI",
@@ -103,7 +98,6 @@
       ],
       "output": "A governed human-in-the-loop interface enabling authoritative decisions without compromising Codex integrity or audit traceability"
     },
-
     {
       "id": "phase5",
       "name": "Skyebot Contact Intake (Semantic & RAG-driven)",
@@ -119,7 +113,6 @@
       ],
       "output": "AI-powered semantic contact creation with prefix-controlled identity management"
     },
-
     {
       "id": "phase6",
       "name": "Database Migration (JSON → SQL)",
@@ -135,7 +128,6 @@
       ],
       "output": "Unified relational Skyesoft data layer with strict referential integrity"
     },
-
     {
       "id": "phase7",
       "name": "Document Engine Activation",
@@ -151,7 +143,6 @@
       ],
       "output": "Professional-grade, Codex-governed document automation via one unified engine"
     },
-
     {
       "id": "phase8",
       "name": "System Initialization Standard (SIS)",
@@ -169,7 +160,6 @@
       "output": "Skyesoft enters canonical operational state with clean data, verified SOT, validated structure, and initialized live systems"
     }
   ],
-
   "summaryTimeline": [
     { "phase": 0, "result": "Codex v1.1.0 complete — constitutional foundation" },
     { "phase": 1, "result": "Governance violation detection and reconciliation operational" },
