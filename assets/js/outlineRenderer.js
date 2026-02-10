@@ -53,15 +53,7 @@ function renderPhase(node, presentation, iconMap) {
     title.textContent = node.label || '(Untitled)';
     header.appendChild(title);
 
-    /* Status */
-    if (node.status) {
-        const status = document.createElement('span');
-        status.className = `status-badge ${node.status}`;
-        status.textContent = statusLabel(node.status);
-        header.appendChild(status);
-    }
-
-    /* Edit */
+    /* Edit — placed right after title */
     if (presentation?.nodeTypes?.phase?.editable) {
         const edit = document.createElement('a');
         edit.href = '#';
@@ -70,16 +62,23 @@ function renderPhase(node, presentation, iconMap) {
         edit.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-
-            wrapper.dispatchEvent(new CustomEvent('outline:edit', {
+            header.dispatchEvent(new CustomEvent('outline:edit', {
                 bubbles: true,
                 detail: {
-                    nodeType: node.type,   // 'phase'
+                    nodeType: node.type,
                     nodeId: node.id
                 }
             }));
         });
         header.appendChild(edit);
+    }
+
+    /* Status (render last) */
+    if (node.status) {
+        const status = document.createElement('span');
+        status.className = `status-badge ${node.status}`;
+        status.textContent = statusLabel(node.status);
+        header.appendChild(status);
     }
 
     wrapper.appendChild(header);
