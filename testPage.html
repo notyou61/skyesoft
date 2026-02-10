@@ -54,12 +54,16 @@ Promise.all([
 
   const container = document.getElementById('outlineContainer');
 
+  const presentation =
+    presentationRegistry?.domains?.[domainKey] ?? null;
+
   renderOutline(
     container,
     adapted,
-    presentationRegistry,
+    presentation,
     iconMap
   );
+
 
 }).catch(err => {
   console.error('Streamed list bootstrap failed:', err);
