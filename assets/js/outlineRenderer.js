@@ -119,16 +119,14 @@ function renderPhase(node, presentation, iconMap) {
 /* #region Utilities */
 function renderIcon(iconId, iconMap) {
 
-    // Ensure we can resolve both numeric and string keys
     var key = (iconId === 0 || iconId) ? String(iconId) : null;
-    var glyph = (key && iconMap?.icons && iconMap.icons[key])
-    ? iconMap.icons[key]
-    : null;
+
+    var glyph = (key && iconMap?.icons && iconMap.icons[key]?.emoji)
+        ? iconMap.icons[key].emoji
+        : null;
 
     var span = document.createElement('span');
     span.className = 'node-icon';
-
-    // HARD fallback so missing data is visible
     span.textContent = glyph || '';
 
     return span;
