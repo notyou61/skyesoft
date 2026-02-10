@@ -23,7 +23,7 @@
  * Declarative schema registry for streamed list domains.
  *
  * Icon policy:
- *  • Adapter may emit iconId values as semantic hints
+ *  •  Adapter passes through instance-level semantic iconId values
  *  • Rendering resolves iconId → glyph via iconMap.json
  *  • No styling, markup, or emoji hardcoding here
  */
@@ -46,46 +46,46 @@ const streamedDomainSchemas = {
             Array.isArray(domain?.phases) ? domain.phases : [],
 
         /* ---------------------------------
-         * Node type registry (semantic only)
-         * --------------------------------- */
-
-        nodeTypes: {
-            phase: {
-                type: 'phase',
-                iconId: 'phase'
-            },
-            task: {
-                type: 'task',
-                iconId: 'task'
-            }
-        },
-
-        /* ---------------------------------
          * Mapping: Phase → Outline Node
          * --------------------------------- */
 
-        mapNode: (phase, schema) => {
+        mapNode: (phase) => {
 
             if (!phase || !phase.id) return null;
 
             return {
                 id: phase.id,
-                type: schema.nodeTypes.phase.type,
-                iconId: schema.nodeTypes.phase.iconId,
+                type: 'phase',
+
+                iconId: Number.isInteger(phase.icon) ? phase.icon : null,
 
                 label: phase.name ?? '',
                 status: phase.status ?? null,
 
                 children: Array.isArray(phase.tasks)
-                    ? phase.tasks.map((task, idx) => ({
-                        id: `${phase.id}:task:${idx}`,
-                        type: schema.nodeTypes.task.type,
-                        iconId: schema.nodeTypes.task.iconId,
-                        label: task
-                    }))
+                    ? phase.tasks.map((task, idx) => {
+
+                        if (typeof task === 'string') {
+                            return {
+                                id: `${phase.id}:task:${idx}`,
+                                type: 'task',
+                                label: task,
+                                iconId: null
+                            };
+                        }
+
+                        return {
+                            id: `${phase.id}:task:${idx}`,
+                            type: 'task',
+                            label: task.text ?? '',
+                            iconId: Number.isInteger(task.icon) ? task.icon : null
+                        };
+
+                    })
                     : []
             };
         }
+
     }
 
     // 🔒 Future domains (entities, permits, violations, etc.)
@@ -110,7 +110,7 @@ export function adaptStreamedDomain(domainKey, domainData) {
     if (!Array.isArray(rootItems)) return null;
 
     const nodes = rootItems
-        .map(item => schema.mapNode(item, schema))
+        .map(item => schema.mapNode(item))
         .filter(Boolean); // defensive: drop invalid nodes
 
     return {
