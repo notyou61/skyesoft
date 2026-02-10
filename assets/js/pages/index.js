@@ -435,6 +435,18 @@ window.SkyIndex = {
         });
         // #endregion
 
+        // #region ✏️ Domain Outline Edit Intent
+        this.dom.domainBody.addEventListener('outline:edit', (e) => {
+            const { nodeId, nodeType } = e.detail;
+
+            this.openDomainEditModal({
+                domainKey: this.activeDomainKey, // set when showDomain() is called
+                nodeId,
+                nodeType
+            });
+        });
+        // #endregion
+
         // Attach file handler
         const attachBtn = card.querySelector('.composerPlus');
         const fileInput = card.querySelector('.composerFile');
