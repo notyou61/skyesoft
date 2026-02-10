@@ -62,11 +62,12 @@ function renderPhase(node, presentation, iconMap) {
         edit.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
+
             header.dispatchEvent(new CustomEvent('outline:edit', {
                 bubbles: true,
                 detail: {
-                    nodeType: node.type,
-                    nodeId: node.id
+                    nodeId: node.id,
+                    nodeType: node.type
                 }
             }));
         });

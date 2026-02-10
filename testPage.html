@@ -64,6 +64,23 @@ Promise.all([
     iconMap
   );
 
+  /* ============================================================
+  *  Outline → Modal Bridge (Test Surface Only)
+  * ============================================================ */
+
+  container.addEventListener('outline:edit', (e) => {
+    const { nodeId } = e.detail;
+
+    const node = adapted.nodes.find(n => n.id === nodeId);
+    if (!node) {
+      console.warn('[TestSurface] Edit target not found:', nodeId);
+      return;
+    }
+
+    openEditModal(node);
+  });
+
+
 
 }).catch(err => {
   console.error('Streamed list bootstrap failed:', err);
@@ -114,29 +131,56 @@ Promise.all([
 </div>
 
 <script>
-/* ---- Modal Wiring (unchanged contract) -------------------- */
+/* ============================================================
+ *  Modal Controller — Test Surface
+ * ============================================================ */
 
-window.editPhase = function (event, node) {
-  event.preventDefault();
-  event.stopPropagation();
+const editModal = document.getElementById('editModal');
 
-  document.getElementById('editModalHeaderName').textContent = node.label;
-  document.getElementById('editPhaseId').value = node.id;
-  document.getElementById('editPhaseName').value = node.label;
-  document.getElementById('editPhaseStatus').value = node.status ?? '';
-  document.getElementById('editPhaseOutput').value = '';
-
-  document.getElementById('editModal').style.display = 'block';
+const editEls = {
+  header: document.getElementById('editModalHeaderName'),
+  id:     document.getElementById('editPhaseId'),
+  name:   document.getElementById('editPhaseName'),
+  status: document.getElementById('editPhaseStatus'),
+  output: document.getElementById('editPhaseOutput')
 };
 
-window.closeEditModal = function () {
-  document.getElementById('editModal').style.display = 'none';
-};
+let activeNode = null;
 
-window.savePhaseEdits = function () {
+function openEditModal(node) {
+  activeNode = node;
+
+  editEls.header.textContent = node.label ?? '';
+  editEls.id.value           = node.id ?? '';
+  editEls.name.value         = node.label ?? '';
+  editEls.status.value       = node.status ?? '';
+  editEls.output.value       = node.output ?? '';
+
+  editModal.style.display = 'block';
+}
+
+function closeEditModal() {
+  editModal.style.display = 'none';
+  activeNode = null;
+}
+
+function savePhaseEdits() {
+  if (!activeNode) return;
+
+  const payload = {
+    id: activeNode.id,
+    updates: {
+      label:  editEls.name.value,
+      status: editEls.status.value,
+      output: editEls.output.value
+    }
+  };
+
+  console.log('[TEST SURFACE] Phase edit payload:', payload);
+
   closeEditModal();
-  alert('Edit saved (test surface only)');
-};
+}
+
 </script>
 
 </body>
