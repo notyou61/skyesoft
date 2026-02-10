@@ -375,10 +375,6 @@ body {
   line-height: 1;
 }
 
-.node-icon::after {
-  content: "📚";
-}
-
 /* ---------- Status Badge ---------- */
 
 .status-badge {
