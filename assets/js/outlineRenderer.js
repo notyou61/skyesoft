@@ -123,6 +123,14 @@ function renderIcon(iconId, iconMap) {
     var key = (iconId === 0 || iconId) ? String(iconId) : null;
     var glyph = (key && iconMap && iconMap[key]) ? iconMap[key] : null;
 
+    // 🔎 DEBUG: icon resolution trace
+    console.log('ICON RESOLVE', {
+        iconId,
+        key,
+        glyph,
+        iconMap
+    });
+
     var span = document.createElement('span');
     span.className = 'node-icon';
 

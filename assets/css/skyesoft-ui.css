@@ -361,10 +361,22 @@ body {
 /* ---------- Icons ---------- */
 
 .node-icon {
-    width: 20px;
-    text-align: center;
-    flex: 0 0 20px;
-    opacity: 0.9;
+  display: inline-block;
+  width: 1.25em;
+  margin-right: 6px;
+
+  /* 🔑 Force emoji-capable font stack */
+  font-family: "Apple Color Emoji",
+               "Segoe UI Emoji",
+               "Noto Color Emoji",
+               system-ui,
+               sans-serif;
+
+  line-height: 1;
+}
+
+.node-icon::after {
+  content: "📚";
 }
 
 /* ---------- Status Badge ---------- */
