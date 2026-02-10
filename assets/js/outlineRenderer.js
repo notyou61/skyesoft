@@ -121,21 +121,15 @@ function renderIcon(iconId, iconMap) {
 
     // Ensure we can resolve both numeric and string keys
     var key = (iconId === 0 || iconId) ? String(iconId) : null;
-    var glyph = (key && iconMap && iconMap[key]) ? iconMap[key] : null;
-
-    // 🔎 DEBUG: icon resolution trace
-    console.log('ICON RESOLVE', {
-        iconId,
-        key,
-        glyph,
-        iconMap
-    });
+    var glyph = (key && iconMap?.icons && iconMap.icons[key])
+    ? iconMap.icons[key]
+    : null;
 
     var span = document.createElement('span');
     span.className = 'node-icon';
 
     // HARD fallback so missing data is visible
-    span.textContent = glyph ? glyph : '⬚';
+    span.textContent = glyph || '';
 
     return span;
 }
