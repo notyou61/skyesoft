@@ -334,7 +334,7 @@ body {
 }
 
 .phase-title {
-    flex: 1;
+    flex: 0 1 auto;
 }
 
 /* ---------- Caret (Expand / Collapse) ---------- */
