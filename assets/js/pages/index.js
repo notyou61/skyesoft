@@ -71,8 +71,9 @@ function formatIntervalDHMS(totalSeconds) {
 // #region 🔔 Version Update Indicator Controller
 window.SkyVersion = {
 
+    // Timeout ID
     timeoutId: null,
-
+    // Show
     show(durationMs = 60000) {
         const el = document.getElementById('versionFooter');
         if (!el) {
@@ -90,7 +91,7 @@ window.SkyVersion = {
             this.hide();
         }, durationMs);
     },
-
+    // Hide
     hide() {
         const el = document.getElementById('versionFooter');
         if (el) {
@@ -98,6 +99,7 @@ window.SkyVersion = {
         }
         this.timeoutId = null;
     }
+
 };
 // #endregion
 
@@ -122,14 +124,14 @@ window.SkyIndex = {
             return;
         }
 
-        const model = DomainAdapter.normalize(domainKey, rawDomain);
-
-        this.activeDomain = domainKey;
-        this.renderDomain(domainKey, model);
+        this.updateDomainSurface(domainKey, rawDomain);
+        this.dom.domainSurface.hidden = false;
     },
 
     hideDomain() {
-        this.activeDomain = null;
+        this.activeDomainKey   = null;
+        this.activeDomainModel = null;
+
         if (this.dom?.domainSurface) {
             this.dom.domainSurface.hidden = true;
             this.dom.domainBody.innerHTML = '';
@@ -137,73 +139,15 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📘 Domain Rendering
-    renderDomain(domainKey, model) {
-        if (!this.dom?.domainSurface) return;
-
-        this.activeDomain = domainKey;
-
-        this.dom.domainTitle.textContent =
-            model.title ?? domainKey;
-
-        this.dom.domainBody.innerHTML = '';
-        this.dom.domainSurface.hidden = false;
-
-        // Delegate to Workflowy renderer
-        this.renderWorkflowyOutline(model.nodes);
-    },
-    // #endregion
-
-    // #region 🗂 Workflowy-style Outline Renderer
-    renderWorkflowyOutline(nodes) {
-        const ul = document.createElement('ul');
-        ul.className = 'wf-outline';
-
-        nodes.forEach(node => {
-            ul.appendChild(this.renderWorkflowyNode(node));
-        });
-
-        this.dom.domainBody.appendChild(ul);
-    },
-
-    renderWorkflowyNode(node) {
-        const li = document.createElement('li');
-        li.className = 'wf-node';
-
-        const line = document.createElement('div');
-        line.className = 'wf-line';
-        line.textContent = node.text;
-
-        li.appendChild(line);
-
-        if (Array.isArray(node.children) && node.children.length > 0) {
-            const childList = document.createElement('ul');
-            childList.hidden = true;
-
-            node.children.forEach(child => {
-                childList.appendChild(this.renderWorkflowyNode(child));
-            });
-
-            line.addEventListener('click', () => {
-                childList.hidden = !childList.hidden;
-                li.classList.toggle('collapsed', childList.hidden);
-            });
-
-            li.appendChild(childList);
-        }
-
-        return li;
-    },
-    // #endregion
-
     // #region 📦 SSE Snapshot Cache (authoritative)
     lastSSE: null,
-    activeDomain: null,
+    activeDomainKey: null,
+    activeDomainModel: null,
     // #endregion
 
     // #region 🛠️ Command Output Helpers
     appendSystemLine(text) {
-        if (!this.cardHost) return; // future-proof
+        if (!this.cardHost) return;
         const output = this.cardHost.querySelector('.commandOutput');
         if (!output) return;
 
@@ -229,7 +173,6 @@ window.SkyIndex = {
 
     // #region 🧩 UI Action Registry (SERVER-AUTHORITATIVE)
     uiActionRegistry: {
-
         clear_screen() {
             SkyIndex.clearSessionSurface();
         },
@@ -238,13 +181,11 @@ window.SkyIndex = {
             SkyIndex.appendSystemLine('Logging out…');
             setTimeout(() => SkyIndex.logout('ui_action'), 300);
         }
-
     },
     // #endregion
 
     // #region 🚀 Page Init (called by app.js)
     init() {
-
         console.log('[SkyIndex] init() fired');
 
         this.dom = {
@@ -261,6 +202,14 @@ window.SkyIndex = {
             console.error('[SkyIndex] Missing #boardCardHost — index.html shell invalid');
             return;
         }
+
+        // Safe wiring for presentation & icon rules
+        this.presentationRegistry = window.presentationRegistry ?? null;
+        this.iconMap             = window.iconMap             ?? null;
+
+        // Optional: louder warnings during dev
+        // if (!this.presentationRegistry) console.warn('[SkyIndex] presentationRegistry missing');
+        // if (!this.iconMap)             console.warn('[SkyIndex] iconMap missing');
 
         // Restore auth state
         if (this.isAuthenticated()) {
@@ -300,7 +249,7 @@ window.SkyIndex = {
             output.innerHTML = '';
         }
 
-        // Subtle Easter egg (1 in 10)
+        // Easter egg (1 in 10)
         if (Math.random() < 0.1) {
             this.appendSystemLine('✨ The sky is clear.');
         } else {
@@ -327,7 +276,6 @@ window.SkyIndex = {
 
             <div class="cardBody">
                 <div class="cardContent cardContent--centered">
-
                     <p class="loginIntro">
                         Please sign in to access the Skyesoft Portal.
                     </p>
@@ -340,28 +288,23 @@ window.SkyIndex = {
                             <div class="loginError" hidden></div>
                         </form>
                     </div>
-
                 </div>
             </div>
 
             <div class="cardFooterDivider"></div>
 
             <div class="cardFooter">
-                <img
-                    src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
-                    alt="Live"
-                    style="width:24px;height:24px;vertical-align:middle;margin-right:8px;"
-                >
+                <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
+                     alt="Live" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
                 🔒 Authentication required to continue
             </div>
         `;
 
         this.cardHost.appendChild(card);
 
-        const form = card.querySelector('.loginForm');
-        form.addEventListener('submit', (e) => {
+        card.querySelector('.loginForm')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            this.handleLoginSubmit(form);
+            this.handleLoginSubmit(e.currentTarget);
         });
     },
     // #endregion
@@ -381,9 +324,7 @@ window.SkyIndex = {
             <div class="cardBodyDivider"></div>
 
             <div class="cardBody cardBody--command">
-
                 <div class="cardContent cardContent--command">
-
                     <div class="domainSurface" hidden>
                         <div class="domainHeader">
                             <div class="domainTitle"></div>
@@ -395,25 +336,18 @@ window.SkyIndex = {
                     <div class="commandOutput"></div>
                 </div>
 
-                <!-- Command Prompt -->
                 <div class="composer">
                     <div class="composerSurface">
-
                         <button class="composerBtn composerPlus" type="button" aria-label="Attach files">+</button>
-
                         <div class="composerPrimary">
                             <div class="composerInput" contenteditable="true"
-                                data-placeholder="Type a command..."
-                                spellcheck="false"></div>
+                                 data-placeholder="Type a command..." spellcheck="false"></div>
                         </div>
-
                         <button class="composerBtn composerSend" type="button" aria-label="Run command">⏎</button>
-
                         <input class="composerFile" type="file" multiple hidden>
                     </div>
                 </div>
-
-            </div> <!-- /cardBody -->
+            </div>
 
             <div class="cardFooterDivider"></div>
 
@@ -424,75 +358,47 @@ window.SkyIndex = {
 
         this.cardHost.appendChild(card);
 
-        // #region 🧱 Domain Surface DOM Registration
+        // DOM refs
         this.dom.domainSurface = card.querySelector('.domainSurface');
         this.dom.domainTitle   = card.querySelector('.domainTitle');
         this.dom.domainBody    = card.querySelector('.domainBody');
 
-        const closeBtn = card.querySelector('.domainClose');
-        closeBtn?.addEventListener('click', () => {
-            this.hideDomain();
-        });
-        // #endregion
+        card.querySelector('.domainClose')?.addEventListener('click', () => this.hideDomain());
 
-        // #region ✏️ Domain Outline Edit Intent
-        this.dom.domainBody.addEventListener('outline:edit', (e) => {
-            const { nodeId, nodeType } = e.detail;
-
-            this.openDomainEditModal({
-                domainKey: this.activeDomainKey, // set when showDomain() is called
-                nodeId,
-                nodeType
-            });
-        });
-        // #endregion
-
-        // Attach file handler
+        // File attach
         const attachBtn = card.querySelector('.composerPlus');
         const fileInput = card.querySelector('.composerFile');
 
-        if (!attachBtn || !fileInput) {
-            console.warn('[SkyIndex] Composer file controls not found');
-            return;
-        }
+        attachBtn?.addEventListener('click', () => fileInput?.click());
 
-        attachBtn.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', () => {
-            if (!fileInput.files.length) return;
-
-            const files = Array.from(fileInput.files)
-                .map(f => f.name)
-                .join(', ');
-
-            this.appendSystemLine(`Attached file(s): ${files}`);
-
+        fileInput?.addEventListener('change', () => {
+            if (!fileInput.files?.length) return;
+            const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+            this.appendSystemLine(`Attached file(s): ${names}`);
             fileInput.value = '';
         });
 
-        const input = card.querySelector('.composerInput');
+        // Command input
+        const input   = card.querySelector('.composerInput');
         const sendBtn = card.querySelector('.composerSend');
 
-        const submitCommand = () => {
+        const submit = () => {
             const text = input.textContent.trim();
             if (!text) return;
-
             input.textContent = '';
             this.handleCommand(text);
         };
 
-        sendBtn.addEventListener('click', submitCommand);
+        sendBtn?.addEventListener('click', submit);
 
-        input.addEventListener('keydown', (e) => {
+        input?.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                submitCommand();
+                submit();
             }
         });
 
-        card.querySelector('.composerInput')?.focus();
+        input?.focus();
     },
     // #endregion
 
@@ -505,7 +411,6 @@ window.SkyIndex = {
 
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
-
         this.setThinking(true);
 
         try {
@@ -513,51 +418,30 @@ window.SkyIndex = {
                 `/skyesoft/api/askOpenAI.php?ai=true&type=skyebot&userQuery=${encodeURIComponent(prompt)}`
             );
 
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
 
-            // 🧠 UI ACTION SHORT-CIRCUIT (authoritative, immediate)
             if (data?.type === 'ui_action') {
                 const handler = this.uiActionRegistry?.[data.action];
-
                 if (typeof handler === 'function') {
                     handler();
                     return;
                 }
-
                 this.appendSystemLine('⚠ Unhandled UI action.');
                 return;
             }
 
-            // 📘 DOMAIN INTENT (presentation delegated to UI + SSE)
-            if (typeof data?.intent === 'string') {
-
-                // Known streamed domains only (extensible)
-                const streamedDomains = new Set([
-                    'roadmap',
-                    'entities',
-                    'locations',
-                    'contacts',
-                    'orders',
-                    'permits',
-                    'violations'
-                ]);
-
-                if (data.intent.startsWith('show_')) {
-                    const domainKey = data.intent.replace('show_', '');
-
-                    if (streamedDomains.has(domainKey)) {
-                        this.showDomain(domainKey);
-                        return;
-                    }
+            if (typeof data?.intent === 'string' && data.intent.startsWith('show_')) {
+                const domainKey = data.intent.replace('show_', '');
+                const allowed = new Set(['roadmap','entities','locations','contacts','orders','permits','violations']);
+                if (allowed.has(domainKey)) {
+                    this.showDomain(domainKey);
+                    return;
                 }
             }
 
-            // 🤖 TEXTUAL RESPONSE (non-streamed, informational)
-            if (typeof data?.response === 'string' && data.response.trim() !== '') {
+            if (typeof data?.response === 'string' && data.response.trim()) {
                 this.appendSystemLine(data.response);
                 return;
             }
@@ -567,9 +451,7 @@ window.SkyIndex = {
         } catch (err) {
             console.error('[SkyIndex] AI error:', err);
             this.appendSystemLine('❌ AI request failed.');
-
         } finally {
-            // ✅ SINGLE, GUARANTEED CLEANUP
             this.setThinking(false);
         }
     },
@@ -577,8 +459,8 @@ window.SkyIndex = {
 
     // #region 🔑 Login Logic (Faux)
     handleLoginSubmit(form) {
-        const email = form.querySelector('input[type="email"]').value.trim();
-        const pass  = form.querySelector('input[type="password"]').value.trim();
+        const email = form.querySelector('input[type="email"]')?.value.trim();
+        const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
         if (email === 'steve@christysigns.com' && pass === 'password123') {
@@ -594,7 +476,6 @@ window.SkyIndex = {
     // #region 🔁 Transition
     transitionToCommandInterface() {
         this.cardHost.style.opacity = '0';
-
         setTimeout(() => {
             this.renderCommandInterfaceCard();
             this.cardHost.style.opacity = '1';
@@ -604,44 +485,34 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        // Cache last authoritative snapshot (for UI actions like "show roadmap")
         this.lastSSE = event;
-        //
-        console.log('[SSE] cached keys:', Object.keys(this.lastSSE || {}));
+        console.log('[SSE] cached keys:', Object.keys(event || {}));
 
-        // Sanity check first — always do this before accessing anything
         if (!event) return;
 
-        // ⏰ Time — HH:MM:SS AM (always 2 digits)
+        // Time
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
             const d = new Date(event.timeDateArray.currentUnixTime * 1000);
-
             const hh = d.getHours();
             const mm = d.getMinutes();
             const ss = d.getSeconds();
-
             const hour12 = hh % 12 || 12;
             const ampm   = hh >= 12 ? 'PM' : 'AM';
-
-            const pad = n => String(n).padStart(2, '0');
-
-            this.dom.time.textContent =
-                `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
+            const pad    = n => String(n).padStart(2, '0');
+            this.dom.time.textContent = `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
         }
 
-        // 🌤 Weather — temp + condition (e.g. 63°F — Clear sky)
+        // Weather
         if (event.weather && this.dom?.weather) {
             const { temp, condition } = event.weather;
-
-            if (temp !== null && condition) {
+            if (temp != null && condition) {
                 this.dom.weather.textContent = `${temp}°F — ${condition}`;
             }
         }
 
-        // ⏳ Interval — label + remaining time (e.g. Weekend - 01d 02h 18m 25s)
+        // Interval
         if (event.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = event.currentInterval;
-
             const labelMap = {
                 beforeWork: 'Before Work',
                 worktime:   'Worktime',
@@ -649,37 +520,26 @@ window.SkyIndex = {
                 weekend:    'Weekend',
                 holiday:    'Holiday'
             };
-
             const label = labelMap[key] ?? key;
-
             if (typeof secondsRemainingInterval === 'number') {
-                const timeStr = formatIntervalDHMS(secondsRemainingInterval);
-                this.dom.interval.textContent = `${label} - ${timeStr}`;
+                this.dom.interval.textContent = `${label} - ${formatIntervalDHMS(secondsRemainingInterval)}`;
             } else {
-                // Fallback: just the label
                 this.dom.interval.textContent = label;
             }
         }
 
-        // 🔭 SENTINEL META — authoritative runtime signal
-        const sentinel = event.sentinelMeta;
-
-        // 📦 Site Version Footer (canonical, shared)
+        // Version footer
         if (this.dom?.version && event.siteMeta) {
-            const nowUnix =
-                event?.timeDateArray?.currentUnixTime ??
-                Math.floor(Date.now() / 1000);
-            this.dom.version.textContent =
-                formatVersionFooter(event.siteMeta);
+            this.dom.version.textContent = formatVersionFooter(event.siteMeta);
         }
 
-        // 🔭 Sentinel Meta — runtime health + deploy signal
+        // Sentinel / update indicator
+        const sentinel = event.sentinelMeta;
         if (!sentinel || sentinel.status === "offline") {
             window.SkyVersion?.hide();
             return;
         }
 
-        // 🚀 Update indicator — explicit update + fresh sentinel
         if (event.siteMeta?.updateOccurred === true) {
             window.SkyVersion?.show(60000);
         } else {
@@ -691,14 +551,82 @@ window.SkyIndex = {
     // #region 🔓 Logout
     logout(reason = 'User requested logout') {
         console.log('[SkyIndex] Logout:', reason);
-
         sessionStorage.removeItem('skyesoft.auth');
         document.body.removeAttribute('data-auth');
-
         this.clearCards();
         this.renderLoginCard();
     },
-// #endregion
+    // #endregion
+
+    // #region 📘 Canonical Domain Rendering
+    updateDomainSurface(domainKey, domainData) {
+        if (!domainKey || !domainData) {
+            console.warn('[SkyIndex] updateDomainSurface called with invalid args');
+            return;
+        }
+
+        if (!this.dom?.domainBody) {
+            console.warn('[SkyIndex] Domain body not mounted yet — cannot render');
+            return;
+        }
+
+        const adapted = adaptStreamedDomain(domainKey, domainData);
+        if (!adapted) {
+            console.error('[SkyIndex] Domain adaptation failed:', domainKey);
+            return;
+        }
+
+        const presentation = this.presentationRegistry?.domains?.[domainKey] ?? null;
+
+        if (this.dom?.domainTitle) {
+            this.dom.domainTitle.textContent = adapted.title ?? domainKey;
+        }
+
+        if (typeof renderOutline !== 'function') {
+            console.error('[SkyIndex] renderOutline missing');
+            this.dom.domainBody.innerHTML = '<p style="color:#f33; padding:1rem;">Renderer unavailable</p>';
+            return;
+        }
+
+        renderOutline(this.dom.domainBody, adapted, presentation, this.iconMap);
+
+        this.activeDomainKey   = domainKey;
+        this.activeDomainModel = adapted;
+
+        // Bind edit events after successful render
+        this.bindOutlineEditBridge();
+    },
+
+    bindOutlineEditBridge() {
+        if (!this.dom?.domainBody || !this.activeDomainModel) {
+            console.debug('[SkyIndex] Skipping edit bridge — no active domain');
+            return;
+        }
+
+        // Clean up previous listener if exists
+        if (this._outlineEditListener) {
+            this.dom.domainBody.removeEventListener('outline:edit', this._outlineEditListener);
+        }
+
+        const listener = (e) => {
+            const { nodeId } = e.detail;
+            const node = this.activeDomainModel.nodes?.find(n => n.id === nodeId);
+
+            if (!node) {
+                console.warn('[SkyIndex] Edit target node not found:', nodeId);
+                return;
+            }
+
+            this.openDomainEditModal({
+                domainKey: this.activeDomainKey,
+                node
+            });
+        };
+
+        this.dom.domainBody.addEventListener('outline:edit', listener);
+        this._outlineEditListener = listener;
+    }
+    // #endregion
 };
 // #endregion
 
