@@ -34,14 +34,19 @@ function renderPhase(node, presentation, iconMap) {
     let expanded = false;
     let taskList = null;
 
-    /* Caret — ALWAYS rendered */
+    /* Caret — ALWAYS rendered (interactive only if children exist) */
     const caret = document.createElement('span');
     caret.className = 'node-caret';
-    caret.textContent = node.children?.length ? '▶' : ''; // empty if no children
+
+    const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+    caret.textContent = hasChildren ? '▶' : ''; // visual-only when empty
+
     header.appendChild(caret);
 
-    /* Icon — ALWAYS after caret */
-    header.appendChild(renderIcon(node.iconId, iconMap));
+    /* Icon — ALWAYS after caret (semantic marker, never hardcoded) */
+    const icon = renderIcon(node.iconId, iconMap);
+    icon.classList.add('phase-icon');
+    header.appendChild(icon);
 
     /* Title */
     const title = document.createElement('span');

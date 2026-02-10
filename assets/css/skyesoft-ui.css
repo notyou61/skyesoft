@@ -354,6 +354,9 @@ body {
     opacity: 1;
 }
 
+.node-caret:empty {
+  width: 1em;
+}
 
 /* ---------- Icons ---------- */
 
