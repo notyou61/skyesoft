@@ -22,7 +22,6 @@ export function renderOutline(container, adapted, presentation, iconMap) {
 /* #endregion */
 
 /* #region Phase Rendering */
-
 function renderPhase(node, presentation, iconMap) {
     const wrapper = document.createElement('div');
     wrapper.className = 'outline-phase';
@@ -69,8 +68,16 @@ function renderPhase(node, presentation, iconMap) {
         edit.className = 'edit-link';
         edit.textContent = 'Edit';
         edit.addEventListener('click', e => {
+            e.preventDefault();
             e.stopPropagation();
-            // modal hook later
+
+            wrapper.dispatchEvent(new CustomEvent('outline:edit', {
+                bubbles: true,
+                detail: {
+                    nodeType: node.type,   // 'phase'
+                    nodeId: node.id
+                }
+            }));
         });
         header.appendChild(edit);
     }
