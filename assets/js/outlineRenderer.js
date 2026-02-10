@@ -125,7 +125,9 @@ function renderIcon(iconId, iconMap) {
 
     var span = document.createElement('span');
     span.className = 'node-icon';
-    span.textContent = glyph ? glyph : ''; // empty if not found
+
+    // HARD fallback so missing data is visible
+    span.textContent = glyph ? glyph : '⬚';
 
     return span;
 }

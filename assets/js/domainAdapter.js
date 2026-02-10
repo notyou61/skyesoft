@@ -52,11 +52,11 @@ const streamedDomainSchemas = {
         nodeTypes: {
             phase: {
                 type: 'phase',
-                iconId: 20   // roadmap / section icon
+                iconId: 'phase'
             },
             task: {
                 type: 'task',
-                iconId: 7    // bullet / task icon
+                iconId: 'task'
             }
         },
 
@@ -116,7 +116,7 @@ export function adaptStreamedDomain(domainKey, domainData) {
     return {
         domainKey,
         title: schema.title(domainData),
-        nodes: rootItems.map(item => schema.mapNode(item, schema))
+        nodes
     };
 
 }
