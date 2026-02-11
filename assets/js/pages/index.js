@@ -160,6 +160,22 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📦 Registry Loader
+    async loadPresentationRegistry() {
+        try {
+            const res = await fetch('/skyesoft/assets/data/presentationRegistry.json');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            this.presentationRegistry = await res.json();
+            console.log('[SkyIndex] presentationRegistry loaded');
+
+        } catch (err) {
+            console.error('[SkyIndex] Failed to load presentationRegistry:', err);
+            this.presentationRegistry = null;
+        }
+    },
+    // #endregion
+
     // #region ⏳ Thinking State (UI-only, non-transcript)
     setThinking(isThinking) {
         const footer = this.cardHost?.querySelector('.cardFooter');
@@ -184,8 +200,8 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🚀 Page Init (called by app.js)
-    init() {
+    // #region 🚀 Page Init
+    async init() {
         console.log('[SkyIndex] init() fired');
 
         this.dom = {
@@ -199,19 +215,17 @@ window.SkyIndex = {
         this.cardHost = document.getElementById('boardCardHost');
 
         if (!this.cardHost) {
-            console.error('[SkyIndex] Missing #boardCardHost — index.html shell invalid');
+            console.error('[SkyIndex] Missing #boardCardHost');
             return;
         }
 
-        // Safe wiring for presentation & icon rules
-        this.presentationRegistry = window.presentationRegistry ?? null;
-        this.iconMap             = window.iconMap             ?? null;
+        // 🔥 LOAD REGISTRY BEFORE USE
+        await this.loadPresentationRegistry();
 
-        // Optional: louder warnings during dev
-        // if (!this.presentationRegistry) console.warn('[SkyIndex] presentationRegistry missing');
-        // if (!this.iconMap)             console.warn('[SkyIndex] iconMap missing');
+        if (!this.presentationRegistry) {
+            console.warn('[SkyIndex] presentationRegistry not available');
+        }
 
-        // Restore auth state
         if (this.isAuthenticated()) {
             document.body.setAttribute('data-auth', 'true');
             this.renderCommandInterfaceCard();

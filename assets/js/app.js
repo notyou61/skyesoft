@@ -36,7 +36,7 @@ window.SkyeApp.registerPage = function (pageName, handlerObj) {
 /* #endregion */
 
 /* #region PAGE INITIALIZATION */
-window.SkyeApp.initPage = function () {
+window.SkyeApp.initPage = async function () {
     if (!this.currentPage) return;
 
     const handler = this.pageHandlers[this.currentPage];
@@ -46,7 +46,7 @@ window.SkyeApp.initPage = function () {
     }
 
     if (typeof handler.init === "function") {
-        handler.init();
+        await handler.init();
     }
 };
 /* #endregion */
