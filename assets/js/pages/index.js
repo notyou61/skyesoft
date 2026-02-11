@@ -498,7 +498,7 @@ window.SkyIndex = {
     // #region 📡 SSE Event Handling
     onSSE(event) {
         this.lastSSE = event;
-        console.log('[SSE] cached keys:', Object.keys(event || {}));
+        //console.log('[SSE] cached keys:', Object.keys(event || {}));
 
         if (!event) return;
 
