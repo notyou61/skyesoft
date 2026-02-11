@@ -3,19 +3,55 @@
     "domain": "presentationRegistry",
     "version": "1.0.0",
     "lastUpdateUnix": 1770604800,
-    "description": "Centralized semantic presentation registry governing how Streamed List Domains are interpreted by the UI. This registry defines default, non-visual presentation intent by domain and node type. It contains no styling, layout, icon, or markup instructions."
+    "description": "Centralized semantic presentation registry governing how Streamed List Domains are interpreted by the UI. This registry defines default, non-visual presentation intent by domain and node type. It contains no styling, layout, icon, or markup instructions.",
+    "defaultDomainBehavior": {
+      "collapsible": true,
+      "defaultExpanded": false
+    },
+    "streamedDomains": [
+      "roadmap",
+      "entities",
+      "locations",
+      "contacts",
+      "orders",
+      "permits"
+    ]
   },
   "domains": {
     "roadmap": {
-      "defaults": {
-        "collapsible": true,
-        "defaultExpanded": false
-      },
       "nodeTypes": {
-        "phase": {
-          "editable": true
-        },
+        "phase": { "editable": true },
         "task": {}
+      }
+    },
+    "entities": {
+      "nodeTypes": {
+        "entity": { "editable": true },
+        "location": {},
+        "contact": {}
+      }
+    },
+    "locations": {
+      "nodeTypes": {
+        "location": { "editable": true }
+      }
+    },
+    "contacts": {
+      "nodeTypes": {
+        "contact": { "editable": true }
+      }
+    },
+    "orders": {
+      "nodeTypes": {
+        "order": { "editable": true },
+        "lineItem": {}
+      }
+    },
+    "permits": {
+      "nodeTypes": {
+        "permit": { "editable": true },
+        "inspection": {},
+        "violation": {}
       }
     }
   }

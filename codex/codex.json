@@ -2824,7 +2824,8 @@
                 "rules": [
                     "Intent detection must use semantic embeddings; no regex or keyword fallback.",
                     "Routing matrix: Map semantic intents to eligible response modules (e.g., 'query' → skyebotCore, 'generate' → documentStandard). Intent routing does not determine data inclusion or context availability.",
-                    "Semantic intent output is advisory only and must not determine retrieval scope, SSE inclusion, or data availability; such decisions remain the responsibility of application logic.",
+                    "Semantic intent output is advisory metadata. For streamed domains, intent resolution must trigger application-controlled rendering using authoritative SSE data. AI may not override or substitute streamed domain presentation.",
+                    "Streamed Domain Determinism: If a user request semantically maps to an application-rendered streamed domain (e.g., roadmap, entities, contacts, permits, violations), the intent must resolve to 'show_<domainKey>' with high confidence. The AI must not summarize, restate, or reproduce domain content. Presentation is delegated exclusively to the UI using authoritative SSE data.",
                     "Clarity score > 0.8 required; low scores prompt clarification questions.",
                     "Reasoning chain: Retrieve \u2192 Validate Codex \u2192 Generate \u2192 Cite sources.",
                     "Routing defined in assets/data/intentMatrix.json."
@@ -2868,6 +2869,12 @@
                     "enforcedBy": "modules/semanticValidator.php",
                     "frequency": "per-response",
                     "action": "Reroute low-clarity intents"
+                },
+                "domainIntentPolicy": {
+                    "streamedDomains": ["roadmap", "entities", "locations", "contacts", "orders", "permits"],
+                    "resolutionMode": "deterministic_show",
+                    "presentationAuthority": "application_ui",
+                    "aiPresentationAllowed": false
                 },
                 "standingOrders": {
                     "version": "1.0.0",

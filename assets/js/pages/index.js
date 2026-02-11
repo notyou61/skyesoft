@@ -433,12 +433,24 @@ window.SkyIndex = {
             }
 
             if (typeof data?.intent === 'string' && data.intent.startsWith('show_')) {
+
                 const domainKey = data.intent.replace('show_', '');
-                const allowed = new Set(['roadmap','entities','locations','contacts','orders','permits','violations']);
-                if (allowed.has(domainKey)) {
+
+                const registry = this.presentationRegistry;
+
+                if (!registry?.meta?.streamedDomains) {
+                    console.warn('[SkyIndex] streamedDomains registry missing');
+                }
+
+                const isStreamDomain =
+                    registry?.meta?.streamedDomains?.includes(domainKey) === true;
+
+                if (isStreamDomain) {
                     this.showDomain(domainKey);
                     return;
                 }
+
+                console.warn('[SkyIndex] Intent mapped to non-streamed domain:', domainKey);
             }
 
             if (typeof data?.response === 'string' && data.response.trim()) {
