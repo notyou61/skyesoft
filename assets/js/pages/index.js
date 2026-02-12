@@ -140,19 +140,15 @@ window.SkyIndex = {
 
     // #region 📘 Domain Surface Control
     showDomain(domainKey) {
-        if (!this.lastSSE) {
-            this.appendSystemLine('⚠ No live data available.');
+        const sse = window.SkyeApp?.lastSSE;
+        const domainData = sse?.[domainKey]; // ✅ CORRECT
+
+        if (!domainData) {
+            console.warn('[SkyIndex] No streamed data for domain:', domainKey);
             return;
         }
 
-        const rawDomain = this.lastSSE[domainKey];
-        if (!rawDomain) {
-            this.appendSystemLine(`⚠ Domain not available: ${domainKey}`);
-            return;
-        }
-
-        this.updateDomainSurface(domainKey, rawDomain);
-        this.dom.domainSurface.hidden = false;
+        this.updateDomainSurface(domainKey, domainData);
     },
 
     hideDomain() {
