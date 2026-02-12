@@ -32,22 +32,24 @@ const streamedDomainSchemas = {
     roadmap: {
 
         /* ---------------------------------
-         * Domain metadata
-         * --------------------------------- */
+        * Domain metadata
+        * --------------------------------- */
 
         title: (domain) =>
-            domain?.meta?.title ?? 'Roadmap',
+            domain?.summary?.meta?.title ?? 'Roadmap',
 
         /* ---------------------------------
-         * Root selector
-         * --------------------------------- */
+        * Root selector
+        * --------------------------------- */
 
         root: (domain) =>
-            Array.isArray(domain?.phases) ? domain.phases : [],
+            Array.isArray(domain?.summary?.phases)
+                ? domain.summary.phases
+                : [],
 
         /* ---------------------------------
-         * Mapping: Phase → Outline Node
-         * --------------------------------- */
+        * Mapping: Phase → Outline Node
+        * --------------------------------- */
 
         mapNode: (phase) => {
 
@@ -85,7 +87,6 @@ const streamedDomainSchemas = {
                     : []
             };
         }
-
     }
 
     // 🔒 Future domains (entities, permits, violations, etc.)
