@@ -141,24 +141,19 @@ window.SkyIndex = {
     // #region 📘 Domain Surface Control
     showDomain(domainKey) {
         const sse = window.SkyeApp?.lastSSE;
-        const domainData = sse?.[domainKey]; // ✅ CORRECT
+        let domainData = sse?.[domainKey];
 
         if (!domainData) {
             console.warn('[SkyIndex] No streamed data for domain:', domainKey);
             return;
         }
 
-        this.updateDomainSurface(domainKey, domainData);
-    },
-
-    hideDomain() {
-        this.activeDomainKey   = null;
-        this.activeDomainModel = null;
-
-        if (this.dom?.domainSurface) {
-            this.dom.domainSurface.hidden = true;
-            this.dom.domainBody.innerHTML = '';
+        // 🔁 Normalize roadmap structure
+        if (domainKey === 'roadmap') {
+            domainData = domainData.summary ?? domainData;
         }
+
+        this.updateDomainSurface(domainKey, domainData);
     },
     // #endregion
 
