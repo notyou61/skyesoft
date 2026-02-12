@@ -163,7 +163,7 @@ window.SkyIndex = {
     // #region 📦 Registry Loader
     async loadPresentationRegistry() {
         try {
-            const res = await fetch('/skyesoft/assets/data/presentationRegistry.json');
+            const res = await fetch('/skyesoft/data/authoritative/presentationRegistry.json')
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             this.presentationRegistry = await res.json();
