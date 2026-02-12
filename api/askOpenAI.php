@@ -528,7 +528,7 @@ PROMPT;
 }
 #endregion
 
-#region SECTION 7 — Skyebot (Authority-Aware, Non-Brittle)
+#region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
 
 // ------------------------------------------------------
 // SKYEBOT — Conversational / Informational Responses
@@ -540,9 +540,9 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // 1. Semantic Intent (Advisory Telemetry Only)
-    // ────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // 1. Semantic Intent (Advisory Only)
+    // ─────────────────────────────────────────────
 
     $intentPrompt = <<<PROMPT
 Analyze the following user input and return semantic intent metadata only.
@@ -591,51 +591,73 @@ PROMPT;
     $intent     = $intentMeta["intent"] ?? "unknown";
     $confidence = (float)($intentMeta["confidence"] ?? 0.0);
 
-    // ────────────────────────────────────────────────────────────────
-    // 2. UI ACTIONS — handled BEFORE response generation
-    //    (Commands, not informational queries)
-    // ────────────────────────────────────────────────────────────────
-
-    $uiClearThreshold  = 0.80;
-    $uiLogoutThreshold = 0.90;
-
-    if ($intent === "ui_clear" && $confidence >= $uiClearThreshold) {
-
-        echo json_encode([
-            "success" => true,
-            "role"    => "askOpenAI",
-            "type"    => "ui_action",
-            "action"  => "clear_screen"
-        ], JSON_UNESCAPED_SLASHES);
-
-        exit;
-    }
-
-    if ($intent === "ui_logout" && $confidence >= $uiLogoutThreshold) {
-
-        echo json_encode([
-            "success" => true,
-            "role"    => "askOpenAI",
-            "type"    => "ui_action",
-            "action"  => "logout"
-        ], JSON_UNESCAPED_SLASHES);
-
-        exit;
-    }
-
-    // ────────────────────────────────────────────────────────────────
-    // Telemetry logging (non-binding, debug only)
-    // ────────────────────────────────────────────────────────────────
-
     error_log("[skyebot:intent] " . json_encode([
         "query"      => substr($query, 0, 100),
         "intent"     => $intent,
         "confidence" => $confidence
     ], JSON_UNESCAPED_SLASHES));
 
-    // ────────────────────────────────────────────────────────────────
-    // 3. Load Authoritative Context (SSE) — RAW, UNINTERPRETED
-    // ────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────
+    // 2. UI ACTIONS (authoritative commands)
+    // ─────────────────────────────────────────────
+
+    $uiClearThreshold  = 0.80;
+    $uiLogoutThreshold = 0.90;
+
+    if ($intent === "ui_clear" && $confidence >= $uiClearThreshold) {
+        echo json_encode([
+            "success" => true,
+            "role"    => "askOpenAI",
+            "type"    => "ui_action",
+            "action"  => "clear_screen"
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if ($intent === "ui_logout" && $confidence >= $uiLogoutThreshold) {
+        echo json_encode([
+            "success" => true,
+            "role"    => "askOpenAI",
+            "type"    => "ui_action",
+            "action"  => "logout"
+        ], JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────
+    // 3. STREAMED DOMAIN SHORT-CIRCUIT (Deterministic)
+    // ─────────────────────────────────────────────
+
+    $streamedDomains = [
+        "roadmap",
+        "entities",
+        "locations",
+        "contacts",
+        "orders",
+        "permits"
+    ];
+
+    if (str_starts_with($intent, "show_")) {
+
+        $domainKey = substr($intent, 5);
+
+        if (in_array($domainKey, $streamedDomains, true) && $confidence >= 0.70) {
+
+            echo json_encode([
+                "success"    => true,
+                "role"       => "askOpenAI",
+                "type"       => "domain_intent",
+                "intent"     => $intent,
+                "confidence" => $confidence
+            ], JSON_UNESCAPED_SLASHES);
+
+            exit;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 4. Conversational / Informational Fallback
+    // ─────────────────────────────────────────────
 
     $sseSnapshot = loadSseSnapshot();
 
@@ -643,19 +665,10 @@ PROMPT;
         ? json_encode($sseSnapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         : "No authoritative context is available.";
 
-    // ────────────────────────────────────────────────────────────────
-    // 4. Load Response Generation Prompt (Universal)
-    // ────────────────────────────────────────────────────────────────
-
     $responsePrompt = loadResponseGenerationPrompt();
     if ($responsePrompt === "") {
         aiFail("Response generation prompt not available.");
     }
-
-    // ────────────────────────────────────────────────────────────────
-    // 5. Build Final Prompt
-    //    (Authority-first, AI decides relevance & phrasing)
-    // ────────────────────────────────────────────────────────────────
 
     $basePrompt = <<<PROMPT
 {$responsePrompt}
