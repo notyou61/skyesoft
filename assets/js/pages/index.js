@@ -358,8 +358,7 @@ window.SkyIndex = {
                 <div class="cardContent cardContent--command">
                     <div class="domainSurface" hidden>
                         <div class="domainHeader">
-                            <div class="domainTitle"></div>
-                            <button class="domainClose btn btn-sm" type="button">✕</button>
+                            <h3 class="domainTitle"></h3>
                         </div>
                         <div class="domainBody"></div>
                     </div>
@@ -393,8 +392,6 @@ window.SkyIndex = {
         this.dom.domainSurface = card.querySelector('.domainSurface');
         this.dom.domainTitle   = card.querySelector('.domainTitle');
         this.dom.domainBody    = card.querySelector('.domainBody');
-
-        card.querySelector('.domainClose')?.addEventListener('click', () => this.hideDomain());
 
         // File attach
         const attachBtn = card.querySelector('.composerPlus');

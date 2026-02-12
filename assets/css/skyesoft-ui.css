@@ -287,46 +287,45 @@ body {
   • Styling conveys hierarchy + status at a glance
 */
 
+/* ---------- Alignment Foundation ---------- */
+
+:root {
+    --outline-caret-width: 14px;
+    --outline-gap:        8px;
+    --outline-icon-width: 1.25em;
+}
+
 /* ---------- TOP-LEVEL OUTLINE LIST RESET (AUTHORITATIVE) ---------- */
 
 .outline {
     list-style: none;
     padding-left: 0;
-    margin-left: 0;
+    margin: 0;
 }
 
 .outline > li {
+    list-style: none;
+}
+
+/* ---------- Bullet Neutralization (All nested lists) ---------- */
+
+.outline,
+.outline ul {
     list-style: none;
     padding-left: 0;
     margin-left: 0;
 }
 
-.outline > li::marker {
-    content: none;
-}
-
-/* ---------- Bullet Neutralization (Critical) ---------- */
-
-/* Ensure no list semantics leak into phase rows */
-.outline,
-.outline-phase,
-.outline-phase * {
-    list-style: none;
-}
-
-.outline-phase {
-    display: block;
-}
+/* ---------- Phase Header (Primary node) ---------- */
 
 .phase-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--outline-gap);
 
     cursor: pointer;
     padding: 4px 6px;
 }
-
 
 .phase-header:hover {
     background: rgba(0,0,0,0.04);
@@ -335,13 +334,18 @@ body {
 
 .phase-title {
     flex: 0 1 auto;
+    font-weight: 600;   /* Primary node emphasis */
+}
+
+.domainTitle {
+    font-weight: 700;
 }
 
 /* ---------- Caret (Expand / Collapse) ---------- */
 
 .node-caret {
-    flex: 0 0 14px;
-    width: 14px;
+    flex: 0 0 var(--outline-caret-width);
+    width: var(--outline-caret-width);
 
     text-align: center;
     font-size: 0.75em;
@@ -355,24 +359,22 @@ body {
 }
 
 .node-caret:empty {
-  width: 1em;
+    width: 1em;
 }
 
 /* ---------- Icons ---------- */
 
 .node-icon {
-  display: inline-block;
-  width: 1.25em;
-  margin-right: 6px;
+    display: inline-block;
+    width: var(--outline-icon-width);
 
-  /* 🔑 Force emoji-capable font stack */
-  font-family: "Apple Color Emoji",
-               "Segoe UI Emoji",
-               "Noto Color Emoji",
-               system-ui,
-               sans-serif;
+    font-family: "Apple Color Emoji",
+                 "Segoe UI Emoji",
+                 "Noto Color Emoji",
+                 system-ui,
+                 sans-serif;
 
-  line-height: 1;
+    line-height: 1;
 }
 
 /* ---------- Status Badge ---------- */
@@ -414,24 +416,35 @@ body {
     opacity: 0.8;
 }
 
-/* ---------- Task List ---------- */
+/* ---------- Task List (Secondary nodes) ---------- */
 
 .task-list {
     margin-top: 6px;
-    margin-left: 36px;     /* clear visual indent from phase */
     padding-left: 0;
-
     list-style: none;      /* icons act as bullets */
 }
 
 .task-item {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--outline-gap);
 
-    margin: 4px 0;
+    margin: 3px 0;         /* tighter rhythm */
     font-size: 0.95em;
     font-weight: 400;
+
+    /* Aligns text under phase title — no magic numbers */
+    padding-left: calc(
+        var(--outline-caret-width) +
+        var(--outline-gap) +
+        var(--outline-icon-width) +
+        var(--outline-gap)
+    );
+}
+
+/* Optional: subtle spacing between phases */
+.outline-phase {
+    margin-bottom: 6px;
 }
 
 /* #endregion */
