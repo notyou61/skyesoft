@@ -4,6 +4,33 @@
    Header / Footer driven exclusively by SSE
 */
 
+// #region 📦 Canonical Domain Surface Dependencies
+// ------------------------------------------------------------
+// ES Module Imports — Streamed Domain Rendering Pipeline
+// 
+// adaptStreamedDomain:
+//   Transforms authoritative SSE domain payloads into the
+//   normalized outline model consumed by the UI.
+//
+// renderOutline:
+//   Canonical renderer for Streamed List Surfaces.
+//   Responsible for DOM projection, node structure,
+//   edit-link injection, and presentationRegistry compliance.
+//
+// Module Integrity Check (Development Safeguard):
+//   In ES module mode, missing imports should fail at load time.
+//   This guard exists for transitional debugging during rebuild
+//   phases and may be removed once module stability is confirmed.
+// ------------------------------------------------------------
+
+import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
+import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
+
+if (typeof adaptStreamedDomain !== 'function') {
+    console.error('[SkyIndex] adaptStreamedDomain not loaded');
+}
+// #endregion
+
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
 function formatVersionFooter(siteMeta) {
     if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
