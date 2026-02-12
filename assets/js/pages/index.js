@@ -141,19 +141,18 @@ window.SkyIndex = {
     // #region 📘 Domain Surface Control
     showDomain(domainKey) {
         const sse = window.SkyeApp?.lastSSE;
-        let domainData = sse?.[domainKey];
+        const domainData = sse?.[domainKey];
 
         if (!domainData) {
             console.warn('[SkyIndex] No streamed data for domain:', domainKey);
             return;
         }
 
-        // 🔁 Normalize roadmap structure
-        if (domainKey === 'roadmap') {
-            domainData = domainData.summary ?? domainData;
-        }
-
         this.updateDomainSurface(domainKey, domainData);
+
+        if (this.dom?.domainSurface) {
+            this.dom.domainSurface.hidden = false;
+        }
     },
     // #endregion
 
