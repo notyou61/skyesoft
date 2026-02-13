@@ -22,7 +22,6 @@ $paths = [
     "holiday"           => $root . "/data/authoritative/holidayRegistry.json",
     "systemRegistry"    => $root . "/data/authoritative/systemRegistry.json",
     "roadmap"           => $root . "/planning/roadmap.json",
-    "roadmapDetailed"   => $root . "/planning/roadmapDetailed.json",
     "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
@@ -40,7 +39,6 @@ $codex          = json_decode(file_get_contents($paths["codex"]), true);
 $versions       = json_decode(file_get_contents($paths["versions"]), true);
 $systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
 $roadmap         = json_decode(file_get_contents($paths["roadmap"]), true);
-$roadmapDetailed = json_decode(file_get_contents($paths["roadmapDetailed"]), true);
 
 $kpi            = json_decode(file_get_contents($paths["kpi"]), true);
 $activePermits  = json_decode(file_get_contents($paths["permits"]), true);
@@ -551,11 +549,7 @@ $payload = [
     "holidayState"    => $timeContext["holidayState"],
     "weather"         => $weather,
     "kpi"             => $kpi,
-    // Roadmap (authoritative, SSE-streamed, editable)
-    "roadmap" => [
-        "summary"  => $roadmap,
-        "detailed" => $roadmapDetailed
-    ],
+    "roadmap"         => $roadmap,
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
