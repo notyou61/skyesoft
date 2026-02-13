@@ -637,8 +637,6 @@ window.SkyIndex = {
 
         this.activeDomainKey   = domainKey;
         this.activeDomainModel = adapted;
-
-        this.bindOutlineEditBridge();
     }
     // #endregion
     };
