@@ -59,7 +59,7 @@ const streamedDomainSchemas = {
                 id: phase.id,
                 type: 'phase',
 
-                iconId: Number.isInteger(phase.icon) ? phase.icon : null,
+                iconId: phase.icon != null ? Number(phase.icon) : null,
 
                 label: phase.name ?? '',
                 status: phase.status ?? null,
