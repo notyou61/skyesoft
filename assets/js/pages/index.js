@@ -353,7 +353,7 @@ window.SkyIndex = {
 
         const card = document.createElement('section');
         card.className = 'card card-command';
-
+        // Card content is mostly static HTML with some dynamic areas for domain surfaces and command output
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🧠 Skyesoft Command Interface</h2>
@@ -364,9 +364,6 @@ window.SkyIndex = {
             <div class="cardBody cardBody--command">
                 <div class="cardContent cardContent--command">
 
-                    <!-- 🧵 Command Thread (chronological) -->
-                    <div class="commandOutput"></div>
-
                     <!-- 📘 Active Domain Surface -->
                     <div class="domainSurface" hidden>
                         <div class="domainHeader">
@@ -374,6 +371,9 @@ window.SkyIndex = {
                         </div>
                         <div class="domainBody"></div>
                     </div>
+
+                    <!-- 🧵 Command Thread (chronological) -->
+                    <div class="commandOutput"></div>
 
                 </div>
 
