@@ -193,6 +193,22 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🎨 Icon Map Loader
+    async loadIconMap() {
+        try {
+            const res = await fetch('/skyesoft/data/authoritative/iconMap.json');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            this.iconMap = await res.json();
+            console.log('[SkyIndex] iconMap loaded');
+
+        } catch (err) {
+            console.error('[SkyIndex] Failed to load iconMap:', err);
+            this.iconMap = null;
+        }
+    },
+    // #endregion
+
     // #region ⏳ Thinking State (UI-only, non-transcript)
     setThinking(isThinking) {
         const footer = this.cardHost?.querySelector('.cardFooter');
@@ -240,6 +256,7 @@ window.SkyIndex = {
 
         // 🔥 LOAD REGISTRY BEFORE USE
         await this.loadPresentationRegistry();
+        await this.loadIconMap();
 
         if (!this.presentationRegistry) {
             console.warn('[SkyIndex] presentationRegistry not available');
