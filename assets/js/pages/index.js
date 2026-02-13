@@ -278,21 +278,12 @@ window.SkyIndex = {
 
         if (!this.cardHost) return;
 
-        // 1️⃣ Clear command output
         const output = this.cardHost.querySelector('.commandOutput');
         if (output) {
             output.innerHTML = '';
         }
 
-        // 2️⃣ Hide domain surface (authoritative)
-        this.hideDomain();
-
-        // 3️⃣ Optional ready line
-        if (Math.random() < 0.1) {
-            this.appendSystemLine('✨ The sky is clear.');
-        } else {
-            this.appendSystemLine('🟢 Skyesoft ready.');
-        }
+        this.appendSystemLine('🟢 Skyesoft ready.');
 
         console.log('[SkyIndex] Session surface cleared');
     },
@@ -353,7 +344,8 @@ window.SkyIndex = {
 
         const card = document.createElement('section');
         card.className = 'card card-command';
-        // Card content is mostly static HTML with some dynamic areas for domain surfaces and command output
+        // Card content is mostly static HTML.
+        // Domain surfaces are now injected dynamically into the command thread.
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🧠 Skyesoft Command Interface</h2>
@@ -364,15 +356,7 @@ window.SkyIndex = {
             <div class="cardBody cardBody--command">
                 <div class="cardContent cardContent--command">
 
-                    <!-- 📘 Active Domain Surface -->
-                    <div class="domainSurface" hidden>
-                        <div class="domainHeader">
-                            <h3 class="domainTitle"></h3>
-                        </div>
-                        <div class="domainBody"></div>
-                    </div>
-
-                    <!-- 🧵 Command Thread (chronological) -->
+                    <!-- 🧵 Command Thread (chronological, authoritative) -->
                     <div class="commandOutput"></div>
 
                 </div>
@@ -403,11 +387,6 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
-
-        // DOM refs
-        this.dom.domainSurface = card.querySelector('.domainSurface');
-        this.dom.domainTitle   = card.querySelector('.domainTitle');
-        this.dom.domainBody    = card.querySelector('.domainBody');
 
         // File attach
         const attachBtn = card.querySelector('.composerPlus');
@@ -616,15 +595,8 @@ window.SkyIndex = {
 
     // #region 📘 Canonical Domain Rendering
     updateDomainSurface(domainKey, domainData) {
-        if (!domainKey || !domainData) {
-            console.warn('[SkyIndex] updateDomainSurface called with invalid args');
-            return;
-        }
 
-        if (!this.dom?.domainBody) {
-            console.warn('[SkyIndex] Domain body not mounted yet — cannot render');
-            return;
-        }
+        if (!domainKey || !domainData) return;
 
         const adapted = adaptStreamedDomain(domainKey, domainData);
         if (!adapted) {
@@ -634,56 +606,42 @@ window.SkyIndex = {
 
         const presentation = this.presentationRegistry?.domains?.[domainKey] ?? null;
 
-        if (this.dom?.domainTitle) {
-            this.dom.domainTitle.textContent = adapted.title ?? domainKey;
-        }
+        // 🔥 Create a domain panel dynamically
+        const surface = document.createElement('div');
+        surface.className = 'domainSurface';
+
+        surface.innerHTML = `
+            <div class="domainHeader">
+                <h3 class="domainTitle"></h3>
+            </div>
+            <div class="domainBody"></div>
+        `;
+
+        const titleEl = surface.querySelector('.domainTitle');
+        const bodyEl  = surface.querySelector('.domainBody');
+
+        titleEl.textContent = adapted.title ?? domainKey;
 
         if (typeof renderOutline !== 'function') {
-            console.error('[SkyIndex] renderOutline missing');
-            this.dom.domainBody.innerHTML = '<p style="color:#f33; padding:1rem;">Renderer unavailable</p>';
-            return;
+            bodyEl.innerHTML = '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
+        } else {
+            renderOutline(bodyEl, adapted, presentation, this.iconMap);
         }
 
-        renderOutline(this.dom.domainBody, adapted, presentation, this.iconMap);
+        // 🔥 Append into command thread (chronological placement)
+        const thread = this.cardHost.querySelector('.commandOutput');
+        if (thread) {
+            thread.appendChild(surface);
+            thread.scrollTop = thread.scrollHeight;
+        }
 
         this.activeDomainKey   = domainKey;
         this.activeDomainModel = adapted;
 
-        // Bind edit events after successful render
         this.bindOutlineEditBridge();
-    },
-
-    bindOutlineEditBridge() {
-        if (!this.dom?.domainBody || !this.activeDomainModel) {
-            console.debug('[SkyIndex] Skipping edit bridge — no active domain');
-            return;
-        }
-
-        // Clean up previous listener if exists
-        if (this._outlineEditListener) {
-            this.dom.domainBody.removeEventListener('outline:edit', this._outlineEditListener);
-        }
-
-        const listener = (e) => {
-            const { nodeId } = e.detail;
-            const node = this.activeDomainModel.nodes?.find(n => n.id === nodeId);
-
-            if (!node) {
-                console.warn('[SkyIndex] Edit target node not found:', nodeId);
-                return;
-            }
-
-            this.openDomainEditModal({
-                domainKey: this.activeDomainKey,
-                node
-            });
-        };
-
-        this.dom.domainBody.addEventListener('outline:edit', listener);
-        this._outlineEditListener = listener;
     }
     // #endregion
-};
+    };
 // #endregion
 
 // #region 🧾 Page Registration
