@@ -276,22 +276,22 @@ window.SkyIndex = {
     // #region 🧹 Session Surface Control
     clearSessionSurface() {
 
-        if (!this.cardHost) return;
+        if (!SkyIndex.cardHost) return;
 
         // 1️⃣ Clear command output
-        const output = this.cardHost.querySelector('.commandOutput');
+        const output = SkyIndex.cardHost.querySelector('.commandOutput');
         if (output) {
             output.innerHTML = '';
         }
 
-        // 2️⃣ Hide domain surface (authoritative)
-        this.hideDomain();
+        // 2️⃣ Hide domain surface (explicit reference)
+        SkyIndex.hideDomain();
 
         // 3️⃣ Optional ready line
         if (Math.random() < 0.1) {
-            this.appendSystemLine('✨ The sky is clear.');
+            SkyIndex.appendSystemLine('✨ The sky is clear.');
         } else {
-            this.appendSystemLine('🟢 Skyesoft ready.');
+            SkyIndex.appendSystemLine('🟢 Skyesoft ready.');
         }
 
         console.log('[SkyIndex] Session surface cleared');
