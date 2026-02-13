@@ -140,7 +140,6 @@ window.SkyIndex = {
 
     // #region 📘 Domain Surface Control
     showDomain(domainKey) {
-
         const sse = window.SkyeApp?.lastSSE;
         const domainData = sse?.[domainKey];
 
@@ -150,16 +149,9 @@ window.SkyIndex = {
         }
 
         this.updateDomainSurface(domainKey, domainData);
-    },
-
-    hideDomain() {
-
-        this.activeDomainKey   = null;
-        this.activeDomainModel = null;
 
         if (this.dom?.domainSurface) {
-            this.dom.domainSurface.hidden = true;
-            this.dom.domainBody.innerHTML = '';
+            this.dom.domainSurface.hidden = false;
         }
     },
     // #endregion
@@ -292,17 +284,15 @@ window.SkyIndex = {
             output.innerHTML = '';
         }
 
-        // 2️⃣ Hide domain surface
-        if (typeof this.hideDomain === 'function') {
-            this.hideDomain();
-        }
+        // 2️⃣ Hide domain surface (authoritative)
+        this.hideDomain();
 
-        // 3️⃣ Ready line
-        this.appendSystemLine(
-            Math.random() < 0.1
-                ? '✨ The sky is clear.'
-                : '🟢 Skyesoft ready.'
-        );
+        // 3️⃣ Optional ready line
+        if (Math.random() < 0.1) {
+            this.appendSystemLine('✨ The sky is clear.');
+        } else {
+            this.appendSystemLine('🟢 Skyesoft ready.');
+        }
 
         console.log('[SkyIndex] Session surface cleared');
     },
