@@ -335,16 +335,23 @@ function resolveHolidayState(string $registryPath, DateTime $now): array
     // Determine next holiday
     usort($results, fn($a, $b) => strcmp($a['observedDate'], $b['observedDate']));
     $next = null;
+
     foreach ($results as $r) {
         if ($r['observedDate'] > $today) {
+
+            // Normalize to calendar dates (midnight comparison)
+            $holidayDate = new DateTime($r['observedDate']);
+            $todayDate   = new DateTime($today);
+
             $next = [
-                "key"        => $r['key'],
-                "name"       => $r['name'],
-                "date"       => $r['date'],
-                "observedDate"=> $r['observedDate'],
-                "rule"       => $r['rule'],
-                "daysAway"   => (new DateTime($r['observedDate']))->diff($now)->days
+                "key"          => $r['key'],
+                "name"         => $r['name'],
+                "date"         => $r['date'],
+                "observedDate" => $r['observedDate'],
+                "rule"         => $r['rule'],
+                "daysAway"     => (int)$todayDate->diff($holidayDate)->format('%a')
             ];
+
             break;
         }
     }

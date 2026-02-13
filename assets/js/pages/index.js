@@ -356,6 +356,11 @@ window.SkyIndex = {
 
             <div class="cardBody cardBody--command">
                 <div class="cardContent cardContent--command">
+
+                    <!-- 🧵 Command Thread (chronological) -->
+                    <div class="commandOutput"></div>
+
+                    <!-- 📘 Active Domain Surface -->
                     <div class="domainSurface" hidden>
                         <div class="domainHeader">
                             <h3 class="domainTitle"></h3>
@@ -363,16 +368,20 @@ window.SkyIndex = {
                         <div class="domainBody"></div>
                     </div>
 
-                    <div class="commandOutput"></div>
                 </div>
 
+                <!-- 🎛 Composer -->
                 <div class="composer">
                     <div class="composerSurface">
                         <button class="composerBtn composerPlus" type="button" aria-label="Attach files">+</button>
+
                         <div class="composerPrimary">
-                            <div class="composerInput" contenteditable="true"
-                                 data-placeholder="Type a command..." spellcheck="false"></div>
+                            <div class="composerInput"
+                                contenteditable="true"
+                                data-placeholder="Type a command..."
+                                spellcheck="false"></div>
                         </div>
+
                         <button class="composerBtn composerSend" type="button" aria-label="Run command">⏎</button>
                         <input class="composerFile" type="file" multiple hidden>
                     </div>
