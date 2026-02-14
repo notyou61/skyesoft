@@ -18,7 +18,6 @@
         initialized: false,
         // #endregion
 
-
         // #region 🚀 Init
         init() {
 
@@ -35,7 +34,6 @@
             });
         },
         // #endregion
-
 
         // #region 🏗 Build Modal Shell
         buildModal() {
@@ -117,9 +115,10 @@
         },
         // #endregion
 
-
         // #region 🧾 Render Form (Domain Aware)
         renderForm() {
+            //
+            this.fields = {};
 
             const body = this.modalEl.querySelector('#skyeModalBody');
 
@@ -177,7 +176,6 @@
         },
         // #endregion
 
-
         // #region 🧱 Field Builders
         createInput(label, key, value, type = 'text') {
 
@@ -222,8 +220,7 @@
         },
         // #endregion
 
-
-        // #region 💾 Save
+        // #region 💾 Save (Optimistic Update Engine)
         save() {
 
             if (!this.activeNode) return;
@@ -234,7 +231,7 @@
 
                 let value = this.fields[key].value;
 
-                // Normalize number fields
+                // Normalize types
                 if (key === 'iconId') {
                     value = value === '' ? null : Number(value);
                 }
@@ -248,14 +245,21 @@
                 updates
             });
 
-            // 🔥 Optional: optimistic local mutation
+            // 🔥 Apply optimistic mutation
             Object.assign(this.activeNode, updates);
 
-            // 🔥 Future:
-            // POST to API
-            // persist JSON
-            // re-render domain
-            // schema validation
+            // 🔁 Re-render active domain surface
+            if (window.SkyIndex?.activeDomainKey === this.activeDomainKey) {
+
+                const model = window.SkyIndex.activeDomainModel;
+
+                if (model) {
+                    window.SkyIndex.updateDomainSurface(
+                        this.activeDomainKey,
+                        model
+                    );
+                }
+            }
 
             this.close();
         }
