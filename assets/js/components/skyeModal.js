@@ -88,6 +88,8 @@
         // #region 🪟 Open
         open({ node, domainKey }) {
 
+            console.log('[SkyeModal] open() called');
+
             if (!node || !domainKey) return;
 
             this.activeNode = node;
@@ -120,15 +122,21 @@
         renderForm() {
 
             const body = this.modalEl.querySelector('#skyeModalBody');
+
             body.innerHTML = '';
+            this.fields = {}; // 🔥 Reset field registry
 
             const node = this.activeNode;
+
+            if (!node) return;
 
             this.modalEl.querySelector('#skyeModalTitle')
                 .textContent = `Edit ${node.type}`;
 
-            // Shared
-            body.appendChild(this.createInput('Label', 'label', node.label));
+            // 🔥 Always show label field
+            body.appendChild(
+                this.createInput('Label', 'label', node.label)
+            );
 
             // Roadmap Phase
             if (this.activeDomainKey === 'roadmap' && node.type === 'phase') {
@@ -137,7 +145,7 @@
                     this.createSelect(
                         'Status',
                         'status',
-                        node.status,
+                        node.status ?? 'pending',
                         ['complete', 'in-progress', 'pending']
                     )
                 );
@@ -164,6 +172,8 @@
                     )
                 );
             }
+
+            console.log('[SkyeModal] Form rendered for:', node);
         },
         // #endregion
 

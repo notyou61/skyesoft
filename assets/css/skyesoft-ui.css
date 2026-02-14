@@ -447,4 +447,14 @@ body {
     margin-bottom: 6px;
 }
 
+#skyeModal .formGroup {
+    margin-bottom: 12px;
+}
+
+#skyeModal label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
 /* #endregion */
