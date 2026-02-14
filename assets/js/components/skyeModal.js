@@ -84,12 +84,20 @@
         // #endregion
 
         // #region 🪟 Open (Forced + Diagnosed)
-        open({ node, domainKey }) {
+        open(arg) {
+            console.log('Raw arg passed to open():', arg);
 
-            console.log('[SkyeModal] open() called', { node, domainKey });
+            if (!arg) {
+                console.warn('open() called without argument');
+                return;
+            }
+
+            const { node, domainKey } = arg;
+
+            console.log('Destructured:', { node, domainKey });
 
             if (!node) {
-                console.warn('[SkyeModal] open() aborted — node missing');
+                console.warn('open() aborted — node missing');
                 return;
             }
 
@@ -97,7 +105,6 @@
             this.activeDomainKey = domainKey;
 
             this.renderForm();
-
             this.modalEl.style.display = 'block';
         },
         // #endregion
