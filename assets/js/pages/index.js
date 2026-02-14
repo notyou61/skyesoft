@@ -697,9 +697,7 @@ window.SkyIndex = {
 
         console.log('[SkyIndex] Opening modal for:', node);
 
-        if (typeof openEditModal === 'function') {
-            openEditModal(node);
-        }
+        window.SkyeModal?.open(node, this.activeDomainKey);
     },
     // #endregion
 
