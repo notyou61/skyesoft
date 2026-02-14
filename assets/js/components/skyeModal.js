@@ -88,42 +88,17 @@
 
             console.log('[SkyeModal] open() called', { node, domainKey });
 
-            // Guard: modal must exist (build if needed)
-            if (!this.modalEl) {
-                console.warn('[SkyeModal] modalEl missing — rebuilding modal');
-                this.buildModal();
-            }
-
-            // Guard: require a node
             if (!node) {
                 console.warn('[SkyeModal] open() aborted — node missing');
                 return;
             }
 
-            // DomainKey is allowed to be null for now (but log it)
-            if (!domainKey) {
-                console.warn('[SkyeModal] domainKey missing — continuing anyway');
-            }
-
-            // Reset per-open state
-            this.fields = {};
             this.activeNode = node;
-            this.activeDomainKey = domainKey ?? null;
+            this.activeDomainKey = domainKey;
 
-            // Render
             this.renderForm();
 
-            // 🔥 Force-visible (no ambiguity)
             this.modalEl.style.display = 'block';
-            this.modalEl.style.visibility = 'visible';
-            this.modalEl.style.opacity = '1';
-            this.modalEl.style.pointerEvents = 'auto';
-
-            // Diagnostics
-            console.log('[SkyeModal] display after open:', {
-                inline: this.modalEl.style.display,
-                computed: getComputedStyle(this.modalEl).display
-            });
         },
         // #endregion
 
