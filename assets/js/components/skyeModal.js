@@ -85,24 +85,24 @@
         },
         // #endregion
 
-
         // #region 🪟 Open
         open({ node, domainKey }) {
 
             if (!node || !domainKey) return;
 
-            if (!this.initialized) this.init();
-
             this.activeNode = node;
             this.activeDomainKey = domainKey;
-            this.fields = {}; // 🔥 reset fields each open
 
             this.renderForm();
 
-            this.modalEl.style.display = 'block';
+            const el = document.getElementById('skyeModal');
+            if (el) {
+                el.style.display = 'block';
+            } else {
+                console.warn('[SkyeModal] Modal element not found');
+            }
         },
         // #endregion
-
 
         // #region ❌ Close
         close() {
