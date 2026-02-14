@@ -93,9 +93,21 @@ function renderPhase(node, presentation, iconMap) {
         taskList.style.display = 'none';
 
         node.children.forEach(task => {
+
             const li = document.createElement('li');
             li.className = 'task-item';
-            li.textContent = task.label || '(No title)';
+
+            /* Task Icon */
+            const taskIcon = renderIcon(task.iconId, iconMap);
+            taskIcon.classList.add('task-icon');
+            li.appendChild(taskIcon);
+
+            /* Task Label */
+            const label = document.createElement('span');
+            label.className = 'task-label';
+            label.textContent = task.label || '(No title)';
+            li.appendChild(label);
+
             taskList.appendChild(li);
         });
 
