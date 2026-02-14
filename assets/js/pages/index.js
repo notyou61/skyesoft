@@ -237,7 +237,8 @@ window.SkyIndex = {
 
     // #region 🚀 Page Init
     async init() {
-        console.log('[SkyIndex] init() fired');
+        // Console log is intentionally sparse during init to avoid SSE interference with load-time debugging. Key load events are still logged for visibility.
+        //console.log('[SkyIndex] init() fired');
 
         this.dom = {
             time:     document.getElementById('headerTime'),
@@ -269,6 +270,15 @@ window.SkyIndex = {
             document.body.removeAttribute('data-auth');
             this.renderLoginCard();
         }
+        // Event listener
+        document.addEventListener('outline:edit', (e) => {
+            const { nodeId, nodeType } = e.detail;
+
+            console.log('[SkyIndex] Edit requested:', nodeId, nodeType);
+
+            SkyIndex.openEditModal(nodeId, nodeType);
+        });
+
     },
     // #endregion
 
@@ -654,7 +664,46 @@ window.SkyIndex = {
 
         this.activeDomainKey   = domainKey;
         this.activeDomainModel = adapted;
-    }
+    },
+    // #region 🔎 Recursive Node Lookup Helper
+    findNodeRecursive(nodes, id) {
+        for (const n of nodes ?? []) {
+            if (n.id === id) return n;
+            if (n.children?.length) {
+                const found = this.findNodeRecursive(n.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    },
+    // #endregion
+
+    // #region 🪟 Open Edit Modal
+    openEditModal(nodeId, nodeType) {
+
+        if (!this.activeDomainModel) {
+            console.warn('[SkyIndex] No active domain model');
+            return;
+        }
+
+        const node =
+            this.activeDomainModel.nodes?.find(n => n.id === nodeId)
+            ?? this.findNodeRecursive(this.activeDomainModel.nodes, nodeId);
+
+        if (!node) {
+            console.warn('[SkyIndex] Node not found:', nodeId);
+            return;
+        }
+
+        console.log('[SkyIndex] Opening modal for:', node);
+
+        window.SkyeModal?.open({
+            node,
+            domainKey: this.activeDomainKey
+        });
+    },
+    // #endregion
+
     // #endregion
     };
 // #endregion
