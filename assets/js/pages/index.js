@@ -625,17 +625,33 @@ window.SkyIndex = {
 
         if (!domainKey || !domainData) return;
 
+        // 🚫 Prevent redraw while modal is active
+        if (window.SkyeModal?.modalEl?.style.display === 'block') {
+            console.log('[SkyIndex] Render skipped (modal active)');
+            return;
+        }
+
         const adapted = adaptStreamedDomain(domainKey, domainData);
         if (!adapted) {
             console.error('[SkyIndex] Domain adaptation failed:', domainKey);
             return;
         }
 
-        const presentation = this.presentationRegistry?.domains?.[domainKey] ?? null;
+        const presentation =
+            this.presentationRegistry?.domains?.[domainKey] ?? null;
 
-        // 🔥 Create a domain panel dynamically
-        const surface = document.createElement('div');
-        surface.className = 'domainSurface';
+        const thread = this.cardHost.querySelector('.commandOutput');
+        if (!thread) return;
+
+        // 🔎 Try to reuse existing surface instead of nuking thread
+        let surface = thread.querySelector('.domainSurface');
+
+        if (!surface) {
+            surface = document.createElement('div');
+            surface.className = 'domainSurface';
+            thread.innerHTML = '';
+            thread.appendChild(surface);
+        }
 
         surface.innerHTML = `
             <div class="domainHeader">
@@ -650,21 +666,17 @@ window.SkyIndex = {
         titleEl.textContent = adapted.title ?? domainKey;
 
         if (typeof renderOutline !== 'function') {
-            bodyEl.innerHTML = '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
+            bodyEl.innerHTML =
+                '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
         } else {
             renderOutline(bodyEl, adapted, presentation, this.iconMap);
-        }
-
-        // 🔥 Append into command thread (chronological placement)
-        const thread = this.cardHost.querySelector('.commandOutput');
-        if (thread) {
-            thread.appendChild(surface);
-            thread.scrollTop = thread.scrollHeight;
         }
 
         this.activeDomainKey   = domainKey;
         this.activeDomainModel = adapted;
     },
+    // #endregion
+
     // #region 🔎 Recursive Node Lookup Helper
     findNodeRecursive(nodes, id) {
         for (const n of nodes ?? []) {
@@ -703,9 +715,7 @@ window.SkyIndex = {
         });
     },
     // #endregion
-
-    // #endregion
-    };
+};
 // #endregion
 
 // #region 🧾 Page Registration

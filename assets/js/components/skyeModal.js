@@ -106,6 +106,7 @@
 
             this.renderForm();
             this.modalEl.style.display = 'block';
+            console.log('Modal display set to block');
         },
         // #endregion
 
