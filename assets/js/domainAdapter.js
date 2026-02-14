@@ -44,7 +44,7 @@ const streamedDomainSchemas = {
 
         root: (domain) =>
             Array.isArray(domain?.summary?.phases)
-                ? domain.summary.phases
+                ? domain.phases
                 : [],
 
         /* ---------------------------------
