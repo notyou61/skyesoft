@@ -36,14 +36,14 @@ const streamedDomainSchemas = {
         * --------------------------------- */
 
         title: (domain) =>
-            domain?.summary?.meta?.title ?? 'Roadmap',
+            domain?.meta?.title ?? 'Roadmap',
 
         /* ---------------------------------
         * Root selector
         * --------------------------------- */
 
         root: (domain) =>
-            Array.isArray(domain?.summary?.phases)
+            Array.isArray(domain?.phases)
                 ? domain.phases
                 : [],
 
@@ -80,7 +80,7 @@ const streamedDomainSchemas = {
                             id: `${phase.id}:task:${idx}`,
                             type: 'task',
                             label: task.text ?? '',
-                            iconId: Number.isInteger(task.icon) ? task.icon : null
+                            iconId: Number(task.icon) || null
                         };
 
                     })
@@ -89,8 +89,6 @@ const streamedDomainSchemas = {
         }
     }
 
-    // 🔒 Future domains (entities, permits, violations, etc.)
-    // are registered here without touching adapter logic.
 };
 /* #endregion */
 
