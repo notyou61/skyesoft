@@ -18,6 +18,27 @@
         initialized: false,
         // #endregion
 
+        // #region 🧩 Canonical CRUD Icon Map
+        crudIcons: {
+            create: 3,
+            read: 20,
+            update: 6,
+            delete: 72
+        },
+        // #endregion
+
+        // #region 🎨 Icon Resolver
+        resolveIcon(iconId) {
+
+            const iconMap = window.SkyIndex?.iconMap;
+
+            if (!iconMap?.icons) return '';
+
+            const entry = iconMap.icons[String(iconId)];
+            return entry?.emoji ?? '';
+        },
+        // #endregion
+        
         // #region 🚀 Init
         init() {
 
@@ -50,7 +71,10 @@
                 <div class="bodyPanel" style="max-width:720px; margin:8vh auto; max-height:84vh;">
                     <div class="bodyHeader">
                         <div class="bodyTitle">
-                            <strong id="skyeModalTitle">Edit</strong>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span id="skyeModalActionIcon" style="font-size:20px;"></span>
+                                <strong id="skyeModalTitle">Edit</strong>
+                            </div>
                         </div>
                     </div>
 
@@ -149,27 +173,22 @@
             const node = this.activeNode;
             const mode = this.activeMode ?? 'update';
 
-            const titleEl = this.modalEl.querySelector('#skyeModalTitle');
-
             // ----------------------------------------------------
-            // 🏷 Header Title (CRUD-aware)
+            // 🏷 Header Title + CRUD Icon
             // ----------------------------------------------------
 
             const typeLabel = node?.type ?? 'node';
 
-            switch (mode) {
-                case 'create':
-                    titleEl.textContent = `Create ${typeLabel}`;
-                    break;
-                case 'read':
-                    titleEl.textContent = `Read ${typeLabel}`;
-                    break;
-                case 'delete':
-                    titleEl.textContent = `Delete ${typeLabel}`;
-                    break;
-                default:
-                    titleEl.textContent = `Update ${typeLabel}`;
+            const iconId = this.crudIcons[mode] ?? this.crudIcons.update;
+            const iconEl = this.modalEl.querySelector('#skyeModalActionIcon');
+            const titleEl = this.modalEl.querySelector('#skyeModalTitle');
+
+            if (iconEl) {
+                iconEl.textContent = this.resolveIcon(iconId);
             }
+
+            const capitalized = mode.charAt(0).toUpperCase() + mode.slice(1);
+            titleEl.textContent = `${capitalized} ${typeLabel}`;
 
             // ----------------------------------------------------
             // 🗑 DELETE MODE (Confirmation UI Only)
@@ -177,16 +196,33 @@
 
             if (mode === 'delete') {
 
-                const warning = document.createElement('div');
-                warning.className = 'formGroup';
-                warning.innerHTML = `
-                    <p style="color:#c33;">
-                        ⚠️ You are about to permanently delete:
-                        <strong>${node?.label ?? '(Unnamed)'}</strong>
-                    </p>
+                const deleteIcon = this.resolveIcon(this.crudIcons.delete);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'formGroup';
+
+                wrapper.innerHTML = `
+                    <div style="
+                        padding:16px;
+                        border:1px solid #c33;
+                        background:#fff4f4;
+                        border-radius:6px;
+                    ">
+                        <div style="font-size:18px; margin-bottom:8px;">
+                            ${deleteIcon} <strong>Delete ${node?.type ?? 'node'}</strong>
+                        </div>
+
+                        <p style="margin:0 0 6px 0; color:#333;">
+                            You are about to permanently remove:
+                        </p>
+
+                        <p style="margin:0; font-weight:600; color:#000;">
+                            ${node?.label ?? '(Unnamed)'}
+                        </p>
+                    </div>
                 `;
 
-                body.appendChild(warning);
+                body.appendChild(wrapper);
                 return;
             }
 
