@@ -83,30 +83,47 @@
         },
         // #endregion
 
-        // #region 🪟 Open (Forced + Diagnosed)
+        // #region 🪟 Open (CRUD-Aware)
         open(arg) {
-            console.log('Raw arg passed to open():', arg);
 
-            if (!arg) {
-                console.warn('open() called without argument');
+            console.log('[SkyeModal] open() raw arg:', arg);
+
+            if (!arg || !arg.domainKey) {
+                console.warn('[SkyeModal] open() aborted — invalid argument');
                 return;
             }
 
-            const { node, domainKey } = arg;
+            const {
+                node = null,
+                domainKey,
+                mode = 'update' // 🔥 default behavior
+            } = arg;
 
-            console.log('Destructured:', { node, domainKey });
+            // Mode validation
+            const allowedModes = ['create', 'read', 'update', 'delete'];
+            if (!allowedModes.includes(mode)) {
+                console.warn('[SkyeModal] Invalid mode:', mode);
+                return;
+            }
 
-            if (!node) {
-                console.warn('open() aborted — node missing');
+            // For update/read/delete, node must exist
+            if (mode !== 'create' && !node) {
+                console.warn('[SkyeModal] open() aborted — node required for mode:', mode);
                 return;
             }
 
             this.activeNode = node;
             this.activeDomainKey = domainKey;
+            this.activeMode = mode;   // 🔥 NEW
+
+            console.log('[SkyeModal] Opening modal:', {
+                id: node?.id ?? '(new)',
+                mode,
+                domainKey
+            });
 
             this.renderForm();
             this.modalEl.style.display = 'block';
-            console.log('Modal display set to block');
         },
         // #endregion
 
@@ -121,64 +138,142 @@
         },
         // #endregion
 
-        // #region 🧾 Render Form (Domain Aware)
+        // #region 🧾 Render Form (CRUD + Domain Aware)
         renderForm() {
-            //
+
             this.fields = {};
 
             const body = this.modalEl.querySelector('#skyeModalBody');
-
             body.innerHTML = '';
-            this.fields = {}; // 🔥 Reset field registry
 
             const node = this.activeNode;
+            const mode = this.activeMode ?? 'update';
 
-            if (!node) return;
+            const titleEl = this.modalEl.querySelector('#skyeModalTitle');
 
-            this.modalEl.querySelector('#skyeModalTitle')
-                .textContent = `Edit ${node.type}`;
+            // ----------------------------------------------------
+            // 🏷 Header Title (CRUD-aware)
+            // ----------------------------------------------------
 
-            // 🔥 Always show label field
+            const typeLabel = node?.type ?? 'node';
+
+            switch (mode) {
+                case 'create':
+                    titleEl.textContent = `Create ${typeLabel}`;
+                    break;
+                case 'read':
+                    titleEl.textContent = `Read ${typeLabel}`;
+                    break;
+                case 'delete':
+                    titleEl.textContent = `Delete ${typeLabel}`;
+                    break;
+                default:
+                    titleEl.textContent = `Update ${typeLabel}`;
+            }
+
+            // ----------------------------------------------------
+            // 🗑 DELETE MODE (Confirmation UI Only)
+            // ----------------------------------------------------
+
+            if (mode === 'delete') {
+
+                const warning = document.createElement('div');
+                warning.className = 'formGroup';
+                warning.innerHTML = `
+                    <p style="color:#c33;">
+                        ⚠️ You are about to permanently delete:
+                        <strong>${node?.label ?? '(Unnamed)'}</strong>
+                    </p>
+                `;
+
+                body.appendChild(warning);
+                return;
+            }
+
+            // ----------------------------------------------------
+            // 🆕 CREATE MODE (Empty Node Template)
+            // ----------------------------------------------------
+
+            const workingNode = mode === 'create'
+                ? { type: node?.type ?? 'phase' }
+                : node;
+
+            if (!workingNode) return;
+
+            // ----------------------------------------------------
+            // 🧱 Shared Fields
+            // ----------------------------------------------------
+
             body.appendChild(
-                this.createInput('Label', 'label', node.label)
+                this.createInput('Label', 'label', workingNode.label ?? '')
             );
 
-            // Roadmap Phase
-            if (this.activeDomainKey === 'roadmap' && node.type === 'phase') {
+            // ----------------------------------------------------
+            // 🗺 Roadmap Domain Logic
+            // ----------------------------------------------------
 
-                body.appendChild(
-                    this.createSelect(
-                        'Status',
-                        'status',
-                        node.status ?? 'pending',
-                        ['complete', 'in-progress', 'pending']
-                    )
-                );
+            if (this.activeDomainKey === 'roadmap') {
 
-                body.appendChild(
-                    this.createInput(
-                        'Icon ID',
-                        'iconId',
-                        node.iconId ?? '',
-                        'number'
-                    )
-                );
+                // Phase
+                if (workingNode.type === 'phase') {
+
+                    body.appendChild(
+                        this.createSelect(
+                            'Status',
+                            'status',
+                            workingNode.status ?? 'pending',
+                            ['complete', 'in-progress', 'pending']
+                        )
+                    );
+
+                    body.appendChild(
+                        this.createInput(
+                            'Icon ID',
+                            'iconId',
+                            workingNode.iconId ?? '',
+                            'number'
+                        )
+                    );
+                }
+
+                // Task
+                if (workingNode.type === 'task') {
+
+                    body.appendChild(
+                        this.createInput(
+                            'Icon ID',
+                            'iconId',
+                            workingNode.iconId ?? '',
+                            'number'
+                        )
+                    );
+                }
             }
 
-            // Roadmap Task
-            if (this.activeDomainKey === 'roadmap' && node.type === 'task') {
+            // ----------------------------------------------------
+            // 👁 READ MODE (Disable All Fields)
+            // ----------------------------------------------------
 
-                body.appendChild(
-                    this.createInput(
-                        'Icon ID',
-                        'iconId',
-                        node.iconId ?? '',
-                        'number'
-                    )
-                );
+            if (mode === 'read') {
+
+                Object.values(this.fields).forEach(el => {
+                    el.disabled = true;
+                });
+
+                // Hide Save button in read mode
+                const saveBtn = this.modalEl.querySelector('#skyeModalSave');
+                if (saveBtn) saveBtn.style.display = 'none';
+
+            } else {
+
+                const saveBtn = this.modalEl.querySelector('#skyeModalSave');
+                if (saveBtn) saveBtn.style.display = 'inline-block';
             }
 
-            console.log('[SkyeModal] Form rendered for:', node);
+            console.log('[SkyeModal] Form rendered:', {
+                mode,
+                node: workingNode
+            });
         },
         // #endregion
 
