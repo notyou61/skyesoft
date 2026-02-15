@@ -22,7 +22,7 @@
         crudIcons: {
             create: 3,
             read: 20,
-            update: 6,
+            update: 23,  // 💾 Save / Persist
             delete: 72
         },
         // #endregion
