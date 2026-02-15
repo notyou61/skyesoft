@@ -1443,6 +1443,48 @@
                     "Mutating repository inventory files"
                 ]
             },
+            "recordLifecyclePolicy": {
+                "icon": 20,
+                "title": "Record Lifecycle Policy",
+                "version": "1.0.0",
+                "preamble": {
+                    "icon": 7,
+                    "text": "This policy defines how records are created, maintained, invalidated, archived, and removed within Skyesoft. It ensures historical continuity, relational integrity, and audit defensibility across all domains."
+                },
+                "principles": {
+                    "immutability": {
+                    "icon": 6,
+                    "text": "Records should preserve historical truth. Mutations must be intentional and traceable."
+                    },
+                    "softDeletion": {
+                    "icon": 72,
+                    "text": "Operational and relational records (e.g., contacts, entities, permits, financial data) must not be permanently deleted. Instead, records shall be marked invalid using a validity flag (e.g., valid: false) while preserving historical references."
+                    },
+                    "hardDeletion": {
+                    "icon": 3,
+                    "text": "Planning or non-relational structural records (e.g., roadmap nodes) may be permanently removed if they have no external dependencies."
+                    },
+                    "domainDeclaration": {
+                    "icon": 14,
+                    "text": "Each domain must explicitly declare its lifecycle behavior (hard or soft deletion) within its configuration."
+                    }
+                },
+                "enforcement": {
+                    "icon": 11,
+                    "text": "All modules performing CRUD operations must respect the lifecycle rules declared by their domain. No deletion behavior may be assumed."
+                }
+            },
+            "dataGovernance": {
+                "icon": 20,
+                "title": "Data Governance Standards",
+                "sections": {
+                    "lifecycleCompliance": {
+                    "icon": 11,
+                    "title": "Lifecycle Compliance",
+                    "text": "All data operations must conform to the Record Lifecycle Policy. Domains are prohibited from implementing deletion logic outside their declared lifecycle classification. See standards.items.recordLifecyclePolicy for authoritative rules."
+                    }
+                }
+            },
             "unifiedClientArchitecture": {
                 "title": {
                     "icon": 7,
