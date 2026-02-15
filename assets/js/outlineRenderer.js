@@ -55,15 +55,18 @@ function renderPhase(node, presentation, iconMap) {
 
     /* Edit — placed right after title */
     if (presentation?.nodeTypes?.phase?.editable) {
-        const edit = document.createElement('a');
-        edit.href = '#';
-        edit.className = 'edit-link';
-        edit.textContent = 'Edit';
-        edit.addEventListener('click', e => {
+
+        // 🧠 Update Link
+        const update = document.createElement('a');
+        update.href = '#';
+        update.className = 'node-update';
+        update.textContent = 'Update';
+
+        update.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
 
-            header.dispatchEvent(new CustomEvent('outline:edit', {
+            header.dispatchEvent(new CustomEvent('outline:update', {
                 bubbles: true,
                 detail: {
                     nodeId: node.id,
@@ -71,7 +74,30 @@ function renderPhase(node, presentation, iconMap) {
                 }
             }));
         });
-        header.appendChild(edit);
+
+        header.appendChild(update);
+
+        // ⚠️ Delete Link
+        const del = document.createElement('a');
+        del.href = '#';
+        del.className = 'node-delete';
+        del.style.marginLeft = '8px';
+        del.textContent = 'Delete';
+
+        del.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            header.dispatchEvent(new CustomEvent('outline:delete', {
+                bubbles: true,
+                detail: {
+                    nodeId: node.id,
+                    nodeType: node.type
+                }
+            }));
+        });
+
+        header.appendChild(del);
     }
 
     /* Status (render last) */

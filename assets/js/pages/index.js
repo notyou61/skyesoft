@@ -270,13 +270,22 @@ window.SkyIndex = {
             document.body.removeAttribute('data-auth');
             this.renderLoginCard();
         }
-        // Event listener
-        document.addEventListener('outline:edit', (e) => {
+        // 🔁 Node Update
+        document.addEventListener('outline:update', (e) => {
             const { nodeId, nodeType } = e.detail;
 
-            console.log('[SkyIndex] Edit requested:', nodeId, nodeType);
+            console.log('[SkyIndex] Update requested:', nodeId, nodeType);
 
-            SkyIndex.openEditModal(nodeId, nodeType);
+            SkyIndex.openEditModal(nodeId, nodeType, 'update');
+        });
+
+        // 🗑 Node Delete
+        document.addEventListener('outline:delete', (e) => {
+            const { nodeId, nodeType } = e.detail;
+
+            console.log('[SkyIndex] Delete requested:', nodeId, nodeType);
+
+            SkyIndex.openEditModal(nodeId, nodeType, 'delete');
         });
 
     },
@@ -654,8 +663,12 @@ window.SkyIndex = {
         }
 
         surface.innerHTML = `
-            <div class="domainHeader">
-                <h3 class="domainTitle"></h3>
+            <div class="domainHeader" style="display:flex; align-items:center; justify-content:space-between;">
+                <h3 class="domainTitle" style="margin:0;"></h3>
+                <div class="domainActions" style="display:flex; gap:12px;">
+                    <a href="#" class="domain-create">➕ Create</a>
+                    <a href="#" class="domain-read">📄 Read</a>
+                </div>
             </div>
             <div class="domainBody"></div>
         `;
@@ -665,7 +678,43 @@ window.SkyIndex = {
 
         titleEl.textContent = adapted.title ?? domainKey;
 
+        /* -------------------------------------------------
+        🧩 Domain-Level CRUD Links (Always Attach)
+        ------------------------------------------------- */
+
+        const createLink = surface.querySelector('.domain-create');
+        const readLink   = surface.querySelector('.domain-read');
+
+        createLink?.addEventListener('click', e => {
+            e.preventDefault();
+            console.log('[SkyIndex] Create requested (placeholder)');
+
+            window.SkyeModal?.open({
+                domainKey,
+                mode: 'create',
+                node: { type: 'phase' } // default scaffold
+            });
+        });
+
+        readLink?.addEventListener('click', e => {
+            e.preventDefault();
+            console.log('[SkyIndex] Read requested (placeholder)');
+        });
+
+        /* -------------------------------------------------
+        🖼 Render Domain Body
+        ------------------------------------------------- */
+
         if (typeof renderOutline !== 'function') {
+            bodyEl.innerHTML =
+                '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
+        } else {
+            renderOutline(bodyEl, adapted, presentation, this.iconMap);
+        }
+
+
+        if (typeof renderOutline !== 'function') {
+            
             bodyEl.innerHTML =
                 '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
         } else {
@@ -690,8 +739,8 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🪟 Open Edit Modal
-    openEditModal(nodeId, nodeType) {
+    // #region 🪟 Open Edit Modal (CRUD-Aware)
+    openEditModal(nodeId, nodeType, mode = 'update') {
 
         if (!this.activeDomainModel) {
             console.warn('[SkyIndex] No active domain model');
@@ -702,19 +751,25 @@ window.SkyIndex = {
             this.activeDomainModel.nodes?.find(n => n.id === nodeId)
             ?? this.findNodeRecursive(this.activeDomainModel.nodes, nodeId);
 
-        if (!node) {
+        // For delete/read/update → node must exist
+        if (mode !== 'create' && !node) {
             console.warn('[SkyIndex] Node not found:', nodeId);
             return;
         }
 
-        console.log('[SkyIndex] Opening modal for:', node);
+        console.log('[SkyIndex] Opening modal:', {
+            nodeId,
+            mode
+        });
 
         window.SkyeModal?.open({
             node,
-            domainKey: this.activeDomainKey
+            domainKey: this.activeDomainKey,
+            mode
         });
     },
     // #endregion
+
 };
 // #endregion
 
