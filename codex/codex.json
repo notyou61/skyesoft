@@ -1294,6 +1294,85 @@
                     "Mismatch between structural header and declared purpose in repositoryInventory.json constitutes a Codex violation."
                 ]
             },
+            "runtimeDomainRegistryStandard": {
+                "title": {
+                    "icon": 74,
+                    "text": "Runtime Domain Registry Standard"
+                },
+                "tier": 2,
+                "hierarchyOrder": 13,
+                "type": "Architectural Standard",
+                "preamble": {
+                    "icon": 0,
+                    "text": "The Runtime Domain Registry Standard defines the canonical structure, storage abstraction, presentation contract, and mutation capability declaration for all Skyesoft runtime domains. Runtime domains are hierarchical, prompt-accessible, and Workflowy-style renderable data structures distinct from Tier-2 governance primitives."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a unified, storage-agnostic registry governing presentation behavior, CRUD capabilities, lifecycle policy, and persistence abstraction for runtime domains."
+                },
+                "definitions": {
+                    "runtimeDomain": "A mutable, hierarchical data domain accessible via the Skyesoft Command Interface.",
+                    "governancePrimitive": "Tier-2 constitutional enforcement mechanisms including Sentinel, Auditor, and Mutator."
+                },
+                "domainDeclarationContract": {
+                    "requiredFields": [
+                        "domainKey",
+                        "storageType",
+                        "lifecycle",
+                        "capabilities",
+                        "nodeTypes",
+                        "idField"
+                    ],
+                    "optionalFields": [
+                        "maxDepth",
+                        "sqlTable",
+                        "presentation",
+                        "parentField"
+                    ],
+                    "rules": [
+                        "capabilities must explicitly include read, create, update, delete.",
+                        "storageType must be either 'json' or 'sql'.",
+                        "lifecycle must be either 'hard' or 'soft'.",
+                        "nodeTypes must declare editable and deletable flags.",
+                        "Registry is declarative configuration only and must remain side-effect free.",
+                        "Each domain must guarantee uniqueness of idField within its storage scope.",
+                        "If parentField is omitted, the domain is treated as flat (non-hierarchical)."
+                    ]
+                },
+                "requirements": [
+                    "All runtime domains must be declared in runtimeDomainRegistry.json.",
+                    "Presentation behavior and storage configuration must coexist in the same registry object.",
+                    "Registry entries must conform to domainDeclarationContract.",
+                    "Mutation routing must reference registry; registry must not execute logic.",
+                    "Governance primitives must not be repurposed as runtime mutation handlers."
+                ],
+                "workflowyInterfaceDoctrine": [
+                    "Runtime domains must support hierarchical collapse/expand rendering.",
+                    "Node types must be declared per domain and respected by UI projection logic.",
+                    "Editable flags must be declared per nodeType.",
+                    "Command Interface must reference registry for capability enforcement."
+                ],
+                "crudDoctrine": {
+                    "read": "Read represents hierarchical projection of domain state for Workflowy-style rendering. Read does not mutate persistence.",
+                    "create": "Create appends a new node consistent with declared nodeTypes and lifecycle policy.",
+                    "update": "Update mutates existing node properties subject to lifecycle policy.",
+                    "delete": "Delete removes node per lifecycle policy (hard or soft)."
+                },
+                "futureCompatibility": [
+                    "SQL-backed domains must integrate via storageType switch without altering registry structure.",
+                    "Presentation contract must remain storage-agnostic."
+                ],
+                "validation": {
+                    "enforcedBy": "modules/domainRegistryValidator.php",
+                    "frequency": "on-commit",
+                    "action": "Reject registry entries that omit required capability or storage declarations."
+                },
+                "notes": [
+                    "This Standard formalizes the Runtime Domain Layer as distinct from Tier-2 governance.",
+                    "Any domain not declared in runtimeDomainRegistry.json is considered non-operational.",
+                    "Registry structure must remain backward compatible across minor versions."
+                ]
+            },
             "prefixRegistryStandard": {
                 "title": {
                     "icon": 74,
