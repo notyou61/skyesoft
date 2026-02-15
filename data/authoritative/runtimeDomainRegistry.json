@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "version": "1.0-pilot",
+    "description": "Runtime Domain Registry — Pilot Phase (Roadmap Only)"
+  },
+  "domains": {
+    "roadmap": {
+      "domainKey": "roadmap",
+      "storageType": "json",
+      "authoritativePath": "/data/authoritative/roadmap.json",
+      "lifecycle": "hard",
+      "idField": "id",
+      "parentField": "parentId",
+      "capabilities": {
+        "read": true,
+        "create": true,
+        "update": true,
+        "delete": true
+      },
+      "nodeTypes": {
+        "phase": {
+          "editable": true,
+          "deletable": true
+        },
+        "task": {
+          "editable": true,
+          "deletable": true
+        }
+      },
+      "presentation": {
+        "collapsible": true,
+        "defaultExpanded": false
+      }
+    }
+  }
+}
