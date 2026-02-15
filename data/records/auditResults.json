@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 16,
-        "violationCount": 18,
-        "unresolvedViolations": 5,
-        "lastAudit": 1768750117,
-        "lastViolationBatch": "VB-1768750117"
+        "auditCount": 19,
+        "violationCount": 45,
+        "unresolvedViolations": 0,
+        "lastAudit": 1771171307,
+        "lastViolationBatch": "VB-1771171307"
     },
     "violations": [
         {
@@ -662,9 +662,9 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768750117",
-            "resolved": null,
+            "resolved": 1771169675,
             "resolution": null,
-            "lastObserved": 1768750117,
+            "lastObserved": 1771169675,
             "observationCount": 1,
             "facts": {
                 "path": "/.vscode",
@@ -692,9 +692,9 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768750117",
-            "resolved": null,
+            "resolved": 1771169675,
             "resolution": null,
-            "lastObserved": 1768750117,
+            "lastObserved": 1771169675,
             "observationCount": 1,
             "facts": {
                 "path": "/.vscode/tasks.json",
@@ -722,9 +722,9 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768750117",
-            "resolved": null,
+            "resolved": 1771169675,
             "resolution": null,
-            "lastObserved": 1768750117,
+            "lastObserved": 1771169675,
             "observationCount": 1,
             "facts": {
                 "path": "/index.html",
@@ -752,9 +752,9 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768750117",
-            "resolved": null,
+            "resolved": 1771169675,
             "resolution": null,
-            "lastObserved": 1768750117,
+            "lastObserved": 1771169675,
             "observationCount": 1,
             "facts": {
                 "path": "/tools/vscode",
@@ -782,12 +782,818 @@
             },
             "notificationSent": null,
             "violationBatch": "VB-1768750117",
-            "resolved": null,
+            "resolved": 1771169675,
             "resolution": null,
-            "lastObserved": 1768750117,
+            "lastObserved": 1771169675,
             "observationCount": 1,
             "facts": {
                 "path": "/tools/vscode/tasks.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-019",
+            "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+            "ruleId": "merkleIntegrity",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+            "violationNotes": {
+                "summary": "A Merkle root mismatch was observed during this audit run.",
+                "details": [
+                    "The observed Merkle state differs from the governed snapshot.",
+                    "This condition was observed once in this audit run.",
+                    "Human review may be required."
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771171307,
+            "resolution": null,
+            "lastObserved": 1771171307,
+            "observationCount": 2,
+            "facts": {
+                "storedRoot": "89363486a19d5aeee00ca7322f0f5077243ec8c419c3bcf2fea53603dca09712",
+                "observedRoot": "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be"
+            }
+        },
+        {
+            "violationId": "VIO-020",
+            "identityHash": "0c5f06dff325b8ac9a20bd4784e6774863cf003cd660f92cdc2ea3e880a82d09",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/data/runtimeEphemeral/kpi.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file '/data/runtimeEphemeral/kpi.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/kpi.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-021",
+            "identityHash": "67c225499ea8e7f6be75ce14b856168e0c041ee1745f559c58714c57dc143730",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared dir '/planning' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared dir '/planning' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/planning",
+                "expected": "dir",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-022",
+            "identityHash": "cc139d2a268e6b86d2f8c547de1fd25a30389776035721d249438f420125ed57",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/planning/roadmap.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' '/planning/roadmap.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/planning/roadmap.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-023",
+            "identityHash": "aa668d0699f5f7211797a784784cc69b5c5afbf5e5206d63448e20cf3f88b1ad",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/planning/roadmapDetailed.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' '/planning/roadmapDetailed.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/planning/roadmapDetailed.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-024",
+            "identityHash": "a0ad8e9f3a7a3dec1ca9cb207604d25a29232b85969ac8ec5dca66e849180ea9",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared dir '/tools/vscode' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared dir '/tools/vscode' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/tools/vscode",
+                "expected": "dir",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-025",
+            "identityHash": "772169d7e60f8f094d9b863a0d8793f6475ccacf68819b4fea28839a63788149",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/tools/vscode/tasks.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' '/tools/vscode/tasks.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/tools/vscode/tasks.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-026",
+            "identityHash": "6b9d9d7604f1bbd70282d570ef28fd4f963b69656db8c3e1d2d8a624f736df69",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/css/indexPage.css' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/css/indexPage.css' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/css/indexPage.css",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-027",
+            "identityHash": "efe37f2068eb5a3ee97c1e0409c5f4b0c063832eb2a39f204e55aae5bcdddb74",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/images/live-streaming.gif' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/images/live-streaming.gif' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/images/live-streaming.gif",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-028",
+            "identityHash": "0d8a7145f583c657ff7c0eac57ab440881050b4cd208c6e4115cfba93c65b2c5",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected dir '/assets/js/components' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/js/components' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/js/components",
+                "type": "dir",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-029",
+            "identityHash": "7b09c08942f1c5341b1892f622a338c8a2911cb7953e9735fbab15b3c9813471",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/js/components/skyeModal.js' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/js/components/skyeModal.js' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/js/components/skyeModal.js",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-030",
+            "identityHash": "49c9e37d7ab42677bd3c47faee6fb868974f21f0014e4504068da7898cd6e0d6",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/js/domainAdapter.js' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/js/domainAdapter.js' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/js/domainAdapter.js",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-031",
+            "identityHash": "7f5a1aabd13d3c1ca936897823443b56f834d1e3712c0f240fceb479da7bf227",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/js/outlineRenderer.js' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/js/outlineRenderer.js' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/js/outlineRenderer.js",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-032",
+            "identityHash": "28dd06a9fabb4634589b3ab3de2701ac2116925a0543074131cd97eddebf9993",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/assets/js/pages/index.js' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/assets/js/pages/index.js' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/assets/js/pages/index.js",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-033",
+            "identityHash": "1bd9abdb4cbc30e8a68cb5f4925ff23a5119cf8d3441fb4ed215fd49ff0bdd41",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/codex/prompts/permitNewsPrompt.prompt.md' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/codex/prompts/permitNewsPrompt.prompt.md' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/codex/prompts/permitNewsPrompt.prompt.md",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-034",
+            "identityHash": "8fd1401d460c2aa954224511b6f3d7cacbffc14b928cc6d3b97e20535372e727",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/codex/prompts/responseGeneration.prompt.md' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/codex/prompts/responseGeneration.prompt.md' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/codex/prompts/responseGeneration.prompt.md",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-035",
+            "identityHash": "4ca24c2c9364c27cff062c8004d081d16c7449c5ae92fdac6278a135c21eebf6",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/codex/prompts/semanticIntent.prompt.md' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '{{path}}' is {{issue}}",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/codex/prompts/semanticIntent.prompt.md",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-036",
+            "identityHash": "0ff8d5a244d32bd47159781b253006ce954e0fe55153669115302c7ed28a0d06",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/.htaccess' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/.htaccess' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/.htaccess",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-037",
+            "identityHash": "b383a1ee31385e12a4a28cf6fe55ce1011a3e5b38d739e6a3231891e0ff858e2",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/intentMatrix.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/intentMatrix.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/intentMatrix.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-038",
+            "identityHash": "f3b5f6885c279475dc7722fa42b77634b7be8a2ce39ded862ad1a50d79fe6b82",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/presentationRegistry.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/presentationRegistry.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/presentationRegistry.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-039",
+            "identityHash": "7f58dc5b805124b76e8fdd3c9d67f6a6650a6fe991edc5d617081842e3ec6de3",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/promptLedger.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/promptLedger.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/promptLedger.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-040",
+            "identityHash": "0b3a3e1d199cb30f0356ab65231da5206728cf6ce0be4dafc3383be5b0abfd48",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/roadmap.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/roadmap.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/roadmap.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-041",
+            "identityHash": "f5c5bfbdcdef590fd6244b00ad67cff9bfdb73f0cd3dc8040de26a5c72498a46",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/authoritative/skyesoftTips.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/authoritative/skyesoftTips.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/skyesoftTips.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-042",
+            "identityHash": "ad0404b176ea64f6cbd4f756a235de39b931f8caf247e2d1f7d2571089002fb9",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/runtimeEphemeral/.htaccess' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/runtimeEphemeral/.htaccess' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/.htaccess",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-043",
+            "identityHash": "b03824a75ef79a9e8fa40eae9509e6ca0b84e1c73832b7f795317b324c13d580",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/runtimeEphemeral/kpiRegistry.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/runtimeEphemeral/kpiRegistry.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/kpiRegistry.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-044",
+            "identityHash": "f2e666e3755b39e63ae351677a7e91f946931459ce018d8cdf83ef7fb7d19ad0",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/data/runtimeEphemeral/permitNews.json' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/data/runtimeEphemeral/permitNews.json' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/runtimeEphemeral/permitNews.json",
+                "type": "file",
+                "issue": "unexpected",
+                "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-045",
+            "identityHash": "762d56b049b28d52fe6e68d982e84c3b10030a1d4bb9a7855fcb3a42ec002cf1",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771169675,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: unexpected file '/scripts/sentinel-heartbeat.php' exists but not declared",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared missing '/scripts/sentinel-heartbeat.php' is unexpected",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771169675",
+            "resolved": 1771170294,
+            "resolution": null,
+            "lastObserved": 1771170294,
+            "observationCount": 1,
+            "facts": {
+                "path": "/scripts/sentinel-heartbeat.php",
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
