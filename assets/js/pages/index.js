@@ -663,13 +663,13 @@ window.SkyIndex = {
         }
 
         surface.innerHTML = `
-            <div class="domainHeader" style="display:flex; align-items:center; justify-content:space-between;">
+            <div class="domainHeader" style="display:flex; align-items:center; gap:16px;">
                 <h3 class="domainTitle" style="margin:0;"></h3>
-                <div class="domainActions" style="display:flex; gap:12px;">
-                    <a href="#" class="domain-create">➕ Create</a>
-                    <a href="#" class="domain-read">📄 Read</a>
-                </div>
+
+                <a href="#" class="domain-create">➕ Create</a>
+                <a href="#" class="domain-read">📄 Read</a>
             </div>
+
             <div class="domainBody"></div>
         `;
 
