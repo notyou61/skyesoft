@@ -11,7 +11,7 @@
   "holidays": [
     { "key": "newYearsDay", "name": "New Year's Day", "dateRule": "jan-01", "type": ["federal", "company"], "observedRule": "followsWeekend" },
     { "key": "martinLutherKingJrDay", "name": "Martin Luther King Jr. Day", "dateRule": "third-monday-january", "type": ["federal"] },
-    { "key": "presidentsDay", "name": "Presidents' Day", "dateRule": "third-monday-february", "type": ["federal", "company"] },
+    { "key": "presidentsDay", "name": "Presidents' Day", "dateRule": "third-monday-february", "type": ["federal"] },
     { "key": "memorialDay", "name": "Memorial Day", "dateRule": "last-monday-may", "type": ["federal", "company"] },
     { "key": "juneteenth", "name": "Juneteenth National Independence Day", "dateRule": "jun-19", "type": ["federal", "company"], "observedRule": "followsWeekend" },
     { "key": "independenceDay", "name": "Independence Day", "dateRule": "jul-04", "type": ["federal", "company"], "observedRule": "followsWeekend" },
