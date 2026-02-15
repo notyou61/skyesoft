@@ -53,23 +53,15 @@ function renderPhase(node, presentation, iconMap) {
     title.textContent = node.label || '(Untitled)';
     header.appendChild(title);
 
-    /* CRUD Links — placed right after title */
+    /* CRUD Links — minimal, text-only */
     if (presentation?.nodeTypes?.phase?.editable) {
 
-        const iconMap = window.SkyIndex?.iconMap?.icons ?? {};
-
-        const updateIcon =
-            iconMap['23']?.emoji ?? '💾';
-
-        const deleteIcon =
-            iconMap['72']?.emoji ?? '⚠️';
-
-        // 🧠 UPDATE
+        // UPDATE
         const update = document.createElement('a');
         update.href = '#';
         update.className = 'node-update';
         update.style.marginLeft = '12px';
-        update.textContent = `${updateIcon} Update`;
+        update.textContent = 'Update';
 
         update.addEventListener('click', e => {
             e.preventDefault();
@@ -86,12 +78,12 @@ function renderPhase(node, presentation, iconMap) {
 
         header.appendChild(update);
 
-        // ⚠️ DELETE
+        // DELETE
         const del = document.createElement('a');
         del.href = '#';
         del.className = 'node-delete';
         del.style.marginLeft = '8px';
-        del.textContent = `${deleteIcon} Delete`;
+        del.textContent = 'Delete';
 
         del.addEventListener('click', e => {
             e.preventDefault();

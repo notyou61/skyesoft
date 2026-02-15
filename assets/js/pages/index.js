@@ -666,8 +666,8 @@ window.SkyIndex = {
             <div class="domainHeader" style="display:flex; align-items:center; gap:16px;">
                 <h3 class="domainTitle" style="margin:0;"></h3>
 
-                <a href="#" class="domain-create">➕ Create</a>
-                <a href="#" class="domain-read">📄 Read</a>
+                <a href="#" class="domain-create">Create</a>
+                <a href="#" class="domain-read">Read</a>
             </div>
 
             <div class="domainBody"></div>

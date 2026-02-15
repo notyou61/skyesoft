@@ -457,4 +457,19 @@ body {
     margin-bottom: 4px;
 }
 
+.node-update,
+.node-delete {
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.node-update {
+    color: #2b5dab;
+}
+
+.node-delete {
+    color: #b23b3b;
+}
+
 /* #endregion */
