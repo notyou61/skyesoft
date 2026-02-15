@@ -665,9 +665,8 @@ window.SkyIndex = {
         surface.innerHTML = `
             <div class="domainHeader" style="display:flex; align-items:center; gap:16px;">
                 <h3 class="domainTitle" style="margin:0;"></h3>
-
-                <a href="#" class="domain-create">Create</a>
-                <a href="#" class="domain-read">Read</a>
+                    <span class="domain-action domain-create">Create</span>
+                    <span class="domain-action domain-read">Read</span>
             </div>
 
             <div class="domainBody"></div>

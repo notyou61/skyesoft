@@ -489,4 +489,38 @@ body {
     background: #ffe1e1;
 }
 
+/* Shared domain header actions */
+.domain-action {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 10px;
+    font-size: 12px;
+    border-radius: 14px;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+/* Create — positive governance */
+.domain-create {
+    background: #edf7f0;
+    color: #1f6b3a;
+}
+
+.domain-create:hover {
+    background: #d9efe2;
+}
+
+/* Read — neutral inspection */
+.domain-read {
+    background: #eef2f7;
+    color: #2c3e50;
+}
+
+.domain-read:hover {
+    background: #dbe4ef;
+}
+
+
 /* #endregion */
