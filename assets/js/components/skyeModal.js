@@ -7,7 +7,7 @@
 
 // #region 🧩 SkyeModal Editing Engine
 (function () {
-
+    // #region 🧠 State & Config
     const SkyeModal = {
 
         // #region 🧠 State
@@ -188,7 +188,11 @@
             }
 
             const capitalized = mode.charAt(0).toUpperCase() + mode.slice(1);
-            titleEl.textContent = `${capitalized} ${typeLabel}`;
+
+            // Prefer node label over type
+            const nodeLabel = node?.label ?? typeLabel;
+
+            titleEl.textContent = `${capitalized} — ${nodeLabel}`;
 
             // ----------------------------------------------------
             // 🗑 DELETE MODE (Confirmation UI Only)
@@ -402,12 +406,14 @@
         }
         // #endregion
     };
+    // #endregion
 
+    // #region Expose SkyeModal globally
     window.SkyeModal = SkyeModal;
-
     document.addEventListener('DOMContentLoaded', () => {
         SkyeModal.init();
     });
+    // #endregion
 
 })();
 // #endregion
