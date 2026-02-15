@@ -457,19 +457,36 @@ body {
     margin-bottom: 4px;
 }
 
-.node-update,
-.node-delete {
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
+.node-action {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
 }
 
+/* Update — neutral governance */
 .node-update {
-    color: #2b5dab;
+    background: #eef2f7;
+    color: #2c3e50;
 }
 
+.node-update:hover {
+    background: #dbe4ef;
+}
+
+/* Delete — controlled warning */
 .node-delete {
-    color: #b23b3b;
+    background: #fff3f3;
+    color: #a33;
+}
+
+.node-delete:hover {
+    background: #ffe1e1;
 }
 
 /* #endregion */

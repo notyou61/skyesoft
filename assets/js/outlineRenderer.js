@@ -59,7 +59,7 @@ function renderPhase(node, presentation, iconMap) {
         // UPDATE
         const update = document.createElement('a');
         update.href = '#';
-        update.className = 'node-update';
+        update.className = 'node-action node-update';
         update.style.marginLeft = '12px';
         update.textContent = 'Update';
 
@@ -81,7 +81,7 @@ function renderPhase(node, presentation, iconMap) {
         // DELETE
         const del = document.createElement('a');
         del.href = '#';
-        del.className = 'node-delete';
+        del.className = 'node-action node-delete';
         del.style.marginLeft = '8px';
         del.textContent = 'Delete';
 
