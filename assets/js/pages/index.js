@@ -155,11 +155,13 @@ window.SkyIndex = {
     // #region 📦 Registry Loaders
     async loadRuntimeDomainRegistry() {
         try {
-            const res = await fetch('/skyesoft/data/records/runtimeDomainRegistry.json');
+            const res = await fetch('/skyesoft/data/authoritative/runtimeDomainRegistry.json');
+
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             this.runtimeDomainRegistry = await res.json();
             console.log('[SkyIndex] runtimeDomainRegistry loaded');
+
         } catch (err) {
             console.error('[SkyIndex] Failed to load runtimeDomainRegistry:', err);
             this.runtimeDomainRegistry = null;
