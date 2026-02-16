@@ -28,6 +28,11 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 /* #region Node Rendering */
 function renderNode(node, domainConfig, iconMap) {
 
+    console.log('[RENDER DEBUG]', {
+        domainConfig,
+        capabilities: domainConfig?.capabilities
+    });
+
     const el = document.createElement('div');
     el.className = 'outline-phase';
 
