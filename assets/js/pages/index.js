@@ -264,21 +264,6 @@ window.SkyIndex = {
             return;
         }
 
-        // Close open kebab menus on outside click
-        document.addEventListener('click', (e) => {
-
-            // If click occurred inside any node-actionsWrap, do nothing
-            if (e.target.closest('.node-actionsWrap')) return;
-
-            // Otherwise close all open menus
-            document.querySelectorAll('.node-actionsWrap.open')
-                .forEach(wrap => {
-                    wrap.classList.remove('open');
-                    const panel = wrap.querySelector('.node-actionsPanel');
-                    if (panel) panel.hidden = true;
-                });
-        });
-
         // Load registries in order of preference
         await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
@@ -307,28 +292,28 @@ window.SkyIndex = {
         // #region 👁 Inline Actions Toggle (Delegated)
         document.addEventListener('click', (e) => {
 
-            const header = e.target.closest('.outlineNodeHeader');
+            const header = e.target.closest('.phase-header');
             if (!header) return;
 
             // Ignore clicks inside action links
-            if (e.target.closest('.inlineActions')) return;
+            if (e.target.closest('.node-inlineActions')) return;
 
-            const node = header.closest('.outlineNode');
+            const node = header.closest('.outline-phase');
             if (!node) return;
 
             const isOpen = node.classList.contains('showActions');
 
             // Close all others
-            document.querySelectorAll('.outlineNode.showActions')
+            document.querySelectorAll('.outline-phase.showActions')
                 .forEach(n => n.classList.remove('showActions'));
 
-            // Re-open this one if it wasn't already open
             if (!isOpen) {
                 node.classList.add('showActions');
             }
 
         });
         // #endregion
+
     },
     // #endregion
 

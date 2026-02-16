@@ -440,14 +440,14 @@ body {
 
 /* ---------- Inline Actions Visibility ---------- */
 
-.inlineActions {
+.node-inlineActions {
     display: none;
-    margin-left: 6px;
+    margin-left: 8px;
 }
 
-.outlineNode.showActions .inlineActions {
+.outline-phase.showActions .node-inlineActions {
     display: inline-flex;
-    gap: 6px;
+    gap: 8px;
 }
 
 /* #endregion */
