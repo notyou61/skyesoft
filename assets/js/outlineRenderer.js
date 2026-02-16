@@ -19,14 +19,14 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 
     nodes.forEach(node => {
         container.appendChild(
-            renderNode(node, domainConfig, iconMap)
+            renderNode(node, domainConfig, iconMap, 0) // depth = 0
         );
     });
 }
 /* #endregion */
 
 /* #region Node Rendering */
-function renderNode(node, domainConfig, iconMap) {
+function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     const el = document.createElement('div');
     el.className = 'outline-phase';
@@ -65,63 +65,67 @@ function renderNode(node, domainConfig, iconMap) {
     const actions = document.createElement('span');
     actions.className = 'node-actions';
 
-    // READ
-    if (capabilities.read) {
-        const read = document.createElement('a');
-        read.href = node.pdfPath || '#';
-        read.target = '_blank';
-        read.className = 'node-action node-read';
-        read.textContent = 'Read';
-        read.addEventListener('click', e => e.stopPropagation());
-        actions.appendChild(read);
-    }
+    // Node Depth Conditional
+    if (depth === 0) {
 
-    // UPDATE
-    if (capabilities.update) {
-        const update = document.createElement('a');
-        update.href = '#';
-        update.className = 'node-action node-update';
-        update.textContent = 'Update';
+        // READ
+        if (capabilities.read) {
+            const read = document.createElement('a');
+            read.href = node.pdfPath || '#';
+            read.target = '_blank';
+            read.className = 'node-action node-read';
+            read.textContent = 'Read';
+            read.addEventListener('click', e => e.stopPropagation());
+            actions.appendChild(read);
+        }
 
-        update.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
+        // UPDATE
+        if (capabilities.update) {
+            const update = document.createElement('a');
+            update.href = '#';
+            update.className = 'node-action node-update';
+            update.textContent = 'Update';
 
-            header.dispatchEvent(new CustomEvent('outline:update', {
-                bubbles: true,
-                detail: {
-                    nodeId: node.id,
-                    nodeType: node.type
-                }
-            }));
-        });
+            update.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
 
-        actions.appendChild(update);
-    }
+                header.dispatchEvent(new CustomEvent('outline:update', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
+            });
 
-    // DELETE
-    if (capabilities.delete) {
-        const del = document.createElement('a');
-        del.href = '#';
-        del.className = 'node-action node-delete';
-        del.textContent = 'Delete';
+            actions.appendChild(update);
+        }
 
-        del.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
+        // DELETE
+        if (capabilities.delete) {
+            const del = document.createElement('a');
+            del.href = '#';
+            del.className = 'node-action node-delete';
+            del.textContent = 'Delete';
 
-            if (!confirm('Are you sure you want to delete this item?')) return;
+            del.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
 
-            header.dispatchEvent(new CustomEvent('outline:delete', {
-                bubbles: true,
-                detail: {
-                    nodeId: node.id,
-                    nodeType: node.type
-                }
-            }));
-        });
+                if (!confirm('Are you sure you want to delete this item?')) return;
 
-        actions.appendChild(del);
+                header.dispatchEvent(new CustomEvent('outline:delete', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
+            });
+
+            actions.appendChild(del);
+        }
     }
 
     /* Only append if something exists */
@@ -150,7 +154,7 @@ function renderNode(node, domainConfig, iconMap) {
 
         node.children.forEach(child => {
             childContainer.appendChild(
-                renderNode(child, domainConfig, iconMap)
+                renderNode(child, domainConfig, iconMap, depth + 1)
             );
         });
 

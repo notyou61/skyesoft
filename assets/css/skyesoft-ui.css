@@ -317,6 +317,15 @@ body {
     border-radius: 6px;
 }
 
+.outlineChildren {
+    margin-left: calc(
+        var(--outline-caret-width) +
+        var(--outline-gap) +
+        var(--outline-icon-width) +
+        var(--outline-gap)
+    );
+}
+
 /* ---------- Caret ---------- */
 
 .node-caret {
