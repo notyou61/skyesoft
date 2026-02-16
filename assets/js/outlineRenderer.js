@@ -116,11 +116,6 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         header.appendChild(actionsWrap);
     }
 
-    /* Only append if something exists */
-    if (actionsWrap.children.length > 0) {
-        header.appendChild(actions);
-    }
-
     /* ---------- Status Badge ---------- */
 
     if (node.status) {
