@@ -25,142 +25,149 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 }
 /* #endregion */
 
-/* #region Phase Rendering */
-function renderPhase(node, presentation, iconMap) {
+/* #region Node Rendering */
+function renderNode(node, domainConfig, iconMap) {
+
     const wrapper = document.createElement('div');
-    wrapper.className = 'outline-phase';
+    wrapper.className = 'outlineNode';
 
-    /* ---------- Header ---------- */
     const header = document.createElement('div');
-    header.className = 'phase-header';
+    header.className = 'outlineHeader';
 
-    let expanded = false;
-    let taskList = null;
+    const nodeType = node.type;
+    const typeConfig = domainConfig?.nodeTypes?.[nodeType] || {};
 
-    /* Caret — ALWAYS rendered (interactive only if children exist) */
-    const caret = document.createElement('span');
-    caret.className = 'node-caret';
+    /* -----------------------------
+       Caret
+    ----------------------------- */
 
     const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-    caret.textContent = hasChildren ? '▶' : ''; // visual-only when empty
 
+    const caret = document.createElement('span');
+    caret.className = 'node-caret';
+    caret.textContent = hasChildren ? '▶' : '';
     header.appendChild(caret);
 
-    /* Icon — ALWAYS after caret (semantic marker, never hardcoded) */
+    /* -----------------------------
+       Icon
+    ----------------------------- */
+
     const icon = renderIcon(node.iconId, iconMap);
-    icon.classList.add('phase-icon');
     header.appendChild(icon);
 
-    /* Title */
+    /* -----------------------------
+       Title
+    ----------------------------- */
+
     const title = document.createElement('span');
-    title.className = 'phase-title';
-    title.textContent = node.label || '(Untitled)';
+    title.className = 'node-title';
+    title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
-    /* CRUD Links — minimal, text-only */
-    if (presentation?.nodeTypes?.phase?.editable) {
+    /* -----------------------------
+       CRUD Actions (Registry Driven)
+    ----------------------------- */
+
+    if (typeConfig.editable) {
+
+        // READ (PDF link)
+        if (domainConfig.capabilities?.read) {
+            const read = document.createElement('a');
+            read.href = '#';
+            read.className = 'node-action node-read';
+            read.textContent = 'Read';
+
+            read.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[Outline] Read:', node.id);
+                // later: open PDF link
+            });
+
+            header.appendChild(read);
+        }
 
         // UPDATE
-        const update = document.createElement('a');
-        update.href = '#';
-        update.className = 'node-action node-update';
-        update.style.marginLeft = '12px';
-        update.textContent = 'Update';
+        if (domainConfig.capabilities?.update) {
+            const update = document.createElement('a');
+            update.href = '#';
+            update.className = 'node-action node-update';
+            update.textContent = 'Update';
 
-        update.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
+            update.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
 
-            header.dispatchEvent(new CustomEvent('outline:update', {
-                bubbles: true,
-                detail: {
-                    nodeId: node.id,
-                    nodeType: node.type
-                }
-            }));
-        });
+                header.dispatchEvent(new CustomEvent('outline:update', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
+            });
 
-        header.appendChild(update);
+            header.appendChild(update);
+        }
 
         // DELETE
-        const del = document.createElement('a');
-        del.href = '#';
-        del.className = 'node-action node-delete';
-        del.style.marginLeft = '8px';
-        del.textContent = 'Delete';
+        if (domainConfig.capabilities?.delete && typeConfig.deletable) {
+            const del = document.createElement('a');
+            del.href = '#';
+            del.className = 'node-action node-delete';
+            del.textContent = 'Delete';
 
-        del.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
+            del.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
 
-            header.dispatchEvent(new CustomEvent('outline:delete', {
-                bubbles: true,
-                detail: {
-                    nodeId: node.id,
-                    nodeType: node.type
+                if (confirm('Are you sure you want to delete this item?')) {
+                    header.dispatchEvent(new CustomEvent('outline:delete', {
+                        bubbles: true,
+                        detail: {
+                            nodeId: node.id,
+                            nodeType: node.type
+                        }
+                    }));
                 }
-            }));
-        });
+            });
 
-        header.appendChild(del);
-    }
-
-    /* Status (render last) */
-    if (node.status) {
-        const status = document.createElement('span');
-        status.className = `status-badge ${node.status}`;
-        status.textContent = statusLabel(node.status);
-        header.appendChild(status);
+            header.appendChild(del);
+        }
     }
 
     wrapper.appendChild(header);
 
+    /* -----------------------------
+       Children Rendering
+    ----------------------------- */
 
-    /* ---------- Phase Children (Tasks) ---------- */
-    if (node.children?.length > 0) {
+    if (hasChildren) {
 
-        taskList = document.createElement('ul');
-        taskList.className = 'task-list';
-        taskList.style.display = 'none';
+        const childContainer = document.createElement('div');
+        childContainer.className = 'outlineChildren';
+        childContainer.style.display = 'none';
 
-        node.children.forEach(task => {
-
-            const li = document.createElement('li');
-            li.className = 'task-item';
-
-            /* Task Icon */
-            const taskIcon = renderIcon(task.iconId, iconMap);
-            taskIcon.classList.add('task-icon');
-            li.appendChild(taskIcon);
-
-            /* Task Label */
-            const label = document.createElement('span');
-            label.className = 'task-label';
-            label.textContent = task.label || '(No title)';
-            li.appendChild(label);
-
-            taskList.appendChild(li);
+        node.children.forEach(child => {
+            childContainer.appendChild(
+                renderNode(child, domainConfig, iconMap)
+            );
         });
 
-        wrapper.appendChild(taskList);
+        wrapper.appendChild(childContainer);
+
+        let expanded = false;
 
         caret.addEventListener('click', e => {
             e.stopPropagation();
-
             expanded = !expanded;
-
             caret.textContent = expanded ? '▼' : '▶';
-            taskList.style.display = expanded ? 'block' : 'none';
-            wrapper.classList.toggle('expanded', expanded);
+            childContainer.style.display = expanded ? 'block' : 'none';
         });
 
     } else {
-        // Caret
         caret.style.visibility = 'hidden';
-        // No children → no toggle behavior
-        header.style.cursor = 'default';
     }
-
 
     return wrapper;
 }
