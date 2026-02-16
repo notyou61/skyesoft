@@ -5,24 +5,6 @@
 */
 
 // #region 📦 Canonical Domain Surface Dependencies
-// ------------------------------------------------------------
-// ES Module Imports — Streamed Domain Rendering Pipeline
-// 
-// adaptStreamedDomain:
-//   Transforms authoritative SSE domain payloads into the
-//   normalized outline model consumed by the UI.
-//
-// renderOutline:
-//   Canonical renderer for Streamed List Surfaces.
-//   Responsible for DOM projection, node structure,
-//   edit-link injection, and presentationRegistry compliance.
-//
-// Module Integrity Check (Development Safeguard):
-//   In ES module mode, missing imports should fail at load time.
-//   This guard exists for transitional debugging during rebuild
-//   phases and may be removed once module stability is confirmed.
-// ------------------------------------------------------------
-
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
 import { renderOutline } from '/skyesoft/assets/js/outlineRenderer.js';
 
@@ -39,7 +21,6 @@ function formatVersionFooter(siteMeta) {
 
     const TZ = 'America/Phoenix';
 
-    // Absolute time (display only)
     const d = new Date(siteMeta.lastUpdateUnix * 1000);
 
     const dateStr = d.toLocaleDateString('en-US', {
@@ -56,7 +37,6 @@ function formatVersionFooter(siteMeta) {
         hour12: true
     });
 
-    // ✅ SERVER-AUTHORITATIVE AGE
     const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
 
     let agoStr;
@@ -70,7 +50,6 @@ function formatVersionFooter(siteMeta) {
         agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
 
-    // Return
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
 // #endregion
@@ -149,10 +128,6 @@ window.SkyIndex = {
         }
 
         this.updateDomainSurface(domainKey, domainData);
-
-        if (this.dom?.domainSurface) {
-            this.dom.domainSurface.hidden = false;
-        }
     },
     // #endregion
 
@@ -177,23 +152,20 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📦 Registry Loader
-    async loadPresentationRegistry() {
+    // #region 📦 Registry Loaders
+    async loadRuntimeDomainRegistry() {
         try {
-            const res = await fetch('/skyesoft/data/authoritative/presentationRegistry.json')
+            const res = await fetch('/skyesoft/data/records/runtimeDomainRegistry.json');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            this.presentationRegistry = await res.json();
-            console.log('[SkyIndex] presentationRegistry loaded');
-
+            this.runtimeDomainRegistry = await res.json();
+            console.log('[SkyIndex] runtimeDomainRegistry loaded');
         } catch (err) {
-            console.error('[SkyIndex] Failed to load presentationRegistry:', err);
-            this.presentationRegistry = null;
+            console.error('[SkyIndex] Failed to load runtimeDomainRegistry:', err);
+            this.runtimeDomainRegistry = null;
         }
     },
-    // #endregion
 
-    // #region 🎨 Icon Map Loader
     async loadIconMap() {
         try {
             const res = await fetch('/skyesoft/data/authoritative/iconMap.json');
@@ -201,7 +173,6 @@ window.SkyIndex = {
 
             this.iconMap = await res.json();
             console.log('[SkyIndex] iconMap loaded');
-
         } catch (err) {
             console.error('[SkyIndex] Failed to load iconMap:', err);
             this.iconMap = null;
@@ -209,7 +180,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region ⏳ Thinking State (UI-only, non-transcript)
+    // #region ⏳ Thinking State
     setThinking(isThinking) {
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer) return;
@@ -220,14 +191,11 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧩 UI Action Registry (SERVER-AUTHORITATIVE)
+    // #region 🧩 UI Action Registry
     uiActionRegistry: {
-        
-        // Clear Screen
         clear_screen() {
             SkyIndex.clearSessionSurface();
         },
-        // Logout
         logout() {
             SkyIndex.appendSystemLine('Logging out…');
             setTimeout(() => SkyIndex.logout('ui_action'), 300);
@@ -235,11 +203,27 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🧠 Domain Config Resolver (Runtime-Authoritative)
+    getDomainConfig(domainKey) {
+
+        if (!this.runtimeDomainRegistry?.domains) {
+            console.error('[SkyIndex] runtimeDomainRegistry not loaded');
+            return null;
+        }
+
+        const domainConfig = this.runtimeDomainRegistry.domains[domainKey];
+
+        if (!domainConfig) {
+            console.warn(`[SkyIndex] Domain not declared in runtime registry: ${domainKey}`);
+            return null;
+        }
+
+        return domainConfig;
+    },
+    // #endregion
+
     // #region 🚀 Page Init
     async init() {
-        // Console log is intentionally sparse during init to avoid SSE interference with load-time debugging. Key load events are still logged for visibility.
-        //console.log('[SkyIndex] init() fired');
-
         this.dom = {
             time:     document.getElementById('headerTime'),
             weather:  document.getElementById('headerWeather'),
@@ -255,14 +239,10 @@ window.SkyIndex = {
             return;
         }
 
-        // 🔥 LOAD REGISTRY BEFORE USE
-        await this.loadPresentationRegistry();
+        // Load registries in order of preference
+        await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
-
-        if (!this.presentationRegistry) {
-            console.warn('[SkyIndex] presentationRegistry not available');
-        }
-
+        
         if (this.isAuthenticated()) {
             document.body.setAttribute('data-auth', 'true');
             this.renderCommandInterfaceCard();
@@ -270,24 +250,19 @@ window.SkyIndex = {
             document.body.removeAttribute('data-auth');
             this.renderLoginCard();
         }
-        // 🔁 Node Update
+
+        // Node update events
         document.addEventListener('outline:update', (e) => {
             const { nodeId, nodeType } = e.detail;
-
             console.log('[SkyIndex] Update requested:', nodeId, nodeType);
-
-            SkyIndex.openEditModal(nodeId, nodeType, 'update');
+            this.openEditModal(nodeId, nodeType, 'update');
         });
 
-        // 🗑 Node Delete
         document.addEventListener('outline:delete', (e) => {
             const { nodeId, nodeType } = e.detail;
-
             console.log('[SkyIndex] Delete requested:', nodeId, nodeType);
-
-            SkyIndex.openEditModal(nodeId, nodeType, 'delete');
+            this.openEditModal(nodeId, nodeType, 'delete');
         });
-
     },
     // #endregion
 
@@ -303,24 +278,18 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧱 Card Rendering
+    // #region 🧱 Card Rendering & Clearing
     clearCards() {
-        this.cardHost.innerHTML = '';
+        if (this.cardHost) this.cardHost.innerHTML = '';
     },
-    // #endregion
 
-    // #region 🧹 Session Surface Control
     clearSessionSurface() {
-
         if (!this.cardHost) return;
 
         const output = this.cardHost.querySelector('.commandOutput');
-        if (output) {
-            output.innerHTML = '';
-        }
+        if (output) output.innerHTML = '';
 
         this.appendSystemLine('🟢 Skyesoft ready.');
-
         console.log('[SkyIndex] Session surface cleared');
     },
     // #endregion
@@ -481,6 +450,9 @@ window.SkyIndex = {
 
             const data = await res.json();
 
+            // ───────────────────────────────────────────────
+            // UI Action
+            // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
                 const handler = this.uiActionRegistry?.[data.action];
                 if (typeof handler === 'function') {
@@ -491,27 +463,26 @@ window.SkyIndex = {
                 return;
             }
 
+            // ───────────────────────────────────────────────
+            // Domain Intent (runtime-registry authoritative)
+            // ───────────────────────────────────────────────
             if (typeof data?.intent === 'string' && data.intent.startsWith('show_')) {
 
                 const domainKey = data.intent.replace('show_', '');
 
-                const registry = this.presentationRegistry;
+                const domainConfig = this.getDomainConfig(domainKey);
 
-                if (!registry?.meta?.streamedDomains) {
-                    console.warn('[SkyIndex] streamedDomains registry missing');
-                }
-
-                const isStreamDomain =
-                    registry?.meta?.streamedDomains?.includes(domainKey) === true;
-
-                if (isStreamDomain) {
+                if (domainConfig && domainConfig.capabilities?.read === true) {
                     this.showDomain(domainKey);
                     return;
                 }
 
-                console.warn('[SkyIndex] Intent mapped to non-streamed domain:', domainKey);
+                console.warn('[SkyIndex] Intent mapped to unknown or unreadable domain:', domainKey);
             }
 
+            // ───────────────────────────────────────────────
+            // Text Response
+            // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
                 this.appendSystemLine(data.response);
                 return;
@@ -635,7 +606,10 @@ window.SkyIndex = {
         if (!domainKey || !domainData) return;
 
         // 🚫 Prevent redraw while modal is active
-        if (window.SkyeModal?.modalEl?.style.display === 'block') {
+        if (
+            window.SkyeModal?.modalEl &&
+            window.SkyeModal.modalEl.style.display === 'block'
+        ) {
             console.log('[SkyIndex] Render skipped (modal active)');
             return;
         }
@@ -646,13 +620,26 @@ window.SkyIndex = {
             return;
         }
 
-        const presentation =
-            this.presentationRegistry?.domains?.[domainKey] ?? null;
+        /* -------------------------------------------------
+        🧠 Resolve Domain Config (Runtime Authoritative)
+        ------------------------------------------------- */
+
+        const domainConfig = this.getDomainConfig(domainKey);
+        if (!domainConfig) return;
+
+        const presentation = domainConfig.presentation ?? null;
+
+        const capabilities = domainConfig.capabilities ?? {};
+        const canCreate = capabilities.create === true;
+        const canRead   = capabilities.read === true;
+
+        /* -------------------------------------------------
+        🧵 Prepare Thread Surface
+        ------------------------------------------------- */
 
         const thread = this.cardHost.querySelector('.commandOutput');
         if (!thread) return;
 
-        // 🔎 Try to reuse existing surface instead of nuking thread
         let surface = thread.querySelector('.domainSurface');
 
         if (!surface) {
@@ -665,55 +652,48 @@ window.SkyIndex = {
         surface.innerHTML = `
             <div class="domainHeader" style="display:flex; align-items:center; gap:16px;">
                 <h3 class="domainTitle" style="margin:0;"></h3>
-                    <span class="domain-action domain-create">Create</span>
-                    <span class="domain-action domain-read">Read</span>
+                <span class="domain-action domain-create">Create</span>
+                <span class="domain-action domain-read">Read</span>
             </div>
-
             <div class="domainBody"></div>
         `;
 
         const titleEl = surface.querySelector('.domainTitle');
         const bodyEl  = surface.querySelector('.domainBody');
+        const createLink = surface.querySelector('.domain-create');
+        const readLink   = surface.querySelector('.domain-read');
 
         titleEl.textContent = adapted.title ?? domainKey;
 
         /* -------------------------------------------------
-        🧩 Domain-Level CRUD Links (Always Attach)
+        🧩 Capability-Gated Actions
         ------------------------------------------------- */
 
-        const createLink = surface.querySelector('.domain-create');
-        const readLink   = surface.querySelector('.domain-read');
+        if (!canCreate && createLink) createLink.style.display = 'none';
+        if (!canRead   && readLink)   readLink.style.display   = 'none';
 
-        createLink?.addEventListener('click', e => {
-            e.preventDefault();
-            console.log('[SkyIndex] Create requested (placeholder)');
-
-            window.SkyeModal?.open({
-                domainKey,
-                mode: 'create',
-                node: { type: 'phase' } // default scaffold
+        if (canCreate && createLink) {
+            createLink.addEventListener('click', e => {
+                e.preventDefault();
+                window.SkyeModal?.open({
+                    domainKey,
+                    mode: 'create'
+                });
             });
-        });
+        }
 
-        readLink?.addEventListener('click', e => {
-            e.preventDefault();
-            console.log('[SkyIndex] Read requested (placeholder)');
-        });
+        if (canRead && readLink) {
+            readLink.addEventListener('click', e => {
+                e.preventDefault();
+                console.log('[SkyIndex] Read requested');
+            });
+        }
 
         /* -------------------------------------------------
         🖼 Render Domain Body
         ------------------------------------------------- */
 
         if (typeof renderOutline !== 'function') {
-            bodyEl.innerHTML =
-                '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
-        } else {
-            renderOutline(bodyEl, adapted, presentation, this.iconMap);
-        }
-
-
-        if (typeof renderOutline !== 'function') {
-            
             bodyEl.innerHTML =
                 '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
         } else {
