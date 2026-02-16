@@ -511,19 +511,4 @@ body {
     background: #dbe4ef;
 }
 
-.phase-header {
-    display: flex;
-    align-items: center;
-    gap: var(--outline-gap);
-}
-
-.phase-title {
-    flex: 1 1 auto;
-}
-
-.node-actions {
-    display: flex;
-    gap: 6px;
-}
-
 /* #endregion */
