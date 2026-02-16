@@ -651,8 +651,6 @@ window.SkyIndex = {
         const domainConfig = this.getDomainConfig(domainKey);
         if (!domainConfig) return;
 
-        const presentation = domainConfig.presentation ?? null;
-
         const capabilities = domainConfig.capabilities ?? {};
         const canCreate = capabilities.create === true;
         const canRead   = capabilities.read === true;
@@ -721,8 +719,9 @@ window.SkyIndex = {
             bodyEl.innerHTML =
                 '<p style="color:#f33;padding:1rem;">Renderer unavailable</p>';
         } else {
-            renderOutline(bodyEl, adapted, presentation, this.iconMap);
+            renderOutline(bodyEl, adapted, domainConfig, this.iconMap);
         }
+
 
         this.activeDomainKey   = domainKey;
         this.activeDomainModel = adapted;
