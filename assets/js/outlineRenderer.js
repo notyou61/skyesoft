@@ -81,6 +81,9 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
         // Toggle behavior
         toggle.addEventListener('click', e => {
+            //
+            console.log('Kebab clicked');
+            // Prevent Default
             e.preventDefault();
             e.stopPropagation();
 
