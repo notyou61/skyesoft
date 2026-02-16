@@ -9,14 +9,18 @@
  * ===================================================================== */
 
 /* #region Public API */
-export function renderOutline(container, adapted, presentation, iconMap) {
+export function renderOutline(container, adapted, domainConfig, iconMap) {
     if (!container || !adapted) return;
 
     container.innerHTML = '';
     container.classList.add('outline');
 
-    adapted.nodes.forEach(node => {
-        container.appendChild(renderPhase(node, presentation, iconMap));
+    const nodes = Array.isArray(adapted.nodes) ? adapted.nodes : [];
+
+    nodes.forEach(node => {
+        container.appendChild(
+            renderNode(node, domainConfig, iconMap)
+        );
     });
 }
 /* #endregion */

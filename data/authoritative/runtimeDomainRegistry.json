@@ -20,11 +20,15 @@
       "nodeTypes": {
         "phase": {
           "editable": true,
-          "deletable": true
+          "deletable": true,
+          "readable": true,
+          "pdfTemplate": "/skyesoft/docs/roadmap/{id}.pdf"
         },
         "task": {
           "editable": true,
-          "deletable": true
+          "deletable": true,
+          "readable": true,
+          "pdfTemplate": "/skyesoft/docs/roadmap/{id}.pdf"
         }
       },
       "presentation": {
