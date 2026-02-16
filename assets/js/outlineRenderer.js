@@ -26,135 +26,104 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 /* #endregion */
 
 /* #region Node Rendering */
-function renderNode(node, domainConfig, iconMap) {
+function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'outlineNode';
+    wrapper.style.paddingLeft = `${depth * 18}px`; // INDENTATION
 
     const header = document.createElement('div');
     header.className = 'outlineHeader';
 
-    const nodeType = node.type;
+    const nodeType   = node.type;
     const typeConfig = domainConfig?.nodeTypes?.[nodeType] || {};
-
-    /* -----------------------------
-       Caret
-    ----------------------------- */
+    const caps       = domainConfig?.capabilities || {};
 
     const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
+    /* CARET */
     const caret = document.createElement('span');
     caret.className = 'node-caret';
     caret.textContent = hasChildren ? '▶' : '';
     header.appendChild(caret);
 
-    /* -----------------------------
-       Icon
-    ----------------------------- */
-
+    /* ICON */
     const icon = renderIcon(node.iconId, iconMap);
+    icon.classList.add('node-icon');
     header.appendChild(icon);
 
-    /* -----------------------------
-       Title
-    ----------------------------- */
-
+    /* TITLE */
     const title = document.createElement('span');
     title.className = 'node-title';
     title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
-    /* -----------------------------
-       CRUD Actions (Registry Driven)
-    ----------------------------- */
+    /* ---------------------------
+       CRUD LINKS (Tight)
+    --------------------------- */
 
     if (typeConfig.editable) {
 
-        // READ (PDF link)
-        if (domainConfig.capabilities?.read) {
-            const read = document.createElement('a');
-            read.href = '#';
+        if (caps.read) {
+            const read = document.createElement('span');
             read.className = 'node-action node-read';
             read.textContent = 'Read';
-
             read.addEventListener('click', e => {
-                e.preventDefault();
                 e.stopPropagation();
-                console.log('[Outline] Read:', node.id);
-                // later: open PDF link
+                console.log('Read:', node.id);
             });
-
             header.appendChild(read);
         }
 
-        // UPDATE
-        if (domainConfig.capabilities?.update) {
-            const update = document.createElement('a');
-            update.href = '#';
+        if (caps.update) {
+            const update = document.createElement('span');
             update.className = 'node-action node-update';
             update.textContent = 'Update';
-
             update.addEventListener('click', e => {
-                e.preventDefault();
                 e.stopPropagation();
-
                 header.dispatchEvent(new CustomEvent('outline:update', {
                     bubbles: true,
-                    detail: {
-                        nodeId: node.id,
-                        nodeType: node.type
-                    }
+                    detail: { nodeId: node.id, nodeType: node.type }
                 }));
             });
-
             header.appendChild(update);
         }
 
-        // DELETE
-        if (domainConfig.capabilities?.delete && typeConfig.deletable) {
-            const del = document.createElement('a');
-            del.href = '#';
+        if (caps.delete && typeConfig.deletable) {
+            const del = document.createElement('span');
             del.className = 'node-action node-delete';
             del.textContent = 'Delete';
-
             del.addEventListener('click', e => {
-                e.preventDefault();
                 e.stopPropagation();
-
-                if (confirm('Are you sure you want to delete this item?')) {
+                if (confirm('Delete this item?')) {
                     header.dispatchEvent(new CustomEvent('outline:delete', {
                         bubbles: true,
-                        detail: {
-                            nodeId: node.id,
-                            nodeType: node.type
-                        }
+                        detail: { nodeId: node.id, nodeType: node.type }
                     }));
                 }
             });
-
             header.appendChild(del);
         }
     }
 
     wrapper.appendChild(header);
 
-    /* -----------------------------
-       Children Rendering
-    ----------------------------- */
+    /* ---------------------------
+       CHILDREN
+    --------------------------- */
 
     if (hasChildren) {
 
-        const childContainer = document.createElement('div');
-        childContainer.className = 'outlineChildren';
-        childContainer.style.display = 'none';
+        const childrenContainer = document.createElement('div');
+        childrenContainer.style.display = 'none';
 
         node.children.forEach(child => {
-            childContainer.appendChild(
-                renderNode(child, domainConfig, iconMap)
+            childrenContainer.appendChild(
+                renderNode(child, domainConfig, iconMap, depth + 1)
             );
         });
 
-        wrapper.appendChild(childContainer);
+        wrapper.appendChild(childrenContainer);
 
         let expanded = false;
 
@@ -162,7 +131,7 @@ function renderNode(node, domainConfig, iconMap) {
             e.stopPropagation();
             expanded = !expanded;
             caret.textContent = expanded ? '▼' : '▶';
-            childContainer.style.display = expanded ? 'block' : 'none';
+            childrenContainer.style.display = expanded ? 'block' : 'none';
         });
 
     } else {
@@ -172,6 +141,7 @@ function renderNode(node, domainConfig, iconMap) {
     return wrapper;
 }
 /* #endregion */
+
 
 /* #region Utilities */
 function renderIcon(iconId, iconMap) {

@@ -277,104 +277,81 @@ body {
    ============================================================ */
    /* #endregion */
 
-/* #region Outline / Roadmap Surface */
-
-/*
-  Outline Contract:
-  • Phase = primary node
-  • Task  = secondary node
-  • Icons resolved via iconMap (renderer responsibility)
-  • Styling conveys hierarchy + status at a glance
-*/
-
-/* ---------- Alignment Foundation ---------- */
+/* #region Outline Surface (Unified Recursive Model) */
 
 :root {
     --outline-caret-width: 14px;
-    --outline-gap:        8px;
+    --outline-gap: 8px;
     --outline-icon-width: 1.25em;
 }
 
-/* ---------- TOP-LEVEL OUTLINE LIST RESET (AUTHORITATIVE) ---------- */
+/* ---------- Root Container ---------- */
 
 .outline {
     list-style: none;
-    padding-left: 0;
+    padding: 0;
     margin: 0;
 }
 
-.outline > li {
-    list-style: none;
+/* ---------- Node Wrapper ---------- */
+
+.outlineNode {
+    margin: 2px 0;
 }
 
-/* ---------- Bullet Neutralization (All nested lists) ---------- */
+/* ---------- Node Header ---------- */
 
-.outline,
-.outline ul {
-    list-style: none;
-    padding-left: 0;
-    margin-left: 0;
-}
-
-/* ---------- Phase Header (Primary node) ---------- */
-
-.phase-header {
+.outlineHeader {
     display: flex;
     align-items: center;
     gap: var(--outline-gap);
 
-    cursor: pointer;
-    padding: 4px 6px;
+    padding: 3px 6px;
+    line-height: 1.4;
+    font-size: 14px;
+    cursor: default;
 }
 
-.phase-header:hover {
+.outlineHeader:hover {
     background: rgba(0,0,0,0.04);
     border-radius: 6px;
 }
 
-.phase-title {
-    flex: 0 1 auto;
-    font-weight: 600;   /* Primary node emphasis */
-}
-
-.domainTitle {
-    font-weight: 700;
-}
-
-/* ---------- Caret (Expand / Collapse) ---------- */
+/* ---------- Caret ---------- */
 
 .node-caret {
     flex: 0 0 var(--outline-caret-width);
     width: var(--outline-caret-width);
-
     text-align: center;
     font-size: 0.75em;
     user-select: none;
-
     opacity: 0.75;
 }
 
-.outline-phase.expanded .node-caret {
+.node-caret:hover {
     opacity: 1;
 }
 
-.node-caret:empty {
-    width: 1em;
-}
-
-/* ---------- Icons ---------- */
+/* ---------- Icon ---------- */
 
 .node-icon {
     display: inline-block;
     width: var(--outline-icon-width);
 
-    font-family: "Apple Color Emoji",
-                 "Segoe UI Emoji",
-                 "Noto Color Emoji",
-                 system-ui,
-                 sans-serif;
+    font-family:
+        "Apple Color Emoji",
+        "Segoe UI Emoji",
+        "Noto Color Emoji",
+        system-ui,
+        sans-serif;
 
     line-height: 1;
+}
+
+/* ---------- Title ---------- */
+
+.node-title {
+    font-weight: 500;
 }
 
 /* ---------- Status Badge ---------- */
@@ -385,6 +362,7 @@ body {
     border-radius: 12px;
     white-space: nowrap;
     font-weight: 600;
+    margin-left: 6px;
 }
 
 .status-badge.complete {
@@ -402,64 +380,11 @@ body {
     color: #555555;
 }
 
-/* ---------- Edit Action ---------- */
-
-.edit-link {
-    margin-left: 12px;
-    font-size: 0.75em;
-    text-decoration: underline;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.edit-link:hover {
-    opacity: 0.8;
-}
-
-/* ---------- Task List (Secondary nodes) ---------- */
-
-.task-list {
-    margin-top: 6px;
-    padding-left: 0;
-    list-style: none;      /* icons act as bullets */
-}
-
-.task-item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--outline-gap);
-
-    margin: 3px 0;         /* tighter rhythm */
-    font-size: 0.95em;
-    font-weight: 400;
-
-    /* Aligns text under phase title — no magic numbers */
-    padding-left: calc(
-        var(--outline-caret-width) +
-        var(--outline-gap) +
-        var(--outline-icon-width) +
-        var(--outline-gap)
-    );
-}
-
-/* Optional: subtle spacing between phases */
-.outline-phase {
-    margin-bottom: 6px;
-}
-
-#skyeModal .formGroup {
-    margin-bottom: 12px;
-}
-
-#skyeModal label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
+/* ---------- CRUD Actions ---------- */
 
 .node-action {
     display: inline-block;
-    margin-left: 10px;
+    margin-left: 8px;
     padding: 2px 8px;
     font-size: 11px;
     border-radius: 12px;
@@ -469,7 +394,17 @@ body {
     transition: all 0.15s ease;
 }
 
-/* Update — neutral governance */
+/* Read */
+.node-read {
+    background: #eef2f7;
+    color: #2c3e50;
+}
+
+.node-read:hover {
+    background: #dbe4ef;
+}
+
+/* Update */
 .node-update {
     background: #eef2f7;
     color: #2c3e50;
@@ -479,7 +414,7 @@ body {
     background: #dbe4ef;
 }
 
-/* Delete — controlled warning */
+/* Delete */
 .node-delete {
     background: #fff3f3;
     color: #a33;
@@ -489,7 +424,8 @@ body {
     background: #ffe1e1;
 }
 
-/* Shared domain header actions */
+/* ---------- Domain Header Actions ---------- */
+
 .domain-action {
     display: inline-block;
     margin-left: 10px;
@@ -502,7 +438,6 @@ body {
     transition: all 0.15s ease;
 }
 
-/* Create — positive governance */
 .domain-create {
     background: #edf7f0;
     color: #1f6b3a;
@@ -512,7 +447,6 @@ body {
     background: #d9efe2;
 }
 
-/* Read — neutral inspection */
 .domain-read {
     background: #eef2f7;
     color: #2c3e50;
@@ -521,6 +455,5 @@ body {
 .domain-read:hover {
     background: #dbe4ef;
 }
-
 
 /* #endregion */
