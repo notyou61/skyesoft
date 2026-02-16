@@ -30,108 +30,135 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'outlineNode';
-    wrapper.style.paddingLeft = `${depth * 18}px`; // INDENTATION
+    wrapper.style.paddingLeft = `${depth * 18}px`;
 
     const header = document.createElement('div');
     header.className = 'outlineHeader';
 
-    const nodeType   = node.type;
-    const typeConfig = domainConfig?.nodeTypes?.[nodeType] || {};
-    const caps       = domainConfig?.capabilities || {};
-
-    const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-
-    /* CARET */
+    /* ---------- Caret ---------- */
     const caret = document.createElement('span');
     caret.className = 'node-caret';
+
+    const hasChildren = Array.isArray(node.children) && node.children.length > 0;
     caret.textContent = hasChildren ? '▶' : '';
+
     header.appendChild(caret);
 
-    /* ICON */
-    const icon = renderIcon(node.iconId, iconMap);
-    icon.classList.add('node-icon');
-    header.appendChild(icon);
+    /* ---------- Icon ---------- */
+    if (node.iconId) {
+        const icon = renderIcon(node.iconId, iconMap);
+        icon.classList.add('node-icon');
+        header.appendChild(icon);
+    }
 
-    /* TITLE */
+    /* ---------- Title ---------- */
     const title = document.createElement('span');
     title.className = 'node-title';
     title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
-    /* ---------------------------
-       CRUD LINKS (Tight)
-    --------------------------- */
+    /* ---------- CRUD ---------- */
+    const canRead   = domainConfig?.capabilities?.read   === true;
+    const canUpdate = domainConfig?.capabilities?.update === true;
+    const canDelete = domainConfig?.capabilities?.delete === true;
 
-    if (typeConfig.editable) {
+    if (canRead || canUpdate || canDelete) {
 
-        if (caps.read) {
-            const read = document.createElement('span');
+        const actions = document.createElement('span');
+        actions.className = 'node-actions';
+
+        // READ
+        if (canRead && node.pdfPath) {
+            const read = document.createElement('a');
+            read.href = node.pdfPath;
+            read.target = '_blank';
             read.className = 'node-action node-read';
             read.textContent = 'Read';
-            read.addEventListener('click', e => {
-                e.stopPropagation();
-                console.log('Read:', node.id);
-            });
-            header.appendChild(read);
+            read.addEventListener('click', e => e.stopPropagation());
+            actions.appendChild(read);
         }
 
-        if (caps.update) {
+        // UPDATE
+        if (canUpdate) {
             const update = document.createElement('span');
             update.className = 'node-action node-update';
             update.textContent = 'Update';
+
             update.addEventListener('click', e => {
                 e.stopPropagation();
                 header.dispatchEvent(new CustomEvent('outline:update', {
                     bubbles: true,
-                    detail: { nodeId: node.id, nodeType: node.type }
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
                 }));
             });
-            header.appendChild(update);
+
+            actions.appendChild(update);
         }
 
-        if (caps.delete && typeConfig.deletable) {
+        // DELETE
+        if (canDelete) {
             const del = document.createElement('span');
             del.className = 'node-action node-delete';
             del.textContent = 'Delete';
+
             del.addEventListener('click', e => {
                 e.stopPropagation();
-                if (confirm('Delete this item?')) {
-                    header.dispatchEvent(new CustomEvent('outline:delete', {
-                        bubbles: true,
-                        detail: { nodeId: node.id, nodeType: node.type }
-                    }));
-                }
+
+                const confirmed = confirm(
+                    `Delete "${node.label || node.title}"?`
+                );
+
+                if (!confirmed) return;
+
+                header.dispatchEvent(new CustomEvent('outline:delete', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
             });
-            header.appendChild(del);
+
+            actions.appendChild(del);
         }
+
+        header.appendChild(actions);
+    }
+
+    /* ---------- Status ---------- */
+    if (node.status) {
+        const status = document.createElement('span');
+        status.className = `status-badge ${node.status}`;
+        status.textContent = statusLabel(node.status);
+        header.appendChild(status);
     }
 
     wrapper.appendChild(header);
 
-    /* ---------------------------
-       CHILDREN
-    --------------------------- */
-
+    /* ---------- Children ---------- */
     if (hasChildren) {
 
-        const childrenContainer = document.createElement('div');
-        childrenContainer.style.display = 'none';
+        const childContainer = document.createElement('div');
+        childContainer.className = 'outlineChildren';
+        childContainer.style.display = 'none';
 
         node.children.forEach(child => {
-            childrenContainer.appendChild(
+            childContainer.appendChild(
                 renderNode(child, domainConfig, iconMap, depth + 1)
             );
         });
 
-        wrapper.appendChild(childrenContainer);
-
-        let expanded = false;
+        wrapper.appendChild(childContainer);
 
         caret.addEventListener('click', e => {
             e.stopPropagation();
-            expanded = !expanded;
-            caret.textContent = expanded ? '▼' : '▶';
-            childrenContainer.style.display = expanded ? 'block' : 'none';
+
+            const expanded = childContainer.style.display === 'block';
+            childContainer.style.display = expanded ? 'none' : 'block';
+            caret.textContent = expanded ? '▶' : '▼';
         });
 
     } else {
