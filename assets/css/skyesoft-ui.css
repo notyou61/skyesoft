@@ -312,7 +312,8 @@ body {
     font-size: 14px;
     cursor: default;
     flex-wrap: nowrap;
-    overflow: hidden;
+
+    overflow: visible;   /* ✅ was hidden */
 }
 
 .outlineHeader:hover,
@@ -411,7 +412,7 @@ body {
     position: absolute;
     top: 100%;
     right: 0;
-    z-index: 10;
+    z-index: 2000;
     min-width: 120px;
     background: white;
     border: 1px solid #d1d5db;
@@ -423,6 +424,15 @@ body {
 
 .node-actionsPanel[hidden] {
     display: none;
+}
+
+.node-actionsWrap.open {
+    z-index: 1000;
+}
+
+/* Test (Remove when finished) */
+.node-actionsPanel {
+    background: red !important;
 }
 
 /* Optional subtle open animation */
@@ -477,5 +487,10 @@ body {
 
 .domain-read   { background: #eef2f7; color: #2c3e50; }
 .domain-read:hover   { background: #dbe4ef; }
+
+.outline-phase {
+    position: relative;
+    z-index: 0;
+}
 
 /* #endregion */
