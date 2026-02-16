@@ -385,6 +385,8 @@ body {
 .status-badge.pending {
     background: #f1f3f5;
     color: #495057;
+    /* subtle structure so it doesn't feel unfinished */
+    border: 1px solid #dee2e6;
 }
 
 

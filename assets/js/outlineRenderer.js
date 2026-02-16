@@ -189,7 +189,7 @@ function statusLabel(status) {
         case 'in-progress': return '⏳ In Progress';
         case 'blocked':     return '⚠ Blocked';
         case 'failed':      return '✗ Failed';
-        default:            return 'Pending';
+        default:            return '🕒Pending';
     }
 }
 /* #endregion */
