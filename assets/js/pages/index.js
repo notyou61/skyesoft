@@ -157,9 +157,22 @@ window.SkyIndex = {
         try {
             const res = await fetch('/skyesoft/data/authoritative/runtimeDomainRegistry.json');
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
 
-            this.runtimeDomainRegistry = await res.json();
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error('Registry did not return JSON');
+            }
+
+            const data = await res.json();
+
+            if (!data || typeof data !== 'object' || !data.domains) {
+                throw new Error('Registry missing required structure');
+            }
+
+            this.runtimeDomainRegistry = data;
             console.log('[SkyIndex] runtimeDomainRegistry loaded');
 
         } catch (err) {
@@ -171,10 +184,19 @@ window.SkyIndex = {
     async loadIconMap() {
         try {
             const res = await fetch('/skyesoft/data/authoritative/iconMap.json');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error('IconMap did not return JSON');
+            }
 
             this.iconMap = await res.json();
             console.log('[SkyIndex] iconMap loaded');
+
         } catch (err) {
             console.error('[SkyIndex] Failed to load iconMap:', err);
             this.iconMap = null;
