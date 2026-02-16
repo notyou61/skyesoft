@@ -306,8 +306,8 @@ body {
 .phase-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 6px 6px;
+    gap: 6px;           /* was 12px */
+    padding: 4px 6px;   /* slightly tighter vertically */
     line-height: 1.4;
     font-size: 14px;
     cursor: default;
@@ -374,7 +374,7 @@ body {
     font-weight: 600;
     line-height: 1;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
-    margin-left: 8px;   /* simple spacing, not auto */
+    margin-left: 4px;   /* was 8px */
     flex-shrink: 0;
 }
 
@@ -388,8 +388,8 @@ body {
 /* ---------- Node Actions (Kebab Dropdown) ---------- */
 .node-inlineActions {
     display: flex;
-    gap: 10px;
-    margin-left: 8px;
+    gap: 6px;           /* was 10px */
+    margin-left: 4px;   /* was 8px */
     flex-shrink: 0;
 }
 
@@ -397,8 +397,8 @@ body {
 
 .node-action {
     display: block;
-    padding: 6px 16px;
-    font-size: 0.9em;
+    padding: 2px 6px;   /* was 6px 16px */
+    font-size: 0.85em;
     color: #374151;
     text-decoration: none;
     white-space: nowrap;
