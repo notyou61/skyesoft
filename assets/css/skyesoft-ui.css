@@ -438,4 +438,16 @@ body {
     z-index: 0;
 }
 
+/* ---------- Inline Actions Visibility ---------- */
+
+.inlineActions {
+    display: none;
+    margin-left: 6px;
+}
+
+.outlineNode.showActions .inlineActions {
+    display: inline-flex;
+    gap: 6px;
+}
+
 /* #endregion */

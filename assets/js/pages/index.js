@@ -303,6 +303,32 @@ window.SkyIndex = {
             console.log('[SkyIndex] Delete requested:', nodeId, nodeType);
             this.openEditModal(nodeId, nodeType, 'delete');
         });
+
+        // #region 👁 Inline Actions Toggle (Delegated)
+        document.addEventListener('click', (e) => {
+
+            const header = e.target.closest('.outlineNodeHeader');
+            if (!header) return;
+
+            // Ignore clicks inside action links
+            if (e.target.closest('.inlineActions')) return;
+
+            const node = header.closest('.outlineNode');
+            if (!node) return;
+
+            const isOpen = node.classList.contains('showActions');
+
+            // Close all others
+            document.querySelectorAll('.outlineNode.showActions')
+                .forEach(n => n.classList.remove('showActions'));
+
+            // Re-open this one if it wasn't already open
+            if (!isOpen) {
+                node.classList.add('showActions');
+            }
+
+        });
+        // #endregion
     },
     // #endregion
 
