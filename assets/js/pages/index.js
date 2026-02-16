@@ -265,7 +265,12 @@ window.SkyIndex = {
         }
 
         // Close open kebab menus on outside click
-        document.addEventListener('click', () => {
+        document.addEventListener('click', (e) => {
+
+            // If click occurred inside any node-actionsWrap, do nothing
+            if (e.target.closest('.node-actionsWrap')) return;
+
+            // Otherwise close all open menus
             document.querySelectorAll('.node-actionsWrap.open')
                 .forEach(wrap => {
                     wrap.classList.remove('open');
