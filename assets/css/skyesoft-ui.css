@@ -354,6 +354,62 @@ body {
     font-weight: 500;
 }
 
+/* ---------- Node Action Container ---------- */
+
+.node-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+}
+
+/* ---------- Base Action Style ---------- */
+
+.node-action {
+    font-size: 0.68em;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 12px;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+}
+
+/* ---------- Read (inspection / neutral) ---------- */
+
+.node-read {
+    background: #eef3ff;
+    color: #2c5cc5;
+}
+
+.node-read:hover {
+    background: #dfe7ff;
+}
+
+/* ---------- Update (governance control) ---------- */
+
+.node-update {
+    background: #eef2f7;
+    color: #2c3e50;
+}
+
+.node-update:hover {
+    background: #dbe4ef;
+}
+
+/* ---------- Delete (controlled warning) ---------- */
+
+.node-delete {
+    background: #fff3f3;
+    color: #a33;
+}
+
+.node-delete:hover {
+    background: #ffe1e1;
+}
+
 /* ---------- Status Badge ---------- */
 
 .status-badge {

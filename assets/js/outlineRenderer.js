@@ -28,11 +28,6 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 /* #region Node Rendering */
 function renderNode(node, domainConfig, iconMap) {
 
-    console.log('[RENDER DEBUG]', {
-        domainConfig,
-        capabilities: domainConfig?.capabilities
-    });
-
     const el = document.createElement('div');
     el.className = 'outline-phase';
 
@@ -180,7 +175,7 @@ function renderNode(node, domainConfig, iconMap) {
 }
 /* #endregion */
 
-/* #region Utilities */
+/* #region Render Icon */
 function renderIcon(iconId, iconMap) {
 
     var key = (iconId === 0 || iconId) ? String(iconId) : null;
@@ -195,7 +190,9 @@ function renderIcon(iconId, iconMap) {
 
     return span;
 }
+/* #endregion */
 
+/* #region Status Label */
 function statusLabel(status) {
     switch (status?.toLowerCase()) {
         case 'complete':    return '✓ Complete';
