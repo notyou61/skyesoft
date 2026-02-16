@@ -1,6 +1,6 @@
 {
     "meta": {
-        "generatedAt": 1771171276,
+        "generatedAt": 1771244522,
         "generatedBy": "scripts/codexMerkleBuilder.php",
         "scope": "codex/codex.json ONLY",
         "codexTier": "Tier-1",
@@ -10,14 +10,14 @@
     "leaves": [
         {
             "path": "/codex/codex.json",
-            "contentHash": "86fcd685178df3c3799d8b55d3a339d544a0df9a0bba56507ae3b0d4bd4c3ed4",
-            "leafHash": "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be"
+            "contentHash": "82d1ee9346562086027c76d8811c0fd9b490978e859e84c3ead967c55ea5e920",
+            "leafHash": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
         }
     ],
     "levels": [
         [
-            "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be"
+            "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
         ]
     ],
-    "root": "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be"
+    "root": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
 }

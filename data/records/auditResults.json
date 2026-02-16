@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 19,
-        "violationCount": 45,
+        "auditCount": 21,
+        "violationCount": 46,
         "unresolvedViolations": 0,
-        "lastAudit": 1771171307,
-        "lastViolationBatch": "VB-1771171307"
+        "lastAudit": 1771244535,
+        "lastViolationBatch": "VB-1771244535"
     },
     "violations": [
         {
@@ -1597,6 +1597,32 @@
                 "type": "file",
                 "issue": "unexpected",
                 "violationSubclass": "UNEXPECTED_ARTIFACT"
+            }
+        },
+        {
+            "violationId": "VIO-046",
+            "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+            "ruleId": "merkleIntegrity",
+            "timestamp": 1771244487,
+            "auditMode": "governance",
+            "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+            "violationNotes": {
+                "summary": "A Merkle root mismatch was observed during this audit run.",
+                "details": [
+                    "The observed Merkle state differs from the governed snapshot.",
+                    "This condition was observed once in this audit run.",
+                    "Human review may be required."
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771244487",
+            "resolved": 1771244535,
+            "resolution": null,
+            "lastObserved": 1771244535,
+            "observationCount": 1,
+            "facts": {
+                "storedRoot": "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be",
+                "observedRoot": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
             }
         }
     ]
