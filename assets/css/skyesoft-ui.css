@@ -356,7 +356,7 @@ body {
 
 .phase-title,
 .node-title {
-    flex: 0 1 auto;
+    flex: 1 1 auto;     /* allow title to grow */
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -386,65 +386,11 @@ body {
 .status-badge.failed       { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
 /* ---------- Node Actions (Kebab Dropdown) ---------- */
-
-.node-actionsWrap {
+.node-inlineActions {
+    display: flex;
+    gap: 10px;
+    margin-left: 8px;
     flex-shrink: 0;
-    position: relative;
-    margin-left: 4px;
-}
-
-.node-actionsToggle {
-    background: none;
-    border: none;
-    font-size: 1.1em;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    color: #666;
-}
-
-.node-actionsToggle:hover {
-    background: rgba(0,0,0,0.06);
-    color: #000;
-}
-
-.node-actionsPanel {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 2000;
-    min-width: 140px;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 8px 0;
-}
-
-.node-actionsPanel[hidden] {
-    display: none;
-}
-
-.node-actionsWrap.open {
-    z-index: 10;
-}
-
-/* Test (Remove when finished) */
-.node-actionsPanel {
-    background: red !important;
-}
-
-/* Optional subtle open animation */
-.node-actionsPanel {
-    transform-origin: top right;
-    opacity: 0;
-    transform: scale(0.95);
-    transition: opacity 0.12s ease, transform 0.12s ease;
-}
-
-.node-actionsWrap.open .node-actionsPanel {
-    opacity: 1;
-    transform: scale(1);
 }
 
 /* ---------- Individual Action Links ---------- */

@@ -35,6 +35,7 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 
 /* #region Node Rendering */
 function renderNode(node, domainConfig, iconMap, depth = 0) {
+
     const el = document.createElement('div');
     el.className = 'outline-phase';
 
@@ -69,81 +70,74 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         header.appendChild(status);
     }
 
-    // ── Actions (Kebab menu) – only on primary nodes ─────────
+    // ── Inline CRUD (PRIMARY NODES ONLY) ─────────────────────
     const isPrimaryNode = depth === 0;
     const capabilities = domainConfig?.capabilities || {};
 
     if (isPrimaryNode && (capabilities.read || capabilities.update || capabilities.delete)) {
+
         const actionsWrap = document.createElement('span');
-        actionsWrap.className = 'node-actionsWrap';
+        actionsWrap.className = 'node-inlineActions';
 
-        const toggle = document.createElement('button');
-        toggle.type = 'button';
-        toggle.className = 'node-actionsToggle';
-        toggle.textContent = '⋯';
-        toggle.setAttribute('aria-label', 'Node actions');
-
-        const panel = document.createElement('span');
-        panel.className = 'node-actionsPanel';
-        panel.hidden = true;
-
-        // Toggle behavior
-        toggle.addEventListener('click', e => {
-            //
-            console.log('Kebab clicked');
-            // Prevent Default
-            e.preventDefault();
-            e.stopPropagation();
-
-            const isOpen = !panel.hidden;
-
-            // Close ALL open panels first
-            document.querySelectorAll('.node-actionsWrap.open')
-                .forEach(wrap => {
-                    wrap.classList.remove('open');
-                    const p = wrap.querySelector('.node-actionsPanel');
-                    if (p) p.hidden = true;
-                });
-
-            // Re-open this one if it was previously closed
-            if (!isOpen) {
-                panel.hidden = false;
-                actionsWrap.classList.add('open');
-            }
-        });
-
-
-        // READ link
+        // READ
         if (capabilities.read && node.pdfPath) {
             const read = document.createElement('a');
             read.href = node.pdfPath;
             read.target = '_blank';
-            read.rel = 'noopener noreferrer';           // security best practice
+            read.rel = 'noopener noreferrer';
             read.className = 'node-action node-read';
             read.textContent = 'Read';
-            panel.appendChild(read);
+            actionsWrap.appendChild(read);
         }
 
-        // UPDATE link
+        // UPDATE
         if (capabilities.update) {
             const update = document.createElement('a');
             update.href = '#';
             update.className = 'node-action node-update';
             update.textContent = 'Update';
-            panel.appendChild(update);
+
+            update.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                header.dispatchEvent(new CustomEvent('outline:update', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
+            });
+
+            actionsWrap.appendChild(update);
         }
 
-        // DELETE link
+        // DELETE
         if (capabilities.delete) {
             const del = document.createElement('a');
             del.href = '#';
             del.className = 'node-action node-delete';
             del.textContent = 'Delete';
-            panel.appendChild(del);
+
+            del.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (!confirm('Are you sure you want to delete this item?')) return;
+
+                header.dispatchEvent(new CustomEvent('outline:delete', {
+                    bubbles: true,
+                    detail: {
+                        nodeId: node.id,
+                        nodeType: node.type
+                    }
+                }));
+            });
+
+            actionsWrap.appendChild(del);
         }
 
-        actionsWrap.appendChild(toggle);
-        actionsWrap.appendChild(panel);
         header.appendChild(actionsWrap);
     }
 
@@ -151,6 +145,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     // ── Children ─────────────────────────────────────────────
     if (hasChildren) {
+
         const childContainer = document.createElement('div');
         childContainer.className = 'outlineChildren';
         childContainer.style.display = 'none';
@@ -173,6 +168,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             childContainer.style.display = expanded ? 'block' : 'none';
             el.classList.toggle('expanded', expanded);
         });
+
     } else {
         caret.style.visibility = 'hidden';
     }
