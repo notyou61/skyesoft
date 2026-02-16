@@ -455,6 +455,14 @@ body {
     border: 1px solid #cfe2ff;
 }
 
+.status-badge {
+    margin-right: 6px;
+}
+
+.node-actionsWrap {
+    margin-left: 2px;
+}
+
 .node-read:hover {
     background: #dbe4ef;
 }

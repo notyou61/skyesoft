@@ -57,26 +57,40 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
     title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
-    /* ---------- CRUD ---------- */
-
+    /* ---------- CRUD (PRIMARY NODES ONLY) ---------- */
+    const isPrimaryNode = depth === 0;
     const capabilities = domainConfig?.capabilities || {};
 
-    /* Create container so spacing stays consistent */
-    const actions = document.createElement('span');
-    actions.className = 'node-actions';
+    if (isPrimaryNode && (capabilities.read || capabilities.update || capabilities.delete)) {
 
-    // Node Depth Conditional
-    if (depth === 0) {
+        const actionsWrap = document.createElement('span');
+        actionsWrap.className = 'node-actionsWrap';
+
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'node-actionsToggle';
+        toggle.textContent = '⋯';
+        toggle.setAttribute('aria-label', 'Node actions');
+
+        const panel = document.createElement('span');
+        panel.className = 'node-actionsPanel';
+        panel.hidden = true;
+
+        toggle.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            panel.hidden = !panel.hidden;
+            actionsWrap.classList.toggle('open', !panel.hidden);
+        });
 
         // READ
-        if (capabilities.read) {
+        if (capabilities.read && node.pdfPath) {
             const read = document.createElement('a');
-            read.href = node.pdfPath || '#';
+            read.href = node.pdfPath;
             read.target = '_blank';
             read.className = 'node-action node-read';
             read.textContent = 'Read';
-            read.addEventListener('click', e => e.stopPropagation());
-            actions.appendChild(read);
+            panel.appendChild(read);
         }
 
         // UPDATE
@@ -85,21 +99,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             update.href = '#';
             update.className = 'node-action node-update';
             update.textContent = 'Update';
-
-            update.addEventListener('click', e => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                header.dispatchEvent(new CustomEvent('outline:update', {
-                    bubbles: true,
-                    detail: {
-                        nodeId: node.id,
-                        nodeType: node.type
-                    }
-                }));
-            });
-
-            actions.appendChild(update);
+            panel.appendChild(update);
         }
 
         // DELETE
@@ -108,24 +108,12 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             del.href = '#';
             del.className = 'node-action node-delete';
             del.textContent = 'Delete';
-
-            del.addEventListener('click', e => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (!confirm('Are you sure you want to delete this item?')) return;
-
-                header.dispatchEvent(new CustomEvent('outline:delete', {
-                    bubbles: true,
-                    detail: {
-                        nodeId: node.id,
-                        nodeType: node.type
-                    }
-                }));
-            });
-
-            actions.appendChild(del);
+            panel.appendChild(del);
         }
+
+        actionsWrap.appendChild(toggle);
+        actionsWrap.appendChild(panel);
+        header.appendChild(actionsWrap);
     }
 
     /* Only append if something exists */
