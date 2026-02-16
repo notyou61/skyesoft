@@ -61,14 +61,19 @@ function renderNode(node, domainConfig, iconMap) {
 
     const capabilities = domainConfig?.capabilities || {};
 
-    // READ (PDF link)
-    if (capabilities.read && node.pdfPath) {
+    /* Create container so spacing stays consistent */
+    const actions = document.createElement('span');
+    actions.className = 'node-actions';
+
+    // READ
+    if (capabilities.read) {
         const read = document.createElement('a');
-        read.href = node.pdfPath;
+        read.href = node.pdfPath || '#';
         read.target = '_blank';
         read.className = 'node-action node-read';
         read.textContent = 'Read';
-        header.appendChild(read);
+        read.addEventListener('click', e => e.stopPropagation());
+        actions.appendChild(read);
     }
 
     // UPDATE
@@ -91,7 +96,7 @@ function renderNode(node, domainConfig, iconMap) {
             }));
         });
 
-        header.appendChild(update);
+        actions.appendChild(update);
     }
 
     // DELETE
@@ -105,9 +110,7 @@ function renderNode(node, domainConfig, iconMap) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (!confirm('Are you sure you want to delete this item?')) {
-                return;
-            }
+            if (!confirm('Are you sure you want to delete this item?')) return;
 
             header.dispatchEvent(new CustomEvent('outline:delete', {
                 bubbles: true,
@@ -118,7 +121,12 @@ function renderNode(node, domainConfig, iconMap) {
             }));
         });
 
-        header.appendChild(del);
+        actions.appendChild(del);
+    }
+
+    /* Only append if something exists */
+    if (actions.children.length > 0) {
+        header.appendChild(actions);
     }
 
     /* ---------- Status Badge ---------- */
