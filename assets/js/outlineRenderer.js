@@ -117,7 +117,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
     }
 
     /* Only append if something exists */
-    if (actions.children.length > 0) {
+    if (actionsWrap.children.length > 0) {
         header.appendChild(actions);
     }
 
