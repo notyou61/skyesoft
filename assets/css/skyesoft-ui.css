@@ -356,7 +356,7 @@ body {
 
 .phase-title,
 .node-title {
-    flex: 1 1 auto;     /* allow title to grow */
+    flex: 0 0 auto;   /* ← critical change */
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
