@@ -26,16 +26,16 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 /* #endregion */
 
 /* #region Node Rendering */
-function renderNode(node, domainConfig, iconMap, depth = 0) {
+function renderNode(node, domainConfig, iconMap) {
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'outlineNode';
-    wrapper.style.paddingLeft = `${depth * 18}px`;
+    const el = document.createElement('div');
+    el.className = 'outline-phase';
 
     const header = document.createElement('div');
-    header.className = 'outlineHeader';
+    header.className = 'phase-header';
 
     /* ---------- Caret ---------- */
+
     const caret = document.createElement('span');
     caret.className = 'node-caret';
 
@@ -45,90 +45,84 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
     header.appendChild(caret);
 
     /* ---------- Icon ---------- */
-    if (node.iconId) {
-        const icon = renderIcon(node.iconId, iconMap);
-        icon.classList.add('node-icon');
-        header.appendChild(icon);
-    }
+
+    const icon = renderIcon(node.iconId, iconMap);
+    icon.classList.add('node-icon');
+    header.appendChild(icon);
 
     /* ---------- Title ---------- */
+
     const title = document.createElement('span');
-    title.className = 'node-title';
+    title.className = 'phase-title';
     title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
     /* ---------- CRUD ---------- */
-    const canRead   = domainConfig?.capabilities?.read   === true;
-    const canUpdate = domainConfig?.capabilities?.update === true;
-    const canDelete = domainConfig?.capabilities?.delete === true;
 
-    if (canRead || canUpdate || canDelete) {
+    const capabilities = domainConfig?.capabilities || {};
 
-        const actions = document.createElement('span');
-        actions.className = 'node-actions';
-
-        // READ
-        if (canRead && node.pdfPath) {
-            const read = document.createElement('a');
-            read.href = node.pdfPath;
-            read.target = '_blank';
-            read.className = 'node-action node-read';
-            read.textContent = 'Read';
-            read.addEventListener('click', e => e.stopPropagation());
-            actions.appendChild(read);
-        }
-
-        // UPDATE
-        if (canUpdate) {
-            const update = document.createElement('span');
-            update.className = 'node-action node-update';
-            update.textContent = 'Update';
-
-            update.addEventListener('click', e => {
-                e.stopPropagation();
-                header.dispatchEvent(new CustomEvent('outline:update', {
-                    bubbles: true,
-                    detail: {
-                        nodeId: node.id,
-                        nodeType: node.type
-                    }
-                }));
-            });
-
-            actions.appendChild(update);
-        }
-
-        // DELETE
-        if (canDelete) {
-            const del = document.createElement('span');
-            del.className = 'node-action node-delete';
-            del.textContent = 'Delete';
-
-            del.addEventListener('click', e => {
-                e.stopPropagation();
-
-                const confirmed = confirm(
-                    `Delete "${node.label || node.title}"?`
-                );
-
-                if (!confirmed) return;
-
-                header.dispatchEvent(new CustomEvent('outline:delete', {
-                    bubbles: true,
-                    detail: {
-                        nodeId: node.id,
-                        nodeType: node.type
-                    }
-                }));
-            });
-
-            actions.appendChild(del);
-        }
-
-        header.appendChild(actions);
+    // READ (PDF link)
+    if (capabilities.read && node.pdfPath) {
+        const read = document.createElement('a');
+        read.href = node.pdfPath;
+        read.target = '_blank';
+        read.className = 'node-action node-read';
+        read.textContent = 'Read';
+        header.appendChild(read);
     }
 
-    /* ---------- Status ---------- */
+    // UPDATE
+    if (capabilities.update) {
+        const update = document.createElement('a');
+        update.href = '#';
+        update.className = 'node-action node-update';
+        update.textContent = 'Update';
+
+        update.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            header.dispatchEvent(new CustomEvent('outline:update', {
+                bubbles: true,
+                detail: {
+                    nodeId: node.id,
+                    nodeType: node.type
+                }
+            }));
+        });
+
+        header.appendChild(update);
+    }
+
+    // DELETE
+    if (capabilities.delete) {
+        const del = document.createElement('a');
+        del.href = '#';
+        del.className = 'node-action node-delete';
+        del.textContent = 'Delete';
+
+        del.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!confirm('Are you sure you want to delete this item?')) {
+                return;
+            }
+
+            header.dispatchEvent(new CustomEvent('outline:delete', {
+                bubbles: true,
+                detail: {
+                    nodeId: node.id,
+                    nodeType: node.type
+                }
+            }));
+        });
+
+        header.appendChild(del);
+    }
+
+    /* ---------- Status Badge ---------- */
+
     if (node.status) {
         const status = document.createElement('span');
         status.className = `status-badge ${node.status}`;
@@ -136,9 +130,10 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         header.appendChild(status);
     }
 
-    wrapper.appendChild(header);
+    el.appendChild(header);
 
     /* ---------- Children ---------- */
+
     if (hasChildren) {
 
         const childContainer = document.createElement('div');
@@ -147,25 +142,28 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
         node.children.forEach(child => {
             childContainer.appendChild(
-                renderNode(child, domainConfig, iconMap, depth + 1)
+                renderNode(child, domainConfig, iconMap)
             );
         });
 
-        wrapper.appendChild(childContainer);
+        el.appendChild(childContainer);
+
+        let expanded = false;
 
         caret.addEventListener('click', e => {
             e.stopPropagation();
+            expanded = !expanded;
 
-            const expanded = childContainer.style.display === 'block';
-            childContainer.style.display = expanded ? 'none' : 'block';
-            caret.textContent = expanded ? '▶' : '▼';
+            caret.textContent = expanded ? '▼' : '▶';
+            childContainer.style.display = expanded ? 'block' : 'none';
+            el.classList.toggle('expanded', expanded);
         });
 
     } else {
         caret.style.visibility = 'hidden';
     }
 
-    return wrapper;
+    return el;
 }
 /* #endregion */
 
