@@ -440,6 +440,16 @@ body {
 
 /* ---------- Inline Actions Visibility ---------- */
 
+.node-crudToggle {
+    display: inline-flex;
+    width: 18px;                 /* fixed width = spacing preserved */
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    margin-left: 8px;
+}
+
 .node-inlineActions {
     display: none;
     margin-left: 8px;

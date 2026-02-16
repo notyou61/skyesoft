@@ -12,14 +12,6 @@
 export function renderOutline(container, adapted, domainConfig, iconMap) {
     if (!container || !adapted) return;
 
-    // Close any open kebab panels before re-render
-    document.querySelectorAll('.node-actionsWrap.open')
-        .forEach(wrap => {
-            wrap.classList.remove('open');
-            const p = wrap.querySelector('.node-actionsPanel');
-            if (p) p.hidden = true;
-        });
-
     container.innerHTML = '';
     container.classList.add('outline');
 
@@ -27,7 +19,7 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 
     nodes.forEach(node => {
         container.appendChild(
-            renderNode(node, domainConfig, iconMap, 0) // depth = 0
+            renderNode(node, domainConfig, iconMap, 0)
         );
     });
 }
@@ -76,6 +68,12 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     if (isPrimaryNode && (capabilities.read || capabilities.update || capabilities.delete)) {
 
+        // ── CRUD Toggle ─────────────────────────────
+        const crudToggle = document.createElement('span');
+        crudToggle.className = 'node-crudToggle';
+        crudToggle.textContent = '+';
+
+        // ── CRUD Links Container ─────────────────────
         const actionsWrap = document.createElement('span');
         actionsWrap.className = 'node-inlineActions';
 
@@ -138,6 +136,27 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             actionsWrap.appendChild(del);
         }
 
+        // ── Toggle Behavior ──────────────────────────
+        crudToggle.addEventListener('click', e => {
+            e.stopPropagation();
+
+            const isOpen = el.classList.contains('showActions');
+            const outlineRoot = el.closest('.outline');
+
+            outlineRoot?.querySelectorAll('.outline-phase.showActions')
+                .forEach(n => {
+                    n.classList.remove('showActions');
+                    const t = n.querySelector('.node-crudToggle');
+                    if (t) t.textContent = '+';
+                });
+
+            if (!isOpen) {
+                el.classList.add('showActions');
+                crudToggle.textContent = '−';
+            }
+        });
+
+        header.appendChild(crudToggle);
         header.appendChild(actionsWrap);
     }
 
