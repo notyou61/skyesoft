@@ -373,7 +373,7 @@ body {
     font-weight: 600;
     line-height: 1;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
-    margin-left: auto;              /* push to right when possible */
+    margin-left: 12px;   /* simple spacing, not auto */
     flex-shrink: 0;
 }
 
@@ -387,7 +387,7 @@ body {
 /* ---------- Node Actions (Kebab Dropdown) ---------- */
 
 .node-actionsWrap {
-    margin-left: auto;
+    margin-left: auto;  /* only this pushes right */
     flex-shrink: 0;
     position: relative;
 }
