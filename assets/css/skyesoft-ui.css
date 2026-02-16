@@ -384,6 +384,10 @@ body {
 .status-badge.blocked      { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 .status-badge.failed       { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
+
+.node-actionsWrap { outline: 2px solid red; }
+.status-badge { outline: 2px solid blue; }
+
 /* ---------- Node Actions (Kebab Dropdown) ---------- */
 
 .node-actionsWrap {
