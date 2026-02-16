@@ -27,15 +27,13 @@ export function renderOutline(container, adapted, domainConfig, iconMap) {
 
 /* #region Node Rendering */
 function renderNode(node, domainConfig, iconMap, depth = 0) {
-
     const el = document.createElement('div');
     el.className = 'outline-phase';
 
     const header = document.createElement('div');
     header.className = 'phase-header';
 
-    /* ---------- Caret ---------- */
-
+    // ── Caret ────────────────────────────────────────────────
     const caret = document.createElement('span');
     caret.className = 'node-caret';
 
@@ -44,25 +42,30 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 
     header.appendChild(caret);
 
-    /* ---------- Icon ---------- */
-
+    // ── Icon ─────────────────────────────────────────────────
     const icon = renderIcon(node.iconId, iconMap);
     icon.classList.add('node-icon');
     header.appendChild(icon);
 
-    /* ---------- Title ---------- */
-
+    // ── Title ────────────────────────────────────────────────
     const title = document.createElement('span');
     title.className = 'phase-title';
     title.textContent = node.label || node.title || '(Untitled)';
     header.appendChild(title);
 
-    /* ---------- CRUD (PRIMARY NODES ONLY) ---------- */
+    // ── Status Badge ─────────────────────────────────────────
+    if (node.status) {
+        const status = document.createElement('span');
+        status.className = `status-badge ${node.status}`;
+        status.textContent = statusLabel(node.status);
+        header.appendChild(status);
+    }
+
+    // ── Actions (Kebab menu) – only on primary nodes ─────────
     const isPrimaryNode = depth === 0;
     const capabilities = domainConfig?.capabilities || {};
 
     if (isPrimaryNode && (capabilities.read || capabilities.update || capabilities.delete)) {
-
         const actionsWrap = document.createElement('span');
         actionsWrap.className = 'node-actionsWrap';
 
@@ -76,6 +79,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         panel.className = 'node-actionsPanel';
         panel.hidden = true;
 
+        // Toggle behavior
         toggle.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -83,17 +87,18 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             actionsWrap.classList.toggle('open', !panel.hidden);
         });
 
-        // READ
+        // READ link
         if (capabilities.read && node.pdfPath) {
             const read = document.createElement('a');
             read.href = node.pdfPath;
             read.target = '_blank';
+            read.rel = 'noopener noreferrer';           // security best practice
             read.className = 'node-action node-read';
             read.textContent = 'Read';
             panel.appendChild(read);
         }
 
-        // UPDATE
+        // UPDATE link
         if (capabilities.update) {
             const update = document.createElement('a');
             update.href = '#';
@@ -102,7 +107,7 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             panel.appendChild(update);
         }
 
-        // DELETE
+        // DELETE link
         if (capabilities.delete) {
             const del = document.createElement('a');
             del.href = '#';
@@ -116,21 +121,10 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         header.appendChild(actionsWrap);
     }
 
-    /* ---------- Status Badge ---------- */
-
-    if (node.status) {
-        const status = document.createElement('span');
-        status.className = `status-badge ${node.status}`;
-        status.textContent = statusLabel(node.status);
-        header.appendChild(status);
-    }
-
     el.appendChild(header);
 
-    /* ---------- Children ---------- */
-
+    // ── Children ─────────────────────────────────────────────
     if (hasChildren) {
-
         const childContainer = document.createElement('div');
         childContainer.className = 'outlineChildren';
         childContainer.style.display = 'none';
@@ -153,7 +147,6 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
             childContainer.style.display = expanded ? 'block' : 'none';
             el.classList.toggle('expanded', expanded);
         });
-
     } else {
         caret.style.visibility = 'hidden';
     }

@@ -283,6 +283,7 @@ body {
     --outline-caret-width: 14px;
     --outline-gap: 8px;
     --outline-icon-width: 1.25em;
+    --outline-indent: calc(var(--outline-caret-width) + var(--outline-gap) + var(--outline-icon-width) + var(--outline-gap));
 }
 
 /* ---------- Root Container ---------- */
@@ -299,31 +300,30 @@ body {
     margin: 2px 0;
 }
 
-/* ---------- Node Header ---------- */
+/* ---------- Node Header (used by both outlineHeader and phase-header) ---------- */
 
-.outlineHeader {
+.outlineHeader,
+.phase-header {
     display: flex;
     align-items: center;
-    gap: var(--outline-gap);
-
+    gap: 12px;
     padding: 3px 6px;
     line-height: 1.4;
     font-size: 14px;
     cursor: default;
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 
-.outlineHeader:hover {
+.outlineHeader:hover,
+.phase-header:hover {
     background: rgba(0,0,0,0.04);
     border-radius: 6px;
 }
 
+/* Indentation for children */
 .outlineChildren {
-    margin-left: calc(
-        var(--outline-caret-width) +
-        var(--outline-gap) +
-        var(--outline-icon-width) +
-        var(--outline-gap)
-    );
+    margin-left: var(--outline-indent);
 }
 
 /* ---------- Caret ---------- */
@@ -344,79 +344,23 @@ body {
 /* ---------- Icon ---------- */
 
 .node-icon {
-    display: inline-block;
+    flex: 0 0 var(--outline-icon-width);
     width: var(--outline-icon-width);
-
-    font-family:
-        "Apple Color Emoji",
-        "Segoe UI Emoji",
-        "Noto Color Emoji",
-        system-ui,
-        sans-serif;
-
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif;
     line-height: 1;
+    text-align: center;
 }
 
 /* ---------- Title ---------- */
 
+.phase-title,
 .node-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-weight: 500;
-}
-
-/* ---------- Node Action Container ---------- */
-
-.node-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: 10px;
-}
-
-/* ---------- Base Action Style ---------- */
-
-.node-action {
-    font-size: 0.68em;
-    font-weight: 600;
-    padding: 2px 7px;
-    border-radius: 12px;
-    text-decoration: none;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.15s ease;
-    border: 1px solid transparent;
-}
-
-/* ---------- Read (inspection / neutral) ---------- */
-
-.node-read {
-    background: #eef3ff;
-    color: #2c5cc5;
-}
-
-.node-read:hover {
-    background: #dfe7ff;
-}
-
-/* ---------- Update (governance control) ---------- */
-
-.node-update {
-    background: #eef2f7;
-    color: #2c3e50;
-}
-
-.node-update:hover {
-    background: #dbe4ef;
-}
-
-/* ---------- Delete (controlled warning) ---------- */
-
-.node-delete {
-    background: #fff3f3;
-    color: #a33;
-}
-
-.node-delete:hover {
-    background: #ffe1e1;
 }
 
 /* ---------- Status Badge ---------- */
@@ -427,71 +371,98 @@ body {
     border-radius: 14px;
     white-space: nowrap;
     font-weight: 600;
-    margin-left: 10px;
     line-height: 1;
-
-    /* subtle definition */
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.05) inset;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+    margin-left: auto;              /* push to right when possible */
+    flex-shrink: 0;
 }
 
-/* Complete — calm positive */
-.status-badge.complete {
-    background: #e6f6ea;
-    color: #1e7f43;
-    border: 1px solid #cfe2ff;
-}
+/* Status variants */
+.status-badge.complete     { background: #e6f6ea; color: #1e7f43; border: 1px solid #cfe2d6; }
+.status-badge.in-progress  { background: #fff3cd; color: #856404; border: 1px solid #ffe8a3; }
+.status-badge.pending      { background: #e7f1ff; color: #1d4ed8; border: 1px solid #cfe2ff; }
+.status-badge.blocked      { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.status-badge.failed       { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-/* In Progress — active caution */
-.status-badge.in-progress {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #cfe2ff;
-}
-
-/* Pending — informational / queued */
-.status-badge.pending {
-    background: #e7f1ff;
-    color: #1d4ed8;          /* calm, controlled blue */
-    border: 1px solid #cfe2ff;
-}
-
-.status-badge {
-    margin-right: 6px;
-}
+/* ---------- Node Actions (Kebab Dropdown) ---------- */
 
 .node-actionsWrap {
-    margin-left: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+    position: relative;
 }
 
-.node-read:hover {
-    background: #dbe4ef;
+.node-actionsToggle {
+    background: none;
+    border: none;
+    font-size: 1.1em;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #666;
 }
 
-/* Update */
-.node-update {
-    background: #eef2f7;
-    color: #2c3e50;
+.node-actionsToggle:hover {
+    background: rgba(0,0,0,0.06);
+    color: #000;
 }
 
-.node-update:hover {
-    background: #dbe4ef;
+.node-actionsPanel {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    min-width: 120px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 6px 0;
+    margin-top: 4px;
 }
 
-/* Delete */
-.node-delete {
-    background: #fff3f3;
-    color: #a33;
+.node-actionsPanel[hidden] {
+    display: none;
 }
 
-.node-delete:hover {
-    background: #ffe1e1;
+/* Optional subtle open animation */
+.node-actionsPanel {
+    transform-origin: top right;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
-/* ---------- Domain Header Actions ---------- */
+.node-actionsWrap.open .node-actionsPanel {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ---------- Individual Action Links ---------- */
+
+.node-action {
+    display: block;
+    padding: 6px 16px;
+    font-size: 0.9em;
+    color: #374151;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.node-action:hover {
+    background: #f3f4f6;
+}
+
+/* Specific action styles (override base if needed) */
+.node-read    { color: #2563eb; }
+.node-update  { color: #4b5563; }
+.node-delete  { color: #dc2626; }
+
+/* ---------- Domain-Level Actions (Create / Read etc.) ---------- */
 
 .domain-action {
     display: inline-block;
-    margin-left: 10px;
+    margin-left: 12px;
     padding: 3px 10px;
     font-size: 12px;
     border-radius: 14px;
@@ -501,22 +472,10 @@ body {
     transition: all 0.15s ease;
 }
 
-.domain-create {
-    background: #edf7f0;
-    color: #1f6b3a;
-}
+.domain-create { background: #edf7f0; color: #1f6b3a; }
+.domain-create:hover { background: #d9efe2; }
 
-.domain-create:hover {
-    background: #d9efe2;
-}
-
-.domain-read {
-    background: #eef2f7;
-    color: #2c3e50;
-}
-
-.domain-read:hover {
-    background: #dbe4ef;
-}
+.domain-read   { background: #eef2f7; color: #2c3e50; }
+.domain-read:hover   { background: #dbe4ef; }
 
 /* #endregion */
