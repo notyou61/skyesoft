@@ -12,6 +12,14 @@
 export function renderOutline(container, adapted, domainConfig, iconMap) {
     if (!container || !adapted) return;
 
+    // Close any open kebab panels before re-render
+    document.querySelectorAll('.node-actionsWrap.open')
+        .forEach(wrap => {
+            wrap.classList.remove('open');
+            const p = wrap.querySelector('.node-actionsPanel');
+            if (p) p.hidden = true;
+        });
+
     container.innerHTML = '';
     container.classList.add('outline');
 
