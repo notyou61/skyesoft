@@ -248,6 +248,7 @@ window.SkyIndex = {
 
     // #region 🚀 Page Init
     async init() {
+
         this.dom = {
             time:     document.getElementById('headerTime'),
             weather:  document.getElementById('headerWeather'),
@@ -263,10 +264,20 @@ window.SkyIndex = {
             return;
         }
 
+        // Close open kebab menus on outside click
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.node-actionsWrap.open')
+                .forEach(wrap => {
+                    wrap.classList.remove('open');
+                    const panel = wrap.querySelector('.node-actionsPanel');
+                    if (panel) panel.hidden = true;
+                });
+        });
+
         // Load registries in order of preference
         await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
-        
+
         if (this.isAuthenticated()) {
             document.body.setAttribute('data-auth', 'true');
             this.renderCommandInterfaceCard();

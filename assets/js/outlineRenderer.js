@@ -83,9 +83,24 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
         toggle.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            panel.hidden = !panel.hidden;
-            actionsWrap.classList.toggle('open', !panel.hidden);
+
+            const isOpen = !panel.hidden;
+
+            // Close ALL open panels first
+            document.querySelectorAll('.node-actionsWrap.open')
+                .forEach(wrap => {
+                    wrap.classList.remove('open');
+                    const p = wrap.querySelector('.node-actionsPanel');
+                    if (p) p.hidden = true;
+                });
+
+            // Re-open this one if it was previously closed
+            if (!isOpen) {
+                panel.hidden = false;
+                actionsWrap.classList.add('open');
+            }
         });
+
 
         // READ link
         if (capabilities.read && node.pdfPath) {
