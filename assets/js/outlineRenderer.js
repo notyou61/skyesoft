@@ -169,7 +169,6 @@ function renderNode(node, domainConfig, iconMap, depth = 0) {
 }
 /* #endregion */
 
-
 /* #region Utilities */
 function renderIcon(iconId, iconMap) {
 
