@@ -4266,6 +4266,80 @@
                     "Parliamentarian and Archivist roles interpret MIS results but never alter SOT files."
                 ]
             },
+            "sessionAuditStandard": {
+                "title": {
+                    "icon": 12,
+                    "text": "Session Lifecycle & Audit Standard"
+                },
+                "tier": 2,
+                "type": "Structural Standard",
+                "hierarchyOrder": 3,
+                "version": "1.0.0",
+                "preamble": {
+                    "icon": 7,
+                    "text": "This Standard governs authenticated session lifecycle enforcement and the immutable recording of audit events. It establishes authoritative backend control over session validation and ensures that login and logout activity is consistently classified, timestamped, and preserved as historical record."
+                },
+                "scope": {
+                    "text": "Applies to all authenticated user sessions and all system-triggered session terminations within Skyesoft."
+                },
+                "requirements": [
+                    "All login events must be recorded in tblActions.",
+                    "All logout events must be recorded in tblActions.",
+                    "Inactivity timeout must be enforced at 900 seconds.",
+                    "Each logout must declare an action_origin classification.",
+                    "Action records must be immutable once inserted.",
+                    "Session validation and termination must be enforced by backend authority."
+                ],
+                "originClassification": {
+                    "0": "User initiated logout",
+                    "1": "SSE inactivity logout",
+                    "2": "Sentinel inactivity logout"
+                },
+                "dataStructures": {
+                    "tblActionTypes": {
+                    "purpose": "Defines the catalog of permitted action classifications.",
+                    "requiredColumns": [
+                        "action_type_id (Primary Key)",
+                        "crud_class",
+                        "action_name",
+                        "is_active",
+                        "created_unix"
+                    ]
+                    },
+                    "tblActions": {
+                    "purpose": "Append-only ledger of action events.",
+                    "requiredColumns": [
+                        "action_id (Primary Key)",
+                        "user_id",
+                        "action_type_id",
+                        "action_origin",
+                        "action_unix"
+                    ],
+                    "optionalColumns": [
+                        "latitude",
+                        "longitude"
+                    ],
+                    "constraints": [
+                        "Foreign key to tblActionTypes(action_type_id)",
+                        "Index on user_id",
+                        "Index on action_type_id",
+                        "Index on action_unix"
+                    ]
+                    }
+                },
+                "enforcement": {
+                    "notes": "Violations of audit recording or session timeout enforcement constitute structural violations.",
+                    "auditedBy": "repositoryAuditor",
+                    "violationSeverity": "structural"
+                },
+                "relationships": {
+                    "references": [
+                    "dataIntentStandard",
+                    "repositoryStandard"
+                    ],
+                    "governedBy": "constitution.articleIII"
+                }
+            },
             "systemInitializationStandard": {
                 "title": {
                     "icon": 68,

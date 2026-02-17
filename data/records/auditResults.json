@@ -6,11 +6,11 @@
         "codexTier": "Tier-2",
         "purpose": "Governance audit violation record",
         "description": "Canonical record of a governed audit violation, including observation, resolution state, and non-authoritative narrative commentary.",
-        "auditCount": 21,
-        "violationCount": 46,
-        "unresolvedViolations": 0,
-        "lastAudit": 1771244535,
-        "lastViolationBatch": "VB-1771244535"
+        "auditCount": 22,
+        "violationCount": 48,
+        "unresolvedViolations": 2,
+        "lastAudit": 1771333845,
+        "lastViolationBatch": "VB-1771333845"
     },
     "violations": [
         {
@@ -1623,6 +1623,64 @@
             "facts": {
                 "storedRoot": "01f81f9f66af4791725f4dbcfd11c8afd133fd686ad0867ca318a621523325be",
                 "observedRoot": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
+            }
+        },
+        {
+            "violationId": "VIO-047",
+            "identityHash": "6c9cc9484f445e338f8b64cdf5fef92fa52b9e62725bd81184053ce4d7c808bd",
+            "ruleId": "merkleIntegrity",
+            "timestamp": 1771333845,
+            "auditMode": "governance",
+            "observation": "Merkle integrity violation: observed Codex state does not match governed Merkle snapshot.",
+            "violationNotes": {
+                "summary": "A Merkle integrity violation was observed during this audit run.",
+                "details": [
+                    "The observed Merkle root differs from the governed snapshot.",
+                    "The stored root is '45b0caa0d622299f210d4a25c75bc2655dafe6d9c568c15d39258528f465e990'.",
+                    "The observed root is 'f642afa0ed4da631d686804e8fa4611d3cf6e73ef03bff546fa3869518d4ac74'.",
+                    "This condition was observed once in this audit run.",
+                    "Human review may be required."
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771333845",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1771333845,
+            "observationCount": 1,
+            "facts": {
+                "storedRoot": "45b0caa0d622299f210d4a25c75bc2655dafe6d9c568c15d39258528f465e990",
+                "observedRoot": "f642afa0ed4da631d686804e8fa4611d3cf6e73ef03bff546fa3869518d4ac74"
+            }
+        },
+        {
+            "violationId": "VIO-048",
+            "identityHash": "f52f1771057adbf1513608a167360fcf75047fb861fb4112f1e386ada68ae40c",
+            "ruleId": "repositoryInventoryConformance",
+            "timestamp": 1771333845,
+            "auditMode": "governance",
+            "observation": "Repository inventory violation: declared file '/data/authoritative/presentationRegistry.json' is missing",
+            "violationNotes": {
+                "summary": "Repository inventory violation observed",
+                "details": [
+                    "Applicable rule evaluated in current governed audit run",
+                    "Violation condition observed: declared file 'file' '/data/authoritative/presentationRegistry.json' is missing",
+                    "This violation has been observed 1 time",
+                    "Status reflects current observation only",
+                    "No determination made regarding cause or future recurrence"
+                ]
+            },
+            "notificationSent": null,
+            "violationBatch": "VB-1771333845",
+            "resolved": null,
+            "resolution": null,
+            "lastObserved": 1771333845,
+            "observationCount": 1,
+            "facts": {
+                "path": "/data/authoritative/presentationRegistry.json",
+                "expected": "file",
+                "issue": "missing",
+                "violationSubclass": "MISSING_DECLARED_ARTIFACT"
             }
         }
     ]

@@ -1,23 +1,30 @@
 {
     "meta": {
-        "generatedAt": 1771244522,
-        "generatedBy": "scripts/codexMerkleBuilder.php",
-        "scope": "codex/codex.json ONLY",
-        "codexTier": "Tier-1",
-        "state": "GOVERNED",
-        "note": "Single-leaf Merkle by design \u2014 Codex integrity only"
+        "generatedAt": "2026-02-17T06:10:25-07:00",
+        "algorithm": "SHA-256",
+        "scope": "codex",
+        "description": "Merkle tree for Codex integrity validation."
     },
-    "leaves": [
-        {
-            "path": "/codex/codex.json",
-            "contentHash": "82d1ee9346562086027c76d8811c0fd9b490978e859e84c3ead967c55ea5e920",
-            "leafHash": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
-        }
-    ],
-    "levels": [
+    "leaves": {
+        "constitution": "c9a4acb7ab586c392991e80bbb125fa7edb1f6dbfb71f61416daf09660addbb1",
+        "meta": "8c0f3dbe3e6c33d25b0608fca894c2f17f13e85f718ac261d326ca218a331f50",
+        "modules": "b0fb7befcb3d2f0dcacf3513bc83bf73b598c01ddc971d89f55bb6707b5dc176",
+        "standards": "902a7fb64328554f1e3537061ccb1dab61c6d3836ce82e4ab15fb379c4146319"
+    },
+    "layers": [
         [
-            "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
+            "c9a4acb7ab586c392991e80bbb125fa7edb1f6dbfb71f61416daf09660addbb1",
+            "8c0f3dbe3e6c33d25b0608fca894c2f17f13e85f718ac261d326ca218a331f50",
+            "b0fb7befcb3d2f0dcacf3513bc83bf73b598c01ddc971d89f55bb6707b5dc176",
+            "902a7fb64328554f1e3537061ccb1dab61c6d3836ce82e4ab15fb379c4146319"
+        ],
+        [
+            "a64ee3ad25eec229ef8a12d924cec9cf04cf599a5b71104a53e58a8e4ee5dc50",
+            "2831ac368d931d0603dc5d03a1bd21eccb25e86b339665fd950f9713929d982b"
+        ],
+        [
+            "45b0caa0d622299f210d4a25c75bc2655dafe6d9c568c15d39258528f465e990"
         ]
     ],
-    "root": "0889b6d65efa75d7c174bd87da895dbc35ef100786b39d6bd0a4d79caf0ac537"
+    "root": "45b0caa0d622299f210d4a25c75bc2655dafe6d9c568c15d39258528f465e990"
 }
