@@ -1,13 +1,4 @@
 <?php
-$mysqli = new mysqli(
-    "localhost",
-    "notyou64_skyesoft_user",
-    "TestPass123!",
-    "notyou64_skyesoft"
-);
-
-if ($mysqli->connect_error) {
-    die("MySQLi failed: " . $mysqli->connect_error);
-}
+$mysqli = new mysqli("localhost", "notyou64", "Steven1!", "azSignPermits");
 
 echo "MySQLi connection successful!";
