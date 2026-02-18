@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/dbConnect.php';
+require 'dbConnect.php';
 
 $result = $databaseConnection->query("SELECT DATABASE() AS current_db");
 
