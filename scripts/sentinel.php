@@ -61,57 +61,61 @@ if (!file_exists($auditLogPath)) {
 
 #endregion
 
-#region SECTION II — Audit → Mutate → Verify (Resilient Mode)
+#region SECTION II — Audit → Mutate → Verify (Resilient Orchestrator)
 
 define('SKYESOFT_LIB_MODE', true);
 
-$executionStatus = 'ok';     // ok | audit-failed | mutator-failed | verify-failed
+/* Required contract injection for Auditor */
+$violationBatch = 'VB-' . time();
+
+$executionStatus = 'ok';   // ok | audit-failed | mutator-failed | verify-failed
 $executionError  = null;
 $summary1        = null;
 $summary2        = null;
 
 /* -------------------------------------------------------------
- * Helper: Execute module safely
+ * PASS 1 — Audit
  * ------------------------------------------------------------- */
-function runModule(string $path): array {
+try {
+
     ob_start();
-    $result = require $path;
+    $summary1 = require $auditorPath;
     ob_end_clean();
 
-    return [
-        "result" => $result,
-        "ok"     => is_array($result) && (($result["runComplete"] ?? false) === true)
-    ];
+    if (!is_array($summary1) || ($summary1['runComplete'] ?? false) !== true) {
+        throw new RuntimeException('Auditor did not return runComplete=true');
+    }
+
+} catch (Throwable $e) {
+
+    $executionStatus = 'audit-failed';
+    $executionError  = $e->getMessage();
 }
 
-/* PASS 1 — Audit */
-$pass1 = runModule($auditorPath);
-$summary1 = $pass1["result"];
+/* -------------------------------------------------------------
+ * PASS 2 — Mutate (only if PASS 1 succeeded)
+ * ------------------------------------------------------------- */
+if ($executionStatus === 'ok' && ($summary1['mutatableCount'] ?? 0) > 0) {
 
-if (!$pass1["ok"]) {
-    $executionStatus = 'audit-failed';
-    $executionError  = 'Auditor did not return runComplete=true array';
-} else {
+    try {
 
-    /* PASS 2 — Mutate (only if needed) */
-    if (($summary1["mutatableCount"] ?? 0) > 0) {
+        ob_start();
+        require $mutatorPath;
+        ob_end_clean();
 
-        $pass2 = runModule($mutatorPath);
+        /* PASS 3 — Verification Audit */
+        ob_start();
+        $summary2 = require $auditorPath;
+        ob_end_clean();
 
-        if (!$pass2["ok"]) {
-            $executionStatus = 'mutator-failed';
-            $executionError  = 'Mutator did not return runComplete=true array';
-        } else {
-
-            /* PASS 3 — Verification Audit */
-            $pass3 = runModule($auditorPath);
-            $summary2 = $pass3["result"];
-
-            if (!$pass3["ok"]) {
-                $executionStatus = 'verify-failed';
-                $executionError  = 'Verification audit did not return runComplete=true array';
-            }
+        if (!is_array($summary2) || ($summary2['runComplete'] ?? false) !== true) {
+            throw new RuntimeException('Verification audit failed');
         }
+
+    } catch (Throwable $e) {
+
+        $executionStatus = 'mutator-failed';
+        $executionError  = $e->getMessage();
     }
 }
 
