@@ -666,20 +666,34 @@ file_put_contents(
  *  SECTION V.D — Emit for Sentinel / CLI (NON-PERSISTENT)
  * ============================================================ */
 
-$output = [
-    'meta'       => $meta,
-    'violations' => $auditLog
+$mutatableCount = 0; // Auditor does not decide mutation; it only reports
+
+$summary = [
+    "runComplete"        => true,
+    "mutatableCount"     => $mutatableCount,
+
+    // Helpful (optional) telemetry for Sentinel
+    "auditMode"          => $auditMode,
+    "auditLogPath"       => $auditLogPath,
+    "lastAuditUnix"      => $timestamp,
+    "violationBatch"     => $violationBatch,
+    "unresolvedCount"    => $unresolvedViolations,
+    "violationCount"     => $violationCount,
+
+    // Raw output (optional, but useful)
+    "meta"               => $meta,
+    "violations"         => $auditLog
 ];
 
-if (!defined('SKYESOFT_LIB_MODE')) {
-    header('Content-Type: application/json');
+if (!SKYESOFT_LIB_MODE) {
+    header("Content-Type: application/json");
     echo json_encode(
-        $output,
+        $summary,
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
     );
     exit(0);
 }
 
-return $output;
+return $summary;
 
 #endregion SECTION V
