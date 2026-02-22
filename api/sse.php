@@ -35,10 +35,26 @@ if ($isSnapshot) {
 #endregion
 
 #region SECTION 2 — SSE Headers (Streaming Mode)
+
+// Disable compression for SSE (critical for browser decoding)
+if (function_exists('apache_setenv')) {
+    @apache_setenv('no-gzip', '1');
+}
+
+ini_set('zlib.output_compression', '0');
+ini_set('output_buffering', 'off');
+
+// Clear any active output buffers
+while (ob_get_level() > 0) {
+    ob_end_flush();
+}
+
+// Required SSE headers
 header("Content-Type: text/event-stream");
 header("Cache-Control: no-cache");
 header("Connection: keep-alive");
 header("X-Accel-Buffering: no");  // Prevent proxy buffering
+
 #endregion
 
 #region SECTION 3 — PHP Runtime Controls
