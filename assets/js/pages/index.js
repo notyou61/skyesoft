@@ -215,6 +215,30 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🛡️ Update Governance Footer (Sentinel-Driven)
+    updateGovernanceFooter(sentinel) {
+        const footer = this.cardHost?.querySelector('.cardFooter');
+        if (!footer || !sentinel) return;
+
+        if (sentinel.governanceStatus === "constitutional-breach") {
+            footer.textContent =
+                `🔴 Constitutional Breach • ${sentinel.unresolvedViolations} violations`;
+            footer.style.color = "#ff3b30";
+            return;
+        }
+
+        if (sentinel.unresolvedViolations > 0) {
+            footer.textContent =
+                `🟠 Violations Pending • ${sentinel.unresolvedViolations}`;
+            footer.style.color = "#ff9500";
+            return;
+        }
+
+        footer.textContent = "🟢 Authenticated • Governance Clean";
+        footer.style.color = "#00c853";
+    },
+    // #endregion
+
     // #region 🧩 UI Action Registry
     uiActionRegistry: {
         clear_screen() {
@@ -626,13 +650,15 @@ window.SkyIndex = {
             this.dom.version.textContent = formatVersionFooter(event.siteMeta);
         }
 
-        // Sentinel / update indicator
+        // 🛡️ Sentinel Governance Projection
         const sentinel = event.sentinelMeta;
-        if (!sentinel || sentinel.status === "offline") {
-            window.SkyVersion?.hide();
-            return;
+
+        if (sentinel) {
+            this.currentSentinelState = sentinel;
+            this.renderFooter();
         }
 
+        // Version indicator remains separate
         if (event.siteMeta?.updateOccurred === true) {
             window.SkyVersion?.show(60000);
         } else {
