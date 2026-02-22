@@ -94,34 +94,33 @@ if (file_exists($paths["sentinel"])) {
         ];
         // ------------------------------------------------------------
         // Governance Detail Projection (Unresolved Violations Only)
-        // Derived from canonical auditResults.json
         // ------------------------------------------------------------
 
-        $sentinelMeta["unresolved"] = [];
+        $sentinelMeta["unresolved"] = []; // Always initialize
 
-        $auditPath = $paths["audit"] ?? null;
+        if (($sentinelMeta["unresolvedViolations"] ?? 0) > 0) {
 
-        if ($auditPath && file_exists($auditPath)) {
+            $auditPath = $paths["audit"] ?? null;
 
-            $auditDoc = json_decode(file_get_contents($auditPath), true);
+            if ($auditPath && file_exists($auditPath)) {
 
-            if (is_array($auditDoc) && isset($auditDoc["violations"])) {
+                $auditDoc = json_decode(file_get_contents($auditPath), true);
 
-                foreach ($auditDoc["violations"] as $rec) {
+                if (is_array($auditDoc) && isset($auditDoc["violations"])) {
 
-                    // Only unresolved violations
-                    if (($rec["resolved"] ?? null) !== null) {
-                        continue;
+                    foreach ($auditDoc["violations"] as $rec) {
+
+                        if (($rec["resolved"] ?? null) !== null) {
+                            continue; // Only unresolved
+                        }
+
+                        $sentinelMeta["unresolved"][] = [
+                            "violationId" => $rec["violationId"] ?? null,
+                            "ruleId"      => $rec["ruleId"] ?? null,
+                            "observation" => $rec["observation"] ?? null,
+                            "severity"    => $rec["severity"] ?? "standard"
+                        ];
                     }
-
-                    $sentinelMeta["unresolved"][] = [
-                        "violationId"      => $rec["violationId"] ?? null,
-                        "ruleId"           => $rec["ruleId"] ?? null,
-                        "observation"      => $rec["observation"] ?? null,
-                        "lastObserved"     => $rec["lastObserved"] ?? null,
-                        "observationCount" => $rec["observationCount"] ?? 1,
-                        "violationBatch"   => $rec["violationBatch"] ?? null
-                    ];
                 }
             }
         }
