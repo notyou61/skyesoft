@@ -78,13 +78,19 @@ if (file_exists($paths["sentinel"])) {
         $baselineEstablished = ($initialRunUnix > 0);
 
         $sentinelMeta = [
-            "baselineEstablished" => $baselineEstablished,
-            "initialRunUnix"      => $baselineEstablished ? $initialRunUnix : null,
-            "lastRunUnix"         => $lastRunUnix,
-            "lastRunLocal"        => $dtSentinel->format("h:i:s A"),
-            "runCount"            => $runCount,
-            "ageSeconds"          => $ageSeconds,
-            "status"              => $status
+            // Execution Layer (runtime health)
+            "baselineEstablished"      => $baselineEstablished,
+            "initialRunUnix"           => $baselineEstablished ? $initialRunUnix : null,
+            "lastRunUnix"              => $lastRunUnix,
+            "lastRunLocal"             => $dtSentinel->format("h:i:s A"),
+            "runCount"                 => $runCount,
+            "ageSeconds"               => $ageSeconds,
+            "executionStatus"          => $status, // ok | stale | offline
+
+            // Governance Layer (from Sentinel)
+            "unresolvedViolations"     => (int)($sentinelRaw["unresolvedViolations"] ?? 0),
+            "constitutionalViolations" => (int)($sentinelRaw["constitutionalViolations"] ?? 0),
+            "governanceStatus"         => $sentinelRaw["governanceStatus"] ?? "unknown"
         ];
 
         // Derived metrics (statistical, read-only)

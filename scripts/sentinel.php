@@ -20,6 +20,7 @@ $dataDir      = $rootDir . '/data/records';
 $auditorPath  = $scriptsDir . '/auditor.php';
 $mutatorPath  = $scriptsDir . '/mutator.php';
 $auditLogPath = $dataDir . '/auditResults.json';
+$statePath    = $rootDir . '/data/runtimeEphemeral/sentinelState.json';
 
 #endregion
 
@@ -94,6 +95,102 @@ if (($summary1['mutatableCount'] ?? 0) > 0 && !$mutationPerformed) {
         error_log("SENTINEL ERROR: Verification audit failed runComplete");
         exit(1);
     }
+}
+
+/* ---------------------------------------------------------------------
+ *  SECTION II.B — Runtime State Projection
+ *  Purpose: Publish operational + governance summary
+ *  Authority: Sentinel only
+ * --------------------------------------------------------------------- */
+
+/* ---- Read canonical ledger (read-only) ---- */
+$ledgerRaw = @file_get_contents($auditLogPath);
+$ledger = is_string($ledgerRaw)
+    ? json_decode($ledgerRaw, true)
+    : [];
+
+$unresolved = 0;
+$constitutional = 0;
+
+if (is_array($ledger)) {
+    foreach ($ledger as $rec) {
+        if (
+            ($rec['type'] ?? null) === 'violation' &&
+            ($rec['resolved'] ?? null) === null
+        ) {
+            $unresolved++;
+
+            if (($rec['severity'] ?? null) === 'constitutional') {
+                $constitutional++;
+            }
+        }
+    }
+}
+
+/* ---- Determine governance status ---- */
+if ($constitutional > 0) {
+    $governanceStatus = 'constitutional-breach';
+} elseif ($unresolved > 0) {
+    $governanceStatus = 'violations-pending';
+} else {
+    $governanceStatus = 'clean';
+}
+
+/* ---- Build runtime state ---- */
+$now = time();
+
+$state = [
+    "initialRunUnix"          => null,
+    "lastRunUnix"             => $now,
+    "runCount"                => 1,
+    "unresolvedViolations"    => $unresolved,
+    "constitutionalViolations"=> $constitutional,
+    "governanceStatus"        => $governanceStatus
+];
+
+/* ---- Merge with existing state if present ---- */
+if (file_exists($statePath)) {
+    $existing = json_decode(file_get_contents($statePath), true);
+
+    if (is_array($existing)) {
+        $state["initialRunUnix"] =
+            $existing["initialRunUnix"] ?? $now;
+
+        $state["runCount"] =
+            ($existing["runCount"] ?? 0) + 1;
+    }
+}
+
+if ($state["initialRunUnix"] === null) {
+    $state["initialRunUnix"] = $now;
+}
+
+/* ---- Ensure runtime directory exists ---- */
+$runtimeDir = dirname($statePath);
+
+if (!is_dir($runtimeDir)) {
+    if (!mkdir($runtimeDir, 0755, true)) {
+        error_log("SENTINEL ERROR: Failed creating runtimeDir {$runtimeDir}");
+        exit(1);
+    }
+}
+
+/* ---- Confirm runtime directory writable ---- */
+if (!is_writable($runtimeDir)) {
+    error_log("SENTINEL ERROR: runtimeDir not writable {$runtimeDir}");
+    exit(1);
+}
+
+/* ---- Atomic write ---- */
+$writeResult = file_put_contents(
+    $statePath,
+    json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+    LOCK_EX
+);
+
+if ($writeResult === false) {
+    error_log("SENTINEL ERROR: Failed writing sentinelState.json");
+    exit(1);
 }
 
 #endregion
