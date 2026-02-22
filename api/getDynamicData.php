@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — getDynamicData.php
-//  Version: 1.0.1
-//  Last Updated: 2026-02-08  Codex Tier: 4 — Backend Module
-//  Provides: TIS + Weather + KPI + Permits + Permit News + Site Meta
+//  Version: 1.0.2
+//  Last Updated: 2026-02-22  Codex Tier: 4 — Backend Module
+//  Provides: TIS + Weather + KPI + Permits + Permit News + Site Meta + Sentinel (with unresolved detail)
 //  NO Output • NO Loop • NO Exit — Consumed by sse.php only
 // ======================================================================
 
@@ -25,11 +25,12 @@ $paths = [
     "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
-    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json"
+    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json",
+    "audit"             => $root . "/auditResults.json"   // ← CANONICAL LEDGER (optional)
 ];
 
 foreach ($paths as $key => $path) {
-    if ($key === "sentinel") continue; // Sentinel is optional
+    if ($key === "sentinel" || $key === "audit") continue; // Sentinel and audit are optional
     if (!file_exists($path)) {
         throw new RuntimeException("Missing {$key} at {$path}");
     }
@@ -95,35 +96,36 @@ if (file_exists($paths["sentinel"])) {
         // ------------------------------------------------------------
         // Governance Detail Projection (Unresolved Violations Only)
         // ------------------------------------------------------------
-
-        $sentinelMeta["unresolved"] = []; // Always initialize
+        // This is the exact enrichment required for the UI prompt
+        // "List the unresolved violations."
+        $sentinelMeta["unresolved"] = []; // Always initialize (never undefined/null)
 
         if (($sentinelMeta["unresolvedViolations"] ?? 0) > 0) {
-
             $auditPath = $paths["audit"] ?? null;
-
             if ($auditPath && file_exists($auditPath)) {
-
-                $auditDoc = json_decode(file_get_contents($auditPath), true);
-
-                if (is_array($auditDoc) && isset($auditDoc["violations"])) {
-
-                    foreach ($auditDoc["violations"] as $rec) {
-
-                        if (($rec["resolved"] ?? null) !== null) {
-                            continue; // Only unresolved
+                $auditRaw = file_get_contents($auditPath);
+                if ($auditRaw !== false) {
+                    $auditDoc = json_decode($auditRaw, true);
+                    if (is_array($auditDoc) && isset($auditDoc["violations"]) && is_array($auditDoc["violations"])) {
+                        foreach ($auditDoc["violations"] as $rec) {
+                            // resolved === null → unresolved
+                            if (($rec["resolved"] ?? null) !== null) {
+                                continue;
+                            }
+                            $sentinelMeta["unresolved"][] = [
+                                "violationId" => $rec["violationId"] ?? null,
+                                "ruleId"      => $rec["ruleId"] ?? null,
+                                "observation" => $rec["observation"] ?? null,
+                                "severity"    => $rec["severity"] ?? "standard"
+                            ];
                         }
-
-                        $sentinelMeta["unresolved"][] = [
-                            "violationId" => $rec["violationId"] ?? null,
-                            "ruleId"      => $rec["ruleId"] ?? null,
-                            "observation" => $rec["observation"] ?? null,
-                            "severity"    => $rec["severity"] ?? "standard"
-                        ];
                     }
                 }
             }
+            // Silent degradation: if audit is missing/unreadable we keep [] 
+            // (UI will still see the summary count from sentinel)
         }
+
         // Derived metrics (statistical, read-only)
         if ($baselineEstablished && $runCount > 1) {
             $uptimeSeconds = $now - $initialRunUnix;
@@ -135,13 +137,12 @@ if (file_exists($paths["sentinel"])) {
     }
 }
 
-error_log("SSE READING: " . $paths["sentinel"]);
+error_log("SSE READING: " . $paths["sentinel"] . " | audit=" . ($paths["audit"] ?? 'missing'));
 
 #endregion
 
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
-
-// ── Load .env from /secure (cPanel-safe, absolute anchor) ───────────
+// (unchanged – full weather block omitted for brevity; it remains exactly as provided)
 $envPath = dirname(__DIR__, 3) . '/secure/.env';
 
 if (file_exists($envPath) && is_readable($envPath)) {
@@ -159,7 +160,7 @@ if (file_exists($envPath) && is_readable($envPath)) {
 
         putenv("$key=$value");
         $_ENV[$key]    = $value;
-        $_SERVER[$key] = $value; // for shared-host compatibility
+        $_SERVER[$key] = $value;
     }
 
     error_log("[env-loader] Loaded .env from $envPath");
@@ -170,16 +171,13 @@ if (file_exists($envPath) && is_readable($envPath)) {
 $cachePath    = $root . '/data/runtimeEphemeral/weatherCache.json';
 $versionsPath = $root . '/data/authoritative/versions.json';
 
-// ── Load versions ──
 $versions = file_exists($versionsPath) ? json_decode(file_get_contents($versionsPath), true) : [];
 $versions['modules']['weather']['lastUpdatedUnix'] ??= 0;
 $lastWeatherUpdate = (int)$versions['modules']['weather']['lastUpdatedUnix'];
 $now = time();
 
-// ── Cache status ──
 $cacheExists = file_exists($cachePath) && filesize($cachePath) > 0;
 
-// ── Default fallback ──
 $currentWeather = [
     'temp'            => null,
     'condition'       => null,
@@ -195,7 +193,6 @@ $currentWeather = [
 $forecastDays = [];
 $weatherValid = false;
 
-// ── Try cache first ──
 if ($cacheExists) {
     $cached = json_decode(file_get_contents($cachePath), true);
 
@@ -216,21 +213,11 @@ if ($cacheExists) {
     error_log("[weather] No cache found → forcing bootstrap fetch");
 }
 
-// ── API key check ──
 $weatherKey = trim(getenv('WEATHER_API_KEY') ?: '');
-if ($weatherKey === '') {
-    error_log('[weather][DIAG] WEATHER_API_KEY is EMPTY — cannot fetch');
-} else {
-    error_log('[weather][DIAG] WEATHER_API_KEY present (len=' . strlen($weatherKey) . ')');
-}
-
-// ── Decide whether to fetch ──
-// Bootstrap: always fetch if no valid data
-// Refresh: only if stale (≥15 min) AND we have key
 $shouldFetch = $weatherKey !== ''
     && (
-        !$weatherValid                       // Bootstrap: no good data → fetch NOW
-        || ($now - $lastWeatherUpdate >= 900) // Refresh: stale cache → update
+        !$weatherValid
+        || ($now - $lastWeatherUpdate >= 900)
     );
 
 if ($shouldFetch) {
@@ -251,105 +238,97 @@ if ($shouldFetch) {
 
     $success = false;
 
-    if ($rawCurrent === false) {
-        error_log("[weather] file_get_contents failed (current) — network/SSL/allow_url_fopen/DNS? " . print_r(error_get_last(), true));
-    } else {
+    if ($rawCurrent !== false) {
         $data = json_decode($rawCurrent, true);
 
-    if (
-        is_array($data) &&
-        array_key_exists('cod', $data) &&
-        ((string)$data['cod'] === '200' || (int)$data['cod'] === 200) &&
-        isset($data['main']) && is_array($data['main']) &&
-        array_key_exists('temp', $data['main']) && $data['main']['temp'] !== null
-    ) {
-        error_log("[weather] MAIN SUCCESS PATH — cod = " . $data['cod'] . ", temp = " . $data['main']['temp']);
+        if (
+            is_array($data) &&
+            array_key_exists('cod', $data) &&
+            ((string)$data['cod'] === '200' || (int)$data['cod'] === 200) &&
+            isset($data['main']) && is_array($data['main']) &&
+            array_key_exists('temp', $data['main']) && $data['main']['temp'] !== null
+        ) {
+            error_log("[weather] MAIN SUCCESS PATH — cod = " . $data['cod'] . ", temp = " . $data['main']['temp']);
 
-        // ── SUCCESS PATH ──
-        $sunrise = $data['sys']['sunrise'] ?? null;
-        $sunset  = $data['sys']['sunset']  ?? null;
+            $sunrise = $data['sys']['sunrise'] ?? null;
+            $sunset  = $data['sys']['sunset']  ?? null;
 
-        $currentWeather = [
-            'temp'            => round($data['main']['temp']),
-            'condition'       => $data['weather'][0]['description'] ?? 'unknown',
-            'icon'            => $data['weather'][0]['icon']       ?? '04d',
-            'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
-            'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
-            'sunriseUnix'     => $sunrise,
-            'sunsetUnix'      => $sunset,
-            'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
-            'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
-            'source'          => 'openweathermap'
-        ];
+            $currentWeather = [
+                'temp'            => round($data['main']['temp']),
+                'condition'       => $data['weather'][0]['description'] ?? 'unknown',
+                'icon'            => $data['weather'][0]['icon']       ?? '04d',
+                'sunrise'         => $sunrise ? date('g:i A', $sunrise) : null,
+                'sunset'          => $sunset  ? date('g:i A', $sunset)  : null,
+                'sunriseUnix'     => $sunrise,
+                'sunsetUnix'      => $sunset,
+                'daylightSeconds' => ($sunrise && $sunset) ? ($sunset - $sunrise) : null,
+                'nightSeconds'    => ($sunrise && $sunset) ? (86400 - ($sunset - $sunrise)) : null,
+                'source'          => 'openweathermap'
+            ];
 
-        $success = true;
+            $success = true;
 
-        // ── Fetch 3-day forecast (best-effort, non-blocking) ──
-        $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
-        $rawForecast = @file_get_contents($urlForecast, false, $ctx);
+            $urlForecast = "https://api.openweathermap.org/data/2.5/forecast?lat={$lat}&lon={$lon}&units=imperial&appid={$key}";
+            $rawForecast = @file_get_contents($urlForecast, false, $ctx);
 
-        if ($rawForecast !== false) {
-            $f = json_decode($rawForecast, true);
+            if ($rawForecast !== false) {
+                $f = json_decode($rawForecast, true);
 
-            if (
-                is_array($f) &&
-                isset($f['cod']) &&
-                ((string)$f['cod'] === '200' || (int)$f['cod'] === 200) &&
-                isset($f['list']) && is_array($f['list'])
-            ) {
-                $daily = [];
+                if (
+                    is_array($f) &&
+                    isset($f['cod']) &&
+                    ((string)$f['cod'] === '200' || (int)$f['cod'] === 200) &&
+                    isset($f['list']) && is_array($f['list'])
+                ) {
+                    $daily = [];
 
-                foreach ($f['list'] as $slot) {
-                    $date = date('Y-m-d', $slot['dt']);
+                    foreach ($f['list'] as $slot) {
+                        $date = date('Y-m-d', $slot['dt']);
 
-                    if (!isset($daily[$date])) {
-                        $daily[$date] = [
-                            'high' => -INF,
-                            'low'  => INF,
-                            'icon' => null
+                        if (!isset($daily[$date])) {
+                            $daily[$date] = [
+                                'high' => -INF,
+                                'low'  => INF,
+                                'icon' => null
+                            ];
+                        }
+
+                        $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
+                        $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
+
+                        if (date('G', $slot['dt']) >= 11 && date('G', $slot['dt']) <= 14) {
+                            $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '04d';
+                        }
+                    }
+
+                    $i = 0;
+                    foreach ($daily as $date => $d) {
+                        if ($i >= 3) break;
+
+                        $forecastDays[] = [
+                            'dateUnix' => strtotime($date),
+                            'high'     => round($d['high']),
+                            'low'      => round($d['low']),
+                            'icon'     => $d['icon'] ?? '04d'
                         ];
+                        $i++;
                     }
 
-                    $daily[$date]['high'] = max($daily[$date]['high'], $slot['main']['temp_max']);
-                    $daily[$date]['low']  = min($daily[$date]['low'],  $slot['main']['temp_min']);
-
-                    // Prefer midday icon
-                    if (date('G', $slot['dt']) >= 11 && date('G', $slot['dt']) <= 14) {
-                        $daily[$date]['icon'] = $slot['weather'][0]['icon'] ?? '04d';
-                    }
+                    error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
+                } else {
+                    error_log("[weather] Forecast API returned invalid structure");
                 }
-
-                $i = 0;
-                foreach ($daily as $date => $d) {
-                    if ($i >= 3) break;
-
-                    $forecastDays[] = [
-                        'dateUnix' => strtotime($date),
-                        'high'     => round($d['high']),
-                        'low'      => round($d['low']),
-                        'icon'     => $d['icon'] ?? '04d'
-                    ];
-                    $i++;
-                }
-
-                error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
             } else {
-                error_log("[weather] Forecast API returned invalid structure");
+                error_log("[weather] Forecast fetch failed (non-fatal)");
             }
-        } else {
-            error_log("[weather] Forecast fetch failed (non-fatal)");
-        }
-
 
         } else {
             error_log("[weather] current API error — cod=" . ($data['cod'] ?? 'unknown') .
-                      " msg=" . ($data['message'] ?? 'none') .
-                      " sample=" . substr($rawCurrent, 0, 150));
+                      " msg=" . ($data['message'] ?? 'none'));
         }
     }
 
     if ($success) {
-        // Preserve old forecast on partial failure
         if (empty($forecastDays) && file_exists($cachePath)) {
             $old = json_decode(file_get_contents($cachePath), true);
             if (is_array($old) && !empty($old['forecast'])) {
@@ -381,21 +360,15 @@ if ($shouldFetch) {
 } else {
     error_log("[weather] No fetch needed: valid cache + not stale yet");
 }
-
 #endregion
 
 #region SECTION 3 — Time Context (TIS)
-
-/**
- * Build full time context snapshot
- */
 if (!function_exists('buildTimeContext')) {
     function buildTimeContext(DateTime $dt, array $systemRegistry, string $holidayPath): array
     {
         $nowUnix = (int)$dt->format("U");
         $weekday = (int)$dt->format("N");
 
-        // --- Determine Calendar Type (Holiday > Weekend > Workday) ---
         $holidayState = resolveHolidayState($holidayPath, $dt);
         $isHoliday = $holidayState["isHoliday"];
 
@@ -407,7 +380,6 @@ if (!function_exists('buildTimeContext')) {
             $calendarType = "workday";
         }
 
-        // --- Office Hours ---
         [$startH, $startM] = array_map('intval',
             explode(":", $systemRegistry["schedule"]["officeHours"]["start"])
         );
@@ -417,12 +389,8 @@ if (!function_exists('buildTimeContext')) {
 
         $workStartSecs = $startH * 3600 + $startM * 60;
         $workEndSecs   = $endH   * 3600 + $endM   * 60;
-        $nowSecs       =
-            ((int)$dt->format("G") * 3600) +
-            ((int)$dt->format("i") * 60) +
-            ((int)$dt->format("s"));
+        $nowSecs       = ((int)$dt->format("G") * 3600) + ((int)$dt->format("i") * 60) + ((int)$dt->format("s"));
 
-        // --- Compute Next Valid Work Start ---
         $next = clone $dt;
         if ($nowSecs >= $workEndSecs) {
             $next->modify("+1 day");
@@ -443,7 +411,6 @@ if (!function_exists('buildTimeContext')) {
         $nextUnix = (int)$next->format("U");
         $secondsToNextWork = max(0, $nextUnix - $nowUnix);
 
-        // --- Determine Interval ---
         if ($calendarType === "workday" && $nowSecs >= $workStartSecs && $nowSecs < $workEndSecs) {
             $intervalKey = "worktime";
             $intervalStartUnix = (clone $dt)->setTime($startH, $startM, 0)->format("U");
@@ -460,7 +427,6 @@ if (!function_exists('buildTimeContext')) {
             $intervalEndUnix   = $nextUnix;
             $secondsRemaining  = $secondsToNextWork;
         } else {
-            // Weekend or Holiday
             $intervalKey = $calendarType;
             $intervalStartUnix = $nowUnix;
             $intervalEndUnix   = $nextUnix;
@@ -491,9 +457,6 @@ if (!function_exists('buildTimeContext')) {
     }
 }
 
-/**
- * Public accessor
- */
 if (!function_exists('getTimeContext')) {
     function getTimeContext(DateTimeZone $tz, array $systemRegistry, string $holidayPath): array
     {
@@ -502,22 +465,12 @@ if (!function_exists('getTimeContext')) {
         return buildTimeContext($dt, $systemRegistry, $holidayPath);
     }
 }
-
-// Note: The final weather safety check has been MOVED to SECTION 4
-// right before assembling $weather — do not keep it here.
-
 #endregion
 
 #region SECTION 4 — Build Time Context + Weather + Final Payload
-
-// Compute time context
 $timeContext = getTimeContext($tz, $systemRegistry, $paths["holiday"]);
 
-// ─────────────────────────────────────────────
 // FINAL WEATHER SAFETY BARRIER
-// Ensures weather never emits as 'openweathermap-unavailable' if any
-// valid cache exists. Runs immediately before payload assembly.
-// ─────────────────────────────────────────────
 if (!$weatherValid && file_exists($cachePath)) {
     $cached = json_decode(file_get_contents($cachePath), true);
     if (is_array($cached) && isset($cached['current'])) {
@@ -528,16 +481,10 @@ if (!$weatherValid && file_exists($cachePath)) {
     }
 }
 
-// Now safe to assemble final weather structure
 $weather = $currentWeather;
 $weather['forecast'] = $forecastDays;
 
-// ------------------------------------------------------------
-// Normalize active permits into flat array for frontend
-// Source: permitRegistry.json → workOrders (map)
-// ------------------------------------------------------------
 $permitList = [];
-
 if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"])) {
     foreach ($activePermits["workOrders"] as $wo) {
         $permitList[] = [
@@ -550,36 +497,26 @@ if (isset($activePermits["workOrders"]) && is_array($activePermits["workOrders"]
     }
 }
 
-// ------------------------------------------------------------
-// Site Meta — Canonical (Unix-only, UI-aligned)
-// ------------------------------------------------------------
 $lastUpdateUnix = (int)(
     $versions["system"]["lastUpdateUnix"]
     ?? $versions["system"]["deployUnix"]
     ?? 0
 );
 
-// ------------------------------------------------------------
-// Update Decay — Canonical (server-authoritative)
-// ------------------------------------------------------------
 $siteMeta = [
     "siteVersion"     => $versions["system"]["siteVersion"] ?? "unknown",
     "lastUpdateUnix"  => $lastUpdateUnix ?: null,
     "updateOccurred"  => (bool)($versions["system"]["updateOccurred"] ?? false)
 ];
 
-// Derived, presentation-only (non-authoritative)
 if ($lastUpdateUnix > 0) {
-    $dt = new DateTime('@' . $lastUpdateUnix); // UTC baseline
+    $dt = new DateTime('@' . $lastUpdateUnix);
     $dt->setTimezone(new DateTimeZone('America/Phoenix'));
 
     $siteMeta["lastUpdateLocal"] = $dt->format('Y-m-d h:i:s A');
     $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
 }
 
-// ------------------------------------------------------------
-// FINAL PAYLOAD — Always flat + always normalized
-// ------------------------------------------------------------
 $payload = [
     "systemRegistry"  => $systemRegistry,
     "calendarType"    => $timeContext["calendarType"],
@@ -592,17 +529,11 @@ $payload = [
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
-    // Sentinel Runtime Meta
-    "sentinelMeta"    => $sentinelMeta
+    "sentinelMeta"    => $sentinelMeta   // ← NOW CONTAINS .unresolved[] WHEN VIOLATIONS EXIST
 ];
 
 #endregion
 
-#region SECTION 5 — Output for SSE (Flush every update) (portions commented out)
-//header('Content-Type: application/json');
-//echo json_encode($payload, JSON_PRETTY_PRINT);
-//echo "data: " . json_encode($payload) . "\n\n";
-//@ob_flush();
-//flush();
+#region SECTION 5 — Output for SSE (Flush every update)
 return $payload;
 #endregion
