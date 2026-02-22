@@ -127,20 +127,25 @@ if ($executionStatus === 'ok' && ($summary1['mutatableCount'] ?? 0) > 0) {
 $ledgerRaw = @file_get_contents($auditLogPath);
 $ledger = is_string($ledgerRaw)
     ? json_decode($ledgerRaw, true)
-    : [];
+    : null;
 
 $unresolved = 0;
 $constitutional = 0;
 
-if (is_array($ledger)) {
-    foreach ($ledger as $rec) {
-        if (
-            ($rec['type'] ?? null) === 'violation' &&
-            ($rec['resolved'] ?? null) === null
-        ) {
+if (
+    is_array($ledger) &&
+    isset($ledger["violations"]) &&
+    is_array($ledger["violations"])
+) {
+    foreach ($ledger["violations"] as $rec) {
+
+        if (($rec["resolved"] ?? null) === null) {
             $unresolved++;
 
-            if (($rec['severity'] ?? null) === 'constitutional') {
+            if (
+                isset($rec["ruleId"]) &&
+                $rec["ruleId"] === "merkleIntegrity"
+            ) {
                 $constitutional++;
             }
         }
