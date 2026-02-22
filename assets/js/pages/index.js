@@ -206,6 +206,8 @@ window.SkyIndex = {
 
     // #region ⏳ Thinking State
     setThinking(isThinking) {
+        this.isThinking = isThinking; // <— add this line
+
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer) return;
 
@@ -217,6 +219,9 @@ window.SkyIndex = {
 
     // #region 🛡️ Update Governance Footer (Sentinel-Driven)
     updateGovernanceFooter(sentinel) {
+
+        if (this.isThinking) return;   // <-- ADD THIS LINE
+
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer || !sentinel) return;
 
@@ -526,7 +531,7 @@ window.SkyIndex = {
             const data = await res.json();
 
             // ───────────────────────────────────────────────
-            // UI Action
+            // UI Action (authoritative)
             // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
                 const handler = this.uiActionRegistry?.[data.action];
@@ -539,24 +544,45 @@ window.SkyIndex = {
             }
 
             // ───────────────────────────────────────────────
-            // Domain Intent (runtime-registry authoritative)
+            // Domain Intent (authoritative short-circuit)
             // ───────────────────────────────────────────────
-            if (typeof data?.intent === 'string' && data.intent.startsWith('show_')) {
+            if (data?.type === 'domain_intent' && typeof data.domain === 'string') {
 
-                const domainKey = data.intent.replace('show_', '');
+                const domainKey = data.domain;
+                const mode      = data.mode;
 
                 const domainConfig = this.getDomainConfig(domainKey);
 
-                if (domainConfig && domainConfig.capabilities?.read === true) {
+                if (!domainConfig) {
+                    console.warn('[SkyIndex] Unknown domain:', domainKey);
+                    this.appendSystemLine('⚠ Unknown domain.');
+                    return;
+                }
+
+                // Inquiry (read)
+                if (mode === 'inquiry' && domainConfig.capabilities?.read === true) {
                     this.showDomain(domainKey);
                     return;
                 }
 
-                console.warn('[SkyIndex] Intent mapped to unknown or unreadable domain:', domainKey);
+                // Future: Repair request
+                if (mode === 'repair_request' && domainConfig.capabilities?.repair === true) {
+                    this.showDomainRepairPlan?.(domainKey);
+                    return;
+                }
+
+                // Future: Execute
+                if (mode === 'execute' && domainConfig.capabilities?.execute === true) {
+                    this.executeDomainAction?.(domainKey);
+                    return;
+                }
+
+                console.warn('[SkyIndex] Unhandled domain mode:', mode);
+                return;
             }
 
             // ───────────────────────────────────────────────
-            // Text Response
+            // Text Response (Conversational fallback)
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
                 this.appendSystemLine(data.response);
