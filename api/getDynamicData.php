@@ -49,19 +49,21 @@ $tz = new DateTimeZone("America/Phoenix");
 $sentinelMeta = null;
 
 if (file_exists($paths["sentinel"])) {
-    // Load sentinel state (observational only)
+
+    // ------------------------------------------------------------
+    // Load Sentinel Runtime State (Execution Layer Only)
+    // ------------------------------------------------------------
     $sentinelRaw = json_decode(file_get_contents($paths["sentinel"]), true);
 
     if (is_array($sentinelRaw) && isset($sentinelRaw["lastRunUnix"])) {
+
         $now            = time();
         $lastRunUnix    = (int)$sentinelRaw["lastRunUnix"];
         $initialRunUnix = (int)($sentinelRaw["initialRunUnix"] ?? 0);
         $runCount       = (int)($sentinelRaw["runCount"] ?? 0);
 
-        // Age since last heartbeat
         $ageSeconds = max(0, $now - $lastRunUnix);
 
-        // Health classification
         if ($ageSeconds <= 90) {
             $status = "ok";
         } elseif ($ageSeconds <= 300) {
@@ -70,62 +72,84 @@ if (file_exists($paths["sentinel"])) {
             $status = "offline";
         }
 
-        // Phoenix-local formatting (presentation only)
         $dtSentinel = new DateTime('@' . $lastRunUnix);
         $dtSentinel->setTimezone($tz);
 
-        // Baseline state (prime run awareness)
         $baselineEstablished = ($initialRunUnix > 0);
 
-        $sentinelMeta = [
-            // Execution Layer (runtime health)
-            "baselineEstablished"      => $baselineEstablished,
-            "initialRunUnix"           => $baselineEstablished ? $initialRunUnix : null,
-            "lastRunUnix"              => $lastRunUnix,
-            "lastRunLocal"             => $dtSentinel->format("h:i:s A"),
-            "runCount"                 => $runCount,
-            "ageSeconds"               => $ageSeconds,
-            "executionStatus"          => $status, // ok | stale | offline
-
-            // Governance Layer (from Sentinel)
-            "unresolvedViolations"     => (int)($sentinelRaw["unresolvedViolations"] ?? 0),
-            "constitutionalViolations" => (int)($sentinelRaw["constitutionalViolations"] ?? 0),
-            "governanceStatus"         => $sentinelRaw["governanceStatus"] ?? "unknown"
-        ];
         // ------------------------------------------------------------
-        // Governance Detail Projection (Unresolved Violations Only)
+        // Governance Detail Projection (Authoritative Ledger Source)
         // ------------------------------------------------------------
+        $unresolvedList = [];
+        $constitutionalCount = 0;
 
-        $sentinelMeta["unresolved"] = []; // Always initialize
+        $auditPath = $paths["audit"] ?? null;
 
-        if (($sentinelMeta["unresolvedViolations"] ?? 0) > 0) {
+        if ($auditPath && file_exists($auditPath)) {
 
-            $auditPath = $paths["audit"] ?? null;
+            $auditDoc = json_decode(file_get_contents($auditPath), true);
 
-            if ($auditPath && file_exists($auditPath)) {
+            if (is_array($auditDoc) && isset($auditDoc["violations"])) {
 
-                $auditDoc = json_decode(file_get_contents($auditPath), true);
+                foreach ($auditDoc["violations"] as $rec) {
 
-                if (is_array($auditDoc) && isset($auditDoc["violations"])) {
-
-                    foreach ($auditDoc["violations"] as $rec) {
-
-                        if (($rec["resolved"] ?? null) !== null) {
-                            continue; // Only unresolved
-                        }
-
-                        $sentinelMeta["unresolved"][] = [
-                            "violationId" => $rec["violationId"] ?? null,
-                            "ruleId"      => $rec["ruleId"] ?? null,
-                            "observation" => $rec["observation"] ?? null,
-                            "severity"    => $rec["severity"] ?? "standard"
-                        ];
+                    if (($rec["resolved"] ?? null) !== null) {
+                        continue;
                     }
+
+                    // Constitutional classification (rule-based)
+                    $isConstitutional =
+                        ($rec["ruleId"] ?? null) === "criticalArtifactPresence";
+
+                    if ($isConstitutional) {
+                        $constitutionalCount++;
+                    }
+
+                    $unresolvedList[] = [
+                        "violationId"      => $rec["violationId"] ?? null,
+                        "ruleId"           => $rec["ruleId"] ?? null,
+                        "observation"      => $rec["observation"] ?? null,
+                        "lastObserved"     => $rec["lastObserved"] ?? null,
+                        "observationCount" => $rec["observationCount"] ?? 1,
+                        "violationBatch"   => $rec["violationBatch"] ?? null,
+                        "constitutional"   => $isConstitutional
+                    ];
                 }
             }
         }
-        // Derived metrics (statistical, read-only)
+
+        $unresolvedCount = count($unresolvedList);
+
+        // ------------------------------------------------------------
+        // Construct Sentinel Meta (Clean Projection Layer)
+        // ------------------------------------------------------------
+        $sentinelMeta = [
+
+            // Execution Layer
+            "baselineEstablished" => $baselineEstablished,
+            "initialRunUnix"      => $baselineEstablished ? $initialRunUnix : null,
+            "lastRunUnix"         => $lastRunUnix,
+            "lastRunLocal"        => $dtSentinel->format("h:i:s A"),
+            "runCount"            => $runCount,
+            "ageSeconds"          => $ageSeconds,
+            "executionStatus"     => $status,
+
+            // Governance Layer (Derived — not trusted from Sentinel)
+            "unresolvedViolations"     => $unresolvedCount,
+            "constitutionalViolations" => $constitutionalCount,
+            "governanceStatus"         =>
+                $constitutionalCount > 0
+                    ? "constitutional-breach"
+                    : ($unresolvedCount > 0 ? "violations-pending" : "clean"),
+
+            "unresolved" => $unresolvedList
+        ];
+
+        // ------------------------------------------------------------
+        // Derived Runtime Metrics
+        // ------------------------------------------------------------
         if ($baselineEstablished && $runCount > 1) {
+
             $uptimeSeconds = $now - $initialRunUnix;
 
             $sentinelMeta["uptimeSeconds"] = $uptimeSeconds;
