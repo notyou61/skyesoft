@@ -92,7 +92,38 @@ if (file_exists($paths["sentinel"])) {
             "constitutionalViolations" => (int)($sentinelRaw["constitutionalViolations"] ?? 0),
             "governanceStatus"         => $sentinelRaw["governanceStatus"] ?? "unknown"
         ];
+        // ------------------------------------------------------------
+        // Governance Detail Projection (Unresolved Violations Only)
+        // ------------------------------------------------------------
 
+        $sentinelMeta["unresolved"] = []; // Always initialize
+
+        if (($sentinelMeta["unresolvedViolations"] ?? 0) > 0) {
+
+            $auditPath = $paths["audit"] ?? null;
+
+            if ($auditPath && file_exists($auditPath)) {
+
+                $auditDoc = json_decode(file_get_contents($auditPath), true);
+
+                if (is_array($auditDoc) && isset($auditDoc["violations"])) {
+
+                    foreach ($auditDoc["violations"] as $rec) {
+
+                        if (($rec["resolved"] ?? null) !== null) {
+                            continue; // Only unresolved
+                        }
+
+                        $sentinelMeta["unresolved"][] = [
+                            "violationId" => $rec["violationId"] ?? null,
+                            "ruleId"      => $rec["ruleId"] ?? null,
+                            "observation" => $rec["observation"] ?? null,
+                            "severity"    => $rec["severity"] ?? "standard"
+                        ];
+                    }
+                }
+            }
+        }
         // Derived metrics (statistical, read-only)
         if ($baselineEstablished && $runCount > 1) {
             $uptimeSeconds = $now - $initialRunUnix;
