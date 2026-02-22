@@ -61,74 +61,62 @@ if (!file_exists($auditLogPath)) {
 
 #endregion
 
-/* TEMPORARY TEST */
-
-$state = [
-    "initialRunUnix" => time(),
-    "lastRunUnix" => time(),
-    "runCount" => 1,
-    "unresolvedViolations" => 0,
-    "constitutionalViolations" => 0,
-    "governanceStatus" => "clean"
-];
-
-$runtimeDir = dirname($statePath);
-if (!is_dir($runtimeDir)) {
-    mkdir($runtimeDir, 0755, true);
-}
-
-file_put_contents(
-    $statePath,
-    json_encode($state, JSON_PRETTY_PRINT),
-    LOCK_EX
-);
-
-echo "Projection test completed.";
-exit;
-
-if (1 == 0) {
-#region SECTION II — Audit → Mutate → Verify
+#region SECTION II — Audit → Mutate → Verify (Resilient Mode)
 
 define('SKYESOFT_LIB_MODE', true);
 
-$violationBatch = 'VB-' . time();
+$executionStatus = 'ok';     // ok | audit-failed | mutator-failed | verify-failed
+$executionError  = null;
+$summary1        = null;
+$summary2        = null;
 
-/* PASS 1 — Audit */
-ob_start();
-$summary1 = require $auditorPath;
-ob_end_clean();
+/* -------------------------------------------------------------
+ * Helper: Execute module safely
+ * ------------------------------------------------------------- */
+function runModule(string $path): array {
+    ob_start();
+    $result = require $path;
+    ob_end_clean();
 
-if (!is_array($summary1) || ($summary1['runComplete'] ?? false) !== true) {
-    error_log("SENTINEL ERROR: Auditor failed runComplete");
-    exit(1);
+    return [
+        "result" => $result,
+        "ok"     => is_array($result) && (($result["runComplete"] ?? false) === true)
+    ];
 }
 
-$mutationPerformed = false;
+/* PASS 1 — Audit */
+$pass1 = runModule($auditorPath);
+$summary1 = $pass1["result"];
 
-/* PASS 2 — Mutate */
-if (($summary1['mutatableCount'] ?? 0) > 0 && !$mutationPerformed) {
+if (!$pass1["ok"]) {
+    $executionStatus = 'audit-failed';
+    $executionError  = 'Auditor did not return runComplete=true array';
+} else {
 
-    $mutationPerformed = true;
+    /* PASS 2 — Mutate (only if needed) */
+    if (($summary1["mutatableCount"] ?? 0) > 0) {
 
-    ob_start();
-    require $mutatorPath;
-    ob_end_clean();
+        $pass2 = runModule($mutatorPath);
 
-    /* PASS 3 — Verification Audit */
-    ob_start();
-    $summary2 = require $auditorPath;
-    ob_end_clean();
+        if (!$pass2["ok"]) {
+            $executionStatus = 'mutator-failed';
+            $executionError  = 'Mutator did not return runComplete=true array';
+        } else {
 
-    if (!is_array($summary2) || ($summary2['runComplete'] ?? false) !== true) {
-        error_log("SENTINEL ERROR: Verification audit failed runComplete");
-        exit(1);
+            /* PASS 3 — Verification Audit */
+            $pass3 = runModule($auditorPath);
+            $summary2 = $pass3["result"];
+
+            if (!$pass3["ok"]) {
+                $executionStatus = 'verify-failed';
+                $executionError  = 'Verification audit did not return runComplete=true array';
+            }
+        }
     }
 }
 
 /* ---------------------------------------------------------------------
  *  SECTION II.B — Runtime State Projection
- *  Purpose: Publish operational + governance summary
- *  Authority: Sentinel only
  * --------------------------------------------------------------------- */
 
 /* ---- Read canonical ledger (read-only) ---- */
@@ -168,15 +156,21 @@ if ($constitutional > 0) {
 $now = time();
 
 $state = [
-    "initialRunUnix"          => null,
-    "lastRunUnix"             => $now,
-    "runCount"                => 1,
-    "unresolvedViolations"    => $unresolved,
-    "constitutionalViolations"=> $constitutional,
-    "governanceStatus"        => $governanceStatus
+    "initialRunUnix"           => null,
+    "lastRunUnix"              => $now,
+    "runCount"                 => 1,
+
+    // Execution layer
+    "executionStatus"          => $executionStatus,
+    "executionError"           => $executionError,
+
+    // Governance layer
+    "unresolvedViolations"     => $unresolved,
+    "constitutionalViolations" => $constitutional,
+    "governanceStatus"         => $governanceStatus
 ];
 
-/* ---- Merge with existing state if present ---- */
+/* ---- Merge with existing state ---- */
 if (file_exists($statePath)) {
     $existing = json_decode(file_get_contents($statePath), true);
 
@@ -222,7 +216,7 @@ if ($writeResult === false) {
 }
 
 #endregion
-}
+
 #region SECTION III — Notifier
 
 $now = time();
