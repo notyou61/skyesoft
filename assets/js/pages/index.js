@@ -655,10 +655,10 @@ window.SkyIndex = {
 
         if (sentinel) {
             this.currentSentinelState = sentinel;
-            this.renderFooter();
+            this.updateGovernanceFooter(sentinel);
         }
 
-        // Version indicator remains separate
+        // Version indicator
         if (event.siteMeta?.updateOccurred === true) {
             window.SkyVersion?.show(60000);
         } else {
