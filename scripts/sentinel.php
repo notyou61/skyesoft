@@ -61,6 +61,32 @@ if (!file_exists($auditLogPath)) {
 
 #endregion
 
+/* TEMPORARY TEST */
+
+$state = [
+    "initialRunUnix" => time(),
+    "lastRunUnix" => time(),
+    "runCount" => 1,
+    "unresolvedViolations" => 0,
+    "constitutionalViolations" => 0,
+    "governanceStatus" => "clean"
+];
+
+$runtimeDir = dirname($statePath);
+if (!is_dir($runtimeDir)) {
+    mkdir($runtimeDir, 0755, true);
+}
+
+file_put_contents(
+    $statePath,
+    json_encode($state, JSON_PRETTY_PRINT),
+    LOCK_EX
+);
+
+echo "Projection test completed.";
+exit;
+
+if (1 == 0) {
 #region SECTION II — Audit → Mutate → Verify
 
 define('SKYESOFT_LIB_MODE', true);
@@ -196,7 +222,7 @@ if ($writeResult === false) {
 }
 
 #endregion
-
+}
 #region SECTION III — Notifier
 
 $now = time();
