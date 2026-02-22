@@ -22,6 +22,8 @@ $mutatorPath  = $scriptsDir . '/mutator.php';
 $auditLogPath = $dataDir . '/auditResults.json';
 $statePath    = $rootDir . '/data/runtimeEphemeral/sentinelState.json';
 
+error_log("SENTINEL WRITING: " . $statePath);
+
 #endregion
 
 #region SECTION I — Guard Conditions

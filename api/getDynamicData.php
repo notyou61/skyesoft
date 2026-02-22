@@ -104,6 +104,8 @@ if (file_exists($paths["sentinel"])) {
     }
 }
 
+error_log("SSE READING: " . $paths["sentinel"]);
+
 #endregion
 
 #region SECTION 2 — Weather Configuration (CURRENT + 3-DAY FORECAST) — BOOTSTRAP + REFRESH
