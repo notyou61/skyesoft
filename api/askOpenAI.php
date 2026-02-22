@@ -625,7 +625,7 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 3. STREAMED DOMAIN SHORT-CIRCUIT (Deterministic)
+    // 3. DOMAIN SHORT-CIRCUIT (Scalable Grammar)
     // ─────────────────────────────────────────────
 
     $streamedDomains = [
@@ -634,20 +634,27 @@ PROMPT;
         "locations",
         "contacts",
         "orders",
-        "permits"
+        "permits",
+        "governance"
     ];
 
-    if (str_starts_with($intent, "show_")) {
+    $intentPattern = '/^([a-z]+)_(inquiry|repair_request|execute)$/';
 
-        $domainKey = substr($intent, 5);
+    if (
+        $confidence >= 0.70 &&
+        preg_match($intentPattern, $intent, $matches)
+    ) {
+        $domainKey = $matches[1];
+        $mode      = $matches[2];
 
-        if (in_array($domainKey, $streamedDomains, true) && $confidence >= 0.70) {
+        if (in_array($domainKey, $streamedDomains, true)) {
 
             echo json_encode([
                 "success"    => true,
                 "role"       => "askOpenAI",
                 "type"       => "domain_intent",
-                "intent"     => $intent,
+                "domain"     => $domainKey,
+                "mode"       => $mode,
                 "confidence" => $confidence
             ], JSON_UNESCAPED_SLASHES);
 
@@ -685,6 +692,7 @@ PROMPT;
         $apiKey
     );
 }
+
 #endregion
 
 #region SECTION 8 — Output
@@ -701,51 +709,52 @@ if (!isset($response) || trim($response) === '') {
 // Prompt Ledger — append factual record (non-authoritative)
 // ────────────────────────────────────────────────────────────────
 
-try {
+if (isset($query)) {
+    try {
 
-    // Load ledger to determine next sequential ID
-    $root = dirname(__DIR__);
-    $ledgerPath = $root . "/data/authoritative/promptLedger.json";
-    $ledgerData = json_decode(file_get_contents($ledgerPath), true);
+        // Load ledger to determine next sequential ID
+        $root = dirname(__DIR__);
+        $ledgerPath = $root . "/data/authoritative/promptLedger.json";
+        $ledgerData = json_decode(file_get_contents($ledgerPath), true);
 
-    $nextNumber = is_array($ledgerData["entries"] ?? null)
-        ? count($ledgerData["entries"]) + 1
-        : 1;
+        $nextNumber = is_array($ledgerData["entries"] ?? null)
+            ? count($ledgerData["entries"]) + 1
+            : 1;
 
-    $promptId = sprintf("PRL-%06d", $nextNumber);
+        $promptId = sprintf("PRL-%06d", $nextNumber);
 
-    $ledgerEntry = [
-        "promptId"         => $promptId,
-        "userId"           => 1, // placeholder until auth system is live
-        "promptText"       => $query ?? null,
-        "responseText"     => trim($response),
-        "intent"           => $intentMeta["intent"] ?? "unknown",
-        "intentConfidence" => $intentMeta["confidence"] ?? null,
-        "sseUsed"          => !empty($contextBlocks),
-        "sseKeys"          => array_keys($contextBlocks ?? []),
-        "createdUnixTime"  => time()
-    ];
+        $ledgerEntry = [
+            "promptId"         => $promptId,
+            "userId"           => 1, // placeholder until auth system is live
+            "promptText"       => $query ?? null,
+            "responseText"     => trim($response),
+            "intent"           => $intentMeta["intent"] ?? "unknown",
+            "intentConfidence" => $intentMeta["confidence"] ?? null,
+            "sseUsed"          => !empty($contextBlocks),
+            "sseKeys"          => array_keys($contextBlocks ?? []),
+            "createdUnixTime"  => time()
+        ];
 
-    // Append entry
-    $ledgerData["entries"][] = $ledgerEntry;
+        // Append entry
+        $ledgerData["entries"][] = $ledgerEntry;
 
-    // Update meta timestamp
-    $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
+        // Update meta timestamp
+        $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
 
-    // Write back to disk (authoritative write)
-    $result = file_put_contents(
-        $ledgerPath,
-        json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    );
+        // Write back to disk (authoritative write)
+        $result = file_put_contents(
+            $ledgerPath,
+            json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
 
-    if ($result === false) {
-        throw new RuntimeException("Failed to write promptLedger.json");
+        if ($result === false) {
+            throw new RuntimeException("Failed to write promptLedger.json");
+        }
+
+    } catch (Throwable $e) {
+        // Ledger failure must NEVER block response
+        error_log("[prompt-ledger] append failed: " . $e->getMessage());
     }
-
-
-} catch (Throwable $e) {
-    // Ledger failure must NEVER block response
-    error_log("[prompt-ledger] append failed: " . $e->getMessage());
 }
 
 // ────────────────────────────────────────────────────────────────
