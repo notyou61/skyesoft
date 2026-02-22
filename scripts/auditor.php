@@ -666,14 +666,20 @@ file_put_contents(
  *  SECTION V.D — Emit for Sentinel / CLI (NON-PERSISTENT)
  * ============================================================ */
 
-echo json_encode(
-    [
-        'meta'       => $meta,
-        'violations' => $auditLog
-    ],
-    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-);
+$output = [
+    'meta'       => $meta,
+    'violations' => $auditLog
+];
 
-exit(0);
+if (!defined('SKYESOFT_LIB_MODE')) {
+    header('Content-Type: application/json');
+    echo json_encode(
+        $output,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
+    exit(0);
+}
+
+return $output;
 
 #endregion SECTION V
