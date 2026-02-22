@@ -15,38 +15,48 @@ require_once __DIR__ . '/holidayInterpreter.php';
 #endregion
 
 #region SECTION 1 — Registry Loading & Paths
-$root = dirname(__DIR__);
+// More reliable root: DOCUMENT_ROOT + known /skyesoft subfolder
+$projectRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/') . '/skyesoft';
+// Fallback if DOCUMENT_ROOT is empty/unreliable
+if (!is_dir($projectRoot)) {
+    $projectRoot = dirname(__DIR__);
+}
 
 $paths = [
-    "codex"             => $root . "/codex/codex.json",
-    "versions"          => $root . "/data/authoritative/versions.json",
-    "holiday"           => $root . "/data/authoritative/holidayRegistry.json",
-    "systemRegistry"    => $root . "/data/authoritative/systemRegistry.json",
-    "roadmap"           => $root . "/data/authoritative/roadmap.json",
-    "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
-    "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
-    "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
-    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json",
-    "audit"             => $root . "/auditResults.json"
+    "codex"             => $projectRoot . "/codex/codex.json",
+    "versions"          => $projectRoot . "/data/authoritative/versions.json",
+    "holiday"           => $projectRoot . "/data/authoritative/holidayRegistry.json",
+    "systemRegistry"    => $projectRoot . "/data/authoritative/systemRegistry.json",
+    "roadmap"           => $projectRoot . "/data/authoritative/roadmap.json",
+    "kpi"               => $projectRoot . "/data/runtimeEphemeral/kpiRegistry.json",
+    "permits"           => $projectRoot . "/data/runtimeEphemeral/permitRegistry.json",
+    "permitNews"        => $projectRoot . "/data/runtimeEphemeral/permitNews.json",
+    "sentinel"          => $projectRoot . "/data/runtimeEphemeral/sentinelState.json",
+    "audit"             => $projectRoot . "/auditResults.json"
 ];
 
+// Debug paths — check error log after reload!
+error_log("[PATH-DEBUG] projectRoot: " . $projectRoot);
+error_log("[PATH-DEBUG] sentinel attempted: " . $paths["sentinel"] . " | exists? " . (file_exists($paths["sentinel"]) ? 'YES' : 'NO'));
+error_log("[PATH-DEBUG] audit attempted: " . $paths["audit"] . " | exists? " . (file_exists($paths["audit"]) ? 'YES' : 'NO'));
+
 foreach ($paths as $key => $path) {
-    if (in_array($key, ['sentinel', 'audit'])) continue; // optional
+    if (in_array($key, ['sentinel', 'audit'])) continue;
     if (!file_exists($path)) {
         throw new RuntimeException("Missing required file: {$key} at {$path}");
     }
 }
 
-$codex          = json_decode(file_get_contents($paths["codex"]), true);
-$versions       = json_decode(file_get_contents($paths["versions"]), true);
-$systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true);
-$roadmap        = json_decode(file_get_contents($paths["roadmap"]), true);
+$codex          = json_decode(file_get_contents($paths["codex"]), true) ?? [];
+$versions       = json_decode(file_get_contents($paths["versions"]), true) ?? [];
+$systemRegistry = json_decode(file_get_contents($paths["systemRegistry"]), true) ?? [];
+$roadmap        = json_decode(file_get_contents($paths["roadmap"]), true) ?? [];
 
-$kpi            = json_decode(file_get_contents($paths["kpi"]), true);
-$activePermits  = json_decode(file_get_contents($paths["permits"]), true);
-$permitNews     = json_decode(file_get_contents($paths["permitNews"]), true);
+$kpi            = json_decode(file_get_contents($paths["kpi"]), true) ?? [];
+$activePermits  = json_decode(file_get_contents($paths["permits"]), true) ?? [];
+$permitNews     = json_decode(file_get_contents($paths["permitNews"]), true) ?? [];
 
-$tz = new DateTimeZone("America/Phoenix");
+$tz  = new DateTimeZone("America/Phoenix");
 $now = time();
 #endregion
 
@@ -65,7 +75,6 @@ $sentinelMeta = [
     "unresolved"               => []
 ];
 
-// Try to load sentinel summary (optional)
 if (file_exists($paths["sentinel"])) {
     $sentinelRaw = @json_decode(@file_get_contents($paths["sentinel"]), true);
     if (is_array($sentinelRaw) && isset($sentinelRaw["lastRunUnix"])) {
@@ -74,8 +83,7 @@ if (file_exists($paths["sentinel"])) {
         $runCount       = (int)($sentinelRaw["runCount"] ?? 0);
 
         $ageSeconds = max(0, $now - $lastRunUnix);
-        $status = ($ageSeconds <= 90) ? "ok" :
-                  (($ageSeconds <= 300) ? "stale" : "offline");
+        $status = ($ageSeconds <= 90) ? "ok" : (($ageSeconds <= 300) ? "stale" : "offline");
 
         $dtSentinel = new DateTime('@' . $lastRunUnix);
         $dtSentinel->setTimezone($tz);
@@ -99,13 +107,14 @@ if (file_exists($paths["sentinel"])) {
             $sentinelMeta["uptimeSeconds"] = $uptime;
             $sentinelMeta["averageIntervalSeconds"] = (int)round($uptime / ($runCount - 1));
         }
+    } else {
+        error_log("[SENTINEL-DEBUG] File exists but decode failed or missing lastRunUnix");
     }
 }
 
-// Always enrich with unresolved violations from auditResults.json (canonical source)
-$auditPath = $paths["audit"] ?? null;
-if ($auditPath && file_exists($auditPath)) {
-    $auditContent = @file_get_contents($auditPath);
+// Enrich from audit (canonical) — run regardless of sentinel
+if (file_exists($paths["audit"])) {
+    $auditContent = @file_get_contents($paths["audit"]);
     if ($auditContent !== false) {
         $auditDoc = @json_decode($auditContent, true);
         if (is_array($auditDoc) && isset($auditDoc["violations"]) && is_array($auditDoc["violations"])) {
@@ -122,12 +131,13 @@ if ($auditPath && file_exists($auditPath)) {
             }
             $sentinelMeta["unresolved"] = $unresolved;
 
-            // Prefer audit meta count if present
             if (isset($auditDoc["meta"]["unresolvedViolations"])) {
                 $sentinelMeta["unresolvedViolations"] = (int)$auditDoc["meta"]["unresolvedViolations"];
             }
         }
     }
+} else {
+    error_log("[AUDIT-DEBUG] auditResults.json missing at " . $paths["audit"]);
 }
 
 error_log("SSE SENTINEL: sentinel=" . $paths["sentinel"] . " exists=" . (file_exists($paths["sentinel"]) ? 'yes' : 'no') .
