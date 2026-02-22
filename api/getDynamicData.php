@@ -25,11 +25,17 @@ $paths = [
     "kpi"               => $root . "/data/runtimeEphemeral/kpiRegistry.json",
     "permits"           => $root . "/data/runtimeEphemeral/permitRegistry.json",
     "permitNews"        => $root . "/data/runtimeEphemeral/permitNews.json",
-    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json"
+    "sentinel"          => $root . "/data/runtimeEphemeral/sentinelState.json",
+    "audit"             => $root . "/data/records/auditResults.json"
 ];
 
 foreach ($paths as $key => $path) {
-    if ($key === "sentinel") continue; // Sentinel is optional
+
+    // Optional runtime-derived files
+    if ($key === "sentinel" || $key === "audit") {
+        continue;
+    }
+
     if (!file_exists($path)) {
         throw new RuntimeException("Missing {$key} at {$path}");
     }
@@ -94,34 +100,79 @@ if (file_exists($paths["sentinel"])) {
         ];
         // ------------------------------------------------------------
         // Governance Detail Projection (Unresolved Violations Only)
+        // Derived from canonical auditResults.json
         // ------------------------------------------------------------
 
         $sentinelMeta["unresolved"] = []; // Always initialize
 
-        if (($sentinelMeta["unresolvedViolations"] ?? 0) > 0) {
+        $shouldProject = (int)($sentinelMeta["unresolvedViolations"] ?? 0) > 0;
+
+        if ($shouldProject) {
 
             $auditPath = $paths["audit"] ?? null;
 
             if ($auditPath && file_exists($auditPath)) {
 
-                $auditDoc = json_decode(file_get_contents($auditPath), true);
+                $raw = file_get_contents($auditPath);
 
-                if (is_array($auditDoc) && isset($auditDoc["violations"])) {
+                if ($raw !== false && trim($raw) !== "") {
 
-                    foreach ($auditDoc["violations"] as $rec) {
+                    $auditDoc = json_decode($raw, true);
 
-                        if (($rec["resolved"] ?? null) !== null) {
-                            continue; // Only unresolved
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($auditDoc)) {
+
+                        $records = $auditDoc["violations"] ?? null;
+
+                        if (is_array($records)) {
+
+                            foreach ($records as $rec) {
+
+                                // Only unresolved violations
+                                if (($rec["resolved"] ?? null) !== null) {
+                                    continue;
+                                }
+
+                                $sentinelMeta["unresolved"][] = [
+                                    "violationId"      => $rec["violationId"] ?? null,
+                                    "ruleId"           => $rec["ruleId"] ?? null,
+                                    "observation"      => $rec["observation"] ?? null,
+                                    "lastObserved"     => $rec["lastObserved"] ?? null,
+                                    "observationCount" => $rec["observationCount"] ?? 1,
+                                    "violationBatch"   => $rec["violationBatch"] ?? null
+                                ];
+                            }
+
+                            // Optional: reconcile counts to what we actually projected
+                            $sentinelMeta["unresolvedViolations"] = count($sentinelMeta["unresolved"]);
+
+                            // Optional: derive constitutional count from ruleId (adjust mapping as your constitution defines)
+                            $constitutionalRuleIds = [
+                                "criticalArtifactPresence" => true
+                            ];
+
+                            $constitutionalCount = 0;
+                            foreach ($sentinelMeta["unresolved"] as $u) {
+                                $rid = (string)($u["ruleId"] ?? "");
+                                if ($rid !== "" && isset($constitutionalRuleIds[$rid])) {
+                                    $constitutionalCount++;
+                                }
+                            }
+                            $sentinelMeta["constitutionalViolations"] = $constitutionalCount;
+
+                        } else {
+                            error_log("[sentinelMeta] auditResults.json missing 'violations' array");
                         }
 
-                        $sentinelMeta["unresolved"][] = [
-                            "violationId" => $rec["violationId"] ?? null,
-                            "ruleId"      => $rec["ruleId"] ?? null,
-                            "observation" => $rec["observation"] ?? null,
-                            "severity"    => $rec["severity"] ?? "standard"
-                        ];
+                    } else {
+                        error_log("[sentinelMeta] auditResults.json JSON decode error: " . json_last_error_msg());
                     }
+
+                } else {
+                    error_log("[sentinelMeta] auditResults.json read failed or empty");
                 }
+
+            } else {
+                error_log("[sentinelMeta] auditResults.json missing at: " . ($auditPath ?: "null"));
             }
         }
         // Derived metrics (statistical, read-only)
