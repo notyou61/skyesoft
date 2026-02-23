@@ -631,10 +631,8 @@ PROMPT;
     $confidence = (float)($intentMeta["confidence"] ?? 0.0);
 
     echo json_encode([
-        "intent" => $intent,
-        "confidence" => $confidence,
-        "domains" => $streamedDomains
-    ]);
+        "registry_raw" => loadRuntimeDomainRegistryKeys()
+    ], JSON_UNESCAPED_SLASHES);
     exit;
 
     error_log("[skyebot:intent] " . json_encode([
