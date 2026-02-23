@@ -262,6 +262,30 @@ function appendPromptLedgerEntry(array $entry): void
         json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     );
 }
+function loadRuntimeDomainRegistryKeys(): array
+{
+    $root = dirname(__DIR__);
+    $path = $root . "/assets/data/runtimeDomainRegistry.json";
+
+    if (!file_exists($path)) {
+        error_log("[runtime-domain-registry] NOT FOUND: " . $path);
+        return [];
+    }
+
+    $json = json_decode((string)file_get_contents($path), true);
+    if (!is_array($json)) {
+        error_log("[runtime-domain-registry] INVALID JSON");
+        return [];
+    }
+
+    $domains = $json["domains"] ?? null;
+    if (!is_array($domains)) {
+        return [];
+    }
+
+    // Keys are the domainKeys (e.g., roadmap, permits, etc.)
+    return array_values(array_filter(array_keys($domains), fn($k) => is_string($k) && $k !== ""));
+}
 
 #endregion
 
@@ -541,11 +565,25 @@ if ($type === "skyebot") {
     }
 
     // ─────────────────────────────────────────────
-    // 1. Semantic Intent (Advisory Only)
+    // 1. Load Runtime Domain Registry (Authoritative)
+    // ─────────────────────────────────────────────
+
+    $streamedDomains = loadRuntimeDomainRegistryKeys();
+    $allowedDomainsList = !empty($streamedDomains)
+        ? implode(", ", $streamedDomains)
+        : "none";
+
+    // ─────────────────────────────────────────────
+    // 2. Semantic Intent (Advisory Only)
     // ─────────────────────────────────────────────
 
     $intentPrompt = <<<PROMPT
 Analyze the following user input and return semantic intent metadata only.
+
+Canonical domain intent grammar is allowed ONLY if the domain is in this allowed list:
+{$allowedDomainsList}
+
+If the user request maps to a domain NOT in the allowed list, return a non-domain intent (e.g., "general_query" or "uncertain") instead.
 
 User Input:
 {$query}
@@ -580,11 +618,12 @@ PROMPT;
     );
 
     $intentMeta = json_decode($intentRaw ?? "", true);
+
     if (!is_array($intentMeta)) {
         $intentMeta = [
             "intent"     => "uncertain",
             "confidence" => 0.0,
-            "reasoning"  => "Intent classification failed or response was invalid."
+            "reasoning"  => "Intent classification failed or invalid response."
         ];
     }
 
@@ -598,7 +637,7 @@ PROMPT;
     ], JSON_UNESCAPED_SLASHES));
 
     // ─────────────────────────────────────────────
-    // 2. UI ACTIONS (authoritative commands)
+    // 3. UI ACTIONS (Authoritative Commands)
     // ─────────────────────────────────────────────
 
     $uiClearThreshold  = 0.80;
@@ -625,18 +664,8 @@ PROMPT;
     }
 
     // ─────────────────────────────────────────────
-    // 3. DOMAIN SHORT-CIRCUIT (Scalable Grammar)
+    // 4. DOMAIN SHORT-CIRCUIT (Registry-Driven)
     // ─────────────────────────────────────────────
-
-    $streamedDomains = [
-        "roadmap",
-        "entities",
-        "locations",
-        "contacts",
-        "orders",
-        "permits",
-        "governance"
-    ];
 
     $intentPattern = '/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/';
 
@@ -659,11 +688,19 @@ PROMPT;
             ], JSON_UNESCAPED_SLASHES);
 
             exit;
+
+        } else {
+
+            // Helpful debug visibility
+            error_log("[skyebot:domain-rejected] " . json_encode([
+                "domain" => $domainKey,
+                "allowed" => $streamedDomains
+            ], JSON_UNESCAPED_SLASHES));
         }
     }
 
     // ─────────────────────────────────────────────
-    // 4. Conversational / Informational Fallback
+    // 5. Conversational / Informational Fallback
     // ─────────────────────────────────────────────
 
     $sseSnapshot = loadSseSnapshot();
