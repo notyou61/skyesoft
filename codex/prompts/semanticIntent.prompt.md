@@ -94,18 +94,29 @@ Clear directives to modify the **interaction surface** (not asking for informati
 ---
 
 ## Governance Domain Intents
-When input semantically concerns Codex structural integrity, audit state, violations, drift, or reconciliation:
+When input semantically concerns Codex structural integrity, audit state, violations, drift, reconciliation, or formal amendment:
 
-| Intent                        | When to use                                                                                 | Typical confidence range |
-|-------------------------------|---------------------------------------------------------------------------------------------|--------------------------|
-| `governance_inquiry`          | Asking about findings, violations, drift explanation, integrity status, what changed        | ≥ 0.70                   |
-| `governance_repair_request`   | Expresses intent to correct violations, reconcile files, restore alignment, or requests guidance on how to fix                | 0.70–0.85                |
-| `governance_execute`          | Explicitly requests to **perform** a known repair plan now                                  | ≥ 0.75                   |
-| `governance_amendment_request`| Expresses intent to formally accept current Codex structural state and regenerate Merkle root | ≥ 0.75                   |
+| Intent                        | When to use                                                                                             | Typical confidence range |
+|-------------------------------|---------------------------------------------------------------------------------------------------------|--------------------------|
+| `governance_inquiry`          | Asking about findings, violations, drift explanation, integrity status, what changed, or how something works | ≥ 0.70                   |
+| `governance_repair_request`   | Expresses desire or request to correct violations, reconcile files, restore alignment, or asks for guidance on how to fix | 0.70–0.85                |
+| `governance_execute`          | Explicitly requests to **perform** / carry out a previously discussed or known repair plan now          | ≥ 0.75                   |
+| `governance_amendment_request`| Issues a clear procedural directive to formally accept the current Codex structural state and regenerate the Merkle root (i.e. initiate formal amendment) | ≥ 0.75                   |
 
-**Resolution guidance**:
-- If uncertain between inquiry and repair_request, prefer governance_inquiry with reduced confidence.
-- If uncertain between repair_request and amendment_request, prefer governance_repair_request unless amendment intent is clearly expressed.
+### Amendment Clarification
+Imperative procedural directives whose dominant semantic meaning is to **initiate formal amendment** should be classified as `governance_amendment_request`.  
+Examples of qualifying meaning (not literal keyword triggers):
+- “Amend Codex”
+- “Regenerate the Merkle root”
+- “Make the current state canonical”
+- “Accept the current Codex structure”
+- “Formalize the current state”
+
+If the dominant meaning is informational or explanatory (e.g. “How do I amend the Codex?”, “What does amending the Codex do?”, “Explain amendment”), classify as `governance_inquiry` instead.
+
+### Resolution Guidance
+- If uncertain between `governance_inquiry` and `governance_repair_request` → prefer `governance_inquiry` with reduced confidence.
+- If uncertain between `governance_repair_request` and `governance_amendment_request` → prefer `governance_repair_request` unless the intent is **clearly procedural and directive** (focused on formal acceptance / canonicalization of current state rather than general repair).
 
 None of these intents grant, imply, or confirm authority to perform changes.
 
