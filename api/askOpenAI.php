@@ -554,7 +554,7 @@ PROMPT;
 
 #region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
 
-echo json_encode(["section7_active" => true]);
+echo json_encode($_GET);
 exit;
 
 // ------------------------------------------------------
