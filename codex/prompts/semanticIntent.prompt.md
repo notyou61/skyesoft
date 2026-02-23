@@ -65,26 +65,32 @@ When unsure whether a domain is application-rendered, **default to non-presentat
 ## Canonical Intent Grammar (Required)
 
 When a user’s meaning clearly maps to a structured domain intent, the returned
-intent value must conform exactly to the application’s canonical grammar:
+`intent` value must conform exactly to the application’s canonical grammar:
 
 {domain}_{mode}
 
-Where:
+### Domain
 
-- domain is a recognized streamed domain (e.g., governance, roadmap, entities, permits, contacts, etc.).
-- mode is one of:
-  - inquiry
-  - repair_request
-  - execute
-  - amendment_request
+- `domain` must be a recognized streamed domain that appears in the **allowed runtime domain list provided in the prompt**.
+- Examples may include domains such as `roadmap`, `entities`, `permits`, or `contacts`, but only if they are present in the allowed list.
+- Do not emit a domain intent for any domain not explicitly included in the allowed list.
 
-You must use this grammar exactly when applicable.
+### Mode
 
-Do not invent alternate naming schemes, variations, synonyms, or additional suffixes.
+`mode` must be one of the following values exactly:
 
-If the user’s meaning does not clearly map to this grammar, return the most appropriate non-domain intent instead.
+- `inquiry`
+- `repair_request`
+- `execute`
+- `amendment_request`
 
-**Rule of one**: Return **exactly one** dominant intent unless no single intent clearly prevails.
+You must use this grammar **exactly** when applicable.
+
+Do not invent alternate naming schemes, variations, synonyms, additional suffixes, or structural deviations.
+
+If the user’s meaning does not clearly map to this grammar, return the most appropriate **non-domain** intent instead (e.g., `general_query` or `uncertain`).
+
+**Rule of One**: Return **exactly one** dominant intent unless no single intent clearly prevails.
 
 ---
 
