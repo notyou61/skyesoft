@@ -638,7 +638,7 @@ PROMPT;
         "governance"
     ];
 
-    $intentPattern = '/^([a-z]+)_(inquiry|repair_request|execute)$/';
+    $intentPattern = '/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/';
 
     if (
         $confidence >= 0.70 &&
