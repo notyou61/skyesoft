@@ -265,7 +265,7 @@ function appendPromptLedgerEntry(array $entry): void
 function loadRuntimeDomainRegistryKeys(): array
 {
     $root = dirname(__DIR__);
-    $path = $root . "/assets/data/runtimeDomainRegistry.json";
+    $path = $root . "/data/authoritative/runtimeDomainRegistry.json";
 
     if (!file_exists($path)) {
         error_log("[runtime-domain-registry] NOT FOUND: " . $path);
