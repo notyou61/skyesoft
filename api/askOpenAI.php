@@ -554,9 +554,6 @@ PROMPT;
 
 #region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
 
-echo json_encode($_GET);
-exit;
-
 // ------------------------------------------------------
 // SKYEBOT — Conversational / Informational Responses
 // ------------------------------------------------------
@@ -633,15 +630,12 @@ PROMPT;
     $intent     = $intentMeta["intent"] ?? "unknown";
     $confidence = (float)($intentMeta["confidence"] ?? 0.0);
 
-    // TEMP DEBUG — remove after testing
-    if (isset($_GET["debug"])) {
-        echo json_encode([
-            "debug_intent" => $intent,
-            "debug_confidence" => $confidence,
-            "allowed_domains" => $streamedDomains
-        ], JSON_UNESCAPED_SLASHES);
-        exit;
-    }
+    echo json_encode([
+        "intent" => $intent,
+        "confidence" => $confidence,
+        "domains" => $streamedDomains
+    ]);
+    exit;
 
     error_log("[skyebot:intent] " . json_encode([
         "query"      => substr($query, 0, 100),
