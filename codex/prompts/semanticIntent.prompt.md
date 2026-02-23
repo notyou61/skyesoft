@@ -62,6 +62,28 @@ When unsure whether a domain is application-rendered, **default to non-presentat
 - Confidence reflects **semantic clarity**, not sentence length, politeness, or formatting
 - Do **not** decompose intent into subject / object / category / modality / metadata fields
 
+## Canonical Intent Grammar (Required)
+
+When a user’s meaning clearly maps to a structured domain intent, the returned
+intent value must conform exactly to the application’s canonical grammar:
+
+{domain}_{mode}
+
+Where:
+
+- domain is a recognized streamed domain (e.g., governance, roadmap, entities, permits, contacts, etc.).
+- mode is one of:
+  - inquiry
+  - repair_request
+  - execute
+  - amendment_request
+
+You must use this grammar exactly when applicable.
+
+Do not invent alternate naming schemes, variations, synonyms, or additional suffixes.
+
+If the user’s meaning does not clearly map to this grammar, return the most appropriate non-domain intent instead.
+
 **Rule of one**: Return **exactly one** dominant intent unless no single intent clearly prevails.
 
 ---
