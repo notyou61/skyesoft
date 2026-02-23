@@ -3346,7 +3346,12 @@
                     "Diffs generated via git diff; limited to proposed changes in /reports/proposals/.",
                     "Version updates require Parliamentarian approval and Archivist commit.",
                     "Skyebot may review code against Standards but cannot auto-merge.",
-                    "Audit trail: All reviews logged with {filePath, diffHash, reviewer: 'AI', approved: false}."
+                    "Audit trail: All reviews logged with {filePath, diffHash, reviewer: 'AI', approved: false}.",
+                    "Governance repair operations require explicit human confirmation before execution.",
+                    "All repair operations must be performed by deterministic backend scripts; AI may not mutate files.",
+                    "Repair execution must not trigger manual Sentinel validation; Sentinel remains time-driven.",
+                    "Post-repair UI states are transitional and non-authoritative until next Sentinel cycle.",
+                    "Destructive actions (e.g., file deletion) require elevated confirmation and audit logging."
                 ],
                 "schema": {
                     "codeReview": {
@@ -3396,6 +3401,25 @@
                     "enforcedBy": "modules/codeValidator.php",
                     "frequency": "per-review",
                     "action": "Block writes; escalate approvals"
+                },
+                "governanceRepairEvent": {
+                    "type": "object",
+                    "properties": {
+                        "violationId": { "type": "string" },
+                        "violationType": { "type": "string" },
+                        "selectedResolution": { "type": "string" },
+                        "scriptExecuted": { "type": "string" },
+                        "confirmedBy": { "type": "string" },
+                        "timestamp": { "type": "string" }
+                    },
+                    "required": [
+                        "violationId",
+                        "violationType",
+                        "selectedResolution",
+                        "scriptExecuted",
+                        "confirmedBy",
+                        "timestamp"
+                    ]
                 }
             },
             "artifactHeaderStandard": {
@@ -4176,7 +4200,8 @@
                 "notes": [
                     "Reconciliation explains alignment; it does not prove it",
                     "Resolution state is always determined by audit re-observation",
-                    "Historical accuracy takes precedence over narrative completeness"
+                    "Historical accuracy takes precedence over narrative completeness",
+                    "RGS does not govern constitutional integrity mechanisms defined by MIS. Merkle root regeneration is classified as Codex amendment, not reconciliation."
                 ]
             },
             "merkleIntegrityStandard": {

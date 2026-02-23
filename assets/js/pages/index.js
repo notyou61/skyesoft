@@ -220,26 +220,40 @@ window.SkyIndex = {
     // #region 🛡️ Update Governance Footer (Sentinel-Driven)
     updateGovernanceFooter(sentinel) {
 
-        if (this.isThinking) return;   // <-- ADD THIS LINE
+        // Preserve Thinking state dominance
+        if (this.isThinking) return;
 
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer || !sentinel) return;
 
-        if (sentinel.governanceStatus === "constitutional-breach") {
-            footer.textContent =
-                `🔴 Constitutional Breach • ${sentinel.unresolvedViolations} violations`;
+        const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
+        const structuralCount = Number(sentinel.unresolvedViolations || 0);
+
+        // 🔴 Integrity Drift (MIS Layer)
+        if (hasIntegrityDrift) {
+
+            if (structuralCount > 0) {
+                footer.textContent =
+                    `🔴 Integrity Drift • ${structuralCount} Structural Deviations`;
+            } else {
+                footer.textContent =
+                    `🔴 Codex Integrity Drift`;
+            }
+
             footer.style.color = "#ff3b30";
             return;
         }
 
-        if (sentinel.unresolvedViolations > 0) {
+        // 🟠 Structural Deviations Only (RGS Layer)
+        if (structuralCount > 0) {
             footer.textContent =
-                `🟠 Violations Pending • ${sentinel.unresolvedViolations}`;
+                `🟠 Structural Deviations • ${structuralCount}`;
             footer.style.color = "#ff9500";
             return;
         }
 
-        footer.textContent = "🟢 Authenticated • Governance Clean";
+        // 🟢 Clean State (Operational Mode)
+        footer.textContent = "🟢 Authenticated • Ready";
         footer.style.color = "#00c853";
     },
     // #endregion
