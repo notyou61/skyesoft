@@ -460,6 +460,25 @@ function buildAuditFacts(array $report): array {
 }
 #endregion
 
+#region SECTION 4A  GOVERNANCE INTENT HANDLER
+
+if (strpos($intent, 'governance_') === 0 && $confidence >= 0.70) {
+
+    require_once __DIR__ . '/violationActionResolver.php';
+
+    $governanceResult = resolveGovernanceIntent($intent, $query);
+
+    echo json_encode([
+        "success" => true,
+        "role"    => "askOpenAI",
+        "type"    => "governance_response",
+        "payload" => $governanceResult
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
+}
+#endregion
+
 #region SECTION 4.5 — Library Mode Guard
 // Stop controller execution when used as a library (e.g., review-elc-staging.php)
 if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
