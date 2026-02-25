@@ -20,6 +20,8 @@ declare(strict_types=1);
 // ======================================================================
 
 #region SECTION 0 — Fail Handler
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 skyesoftLoadEnv();
 // Header
 header("Content-Type: application/json; charset=UTF-8");
@@ -462,7 +464,12 @@ function buildAuditFacts(array $report): array {
 
 #region SECTION 4A  GOVERNANCE INTENT HANDLER
 
-if (strpos($intent, 'governance_') === 0 && $confidence >= 0.70) {
+if (
+    isset($intent) &&
+    is_string($intent) &&
+    strpos($intent, 'governance_') === 0 &&
+    $confidence >= 0.70
+) {
 
     require_once __DIR__ . '/violationActionResolver.php';
 
@@ -477,6 +484,7 @@ if (strpos($intent, 'governance_') === 0 && $confidence >= 0.70) {
 
     exit;
 }
+
 #endregion
 
 #region SECTION 4.5 — Library Mode Guard
