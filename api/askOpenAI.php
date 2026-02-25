@@ -822,14 +822,14 @@ PROMPT;
     }
 
     $basePrompt = <<<PROMPT
-{$responsePrompt}
+    {$responsePrompt}
 
-Authoritative Context (read-only):
-{$authoritativeContext}
+    Authoritative Context (read-only):
+    {$authoritativeContext}
 
-User Input:
-{$query}
-PROMPT;
+    User Input:
+    {$augmentedUserInput}
+    PROMPT;
 
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
