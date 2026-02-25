@@ -785,15 +785,18 @@ PROMPT;
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
+    $lowerQuery = strtolower($query);
 
     if (
-        $intent === "general_query" ||
-        $intent === "uncertain"
+        strpos($lowerQuery, "deviation") !== false ||
+        strpos($lowerQuery, "violation") !== false ||
+        strpos($lowerQuery, "resolve") !== false ||
+        strpos($lowerQuery, "structural") !== false
     ) {
 
         $violationSummary = loadUnresolvedStructuralViolations();
 
-        if ($violationSummary !== null) {
+        if (is_array($violationSummary)) {
 
             $hasMerkle    = $violationSummary["merkleIntegrity"] ?? false;
             $hasInventory = !empty($violationSummary["repositoryInventory"]);
