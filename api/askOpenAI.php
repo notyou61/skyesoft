@@ -132,6 +132,46 @@ function getCodexVersion(): string {
         ?? "pending"
     );
 }
+function loadUnresolvedStructuralViolations() {
+
+    $auditFile = __DIR__ . '/../data/records/auditResults.json';
+
+    if (!file_exists($auditFile)) {
+        return null;
+    }
+
+    $raw = file_get_contents($auditFile);
+    $json = json_decode($raw, true);
+
+    if (!isset($json['violations'])) {
+        return null;
+    }
+
+    $summary = [
+        "merkleIntegrity" => false,
+        "repositoryInventory" => []
+    ];
+
+    foreach ($json['violations'] as $violation) {
+
+        // Only consider unresolved violations
+        if (isset($violation['resolved']) && $violation['resolved'] !== null) {
+            continue;
+        }
+
+        $observation = $violation['observation'] ?? '';
+
+        if (strpos($observation, 'Merkle') !== false) {
+            $summary['merkleIntegrity'] = true;
+        }
+
+        if (strpos($observation, 'Repository inventory') !== false) {
+            $summary['repositoryInventory'][] = $observation;
+        }
+    }
+
+    return $summary;
+}
 function inferSalutation(string $firstName, string $lastName): ?string
 {
 
@@ -739,6 +779,46 @@ PROMPT;
     $responsePrompt = loadResponseGenerationPrompt();
     if ($responsePrompt === "") {
         aiFail("Response generation prompt not available.");
+    }
+    // ------------------------------------------------------
+    // GOVERNANCE CONTEXT INJECTION (Explanation Layer Only)
+    // ------------------------------------------------------
+
+    $augmentedUserInput = $query;
+
+    if (
+        $intent === "general_query" ||
+        $intent === "uncertain"
+    ) {
+
+        $violationSummary = loadUnresolvedStructuralViolations();
+
+        if ($violationSummary !== null) {
+
+            $hasMerkle    = $violationSummary["merkleIntegrity"] ?? false;
+            $hasInventory = !empty($violationSummary["repositoryInventory"]);
+
+            if ($hasMerkle || $hasInventory) {
+
+                $governanceContext  = "\n\nCurrent Structural Deviations Summary:\n";
+
+                if ($hasMerkle) {
+                    $governanceContext .= "- Merkle integrity deviation present (Codex mismatch).\n";
+                }
+
+                if ($hasInventory) {
+                    $governanceContext .= "- Repository inventory deviations detected:\n";
+
+                    foreach ($violationSummary["repositoryInventory"] as $item) {
+                        $governanceContext .= "  • {$item}\n";
+                    }
+                }
+
+                $governanceContext .= "\nExplain what these deviations mean and describe available corrective paths. Do not assert resolution. Do not imply automatic mutation.";
+
+                $augmentedUserInput .= $governanceContext;
+            }
+        }
     }
 
     $basePrompt = <<<PROMPT
