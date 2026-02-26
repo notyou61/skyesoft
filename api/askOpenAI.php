@@ -800,11 +800,13 @@ PROMPT;
         aiFail("Response generation prompt not available.");
     }
     // ------------------------------------------------------
-    // GOVERNANCE CONTEXT INJECTION (Explanation + Options)
+    // GOVERNANCE CONTEXT INJECTION (Explanation + Developer Options)
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
     $lowerQuery = strtolower($query);
+
+    $governanceContext = null;
 
     if (
         strpos($lowerQuery, "deviation") !== false ||
@@ -823,7 +825,6 @@ PROMPT;
 
             if ($hasMerkle || $hasInventory) {
 
-                // Context header
                 $governanceContext  = "\n\nCurrent Structural Deviations Summary:\n";
 
                 // -------------------------
@@ -846,42 +847,60 @@ PROMPT;
                 }
 
                 // -------------------------
-                // Governance Decision Surface
+                // Developer Action Options
                 // -------------------------
 
-                $governanceContext .= "\n\nChoose how you want to proceed:\n\n";
+                $governanceContext .= "\n\nDeveloper Options:\n\n";
 
                 if ($hasInventory) {
 
-                    $governanceContext .= "[Review Violations]\n";
+                    $governanceContext .=
+                        "1. Review Repository Inventory Differences\n".
+                        "   Inspect missing and unexpected files before making structural changes.\n";
+
                     $governanceContext .=
                         formatGovernanceActionLink("review_unexpected_files");
 
-                    $governanceContext .= "\n[Reconcile Inventory]\n";
+                    $governanceContext .= "\n";
+
+                    $governanceContext .=
+                        "2. Reconcile Repository Inventory\n".
+                        "   Update the governed inventory to reflect the current repository state.\n";
+
                     $governanceContext .=
                         formatGovernanceActionLink("run_inventory_builder");
 
-                    $governanceContext .= "\n[Execute Mutator Repairs]\n";
+                    $governanceContext .= "\n";
+
+                    $governanceContext .=
+                        "3. Execute Structural Mutator\n".
+                        "   Attempt automated correction for accidental structural drift.\n";
+
                     $governanceContext .=
                         formatGovernanceActionLink("run_mutator");
+
+                    $governanceContext .= "\n";
                 }
 
                 if ($hasMerkle) {
 
-                    $governanceContext .= "\n[Accept Current Merkle Snapshot]\n";
+                    $governanceContext .=
+                        "4. Accept New Merkle Snapshot\n".
+                        "   Establish the current Codex state as the new integrity baseline.\n";
+
                     $governanceContext .=
                         formatGovernanceActionLink("run_merkle_builder");
+
+                    $governanceContext .= "\n";
                 }
 
                 $governanceContext .=
-                    "\nAll actions require explicit human approval. No automatic mutation will occur.";
-
-                // Merge with user input
-                $augmentedUserInput .= $governanceContext;
+                    "\nNo automatic changes have been made. The system is awaiting a developer decision.";
             }
         }
     }
 
+    // Build base prompt normally
     $basePrompt = <<<PROMPT
     {$responsePrompt}
 
@@ -896,6 +915,14 @@ PROMPT;
         injectStandingOrders($basePrompt),
         $apiKey
     );
+
+    // ------------------------------------------------------
+    // Append Governance Context AFTER AI response
+    // ------------------------------------------------------
+
+    if ($governanceContext) {
+        $response .= $governanceContext;
+    }
 }
 
 #endregion
