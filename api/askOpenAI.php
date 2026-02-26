@@ -328,6 +328,25 @@ function loadRuntimeDomainRegistryKeys(): array
     // Keys are the domainKeys (e.g., roadmap, permits, etc.)
     return array_values(array_filter(array_keys($domains), fn($k) => is_string($k) && $k !== ""));
 }
+function formatGovernanceActionLink(string $action): string
+{
+    $map = [
+
+        "run_inventory_builder" =>
+            "https://skyelighting.com/skyesoft/api/repositoryInventoryBuilder.php?mode=reconcile",
+
+        "run_merkle_builder" =>
+            "https://skyelighting.com/skyesoft/api/merkleBuilder.php?mode=accept",
+
+        "review_unexpected_files" =>
+            "https://skyelighting.com/skyesoft/api/violationActionResolver.php"
+
+    ];
+
+    return isset($map[$action])
+        ? "  → " . $map[$action] . "\n"
+        : "";
+}
 
 #endregion
 
@@ -781,7 +800,7 @@ PROMPT;
         aiFail("Response generation prompt not available.");
     }
     // ------------------------------------------------------
-    // GOVERNANCE CONTEXT INJECTION (Explanation Layer Only)
+    // GOVERNANCE CONTEXT INJECTION (Explanation + Action Surface)
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
@@ -798,27 +817,63 @@ PROMPT;
 
         if (is_array($violationSummary)) {
 
+            // Init state flags
             $hasMerkle    = $violationSummary["merkleIntegrity"] ?? false;
             $hasInventory = !empty($violationSummary["repositoryInventory"]);
 
             if ($hasMerkle || $hasInventory) {
 
+                // Context header
                 $governanceContext  = "\n\nCurrent Structural Deviations Summary:\n";
 
+                // -------------------------
+                // Sentinel Truth Surface
+                // -------------------------
+
                 if ($hasMerkle) {
-                    $governanceContext .= "- Merkle integrity deviation present (Codex mismatch).\n";
+                    $governanceContext .=
+                        "- Merkle integrity deviation present (Codex mismatch).\n";
                 }
 
                 if ($hasInventory) {
-                    $governanceContext .= "- Repository inventory deviations detected:\n";
+
+                    $governanceContext .=
+                        "- Repository inventory deviations detected:\n";
 
                     foreach ($violationSummary["repositoryInventory"] as $item) {
                         $governanceContext .= "  • {$item}\n";
                     }
                 }
 
-                $governanceContext .= "\nExplain what these deviations mean and describe available corrective paths. Do not assert resolution. Do not imply automatic mutation.";
+                // -------------------------
+                // Resolver Action Surface
+                // -------------------------
 
+                $governanceContext .= "\nGoverned Corrective Paths (human approval required):\n";
+
+                if ($hasInventory) {
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_inventory_builder");
+                    $governanceContext .=
+                        formatGovernanceActionLink("review_unexpected_files");
+                }
+
+                if ($hasMerkle) {
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_merkle_builder");
+                }
+
+                // -------------------------
+                // Constitutional Instruction
+                // -------------------------
+
+                $governanceContext .=
+                    "\nExplain what these deviations mean and describe the permitted corrective paths. ".
+                    "Do not assert resolution. ".
+                    "Do not imply automatic mutation. ".
+                    "All remediation requires human confirmation.";
+
+                // Merge with user input
                 $augmentedUserInput .= $governanceContext;
             }
         }
