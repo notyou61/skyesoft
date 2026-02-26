@@ -800,7 +800,7 @@ PROMPT;
         aiFail("Response generation prompt not available.");
     }
     // ------------------------------------------------------
-    // GOVERNANCE CONTEXT INJECTION (Explanation + Action Surface)
+    // GOVERNANCE CONTEXT INJECTION (Explanation + Options)
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
@@ -846,32 +846,35 @@ PROMPT;
                 }
 
                 // -------------------------
-                // Resolver Action Surface
+                // Governance Decision Surface
                 // -------------------------
 
-                $governanceContext .= "\nGoverned Corrective Paths (human approval required):\n";
+                $governanceContext .= "\n\nChoose how you want to proceed:\n\n";
 
                 if ($hasInventory) {
-                    $governanceContext .=
-                        formatGovernanceActionLink("run_inventory_builder");
+
+                    $governanceContext .= "[Review Violations]\n";
                     $governanceContext .=
                         formatGovernanceActionLink("review_unexpected_files");
+
+                    $governanceContext .= "\n[Reconcile Inventory]\n";
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_inventory_builder");
+
+                    $governanceContext .= "\n[Execute Mutator Repairs]\n";
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_mutator");
                 }
 
                 if ($hasMerkle) {
+
+                    $governanceContext .= "\n[Accept Current Merkle Snapshot]\n";
                     $governanceContext .=
                         formatGovernanceActionLink("run_merkle_builder");
                 }
 
-                // -------------------------
-                // Constitutional Instruction
-                // -------------------------
-
                 $governanceContext .=
-                    "\nExplain what these deviations mean and describe the permitted corrective paths. ".
-                    "Do not assert resolution. ".
-                    "Do not imply automatic mutation. ".
-                    "All remediation requires human confirmation.";
+                    "\nAll actions require explicit human approval. No automatic mutation will occur.";
 
                 // Merge with user input
                 $augmentedUserInput .= $governanceContext;
