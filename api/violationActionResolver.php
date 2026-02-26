@@ -1,66 +1,30 @@
 <?php
-declare(strict_types=1);
 
-/**
- * Governance Violation Action Resolver
- *
- * Purely deterministic.
- * No output.
- * No mutation.
- * No execution.
- */
+require_once __DIR__ . "/sentinelLoader.php"; // wherever loadUnresolvedStructuralViolations lives
 
-function resolveGovernanceIntent(string $intent, string $query): array
-{
-    $violations = loadCurrentViolations();
+$violations = loadUnresolvedStructuralViolations();
 
-    if (empty($violations)) {
-        return [
-            "status" => "clean",
-            "message" => "No unresolved violations detected.",
-            "availableActions" => []
-        ];
-    }
+echo "<h2>Structural Violations</h2>";
 
-    $violationTypes = classifyViolationTypes($violations);
-
-    switch ($intent) {
-
-        case "governance_inquiry":
-            return [
-                "status" => "violations_present",
-                "violationCount" => count($violations),
-                "violationTypes" => $violationTypes,
-                "explanation" => buildExplanation($violations),
-                "availableActions" => determineAvailableActions($violationTypes)
-            ];
-
-        case "governance_repair_request":
-            return [
-                "status" => "repair_possible",
-                "violationTypes" => $violationTypes,
-                "recommendedAction" => determineRepairPath($violationTypes),
-                "availableActions" => determineAvailableActions($violationTypes)
-            ];
-
-        case "governance_execute":
-            return [
-                "status" => "execution_requires_confirmation",
-                "warning" => "Execution requires explicit confirmation.",
-                "availableActions" => determineAvailableActions($violationTypes)
-            ];
-
-        case "governance_amendment_request":
-            return [
-                "status" => "amendment_proposed",
-                "warning" => "Formal amendment will regenerate Merkle snapshot.",
-                "availableActions" => ["run_merkle_builder"]
-            ];
-
-        default:
-            return [
-                "status" => "unsupported_intent",
-                "message" => "Intent not recognized for governance resolution."
-            ];
-    }
+if (!$violations) {
+    echo "<p>No structural deviations detected.</p>";
+    exit;
 }
+
+if (!empty($violations["merkleIntegrity"])) {
+    echo "<p><strong>Merkle Integrity Deviation Detected</strong></p>";
+}
+
+if (!empty($violations["repositoryInventory"])) {
+
+    echo "<h3>Repository Inventory Issues:</h3>";
+    echo "<ul>";
+
+    foreach ($violations["repositoryInventory"] as $item) {
+        echo "<li>{$item}</li>";
+    }
+
+    echo "</ul>";
+}
+
+echo "<p>No automatic actions performed.</p>";
