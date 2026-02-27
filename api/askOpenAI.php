@@ -379,7 +379,7 @@ function injectSemanticIntentContext(string $basePrompt): string
 }
 #endregion
 
-#region SECTION 3 — OpenAI API Caller
+#region SECTION 3 — OpenAI API Caller (Stream Context)
 function callOpenAI(
     string $prompt,
     ?string $apiKey,
@@ -391,13 +391,8 @@ function callOpenAI(
         return null;
     }
 
-    $ch = curl_init();
+    $url = "https://api.openai.com/v1/chat/completions";
 
-    /* TEMPORARY — confirm SSL is the only blocker */
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-    // Build payload (allows optional response_format)
     $payload = [
         "model" => $model,
         "messages" => [
@@ -414,36 +409,46 @@ function callOpenAI(
         "temperature" => 0.1
     ];
 
-    // Optional: strict JSON schema / structured output enforcement
     if (is_array($responseFormat)) {
         $payload["response_format"] = $responseFormat;
     }
 
-    curl_setopt_array($ch, [
-        CURLOPT_URL            => "https://api.openai.com/v1/chat/completions",
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode($payload),
-        CURLOPT_HTTPHEADER => [
-            "Content-Type: application/json",
-            "Authorization: Bearer {$apiKey}"
+    $context = stream_context_create([
+        "http" => [
+            "method"        => "POST",
+            "header"        => implode("\r\n", [
+                "Content-Type: application/json",
+                "Authorization: Bearer {$apiKey}"
+            ]),
+            "content"       => json_encode($payload),
+            "timeout"       => 30,
+            "ignore_errors" => true // lets us read non-200 bodies
         ]
     ]);
 
-    $response = curl_exec($ch);
-    $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $response = @file_get_contents($url, false, $context);
 
-    if (!$response || $status !== 200) {
-        echo "cURL error: " . curl_error($ch) . "\n";
-        echo "HTTP status: " . $status . "\n";
+    $statusLine = $http_response_header[0] ?? "no-status";
+    $is200 = (strpos($statusLine, " 200 ") !== false);
+
+    if (!$response || !$is200) {
+
+        error_log("[askOpenAI:callOpenAI] OpenAI request failed " . json_encode([
+            "httpStatus" => $statusLine,
+            "hasBody"    => (bool)$response
+        ], JSON_UNESCAPED_SLASHES));
+
         return null;
     }
 
     $json = json_decode($response, true);
 
-    return trim(
-        (string)($json["choices"][0]["message"]["content"] ?? "")
-    );
+    if (!is_array($json)) {
+        error_log("[askOpenAI:callOpenAI] invalid JSON response");
+        return null;
+    }
+
+    return trim((string)($json["choices"][0]["message"]["content"] ?? ""));
 }
 #endregion
 
@@ -905,21 +910,7 @@ PROMPT;
     if ($governanceContext && !$didShortCircuitGovernance) {
         $response .= $governanceContext;
     }
-
-    if (!$response || !is_string($response)) {
-        aiFail("Skyebot response generation failed.");
-    }
-
-    echo json_encode([
-        "success" => true,
-        "role"    => "askOpenAI",
-        "type"    => "skyebot_response",
-        "payload" => [
-            "text" => $response
-        ]
-    ], JSON_UNESCAPED_SLASHES);
-
-    exit;
+    
 }
 
 #endregion
