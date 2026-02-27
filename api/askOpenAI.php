@@ -780,11 +780,10 @@ PROMPT;
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
-    $lowerQuery         = strtolower($query);
+    $lowerQuery = strtolower($query);
 
     $governanceContext = null;
 
-    // Lightweight governance trigger
     if (
         strpos($lowerQuery, "deviation") !== false ||
         strpos($lowerQuery, "violation") !== false ||
@@ -796,12 +795,13 @@ PROMPT;
 
         if (is_array($violationSummary)) {
 
-            $hasMerkle    = !empty($violationSummary["merkleIntegrity"]);
+            // Init state flags
+            $hasMerkle    = $violationSummary["merkleIntegrity"] ?? false;
             $hasInventory = !empty($violationSummary["repositoryInventory"]);
 
             if ($hasMerkle || $hasInventory) {
 
-                $governanceContext = "\n\nCurrent Structural Deviations Summary:\n";
+                $governanceContext  = "\n\nCurrent Structural Deviations Summary:\n";
 
                 // -------------------------
                 // Sentinel Truth Surface
@@ -833,7 +833,7 @@ PROMPT;
                 if ($hasInventory) {
 
                     $governanceContext .=
-                        "{$optionIndex}. Review Repository Inventory Differences\n" .
+                        "{$optionIndex}. Review Repository Inventory Differences\n".
                         "   Inspect declared vs observed filesystem differences before making structural changes.\n";
 
                     $governanceContext .=
@@ -843,7 +843,7 @@ PROMPT;
                     $optionIndex++;
 
                     $governanceContext .=
-                        "{$optionIndex}. Reconcile Repository Inventory\n" .
+                        "{$optionIndex}. Reconcile Repository Inventory\n".
                         "   Promote the observed repository state into the governed inventory declaration.\n";
 
                     $governanceContext .=
@@ -856,7 +856,7 @@ PROMPT;
                 if ($hasMerkle) {
 
                     $governanceContext .=
-                        "{$optionIndex}. Accept New Merkle Snapshot\n" .
+                        "{$optionIndex}. Accept New Merkle Snapshot\n".
                         "   Regenerate the governed Merkle artifact to reflect the current canonical Codex state.\n";
 
                     $governanceContext .=
@@ -872,11 +872,11 @@ PROMPT;
         }
     }
 
-    // ------------------------------------------------------
-    // Deterministic Governance Short-Circuit
-    // ------------------------------------------------------
+    $didShortCircuitGovernance = false;
 
     if ($governanceContext) {
+
+        $didShortCircuitGovernance = true;
 
         $response =
             "Structural deviations are present.\n\n" .
