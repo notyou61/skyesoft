@@ -905,6 +905,21 @@ PROMPT;
     if ($governanceContext && !$didShortCircuitGovernance) {
         $response .= $governanceContext;
     }
+
+    if (!$response || !is_string($response)) {
+        aiFail("Skyebot response generation failed.");
+    }
+
+    echo json_encode([
+        "success" => true,
+        "role"    => "askOpenAI",
+        "type"    => "skyebot_response",
+        "payload" => [
+            "text" => $response
+        ]
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
 }
 
 #endregion
