@@ -776,86 +776,115 @@ PROMPT;
     }
 
     // ------------------------------------------------------
-    // GOVERNANCE CONTEXT INJECTION (Deterministic Summary + Options)
+    // GOVERNANCE CONTEXT INJECTION (Explanation + Developer Options)
     // ------------------------------------------------------
 
     $augmentedUserInput = $query;
-    $lowerQuery         = strtolower($query ?? '');
+    $lowerQuery         = strtolower($query);
 
     $governanceContext = null;
 
-    // Lightweight governance trigger keywords
-    $triggers = ['deviation', 'violation', 'violations', 'resolve', 'structural'];
+    // Lightweight governance trigger
+    if (
+        strpos($lowerQuery, "deviation") !== false ||
+        strpos($lowerQuery, "violation") !== false ||
+        strpos($lowerQuery, "resolve") !== false ||
+        strpos($lowerQuery, "structural") !== false
+    ) {
 
-    $shouldCheckGovernance = false;
-    foreach ($triggers as $word) {
-        if (str_contains($lowerQuery, $word)) {
-            $shouldCheckGovernance = true;
-            break;
-        }
-    }
-
-    if ($shouldCheckGovernance) {
         $violationSummary = loadUnresolvedStructuralViolations();
 
-        // Defensive check – function must return array or null
-        if (is_array($violationSummary) && !empty($violationSummary)) {
-            $hasMerkle   = !empty($violationSummary['merkleIntegrity'] ?? '');
-            $hasInventory = !empty($violationSummary['repositoryInventory'] ?? []);
+        if (is_array($violationSummary)) {
+
+            $hasMerkle    = !empty($violationSummary["merkleIntegrity"]);
+            $hasInventory = !empty($violationSummary["repositoryInventory"]);
 
             if ($hasMerkle || $hasInventory) {
-                $governanceContext = "\n\n**Current Structural Deviations Summary:**\n";
 
-                // ── Sentinel Truth Surface ──
+                $governanceContext = "\n\nCurrent Structural Deviations Summary:\n";
+
+                // -------------------------
+                // Sentinel Truth Surface
+                // -------------------------
+
                 if ($hasMerkle) {
-                    $governanceContext .= "- Merkle integrity deviation present (Codex mismatch).\n";
+                    $governanceContext .=
+                        "- Merkle integrity deviation present (Codex mismatch).\n";
                 }
 
                 if ($hasInventory) {
-                    $governanceContext .= "- Repository inventory deviations detected:\n";
-                    foreach ((array)$violationSummary['repositoryInventory'] as $item) {
-                        $governanceContext .= " • " . trim($item) . "\n";
+
+                    $governanceContext .=
+                        "- Repository inventory deviations detected:\n";
+
+                    foreach ($violationSummary["repositoryInventory"] as $item) {
+                        $governanceContext .= "  • {$item}\n";
                     }
                 }
 
-                // ── Developer Action Options ──
-                $governanceContext .= "\n**Developer Options:**\n\n";
+                // -------------------------
+                // Developer Action Options
+                // -------------------------
+
+                $governanceContext .= "\n\nDeveloper Options:\n\n";
 
                 $optionIndex = 1;
 
                 if ($hasInventory) {
-                    $governanceContext .= "{$optionIndex}. **Review Repository Inventory Differences**\n";
-                    $governanceContext .= "   Inspect declared vs observed filesystem differences before making structural changes.\n";
-                    $governanceContext .= formatGovernanceActionLink("review_unexpected_files") . "\n\n";
+
+                    $governanceContext .=
+                        "{$optionIndex}. Review Repository Inventory Differences\n" .
+                        "   Inspect declared vs observed filesystem differences before making structural changes.\n";
+
+                    $governanceContext .=
+                        formatGovernanceActionLink("review_unexpected_files");
+
+                    $governanceContext .= "\n";
                     $optionIndex++;
 
-                    $governanceContext .= "{$optionIndex}. **Reconcile Repository Inventory**\n";
-                    $governanceContext .= "   Promote the observed repository state into the governed inventory declaration.\n";
-                    $governanceContext .= formatGovernanceActionLink("run_inventory_builder") . "\n\n";
+                    $governanceContext .=
+                        "{$optionIndex}. Reconcile Repository Inventory\n" .
+                        "   Promote the observed repository state into the governed inventory declaration.\n";
+
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_inventory_builder");
+
+                    $governanceContext .= "\n";
                     $optionIndex++;
                 }
 
                 if ($hasMerkle) {
-                    $governanceContext .= "{$optionIndex}. **Accept New Merkle Snapshot**\n";
-                    $governanceContext .= "   Regenerate the governed Merkle artifact to reflect the current canonical Codex state.\n";
-                    $governanceContext .= formatGovernanceActionLink("run_merkle_builder") . "\n\n";
+
+                    $governanceContext .=
+                        "{$optionIndex}. Accept New Merkle Snapshot\n" .
+                        "   Regenerate the governed Merkle artifact to reflect the current canonical Codex state.\n";
+
+                    $governanceContext .=
+                        formatGovernanceActionLink("run_merkle_builder");
+
+                    $governanceContext .= "\n";
                     $optionIndex++;
                 }
 
-                $governanceContext .= "No automatic changes have been made. The system is awaiting a developer decision.\n";
+                $governanceContext .=
+                    "\nNo automatic changes have been made. The system is awaiting a developer decision.";
             }
         }
     }
 
     // ------------------------------------------------------
-    // Deterministic Governance Short-Circuit (NO AI, NO DUPLICATION)
+    // Deterministic Governance Short-Circuit
     // ------------------------------------------------------
-    if ($governanceContext !== null) {
-        $response = "Structural deviations are present.\n\n"
-                . "Please review the authoritative summary and developer options below."
-                . $governanceContext;
+
+    if ($governanceContext) {
+
+        $response =
+            "Structural deviations are present.\n\n" .
+            "Please review the authoritative summary and developer options below." .
+            $governanceContext;
+
     } else {
-        // Normal LLM flow
+
         $basePrompt = <<<PROMPT
     {$responsePrompt}
 
