@@ -827,46 +827,42 @@ PROMPT;
 
                 $governanceContext .= "\n\nDeveloper Options:\n\n";
 
+                $optionIndex = 1;
+
                 if ($hasInventory) {
 
                     $governanceContext .=
-                        "1. Review Repository Inventory Differences\n".
-                        "   Inspect missing and unexpected files before making structural changes.\n";
+                        "{$optionIndex}. Review Repository Inventory Differences\n".
+                        "   Inspect declared vs observed filesystem differences before making structural changes.\n";
 
                     $governanceContext .=
                         formatGovernanceActionLink("review_unexpected_files");
 
                     $governanceContext .= "\n";
+                    $optionIndex++;
 
                     $governanceContext .=
-                        "2. Reconcile Repository Inventory\n".
-                        "   Update the governed inventory to reflect the current repository state.\n";
+                        "{$optionIndex}. Reconcile Repository Inventory\n".
+                        "   Promote the observed repository state into the governed inventory declaration.\n";
 
                     $governanceContext .=
                         formatGovernanceActionLink("run_inventory_builder");
 
                     $governanceContext .= "\n";
-
-                    $governanceContext .=
-                        "3. Execute Structural Mutator\n".
-                        "   Attempt automated correction for accidental structural drift.\n";
-
-                    $governanceContext .=
-                        formatGovernanceActionLink("run_mutator");
-
-                    $governanceContext .= "\n";
+                    $optionIndex++;
                 }
 
                 if ($hasMerkle) {
 
                     $governanceContext .=
-                        "4. Accept New Merkle Snapshot\n".
-                        "   Establish the current Codex state as the new integrity baseline.\n";
+                        "{$optionIndex}. Accept New Merkle Snapshot\n".
+                        "   Regenerate the governed Merkle artifact to reflect the current canonical Codex state.\n";
 
                     $governanceContext .=
                         formatGovernanceActionLink("run_merkle_builder");
 
                     $governanceContext .= "\n";
+                    $optionIndex++;
                 }
 
                 $governanceContext .=
@@ -875,18 +871,20 @@ PROMPT;
         }
     }
 
-    $governanceAIGuard = "";
+    $didShortCircuitGovernance = false;
 
     if ($governanceContext) {
-        $governanceAIGuard =
-            "\n\nSystem Note (governance rendering):\n".
-            "- A structured, authoritative deviation summary will be appended after your response.\n".
-            "- Do NOT enumerate specific violations, file paths, or counts.\n".
-            "- Respond briefly and direct the developer to review the appended summary and options.\n";
-    }
 
-    // Build base prompt normally
-    $basePrompt = <<<PROMPT
+        $didShortCircuitGovernance = true;
+
+        $response =
+            "Structural deviations are present.\n\n" .
+            "Please review the authoritative summary and developer options below." .
+            $governanceContext;
+
+    } else {
+
+        $basePrompt = <<<PROMPT
     {$responsePrompt}
 
     Authoritative Context (read-only):
@@ -894,19 +892,16 @@ PROMPT;
 
     User Input:
     {$augmentedUserInput}
-    {$governanceAIGuard}
     PROMPT;
 
-    $response = callOpenAI(
-        injectStandingOrders($basePrompt),
-        $apiKey
-    );
+        $response = callOpenAI(
+            injectStandingOrders($basePrompt),
+            $apiKey
+        );
+    }
 
-    // ------------------------------------------------------
-    // Append Governance Context AFTER AI response
-    // ------------------------------------------------------
-
-    if ($governanceContext) {
+    // Append governance context only when AI was called
+    if ($governanceContext && !$didShortCircuitGovernance) {
         $response .= $governanceContext;
     }
 }
