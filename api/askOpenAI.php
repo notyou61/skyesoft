@@ -875,6 +875,16 @@ PROMPT;
         }
     }
 
+    $governanceAIGuard = "";
+
+    if ($governanceContext) {
+        $governanceAIGuard =
+            "\n\nSystem Note (governance rendering):\n".
+            "- A structured, authoritative deviation summary will be appended after your response.\n".
+            "- Do NOT enumerate specific violations, file paths, or counts.\n".
+            "- Respond briefly and direct the developer to review the appended summary and options.\n";
+    }
+
     // Build base prompt normally
     $basePrompt = <<<PROMPT
     {$responsePrompt}
@@ -884,6 +894,7 @@ PROMPT;
 
     User Input:
     {$augmentedUserInput}
+    {$governanceAIGuard}
     PROMPT;
 
     $response = callOpenAI(
