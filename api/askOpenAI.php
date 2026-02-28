@@ -166,24 +166,24 @@ function getCodexVersion(): string {
 }
 
 // Load Unresolved Structural Violations from latest audit (Merkle + inventory)
-function loadUnresolvedStructuralViolations(): ?array {
-
+function loadUnresolvedStructuralViolations(){
     $auditFile = __DIR__ . '/../data/records/auditResults.json';
 
     if (!file_exists($auditFile)) {
         return null;
     }
 
-    $json = json_decode((string)file_get_contents($auditFile), true);
+    $raw = file_get_contents($auditFile);
+    $json = json_decode($raw, true);
 
-    if (!is_array($json) || !isset($json['violations']) || !is_array($json['violations'])) {
+    if (!isset($json['violations']) || !is_array($json['violations'])) {
         return null;
     }
 
     $summary = [
-        "merkleIntegrity"   => false,
-        "declaredMissing"   => [],
-        "unexpectedPresent" => []
+        "merkleIntegrity"  => false,
+        "declaredMissing"  => [],
+        "unexpectedPresent"=> []
     ];
 
     foreach ($json['violations'] as $violation) {
@@ -195,36 +195,28 @@ function loadUnresolvedStructuralViolations(): ?array {
 
         $observation = $violation['observation'] ?? '';
 
-        if (!is_string($observation) || $observation === '') {
-            continue;
-        }
-
-        // ---- Merkle ----
+        // ---- Merkle Classification ----
         if (stripos($observation, 'Merkle') !== false) {
             $summary['merkleIntegrity'] = true;
             continue;
         }
 
-        // ---- Inventory ----
+        // ---- Repository Inventory Classification ----
         if (stripos($observation, 'Repository inventory') !== false) {
 
             // Declared but missing
-            if (preg_match("/declared (file|dir) '([^']+)' is missing/i", $observation, $m)) {
-                $summary['declaredMissing'][] = $m[2];
+            if (preg_match("/declared (file|dir) '([^']+)' is missing/i", $observation, $matches)) {
+                $summary['declaredMissing'][] = $matches[2];
                 continue;
             }
 
             // Unexpected but present
-            if (preg_match("/unexpected (file|dir) '([^']+)' exists/i", $observation, $m)) {
-                $summary['unexpectedPresent'][] = $m[2];
+            if (preg_match("/unexpected (file|dir) '([^']+)' exists/i", $observation, $matches)) {
+                $summary['unexpectedPresent'][] = $matches[2];
                 continue;
             }
         }
     }
-
-    // Normalize duplicates (defensive)
-    $summary['declaredMissing']   = array_values(array_unique($summary['declaredMissing']));
-    $summary['unexpectedPresent'] = array_values(array_unique($summary['unexpectedPresent']));
 
     return $summary;
 }
