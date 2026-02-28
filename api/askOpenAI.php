@@ -37,22 +37,34 @@ function aiFail(string $msg): never {
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
-function skyesoftLoadEnv(): void
-{
+
+// Loads .env from secure location (3 levels up) → putenv, $_ENV, $_SERVER
+function skyesoftLoadEnv(): void {
+
     $envPath = dirname(__DIR__, 3) . '/secure/.env';
 
+    // Validate .env existence
     if (!file_exists($envPath) || !is_readable($envPath)) {
         error_log("[env-loader] FAILED to load .env at $envPath");
         return;
     }
 
+    // Parse file line-by-line
     foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+
         $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+
+        // Skip comments / invalid lines
+        if (
+            $line === '' ||
+            str_starts_with($line, '#') ||
+            !str_contains($line, '=')
+        ) {
             continue;
         }
 
         [$key, $value] = explode('=', $line, 2);
+
         $key   = trim($key);
         $value = trim($value, " \t\n\r\0\x0B\"'");
 
@@ -63,25 +75,34 @@ function skyesoftLoadEnv(): void
 
     error_log("[env-loader] Loaded .env from $envPath");
 }
-function skyesoftGetEnv(string $key): ?string
-{
+
+// Safe env var reader — checks getenv → $_ENV → $_SERVER
+function skyesoftGetEnv(string $key): ?string {
     $val = getenv($key);
     if ($val !== false && trim($val) !== '') return trim($val);
     if (!empty($_ENV[$key])) return trim($_ENV[$key]);
     if (!empty($_SERVER[$key])) return trim($_SERVER[$key]);
     return null;
 }
+
+// Load Standing Orders from codex.json (injected into all prompts) — fallback to empty JSON object
 function loadStandingOrders(): string {
-    $root = dirname(__DIR__);
+
+    $root      = dirname(__DIR__);
     $codexPath = "$root/codex/codex.json";
 
+    // Validate codex file existence
     if (!file_exists($codexPath)) {
         return "{}";
     }
 
     $codex = json_decode(file_get_contents($codexPath), true);
 
-    if (!is_array($codex) || !isset($codex["meta"]["standingOrders"])) {
+    // Validate codex structure
+    if (
+        !is_array($codex) ||
+        !isset($codex["meta"]["standingOrders"])
+    ) {
         return "{}";
     }
 
@@ -90,8 +111,9 @@ function loadStandingOrders(): string {
         JSON_UNESCAPED_SLASHES
     );
 }
-function loadSemanticIntentPrompt(): string
-{
+
+// Loads semantic intent classification prompt markdown
+function loadSemanticIntentPrompt(): string {
     $root = dirname(__DIR__);
     $path = "$root/codex/prompts/semanticIntent.prompt.md";
 
@@ -103,8 +125,9 @@ function loadSemanticIntentPrompt(): string
     error_log("[semantic-intent] PROMPT FILE LOADED: $path");
     return trim(file_get_contents($path));
 }
-function loadResponseGenerationPrompt(): string
-{
+
+// Loads final response generation prompt markdown
+function loadResponseGenerationPrompt(): string {
     $root = dirname(__DIR__);
     $path = "$root/codex/prompts/responseGeneration.prompt.md";
 
@@ -116,15 +139,24 @@ function loadResponseGenerationPrompt(): string
     error_log("[response-generation] PROMPT FILE LOADED: $path");
     return trim(file_get_contents($path));
 }
+
+// Get Codex Version
 function getCodexVersion(): string {
-    $root = dirname(__DIR__);
+
+    $root      = dirname(__DIR__);
     $codexPath = "$root/codex/codex.json";
 
+    // Validate codex file existence
     if (!file_exists($codexPath)) {
         return "pending";
     }
 
     $codex = json_decode(file_get_contents($codexPath), true);
+
+    // Validate structure before reading version
+    if (!is_array($codex)) {
+        return "pending";
+    }
 
     return (string)(
         $codex["meta"]["version"]
@@ -132,7 +164,9 @@ function getCodexVersion(): string {
         ?? "pending"
     );
 }
-function loadUnresolvedStructuralViolations() {
+
+// Load Unresolved Structural Violations from latest audit (Merkle + inventory)
+function loadUnresolvedStructuralViolations(): ?array {
 
     $auditFile = __DIR__ . '/../data/records/auditResults.json';
 
@@ -140,42 +174,65 @@ function loadUnresolvedStructuralViolations() {
         return null;
     }
 
-    $raw = file_get_contents($auditFile);
-    $json = json_decode($raw, true);
+    $json = json_decode((string)file_get_contents($auditFile), true);
 
-    if (!isset($json['violations'])) {
+    if (!is_array($json) || !isset($json['violations']) || !is_array($json['violations'])) {
         return null;
     }
 
     $summary = [
-        "merkleIntegrity" => false,
-        "repositoryInventory" => []
+        "merkleIntegrity"   => false,
+        "declaredMissing"   => [],
+        "unexpectedPresent" => []
     ];
 
     foreach ($json['violations'] as $violation) {
 
-        // Only consider unresolved violations
-        if (isset($violation['resolved']) && $violation['resolved'] !== null) {
+        // Skip resolved violations
+        if (!empty($violation['resolved'])) {
             continue;
         }
 
         $observation = $violation['observation'] ?? '';
 
-        if (strpos($observation, 'Merkle') !== false) {
-            $summary['merkleIntegrity'] = true;
+        if (!is_string($observation) || $observation === '') {
+            continue;
         }
 
-        if (strpos($observation, 'Repository inventory') !== false) {
-            $summary['repositoryInventory'][] = $observation;
+        // ---- Merkle ----
+        if (stripos($observation, 'Merkle') !== false) {
+            $summary['merkleIntegrity'] = true;
+            continue;
+        }
+
+        // ---- Inventory ----
+        if (stripos($observation, 'Repository inventory') !== false) {
+
+            // Declared but missing
+            if (preg_match("/declared (file|dir) '([^']+)' is missing/i", $observation, $m)) {
+                $summary['declaredMissing'][] = $m[2];
+                continue;
+            }
+
+            // Unexpected but present
+            if (preg_match("/unexpected (file|dir) '([^']+)' exists/i", $observation, $m)) {
+                $summary['unexpectedPresent'][] = $m[2];
+                continue;
+            }
         }
     }
 
+    // Normalize duplicates (defensive)
+    $summary['declaredMissing']   = array_values(array_unique($summary['declaredMissing']));
+    $summary['unexpectedPresent'] = array_values(array_unique($summary['unexpectedPresent']));
+
     return $summary;
 }
-function inferSalutation(string $firstName, string $lastName): ?string
-{
 
-$basePrompt = <<<PROMPT
+// Infer Salutation
+function inferSalutation(string $firstName, string $lastName): ?string {
+
+    $basePrompt = <<<PROMPT
 Given the name "{$firstName} {$lastName}", infer the most likely professional salutation for business correspondence.
 
 Respond with ONLY "Mr." or "Ms." — nothing else.
@@ -185,6 +242,7 @@ PROMPT;
 
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
+    // Validate API key
     if ($apiKey === null) {
         aiFail("OPENAI_API_KEY not available in PHP environment.");
     }
@@ -197,13 +255,17 @@ PROMPT;
 
     $response = trim($response);
 
+    // Strict response validation
     if (in_array($response, ['Mr.', 'Ms.'], true)) {
         return $response;
     }
 
     return null;
-}function loadSseSnapshot(): ?array
-{
+}
+
+// Load SSE Snapshot
+function loadSseSnapshot(): ?array {
+
     $url = "https://www.skyelighting.com/skyesoft/api/sse.php?mode=snapshot";
 
     $context = stream_context_create([
@@ -213,18 +275,23 @@ PROMPT;
     ]);
 
     $raw = @file_get_contents($url, false, $context);
+
     if (!$raw) {
         return null;
     }
 
-    // Strip "data: " prefix if present
+    // Strip optional SSE "data: " prefix
     $raw = preg_replace('/^data:\s*/', '', trim($raw));
 
     $json = json_decode($raw, true);
+
     return is_array($json) ? $json : null;
-}function extractPermitContext(array $sse): string
-{
-    $kpi = $sse["kpi"]["atAGlance"] ?? [];
+}
+
+// Extract Permit Context
+function extractPermitContext(array $sse): string {
+
+    $kpi       = $sse["kpi"]["atAGlance"] ?? [];
     $breakdown = $sse["kpi"]["statusBreakdown"] ?? [];
 
     return <<<TEXT
@@ -242,8 +309,11 @@ Status breakdown:
 
 Source: SSE snapshot (not persisted)
 TEXT;
-}function extractTimeContext(array $sse): string
-{
+}
+
+// Extracts current date/time from SSE snapshot
+function extractTimeContext(array $sse): string {
+
     $time = $sse["timeDateArray"]["currentLocalTime"] ?? null;
     $date = $sse["timeDateArray"]["currentDate"] ?? null;
 
@@ -259,23 +329,27 @@ Current system time (from SSE snapshot):
 This information is current as of the snapshot and is read-only.
 TEXT;
 }
-function appendPromptLedgerEntry(array $entry): void
-{
-    $root = dirname(__DIR__);
+
+// Append Prompt Ledger Entry (non-blocking, best-effort) — creates ledger if missing, appends entry with sequential ID, updates meta timestamp
+function appendPromptLedgerEntry(array $entry): void {
+
+    $root       = dirname(__DIR__);
     $ledgerPath = "$root/reports/promptLedger.json";
 
-    // Initialize ledger if missing
+    // Create ledger if missing
     if (!file_exists($ledgerPath)) {
+
         $initial = [
             "meta" => [
-                "objectType"     => "promptLedger",
-                "schemaVersion"  => "1.0.0",
-                "codexTier"      => 2,
-                "createdAt"      => time(),
-                "lastUpdatedAt"  => time()
+                "objectType"    => "promptLedger",
+                "schemaVersion" => "1.0.0",
+                "codexTier"     => 2,
+                "createdAt"     => time(),
+                "lastUpdatedAt" => time()
             ],
             "entries" => []
         ];
+
         file_put_contents(
             $ledgerPath,
             json_encode($initial, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
@@ -283,19 +357,17 @@ function appendPromptLedgerEntry(array $entry): void
     }
 
     $ledger = json_decode(file_get_contents($ledgerPath), true);
+
     if (!is_array($ledger) || !isset($ledger["entries"])) {
         error_log("[prompt-ledger] Invalid ledger structure");
         return;
     }
 
-    // Determine next PRL ID
     $count = count($ledger["entries"]) + 1;
-    $entry["promptId"] = sprintf("PRL-%06d", $count);
 
-    // Enforce unix timestamp
+    $entry["promptId"]        = sprintf("PRL-%06d", $count);
     $entry["createdUnixTime"] = $entry["createdUnixTime"] ?? time();
 
-    // Append (append-only)
     $ledger["entries"][] = $entry;
     $ledger["meta"]["lastUpdatedAt"] = time();
 
@@ -304,48 +376,48 @@ function appendPromptLedgerEntry(array $entry): void
         json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     );
 }
-function loadRuntimeDomainRegistryKeys(): array
-{
+
+// Load Runtome Domain Registry Keys (Authoritative list of valid domains for intent classification)
+function loadRuntimeDomainRegistryKeys(): array {
+
     $root = dirname(__DIR__);
     $path = $root . "/data/authoritative/runtimeDomainRegistry.json";
 
     if (!file_exists($path)) {
-        error_log("[runtime-domain-registry] NOT FOUND: " . $path);
+        error_log("[runtime-domain-registry] NOT FOUND: $path");
         return [];
     }
 
     $json = json_decode((string)file_get_contents($path), true);
+
     if (!is_array($json)) {
         error_log("[runtime-domain-registry] INVALID JSON");
         return [];
     }
 
     $domains = $json["domains"] ?? null;
+
     if (!is_array($domains)) {
         return [];
     }
 
-    // Keys are the domainKeys (e.g., roadmap, permits, etc.)
-    return array_values(array_filter(array_keys($domains), fn($k) => is_string($k) && $k !== ""));
+    return array_values(
+        array_filter(
+            array_keys($domains),
+            fn ($k) => is_string($k) && $k !== ""
+        )
+    );
 }
-function formatGovernanceActionLink(string $action): string
-{
+
+// Returns formatted governance/remediation action URL (or empty string)
+function formatGovernanceActionLink(string $action): string{
     $map = [
-
-        "run_inventory_builder" =>
-            "https://skyelighting.com/skyesoft/api/repositoryInventoryBuilder.php?mode=reconcile",
-
-        "run_merkle_builder" =>
-            "https://skyelighting.com/skyesoft/api/merkleBuilder.php?mode=accept",
-
-        "review_unexpected_files" =>
-            "https://skyelighting.com/skyesoft/api/violationActionResolver.php"
-
+        "run_inventory_builder"    => "https://skyelighting.com/skyesoft/api/repositoryInventoryBuilder.php?mode=reconcile",
+        "run_merkle_builder"       => "https://skyelighting.com/skyesoft/api/merkleBuilder.php?mode=accept",
+        "review_unexpected_files"  => "https://skyelighting.com/skyesoft/api/violationActionResolver.php"
     ];
 
-    return isset($map[$action])
-        ? "  → " . $map[$action] . "\n"
-        : "";
+    return $map[$action] ?? '';
 }
 
 #endregion
