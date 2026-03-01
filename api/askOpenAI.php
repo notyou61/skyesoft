@@ -504,36 +504,35 @@ function buildGovernanceSurface(?array $summary): string {
 function buildGovernanceResponse(): string {
 
     $summary = loadUnresolvedStructuralViolations();
-
     $surface = buildGovernanceSurface($summary);
 
     if ($summary === null) {
         return "<div class='gov-box'>{$surface}</div>";
     }
 
-    $hasMerkle       = $summary['merkleIntegrity'] ?? false;
-    $hasInventory    = !empty($summary['declaredMissing']) || !empty($summary['unexpectedPresent']);
+    $hasMerkle    = $summary['merkleIntegrity'] ?? false;
+    $hasInventory = !empty($summary['declaredMissing']) || !empty($summary['unexpectedPresent']);
 
     $actions = [];
 
     if ($hasMerkle) {
         $actions[] = [
-            "label" => "Accept New Merkle Snapshot",
-            "url"   => formatGovernanceActionLink("run_merkle_builder")
+            "label"  => "Accept New Merkle Snapshot",
+            "action" => "accept_merkle"
         ];
     }
 
     if ($hasInventory) {
         $actions[] = [
-            "label" => "Reconcile Repository Inventory",
-            "url"   => formatGovernanceActionLink("run_inventory_builder")
+            "label"  => "Reconcile Repository Inventory",
+            "action" => "reconcile_inventory"
         ];
     }
 
     if (!empty($summary['unexpectedPresent'])) {
         $actions[] = [
-            "label" => "Review Unexpected Files",
-            "url"   => formatGovernanceActionLink("review_unexpected_files")
+            "label"  => "Review Unexpected Files",
+            "action" => "review_unexpected"
         ];
     }
 
@@ -545,9 +544,11 @@ function buildGovernanceResponse(): string {
         $html .= "<h3>Remediation Options</h3>";
 
         foreach ($actions as $action) {
-            $html .= "<a class='gov-btn' href='{$action['url']}' target='_blank'>";
+            $html .= "<button type='button' class='gov-btn' data-action='"
+                  . htmlspecialchars($action['action'])
+                  . "'>";
             $html .= htmlspecialchars($action['label']);
-            $html .= "</a>";
+            $html .= "</button>";
         }
 
         $html .= "</div>";
