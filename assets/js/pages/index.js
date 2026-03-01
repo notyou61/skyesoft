@@ -701,7 +701,35 @@ window.SkyIndex = {
 
     // #region 🧠 Command Router
     handleCommand(text) {
+
         this.appendSystemLine(`> ${text}`);
+
+        const normalized = text.trim().toLowerCase();
+
+        // ───────────────────────────────────────────────
+        // Native Terminal Commands (Immediate)
+        // ───────────────────────────────────────────────
+        const nativeCommands = {
+            cls: 'clear_screen',
+            clear: 'clear_screen',
+            reset: 'clear_screen',
+            logout: 'logout',
+            exit: 'logout'
+        };
+
+        if (nativeCommands[normalized]) {
+            const action = nativeCommands[normalized];
+            const handler = this.uiActionRegistry?.[action];
+
+            if (typeof handler === 'function') {
+                handler();
+                return;
+            }
+        }
+
+        // ───────────────────────────────────────────────
+        // Otherwise defer to AI
+        // ───────────────────────────────────────────────
         this.executeAICommand(text);
     },
     // #endregion
@@ -723,11 +751,24 @@ window.SkyIndex = {
             // UI Action (authoritative)
             // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
-                const handler = this.uiActionRegistry?.[data.action];
+
+                // Normalize aliases
+                const actionMap = {
+                    cls: 'clear_screen',
+                    clear: 'clear_screen',
+                    reset: 'clear_screen'
+                };
+
+                const canonicalAction =
+                    actionMap[data.action] ?? data.action;
+
+                const handler = this.uiActionRegistry?.[canonicalAction];
+
                 if (typeof handler === 'function') {
                     handler();
                     return;
                 }
+
                 this.appendSystemLine('⚠ Unhandled UI action.');
                 return;
             }
