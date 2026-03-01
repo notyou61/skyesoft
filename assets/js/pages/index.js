@@ -332,11 +332,27 @@ window.SkyIndex = {
                     throw new Error(data?.message || 'Merkle builder did not return success.');
                 }
 
-                const root = data.root ? String(data.root) : '(missing root)';
-                const leaves = Number.isFinite(data.leaves) ? data.leaves : '(unknown)';
+                const governedRoot = data.governedRoot
+                    ? String(data.governedRoot)
+                    : '(missing governed root)';
 
-                SkyIndex.appendSystemLine(`✅ Merkle snapshot accepted. Root: ${root}`);
+                const treeRoot = data.treeRoot
+                    ? String(data.treeRoot)
+                    : '(missing tree root)';
+
+                const leaves = Number.isFinite(data.leaves)
+                    ? data.leaves
+                    : '(unknown)';
+
+                const fixed = Number.isFinite(data.violationsFixed)
+                    ? data.violationsFixed
+                    : 0;
+
+                SkyIndex.appendSystemLine(`✅ Merkle snapshot accepted.`);
+                SkyIndex.appendSystemLine(`🔐 Governed Root: ${governedRoot}`);
+                SkyIndex.appendSystemLine(`🌳 Tree Root: ${treeRoot}`);
                 SkyIndex.appendSystemLine(`ℹ Leaves: ${leaves}`);
+                SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
 
                 // Optional: force governance refresh (if you have a function for it)
                 // SkyIndex.executeAICommand('what are the violations?');
