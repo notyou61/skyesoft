@@ -830,9 +830,6 @@ PROMPT;
 
 #region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
 
-// ------------------------------------------------------
-// SKYEBOT — Conversational / Informational Responses
-// ------------------------------------------------------
 if ($type === "skyebot") {
 
     $query = $_GET["userQuery"] ?? ($argv[3] ?? null);
@@ -840,8 +837,13 @@ if ($type === "skyebot") {
         aiFail("userQuery required for skyebot mode.");
     }
 
+    // Defaults (centralized output model)
+    $role = "askOpenAI";
+    $narrativeGenerated = false;
+    $reportPath = null;
+
     // ─────────────────────────────────────────────
-    // 1. Load Runtime Domain Registry (Authoritative)
+    // 1. Load Runtime Domain Registry
     // ─────────────────────────────────────────────
 
     $streamedDomains = loadRuntimeDomainRegistryKeys();
@@ -850,7 +852,7 @@ if ($type === "skyebot") {
         : "none";
 
     // ─────────────────────────────────────────────
-    // 2. Semantic Intent (Advisory Only)
+    // 2. Semantic Intent
     // ─────────────────────────────────────────────
 
     $intentPrompt = <<<PROMPT
@@ -859,7 +861,7 @@ Analyze the following user input and return semantic intent metadata only.
 Canonical domain intent grammar is allowed ONLY if the domain is in this allowed list:
 {$allowedDomainsList}
 
-If the user request maps to a domain NOT in the allowed list, return a non-domain intent (e.g., "general_query" or "uncertain") instead.
+If the user request maps to a domain NOT in the allowed list, return a non-domain intent.
 
 User Input:
 {$query}
@@ -875,11 +877,7 @@ PROMPT;
                 "required" => ["intent", "confidence", "reasoning"],
                 "properties" => [
                     "intent" => ["type" => "string"],
-                    "confidence" => [
-                        "type" => "number",
-                        "minimum" => 0,
-                        "maximum" => 1
-                    ],
+                    "confidence" => ["type" => "number"],
                     "reasoning" => ["type" => "string"]
                 ]
             ]
@@ -897,76 +895,57 @@ PROMPT;
 
     if (!is_array($intentMeta)) {
         $intentMeta = [
-            "intent"     => "uncertain",
-            "confidence" => 0.0,
-            "reasoning"  => "Intent classification failed."
+            "intent" => "uncertain",
+            "confidence" => 0.0
         ];
     }
 
     $intent     = $intentMeta["intent"] ?? "unknown";
     $confidence = (float)($intentMeta["confidence"] ?? 0.0);
 
-    error_log("[skyebot:intent] " . json_encode([
-        "query"      => substr($query, 0, 100),
-        "intent"     => $intent,
-        "confidence" => $confidence
-    ], JSON_UNESCAPED_SLASHES));
-
     // ─────────────────────────────────────────────
-    // 3. UI ACTIONS (Authoritative Commands)
+    // 3. UI ACTIONS
     // ─────────────────────────────────────────────
 
     if ($intent === "ui_clear" && $confidence >= 0.80) {
-        echo json_encode([
-            "success" => true,
-            "role"    => "askOpenAI",
-            "type"    => "ui_action",
-            "action"  => "clear_screen"
-        ], JSON_UNESCAPED_SLASHES);
-        exit;
+        $type = "ui_action";
+        $response = "clear_screen";
+        goto SKY_OUTPUT;
     }
 
     if ($intent === "ui_logout" && $confidence >= 0.90) {
-        echo json_encode([
-            "success" => true,
-            "role"    => "askOpenAI",
-            "type"    => "ui_action",
-            "action"  => "logout"
-        ], JSON_UNESCAPED_SLASHES);
-        exit;
+        $type = "ui_action";
+        $response = "logout";
+        goto SKY_OUTPUT;
     }
 
     // ─────────────────────────────────────────────
-    // 4. DOMAIN SHORT-CIRCUIT (Registry-Driven)
+    // 4. DOMAIN SHORT-CIRCUIT
     // ─────────────────────────────────────────────
-
-    $intentPattern = '/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/';
 
     if (
         $confidence >= 0.70 &&
-        preg_match($intentPattern, $intent, $matches)
+        preg_match('/^([a-z]+)_(inquiry|repair_request|execute|amendment_request)$/', $intent, $m)
     ) {
 
-        $domainKey = $matches[1];
-        $mode      = $matches[2];
+        $domainKey = $m[1];
+        $mode      = $m[2];
 
         if (in_array($domainKey, $streamedDomains, true)) {
 
-            echo json_encode([
-                "success"    => true,
-                "role"       => "askOpenAI",
-                "type"       => "domain_intent",
+            $type = "domain_intent";
+            $response = json_encode([
                 "domain"     => $domainKey,
                 "mode"       => $mode,
                 "confidence" => $confidence
             ], JSON_UNESCAPED_SLASHES);
 
-            exit;
+            goto SKY_OUTPUT;
         }
     }
 
     // ─────────────────────────────────────────────
-    // 5. GOVERNANCE SHORT-CIRCUIT (Deterministic)
+    // 5. GOVERNANCE SHORT-CIRCUIT
     // ─────────────────────────────────────────────
 
     $lowerQuery = strtolower($query);
@@ -977,20 +956,15 @@ PROMPT;
         str_contains($lowerQuery, "structural")
     ) {
 
-        $governanceHtml = buildGovernanceResponse();
+        $role = "governance";
+        $type = "structural_state";
+        $response = buildGovernanceResponse();
 
-        echo json_encode([
-            "success" => true,
-            "role"    => "governance",
-            "type"    => "structural_state",
-            "response"=> $governanceHtml
-        ], JSON_UNESCAPED_SLASHES);
-
-        exit;
+        goto SKY_OUTPUT;
     }
 
     // ─────────────────────────────────────────────
-    // 6. Conversational / Informational Fallback
+    // 6. Conversational Fallback
     // ─────────────────────────────────────────────
 
     $sseSnapshot = loadSseSnapshot();
@@ -1019,92 +993,76 @@ PROMPT;
         $apiKey
     );
 
-    echo json_encode([
-        "success" => true,
-        "role"    => "askOpenAI",
-        "type"    => "skyebot",
-        "response"=> $response
-    ], JSON_UNESCAPED_SLASHES);
-}
+    $type = "skyebot";
 
+    SKY_OUTPUT:
+}
 #endregion
 
 #region SECTION 8 — Output
 
-// Log raw response for debugging
-error_log('ASK_OPENAI RESPONSE RAW: ' . var_export($response, true));
-
-// Fallback for empty responses
-if (!isset($response) || trim($response) === '') {
+// Ensure response exists
+if (!isset($response) || trim((string)$response) === '') {
     $response = "⚠ AI returned no usable response.";
 }
 
-// ────────────────────────────────────────────────────────────────
-// Prompt Ledger — append factual record (non-authoritative)
-// ────────────────────────────────────────────────────────────────
+// Safe logging only
+error_log('ASK_OPENAI RESPONSE RAW: ' . substr((string)$response, 0, 500));
 
-if (isset($query)) {
+// ─────────────────────────────────────────────
+// Prompt Ledger (Non-blocking)
+// ─────────────────────────────────────────────
+
+if (isset($query) && isset($response)) {
     try {
 
-        // Load ledger to determine next sequential ID
         $root = dirname(__DIR__);
         $ledgerPath = $root . "/data/authoritative/promptLedger.json";
-        $ledgerData = json_decode(file_get_contents($ledgerPath), true);
 
-        $nextNumber = is_array($ledgerData["entries"] ?? null)
-            ? count($ledgerData["entries"]) + 1
-            : 1;
+        if (file_exists($ledgerPath)) {
+            $ledgerData = json_decode(file_get_contents($ledgerPath), true);
 
-        $promptId = sprintf("PRL-%06d", $nextNumber);
+            if (is_array($ledgerData) && isset($ledgerData["entries"])) {
 
-        $ledgerEntry = [
-            "promptId"         => $promptId,
-            "userId"           => 1, // placeholder until auth system is live
-            "promptText"       => $query ?? null,
-            "responseText"     => trim($response),
-            "intent"           => $intentMeta["intent"] ?? "unknown",
-            "intentConfidence" => $intentMeta["confidence"] ?? null,
-            "sseUsed"          => !empty($contextBlocks),
-            "sseKeys"          => array_keys($contextBlocks ?? []),
-            "createdUnixTime"  => time()
-        ];
+                $nextNumber = count($ledgerData["entries"]) + 1;
 
-        // Append entry
-        $ledgerData["entries"][] = $ledgerEntry;
+                $ledgerData["entries"][] = [
+                    "promptId"         => sprintf("PRL-%06d", $nextNumber),
+                    "userId"           => 1,
+                    "promptText"       => $query,
+                    "responseText"     => trim($response),
+                    "intent"           => $intent ?? "unknown",
+                    "intentConfidence" => $confidence ?? null,
+                    "createdUnixTime"  => time()
+                ];
 
-        // Update meta timestamp
-        $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
+                $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
 
-        // Write back to disk (authoritative write)
-        $result = file_put_contents(
-            $ledgerPath,
-            json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
-
-        if ($result === false) {
-            throw new RuntimeException("Failed to write promptLedger.json");
+                file_put_contents(
+                    $ledgerPath,
+                    json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+                );
+            }
         }
 
     } catch (Throwable $e) {
-        // Ledger failure must NEVER block response
         error_log("[prompt-ledger] append failed: " . $e->getMessage());
     }
 }
 
-// ────────────────────────────────────────────────────────────────
-// Final output
-// ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Final JSON Output (Single Authority)
+// ─────────────────────────────────────────────
 
 echo json_encode([
-    "success"             => true,
-    "role"                => "askOpenAI",
-    "type"                => $type,
-    "narrativeGenerated"  => $narrativeGenerated,
-    "response"            => trim($response),
-    "reportUpdated"       => $narrativeGenerated ? $reportPath : null
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    "success"            => true,
+    "role"               => $role ?? "askOpenAI",
+    "type"               => $type ?? "skyebot",
+    "narrativeGenerated" => $narrativeGenerated ?? false,
+    "response"           => trim((string)$response),
+    "reportUpdated"      => $reportPath ?? null
+], JSON_UNESCAPED_SLASHES);
 
-// Exit
 exit;
 
 #endregion
