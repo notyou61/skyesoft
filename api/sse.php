@@ -3,16 +3,32 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — sse.php
-//  Version: 1.2.0
-//  Last Updated: 2026-02-02
-//  Codex Tier: 4 — SSE Engine
+//  Version: 1.2.1
+//  Last Updated: 2026-03-01
+//  Codex Tier: 4 — SSE Engine / Real-Time Projection
 //
+//  Role:
+//  Authoritative real-time stream endpoint for Skyesoft UI.
 //  Modes:
-//   • Default: Continuous 1 Hz SSE stream
+//   • Default: Continuous SSE stream (1 Hz) of getDynamicData() payload
 //   • ?mode=snapshot : One-time JSON snapshot and exit
 //
-//  SINGLE SOURCE OF TRUTH:
-//   getDynamicData.php MUST return $payload (array)
+//  Inputs:
+//   • GET: mode (optional)
+//   • Dependency: getDynamicData.php (MUST return array $payload)
+//
+//  Outputs:
+//   • SSE: text/event-stream (streaming mode)
+//   • JSON: application/json (snapshot mode)
+//
+//  Forbidden:
+//   • No compression (gzip/br) on SSE responses
+//   • No buffering that delays SSE delivery
+//   • No early output before headers in streaming mode
+//
+//  Notes:
+//   • SSE is sensitive to proxy/CDN transforms; prefer no-transform caching.
+//   • Keepalive pings are recommended to prevent upstream timeouts.
 // ======================================================================
 
 #region SECTION 0 — Mode Detection

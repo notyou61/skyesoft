@@ -310,7 +310,7 @@ window.SkyIndex = {
             SkyIndex.appendSystemLine('Processing Merkle acceptance…');
 
             try {
-                const res = await fetch('/skyesoft/api/merkleBuilder.php?mode=accept');
+                const res = await fetch('/skyesoft/scripts/merkleBuilder.php?mode=accept');
                 const data = await res.json();
 
                 SkyIndex.appendSystemLine(data.message || 'Merkle snapshot accepted.');
