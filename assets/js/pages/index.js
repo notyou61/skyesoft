@@ -363,10 +363,51 @@ window.SkyIndex = {
                 SkyIndex.appendSystemLine(`❌ Merkle acceptance failed: ${err.message}`);
             }
         },
-
+        // Reconciling Inventory 
         reconcile_inventory: async () => {
-            SkyIndex.appendSystemLine('Reconciling inventory…');
-            // implement API call here
+
+            SkyIndex.appendSystemLine('Reconciling repository inventory...');
+
+            try {
+
+                const res = await fetch(
+                    '/skyesoft/scripts/repositoryInventoryBuilder.php?mode=reconcile'
+                );
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`HTTP ${res.status} — ${text.slice(0,200)}`);
+                }
+
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                const text = await res.text();
+
+                if (!contentType.includes('application/json')) {
+                    throw new Error(`Non-JSON response — ${text.slice(0,200)}`);
+                }
+
+                const data = JSON.parse(text);
+
+                if (!data?.success) {
+                    throw new Error(data?.message || 'Inventory reconciliation failed.');
+                }
+
+                const count = Number.isFinite(data.filesIndexed)
+                    ? data.filesIndexed
+                    : '(unknown)';
+
+                const fixed = Number.isFinite(data.violationsFixed)
+                    ? data.violationsFixed
+                    : 0;
+
+                SkyIndex.appendSystemLine(`✅ Repository inventory rebuilt.`);
+                SkyIndex.appendSystemLine(`📦 Files Indexed: ${count}`);
+                SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
+
+            } catch (err) {
+                console.error(err);
+                SkyIndex.appendSystemLine(`❌ Inventory reconciliation failed: ${err.message}`);
+            }
         },
 
         review_unexpected: async () => {

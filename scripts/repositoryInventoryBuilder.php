@@ -17,15 +17,22 @@ declare(strict_types=1);
 //   • NO Codex mutation
 // ======================================================================
 
+#region SECTION 0 — MODE DETECTION
+
 ini_set('display_errors', '0');
 error_reporting(0);
+$mode = $_GET['mode'] ?? 'declare';
+$isWeb = php_sapi_name() !== 'cli';
+
+#endregion SECTION I
+
+#region SECTION I — CONFIGURATION
 
 // Ensure clean, pipe-safe output
 while (ob_get_level()) {
     ob_end_clean();
 }
 
-#region SECTION I — CONFIGURATION
 $repoRoot   = realpath(__DIR__ . '/..');
 $outputPath = $repoRoot . '/data/records/repositoryInventory.json';
 
@@ -226,8 +233,68 @@ file_put_contents(
 rename($tmpPath, $outputPath);
 
 // Human-readable confirmation only
-fwrite(STDOUT, "✔ Repository inventory declared successfully\n");
-fwrite(STDOUT, "• Items indexed: " . count($items) . "\n");
-fwrite(STDOUT, "• Output: /data/records/repositoryInventory.json\n");
+if (!$isWeb) {
+    fwrite(STDOUT, "✔ Repository inventory declared successfully\n");
+    fwrite(STDOUT, "• Items indexed: " . count($items) . "\n");
+    fwrite(STDOUT, "• Output: /data/records/repositoryInventory.json\n");
+}
 
 #endregion SECTION V
+
+#region SECTION VI — GOVERNANCE RECONCILIATION (WEB MODE ONLY)
+
+if ($mode === 'reconcile') {
+
+    $auditPath = $repoRoot . '/data/records/auditResults.json';
+    $violationsFixed = 0;
+
+    if (file_exists($auditPath)) {
+
+        $audit = json_decode(file_get_contents($auditPath), true);
+
+        if (isset($audit['violations']) && is_array($audit['violations'])) {
+
+            // Build fresh declared path set
+            $declaredPaths = array_column($items, 'path');
+            $declaredSet = array_flip($declaredPaths);
+
+            $audit['violations'] = array_values(array_filter(
+                $audit['violations'],
+                function ($v) use (&$violationsFixed, $declaredSet) {
+
+                    if (($v['ruleId'] ?? '') !== 'repositoryInventory') {
+                        return true;
+                    }
+
+                    $path = $v['path'] ?? null;
+
+                    // If violation path now exists in declared set, remove it
+                    if ($path && isset($declaredSet[$path])) {
+                        $violationsFixed++;
+                        return false;
+                    }
+
+                    // Otherwise keep violation
+                    return true;
+                }
+            ));
+
+            file_put_contents(
+                $auditPath,
+                json_encode($audit, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            );
+        }
+    }
+
+    if ($isWeb) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'filesIndexed' => $fileCount,
+            'violationsFixed' => $violationsFixed
+        ]);
+        exit;
+    }
+}
+
+#endregion SECTION VI
