@@ -138,18 +138,54 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🛠️ Command Output Helpers
+
+    // Appends a simple text line to the command output
     appendSystemLine(text) {
+
+        // Init output host
         if (!this.cardHost) return;
         const output = this.cardHost.querySelector('.commandOutput');
         if (!output) return;
 
+        const safeText = (text === null || text === undefined)
+            ? ''
+            : String(text);
+
         const line = document.createElement('p');
         line.className = 'commandLine system';
-        line.textContent = text;
+        line.textContent = safeText;
 
         output.appendChild(line);
         output.scrollTop = output.scrollHeight;
     },
+
+    // Appends trusted HTML (governance surface only)
+    appendSystemHtml(html) {
+
+        // Init output host
+        if (!this.cardHost) return;
+        const output = this.cardHost.querySelector('.commandOutput');
+        if (!output) return;
+
+        const safeHtml = (html === null || html === undefined)
+            ? ''
+            : String(html);
+
+        // Optional safety guard (render only known governance wrapper)
+        const isGovernanceHtml = safeHtml.includes('gov-box');
+        if (!isGovernanceHtml) {
+            this.appendSystemLine(safeHtml);
+            return;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'commandLine system html';
+        wrap.innerHTML = safeHtml; // Trusted server-generated HTML only
+
+        output.appendChild(wrap);
+        output.scrollTop = output.scrollHeight;
+    },
+
     // #endregion
 
     // #region 📦 Registry Loaders
@@ -599,7 +635,19 @@ window.SkyIndex = {
             // Text Response (Conversational fallback)
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
-                this.appendSystemLine(data.response);
+
+                // Detect HTML-style governance payloads
+                const varLooksLikeHtml =
+                    data.response.includes('<div') ||
+                    data.response.includes('<a ') ||
+                    data.response.includes('<button');
+
+                if (varLooksLikeHtml) {
+                    this.appendSystemHtml(data.response);
+                } else {
+                    this.appendSystemLine(data.response);
+                }
+
                 return;
             }
 
