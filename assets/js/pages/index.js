@@ -302,6 +302,33 @@ window.SkyIndex = {
         logout() {
             SkyIndex.appendSystemLine('Logging out…');
             setTimeout(() => SkyIndex.logout('ui_action'), 300);
+        },
+
+        // 🛡 Governance Actions
+        accept_merkle: async () => {
+
+            SkyIndex.appendSystemLine('Processing Merkle acceptance…');
+
+            try {
+                const res = await fetch('/skyesoft/api/merkleBuilder.php?mode=accept');
+                const data = await res.json();
+
+                SkyIndex.appendSystemLine(data.message || 'Merkle snapshot accepted.');
+
+            } catch (err) {
+                console.error(err);
+                SkyIndex.appendSystemLine('❌ Failed to accept snapshot.');
+            }
+        },
+
+        reconcile_inventory: async () => {
+            SkyIndex.appendSystemLine('Reconciling inventory…');
+            // implement API call here
+        },
+
+        review_unexpected: async () => {
+            SkyIndex.appendSystemLine('Reviewing unexpected files…');
+            // implement API call here
         }
     },
     // #endregion
@@ -355,7 +382,7 @@ window.SkyIndex = {
             this.renderLoginCard();
         }
 
-        // Node update events
+        // #region 🧩 Outline CRUD Events
         document.addEventListener('outline:update', (e) => {
             const { nodeId, nodeType } = e.detail;
             console.log('[SkyIndex] Update requested:', nodeId, nodeType);
@@ -367,6 +394,7 @@ window.SkyIndex = {
             console.log('[SkyIndex] Delete requested:', nodeId, nodeType);
             this.openEditModal(nodeId, nodeType, 'delete');
         });
+        // #endregion
 
         // #region 👁 Inline Actions Toggle (Delegated)
         document.addEventListener('click', (e) => {
@@ -388,6 +416,33 @@ window.SkyIndex = {
 
             if (!isOpen) {
                 node.classList.add('showActions');
+            }
+
+        });
+        // #endregion
+
+        // #region 🛡 Governance Button Delegation (Dynamic .gov-box)
+        document.addEventListener('click', (e) => {
+
+            const btn = e.target.closest('.gov-box button');
+            if (!btn) return;
+
+            e.preventDefault(); // prevent accidental form/nav behavior
+
+            const action = btn.dataset.action;
+            if (!action) {
+                console.warn('[SkyIndex] Governance button missing data-action');
+                return;
+            }
+
+            console.log('[SkyIndex] Governance action:', action);
+
+            const handler = this.uiActionRegistry?.[action];
+
+            if (typeof handler === 'function') {
+                handler();
+            } else {
+                console.warn('[SkyIndex] No handler registered for:', action);
             }
 
         });
