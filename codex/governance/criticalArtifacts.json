@@ -28,6 +28,10 @@
       {
         "path": "/api/askOpenAI.php",
         "reason": "Governed AI decision and response surface used for Codex-aligned actions"
+      },
+      {
+        "path": "/data/records/auditResults.json",
+        "reason": "Canonical governance violation ledger"
       }
   ]
 }
