@@ -307,17 +307,44 @@ window.SkyIndex = {
         // 🛡 Governance Actions
         accept_merkle: async () => {
 
-            SkyIndex.appendSystemLine('Processing Merkle acceptance…');
+            SkyIndex.appendSystemLine('Processing Merkle acceptance...');
 
             try {
-                const res = await fetch('/skyesoft/scripts/merkleBuilder.php?mode=accept');
-                const data = await res.json();
 
-                SkyIndex.appendSystemLine(data.message || 'Merkle snapshot accepted.');
+                // IMPORTANT: use the correct path where the file exists
+                const res = await fetch('/skyesoft/scripts/merkleBuilder.php?mode=accept');
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+                }
+
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                const text = await res.text();
+
+                if (!contentType.includes('application/json')) {
+                    throw new Error(`Non-JSON response — ${text.slice(0, 200)}`);
+                }
+
+                const data = JSON.parse(text);
+
+                if (!data || data.success !== true) {
+                    throw new Error(data?.message || 'Merkle builder did not return success.');
+                }
+
+                const root = data.root ? String(data.root) : '(missing root)';
+                const leaves = Number.isFinite(data.leaves) ? data.leaves : '(unknown)';
+
+                SkyIndex.appendSystemLine(`✅ Merkle snapshot accepted. Root: ${root}`);
+                SkyIndex.appendSystemLine(`ℹ Leaves: ${leaves}`);
+
+                // Optional: force governance refresh (if you have a function for it)
+                // SkyIndex.executeAICommand('what are the violations?');
 
             } catch (err) {
+
                 console.error(err);
-                SkyIndex.appendSystemLine('❌ Failed to accept snapshot.');
+                SkyIndex.appendSystemLine(`❌ Merkle acceptance failed: ${err.message}`);
             }
         },
 
