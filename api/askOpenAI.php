@@ -420,6 +420,144 @@ function formatGovernanceActionLink(string $action): string{
     return $map[$action] ?? '';
 }
 
+// Build Governance Surface Summary (for AI injection and developer visibility) based on unresolved structural violations — includes Merkle integrity status, inventory deviation details, and actionable next steps for developers.
+function buildGovernanceSurface(?array $summary): string {
+
+    if ($summary === null) {
+        return "🧭 Structural State\n\nNo audit data available.";
+    }
+
+    $hasMerkle      = $summary['merkleIntegrity'] ?? false;
+    $declaredMissing = $summary['declaredMissing'] ?? [];
+    $unexpected      = $summary['unexpectedPresent'] ?? [];
+
+    $intentional = [];
+    $runtime     = [];
+
+    foreach ($unexpected as $path) {
+        if (
+            str_starts_with($path, '/data/runtimeEphemeral') ||
+            str_starts_with($path, '/scripts/') ||
+            str_starts_with($path, '/tools/')
+        ) {
+            $runtime[] = $path;
+        } else {
+            $intentional[] = $path;
+        }
+    }
+
+    // If everything is clean
+    if (!$hasMerkle && empty($declaredMissing) && empty($intentional) && empty($runtime)) {
+        return "🧭 Structural State\n\nNo structural deviations detected.\n\nAll integrity domains are verified.";
+    }
+
+    $output  = "🧭 Current Structural State\n\n";
+
+    // --------------------------------------------------
+    // Merkle Section (only if violated)
+    // --------------------------------------------------
+    if ($hasMerkle) {
+        $output .= "1️⃣ Merkle Deviation\n\n";
+        $output .= "Status: Baseline Mismatch\n\n";
+        $output .= "The current Codex state does not match the last accepted Merkle snapshot.\n\n";
+        $output .= "The governed structural baseline has changed and requires developer confirmation.\n\n";
+    }
+
+    // --------------------------------------------------
+    // Inventory Section (only if anything exists)
+    // --------------------------------------------------
+    if (!empty($declaredMissing) || !empty($intentional) || !empty($runtime)) {
+
+        $output .= "2️⃣ Repository Inventory Deviations\n\n";
+
+        // A) Declared but Missing
+        if (!empty($declaredMissing)) {
+            $output .= "A) Declared but Missing\n\n";
+            foreach ($declaredMissing as $path) {
+                $output .= "{$path}\n";
+            }
+            $output .= "\nThese items are defined as canonical but are not currently present.\n\n";
+        }
+
+        // B) Intentional
+        if (!empty($intentional)) {
+            $output .= "B) Unexpected but Present (Intentional Structure)\n\n";
+            foreach ($intentional as $path) {
+                $output .= "{$path}\n";
+            }
+            $output .= "\nThese appear to be intentional structural additions and likely require inventory reconciliation.\n\n";
+        }
+
+        // C) Runtime
+        if (!empty($runtime)) {
+            $output .= "C) Unexpected but Present (Runtime / Development Artifacts)\n\n";
+            foreach ($runtime as $path) {
+                $output .= "{$path}\n";
+            }
+            $output .= "\nThese may require exclusion rules rather than reconciliation.\n\n";
+        }
+    }
+
+    return trim($output);
+}
+// Build Governance Response HTML (for AI injection and developer visibility) based on unresolved structural violations — includes Merkle integrity status, inventory deviation details, and actionable next steps for developers with direct links to remediation actions.
+function buildGovernanceResponse(): string {
+
+    $summary = loadUnresolvedStructuralViolations();
+
+    $surface = buildGovernanceSurface($summary);
+
+    if ($summary === null) {
+        return "<div class='gov-box'>{$surface}</div>";
+    }
+
+    $hasMerkle       = $summary['merkleIntegrity'] ?? false;
+    $hasInventory    = !empty($summary['declaredMissing']) || !empty($summary['unexpectedPresent']);
+
+    $actions = [];
+
+    if ($hasMerkle) {
+        $actions[] = [
+            "label" => "Accept New Merkle Snapshot",
+            "url"   => formatGovernanceActionLink("run_merkle_builder")
+        ];
+    }
+
+    if ($hasInventory) {
+        $actions[] = [
+            "label" => "Reconcile Repository Inventory",
+            "url"   => formatGovernanceActionLink("run_inventory_builder")
+        ];
+    }
+
+    if (!empty($summary['unexpectedPresent'])) {
+        $actions[] = [
+            "label" => "Review Unexpected Files",
+            "url"   => formatGovernanceActionLink("review_unexpected_files")
+        ];
+    }
+
+    $html  = "<div class='gov-box'>";
+    $html .= "<pre>" . htmlspecialchars($surface) . "</pre>";
+
+    if (!empty($actions)) {
+        $html .= "<div class='gov-actions'>";
+        $html .= "<h3>Remediation Options</h3>";
+
+        foreach ($actions as $action) {
+            $html .= "<a class='gov-btn' href='{$action['url']}' target='_blank'>";
+            $html .= htmlspecialchars($action['label']);
+            $html .= "</a>";
+        }
+
+        $html .= "</div>";
+    }
+
+    $html .= "</div>";
+
+    return $html;
+}
+
 #endregion
 
 #region SECTION 2 — Standing Orders Injection
@@ -761,7 +899,7 @@ PROMPT;
         $intentMeta = [
             "intent"     => "uncertain",
             "confidence" => 0.0,
-            "reasoning"  => "Intent classification failed or invalid response."
+            "reasoning"  => "Intent classification failed."
         ];
     }
 
@@ -778,10 +916,7 @@ PROMPT;
     // 3. UI ACTIONS (Authoritative Commands)
     // ─────────────────────────────────────────────
 
-    $uiClearThreshold  = 0.80;
-    $uiLogoutThreshold = 0.90;
-
-    if ($intent === "ui_clear" && $confidence >= $uiClearThreshold) {
+    if ($intent === "ui_clear" && $confidence >= 0.80) {
         echo json_encode([
             "success" => true,
             "role"    => "askOpenAI",
@@ -791,7 +926,7 @@ PROMPT;
         exit;
     }
 
-    if ($intent === "ui_logout" && $confidence >= $uiLogoutThreshold) {
+    if ($intent === "ui_logout" && $confidence >= 0.90) {
         echo json_encode([
             "success" => true,
             "role"    => "askOpenAI",
@@ -811,6 +946,7 @@ PROMPT;
         $confidence >= 0.70 &&
         preg_match($intentPattern, $intent, $matches)
     ) {
+
         $domainKey = $matches[1];
         $mode      = $matches[2];
 
@@ -826,163 +962,69 @@ PROMPT;
             ], JSON_UNESCAPED_SLASHES);
 
             exit;
-
-        } else {
-
-            // Helpful debug visibility
-            error_log("[skyebot:domain-rejected] " . json_encode([
-                "domain" => $domainKey,
-                "allowed" => $streamedDomains
-            ], JSON_UNESCAPED_SLASHES));
         }
     }
 
     // ─────────────────────────────────────────────
-    // 5. Conversational / Informational Fallback
+    // 5. GOVERNANCE SHORT-CIRCUIT (Deterministic)
+    // ─────────────────────────────────────────────
+
+    $lowerQuery = strtolower($query);
+
+    if (
+        str_contains($lowerQuery, "deviation") ||
+        str_contains($lowerQuery, "violation") ||
+        str_contains($lowerQuery, "structural")
+    ) {
+
+        $governanceHtml = buildGovernanceResponse();
+
+        echo json_encode([
+            "success" => true,
+            "role"    => "governance",
+            "type"    => "structural_state",
+            "response"=> $governanceHtml
+        ], JSON_UNESCAPED_SLASHES);
+
+        exit;
+    }
+
+    // ─────────────────────────────────────────────
+    // 6. Conversational / Informational Fallback
     // ─────────────────────────────────────────────
 
     $sseSnapshot = loadSseSnapshot();
 
     $authoritativeContext = $sseSnapshot
         ? json_encode($sseSnapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        : "No authoritative context is available.";
+        : "No authoritative context available.";
 
     $responsePrompt = loadResponseGenerationPrompt();
     if ($responsePrompt === "") {
         aiFail("Response generation prompt not available.");
     }
 
-    // ------------------------------------------------------
-    // GOVERNANCE CONTEXT INJECTION (Explanation + Developer Options)
-    // ------------------------------------------------------
+    $basePrompt = <<<PROMPT
+{$responsePrompt}
 
-    $augmentedUserInput = $query;
-    $lowerQuery = strtolower($query);
+Authoritative Context (read-only):
+{$authoritativeContext}
 
-    $governanceContext = null;
+User Input:
+{$query}
+PROMPT;
 
-    if (
-        strpos($lowerQuery, "deviation") !== false ||
-        strpos($lowerQuery, "violation") !== false ||
-        strpos($lowerQuery, "resolve") !== false ||
-        strpos($lowerQuery, "structural") !== false
-    ) {
+    $response = callOpenAI(
+        injectStandingOrders($basePrompt),
+        $apiKey
+    );
 
-        $violationSummary = loadUnresolvedStructuralViolations();
-
-        if (is_array($violationSummary)) {
-
-            // Init state flags
-            $hasMerkle    = $violationSummary["merkleIntegrity"] ?? false;
-            $hasInventory = !empty($violationSummary["repositoryInventory"]);
-
-            if ($hasMerkle || $hasInventory) {
-
-                $governanceContext  = "\n\nCurrent Structural Deviations Summary:\n";
-
-                // -------------------------
-                // Sentinel Truth Surface
-                // -------------------------
-
-                if ($hasMerkle) {
-                    $governanceContext .=
-                        "- Merkle integrity deviation present (Codex mismatch).\n";
-                }
-
-                if ($hasInventory) {
-
-                    $governanceContext .=
-                        "- Repository inventory deviations detected:\n";
-
-                    foreach ($violationSummary["repositoryInventory"] as $item) {
-                        $governanceContext .= "  • {$item}\n";
-                    }
-                }
-
-                // -------------------------
-                // Developer Action Options
-                // -------------------------
-
-                $governanceContext .= "\n\nDeveloper Options:\n\n";
-
-                $optionIndex = 1;
-
-                if ($hasInventory) {
-
-                    $governanceContext .=
-                        "{$optionIndex}. Review Repository Inventory Differences\n".
-                        "   Inspect declared vs observed filesystem differences before making structural changes.\n";
-
-                    $governanceContext .=
-                        formatGovernanceActionLink("review_unexpected_files");
-
-                    $governanceContext .= "\n";
-                    $optionIndex++;
-
-                    $governanceContext .=
-                        "{$optionIndex}. Reconcile Repository Inventory\n".
-                        "   Promote the observed repository state into the governed inventory declaration.\n";
-
-                    $governanceContext .=
-                        formatGovernanceActionLink("run_inventory_builder");
-
-                    $governanceContext .= "\n";
-                    $optionIndex++;
-                }
-
-                if ($hasMerkle) {
-
-                    $governanceContext .=
-                        "{$optionIndex}. Accept New Merkle Snapshot\n".
-                        "   Regenerate the governed Merkle artifact to reflect the current canonical Codex state.\n";
-
-                    $governanceContext .=
-                        formatGovernanceActionLink("run_merkle_builder");
-
-                    $governanceContext .= "\n";
-                    $optionIndex++;
-                }
-
-                $governanceContext .=
-                    "\nNo automatic changes have been made. The system is awaiting a developer decision.";
-            }
-        }
-    }
-
-    $didShortCircuitGovernance = false;
-
-    if ($governanceContext) {
-
-        $didShortCircuitGovernance = true;
-
-        $response =
-            "Structural deviations are present.\n\n" .
-            "Please review the authoritative summary and developer options below." .
-            $governanceContext;
-
-    } else {
-
-        $basePrompt = <<<PROMPT
-    {$responsePrompt}
-
-    Authoritative Context (read-only):
-    {$authoritativeContext}
-
-    User Input:
-    {$augmentedUserInput}
-    PROMPT;
-
-        $response = callOpenAI(
-            injectStandingOrders($basePrompt),
-            $apiKey
-        );
-    }
-
-    // Append governance context only when AI was called
-    if ($governanceContext && !$didShortCircuitGovernance) {
-        $response .= $governanceContext;
-    }
-    
+    echo json_encode([
+        "success" => true,
+        "role"    => "askOpenAI",
+        "type"    => "skyebot",
+        "response"=> $response
+    ], JSON_UNESCAPED_SLASHES);
 }
 
 #endregion
