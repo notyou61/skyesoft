@@ -460,18 +460,4 @@ body {
     gap: 8px;
 }
 
-.footerDot {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-right: 8px;
-    position: relative;
-    top: 1px;              /* baseline alignment */
-}
-
-.footerText {
-    color: #111;           /* always black text */
-}
-
 /* #endregion */
