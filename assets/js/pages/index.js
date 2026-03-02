@@ -281,21 +281,24 @@ window.SkyIndex = {
         const isAuthed = this.isAuthenticated() === true;
         const sentinel = this.currentSentinelState;
 
-        // Baseline (neutral)
+        // Baseline
         footer.style.color = "#111";
 
-        // ───────────────────────────────────────────────
-        // 1️⃣ Thinking Dominates Everything
-        // ───────────────────────────────────────────────
+        // 1️⃣ Thinking dominates (allowed anytime)
         if (this.isThinking === true) {
             footer.textContent = '⏳ Thinking…';
             footer.style.color = '';
             return;
         }
 
-        // ───────────────────────────────────────────────
-        // 2️⃣ Governance Layer (Integrity Projection Only)
-        // ───────────────────────────────────────────────
+        // 2️⃣ Auth gate dominates before login (blocks governance projection)
+        if (!isAuthed) {
+            footer.textContent = '🔒 Authorization required to continue';
+            footer.style.color = "#111";
+            return;
+        }
+
+        // 3️⃣ Governance layer (only after auth)
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
@@ -316,15 +319,7 @@ window.SkyIndex = {
             }
         }
 
-        // ───────────────────────────────────────────────
-        // 3️⃣ Operational Layer (Auth-Gated)
-        // ───────────────────────────────────────────────
-        if (!isAuthed) {
-            footer.textContent = '🔒 Authorization required to continue';
-            footer.style.color = "#111";
-            return;
-        }
-
+        // 4️⃣ Clean operational state (authed)
         footer.textContent = '🟢 Authenticated • Ready';
         footer.style.color = "#00c853";
 
@@ -958,7 +953,13 @@ window.SkyIndex = {
 
         if (sentinel) {
             this.currentSentinelState = sentinel;
-            this.updateGovernanceFooter(sentinel);
+
+            // Only project governance after auth
+            if (this.isAuthenticated()) {
+                this.updateGovernanceFooter(sentinel);
+            } else {
+                this.renderFooterStatus(); // ensures auth-required stays visible
+            }
         }
 
         // Version indicator
