@@ -656,7 +656,7 @@ window.SkyIndex = {
             <div class="cardFooterDivider"></div>
 
             <div class="cardFooter">
-                🟢 Authenticated • Ready
+                🟢 Connected • Ready
             </div>
         `;
 
