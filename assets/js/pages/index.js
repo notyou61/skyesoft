@@ -966,13 +966,6 @@ window.SkyIndex = {
                 this.renderFooterStatus(); // ensures auth-required stays visible
             }
         }
-
-        // Version indicator
-        if (event.siteMeta?.updateOccurred === true) {
-            window.SkyVersion?.show(60000);
-        } else {
-            window.SkyVersion?.hide();
-        }
     },
     // #endregion
 

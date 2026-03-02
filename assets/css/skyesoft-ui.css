@@ -133,26 +133,6 @@ body {
     padding-left: 64px; /* space for label */
 }
 
-#versionFooter.hasUpdate::before {
-    content: 'UPDATED';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-
-    font-size: 0.65em;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-
-    color: #15803d; /* calm green */
-    background: rgba(22, 163, 74, 0.12);
-    padding: 2px 6px;
-    border-radius: 6px;
-
-    animation: versionPulse 1.4s ease-in-out infinite;
-}
-
 @keyframes versionPulse {
     0%   { opacity: 0.35; }
     50%  { opacity: 1; }
