@@ -74,7 +74,7 @@ body[data-page="index"] .cardFooter {
     flex: 0 0 28px;
     display: flex;
     align-items: center;
-    justify-content: center;   /* ← center horizontally */
+    justify-content:left;   /* ← center horizontally */
 
     padding: 0;
     line-height: 1;
