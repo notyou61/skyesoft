@@ -401,7 +401,15 @@ if (!file_exists($inventoryPath)) {
 
             if ($canonical === '/') continue;
 
-            foreach (['.git', 'node_modules', 'vendor', 'runtimeEphemeral', 'records', 'derived'] as $dir) {
+            foreach ([
+                '.git',
+                'node_modules',
+                'vendor',
+                'runtimeEphemeral',
+                'records',
+                'derived',
+                'tools' // Exempt dev tooling (ex: /tools/vscode)
+            ] as $dir) {
                 if (str_starts_with($canonical . '/', "/$dir/")) continue 2;
             }
 
