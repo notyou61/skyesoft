@@ -242,55 +242,87 @@ window.SkyIndex = {
 
     // #region ⏳ Thinking State
     setThinking(isThinking) {
-        this.isThinking = isThinking; // <— add this line
+        this.isThinking = isThinking;
 
-        const footer = this.cardHost?.querySelector('.cardFooter');
-        if (!footer) return;
+        this.debugFooterWrite(
+            'setThinking',
+            isThinking ? 'ON → ⏳ Thinking…' : 'OFF → renderFooterStatus()'
+        );
 
-        footer.textContent = isThinking
-            ? '⏳ Thinking…'
-            : '🟢 Authenticated • Ready';
+        this.renderFooterStatus();
     },
     // #endregion
 
     // #region 🛡️ Update Governance Footer (Sentinel-Driven)
     updateGovernanceFooter(sentinel) {
+        this.currentSentinelState = sentinel || null;
 
-        // Preserve Thinking state dominance
-        if (this.isThinking) return;
+        this.debugFooterWrite(
+            'updateGovernanceFooter',
+            JSON.stringify(sentinel)
+        );
+
+        this.renderFooterStatus();
+    },
+    // #endregion
+
+    // #region 🧾 Footer Debug (Temporary)
+    debugFooterWrite(source, text) {
+        console.log(`[FOOTER] ${source}: ${text}`);
+    },
+    // #endregion
+
+    // #region 🧾 Footer Status (Single Authority)
+    renderFooterStatus() {
 
         const footer = this.cardHost?.querySelector('.cardFooter');
-        if (!footer || !sentinel) return;
+        if (!footer) return;
 
-        const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
-        const structuralCount = Number(sentinel.unresolvedViolations || 0);
+        // Reset style baseline
+        footer.style.color = "#00c853";
 
-        // 🔴 Integrity Drift (MIS Layer)
-        if (hasIntegrityDrift) {
+        const isAuthed = this.isAuthenticated() === true;
+        const sentinel = this.currentSentinelState;
 
-            if (structuralCount > 0) {
-                footer.textContent =
-                    `🔴 Integrity Drift • ${structuralCount} Structural Deviations`;
-            } else {
-                footer.textContent =
-                    `🔴 Codex Integrity Drift`;
+        // ───────────────────────────────────────────────
+        // 1️⃣ Thinking Dominates Everything
+        // ───────────────────────────────────────────────
+        if (this.isThinking === true) {
+            footer.textContent = '⏳ Thinking…';
+            footer.style.color = '';
+            return;
+        }
+
+        // ───────────────────────────────────────────────
+        // 2️⃣ Governance Layer (Integrity Projection Only)
+        // ───────────────────────────────────────────────
+        if (sentinel && typeof sentinel === 'object') {
+
+            const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
+            const structuralCount   = Number(sentinel.unresolvedViolations || 0);
+
+            if (hasIntegrityDrift === true) {
+                footer.textContent = structuralCount > 0
+                    ? `🔴 Integrity Drift • ${structuralCount} Structural Deviations`
+                    : `🔴 Codex Integrity Drift`;
+                footer.style.color = "#ff3b30";
+                return;
             }
 
-            footer.style.color = "#ff3b30";
-            return;
+            if (structuralCount > 0) {
+                footer.textContent = `🟠 Structural Deviations • ${structuralCount}`;
+                footer.style.color = "#ff9500";
+                return;
+            }
         }
 
-        // 🟠 Structural Deviations Only (RGS Layer)
-        if (structuralCount > 0) {
-            footer.textContent =
-                `🟠 Structural Deviations • ${structuralCount}`;
-            footer.style.color = "#ff9500";
-            return;
-        }
+        // ───────────────────────────────────────────────
+        // 3️⃣ Operational Layer (Auth-Gated)
+        // ───────────────────────────────────────────────
+        footer.textContent = isAuthed
+            ? '🟢 Authenticated • Ready'
+            : '🟢 Connected • Ready';
 
-        // 🟢 Clean State (Operational Mode)
-        footer.textContent = "🟢 Authenticated • Ready";
-        footer.style.color = "#00c853";
     },
     // #endregion
 
@@ -655,9 +687,7 @@ window.SkyIndex = {
 
             <div class="cardFooterDivider"></div>
 
-            <div class="cardFooter">
-                🟢 Connected • Ready
-            </div>
+            <div class="cardFooter">🟢 Connected • Ready</div>
         `;
 
         this.cardHost.appendChild(card);
