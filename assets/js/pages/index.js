@@ -291,7 +291,9 @@ window.SkyIndex = {
 
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
-            render('#111', '⏳ Thinking…');
+            footer.innerHTML = `
+                <span class="footerText">⏳ Thinking…</span>
+            `;
             return;
         }
 
