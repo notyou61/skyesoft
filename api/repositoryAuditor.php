@@ -46,7 +46,14 @@ if (!in_array($mode, ["operational", "governance"], true)) {
 #endregion
 
 #region SECTION 2 — Canonical Exclusions
-$excludedPrefixes = [".git", "node_modules"];
+$excludedPrefixes = [
+    ".git",
+    "node_modules",
+
+    // Runtime / environment-specific artifacts
+    "tools",
+    "data/runtimeEphemeral"
+];
 $excludedFiles = ["package.json", "package-lock.json"];
 $excludedBasenames = [".keep", ".gitkeep"];
 $industryExceptions = [

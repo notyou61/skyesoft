@@ -84,8 +84,8 @@ body[data-page="index"] .cardFooter {
 
 /* Dot sizing + alignment */
 body[data-page="index"] .footerDot {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     margin-right: 8px;
     flex-shrink: 0;
