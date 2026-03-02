@@ -278,11 +278,11 @@ window.SkyIndex = {
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer) return;
 
-        // Reset style baseline
-        footer.style.color = "#00c853";
-
         const isAuthed = this.isAuthenticated() === true;
         const sentinel = this.currentSentinelState;
+
+        // Baseline (neutral)
+        footer.style.color = "#111";
 
         // ───────────────────────────────────────────────
         // 1️⃣ Thinking Dominates Everything
@@ -319,9 +319,14 @@ window.SkyIndex = {
         // ───────────────────────────────────────────────
         // 3️⃣ Operational Layer (Auth-Gated)
         // ───────────────────────────────────────────────
-        footer.textContent = isAuthed
-            ? '🟢 Authenticated • Ready'
-            : '🟢 Connected • Ready';
+        if (!isAuthed) {
+            footer.textContent = '🔒 Authorization required to continue';
+            footer.style.color = "#111";
+            return;
+        }
+
+        footer.textContent = '🟢 Authenticated • Ready';
+        footer.style.color = "#00c853";
 
     },
     // #endregion
