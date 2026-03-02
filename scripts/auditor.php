@@ -468,7 +468,6 @@ if (!file_exists($inventoryPath)) {
     }
 }
 
-
 // IV.D — Jurisdictional Rule Conformance (governance mode only)
 if ($auditMode === 'governance') {
     $rulesEvaluated['jurisdictionalRuleConformance'] = true;
