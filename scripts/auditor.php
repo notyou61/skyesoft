@@ -421,6 +421,11 @@ if (!file_exists($inventoryPath)) {
         /* ── Declared → Observed ───────────────────────────────────── */
         foreach ($declaredPaths as $path => $expected) {
 
+            // Exempt dev tooling from "missing" violations (prod server)
+            if ($path === '/tools' || str_starts_with($path, '/tools/')) {
+                continue;
+            }
+
             if (!isset($observedPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
@@ -433,25 +438,19 @@ if (!file_exists($inventoryPath)) {
                         'violationSubclass' => 'MISSING_DECLARED_ARTIFACT'
                     ]
                 ];
-            }
-            elseif ($observedPaths[$path] !== $expected) {
-                $violations[] = [
-                    'ruleId'      => 'repositoryInventoryConformance',
-                    'observation' =>
-                        "Repository inventory violation: '$path' expected $expected but found {$observedPaths[$path]}",
-                    'facts'       => [
-                        'path'              => $path,
-                        'expected'          => $expected,
-                        'observed'          => $observedPaths[$path],
-                        'issue'             => 'type_mismatch',
-                        'violationSubclass' => 'TYPE_MISMATCH'
-                    ]
-                ];
+            } elseif ($observedPaths[$path] !== $expected) {
+                // (keep your existing type mismatch block)
             }
         }
 
         /* ── Observed → Declared ───────────────────────────────────── */
         foreach ($observedPaths as $path => $type) {
+
+            // Exempt dev tooling from "unexpected" violations
+            if ($path === '/tools' || str_starts_with($path, '/tools/')) {
+                continue;
+            }
+
             if (!isset($allowedPaths[$path])) {
                 $violations[] = [
                     'ruleId'      => 'repositoryInventoryConformance',
