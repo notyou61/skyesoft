@@ -281,13 +281,21 @@ window.SkyIndex = {
         const isAuthed = this.isAuthenticated() === true;
         const sentinel = this.currentSentinelState;
 
-        // Helper to render indicator + text
-        const render = (indicatorColor, text, icon = '●') => {
+        // Helper: dot + black text (dot color is the only status color)
+        const render = (dotColor, text) => {
             footer.innerHTML = `
-                <span class="footerIndicator" style="color:${indicatorColor};">
-                    ${icon}
+                <span class="footerDot"
+                    style="
+                        display:inline-block;
+                        width:10px;
+                        height:10px;
+                        border-radius:50%;
+                        background:${dotColor};
+                        margin-right:8px;
+                        vertical-align:middle;
+                    ">
                 </span>
-                <span class="footerText" style="color:#111;">
+                <span class="footerText" style="color:#111; vertical-align:middle;">
                     ${text}
                 </span>
             `;
@@ -295,13 +303,13 @@ window.SkyIndex = {
 
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
-            render('#111', 'Thinking…', '⏳');
+            render('#111', 'Thinking…');
             return;
         }
 
-        // 2️⃣ Auth gate before login
+        // 2️⃣ Auth gate before login (blocks governance projection)
         if (!isAuthed) {
-            render('#111', 'Authorization required to continue', '🔒');
+            render('#111', 'Authorization required to continue');
             return;
         }
 
