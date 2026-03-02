@@ -281,48 +281,53 @@ window.SkyIndex = {
         const isAuthed = this.isAuthenticated() === true;
         const sentinel = this.currentSentinelState;
 
-        // Baseline
-        footer.style.color = "#111";
+        // Helper to render indicator + text
+        const render = (indicatorColor, text, icon = '●') => {
+            footer.innerHTML = `
+                <span class="footerIndicator" style="color:${indicatorColor};">
+                    ${icon}
+                </span>
+                <span class="footerText" style="color:#111;">
+                    ${text}
+                </span>
+            `;
+        };
 
-        // 1️⃣ Thinking dominates (allowed anytime)
+        // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
-            footer.textContent = '⏳ Thinking…';
-            footer.style.color = '';
+            render('#111', 'Thinking…', '⏳');
             return;
         }
 
-        // 2️⃣ Auth gate dominates before login (blocks governance projection)
+        // 2️⃣ Auth gate before login
         if (!isAuthed) {
-            footer.textContent = '🔒 Authorization required to continue';
-            footer.style.color = "#111";
+            render('#111', 'Authorization required to continue', '🔒');
             return;
         }
 
-        // 3️⃣ Governance layer (only after auth)
+        // 3️⃣ Governance (post-auth only)
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
             const structuralCount   = Number(sentinel.unresolvedViolations || 0);
 
             if (hasIntegrityDrift === true) {
-                footer.textContent = structuralCount > 0
-                    ? `🔴 Integrity Drift • ${structuralCount} Structural Deviations`
-                    : `🔴 Codex Integrity Drift`;
-                footer.style.color = "#ff3b30";
+                const text = structuralCount > 0
+                    ? `Integrity Drift • ${structuralCount} Structural Deviations`
+                    : `Codex Integrity Drift`;
+
+                render('#ff3b30', text);
                 return;
             }
 
             if (structuralCount > 0) {
-                footer.textContent = `🟠 Structural Deviations • ${structuralCount}`;
-                footer.style.color = "#ff9500";
+                render('#ff9500', `Structural Deviations • ${structuralCount}`);
                 return;
             }
         }
 
-        // 4️⃣ Clean operational state (authed)
-        footer.textContent = '🟢 Authenticated • Ready';
-        footer.style.color = "#00c853";
-
+        // 4️⃣ Clean state
+        render('#00c853', 'Authenticated • Ready');
     },
     // #endregion
 
