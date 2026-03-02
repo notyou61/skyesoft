@@ -281,23 +281,11 @@ window.SkyIndex = {
         const isAuthed = this.isAuthenticated() === true;
         const sentinel = this.currentSentinelState;
 
-        // Helper: dot + black text (dot color is the only status color)
+        // Helper: CSS-controlled dot + black text
         const render = (dotColor, text) => {
             footer.innerHTML = `
-                <span class="footerDot"
-                    style="
-                        display:inline-block;
-                        width:10px;
-                        height:10px;
-                        border-radius:50%;
-                        background:${dotColor};
-                        margin-right:8px;
-                        vertical-align:middle;
-                    ">
-                </span>
-                <span class="footerText" style="color:#111; vertical-align:middle;">
-                    ${text}
-                </span>
+                <span class="footerDot" style="background:${dotColor};"></span>
+                <span class="footerText">${text}</span>
             `;
         };
 
@@ -307,7 +295,7 @@ window.SkyIndex = {
             return;
         }
 
-        // 2️⃣ Auth gate before login (blocks governance projection)
+        // 2️⃣ Auth gate before login
         if (!isAuthed) {
             render('#111', 'Authorization required to continue');
             return;
