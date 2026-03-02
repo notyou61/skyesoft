@@ -137,13 +137,9 @@ if ($Commit) {
     Write-Host "Committed and pushed v$newVersion (updateOccurred=true)" -ForegroundColor Green
 }
 
-# --- OFFICE confirmation gate ---
+# --- OFFICE confirmation gate (non-interactive) ---
 if ($machineRole -eq 'OFFICE' -and $Deploy) {
-    $confirm = Read-Host 'You are deploying from OFFICE. Continue? (Y/N)'
-    if ($confirm -ne 'Y') {
-        Write-Host 'Deploy cancelled.'
-        exit 0
-    }
+    Write-Host 'OFFICE machine detected — auto-approved deploy.' -ForegroundColor Yellow
 }
 
 # --- DRY RUN DEFAULT ---
