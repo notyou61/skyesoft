@@ -4,8 +4,8 @@ session_start();
 
 // ======================================================================
 //  Skyesoft — sse.php
-//  Version: 1.2.1
-//  Last Updated: 2026-03-01
+//  Version: 1.2.2
+//  Last Updated: 2026-03-03
 //  Codex Tier: 4 — SSE Engine / Real-Time Projection
 //
 //  Role:
