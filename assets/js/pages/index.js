@@ -256,12 +256,6 @@ window.SkyIndex = {
     // #region 🛡️ Update Governance Footer (Sentinel-Driven)
     updateGovernanceFooter(sentinel) {
         this.currentSentinelState = sentinel || null;
-
-        this.debugFooterWrite(
-            'updateGovernanceFooter',
-            JSON.stringify(sentinel)
-        );
-
         this.renderFooterStatus();
     },
     // #endregion
