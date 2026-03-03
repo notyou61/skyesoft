@@ -1,6 +1,5 @@
 <?php
 declare(strict_types=1);
-session_start(); // ← MUST be before any output
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
