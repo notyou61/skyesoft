@@ -120,6 +120,22 @@ while (true) {
     // SINGLE SOURCE OF TRUTH
     $payload = require __DIR__ . "/getDynamicData.php";
 
+    /* ─────────────────────────────────────────────
+    SECTION 5.A — Inject Auth State (Session)
+    ───────────────────────────────────────────── */
+
+    if (!isset($_SESSION['authenticated'])) {
+        $_SESSION['authenticated'] = false;
+    }
+
+    $payload['auth'] = [
+        'authenticated' => $_SESSION['authenticated'],
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? null
+    ];
+
+    /* ───────────────────────────────────────────── */
+
     echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
     @flush();

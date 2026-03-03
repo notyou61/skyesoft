@@ -272,7 +272,7 @@ window.SkyIndex = {
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer) return;
 
-        const isAuthed = this.isAuthenticated() === true;
+        const isAuthed = document.body.hasAttribute('data-auth');
         const sentinel = this.currentSentinelState;
 
         // Helper: CSS-controlled dot + black text
@@ -489,13 +489,9 @@ window.SkyIndex = {
         await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
 
-        if (this.isAuthenticated()) {
-            document.body.setAttribute('data-auth', 'true');
-            this.renderCommandInterfaceCard();
-        } else {
-            document.body.removeAttribute('data-auth');
-            this.renderLoginCard();
-        }
+        // Default to locked until SSE tells us otherwise
+        document.body.removeAttribute('data-auth');
+        this.renderLoginCard();
 
         // #region 🧩 Outline CRUD Events
         document.addEventListener('outline:update', (e) => {
@@ -563,18 +559,6 @@ window.SkyIndex = {
         });
         // #endregion
 
-    },
-    // #endregion
-
-    // #region 🔐 Auth State
-    isAuthenticated() {
-        return sessionStorage.getItem('skyesoft.auth') === 'true';
-    },
-
-    setAuthenticated() {
-        sessionStorage.setItem('skyesoft.auth', 'true');
-        document.body.setAttribute('data-auth', 'true');
-        this.transitionToCommandInterface();
     },
     // #endregion
 
@@ -871,17 +855,45 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Faux)
-    handleLoginSubmit(form) {
+    // #region 🔑 Login Logic (Server Auth)
+    async handleLoginSubmit(form) {
+
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
-        if (email === 'steve@christysigns.com' && pass === 'password123') {
+        if (!email || !pass) {
+            error.textContent = 'Please enter email and password.';
+            error.hidden = false;
+            return;
+        }
+
+        try {
+
+            const res = await fetch('/skyesoft/api/auth.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    username: email,
+                    password: pass
+                })
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                error.textContent = data.message || 'Login failed.';
+                error.hidden = false;
+                return;
+            }
+
             error.hidden = true;
-            this.setAuthenticated();
-        } else {
-            error.textContent = 'Invalid email or password';
+
+        } catch (err) {
+            console.error('[SkyIndex] Login error:', err);
+            error.textContent = 'Connection error.';
             error.hidden = false;
         }
     },
@@ -903,6 +915,24 @@ window.SkyIndex = {
         //console.log('[SSE] cached keys:', Object.keys(event || {}));
 
         if (!event) return;
+
+        // ─────────────────────────────────────────────
+        // 🔐 Authoritative Auth Projection (SSE)
+        // ─────────────────────────────────────────────
+        if (event.auth) {
+
+            const isAuth = event.auth.authenticated === true;
+
+            if (isAuth && !document.body.hasAttribute('data-auth')) {
+                document.body.setAttribute('data-auth', 'true');
+                this.renderCommandInterfaceCard();
+            }
+
+            if (!isAuth && document.body.hasAttribute('data-auth')) {
+                document.body.removeAttribute('data-auth');
+                this.renderLoginCard();
+            }
+        }
 
         // Time
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
@@ -953,23 +983,31 @@ window.SkyIndex = {
         if (sentinel) {
             this.currentSentinelState = sentinel;
 
-            // Only project governance after auth
-            if (this.isAuthenticated()) {
+            const isAuth = event.auth?.authenticated === true;
+
+            if (isAuth) {
                 this.updateGovernanceFooter(sentinel);
             } else {
-                this.renderFooterStatus(); // ensures auth-required stays visible
+                this.renderFooterStatus();
             }
         }
     },
     // #endregion
 
     // #region 🔓 Logout
-    logout(reason = 'User requested logout') {
-        console.log('[SkyIndex] Logout:', reason);
-        sessionStorage.removeItem('skyesoft.auth');
-        document.body.removeAttribute('data-auth');
-        this.clearCards();
-        this.renderLoginCard();
+    logout: async () => {
+
+        try {
+            await fetch('/skyesoft/api/auth.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'logout' })
+            });
+        } catch (err) {
+            console.error('[SkyIndex] Logout error:', err);
+        }
+
     },
     // #endregion
 
