@@ -147,7 +147,7 @@ while (true) {
     }
 
     // Reduce CPU usage while maintaining responsiveness
-    usleep(250000); // 250 ms
+    sleep(1);
 
 }
 
