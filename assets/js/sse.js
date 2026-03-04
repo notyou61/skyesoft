@@ -1,6 +1,9 @@
 /* Skyesoft — sse.js
    SSE Engine → Push JSON Updates to Global App Handler
 */
+
+console.log("SkySSE starting...");
+
 // Define global SkySSE object
 window.SkySSE = {
     // Initialize SSE connection and listeners
