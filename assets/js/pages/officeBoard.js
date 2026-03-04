@@ -375,32 +375,67 @@ function renderTodaysHighlightsSkeleton() {
 }
 // Get Season Summary from UNIX time (SSE-safe)
 function getSeasonSummaryFromUnix(unixSeconds) {
+
     if (!unixSeconds || isNaN(unixSeconds)) return null;
 
     const date = new Date(unixSeconds * 1000);
     const year = date.getFullYear();
 
-    // Meteorological seasons (signage-friendly)
+    // Phoenix astronomical season boundaries
     const seasons = [
-        { name: 'Winter', start: new Date(year, 11, 1), end: new Date(year + 1, 2, 1) },
-        { name: 'Spring', start: new Date(year, 2, 1),  end: new Date(year, 5, 1) },
-        { name: 'Summer', start: new Date(year, 5, 1),  end: new Date(year, 8, 1) },
-        { name: 'Fall',   start: new Date(year, 8, 1),  end: new Date(year, 11, 1) }
+        { name:'Spring', start:new Date(`${year}-03-20T07:46:00-07:00`) },
+        { name:'Summer', start:new Date(`${year}-06-21T01:24:00-07:00`) },
+        { name:'Fall',   start:new Date(`${year}-09-22T17:05:00-07:00`) },
+        { name:'Winter', start:new Date(`${year}-12-21T13:50:00-07:00`) }
     ];
 
-    let current = seasons.find(s => date >= s.start && date < s.end);
+    let current;
 
-    // Jan / Feb → Winter of previous year
-    if (!current) {
+    if (date < seasons[0].start) {
+
+        // Winter from previous year
         current = {
-            name: 'Winter',
-            start: new Date(year - 1, 11, 1),
-            end:   new Date(year, 2, 1)
+            name:'Winter',
+            start:new Date(`${year-1}-12-21T13:50:00-07:00`),
+            end:seasons[0].start
+        };
+
+    } else if (date < seasons[1].start) {
+
+        current = {
+            name:'Spring',
+            start:seasons[0].start,
+            end:seasons[1].start
+        };
+
+    } else if (date < seasons[2].start) {
+
+        current = {
+            name:'Summer',
+            start:seasons[1].start,
+            end:seasons[2].start
+        };
+
+    } else if (date < seasons[3].start) {
+
+        current = {
+            name:'Fall',
+            start:seasons[2].start,
+            end:seasons[3].start
+        };
+
+    } else {
+
+        current = {
+            name:'Winter',
+            start:seasons[3].start,
+            end:new Date(`${year+1}-03-20T00:00:00`)
         };
     }
 
     const msPerDay = 86400000;
-    const dayOfSeason =
+
+    const day =
         Math.floor((date - current.start) / msPerDay) + 1;
 
     const totalDays =
@@ -408,8 +443,8 @@ function getSeasonSummaryFromUnix(unixSeconds) {
 
     return {
         name: current.name,
-        day: dayOfSeason,
-        daysRemaining: totalDays - dayOfSeason
+        day: day,
+        daysRemaining: totalDays - day
     };
 }
 // Update today's highlights card with live data
