@@ -44,7 +44,8 @@ if ($isSnapshot) {
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
 
-    $payload = require __DIR__ . "/getDynamicData.php";
+    //$payload = require __DIR__ . "/getDynamicData.php";
+    $payload = ["test" => time()];
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
@@ -131,8 +132,8 @@ while (true) {
         $lastSecond = $now;
 
         // SINGLE SOURCE OF TRUTH
-        $payload = require __DIR__ . "/getDynamicData.php";
-
+        //$payload = require __DIR__ . "/getDynamicData.php";
+        $payload = ["test" => time()];
         // Inject authentication projection
         $payload['auth'] = [
             'authenticated' => $_SESSION['authenticated'],
