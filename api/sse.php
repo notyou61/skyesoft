@@ -102,16 +102,17 @@ while (true) {
 
     $now = time();
 
-    // Keepalive ping every 15 seconds (prevents proxy timeouts)
+    // Keepalive ping every 15 seconds
     if (($now - $lastPing) >= 15) {
         echo ": ping\n\n";
         $lastPing = $now;
+        @ob_flush();
         @flush();
     }
 
-    // Enforce 1 Hz update cadence
+    // Enforce 1 Hz cadence
     if ($now === $lastSecond) {
-        usleep(20000); // 20ms backoff
+        usleep(20000);
         continue;
     }
 
@@ -120,24 +121,15 @@ while (true) {
     // SINGLE SOURCE OF TRUTH
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    /* ─────────────────────────────────────────────
-    SECTION 5.A — Inject Auth State (Session)
-    ───────────────────────────────────────────── */
-
-    if (!isset($_SESSION['authenticated'])) {
-        $_SESSION['authenticated'] = false;
-    }
-
     $payload['auth'] = [
         'authenticated' => $_SESSION['authenticated'],
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    /* ───────────────────────────────────────────── */
-
     echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
+    @ob_flush();
     @flush();
 }
 
