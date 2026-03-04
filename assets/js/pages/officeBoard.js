@@ -373,65 +373,44 @@ function renderTodaysHighlightsSkeleton() {
         </div>
     `;
 }
-// Get Season Summary from UNIX time (SSE-safe)
+// Get Season Summary from UNIX time (day precision)
 function getSeasonSummaryFromUnix(unixSeconds) {
 
     if (!unixSeconds || isNaN(unixSeconds)) return null;
 
     const date = new Date(unixSeconds * 1000);
+
+    // Normalize to midnight (avoids hour drift)
+    date.setHours(0,0,0,0);
+
     const year = date.getFullYear();
 
-    // Phoenix astronomical season boundaries
-    const seasons = [
-        { name:'Spring', start:new Date(`${year}-03-20T07:46:00-07:00`) },
-        { name:'Summer', start:new Date(`${year}-06-21T01:24:00-07:00`) },
-        { name:'Fall',   start:new Date(`${year}-09-22T17:05:00-07:00`) },
-        { name:'Winter', start:new Date(`${year}-12-21T13:50:00-07:00`) }
-    ];
+    // Astronomical season start days (rounded)
+    const spring = new Date(year, 2, 20);  // Mar 20
+    const summer = new Date(year, 5, 21);  // Jun 21
+    const fall   = new Date(year, 8, 22);  // Sep 22
+    const winter = new Date(year,11,21);   // Dec 21
+
+    const prevWinter = new Date(year-1,11,21);
+    const nextSpring = new Date(year+1,2,20);
 
     let current;
 
-    if (date < seasons[0].start) {
+    // Determine season
+    if (date < spring)
+        current = { name:'Winter', start:prevWinter, end:spring };
 
-        // Winter from previous year
-        current = {
-            name:'Winter',
-            start:new Date(`${year-1}-12-21T13:50:00-07:00`),
-            end:seasons[0].start
-        };
+    else if (date < summer)
+        current = { name:'Spring', start:spring, end:summer };
 
-    } else if (date < seasons[1].start) {
+    else if (date < fall)
+        current = { name:'Summer', start:summer, end:fall };
 
-        current = {
-            name:'Spring',
-            start:seasons[0].start,
-            end:seasons[1].start
-        };
+    else if (date < winter)
+        current = { name:'Fall', start:fall, end:winter };
 
-    } else if (date < seasons[2].start) {
-
-        current = {
-            name:'Summer',
-            start:seasons[1].start,
-            end:seasons[2].start
-        };
-
-    } else if (date < seasons[3].start) {
-
-        current = {
-            name:'Fall',
-            start:seasons[2].start,
-            end:seasons[3].start
-        };
-
-    } else {
-
-        current = {
-            name:'Winter',
-            start:seasons[3].start,
-            end:new Date(`${year+1}-03-20T00:00:00`)
-        };
-    }
+    else
+        current = { name:'Winter', start:winter, end:nextSpring };
 
     const msPerDay = 86400000;
 
