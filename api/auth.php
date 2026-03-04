@@ -2,47 +2,63 @@
 declare(strict_types=1);
 session_start();
 
-/*
-|--------------------------------------------------------------------------
-| Skyesoft — auth.php
-| Version: 1.0.0
-| Codex Tier: 4 — Session Mutation Endpoint
-|
-| Role:
-|   Authoritative session authentication handler.
-|   Handles login + logout only.
-|
-| Inputs:
-|   POST JSON:
-|       action   → 'login' | 'logout'
-|       username → string  (login only)
-|       password → string  (login only)
-|
-| Outputs:
-|   JSON:
-|       success  → bool
-|       message  → string (optional)
-|
-| Constraints:
-|   • No HTML output
-|   • No SSE output
-|   • No domain logic
-|   • No session projection (handled by sse.php)
-|--------------------------------------------------------------------------
-*/
+// ======================================================================
+//  Skyesoft — auth.php
+//  Version: 1.1.1
+//  Last Updated: 2026-03-04
+//  Codex Tier: 4 — Session Mutation Endpoint
+//
+//  Role:
+//  Authoritative authentication endpoint for Skyesoft sessions.
+//  Handles login and logout requests from the UI.
+//
+//  Inputs:
+//   • POST JSON
+//        action   → 'login' | 'logout'
+//        username → string  (login only)
+//        password → string  (login only)
+//
+//  Outputs:
+//   • JSON
+//        success  → bool
+//        message  → string (optional)
+//
+//  Architecture:
+//   • Mutates PHP session state
+//   • Does NOT project session state
+//   • Session state is projected to the UI via sse.php
+//
+//  Forbidden:
+//   • No HTML output
+//   • No SSE output
+//   • No domain logic
+//   • No Codex mutation
+//
+//  Notes:
+//   • This endpoint only mutates session state.
+//   • UI state changes propagate via SSE on the next stream tick.
+// ======================================================================
 
 header("Content-Type: application/json; charset=UTF-8");
 
-/* ─────────────────────────────────────────────
-   Parse JSON input
-   ───────────────────────────────────────────── */
+#region SECTION 0 — Environment Bootstrap
+
+/** @var callable getPDO */
+
+// Load database connector (must define getPDO())
+/** @noinspection PhpUndefinedFunctionInspection */
+require_once __DIR__ . "/dbConnect.php";
+
+#endregion
+
+#region SECTION 1 — Parse JSON Input
 
 $input  = json_decode(file_get_contents("php://input"), true) ?? [];
 $action = $input['action'] ?? '';
 
-/* ─────────────────────────────────────────────
-   LOGIN
-   ───────────────────────────────────────────── */
+#endregion
+
+#region SECTION 2 — LOGIN
 
 if ($action === 'login') {
 
@@ -50,6 +66,7 @@ if ($action === 'login') {
     $password = trim($input['password'] ?? '');
 
     if ($username === '' || $password === '') {
+
         echo json_encode([
             "success" => false,
             "message" => "Missing credentials."
@@ -57,7 +74,7 @@ if ($action === 'login') {
         exit;
     }
 
-    // DB Connection (must exist in your environment bootstrap)
+    // Establish database connection
     $pdo = getPDO();
 
     $stmt = $pdo->prepare("
@@ -71,6 +88,7 @@ if ($action === 'login') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
+
         echo json_encode([
             "success" => false,
             "message" => "User not found."
@@ -79,6 +97,7 @@ if ($action === 'login') {
     }
 
     if (!password_verify($password, $user['password_hash'])) {
+
         echo json_encode([
             "success" => false,
             "message" => "Invalid password."
@@ -86,10 +105,7 @@ if ($action === 'login') {
         exit;
     }
 
-    /* ─────────────────────────────────────────
-       Establish Authoritative Session
-       ───────────────────────────────────────── */
-
+    // Establish Authoritative Session
     $_SESSION['authenticated'] = true;
     $_SESSION['userId']        = $user['id'];
     $_SESSION['username']      = $user['username'];
@@ -100,9 +116,9 @@ if ($action === 'login') {
     exit;
 }
 
-/* ─────────────────────────────────────────────
-   LOGOUT
-   ───────────────────────────────────────────── */
+#endregion
+
+#region SECTION 3 — LOGOUT
 
 if ($action === 'logout') {
 
@@ -113,11 +129,13 @@ if ($action === 'logout') {
     exit;
 }
 
-/* ─────────────────────────────────────────────
-   Invalid Action
-   ───────────────────────────────────────────── */
+#endregion
+
+#region SECTION 4 — Invalid Action
 
 echo json_encode([
     "success" => false,
     "message" => "Invalid action."
 ]);
+
+#endregion
