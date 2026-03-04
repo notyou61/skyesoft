@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-//session_start();
+session_start();
 
 // ======================================================================
 //  Skyesoft — sse.php
@@ -41,10 +41,20 @@ $isSnapshot =
 #region SECTION 1 — Snapshot Mode (Finite, Non-SSE)
 if ($isSnapshot) {
 
+    // Capture auth once
+    $auth = [
+        'authenticated' => $_SESSION['authenticated'] ?? false,
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? null
+    ];
+
+    session_write_close(); // ✅ release session lock ASAP
+
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
 
     $payload = require __DIR__ . "/getDynamicData.php";
+    $payload['auth'] = $auth;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
@@ -90,17 +100,31 @@ ignore_user_abort(true);
 #endregion
 
 #region SECTION 4 — Loop Initialization
+
+// Capture auth ONCE (do not hold session lock during SSE)
+$auth = [
+    'authenticated' => $_SESSION['authenticated'] ?? false,
+    'username'      => $_SESSION['username'] ?? null,
+    'role'          => $_SESSION['role'] ?? null
+];
+
+// ✅ Critical: release the session lock before entering the infinite loop
+session_write_close();
+
+$lastPing   = 0;
 $lastSecond = 0;
 
-if (!isset($_SESSION['authenticated'])) {
-    $_SESSION['authenticated'] = false;
-}
 #endregion
 
 #region SECTION 5 — SSE 1 Hz Continuous Loop
 
-$lastPing = 0;
-$lastSecond = time();
+// Assumes:
+//  - $auth has already been captured once in SECTION 4
+//  - session_write_close() has already been called in SECTION 4
+//  - Do NOT touch $_SESSION inside this loop (prevents session-lock hangs)
+
+$lastPing   = 0;
+$lastSecond = 0;
 
 while (true) {
 
@@ -132,12 +156,9 @@ while (true) {
 
         // SINGLE SOURCE OF TRUTH
         $payload = require __DIR__ . "/getDynamicData.php";
-        // Inject authentication projection
-        $payload['auth'] = [
-            'authenticated' => $_SESSION['authenticated'],
-            'username'      => $_SESSION['username'] ?? null,
-            'role'          => $_SESSION['role'] ?? null
-        ];
+
+        // Inject authentication projection (from $auth snapshot)
+        $payload['auth'] = $auth;
 
         echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
@@ -146,8 +167,7 @@ while (true) {
     }
 
     // Reduce CPU usage while maintaining responsiveness
-    sleep(1);
-
+    usleep(20000); // 20ms backoff (smooth cadence, low CPU)
 }
 
 #endregion
