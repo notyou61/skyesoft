@@ -87,7 +87,7 @@ ignore_user_abort(true);
 #endregion
 
 #region SECTION 4 — Loop Initialization
-$lastSecond = null;
+$lastSecond = 0;
 #endregion
 
 #region SECTION 5 — SSE 1 Hz Continuous Loop
