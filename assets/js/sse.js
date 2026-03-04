@@ -6,7 +6,8 @@ window.SkySSE = {
     // Initialize SSE connection and listeners
     start: function () {
         // Initialize EventSource
-        const es = new EventSource('/skyesoft/api/sse.php', { withCredentials: true });
+        //const es = new EventSource('/skyesoft/api/sse.php', { withCredentials: true });
+        const es = new EventSource('/skyesoft/api/sse.php');
         // Listen for messages
         es.onmessage = (event) => {
             console.log("📩 SSE Update");
