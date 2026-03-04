@@ -160,6 +160,10 @@ if ($action === "login") {
 
     $pdo = getPDO();
 
+    $row = $pdo->query("SELECT DATABASE() AS db, @@hostname AS host")->fetch();
+    echo json_encode(["success" => false, "db" => $row["db"], "host" => $row["host"]]);
+    exit;
+
     // Map: username=email -> tblContacts.contactEmail
     $stmt = $pdo->prepare("
         SELECT
