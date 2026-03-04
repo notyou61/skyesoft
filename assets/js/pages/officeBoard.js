@@ -197,17 +197,20 @@ function getStatusIcon(status) {
     }
     return '';
 }
-// format seconds into smart interval string
+// format seconds into smart interval string (no seconds)
 function formatSmartInterval(totalSeconds) {
+
     let sec = Math.max(0, totalSeconds);
+
     const days    = Math.floor(sec / 86400); sec %= 86400;
     const hours   = Math.floor(sec / 3600);  sec %= 3600;
     const minutes = Math.floor(sec / 60);
-    const seconds = sec % 60;
-    if (days > 0)    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-    if (hours > 0)   return `${hours}h ${minutes}m ${seconds}s`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
+
+    if (days > 0)    return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0)   return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+
+    return `0m`;
 }
 // normalize unix timestamp (seconds vs milliseconds)
 function normalizeUnixSeconds(ts) {
