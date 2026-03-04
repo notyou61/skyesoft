@@ -40,14 +40,12 @@ function formatVersionFooter(siteMeta) {
     const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
 
     let agoStr;
-    if (deltaSeconds < 3600) {
+    // Delta Seconds Conditional
+    if (deltaSeconds < 60) {
+        agoStr = 'just now';
+    }
+    else if (deltaSeconds < 3600) {
         agoStr = `${String(Math.floor(deltaSeconds / 60)).padStart(2,'0')} min ago`;
-    } else if (deltaSeconds < 86400) {
-        const hrs  = Math.floor(deltaSeconds / 3600);
-        const mins = Math.floor((deltaSeconds % 3600) / 60);
-        agoStr = `${String(hrs).padStart(2,'0')} hrs ${String(mins).padStart(2,'0')} min ago`;
-    } else {
-        agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} days ago`;
     }
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;

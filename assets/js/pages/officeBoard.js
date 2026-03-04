@@ -202,6 +202,9 @@ function formatSmartInterval(totalSeconds) {
 
     let sec = Math.max(0, totalSeconds);
 
+    // Humanized recent update
+    if (sec < 60) return "just now";
+
     const days    = Math.floor(sec / 86400); sec %= 86400;
     const hours   = Math.floor(sec / 3600);  sec %= 3600;
     const minutes = Math.floor(sec / 60);
@@ -210,7 +213,7 @@ function formatSmartInterval(totalSeconds) {
     if (hours > 0)   return `${hours}h ${minutes}m`;
     if (minutes > 0) return `${minutes}m`;
 
-    return `0m`;
+    return "just now";
 }
 // normalize unix timestamp (seconds vs milliseconds)
 function normalizeUnixSeconds(ts) {
