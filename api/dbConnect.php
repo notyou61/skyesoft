@@ -8,38 +8,23 @@ declare(strict_types=1);
 //  Codex Tier: 3 — Infrastructure / Database Connector
 //
 //  Role:
-//  Provides the authoritative database connection factory for Skyesoft.
-//  Exposes a reusable PDO instance via getPDO().
-//
-//  Inputs:
-//   • Secure configuration file
-//        /home/notyou64/secure/db.env
-//
-//  Outputs:
-//   • PDO connection object
-//
-//  Architecture:
-//   • Lazy-loaded PDO singleton
-//   • Used by API endpoints (auth.php, repositoryAuditor.php, etc.)
-//   • No direct output or side effects
-//
-//  Forbidden:
-//   • No HTML output
-//   • No SSE output
-//   • No session mutation
-//   • No Codex mutation
+//   Central PDO factory for Skyesoft API endpoints.
+//   Loads DB credentials from secure/db.env (outside public_html).
 //
 //  Notes:
-//   • Configuration is stored outside the public web root.
-//   • Connection instance is cached for the lifetime of the request.
+//   • Uses the same secure-path strategy as askOpenAI.php
+//   • db.env must exist alongside secure/.env
 // ======================================================================
 
 #region SECTION 0 — Configuration Load
 
-$config = parse_ini_file('/home/notyou64/secure/db.env');
+$secureDir = dirname(__DIR__, 3) . "/secure";
+$envFile   = $secureDir . "/db.env";
+
+$config = parse_ini_file($envFile);
 
 if (!$config) {
-    throw new RuntimeException("Database config parsing failed.");
+    throw new RuntimeException("Database config parsing failed at: {$envFile}");
 }
 
 #endregion
@@ -54,7 +39,14 @@ function getPDO(): PDO
         return $pdo;
     }
 
-    $config = parse_ini_file('/home/notyou64/secure/db.env');
+    $secureDir = dirname(__DIR__, 3) . "/secure";
+    $envFile   = $secureDir . "/db.env";
+
+    $config = parse_ini_file($envFile);
+
+    if (!$config) {
+        throw new RuntimeException("Database config parsing failed at: {$envFile}");
+    }
 
     $dsn =
         "mysql:host={$config['DB_HOST']};" .
@@ -66,7 +58,7 @@ function getPDO(): PDO
         $config['DB_USER'],
         $config['DB_PASS'],
         [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]
     );
