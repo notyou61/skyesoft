@@ -78,7 +78,10 @@ header('X-Accel-Buffering: no');
 
 // Defensive: remove any server-added encoding (won't override Cloudflare br)
 header_remove('Content-Encoding');
-
+/* Kickstart streaming to defeat proxy buffering */
+echo ":" . str_repeat(" ", 2048) . "\n\n";
+@ob_flush();
+@flush();
 #endregion
 
 #region SECTION 3 — PHP Runtime Controls
@@ -88,49 +91,64 @@ ignore_user_abort(true);
 
 #region SECTION 4 — Loop Initialization
 $lastSecond = 0;
+
+if (!isset($_SESSION['authenticated'])) {
+    $_SESSION['authenticated'] = false;
+}
 #endregion
 
 #region SECTION 5 — SSE 1 Hz Continuous Loop
 
 $lastPing = 0;
+$lastSecond = time();
 
 while (true) {
 
+    // Exit if client disconnects
     if (connection_aborted()) {
         break;
     }
 
     $now = time();
 
-    // Keepalive ping every 15 seconds
+    // ─────────────────────────────────────────────
+    // 15-Second Keepalive Ping (prevents proxy timeouts)
+    // ─────────────────────────────────────────────
     if (($now - $lastPing) >= 15) {
+
         echo ": ping\n\n";
         $lastPing = $now;
+
         @ob_flush();
         @flush();
     }
 
-    // Enforce 1 Hz cadence
-    if ($now === $lastSecond) {
-        usleep(20000);
-        continue;
+    // ─────────────────────────────────────────────
+    // 1 Hz Update Cadence
+    // ─────────────────────────────────────────────
+    if ($now > $lastSecond) {
+
+        $lastSecond = $now;
+
+        // SINGLE SOURCE OF TRUTH
+        $payload = require __DIR__ . "/getDynamicData.php";
+
+        // Inject authentication projection
+        $payload['auth'] = [
+            'authenticated' => $_SESSION['authenticated'],
+            'username'      => $_SESSION['username'] ?? null,
+            'role'          => $_SESSION['role'] ?? null
+        ];
+
+        echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
+
+        @ob_flush();
+        @flush();
     }
 
-    $lastSecond = $now;
+    // Reduce CPU usage while maintaining responsiveness
+    usleep(250000); // 250 ms
 
-    // SINGLE SOURCE OF TRUTH
-    $payload = require __DIR__ . "/getDynamicData.php";
-
-    $payload['auth'] = [
-        'authenticated' => $_SESSION['authenticated'],
-        'username'      => $_SESSION['username'] ?? null,
-        'role'          => $_SESSION['role'] ?? null
-    ];
-
-    echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
-
-    @ob_flush();
-    @flush();
 }
 
 #endregion
