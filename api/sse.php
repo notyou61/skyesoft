@@ -43,12 +43,13 @@ if ($isSnapshot) {
 
     // Capture auth once
     $auth = [
-        'authenticated' => $_SESSION['authenticated'] ?? false,
+        'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    session_write_close(); // ✅ release session lock ASAP
+    // Release session lock immediately
+    session_write_close();
 
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
@@ -101,30 +102,23 @@ ignore_user_abort(true);
 
 #region SECTION 4 — Loop Initialization
 
-// Capture auth ONCE (do not hold session lock during SSE)
+// Capture auth snapshot
 $auth = [
-    'authenticated' => $_SESSION['authenticated'] ?? false,
+    'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
     'username'      => $_SESSION['username'] ?? null,
     'role'          => $_SESSION['role'] ?? null
 ];
 
-// ✅ Critical: release the session lock before entering the infinite loop
+// Release session lock so SSE does not block other requests
 session_write_close();
 
-$lastPing   = 0;
-$lastSecond = 0;
+$lastPing        = 0;
+$lastSecond      = 0;
+$lastAuthRefresh = 0;   // allows auth state to update without reconnect
 
 #endregion
 
 #region SECTION 5 — SSE 1 Hz Continuous Loop
-
-// Assumes:
-//  - $auth has already been captured once in SECTION 4
-//  - session_write_close() has already been called in SECTION 4
-//  - Do NOT touch $_SESSION inside this loop (prevents session-lock hangs)
-
-$lastPing   = 0;
-$lastSecond = 0;
 
 while (true) {
 
@@ -134,6 +128,25 @@ while (true) {
     }
 
     $now = time();
+
+    // ─────────────────────────────────────────────
+    // Refresh auth snapshot every 2 seconds
+    // (briefly reopens session without holding lock)
+    // ─────────────────────────────────────────────
+    if (($now - $lastAuthRefresh) >= 2) {
+
+        session_start();
+
+        $auth = [
+            'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
+            'username'      => $_SESSION['username'] ?? null,
+            'role'          => $_SESSION['role'] ?? null
+        ];
+
+        session_write_close();
+
+        $lastAuthRefresh = $now;
+    }
 
     // ─────────────────────────────────────────────
     // 15-Second Keepalive Ping (prevents proxy timeouts)
@@ -157,7 +170,7 @@ while (true) {
         // SINGLE SOURCE OF TRUTH
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        // Inject authentication projection (from $auth snapshot)
+        // Inject authentication projection
         $payload['auth'] = $auth;
 
         echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
@@ -167,7 +180,7 @@ while (true) {
     }
 
     // Reduce CPU usage while maintaining responsiveness
-    usleep(20000); // 20ms backoff (smooth cadence, low CPU)
+    usleep(20000);
 }
 
 #endregion
