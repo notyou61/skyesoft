@@ -613,8 +613,8 @@ function mapWeatherIcon(icon, condition='') {
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
 
-    // Early exit + skeleton fallback
-    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+    // Need at least 3 entries starting from index 1
+    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
             if (el.icon)  el.icon.textContent  = '—';
@@ -625,18 +625,20 @@ function renderThreeDayForecast(forecastEls, payload) {
 
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
-    forecast.slice(0, 3).forEach((dayData, i) => {
-        const { dateUnix, high, low, icon, condition } = dayData || {};
+    // Explicitly use indices 1, 2, 3 → skips the stale 03/04 at [0]
+    [1, 2, 3].forEach((idx, i) => {
+        const dayData = forecast[idx] || {};
+        const { dateUnix, high, low, icon, condition } = dayData;
 
-        // Format date — falls back gracefully if missing
-        const dateLabel = formatPhoenixDateFromUnix(dateUnix) || '—';
+        const dateLabel = dateUnix ? formatPhoenixDateFromUnix(dateUnix) : '—';
 
         if (forecastEls[i]?.day) {
             forecastEls[i].day.textContent = `${labels[i]} (${dateLabel})`;
         }
 
         if (forecastEls[i]?.icon) {
-            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
+            // Use your existing icon mapper; fallback if missing
+            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition) || '—';
         }
 
         if (forecastEls[i]?.temps) {
