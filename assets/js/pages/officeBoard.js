@@ -609,54 +609,41 @@ function mapWeatherIcon(icon, condition='') {
 
     return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
-// Render 3-day weather forecast into given elements
+// Render 3-day weather forecast into the given elements
 function renderThreeDayForecast(forecastEls, payload) {
-
     const forecast = payload?.weather?.forecast;
 
-    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
-
+    // Early exit + skeleton fallback
+    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
             if (el.icon)  el.icon.textContent  = '—';
             if (el.temps) el.temps.textContent = '— / —';
         });
-
         return;
     }
 
-    const rows = [
-        { label: 'Today', data: forecast[1] },
-        { label: 'Tomorrow', data: forecast[2] },
-        { label: 'Day After Next', data: forecast[3] }
-    ];
+    const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
-    rows.forEach((row, i) => {
+    forecast.slice(0, 3).forEach((dayData, i) => {
+        const { dateUnix, high, low, icon, condition } = dayData || {};
 
-        const { dateUnix, high, low, icon, condition } = row.data || {};
+        // Format date — falls back gracefully if missing
+        const dateLabel = formatPhoenixDateFromUnix(dateUnix) || '—';
 
-        let dateLabel;
-
-        if (i === 0) {
-            dateLabel = new Date().toLocaleDateString('en-US', {
-                timeZone: 'America/Phoenix',
-                month: '2-digit',
-                day: '2-digit'
-            });
-        }
-        else if (dateUnix) {
-            dateLabel = formatPhoenixDateFromUnix(dateUnix);
+        if (forecastEls[i]?.day) {
+            forecastEls[i].day.textContent = `${labels[i]} (${dateLabel})`;
         }
 
-        if (forecastEls[i]?.day)
-            forecastEls[i].day.textContent = `${row.label} (${dateLabel})`;
-
-        if (forecastEls[i]?.icon)
+        if (forecastEls[i]?.icon) {
             forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
+        }
 
-        if (forecastEls[i]?.temps)
-            forecastEls[i].temps.textContent =
-                `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+        if (forecastEls[i]?.temps) {
+            const hi = Number.isFinite(high) ? Math.round(high) : '?';
+            const lo = Number.isFinite(low)  ? Math.round(low)  : '?';
+            forecastEls[i].temps.textContent = `${hi}° / ${lo}°`;
+        }
     });
 }
 
