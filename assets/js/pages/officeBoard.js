@@ -1509,7 +1509,7 @@ window.SkyOfficeBoard = {
     dom: { card: null, weather: null, time: null, interval: null, version: null },
 
     start() { this.init(); },
-
+    // Initialize DOM references and start rotation
     init() {
         this.dom.pageBody  = document.getElementById('boardCardHost');
         this.dom.weather   = document.getElementById('headerWeather');
