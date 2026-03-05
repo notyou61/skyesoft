@@ -47,6 +47,12 @@ function formatVersionFooter(siteMeta) {
     else if (deltaSeconds < 3600) {
         agoStr = `${String(Math.floor(deltaSeconds / 60)).padStart(2,'0')} min ago`;
     }
+    else if (deltaSeconds < 86400) {
+        agoStr = `${String(Math.floor(deltaSeconds / 3600)).padStart(2,'0')} hr ago`;
+    }
+    else {
+        agoStr = `${String(Math.floor(deltaSeconds / 86400)).padStart(2,'0')} day ago`;
+    }
 
     return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
 }
