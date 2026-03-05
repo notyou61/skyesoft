@@ -813,11 +813,20 @@ function formatVersionFooter(siteMeta) {
 
     let agoStr;
 
-    if (deltaSeconds < 3600) {
+    // Delta Seconds Conditional
+    if (deltaSeconds < 60) {
+
+        agoStr = 'just now';
+
+    }
+    else if (deltaSeconds < 3600) {
+
         const mins = Math.floor(deltaSeconds / 60);
         agoStr = `${mins} minute${mins === 1 ? '' : 's'} ago`;
+
     }
     else if (deltaSeconds < 86400) {
+
         const hrs  = Math.floor(deltaSeconds / 3600);
         const mins = Math.floor((deltaSeconds % 3600) / 60);
 
@@ -825,12 +834,16 @@ function formatVersionFooter(siteMeta) {
             `${hrs} hour${hrs === 1 ? '' : 's'}` +
             (mins ? `, ${mins} minute${mins === 1 ? '' : 's'}` : '') +
             ` ago`;
+
     }
     else if (deltaSeconds < 2592000) {
+
         const days = Math.floor(deltaSeconds / 86400);
         agoStr = `${days} day${days === 1 ? '' : 's'} ago`;
+
     }
     else if (deltaSeconds < 31536000) {
+
         const months = Math.floor(deltaSeconds / 2592000);
         const days   = Math.floor((deltaSeconds % 2592000) / 86400);
 
@@ -838,10 +851,13 @@ function formatVersionFooter(siteMeta) {
             `${months} month${months === 1 ? '' : 's'}` +
             (days ? `, ${days} day${days === 1 ? '' : 's'}` : '') +
             ` ago`;
+
     }
     else {
+
         const years = Math.floor(deltaSeconds / 31536000);
         agoStr = `${years} year${years === 1 ? '' : 's'} ago`;
+
     }
 
     return `v${version} · ${dateStr} ${timeStr} (${agoStr})`;
