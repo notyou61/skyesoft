@@ -809,26 +809,25 @@ function formatVersionFooter(siteMeta) {
         hour12: true
     });
 
-    const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
+    const ageSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
 
     let agoStr;
 
-    // Delta Seconds Conditional
-    if (deltaSeconds < 60) {
+    if (ageSeconds < 60) {
 
         agoStr = 'just now';
 
     }
-    else if (deltaSeconds < 3600) {
+    else if (ageSeconds < 3600) {
 
-        const mins = Math.floor(deltaSeconds / 60);
+        const mins = Math.floor(ageSeconds / 60);
         agoStr = `${mins} minute${mins === 1 ? '' : 's'} ago`;
 
     }
-    else if (deltaSeconds < 86400) {
+    else if (ageSeconds < 86400) {
 
-        const hrs  = Math.floor(deltaSeconds / 3600);
-        const mins = Math.floor((deltaSeconds % 3600) / 60);
+        const hrs  = Math.floor(ageSeconds / 3600);
+        const mins = Math.floor((ageSeconds % 3600) / 60);
 
         agoStr =
             `${hrs} hour${hrs === 1 ? '' : 's'}` +
@@ -836,16 +835,16 @@ function formatVersionFooter(siteMeta) {
             ` ago`;
 
     }
-    else if (deltaSeconds < 2592000) {
+    else if (ageSeconds < 2592000) {
 
-        const days = Math.floor(deltaSeconds / 86400);
+        const days = Math.floor(ageSeconds / 86400);
         agoStr = `${days} day${days === 1 ? '' : 's'} ago`;
 
     }
-    else if (deltaSeconds < 31536000) {
+    else if (ageSeconds < 31536000) {
 
-        const months = Math.floor(deltaSeconds / 2592000);
-        const days   = Math.floor((deltaSeconds % 2592000) / 86400);
+        const months = Math.floor(ageSeconds / 2592000);
+        const days   = Math.floor((ageSeconds % 2592000) / 86400);
 
         agoStr =
             `${months} month${months === 1 ? '' : 's'}` +
@@ -855,7 +854,7 @@ function formatVersionFooter(siteMeta) {
     }
     else {
 
-        const years = Math.floor(deltaSeconds / 31536000);
+        const years = Math.floor(ageSeconds / 31536000);
         agoStr = `${years} year${years === 1 ? '' : 's'} ago`;
 
     }
