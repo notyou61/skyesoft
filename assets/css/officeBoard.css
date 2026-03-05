@@ -455,6 +455,12 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* #endregion */
 
+.forecast-icon{
+    width:20px;
+    height:20px;
+    vertical-align:middle;
+}
+
 /* #region Viewport Adjustments */
 
 @media (max-width: 600px) {

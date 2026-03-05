@@ -571,28 +571,20 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour12: true
     });
 }
-// Map weather icon code to emoji
+// Map OpenWeather icon code → rendered icon
 function mapWeatherIcon(icon, condition = '') {
-    const map = {
-        sunny:          '☀️',
-        clear:          '☀️',
-        partly_cloudy:  '🌤️',
-        cloudy:         '☁️',
-        rain:           '🌧️',
-        storm:          '🌩️',
-        snow:           '❄️',
-    };
 
-    const key = (icon || '').toLowerCase();
-    if (map[key]) return map[key];
+    if (!icon) return '—';
 
-    const cond = (condition || '').toLowerCase();
-    if (cond.includes('rain') || cond.includes('shower')) return '🌧️';
-    if (cond.includes('thunder') || cond.includes('storm')) return '🌩️';
-    if (cond.includes('snow')) return '❄️';
-    if (cond.includes('cloud')) return '☁️';
+    const code = String(icon).toLowerCase();
 
-    return '🌡️';
+    // OpenWeather icon URL
+    const src = `https://openweathermap.org/img/wn/${code}.png`;
+
+    return `<img
+        class="forecast-icon"
+        src="${src}"
+        alt="${condition || 'weather'}">`;
 }
 // render 3-day weather forecast into given elements
 function renderThreeDayForecast(forecastEls, payload) {
@@ -625,7 +617,7 @@ function renderThreeDayForecast(forecastEls, payload) {
         }
 
         forecastEls[i].day.textContent   = label;
-        forecastEls[i].icon.textContent  = mapWeatherIcon(icon, condition);
+        forecastEls[i].icon.innerHTML  = mapWeatherIcon(icon, condition);
         forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
     });
 }
