@@ -458,8 +458,8 @@ body[data-page="officeBoard"] #boardCardHost {
 /* #region Forecast Weather */
 
 .forecast-icon{
-    width:30px;
-    height:30px;
+    width:26px;
+    height:26px;
     object-fit:contain;
 
     filter:none !important;
@@ -492,11 +492,9 @@ body[data-page="officeBoard"] #boardCardHost {
     display:grid;
     grid-template-columns:180px 30px auto;
     align-items:center;
-    gap:6px;
-    margin:3px 0;
 
-    /* align with Sun & Light content */
-    margin-left:18px;
+    gap:2px;        /* tighter spacing between icon and temps */
+    margin:1px 0;   /* reduce vertical space between rows */
 }
 
 .forecast-row .day{
