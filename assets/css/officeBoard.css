@@ -490,10 +490,10 @@ body[data-page="officeBoard"] #boardCardHost {
 
 .forecast-row{
     display:grid;
-    grid-template-columns:180px 30px auto;
+    grid-template-columns:180px 26px auto;
     align-items:center;
 
-    gap:2px;        /* tighter spacing between icon and temps */
+    gap:3px;        /* tighter spacing between icon and temps */
     margin:1px 0;   /* reduce vertical space between rows */
 }
 
