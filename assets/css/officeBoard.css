@@ -455,9 +455,10 @@ body[data-page="officeBoard"] #boardCardHost {
 
 /* #endregion */
 
+/* #region Weather Icons */
 .forecast-icon{
-    width:20px;
-    height:20px;
+    width:24px;
+    height:24px;
     vertical-align:middle;
 }
 
@@ -485,6 +486,7 @@ body[data-page="officeBoard"] #boardCardHost {
     vertical-align: middle;
     filter: none !important;
 }
+/* #endregion */
 
 /* #region Viewport Adjustments */
 
