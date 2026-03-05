@@ -778,65 +778,73 @@ function createPermitNewsCard(card) {
 
     return { root, content, footer };
 }
-// Format Version Footer (stable, non-jittery "ago")
-function formatVersionFooter(siteMeta, referenceUnix) {
-    if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
-        return `v${siteMeta?.siteVersion ?? '—'}`;
+// ⏱️ Format Version Footer (canonical, shared behavior)
+function formatVersionFooter(siteMeta) {
+
+    // Normalize version so "unknown" never appears
+    const version =
+        (siteMeta?.siteVersion && siteMeta.siteVersion !== 'unknown')
+            ? siteMeta.siteVersion
+            : '—';
+
+    if (!siteMeta?.lastUpdateUnix) {
+        return `v${version}`;
     }
 
-    const updatedUnix = siteMeta.lastUpdateUnix;
-    const refUnix = referenceUnix ?? Math.floor(Date.now() / 1000);
-    const delta = Math.max(0, refUnix - updatedUnix);
+    const TZ = 'America/Phoenix';
 
-    // Absolute date/time (MM/DD/YY h:mm AM/PM)
-    const d = new Date(updatedUnix * 1000);
-    const dateStr = d.toLocaleDateString(undefined, {
+    const d = new Date(siteMeta.lastUpdateUnix * 1000);
+
+    const dateStr = d.toLocaleDateString('en-US', {
+        timeZone: TZ,
         month: '2-digit',
         day: '2-digit',
         year: '2-digit'
     });
-    const timeStr = d.toLocaleTimeString(undefined, {
+
+    const timeStr = d.toLocaleTimeString('en-US', {
+        timeZone: TZ,
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
     });
 
-    // ─────────────────────────────────────
-    // AGO RULES (no seconds, stable units)
-    // ─────────────────────────────────────
+    const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
+
     let agoStr;
 
-    if (delta < 60) {
-        agoStr = 'less than a minute ago';
+    if (deltaSeconds < 3600) {
+        const mins = Math.floor(deltaSeconds / 60);
+        agoStr = `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    }
+    else if (deltaSeconds < 86400) {
+        const hrs  = Math.floor(deltaSeconds / 3600);
+        const mins = Math.floor((deltaSeconds % 3600) / 60);
 
-    } else if (delta < 3600) {
-        const mins = Math.floor(delta / 60);
-        agoStr = `${String(mins).padStart(2, '0')} min ago`;
+        agoStr =
+            `${hrs} hour${hrs === 1 ? '' : 's'}` +
+            (mins ? `, ${mins} minute${mins === 1 ? '' : 's'}` : '') +
+            ` ago`;
+    }
+    else if (deltaSeconds < 2592000) {
+        const days = Math.floor(deltaSeconds / 86400);
+        agoStr = `${days} day${days === 1 ? '' : 's'} ago`;
+    }
+    else if (deltaSeconds < 31536000) {
+        const months = Math.floor(deltaSeconds / 2592000);
+        const days   = Math.floor((deltaSeconds % 2592000) / 86400);
 
-    } else if (delta < 6 * 3600) {
-        // Allow two units ONLY between 1–6 hours
-        const hrs  = Math.floor(delta / 3600);
-        const mins = Math.floor((delta % 3600) / 60);
-        agoStr = `${String(hrs).padStart(2, '0')} hrs ${String(mins).padStart(2, '0')} min ago`;
-
-    } else if (delta < 86400) {
-        const hrs = Math.floor(delta / 3600);
-        agoStr = `${String(hrs).padStart(2, '0')} hrs ago`;
-
-    } else if (delta < 30 * 86400) {
-        const days = Math.floor(delta / 86400);
-        agoStr = `${String(days).padStart(2, '0')} days ago`;
-
-    } else if (delta < 365 * 86400) {
-        const months = Math.floor(delta / (30 * 86400));
-        agoStr = `${String(months).padStart(2, '0')} mos ago`;
-
-    } else {
-        const years = Math.floor(delta / (365 * 86400));
-        agoStr = years <= 1 ? 'over 1 yr ago' : `over ${years} yrs ago`;
+        agoStr =
+            `${months} month${months === 1 ? '' : 's'}` +
+            (days ? `, ${days} day${days === 1 ? '' : 's'}` : '') +
+            ` ago`;
+    }
+    else {
+        const years = Math.floor(deltaSeconds / 31536000);
+        agoStr = `${years} year${years === 1 ? '' : 's'} ago`;
     }
 
-    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
+    return `v${version} · ${dateStr} ${timeStr} (${agoStr})`;
 }
 // ⏳ Canonical Interval Formatter (DD HH MM SS, padded, no leading nulls)
 function formatIntervalDHMS(totalSeconds) {
