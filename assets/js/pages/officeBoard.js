@@ -635,9 +635,22 @@ function renderThreeDayForecast(forecastEls, payload) {
             i === 1 ? 'Tomorrow' :
             'Day After Next';
 
-        // Phoenix-safe date suffix
-        if (dateUnix) {
-            label += ` (${formatPhoenixDateFromUnix(dateUnix)})`;
+        let dateLabel;
+
+        if (i === 0) {
+            // Always use the real Phoenix date for "Today"
+            dateLabel = new Date().toLocaleDateString('en-US', {
+                timeZone: 'America/Phoenix',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+        else if (dateUnix) {
+            dateLabel = formatPhoenixDateFromUnix(dateUnix);
+        }
+
+        if (dateLabel) {
+            label += ` (${dateLabel})`;
         }
 
         if (forecastEls[i]?.day)
