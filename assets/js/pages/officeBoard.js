@@ -614,7 +614,7 @@ function renderThreeDayForecast(forecastEls, payload) {
 
     const forecast = payload?.weather?.forecast;
 
-    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
 
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
@@ -625,7 +625,7 @@ function renderThreeDayForecast(forecastEls, payload) {
         return;
     }
 
-    forecast.slice(1, 3).forEach((dayData, i) => {
+    forecast.slice(1, 4).forEach((dayData, i) => {
 
         const { dateUnix, high, low, icon, condition } = dayData;
 
