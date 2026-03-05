@@ -614,7 +614,7 @@ function renderThreeDayForecast(forecastEls, payload) {
 
     const forecast = payload?.weather?.forecast;
 
-    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
 
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
@@ -625,14 +625,15 @@ function renderThreeDayForecast(forecastEls, payload) {
         return;
     }
 
-    forecast.slice(1, 3).forEach((dayData, i) => {
+    const rows = [
+        { label: 'Today', data: forecast[1] },
+        { label: 'Tomorrow', data: forecast[2] },
+        { label: 'Day After Next', data: forecast[3] }
+    ];
 
-        const { dateUnix, high, low, icon, condition } = dayData;
+    rows.forEach((row, i) => {
 
-        let label =
-            i === 0 ? 'Today' :
-            i === 1 ? 'Tomorrow' :
-            'Day After Next';
+        const { dateUnix, high, low, icon, condition } = row.data || {};
 
         let dateLabel;
 
@@ -647,12 +648,8 @@ function renderThreeDayForecast(forecastEls, payload) {
             dateLabel = formatPhoenixDateFromUnix(dateUnix);
         }
 
-        if (dateLabel) {
-            label += ` (${dateLabel})`;
-        }
-
         if (forecastEls[i]?.day)
-            forecastEls[i].day.textContent = label;
+            forecastEls[i].day.textContent = `${row.label} (${dateLabel})`;
 
         if (forecastEls[i]?.icon)
             forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
@@ -660,7 +657,6 @@ function renderThreeDayForecast(forecastEls, payload) {
         if (forecastEls[i]?.temps)
             forecastEls[i].temps.textContent =
                 `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
-
     });
 }
 
