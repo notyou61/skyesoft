@@ -577,14 +577,9 @@ function mapWeatherIcon(icon, condition = '') {
     if (!icon) return '—';
 
     const code = String(icon).toLowerCase();
+    const src = `https://openweathermap.org/img/wn/${code}@2x.png`;
 
-    // OpenWeather icon URL
-    const src = `https://openweathermap.org/img/wn/${code}.png`;
-
-    return `<img
-        class="forecast-icon"
-        src="${src}"
-        alt="${condition || 'weather'}">`;
+    return `<img class="forecast-icon" src="${src}" alt="${condition || 'weather'}">`;
 }
 // render 3-day weather forecast into given elements
 function renderThreeDayForecast(forecastEls, payload) {

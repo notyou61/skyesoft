@@ -461,6 +461,31 @@ body[data-page="officeBoard"] #boardCardHost {
     vertical-align:middle;
 }
 
+/* Forecast icons: override any global `.icon` styling */
+.forecast-grid .icon{
+    background: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    width: auto !important;
+    height: auto !important;
+    filter: none !important;
+}
+
+/* Kill any pseudo-icon that `.icon` may be drawing */
+.forecast-grid .icon::before,
+.forecast-grid .icon::after{
+    content: none !important;
+}
+
+/* The actual weather image */
+.forecast-grid .icon img.forecast-icon{
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    vertical-align: middle;
+    filter: none !important;
+}
+
 /* #region Viewport Adjustments */
 
 @media (max-width: 600px) {
