@@ -463,4 +463,9 @@ body[data-page="index"] .cardFooter .ellipsis::after{
     100% { content:""; }
 }
 
+.version-now{
+    color:#2e7d32;
+    font-weight:600;
+}
+
 /* #endregion */

@@ -815,7 +815,7 @@ function formatVersionFooter(siteMeta) {
 
     if (ageSeconds < 60) {
 
-        agoStr = 'just now';
+        agoStr = '<span class="version-now">just now</span>';
 
     }
     else if (ageSeconds < 3600) {

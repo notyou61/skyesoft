@@ -15,6 +15,7 @@ if (typeof adaptStreamedDomain !== 'function') {
 
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
 function formatVersionFooter(siteMeta) {
+
     // Version Fallback
     const version =
         (siteMeta?.siteVersion && siteMeta.siteVersion !== 'unknown')
@@ -46,8 +47,14 @@ function formatVersionFooter(siteMeta) {
     const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
 
     let agoStr;
+
     // Delta Seconds Conditional
-    if (deltaSeconds < 3600) {
+    if (deltaSeconds < 60) {
+
+        agoStr = '<span class="version-now">just now</span>';
+
+    }
+    else if (deltaSeconds < 3600) {
 
         const mins = Math.floor(deltaSeconds / 60);
         agoStr = `${mins} minute${mins === 1 ? '' : 's'} ago`;
@@ -64,7 +71,7 @@ function formatVersionFooter(siteMeta) {
             ` ago`;
 
     }
-    else if (deltaSeconds < 2592000) { // ~30 days
+    else if (deltaSeconds < 2592000) {
 
         const days = Math.floor(deltaSeconds / 86400);
         agoStr = `${days} day${days === 1 ? '' : 's'} ago`;
@@ -88,7 +95,7 @@ function formatVersionFooter(siteMeta) {
 
     }
 
-    return `v${siteMeta.siteVersion} · ${dateStr} ${timeStr} (${agoStr})`;
+    return `v${version} · ${dateStr} ${timeStr} (${agoStr})`;
 }
 // #endregion
 
