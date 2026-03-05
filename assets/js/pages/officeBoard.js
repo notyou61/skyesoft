@@ -576,7 +576,7 @@ function mapWeatherIcon(icon, condition = '') {
 
     if (!icon) return '—';
 
-    const src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+    const src = `https://openweathermap.org/themes/openweathermap/assets/vendor/owm/img/widgets/${icon}.png`;
 
     return `<img class="forecast-icon" src="${src}" alt="${condition || 'weather'}">`;
 }
