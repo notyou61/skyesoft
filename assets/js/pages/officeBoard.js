@@ -572,43 +572,13 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
     });
 }
 // Map OpenWeather icon code → rendered icon
-// Map OpenWeather icon code → colorful local icon
 function mapWeatherIcon(icon, condition = '') {
 
     if (!icon) return '—';
 
-    const map = {
-        '01d': 'clear-day',
-        '01n': 'clear-night',
+    const src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
 
-        '02d': 'partly-cloudy-day',
-        '02n': 'partly-cloudy-night',
-
-        '03d': 'cloudy',
-        '03n': 'cloudy',
-
-        '04d': 'cloudy',
-        '04n': 'cloudy',
-
-        '09d': 'rain',
-        '09n': 'rain',
-
-        '10d': 'rain',
-        '10n': 'rain',
-
-        '11d': 'thunderstorm',
-        '11n': 'thunderstorm',
-
-        '13d': 'snow',
-        '13n': 'snow',
-
-        '50d': 'mist',
-        '50n': 'mist'
-    };
-
-    const iconName = map[icon] || 'cloudy';
-
-    return `<img class="forecast-icon" src="/assets/images/weather/${iconName}.svg" alt="${condition}">`;
+    return `<img class="forecast-icon" src="${src}" alt="${condition || 'weather'}">`;
 }
 // render 3-day weather forecast into given elements
 function renderThreeDayForecast(forecastEls, payload) {
