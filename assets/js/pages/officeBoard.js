@@ -571,32 +571,62 @@ function formatPhoenixTimeFromUnix(unixSeconds) {
         hour12: true
     });
 }
+// format unix timestamp to Phoenix date (MM/DD)
+function formatPhoenixDateFromUnix(unixSeconds) {
+    if (!unixSeconds) return '—';
+
+    return new Date(unixSeconds * 1000).toLocaleDateString('en-US', {
+        timeZone: 'America/Phoenix',
+        month: '2-digit',
+        day: '2-digit'
+    });
+}
 // Map OpenWeather icon code → rendered icon
-function mapWeatherIcon(icon, condition = '') {
+function mapWeatherIcon(icon, condition='') {
 
     if (!icon) return '—';
 
-    // Force daytime icons (replace n → d)
-    const normalized = icon.replace('n', 'd');
+    // force day icons
+    const code = icon.replace('n','d');
 
-    const src = `https://openweathermap.org/img/wn/${normalized}@2x.png`;
+    const map = {
 
-    return `<img class="forecast-icon" src="${src}" alt="${condition || 'weather'}">`;
+        '01d':'clear-day.svg',
+        '02d':'cloudy-1-day.svg',
+        '03d':'cloudy-2-day.svg',
+        '04d':'cloudy-3-day.svg',
+
+        '09d':'rainy-1.svg',
+        '10d':'rainy-1-day.svg',
+
+        '11d':'thunderstorms.svg',
+        '13d':'snowy-1.svg',
+
+        '50d':'fog-day.svg'
+    };
+
+    const file = map[code] || 'cloudy-2-day.svg';
+
+    return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
-// render 3-day weather forecast into given elements
+// Render 3-day weather forecast into given elements
 function renderThreeDayForecast(forecastEls, payload) {
+
     const forecast = payload?.weather?.forecast;
 
     if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
             if (el.icon)  el.icon.textContent  = '—';
             if (el.temps) el.temps.textContent = '— / —';
         });
+
         return;
     }
 
     forecast.slice(0, 3).forEach((dayData, i) => {
+
         const { dateUnix, high, low, icon, condition } = dayData;
 
         // Base label (never empty)
@@ -605,17 +635,21 @@ function renderThreeDayForecast(forecastEls, payload) {
             i === 1 ? 'Tomorrow' :
             'Day After Next';
 
-        // Optional date suffix
+        // Phoenix-safe date suffix
         if (dateUnix) {
-            const d  = new Date(dateUnix * 1000);
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            label += ` (${mm}/${dd})`;
+            label += ` (${formatPhoenixDateFromUnix(dateUnix)})`;
         }
 
-        forecastEls[i].day.textContent   = label;
-        forecastEls[i].icon.innerHTML  = mapWeatherIcon(icon, condition);
-        forecastEls[i].temps.textContent = `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+        if (forecastEls[i]?.day)
+            forecastEls[i].day.textContent = label;
+
+        if (forecastEls[i]?.icon)
+            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
+
+        if (forecastEls[i]?.temps)
+            forecastEls[i].temps.textContent =
+                `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+
     });
 }
 
