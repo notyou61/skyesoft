@@ -1553,7 +1553,7 @@ window.SkyOfficeBoard = {
 
         // 📦 Version Footer (authoritative SSE)
         if (this.dom?.version && payload.siteMeta) {
-            this.dom.version.textContent =
+            this.dom.version.innerHTML =
                 formatVersionFooter(payload.siteMeta);
         }
 

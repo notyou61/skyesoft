@@ -1019,7 +1019,7 @@ window.SkyIndex = {
 
         // Version footer
         if (this.dom?.version && event.siteMeta) {
-            this.dom.version.textContent = formatVersionFooter(event.siteMeta);
+            this.dom.version.innerHTML = formatVersionFooter(event.siteMeta);
         }
 
         // 🛡️ Sentinel Governance Projection
