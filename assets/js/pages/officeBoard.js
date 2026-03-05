@@ -625,7 +625,7 @@ function renderThreeDayForecast(forecastEls, payload) {
         return;
     }
 
-    forecast.slice(0, 3).forEach((dayData, i) => {
+    forecast.slice(1, 4).forEach((dayData, i) => {
 
         const { dateUnix, high, low, icon, condition } = dayData;
 
