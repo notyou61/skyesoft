@@ -576,7 +576,10 @@ function mapWeatherIcon(icon, condition = '') {
 
     if (!icon) return '—';
 
-    const src = `https://openweathermap.org/themes/openweathermap/assets/vendor/owm/img/widgets/${icon}.png`;
+    // Force daytime icons (replace n → d)
+    const normalized = icon.replace('n', 'd');
+
+    const src = `https://openweathermap.org/img/wn/${normalized}@2x.png`;
 
     return `<img class="forecast-icon" src="${src}" alt="${condition || 'weather'}">`;
 }
