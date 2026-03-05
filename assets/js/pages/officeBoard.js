@@ -613,7 +613,7 @@ function mapWeatherIcon(icon, condition='') {
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
 
-    // Early exit + skeleton fallback
+    // Only need 3 entries now; relax guard to < 3
     if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
@@ -625,18 +625,18 @@ function renderThreeDayForecast(forecastEls, payload) {
 
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
+    // Use first 3 entries directly (no skip needed anymore)
     forecast.slice(0, 3).forEach((dayData, i) => {
         const { dateUnix, high, low, icon, condition } = dayData || {};
 
-        // Format date — falls back gracefully if missing
-        const dateLabel = formatPhoenixDateFromUnix(dateUnix) || '—';
+        const dateLabel = dateUnix ? formatPhoenixDateFromUnix(dateUnix) : '—';
 
         if (forecastEls[i]?.day) {
             forecastEls[i].day.textContent = `${labels[i]} (${dateLabel})`;
         }
 
         if (forecastEls[i]?.icon) {
-            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
+            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition) || '—';
         }
 
         if (forecastEls[i]?.temps) {
