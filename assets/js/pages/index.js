@@ -15,8 +15,14 @@ if (typeof adaptStreamedDomain !== 'function') {
 
 // #region ⏱️ Format Version Footer (canonical, shared behavior)
 function formatVersionFooter(siteMeta) {
-    if (!siteMeta?.siteVersion || !siteMeta?.lastUpdateUnix) {
-        return `v${siteMeta?.siteVersion ?? '—'}`;
+    // Version Fallback
+    const version =
+        (siteMeta?.siteVersion && siteMeta.siteVersion !== 'unknown')
+            ? siteMeta.siteVersion
+            : '—';
+
+    if (!siteMeta?.lastUpdateUnix) {
+        return `v${version}`;
     }
 
     const TZ = 'America/Phoenix';
