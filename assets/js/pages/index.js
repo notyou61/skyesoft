@@ -1052,6 +1052,11 @@ window.SkyIndex = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'logout' })
             });
+
+            // Immediate UI transition
+            document.body.removeAttribute('data-auth');
+            this.renderLoginCard();
+
         } catch (err) {
             console.error('[SkyIndex] Logout error:', err);
         }
