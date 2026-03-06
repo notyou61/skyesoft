@@ -1058,6 +1058,7 @@ window.SkyIndex = {
 
             // Force UI reset immediately
             document.body.removeAttribute('data-auth');
+            this.lastSSE = null;
             this.renderLoginCard();
 
         } catch (err) {
