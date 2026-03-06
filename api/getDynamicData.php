@@ -375,7 +375,8 @@ if ($shouldFetch) {
 
                 ksort($daily);
 
-                $today = (new DateTime('now', new DateTimeZone('America/Phoenix')))->format('Y-m-d');
+                $today = (new DateTime('now', new DateTimeZone('America/Phoenix')))
+                            ->format('Y-m-d');
 
                 $count = 0;
 
