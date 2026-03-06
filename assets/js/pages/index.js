@@ -1,7 +1,7 @@
 /* Skyesoft — index.js
    🧠 Command / Portal Interface Controller
    Phase 1: Card-Based Bootstrap (Login → Command Interface)
-   Header / Footer driven exclusively by SSE
+   Header / Footer driven exclusively by SSE (Server Side Events)
 */
 
 // #region 📦 Canonical Domain Surface Dependencies
