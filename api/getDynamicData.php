@@ -248,23 +248,45 @@ $weatherValid = false;
 
 // ── Try cache first ──
 if ($cacheExists) {
+
     $cached = json_decode(file_get_contents($cachePath), true);
 
     $cacheIsValid = is_array($cached)
         && isset($cached['current']['temp']) && $cached['current']['temp'] !== null
         && isset($cached['current']['sunriseUnix']) && $cached['current']['sunriseUnix'] !== null;
 
+    // ── Forecast freshness safety check ──
+    if ($cacheIsValid && !empty($cached['forecast'][0]['dateUnix'])) {
+
+        $phoenix = new DateTime('now', new DateTimeZone('America/Phoenix'));
+        $phoenix->setTime(0,0,0);
+        $todayUnix = $phoenix->getTimestamp();
+
+        if ($cached['forecast'][0]['dateUnix'] < $todayUnix) {
+            $cacheIsValid = false;
+            error_log("[weather] Cache forecast outdated → forcing refresh");
+        }
+    }
+
     if ($cacheIsValid) {
+
         $currentWeather = $cached['current'];
         $forecastDays   = $cached['forecast'] ?? [];
         $currentWeather['source'] = 'cache';
         $weatherValid = true;
+
         error_log("[weather] Using valid cache (last updated: " . date('Y-m-d H:i:s', $lastWeatherUpdate) . ")");
+
     } else {
-        error_log("[weather] Cache exists but invalid/empty → forcing bootstrap fetch");
+
+        error_log("[weather] Cache exists but invalid/expired → forcing bootstrap fetch");
+
     }
+
 } else {
+
     error_log("[weather] No cache found → forcing bootstrap fetch");
+
 }
 
 // ── API key check ──
@@ -375,14 +397,17 @@ if ($shouldFetch) {
 
                 ksort($daily);
 
-                $today = (new DateTime('now', new DateTimeZone('America/Phoenix')))
-                            ->format('Y-m-d');
+                $phoenix = new DateTime('now', new DateTimeZone('America/Phoenix'));
+                $phoenix->setTime(0,0,0);
+                $todayUnix = $phoenix->getTimestamp();
 
                 $count = 0;
 
                 foreach ($daily as $date => $d) {
 
-                    if ($date < $today) {
+                    $dateUnix = strtotime($date . ' America/Phoenix');
+
+                    if ($dateUnix < $todayUnix) {
                         continue; // skip yesterday
                     }
 
@@ -391,7 +416,7 @@ if ($shouldFetch) {
                     }
 
                     $forecastDays[] = [
-                        'dateUnix' => strtotime($date),
+                        'dateUnix' => $dateUnix,
                         'high'     => round($d['high']),
                         'low'      => round($d['low']),
                         'icon'     => $d['icon'] ?? '04d'
