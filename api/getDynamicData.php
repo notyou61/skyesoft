@@ -349,6 +349,7 @@ if ($shouldFetch) {
                 isset($f['list']) && is_array($f['list'])
             ) {
                 $daily = [];
+                $forecastDays = [];
 
                 foreach ($f['list'] as $slot) {
                     $date = (new DateTime("@{$slot['dt']}"))
