@@ -936,6 +936,9 @@ window.SkyIndex = {
 
             error.hidden = true;
 
+            // Immediate UI transition
+            this.transitionToCommandInterface();
+
         } catch (err) {
             console.error('[SkyIndex] Login error:', err);
             error.textContent = 'Connection error.';
