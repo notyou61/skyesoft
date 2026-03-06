@@ -351,7 +351,9 @@ if ($shouldFetch) {
                 $daily = [];
 
                 foreach ($f['list'] as $slot) {
-                    $date = date('Y-m-d', $slot['dt']);
+                    $date = (new DateTime("@{$slot['dt']}"))
+                        ->setTimezone(new DateTimeZone('America/Phoenix'))
+                        ->format('Y-m-d');
 
                     if (!isset($daily[$date])) {
                         $daily[$date] = [
@@ -370,9 +372,21 @@ if ($shouldFetch) {
                     }
                 }
 
-                $i = 0;
+                ksort($daily);
+
+                $today = (new DateTime('now', new DateTimeZone('America/Phoenix')))->format('Y-m-d');
+
+                $count = 0;
+
                 foreach ($daily as $date => $d) {
-                    if ($i >= 3) break;
+
+                    if ($date < $today) {
+                        continue; // skip yesterday
+                    }
+
+                    if ($count >= 3) {
+                        break;
+                    }
 
                     $forecastDays[] = [
                         'dateUnix' => strtotime($date),
@@ -380,7 +394,8 @@ if ($shouldFetch) {
                         'low'      => round($d['low']),
                         'icon'     => $d['icon'] ?? '04d'
                     ];
-                    $i++;
+
+                    $count++;
                 }
 
                 error_log("[weather] Forecast populated (" . count($forecastDays) . " days)");
