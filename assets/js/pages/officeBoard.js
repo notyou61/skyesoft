@@ -609,42 +609,53 @@ function mapWeatherIcon(icon, condition='') {
 
     return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
-// Render 3-day weather forecast into the given elements
-// Render 3-day weather forecast into the given elements
+// Render 3-day weather forecast
 function renderThreeDayForecast(forecastEls, payload) {
+
     const forecast = payload?.weather?.forecast;
 
-    // Need at least 4 entries because we skip the first one
-    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
+    if (!Array.isArray(forecast) || forecast.length < 1 || !forecastEls?.length) {
         forecastEls.forEach(el => {
-            if (el.day) el.day.textContent = '—';
-            if (el.icon) el.icon.textContent = '—';
+            if (el.day)   el.day.textContent   = '—';
+            if (el.icon)  el.icon.textContent  = '—';
             if (el.temps) el.temps.textContent = '— / —';
         });
         return;
     }
 
+    // Phoenix "today"
+    const today = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'America/Phoenix'
+    });
+
+    // Remove yesterday if present
+    const validDays = forecast.filter(day => {
+
+        const d = new Date(day.dateUnix * 1000)
+            .toLocaleDateString('en-CA', { timeZone: 'America/Phoenix' });
+
+        return d >= today;
+
+    }).slice(0,3);
+
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
-    // Skip the first entry (often yesterday / partial day)
-    forecast.slice(1, 4).forEach((dayData, i) => {
-        const { dateUnix, high, low, icon, condition } = dayData || {};
+    validDays.forEach((dayData, i) => {
 
-        const dateLabel = dateUnix ? formatPhoenixDateFromUnix(dateUnix) : '—';
+        const { dateUnix, high, low, icon, condition } = dayData;
 
-        if (forecastEls[i]?.day) {
+        const dateLabel = formatPhoenixDateFromUnix(dateUnix);
+
+        if (forecastEls[i]?.day)
             forecastEls[i].day.textContent = `${labels[i]} (${dateLabel})`;
-        }
 
-        if (forecastEls[i]?.icon) {
-            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition) || '—';
-        }
+        if (forecastEls[i]?.icon)
+            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
 
-        if (forecastEls[i]?.temps) {
-            const hi = Number.isFinite(high) ? Math.round(high) : '?';
-            const lo = Number.isFinite(low) ? Math.round(low) : '?';
-            forecastEls[i].temps.textContent = `${hi}° / ${lo}°`;
-        }
+        if (forecastEls[i]?.temps)
+            forecastEls[i].temps.textContent =
+                `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+
     });
 }
 
