@@ -1046,6 +1046,7 @@ window.SkyIndex = {
     logout: async () => {
 
         try {
+
             await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -1053,7 +1054,9 @@ window.SkyIndex = {
                 body: JSON.stringify({ action: 'logout' })
             });
 
-            // Immediate UI transition
+            console.log('[SkyIndex] Session destroyed');
+
+            // Force UI reset immediately
             document.body.removeAttribute('data-auth');
             this.renderLoginCard();
 
