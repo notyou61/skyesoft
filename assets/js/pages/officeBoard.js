@@ -610,14 +610,15 @@ function mapWeatherIcon(icon, condition='') {
     return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
 // Render 3-day weather forecast into the given elements
+// Render 3-day weather forecast into the given elements
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
 
-    // Only need 3 entries now; relax guard to < 3
-    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+    // Need at least 4 entries because we skip the first one
+    if (!Array.isArray(forecast) || forecast.length < 4 || !forecastEls?.length) {
         forecastEls.forEach(el => {
-            if (el.day)   el.day.textContent   = '—';
-            if (el.icon)  el.icon.textContent  = '—';
+            if (el.day) el.day.textContent = '—';
+            if (el.icon) el.icon.textContent = '—';
             if (el.temps) el.temps.textContent = '— / —';
         });
         return;
@@ -625,8 +626,8 @@ function renderThreeDayForecast(forecastEls, payload) {
 
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
-    // Use first 3 entries directly (no skip needed anymore)
-    forecast.slice(0, 3).forEach((dayData, i) => {
+    // Skip the first entry (often yesterday / partial day)
+    forecast.slice(1, 4).forEach((dayData, i) => {
         const { dateUnix, high, low, icon, condition } = dayData || {};
 
         const dateLabel = dateUnix ? formatPhoenixDateFromUnix(dateUnix) : '—';
@@ -641,7 +642,7 @@ function renderThreeDayForecast(forecastEls, payload) {
 
         if (forecastEls[i]?.temps) {
             const hi = Number.isFinite(high) ? Math.round(high) : '?';
-            const lo = Number.isFinite(low)  ? Math.round(low)  : '?';
+            const lo = Number.isFinite(low) ? Math.round(low) : '?';
             forecastEls[i].temps.textContent = `${hi}° / ${lo}°`;
         }
     });
