@@ -609,51 +609,42 @@ function mapWeatherIcon(icon, condition='') {
 
     return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
+// Render 3-day weather forecast into the given elements
 function renderThreeDayForecast(forecastEls, payload) {
     const forecast = payload?.weather?.forecast;
-    if (!Array.isArray(forecast) || forecast.length === 0 || !forecastEls?.length) {
-        // fallback dashes...
+
+    // Only need 3 entries now; relax guard to < 3
+    if (!Array.isArray(forecast) || forecast.length < 3 || !forecastEls?.length) {
+        forecastEls.forEach(el => {
+            if (el.day)   el.day.textContent   = '—';
+            if (el.icon)  el.icon.textContent  = '—';
+            if (el.temps) el.temps.textContent = '— / —';
+        });
         return;
     }
 
-    const now = getDateFromSSE(payload);  // your existing helper → Date in Phoenix TZ
-    if (!now) return;  // fallback
-
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    todayStart.setHours(0, 0, 0, 0);
-
-    const futureDays = forecast
-        .map(day => {
-            if (!day?.dateUnix) return null;
-            const dayDate = new Date(day.dateUnix * 1000);
-            dayDate.setHours(0, 0, 0, 0);
-            const diffDays = Math.round((dayDate - todayStart) / 86400000);
-            return { day, diffDays };
-        })
-        .filter(item => item && item.diffDays >= 0 && item.diffDays <= 2)
-        .sort((a, b) => a.diffDays - b.diffDays)
-        .slice(0, 3);
-
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
-    futureDays.forEach((item, i) => {
-        const { dateUnix, high, low, icon, condition } = item.day || {};
-        const dateLabel = formatPhoenixDateFromUnix(dateUnix) || '—';
+    // Use first 3 entries directly (no skip needed anymore)
+    forecast.slice(0, 3).forEach((dayData, i) => {
+        const { dateUnix, high, low, icon, condition } = dayData || {};
+
+        const dateLabel = dateUnix ? formatPhoenixDateFromUnix(dateUnix) : '—';
 
         if (forecastEls[i]?.day) {
             forecastEls[i].day.textContent = `${labels[i]} (${dateLabel})`;
         }
-        // icon and temps same as before...
-    });
 
-    // Fill remaining rows with dashes if fewer than 3 days found
-    for (let i = futureDays.length; i < 3; i++) {
-        if (forecastEls[i]) {
-            forecastEls[i].day.textContent = labels[i];
-            forecastEls[i].icon.innerHTML = '—';
-            forecastEls[i].temps.textContent = '— / —';
+        if (forecastEls[i]?.icon) {
+            forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition) || '—';
         }
-    }
+
+        if (forecastEls[i]?.temps) {
+            const hi = Number.isFinite(high) ? Math.round(high) : '?';
+            const lo = Number.isFinite(low)  ? Math.round(low)  : '?';
+            forecastEls[i].temps.textContent = `${hi}° / ${lo}°`;
+        }
+    });
 }
 
 // ── Countdown helpers ────────────────────────────────────────────────
