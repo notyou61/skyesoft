@@ -609,40 +609,51 @@ function mapWeatherIcon(icon, condition='') {
 
     return `<img class="forecast-icon" src="/skyesoft/assets/images/weather/${file}" alt="${condition || 'weather'}">`;
 }
+// Get Phoenix midnight timestamp for "today" cutoff
+function getPhoenixTodayMidnight() {
+
+    const now = new Date();
+
+    const phoenixNow = new Date(
+        now.toLocaleString("en-US", { timeZone: "America/Phoenix" })
+    );
+
+    phoenixNow.setHours(0, 0, 0, 0);
+
+    return Math.floor(phoenixNow.getTime() / 1000);
+
+}
+
 // Render 3-day weather forecast
 function renderThreeDayForecast(forecastEls, payload) {
 
     const forecast = payload?.weather?.forecast;
 
-    if (!Array.isArray(forecast) || forecast.length < 1 || !forecastEls?.length) {
+    if (!Array.isArray(forecast) || !forecastEls?.length) {
+
         forecastEls.forEach(el => {
             if (el.day)   el.day.textContent   = '—';
             if (el.icon)  el.icon.textContent  = '—';
             if (el.temps) el.temps.textContent = '— / —';
         });
+
         return;
+
     }
 
-    // Phoenix "today"
-    const today = new Date().toLocaleDateString('en-CA', {
-        timeZone: 'America/Phoenix'
-    });
+    // Phoenix midnight cutoff
+    const todayUnix = getPhoenixTodayMidnight();
 
-    // Remove yesterday if present
-    const validDays = forecast.filter(day => {
-
-        const d = new Date(day.dateUnix * 1000)
-            .toLocaleDateString('en-CA', { timeZone: 'America/Phoenix' });
-
-        return d >= today;
-
-    }).slice(0,3);
+    // Remove yesterday entries
+    const validDays = forecast
+        .filter(day => day?.dateUnix >= todayUnix)
+        .slice(0, 3);
 
     const labels = ['Today', 'Tomorrow', 'Day After Next'];
 
     validDays.forEach((dayData, i) => {
 
-        const { dateUnix, high, low, icon, condition } = dayData;
+        const { dateUnix, high, low, icon, condition } = dayData || {};
 
         const dateLabel = formatPhoenixDateFromUnix(dateUnix);
 
@@ -652,11 +663,17 @@ function renderThreeDayForecast(forecastEls, payload) {
         if (forecastEls[i]?.icon)
             forecastEls[i].icon.innerHTML = mapWeatherIcon(icon, condition);
 
-        if (forecastEls[i]?.temps)
-            forecastEls[i].temps.textContent =
-                `${Math.round(high ?? '?')}° / ${Math.round(low ?? '?')}°`;
+        if (forecastEls[i]?.temps) {
+
+            const hi = Number.isFinite(high) ? Math.round(high) : '?';
+            const lo = Number.isFinite(low)  ? Math.round(low)  : '?';
+
+            forecastEls[i].temps.textContent = `${hi}° / ${lo}°`;
+
+        }
 
     });
+
 }
 
 // ── Countdown helpers ────────────────────────────────────────────────
