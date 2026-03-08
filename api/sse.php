@@ -48,6 +48,14 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // Stable idle schema (Phase 1 scaffold)
+    $idle = [
+        'state'            => 'unknown',
+        'remainingSeconds' => null,
+        'timeoutSeconds'   => null,
+        'lastActivity'     => null
+    ];
+
     // Release session lock immediately
     session_write_close();
 
@@ -56,6 +64,7 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
     $payload['auth'] = $auth;
+    $payload['idle'] = $idle;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
@@ -107,6 +116,14 @@ $auth = [
     'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
     'username'      => $_SESSION['username'] ?? null,
     'role'          => $_SESSION['role'] ?? null
+];
+
+// Stable idle schema (Phase 1 scaffold)
+$idle = [
+    'state'            => 'unknown',
+    'remainingSeconds' => null,
+    'timeoutSeconds'   => null,
+    'lastActivity'     => null
 ];
 
 // Release session lock so SSE does not block other requests
@@ -170,8 +187,9 @@ while (true) {
         // SINGLE SOURCE OF TRUTH
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        // Inject authentication projection
+        // Inject stable state projections
         $payload['auth'] = $auth;
+        $payload['idle'] = $idle;
 
         echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
