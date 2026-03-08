@@ -1043,7 +1043,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🔓 Logout
-    logout: async () => {
+    logout: async function () {
 
         try {
 
