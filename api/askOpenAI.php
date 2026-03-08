@@ -1010,10 +1010,18 @@ if (!isset($response) || trim((string)$response) === '') {
 // Safe logging only
 error_log('ASK_OPENAI RESPONSE RAW: ' . substr((string)$response, 0, 500));
 
-// ─────────────────────────────────────────────
-// Prompt Ledger (Non-blocking)
-// ─────────────────────────────────────────────
 
+// Session Activity Heartbeat
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+if (!empty($_SESSION['authenticated'])) {
+    $_SESSION['lastActivity'] = time();
+}
+session_write_close();
+
+// Prompt Ledger (Non-blocking)
 if (isset($query) && isset($response)) {
     try {
 
@@ -1051,10 +1059,7 @@ if (isset($query) && isset($response)) {
     }
 }
 
-// ─────────────────────────────────────────────
 // Final JSON Output (Single Authority)
-// ─────────────────────────────────────────────
-
 echo json_encode([
     "success"            => true,
     "role"               => $role ?? "askOpenAI",
