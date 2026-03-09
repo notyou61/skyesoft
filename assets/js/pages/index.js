@@ -180,6 +180,7 @@ window.SkyIndex = {
     lastSSE: null,
     activeDomainKey: null,
     activeDomainModel: null,
+    authState: null,
     // #endregion
 
     // #region 🛠️ Command Output Helpers
@@ -968,6 +969,9 @@ window.SkyIndex = {
             // Project auth state
             document.body.setAttribute('data-auth', 'true');
 
+            // Update internal state
+            this.authState = true;
+
             // Immediate UI transition
             this.transitionToCommandInterface();
 
@@ -1003,14 +1007,21 @@ window.SkyIndex = {
 
             const isAuth = event.auth.authenticated === true;
 
-            if (isAuth && !document.body.hasAttribute('data-auth')) {
+            // Ignore duplicate state
+            if (this.authState === isAuth) return;
+
+            this.authState = isAuth;
+
+            if (isAuth) {
+
                 document.body.setAttribute('data-auth', 'true');
                 this.renderCommandInterfaceCard();
-            }
 
-            if (!isAuth && document.body.hasAttribute('data-auth')) {
+            } else {
+
                 document.body.removeAttribute('data-auth');
                 this.renderLoginCard();
+
             }
         }
 
