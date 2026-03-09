@@ -714,10 +714,14 @@ window.SkyIndex = {
 
             <div class="cardFooterDivider"></div>
 
-            <div class="cardFooter">🟢 Connected • Ready</div>
+            <div class="cardFooter">
+                <span class="footerDot"></span>
+                <span class="footerText">Connected • Ready</span>
+            </div>
         `;
 
         this.cardHost.appendChild(card);
+        this.renderFooterStatus();
 
         // File attach
         const attachBtn = card.querySelector('.composerPlus');
