@@ -751,6 +751,20 @@ window.SkyIndex = {
         // Render footer state immediately
         this.renderFooterStatus();
 
+        // #region 👋 Initial Greeting
+        const name = this.authUser?.firstName || 'User';
+
+        let greeting = 'Hello';
+
+        const hour = new Date().getHours();
+
+        if (hour < 12) greeting = 'Good morning';
+        else if (hour < 17) greeting = 'Good afternoon';
+        else greeting = 'Good evening';
+
+        this.appendSystemLine(`${greeting}, ${name}. Ready when you are.`);
+        // #endregion
+
         // #region 📎 File Attachment
         const attachBtn = card.querySelector('.composerPlus');
         const fileInput = card.querySelector('.composerFile');
@@ -772,7 +786,6 @@ window.SkyIndex = {
             fileInput.value = '';
         });
         // #endregion
-
 
         // #region ⌨️ Command Input
         const input   = card.querySelector('.composerInput');
@@ -803,6 +816,8 @@ window.SkyIndex = {
 
     },
     // #endregion
+
+
 
     // #region 🧠 Command Router
     handleCommand(text) {
@@ -988,6 +1003,9 @@ window.SkyIndex = {
 
             // Update internal state
             this.authState = true;
+
+            // Cache user data for UI projections
+            this.authUser = data.user;
 
             // Immediate UI transition
             this.transitionToCommandInterface();
