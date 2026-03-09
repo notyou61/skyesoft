@@ -185,8 +185,8 @@ window.SkyIndex = {
 
     // #region 🛠️ Command Output Helpers
 
-    // Appends a simple text line to the command output
-    appendSystemLine(text) {
+    // Appends a command line to the output thread
+    appendSystemLine(text, role = 'system') {
 
         // Init output host
         if (!this.cardHost) return;
@@ -197,9 +197,26 @@ window.SkyIndex = {
             ? ''
             : String(text);
 
-        const line = document.createElement('p');
-        line.className = 'commandLine system';
-        line.textContent = safeText;
+        const line = document.createElement('div');
+        line.className = `commandLine ${role}`;
+
+        // Icon
+        const icon = document.createElement('img');
+        icon.className = 'commandIcon';
+
+        icon.src = role === 'user'
+            ? '/skyesoft/assets/images/icons/user.png'
+            : '/skyesoft/assets/images/icons/robot.png';
+
+        icon.alt = role;
+
+        // Message text
+        const msg = document.createElement('span');
+        msg.className = 'commandText';
+        msg.textContent = safeText;
+
+        line.appendChild(icon);
+        line.appendChild(msg);
 
         output.appendChild(line);
         output.scrollTop = output.scrollHeight;
@@ -790,7 +807,7 @@ window.SkyIndex = {
     // #region 🧠 Command Router
     handleCommand(text) {
 
-        this.appendSystemLine(`> ${text}`);
+        this.appendSystemLine(text, 'user');
 
         const normalized = text.trim().toLowerCase();
 
