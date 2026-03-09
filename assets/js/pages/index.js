@@ -658,7 +658,7 @@ window.SkyIndex = {
 
             <div class="cardFooter">
                 <span class="footerDot"></span>
-                <span class="footerText">Authentication required</span>
+                <span class="footerText"></span>
             </div>
         `;
 
@@ -716,7 +716,7 @@ window.SkyIndex = {
 
             <div class="cardFooter">
                 <span class="footerDot"></span>
-                <span class="footerText">Connected • Ready</span>
+                <span class="footerText"></span>
             </div>
         `;
 
