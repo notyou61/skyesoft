@@ -1015,12 +1015,28 @@ window.SkyIndex = {
             if (isAuth) {
 
                 document.body.setAttribute('data-auth', 'true');
+
+                // Render command interface
                 this.renderCommandInterfaceCard();
+
+                // Apply pulse to footer indicator
+                requestAnimationFrame(() => {
+                    const dot = document.querySelector('.footerDot');
+                    dot?.classList.add('authReady');
+                });
 
             } else {
 
                 document.body.removeAttribute('data-auth');
+
+                // Render login card
                 this.renderLoginCard();
+
+                // Remove pulse
+                requestAnimationFrame(() => {
+                    const dot = document.querySelector('.footerDot');
+                    dot?.classList.remove('authReady');
+                });
 
             }
         }
