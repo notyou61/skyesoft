@@ -418,7 +418,7 @@ body[data-page="index"] .authText {
 .commandOutput {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 /* Message row */
@@ -426,25 +426,30 @@ body[data-page="index"] .authText {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+    margin: 2px 0;
 }
 
-/* Remove old terminal prefix */
+/* Remove legacy terminal prefix */
 .commandLine::before {
     content: none;
 }
 
 /* Robot / User icon */
 .commandIcon {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
-    margin-top: 2px;
+
+    margin-top: 3px;   /* aligns icon with text baseline */
+    opacity: 0.9;
 }
 
 /* Message text */
 .commandText {
     flex: 1;
+
     white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /* Skyesoft messages */
