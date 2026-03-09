@@ -332,6 +332,29 @@ body[data-page="index"] .bodyMeta {
 }
 /* #endregion */
 
+/* #region 🔐 Authorization Status Indicator */
+
+body[data-page="index"] .authStatus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body[data-page="index"] .authDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #d93025;   /* red status indicator */
+    flex-shrink: 0;
+}
+
+body[data-page="index"] .authText {
+    font-size: 0.85rem;
+    color: #444;
+}
+
+/* #endregion */
+
 /* #region 🧠 Command Interface */
 
 .cardBody--command {

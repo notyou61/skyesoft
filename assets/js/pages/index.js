@@ -657,9 +657,8 @@ window.SkyIndex = {
             <div class="cardFooterDivider"></div>
 
             <div class="cardFooter">
-                <img src="https://www.skyelighting.com/skyesoft/assets/images/live-streaming.gif"
-                     alt="Live" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
-                🔒 Authentication required to continue
+                <span class="footerDot"></span>
+                <span class="footerText">Authentication required</span>
             </div>
         `;
 
