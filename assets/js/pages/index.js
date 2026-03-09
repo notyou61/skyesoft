@@ -28,7 +28,10 @@ function formatVersionFooter(siteMeta) {
 
     const TZ = 'America/Phoenix';
 
-    const d = new Date(siteMeta.lastUpdateUnix * 1000);
+    // Ensure numeric timestamp
+    const lastUpdateUnix = Number(siteMeta.lastUpdateUnix) || 0;
+
+    const d = new Date(lastUpdateUnix * 1000);
 
     const dateStr = d.toLocaleDateString('en-US', {
         timeZone: TZ,
@@ -44,7 +47,14 @@ function formatVersionFooter(siteMeta) {
         hour12: true
     });
 
-    const deltaSeconds = siteMeta.lastUpdateAgeSeconds ?? 0;
+    // Compute real delta locally (do not trust SSE age)
+    const now = Math.floor(Date.now() / 1000);
+
+    // Guard against clock drift / future timestamps
+    let deltaSeconds = now - lastUpdateUnix;
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
+        deltaSeconds = 0;
+    }
 
     let agoStr;
 
