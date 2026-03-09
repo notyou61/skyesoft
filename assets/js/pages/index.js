@@ -1038,7 +1038,12 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
-        this.lastSSE = event;
+        
+        // Cache the latest SSE data for projections and state
+        this.lastSSE = {
+            ...this.lastSSE,
+            ...event
+        };
         //console.log('[SSE] cached keys:', Object.keys(event || {}));
 
         if (!event) return;
@@ -1051,36 +1056,31 @@ window.SkyIndex = {
             const isAuth = event.auth.authenticated === true;
 
             // Ignore duplicate state
-            if (this.authState === isAuth) return;
+            if (this.authState !== isAuth) {
 
-            this.authState = isAuth;
+                this.authState = isAuth;
 
-            if (isAuth) {
+                if (isAuth) {
 
-                document.body.setAttribute('data-auth', 'true');
+                    document.body.setAttribute('data-auth', 'true');
+                    this.renderCommandInterfaceCard();
 
-                // Render command interface
-                this.renderCommandInterfaceCard();
+                    requestAnimationFrame(() => {
+                        const dot = document.querySelector('.footerDot');
+                        dot?.classList.add('authReady');
+                    });
 
-                // Apply pulse to footer indicator
-                requestAnimationFrame(() => {
-                    const dot = document.querySelector('.footerDot');
-                    dot?.classList.add('authReady');
-                });
+                } else {
 
-            } else {
+                    document.body.removeAttribute('data-auth');
+                    this.renderLoginCard();
 
-                document.body.removeAttribute('data-auth');
+                    requestAnimationFrame(() => {
+                        const dot = document.querySelector('.footerDot');
+                        dot?.classList.remove('authReady');
+                    });
 
-                // Render login card
-                this.renderLoginCard();
-
-                // Remove pulse
-                requestAnimationFrame(() => {
-                    const dot = document.querySelector('.footerDot');
-                    dot?.classList.remove('authReady');
-                });
-
+                }
             }
         }
 
@@ -1122,19 +1122,33 @@ window.SkyIndex = {
             }
         }
 
-        // Version footer
-        if (this.dom?.version && event.siteMeta) {
+        // Version footer (sticky deploy metadata)
 
-            const newVersion = event.siteMeta.siteVersion;
+        // Merge when SSE provides siteMeta
+        if (event.siteMeta) {
 
-            // Detect real version change
-            if (this.lastSiteVersion && this.lastSiteVersion !== newVersion) {
+            if (!this.siteMetaCache) {
+                this.siteMetaCache = {};
+            }
+
+            this.siteMetaCache = {
+                ...this.siteMetaCache,
+                ...event.siteMeta
+            };
+
+            const newVersion = this.siteMetaCache.siteVersion;
+
+            if (newVersion && this.lastSiteVersion && this.lastSiteVersion !== newVersion) {
                 window.SkyVersion.show();
             }
 
             this.lastSiteVersion = newVersion;
+        }
 
-            this.dom.version.innerHTML = formatVersionFooter(event.siteMeta);
+        // Always render if we have cached metadata
+        if (this.dom?.version && this.siteMetaCache) {
+            this.dom.version.innerHTML =
+                formatVersionFooter(this.siteMetaCache);
         }
 
         // 🛡️ Sentinel Governance Projection
