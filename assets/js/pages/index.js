@@ -1059,9 +1059,14 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Session destroyed');
 
-            // Force UI reset immediately
+            // Reset auth projection
             document.body.removeAttribute('data-auth');
+
+            // Clear cached SSE state so stale auth cannot re-project
             this.lastSSE = null;
+            this.currentSentinelState = null;
+
+            // Return to login UI
             this.renderLoginCard();
 
         } catch (err) {
