@@ -817,8 +817,6 @@ window.SkyIndex = {
     },
     // #endregion
 
-
-
     // #region 🧠 Command Router
     handleCommand(text) {
 
@@ -1116,6 +1114,16 @@ window.SkyIndex = {
 
         // Version footer
         if (this.dom?.version && event.siteMeta) {
+
+            const newVersion = event.siteMeta.siteVersion;
+
+            // Detect real version change
+            if (this.lastSiteVersion && this.lastSiteVersion !== newVersion) {
+                window.SkyVersion.show();
+            }
+
+            this.lastSiteVersion = newVersion;
+
             this.dom.version.innerHTML = formatVersionFooter(event.siteMeta);
         }
 
