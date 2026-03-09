@@ -910,7 +910,6 @@ window.SkyIndex = {
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
-        // Input validation
         if (!email || !pass) {
             error.textContent = 'Please enter email and password.';
             error.hidden = false;
@@ -932,25 +931,19 @@ window.SkyIndex = {
 
             const data = await res.json();
 
-            if (!data?.success) {
-                error.textContent = data?.message || 'Login failed.';
+            if (!data.success) {
+                error.textContent = data.message || 'Login failed.';
                 error.hidden = false;
                 return;
             }
 
-            // Clear error
             error.hidden = true;
-
-            // 🔐 Immediate auth projection (prevents footer lag before SSE)
-            document.body.setAttribute('data-auth', 'true');
 
             // Immediate UI transition
             this.transitionToCommandInterface();
 
         } catch (err) {
-
             console.error('[SkyIndex] Login error:', err);
-
             error.textContent = 'Connection error.';
             error.hidden = false;
         }
