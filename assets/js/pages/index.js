@@ -673,12 +673,13 @@ window.SkyIndex = {
 
     // #region 🧠 Command Interface Card
     renderCommandInterfaceCard() {
+
         this.clearCards();
 
         const card = document.createElement('section');
         card.className = 'card card-command';
-        // Card content is mostly static HTML.
-        // Domain surfaces are now injected dynamically into the command thread.
+
+        // Static card structure
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🧠 Skyesoft Command Interface</h2>
@@ -687,17 +688,19 @@ window.SkyIndex = {
             <div class="cardBodyDivider"></div>
 
             <div class="cardBody cardBody--command">
+
                 <div class="cardContent cardContent--command">
-
-                    <!-- 🧵 Command Thread (chronological, authoritative) -->
+                    <!-- 🧵 Command Thread -->
                     <div class="commandOutput"></div>
-
                 </div>
 
                 <!-- 🎛 Composer -->
                 <div class="composer">
                     <div class="composerSurface">
-                        <button class="composerBtn composerPlus" type="button" aria-label="Attach files">+</button>
+
+                        <button class="composerBtn composerPlus"
+                            type="button"
+                            aria-label="Attach files">+</button>
 
                         <div class="composerPrimary">
                             <div class="composerInput"
@@ -706,10 +709,15 @@ window.SkyIndex = {
                                 spellcheck="false"></div>
                         </div>
 
-                        <button class="composerBtn composerSend" type="button" aria-label="Run command">⏎</button>
+                        <button class="composerBtn composerSend"
+                            type="button"
+                            aria-label="Run command">⏎</button>
+
                         <input class="composerFile" type="file" multiple hidden>
+
                     </div>
                 </div>
+
             </div>
 
             <div class="cardFooterDivider"></div>
@@ -721,42 +729,60 @@ window.SkyIndex = {
         `;
 
         this.cardHost.appendChild(card);
+
+        // Render footer state immediately
         this.renderFooterStatus();
 
-        // File attach
+        // #region 📎 File Attachment
         const attachBtn = card.querySelector('.composerPlus');
         const fileInput = card.querySelector('.composerFile');
 
-        attachBtn?.addEventListener('click', () => fileInput?.click());
-
-        fileInput?.addEventListener('change', () => {
-            if (!fileInput.files?.length) return;
-            const names = Array.from(fileInput.files).map(f => f.name).join(', ');
-            this.appendSystemLine(`Attached file(s): ${names}`);
-            fileInput.value = '';
+        attachBtn?.addEventListener('click', () => {
+            fileInput?.click();
         });
 
-        // Command input
+        fileInput?.addEventListener('change', () => {
+
+            if (!fileInput.files?.length) return;
+
+            const names = Array.from(fileInput.files)
+                .map(f => f.name)
+                .join(', ');
+
+            this.appendSystemLine(`Attached file(s): ${names}`);
+
+            fileInput.value = '';
+        });
+        // #endregion
+
+
+        // #region ⌨️ Command Input
         const input   = card.querySelector('.composerInput');
         const sendBtn = card.querySelector('.composerSend');
 
-        const submit = () => {
+        const submitCommand = () => {
+
             const text = input.textContent.trim();
             if (!text) return;
+
             input.textContent = '';
             this.handleCommand(text);
         };
 
-        sendBtn?.addEventListener('click', submit);
+        sendBtn?.addEventListener('click', submitCommand);
 
-        input?.addEventListener('keydown', e => {
+        input?.addEventListener('keydown', (e) => {
+
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                submit();
+                submitCommand();
             }
+
         });
 
         input?.focus();
+        // #endregion
+
     },
     // #endregion
 
@@ -939,6 +965,9 @@ window.SkyIndex = {
 
             error.hidden = true;
 
+            // Project auth state
+            document.body.setAttribute('data-auth', 'true');
+
             // Immediate UI transition
             this.transitionToCommandInterface();
 
@@ -1046,31 +1075,57 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🔓 Logout
-    logout: async function () {
+    logout: async function (source = 'manual') {
 
         try {
 
-            await fetch('/skyesoft/api/auth.php', {
+            const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'logout' })
             });
 
-            console.log('[SkyIndex] Session destroyed');
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
 
-            // Reset auth projection
+            let data = null;
+
+            try {
+                data = await res.json();
+            } catch {
+                console.warn('[SkyIndex] Logout returned non-JSON response');
+            }
+
+            if (data && data.success === false) {
+                console.warn('[SkyIndex] Logout rejected by server:', data.message);
+            }
+
+            console.log('[SkyIndex] Session destroyed', { source });
+
+            // #region Reset UI Auth Projection
             document.body.removeAttribute('data-auth');
+            // #endregion
 
-            // Clear cached SSE state so stale auth cannot re-project
+            // #region Reset Runtime State
             this.lastSSE = null;
             this.currentSentinelState = null;
+            this.isThinking = false;
+            this.activeDomainKey = null;
+            this.activeDomainModel = null;
+            // #endregion
 
-            // Return to login UI
+            // #region Render Login Surface
             this.renderLoginCard();
+            this.renderFooterStatus();
+            // #endregion
 
         } catch (err) {
+
             console.error('[SkyIndex] Logout error:', err);
+            this.appendSystemLine('❌ Logout failed.');
+
         }
 
     },
