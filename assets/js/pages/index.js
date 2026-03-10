@@ -1055,32 +1055,38 @@ window.SkyIndex = {
 
             const isAuth = event.auth.authenticated === true;
 
-            // Ignore duplicate state
-            if (this.authState !== isAuth) {
+            // Always project authoritative state onto the DOM
+            if (isAuth) {
+                document.body.setAttribute('data-auth', 'true');
+            } else {
+                document.body.removeAttribute('data-auth');
+            }
 
-                this.authState = isAuth;
+            // Ignore duplicate render state
+            if (this.authState === isAuth) return;
 
-                if (isAuth) {
+            this.authState = isAuth;
 
-                    document.body.setAttribute('data-auth', 'true');
-                    this.renderCommandInterfaceCard();
+            if (isAuth) {
 
-                    requestAnimationFrame(() => {
-                        const dot = document.querySelector('.footerDot');
-                        dot?.classList.add('authReady');
-                    });
+                // Render command interface
+                this.renderCommandInterfaceCard();
 
-                } else {
+                requestAnimationFrame(() => {
+                    const dot = document.querySelector('.footerDot');
+                    dot?.classList.add('authReady');
+                });
 
-                    document.body.removeAttribute('data-auth');
-                    this.renderLoginCard();
+            } else {
 
-                    requestAnimationFrame(() => {
-                        const dot = document.querySelector('.footerDot');
-                        dot?.classList.remove('authReady');
-                    });
+                // Render login card
+                this.renderLoginCard();
 
-                }
+                requestAnimationFrame(() => {
+                    const dot = document.querySelector('.footerDot');
+                    dot?.classList.remove('authReady');
+                });
+
             }
         }
 
