@@ -1015,23 +1015,21 @@ window.SkyIndex = {
 
             error.hidden = true;
 
-            // Project auth state
-            document.body.setAttribute('data-auth', 'true');
+            console.log('[SkyIndex] Login successful — awaiting SSE auth projection');
 
-            // Update internal state
-            this.authState = true;
+            // Optional user feedback
+            error.textContent = 'Authenticating...';
+            error.hidden = false;
 
-            // Cache user data for UI projections
-            this.authUser = data.auth?.username ?? null;
-            this.authRole = data.auth?.role ?? null;
-
-            // Immediate UI transition
-            this.transitionToCommandInterface();
+            // Restart SSE so the new session cookie is picked up immediately
+            window.SkyeApp?.restartSSE?.();
 
         } catch (err) {
+
             console.error('[SkyIndex] Login error:', err);
             error.textContent = 'Connection error.';
             error.hidden = false;
+
         }
     },
     // #endregion
