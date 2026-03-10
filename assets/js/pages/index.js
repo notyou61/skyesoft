@@ -1127,10 +1127,12 @@ window.SkyIndex = {
         // Merge when SSE provides siteMeta
         if (event.siteMeta) {
 
+            // Init cache
             if (!this.siteMetaCache) {
                 this.siteMetaCache = {};
             }
 
+            // Merge incoming metadata
             this.siteMetaCache = {
                 ...this.siteMetaCache,
                 ...event.siteMeta
@@ -1138,7 +1140,7 @@ window.SkyIndex = {
 
             const newVersion = this.siteMetaCache.siteVersion;
 
-            // Only trigger indicator when version actually changes
+            // Trigger indicator only when version actually changes
             if (
                 newVersion &&
                 this.lastSiteVersion &&
@@ -1147,7 +1149,14 @@ window.SkyIndex = {
                 window.SkyVersion.show();
             }
 
+            // Track last version
             this.lastSiteVersion = newVersion;
+
+            // 🔔 Immediately update the footer
+            if (this.dom?.version) {
+                this.dom.version.innerHTML =
+                    formatVersionFooter(this.siteMetaCache);
+            }
         }
 
         // Always render if we have cached metadata
