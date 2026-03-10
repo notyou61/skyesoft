@@ -1055,36 +1055,41 @@ window.SkyIndex = {
 
             const isAuth = event.auth.authenticated === true;
 
-            // Always project authoritative state onto the DOM
-            if (isAuth) {
-                document.body.setAttribute('data-auth', 'true');
-            } else {
-                document.body.removeAttribute('data-auth');
-            }
+            // Always project authoritative DOM state
+            document.body.toggleAttribute('data-auth', isAuth);
 
-            // Ignore duplicate render state
+            // Prevent duplicate work
             if (this.authState === isAuth) return;
 
             this.authState = isAuth;
 
             if (isAuth) {
 
-                // Render command interface
-                this.renderCommandInterfaceCard();
+                // Remove login surface if present
+                const loginCard = document.querySelector('.loginCard');
+                loginCard?.remove();
+
+                // Ensure command surface exists
+                if (!document.querySelector('.commandInterfaceCard')) {
+                    this.renderCommandInterfaceCard();
+                }
 
                 requestAnimationFrame(() => {
-                    const dot = document.querySelector('.footerDot');
-                    dot?.classList.add('authReady');
+                    document.querySelector('.footerDot')?.classList.add('authReady');
                 });
 
             } else {
 
-                // Render login card
-                this.renderLoginCard();
+                // Remove command surface if present
+                const cmd = document.querySelector('.commandInterfaceCard');
+                cmd?.remove();
+
+                if (!document.querySelector('.loginCard')) {
+                    this.renderLoginCard();
+                }
 
                 requestAnimationFrame(() => {
-                    const dot = document.querySelector('.footerDot');
-                    dot?.classList.remove('authReady');
+                    document.querySelector('.footerDot')?.classList.remove('authReady');
                 });
 
             }
