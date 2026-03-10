@@ -1086,7 +1086,7 @@ window.SkyIndex = {
             }
         }
 
-        // Time
+        // 🕒 Time
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
             const d = new Date(event.timeDateArray.currentUnixTime * 1000);
             const hh = d.getHours();
@@ -1098,7 +1098,7 @@ window.SkyIndex = {
             this.dom.time.textContent = `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
         }
 
-        // Weather
+        // 🌤 Weather
         if (event.weather && this.dom?.weather) {
             const { temp, condition } = event.weather;
             if (temp != null && condition) {
@@ -1106,7 +1106,7 @@ window.SkyIndex = {
             }
         }
 
-        // Interval
+        // ⏳ Interval
         if (event.currentInterval && this.dom?.interval) {
             const { key, secondsRemainingInterval } = event.currentInterval;
             const labelMap = {
