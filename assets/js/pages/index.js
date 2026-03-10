@@ -1058,33 +1058,34 @@ window.SkyIndex = {
 
         if (!event) return;
 
-        // ─────────────────────────────────────────────
         // 🔐 Authoritative Auth Projection (SSE)
-        // ─────────────────────────────────────────────
         if (event.auth) {
 
             const isAuth = event.auth.authenticated === true;
 
-            document.body.toggleAttribute('data-auth', isAuth);
-
-            // Ignore duplicate state
+            // Skip duplicate projections
             if (this.authState === isAuth) return;
 
             this.authState = isAuth;
+
+            document.body.toggleAttribute('data-auth', isAuth);
 
             if (isAuth) {
 
                 this.authUser = event.auth.username ?? null;
                 this.authRole = event.auth.role ?? null;
 
+                console.log('[SkyIndex] Authenticated → Command Interface');
+
                 this.renderCommandInterfaceCard();
 
             } else {
 
+                console.log('[SkyIndex] Not authenticated → Login Interface');
+
                 this.renderLoginCard();
 
             }
-
         }
 
         // Time
