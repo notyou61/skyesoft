@@ -1021,8 +1021,8 @@ window.SkyIndex = {
             error.textContent = 'Authenticating...';
             error.hidden = false;
 
-            // Restart SSE so the new session cookie is picked up immediately
-            window.SkyeApp?.restartSSE?.();
+            // Restart SSE so PHP reads the new session
+            window.SkySSE?.start?.();
 
         } catch (err) {
 
