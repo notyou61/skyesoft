@@ -1055,22 +1055,23 @@ window.SkyIndex = {
 
             const isAuth = event.auth.authenticated === true;
 
-            // Always project authoritative DOM state
             document.body.toggleAttribute('data-auth', isAuth);
 
-            // Prevent duplicate work
+            // Ignore duplicate state
             if (this.authState === isAuth) return;
 
             this.authState = isAuth;
 
+            const loginSurface   = document.querySelector('.loginCard');
+            const commandSurface = document.querySelector('.commandInterfaceCard');
+
             if (isAuth) {
 
-                // Remove login surface if present
-                const loginCard = document.querySelector('.loginCard');
-                loginCard?.remove();
+                // Remove login surface
+                loginSurface?.remove();
 
-                // Ensure command surface exists
-                if (!document.querySelector('.commandInterfaceCard')) {
+                // Render command surface if missing
+                if (!commandSurface) {
                     this.renderCommandInterfaceCard();
                 }
 
@@ -1080,11 +1081,11 @@ window.SkyIndex = {
 
             } else {
 
-                // Remove command surface if present
-                const cmd = document.querySelector('.commandInterfaceCard');
-                cmd?.remove();
+                // Remove command surface
+                commandSurface?.remove();
 
-                if (!document.querySelector('.loginCard')) {
+                // Render login surface if missing
+                if (!loginSurface) {
                     this.renderLoginCard();
                 }
 
