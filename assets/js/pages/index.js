@@ -771,7 +771,10 @@ window.SkyIndex = {
 
         let greeting = 'Hello';
 
-        const hour = this.lastSSE?.timeDateArray?.hour24 ?? new Date().getHours()
+        const hour =
+        this.lastSSE?.timeDateArray?.currentUnixTime
+            ? new Date(this.lastSSE.timeDateArray.currentUnixTime * 1000).getHours()
+            : new Date().getHours();
 
         if (hour < 12) greeting = 'Good morning';
         else if (hour < 17) greeting = 'Good afternoon';
