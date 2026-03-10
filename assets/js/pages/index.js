@@ -762,17 +762,23 @@ window.SkyIndex = {
         this.renderFooterStatus();
 
         // #region 👋 Initial Greeting
-        const name = this.authUser?.firstName || 'User';
+
+        const name = this.authUser
+            ? this.authUser.split('@')[0]
+                .replace(/[._-]/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase())
+            : 'User';
 
         let greeting = 'Hello';
 
-        const hour = new Date().getHours();
+        const hour = this.lastSSE?.timeDateArray?.hour24 ?? new Date().getHours()
 
         if (hour < 12) greeting = 'Good morning';
         else if (hour < 17) greeting = 'Good afternoon';
         else greeting = 'Good evening';
 
         this.appendSystemLine(`${greeting}, ${name}. Ready when you are.`);
+
         // #endregion
 
         // #region 📎 File Attachment
@@ -1013,7 +1019,8 @@ window.SkyIndex = {
             this.authState = true;
 
             // Cache user data for UI projections
-            this.authUser = data.user;
+            this.authUser = data.auth?.username ?? null;
+            this.authRole = data.auth?.role ?? null;
 
             // Immediate UI transition
             this.transitionToCommandInterface();
