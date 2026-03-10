@@ -1124,8 +1124,6 @@ window.SkyIndex = {
             }
         }
 
-        // Version footer (sticky deploy metadata)
-
         // Merge when SSE provides siteMeta
         if (event.siteMeta) {
 
@@ -1140,7 +1138,12 @@ window.SkyIndex = {
 
             const newVersion = this.siteMetaCache.siteVersion;
 
-            if (newVersion && this.lastSiteVersion && this.lastSiteVersion !== newVersion) {
+            // Only trigger indicator when version actually changes
+            if (
+                newVersion &&
+                this.lastSiteVersion &&
+                newVersion !== this.lastSiteVersion
+            ) {
                 window.SkyVersion.show();
             }
 
@@ -1149,8 +1152,13 @@ window.SkyIndex = {
 
         // Always render if we have cached metadata
         if (this.dom?.version && this.siteMetaCache) {
-            this.dom.version.innerHTML =
-                formatVersionFooter(this.siteMetaCache);
+
+            const newText = formatVersionFooter(this.siteMetaCache);
+
+            if (this.dom.version.innerHTML !== newText) {
+                this.dom.version.innerHTML = newText;
+            }
+
         }
 
         // 🛡️ Sentinel Governance Projection
