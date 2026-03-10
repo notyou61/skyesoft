@@ -1069,38 +1069,19 @@ window.SkyIndex = {
 
             this.authState = isAuth;
 
-            const loginSurface   = document.querySelector('.loginCard');
-            const commandSurface = document.querySelector('.commandInterfaceCard');
-
             if (isAuth) {
 
-                // Remove login surface
-                loginSurface?.remove();
+                this.authUser = event.auth.username ?? null;
+                this.authRole = event.auth.role ?? null;
 
-                // Render command surface if missing
-                if (!commandSurface) {
-                    this.renderCommandInterfaceCard();
-                }
-
-                requestAnimationFrame(() => {
-                    document.querySelector('.footerDot')?.classList.add('authReady');
-                });
+                this.renderCommandInterfaceCard();
 
             } else {
 
-                // Remove command surface
-                commandSurface?.remove();
-
-                // Render login surface if missing
-                if (!loginSurface) {
-                    this.renderLoginCard();
-                }
-
-                requestAnimationFrame(() => {
-                    document.querySelector('.footerDot')?.classList.remove('authReady');
-                });
+                this.renderLoginCard();
 
             }
+
         }
 
         // Time
