@@ -156,10 +156,15 @@ window.SkyeApp.handleSSE = function (payload) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    try {
-        this.routeSSEToPage(payload);
-    } catch (err) {
-        console.error("❌ routeSSEToPage failed:", err);
+    // 🚫 Prevent page handler from overriding authenticated UI
+    if (!payload?.auth?.authenticated) {
+
+        try {
+            this.routeSSEToPage(payload);
+        } catch (err) {
+            console.error("❌ routeSSEToPage failed:", err);
+        }
+
     }
 
 };
