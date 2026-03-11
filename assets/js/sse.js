@@ -33,20 +33,22 @@ window.SkySSE = {
 
         es.onmessage = (event) => {
 
-            try {
+        if (!event.data) return;
 
-                const payload = JSON.parse(event.data);
+        try {
 
-                // Attach local stream identity
-                payload.streamId = currentStream;
+            const payload = JSON.parse(event.data);
 
-                window.SkyeApp?.onSSE?.(payload);
+            console.log("📩 SSE Update", payload);
 
-            } catch (e) {
+            window.SkyeApp?.handleSSE?.(payload);
 
-                console.error('[SkySSE] JSON parse error:', e);
+        } catch(err) {
 
-            }
+            console.warn("⚠ SSE parse error", err);
+
+        }
+
         };
     },
 
