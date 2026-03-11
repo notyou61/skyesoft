@@ -347,31 +347,28 @@ window.SkyIndex = {
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
-        const footer = this.cardHost?.querySelector('.cardFooter');
-        if (!footer) return;
+        if (!this.dom?.footerDot || !this.dom?.footerText) return;
 
         const isAuthed = this.authState === true;
         const sentinel = this.currentSentinelState;
 
-        // Helper: CSS-controlled dot + black text
+        const dot = this.dom.footerDot;
+        const textEl = this.dom.footerText;
+
+        // Helper
         const render = (dotColor, text) => {
-            footer.innerHTML = `
-                <span class="footerDot" style="background:${dotColor};"></span>
-                <span class="footerText">${text}</span>
-            `;
+            dot.style.background = dotColor;
+            textEl.textContent = text;
         };
 
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
-            footer.innerHTML = `
-                <span class="footerThinking">
-                    ⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>
-                </span>
-            `;
+            dot.style.background = '#007aff';
+            textEl.innerHTML = '⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>';
             return;
         }
 
-        // 2️⃣ Auth gate before login
+        // 2️⃣ Auth gate
         if (!isAuthed) {
             render('#111', 'Authorization required to continue');
             return;
