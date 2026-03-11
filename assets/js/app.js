@@ -132,8 +132,8 @@ window.SkyeApp.handleSSE = function (payload) {
 
         document.body.setAttribute('data-auth', 'true');
 
-        if (this.pageHandlers?.index?.initCommandSurface) {
-            this.pageHandlers.index.initCommandSurface();
+        if (this.pageHandlers?.index?.transitionToCommandInterface) {
+            this.pageHandlers.index.transitionToCommandInterface();
         }
 
     }

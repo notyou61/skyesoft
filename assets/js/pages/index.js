@@ -246,7 +246,11 @@ window.SkyIndex = {
             : String(html);
 
         // Optional safety guard (render only known governance wrapper)
-        const isGovernanceHtml = safeHtml.includes('gov-box');
+        const isGovernanceHtml =
+            safeHtml.includes('gov-box') ||
+            safeHtml.includes('gov-action') ||
+            safeHtml.includes('gov-panel');
+        // Is Governance HTML Conditional
         if (!isGovernanceHtml) {
             this.appendSystemLine(safeHtml);
             return;
@@ -346,7 +350,7 @@ window.SkyIndex = {
         const footer = this.cardHost?.querySelector('.cardFooter');
         if (!footer) return;
 
-        const isAuthed = document.body.hasAttribute('data-auth');
+        const isAuthed = this.authState === true;
         const sentinel = this.currentSentinelState;
 
         // Helper: CSS-controlled dot + black text
@@ -658,7 +662,6 @@ window.SkyIndex = {
 
         const card = document.createElement('section');
         card.className = 'card card-portal-auth';
-
         card.innerHTML = `
             <div class="cardHeader">
                 <h2>🔐 Authentication Required</h2>
@@ -673,11 +676,36 @@ window.SkyIndex = {
                     </p>
 
                     <div class="loginCard">
-                        <form class="loginForm d-flex flex-column align-items-center gap-2">
-                            <input class="form-control" type="email" placeholder="Email address" required>
-                            <input class="form-control" type="password" placeholder="Password" required>
-                            <button class="btn" type="submit">Sign In</button>
-                            <div class="loginError" hidden></div>
+                        <form class="loginForm d-flex flex-column align-items-center gap-2" autocomplete="on" novalidate>
+
+                            <input
+                                id="loginEmail"
+                                name="email"
+                                class="form-control"
+                                type="email"
+                                placeholder="Email address"
+                                autocomplete="username"
+                                aria-label="Email address"
+                                required
+                            >
+
+                            <input
+                                id="loginPassword"
+                                name="password"
+                                class="form-control"
+                                type="password"
+                                placeholder="Password"
+                                autocomplete="current-password"
+                                aria-label="Password"
+                                required
+                            >
+
+                            <button class="btn" type="submit">
+                                Sign In
+                            </button>
+
+                            <div class="loginError" id="loginError" hidden></div>
+
                         </form>
                     </div>
                 </div>
@@ -1023,7 +1051,9 @@ window.SkyIndex = {
             error.hidden = false;
 
             // Restart SSE so PHP reads the new session
-            window.SkySSE?.restart?.();
+            setTimeout(() => {
+                window.SkySSE?.restart?.();
+            }, 150);
 
         } catch (err) {
 
