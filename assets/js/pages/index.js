@@ -733,12 +733,21 @@ window.SkyIndex = {
             </div>
         `;
 
+        // Append card
         this.cardHost.appendChild(card);
 
+        // Bind DOM
+        this.dom.footerDot  = card.querySelector('.footerDot');
+        this.dom.footerText = card.querySelector('.footerText');
+
+        // Attach form handler
         card.querySelector('.loginForm')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleLoginSubmit(e.currentTarget);
         });
+
+        // Render footer state
+        this.renderFooterStatus();
     },
     // #endregion
 
@@ -799,33 +808,16 @@ window.SkyIndex = {
             </div>
         `;
 
+        // Append Card
         this.cardHost.appendChild(card);
+
+        // Bind footer elements for this card instance
+        this.dom.commandOutput = card.querySelector('.commandOutput');
+        this.dom.footerDot  = card.querySelector('.footerDot');
+        this.dom.footerText = card.querySelector('.footerText');
 
         // Render footer state immediately
         this.renderFooterStatus();
-
-        // #region 👋 Initial Greeting
-
-        const name = this.authUser
-            ? this.authUser.split('@')[0]
-                .replace(/[._-]/g, ' ')
-                .replace(/\b\w/g, c => c.toUpperCase())
-            : 'User';
-
-        let greeting = 'Hello';
-
-        const hour =
-        this.lastSSE?.timeDateArray?.currentUnixTime
-            ? new Date(this.lastSSE.timeDateArray.currentUnixTime * 1000).getHours()
-            : new Date().getHours();
-
-        if (hour < 12) greeting = 'Good morning';
-        else if (hour < 17) greeting = 'Good afternoon';
-        else greeting = 'Good evening';
-
-        this.appendSystemLine(`${greeting}, ${name}. Ready when you are.`);
-
-        // #endregion
 
         // #region 📎 File Attachment
         const attachBtn = card.querySelector('.composerPlus');
@@ -874,6 +866,29 @@ window.SkyIndex = {
         });
 
         input?.focus();
+        // #endregion
+
+        // #region 👋 Initial Greeting
+
+        const name = this.authUser
+            ? this.authUser.split('@')[0]
+                .replace(/[._-]/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase())
+            : 'User';
+
+        let greeting = 'Hello';
+
+        const hour =
+        this.lastSSE?.timeDateArray?.currentUnixTime
+            ? new Date(this.lastSSE.timeDateArray.currentUnixTime * 1000).getHours()
+            : new Date().getHours();
+
+        if (hour < 12) greeting = 'Good morning';
+        else if (hour < 17) greeting = 'Good afternoon';
+        else greeting = 'Good evening';
+
+        this.appendSystemLine(`${greeting}, ${name}. Ready when you are.`);
+
         // #endregion
 
     },
