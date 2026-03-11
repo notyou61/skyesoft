@@ -123,6 +123,7 @@ window.SkyeApp.handleSSE = function (payload) {
     const prevAuth = this.lastSSE?.auth?.authenticated ?? false;
     const newAuth  = payload?.auth?.authenticated ?? false;
 
+    // Update authoritative SSE snapshot
     this.lastSSE = payload;
 
     // 🔐 Auth transition detection
@@ -132,10 +133,21 @@ window.SkyeApp.handleSSE = function (payload) {
 
         document.body.setAttribute('data-auth', 'true');
 
-        if (this.pageHandlers?.index?.transitionToCommandInterface) {
-            this.pageHandlers.index.transitionToCommandInterface();
-        }
+        if (this.pageHandlers?.index) {
 
+            const page = this.pageHandlers.index;
+
+            page.authState = true;
+            page.authUser  = payload?.auth?.username ?? null;
+            page.authRole  = payload?.auth?.role ?? null;
+
+            if (page.transitionToCommandInterface) {
+                page.transitionToCommandInterface();
+            }
+
+            // Ensure footer updates AFTER card exists
+            page.renderFooterStatus();
+        }
     }
 
     if (prevAuth && !newAuth) {
@@ -144,10 +156,20 @@ window.SkyeApp.handleSSE = function (payload) {
 
         document.body.removeAttribute('data-auth');
 
-        if (this.pageHandlers?.index?.renderLoginCard) {
-            this.pageHandlers.index.renderLoginCard();
-        }
+        if (this.pageHandlers?.index) {
 
+            const page = this.pageHandlers.index;
+
+            page.authState = false;
+            page.authUser  = null;
+            page.authRole  = null;
+
+            if (page.renderLoginCard) {
+                page.renderLoginCard();
+            }
+
+            page.renderFooterStatus();
+        }
     }
 
     try {
