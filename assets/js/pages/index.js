@@ -1241,6 +1241,17 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Session destroyed', { source });
 
+            // #region 🔌 Close SSE Connection
+            if (window.SkySSE?.es) {
+                try {
+                    window.SkySSE.es.close();
+                    console.log('[SkyIndex] SSE connection closed');
+                } catch (e) {
+                    console.warn('[SkyIndex] SSE close failed', e);
+                }
+            }
+            // #endregion
+
             // #region Reset UI Auth Projection
             document.body.removeAttribute('data-auth');
             // #endregion

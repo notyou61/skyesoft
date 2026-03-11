@@ -2,6 +2,7 @@
    SSE Engine → Push JSON Updates to Global App Handler
 */
 
+// Window SkySSE
 window.SkySSE = {
 
     es: null,
@@ -51,7 +52,6 @@ window.SkySSE = {
 
         };
     },
-
     // 🔁 Restart stream
     restart: function () {
 
@@ -59,7 +59,6 @@ window.SkySSE = {
 
         this.start();
     },
-
     // ⛔ Stop stream
     stop: function () {
 
