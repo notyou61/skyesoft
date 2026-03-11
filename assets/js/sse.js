@@ -39,19 +39,18 @@ window.SkySSE = {
 
             }
         };
-    },
-
-    // 🔄 Hard restart (used after login/logout)
-    restart: function () {
-
-        console.log('SkySSE restarting...');
-
-        if (this.es) {
-            try { this.es.close(); } catch (e) {}
-            this.es = null;
-        }
-
-        this.start();
     }
+    // 🔄 Hard restart (used after login/logout)
+    //restart: function () {
+
+    //    console.log('SkySSE restarting...');
+
+    //    if (this.es) {
+   //         try { this.es.close(); } catch (e) {}
+    //        this.es = null;
+    //    }
+
+    //    this.start();
+    //}
 
 };
