@@ -414,11 +414,22 @@ window.SkyIndex = {
 
             SkyIndex.appendSystemLine('Logging out…');
 
+            // Immediately invalidate client auth state
+            SkyIndex.authState = false;
+            SkyIndex.commandSurfaceActive = false;
+
+            document.body.removeAttribute('data-auth');
+
+            // Show login surface immediately
+            SkyIndex.renderLoginCard();
+            SkyIndex.renderFooterStatus();
+
             // Reset SSE auth memory to allow clean re-login
             if (window.SkyeApp) {
                 window.SkyeApp.lastSSE = null;
             }
 
+            // Call server logout
             setTimeout(() => SkyIndex.logout('ui_action'), 300);
         },
 
