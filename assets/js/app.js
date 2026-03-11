@@ -111,7 +111,35 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
+    const prevAuth = this.lastSSE?.auth?.authenticated ?? false;
+    const newAuth  = payload?.auth?.authenticated ?? false;
+
     this.lastSSE = payload;
+
+    // 🔐 Auth transition detection
+    if (!prevAuth && newAuth) {
+
+        console.log('[SkyIndex] Authenticated → Command Interface');
+
+        document.body.setAttribute('data-auth', 'true');
+
+        if (this.pageHandlers?.index?.initCommandSurface) {
+            this.pageHandlers.index.initCommandSurface();
+        }
+
+    }
+
+    if (prevAuth && !newAuth) {
+
+        console.log('[SkyIndex] Auth lost → Login Interface');
+
+        document.body.removeAttribute('data-auth');
+
+        if (this.pageHandlers?.index?.renderLoginCard) {
+            this.pageHandlers.index.renderLoginCard();
+        }
+
+    }
 
     try {
         this.updateHSB(payload);
