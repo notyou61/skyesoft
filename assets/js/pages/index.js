@@ -1091,43 +1091,30 @@ window.SkyIndex = {
         ) {
             return;
         }
-        
-        // Cache the latest SSE data for projections and state
-        this.lastSSE = {
-            ...this.lastSSE,
-            ...event
-        };
-        //console.log('[SSE] cached keys:', Object.keys(event || {}));
-
-        if (!event) return;
 
         // 🔐 Authoritative Auth Projection (SSE)
         if (event.auth) {
 
             const isAuth = event.auth.authenticated === true;
 
-            this.authState = isAuth;
+            // Only react if auth state actually changed
+            if (this.authState !== isAuth) {
 
-            document.body.toggleAttribute('data-auth', isAuth);
+                this.authState = isAuth;
 
-            if (isAuth) {
+                document.body.toggleAttribute('data-auth', isAuth);
 
-                this.authUser = event.auth.username ?? null;
-                this.authRole = event.auth.role ?? null;
+                if (isAuth) {
 
-                // Only render if UI not already showing command surface
-                if (!this.commandSurfaceActive) {
+                    this.authUser = event.auth.username ?? null;
+                    this.authRole = event.auth.role ?? null;
 
                     console.log('[SkyIndex] Authenticated → Command Interface');
 
                     this.renderCommandInterfaceCard();
                     this.commandSurfaceActive = true;
-                }
 
-            } else {
-
-                // Only render if UI currently showing command surface
-                if (this.commandSurfaceActive) {
+                } else {
 
                     console.log('[SkyIndex] Not authenticated → Login Interface');
 
@@ -1138,6 +1125,13 @@ window.SkyIndex = {
 
             this.renderFooterStatus();
         }
+
+         // Cache the latest SSE data for projections and state
+        this.lastSSE = {
+            ...this.lastSSE,
+            ...event
+        };
+        //console.log('[SSE] cached keys:', Object.keys(event || {}));
 
         // 🕒 Time
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
