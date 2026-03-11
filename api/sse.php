@@ -1,5 +1,13 @@
 <?php
 declare(strict_types=1);
+
+// Ini Set
+ini_set('display_errors', '0');
+
+// Prevent PHP session cache headers from being re-sent during SSE auth refresh
+session_cache_limiter('');
+
+// Session Start
 session_start();
 
 // ======================================================================
@@ -154,7 +162,9 @@ while (true) {
     // ─────────────────────────────────────────────
     if (($now - $lastAuthRefresh) >= 2) {
 
-        session_start();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
 
         $auth = [
             'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
