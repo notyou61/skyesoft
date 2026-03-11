@@ -129,6 +129,8 @@ $idle = [
 // Release session lock so SSE does not block other requests
 session_write_close();
 
+$streamId = bin2hex(random_bytes(8));
+
 $lastPing        = 0;
 $lastSecond      = 0;
 $lastAuthRefresh = 0;   // allows auth state to update without reconnect

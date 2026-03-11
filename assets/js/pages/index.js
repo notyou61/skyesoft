@@ -1047,6 +1047,13 @@ window.SkyIndex = {
 
     // #region 📡 SSE Event Handling
     onSSE(event) {
+
+        if (!event || typeof event !== 'object') return;
+
+        // 🧠 Ignore stale SSE streams
+        if (event.streamId && window.SkySSE?.streamId && event.streamId !== window.SkySSE.streamId) {
+            return;
+        }
         
         // Cache the latest SSE data for projections and state
         this.lastSSE = {
@@ -1061,6 +1068,12 @@ window.SkyIndex = {
         if (event.auth) {
 
             const isAuth = event.auth.authenticated === true;
+
+            // Prevent duplicate UI transitions
+            if (this.authState === isAuth) {
+                this.renderFooterStatus();   // footer can still refresh
+                return;
+            }
 
             this.authState = isAuth;
 
@@ -1090,7 +1103,6 @@ window.SkyIndex = {
                 }
             }
 
-            // 🔄 Always refresh footer auth state
             this.renderFooterStatus();
         }
 
