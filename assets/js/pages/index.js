@@ -405,66 +405,60 @@ window.SkyIndex = {
 
     // #region 🧩 UI Action Registry
     uiActionRegistry: {
+
         clear_screen() {
             SkyIndex.clearSessionSurface();
         },
+
         logout() {
+
             SkyIndex.appendSystemLine('Logging out…');
+
+            // Reset SSE auth memory to allow clean re-login
+            if (window.SkyeApp) {
+                window.SkyeApp.lastSSE = null;
+            }
+
             setTimeout(() => SkyIndex.logout('ui_action'), 300);
         },
 
-        // 🛡 Governance Actions
+        // #region 🛡 Governance Actions
         accept_merkle: async () => {
 
             SkyIndex.appendSystemLine('Processing Merkle acceptance...');
 
             try {
 
-                // IMPORTANT: use the correct path where the file exists
                 const res = await fetch('/skyesoft/scripts/merkleBuilder.php?mode=accept');
 
                 if (!res.ok) {
                     const text = await res.text();
-                    throw new Error(`HTTP ${res.status} — ${text.slice(0, 200)}`);
+                    throw new Error(`HTTP ${res.status} — ${text.slice(0,200)}`);
                 }
 
                 const contentType = (res.headers.get('content-type') || '').toLowerCase();
                 const text = await res.text();
 
                 if (!contentType.includes('application/json')) {
-                    throw new Error(`Non-JSON response — ${text.slice(0, 200)}`);
+                    throw new Error(`Non-JSON response — ${text.slice(0,200)}`);
                 }
 
                 const data = JSON.parse(text);
 
-                if (!data || data.success !== true) {
+                if (!data?.success) {
                     throw new Error(data?.message || 'Merkle builder did not return success.');
                 }
 
-                const governedRoot = data.governedRoot
-                    ? String(data.governedRoot)
-                    : '(missing governed root)';
+                const governedRoot = data.governedRoot ?? '(missing governed root)';
+                const treeRoot = data.treeRoot ?? '(missing tree root)';
+                const leaves = Number.isFinite(data.leaves) ? data.leaves : '(unknown)';
+                const fixed = Number.isFinite(data.violationsFixed) ? data.violationsFixed : 0;
 
-                const treeRoot = data.treeRoot
-                    ? String(data.treeRoot)
-                    : '(missing tree root)';
-
-                const leaves = Number.isFinite(data.leaves)
-                    ? data.leaves
-                    : '(unknown)';
-
-                const fixed = Number.isFinite(data.violationsFixed)
-                    ? data.violationsFixed
-                    : 0;
-
-                SkyIndex.appendSystemLine(`✅ Merkle snapshot accepted.`);
+                SkyIndex.appendSystemLine('✅ Merkle snapshot accepted.');
                 SkyIndex.appendSystemLine(`🔐 Governed Root: ${governedRoot}`);
                 SkyIndex.appendSystemLine(`🌳 Tree Root: ${treeRoot}`);
                 SkyIndex.appendSystemLine(`ℹ Leaves: ${leaves}`);
                 SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
-
-                // Optional: force governance refresh (if you have a function for it)
-                // SkyIndex.executeAICommand('what are the violations?');
 
             } catch (err) {
 
@@ -472,16 +466,17 @@ window.SkyIndex = {
                 SkyIndex.appendSystemLine(`❌ Merkle acceptance failed: ${err.message}`);
             }
         },
-        // Reconciling Inventory 
+        // #endregion
+
+
+        // #region 📦 Repository Inventory
         reconcile_inventory: async () => {
 
             SkyIndex.appendSystemLine('Reconciling repository inventory...');
 
             try {
 
-                const res = await fetch(
-                    '/skyesoft/scripts/repositoryInventoryBuilder.php?mode=reconcile'
-                );
+                const res = await fetch('/skyesoft/scripts/repositoryInventoryBuilder.php?mode=reconcile');
 
                 if (!res.ok) {
                     const text = await res.text();
@@ -501,28 +496,36 @@ window.SkyIndex = {
                     throw new Error(data?.message || 'Inventory reconciliation failed.');
                 }
 
-                const count = Number.isFinite(data.filesIndexed)
-                    ? data.filesIndexed
-                    : '(unknown)';
+                const count = Number.isFinite(data.filesIndexed) ? data.filesIndexed : '(unknown)';
+                const fixed = Number.isFinite(data.violationsFixed) ? data.violationsFixed : 0;
 
-                const fixed = Number.isFinite(data.violationsFixed)
-                    ? data.violationsFixed
-                    : 0;
-
-                SkyIndex.appendSystemLine(`✅ Repository inventory rebuilt.`);
+                SkyIndex.appendSystemLine('✅ Repository inventory rebuilt.');
                 SkyIndex.appendSystemLine(`📦 Files Indexed: ${count}`);
                 SkyIndex.appendSystemLine(`🛠 Violations Resolved: ${fixed}`);
 
             } catch (err) {
+
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Inventory reconciliation failed: ${err.message}`);
             }
         },
+        // #endregion
+
 
         review_unexpected: async () => {
+
             SkyIndex.appendSystemLine('Reviewing unexpected files…');
-            // implement API call here
+
+            try {
+                // placeholder for future implementation
+            }
+            catch (err) {
+
+                console.error(err);
+                SkyIndex.appendSystemLine(`❌ Unexpected review failed: ${err.message}`);
+            }
         }
+
     },
     // #endregion
 
