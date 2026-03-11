@@ -1,13 +1,21 @@
 /* Skyesoft — sse.js
    SSE Engine → Push JSON Updates to Global App Handler
 */
+
 window.SkySSE = {
+
+    es: null,
+    streamId: 0,
+
     // 🌐 Start SSE Connection
     start: function () {
 
-        console.log('SkySSE starting...');
+        this.streamId++;
 
-        // Close prior connection if any
+        const currentStream = this.streamId;
+
+        console.log('[SkySSE] starting stream', currentStream);
+
         if (this.es) {
             try { this.es.close(); } catch (e) {}
         }
@@ -16,29 +24,51 @@ window.SkySSE = {
         this.es = es;
 
         es.onopen = () => {
-            console.log('✅ SSE OPEN');
+            console.log('[SkySSE] OPEN', currentStream);
         };
 
         es.onerror = (err) => {
-            console.warn('⚠ SSE ERROR / reconnecting', err);
+            console.warn('[SkySSE] ERROR / reconnecting', err);
         };
 
         es.onmessage = (event) => {
-
-            console.log("📩 SSE Update");
 
             try {
 
                 const payload = JSON.parse(event.data);
 
+                // Attach local stream identity
+                payload.streamId = currentStream;
+
                 window.SkyeApp?.onSSE?.(payload);
 
             } catch (e) {
 
-                console.error("❌ SSE JSON parse error:", e);
+                console.error('[SkySSE] JSON parse error:', e);
 
             }
         };
+    },
+
+    // 🔁 Restart stream
+    restart: function () {
+
+        console.log('[SkySSE] restarting stream');
+
+        this.start();
+    },
+
+    // ⛔ Stop stream
+    stop: function () {
+
+        if (this.es) {
+            try { this.es.close(); } catch (e) {}
+        }
+
+        this.es = null;
+
+        console.log('[SkySSE] stopped');
+
     }
 
 };

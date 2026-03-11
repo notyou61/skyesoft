@@ -1023,7 +1023,7 @@ window.SkyIndex = {
             error.hidden = false;
 
             // Restart SSE so PHP reads the new session
-            window.SkySSE?.start?.();
+            window.SkySSE?.restart?.();
 
         } catch (err) {
 
@@ -1051,7 +1051,11 @@ window.SkyIndex = {
         if (!event || typeof event !== 'object') return;
 
         // 🧠 Ignore stale SSE streams
-        if (event.streamId && window.SkySSE?.streamId && event.streamId !== window.SkySSE.streamId) {
+        if (
+            event.streamId !== undefined &&
+            window.SkySSE?.streamId !== undefined &&
+            event.streamId !== window.SkySSE.streamId
+        ) {
             return;
         }
         
