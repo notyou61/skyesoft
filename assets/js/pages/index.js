@@ -1106,12 +1106,6 @@ window.SkyIndex = {
 
             const isAuth = event.auth.authenticated === true;
 
-            // Prevent duplicate UI transitions
-            if (this.authState === isAuth) {
-                this.renderFooterStatus();   // footer can still refresh
-                return;
-            }
-
             this.authState = isAuth;
 
             document.body.toggleAttribute('data-auth', isAuth);
@@ -1121,6 +1115,7 @@ window.SkyIndex = {
                 this.authUser = event.auth.username ?? null;
                 this.authRole = event.auth.role ?? null;
 
+                // Only render if UI not already showing command surface
                 if (!this.commandSurfaceActive) {
 
                     console.log('[SkyIndex] Authenticated → Command Interface');
@@ -1131,6 +1126,7 @@ window.SkyIndex = {
 
             } else {
 
+                // Only render if UI currently showing command surface
                 if (this.commandSurfaceActive) {
 
                     console.log('[SkyIndex] Not authenticated → Login Interface');
