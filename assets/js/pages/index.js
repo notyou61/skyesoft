@@ -1116,14 +1116,10 @@ window.SkyIndex = {
         }
 
         // 🔐 Authoritative Auth Projection (SSE)
-        if (event.auth) {
+        if ('auth' in event) {
 
             const isAuth = Boolean(event.auth?.authenticated);
 
-            console.log('SSE auth payload:', event.auth);
-            console.log('Computed isAuth:', isAuth);
-
-            // Only react if auth state actually changed
             if (this.authState !== isAuth) {
 
                 this.authState = isAuth;
@@ -1147,15 +1143,9 @@ window.SkyIndex = {
                     this.renderLoginCard();
                     this.commandSurfaceActive = false;
                 }
-
-                // Render footer AFTER the card exists
-                this.renderFooterStatus();
-
-            } else {
-
-                // No UI transition, just refresh footer state
-                this.renderFooterStatus();
             }
+
+            this.renderFooterStatus();
         }
 
          // Cache the latest SSE data for projections and state
