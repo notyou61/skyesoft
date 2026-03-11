@@ -1245,6 +1245,7 @@ window.SkyIndex = {
             if (window.SkySSE?.es) {
                 try {
                     window.SkySSE.es.close();
+                    window.SkySSE.es = null;   // prevent stale reference
                     console.log('[SkyIndex] SSE connection closed');
                 } catch (e) {
                     console.warn('[SkyIndex] SSE close failed', e);
