@@ -1144,9 +1144,15 @@ window.SkyIndex = {
                     this.renderLoginCard();
                     this.commandSurfaceActive = false;
                 }
-            }
 
-            this.renderFooterStatus();
+                // Render footer AFTER the card exists
+                this.renderFooterStatus();
+
+            } else {
+
+                // No UI transition, just refresh footer state
+                this.renderFooterStatus();
+            }
         }
 
          // Cache the latest SSE data for projections and state
