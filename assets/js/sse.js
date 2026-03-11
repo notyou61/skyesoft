@@ -34,21 +34,23 @@ window.SkySSE = {
 
         es.onmessage = (event) => {
 
-        if (!event.data) return;
+            if (currentStream !== this.streamId) {
+                return;
+            }
 
-        try {
+            if (!event.data) return;
 
-            const payload = JSON.parse(event.data);
+            try {
 
-            //console.log("📩 SSE Update", payload);
+                const payload = JSON.parse(event.data);
 
-            window.SkyeApp?.handleSSE?.(payload);
+                window.SkyeApp?.handleSSE?.(payload);
 
-        } catch(err) {
+            } catch(err) {
 
-            console.warn("⚠ SSE parse error", err);
+                console.warn("⚠ SSE parse error", err);
 
-        }
+            }
 
         };
     },

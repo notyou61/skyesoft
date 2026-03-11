@@ -53,8 +53,17 @@ window.SkyeApp.initPage = async function () {
 
 /* #region SSE ROUTING */
 window.SkyeApp.routeSSEToPage = function (payload) {
+
     const handler = this.pageHandlers[this.currentPage];
     if (!handler || typeof handler.onSSE !== "function") return;
+
+    // Prevent page handler from overriding authenticated UI
+    if (payload?.auth?.authenticated === true && handler.renderLoginCard) {
+        if (document.body.getAttribute("data-auth") === "true") {
+            return;
+        }
+    }
+
     handler.onSSE(payload);
 };
 /* #endregion */
