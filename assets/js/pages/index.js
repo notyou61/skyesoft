@@ -1115,13 +1115,13 @@ window.SkyIndex = {
             return;
         }
 
-        console.log('SSE auth payload:', event.auth);
-        console.log('Computed isAuth:', Boolean(event.auth?.authenticated));
-
         // 🔐 Authoritative Auth Projection (SSE)
         if (event.auth) {
 
             const isAuth = Boolean(event.auth?.authenticated);
+
+            console.log('SSE auth payload:', event.auth);
+            console.log('Computed isAuth:', isAuth);
 
             // Only react if auth state actually changed
             if (this.authState !== isAuth) {
