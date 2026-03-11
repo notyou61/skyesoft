@@ -1023,7 +1023,7 @@ window.SkyIndex = {
             error.hidden = false;
 
             // Restart SSE so PHP reads the new session
-            window.SkySSE?.restart?.();
+            window.SkySSE?.start?.();
 
         } catch (err) {
 
