@@ -253,7 +253,7 @@ if ($action === "logout") {
     $username  = $_SESSION["username"] ?? null;
     $role      = $_SESSION["role"] ?? null;
 
-    // Log logout BEFORE destroying session (best effort)
+    // Log logout BEFORE destroying session
     if ($pdo instanceof PDO) {
         logAuthAction($pdo, "auth.logout", $contactId, [
             "username" => $username,
@@ -263,8 +263,27 @@ if ($action === "logout") {
         ]);
     }
 
-    session_unset();
+    // Clear session memory
+    $_SESSION = [];
+
+    // Destroy session
     session_destroy();
+
+    // Remove session cookie
+    if (ini_get("session.use_cookies")) {
+
+        $params = session_get_cookie_params();
+
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params["path"],
+            $params["domain"],
+            $params["secure"],
+            $params["httponly"]
+        );
+    }
 
     jsonOut(true);
 }
