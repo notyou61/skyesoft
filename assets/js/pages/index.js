@@ -191,6 +191,7 @@ window.SkyIndex = {
     activeDomainKey: null,
     activeDomainModel: null,
     authState: null,
+    commandSurfaceActive: false,
     // #endregion
 
     // #region 🛠️ Command Output Helpers
@@ -1060,30 +1061,40 @@ window.SkyIndex = {
         if (event.auth) {
 
             const isAuth = event.auth.authenticated === true;
-            const stateChanged = this.authState !== isAuth;
 
+            // Track authoritative auth state
             this.authState = isAuth;
 
+            // Project attribute for CSS / layout
             document.body.toggleAttribute('data-auth', isAuth);
 
-            if (stateChanged) {
+            if (isAuth) {
 
-                if (isAuth) {
+                // Cache authenticated user data
+                this.authUser = event.auth.username ?? null;
+                this.authRole = event.auth.role ?? null;
 
-                    this.authUser = event.auth.username ?? null;
-                    this.authRole = event.auth.role ?? null;
+                // Render command interface only if not already active
+                if (!this.commandSurfaceActive) {
 
                     console.log('[SkyIndex] Authenticated → Command Interface');
 
                     this.renderCommandInterfaceCard();
 
-                } else {
+                    this.commandSurfaceActive = true;
+                }
+
+            } else {
+
+                // Render login interface only if command surface is active
+                if (this.commandSurfaceActive) {
 
                     console.log('[SkyIndex] Not authenticated → Login Interface');
 
                     this.renderLoginCard();
-                }
 
+                    this.commandSurfaceActive = false;
+                }
             }
         }
 
