@@ -200,17 +200,24 @@ while (true) {
         $payload = require __DIR__ . "/getDynamicData.php";
 
         // Inject stable state projections
-        $payload['auth'] = $auth;
-        $payload['idle'] = $idle;
+        $payload['auth']     = $auth;
+        $payload['idle']     = $idle;
+        $payload['streamId'] = $streamId;
 
-        echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
-        @ob_flush();
-        @flush();
+        if ($json !== false && $json !== '') {
+
+            echo "data: " . $json . "\n\n";
+
+            @ob_flush();
+            @flush();
+        }
     }
 
     // Reduce CPU usage while maintaining responsiveness
     usleep(20000);
+
 }
 
 #endregion
