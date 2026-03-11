@@ -39,7 +39,7 @@ window.SkySSE = {
 
             const payload = JSON.parse(event.data);
 
-            console.log("📩 SSE Update", payload);
+            //console.log("📩 SSE Update", payload);
 
             window.SkyeApp?.handleSSE?.(payload);
 
