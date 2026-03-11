@@ -1060,30 +1060,30 @@ window.SkyIndex = {
         if (event.auth) {
 
             const isAuth = event.auth.authenticated === true;
-
             const stateChanged = this.authState !== isAuth;
+
             this.authState = isAuth;
 
             document.body.toggleAttribute('data-auth', isAuth);
 
-            if (isAuth) {
+            if (stateChanged) {
 
-                this.authUser = event.auth.username ?? null;
-                this.authRole = event.auth.role ?? null;
+                if (isAuth) {
 
-                if (stateChanged) {
+                    this.authUser = event.auth.username ?? null;
+                    this.authRole = event.auth.role ?? null;
+
                     console.log('[SkyIndex] Authenticated → Command Interface');
-                }
 
-                this.renderCommandInterfaceCard();
+                    this.renderCommandInterfaceCard();
 
-            } else {
+                } else {
 
-                if (stateChanged) {
                     console.log('[SkyIndex] Not authenticated → Login Interface');
+
+                    this.renderLoginCard();
                 }
 
-                this.renderLoginCard();
             }
         }
 
