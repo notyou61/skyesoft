@@ -414,17 +414,13 @@ window.SkyIndex = {
             // Immediately invalidate client auth state
             SkyIndex.authState = false;
             SkyIndex.commandSurfaceActive = false;
-
+            
+            // Clear any cached user info
             document.body.removeAttribute('data-auth');
-
-            // Show login surface immediately
+            
+            // Revert to login card
             SkyIndex.renderLoginCard();
             SkyIndex.renderFooterStatus();
-
-            // Close SSE stream
-            if (window.SkyeApp?.sse) {
-                window.SkyeApp.sse.close();
-            }
 
             // Reset SSE auth memory
             if (window.SkyeApp) {
@@ -432,7 +428,14 @@ window.SkyIndex = {
             }
 
             // Call server logout endpoint
-            setTimeout(() => SkyIndex.uiActionRegistry.performServerLogout(), 300);
+            SkyIndex.uiActionRegistry.performServerLogout();
+
+            // Close SSE stream shortly after
+            setTimeout(() => {
+                if (window.SkyeApp?.sse) {
+                    window.SkyeApp.sse.close();
+                }
+            }, 200);
         },
         // Perform Server Logout (Session Destruction)
         performServerLogout() {
