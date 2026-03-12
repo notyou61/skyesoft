@@ -167,17 +167,17 @@ window.SkyeApp.handleSSE = function (payload) {
         }
     }
 
-    // NOW update the snapshot
+    // 🔄 Commit authoritative SSE snapshot
     this.lastSSE = payload;
 
-    // Update header/status block
+    // 📊 Update Header Status Block (HSB)
     try {
         this.updateHSB(payload);
     } catch (err) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // Route SSE updates only when authenticated
+    // 📡 Route SSE updates only when authenticated
     if (newAuth) {
         try {
             this.routeSSEToPage(payload);
@@ -185,6 +185,9 @@ window.SkyeApp.handleSSE = function (payload) {
             console.error("❌ routeSSEToPage failed:", err);
         }
     }
+
+    // 🧾 Refresh footer status (single authority)
+    this.pageHandlers?.index?.renderFooterStatus?.();
 };
 /* #endregion */
 
