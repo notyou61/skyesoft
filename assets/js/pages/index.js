@@ -921,7 +921,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🧠 Command Router
-    handleCommand(text) {
+    async handleCommand(text) {
 
         this.appendSystemLine(text, 'user');
 
@@ -939,19 +939,24 @@ window.SkyIndex = {
         };
 
         if (nativeCommands[normalized]) {
+
             const action = nativeCommands[normalized];
             const handler = this.uiActionRegistry?.[action];
 
             if (typeof handler === 'function') {
-                handler();
+
+                await handler();   // ensure async handlers complete
                 return;
+
             }
+
         }
 
         // ───────────────────────────────────────────────
         // Otherwise defer to AI
         // ───────────────────────────────────────────────
         this.executeAICommand(text);
+
     },
     // #endregion
 
@@ -1289,10 +1294,12 @@ window.SkyIndex = {
     logout: async function (source = 'manual') {
 
         try {
-
+            //
+            console.log('[SkyIndex] Sending logout request');
+            //
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
-                credentials: 'same-origin',
+                credentials: 'include',   // important fix
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'logout' })
             });
@@ -1319,7 +1326,7 @@ window.SkyIndex = {
             if (window.SkySSE?.es) {
                 try {
                     window.SkySSE.es.close();
-                    window.SkySSE.es = null;   // prevent stale reference
+                    window.SkySSE.es = null;
                     console.log('[SkyIndex] SSE connection closed');
                 } catch (e) {
                     console.warn('[SkyIndex] SSE close failed', e);
@@ -1352,7 +1359,6 @@ window.SkyIndex = {
         }
 
     },
-    // #endregion
 
     // #region 📘 Canonical Domain Rendering
     updateDomainSurface(domainKey, domainData) {
