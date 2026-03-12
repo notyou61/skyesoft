@@ -1107,23 +1107,20 @@ window.SkyIndex = {
                 return;
             }
 
+            // Hide any previous error
             error.hidden = true;
 
             console.log('[SkyIndex] Login successful — awaiting SSE auth projection');
 
-            // Optional user feedback
-            error.textContent = 'Authenticating...';
-            error.hidden = false;
-
-            // Immediately read auth state
+            // Read auth state immediately
             const snap = await fetch('/skyesoft/api/sse.php?mode=snapshot', {
                 credentials: 'include'
             }).then(r => r.json());
 
-            // Feed snapshot into the same handler SSE uses
+            // Feed snapshot into same handler SSE uses
             window.SkyeApp.handleSSE?.(snap);
 
-            // Restart SSE afterward for live updates
+            // Restart SSE for live stream
             window.SkySSE?.restart?.();
 
         } catch (err) {
