@@ -19,6 +19,7 @@ window.SkySSE = {
 
         if (this.es) {
             try { this.es.close(); } catch (e) {}
+            this.es = null;
         }
 
         const es = new EventSource('/skyesoft/api/sse.php', { withCredentials: true });
@@ -59,7 +60,10 @@ window.SkySSE = {
 
         console.log('[SkySSE] restarting stream');
 
-        this.start();
+        // Small delay ensures session cookie is committed
+        setTimeout(() => {
+            this.start();
+        }, 150);
     },
     // ⛔ Stop stream
     stop: function () {

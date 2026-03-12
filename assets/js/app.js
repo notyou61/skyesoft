@@ -224,7 +224,7 @@ window.SkyeApp.handleSSE = function (payload) {
     }
 
     // 🧾 Refresh footer status (single authority)
-    const pageHandler = this.pageHandlers?.index;
+    const pageHandler = this.pageHandlers?.[this.currentPage];
 
     console.log('[FOOTER FINAL REFRESH]', {
         authState: pageHandler?.authState
