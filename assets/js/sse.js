@@ -60,14 +60,10 @@ window.SkySSE = {
 
         console.log('[SkySSE] restarting stream');
 
-        const restartId = ++this.streamId;
-
+        // Small delay ensures session cookie is committed
         setTimeout(() => {
-            if (restartId === this.streamId) {
-                this.start();
-            }
+            this.start();
         }, 150);
-
     },
     // ⛔ Stop stream
     stop: function () {
