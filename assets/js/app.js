@@ -57,14 +57,8 @@ window.SkyeApp.routeSSEToPage = function (payload) {
     const handler = this.pageHandlers[this.currentPage];
     if (!handler || typeof handler.onSSE !== "function") return;
 
-    // Prevent page handler from overriding authenticated UI
-    if (payload?.auth?.authenticated === true && handler.renderLoginCard) {
-        if (document.body.getAttribute("data-auth") === "true") {
-            return;
-        }
-    }
-
     handler.onSSE(payload);
+
 };
 /* #endregion */
 
@@ -120,73 +114,65 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
-    const prevAuth = this.lastSSE?.auth?.authenticated ?? false;
-    const newAuth  = payload?.auth?.authenticated ?? false;
+    const prevAuth = this.lastSSE?.auth?.authenticated === true;
+    const newAuth  = payload?.auth?.authenticated === true;
 
     // Update authoritative SSE snapshot
     this.lastSSE = payload;
+
+    const page = this.pageHandlers[this.currentPage];
+
+    // Reflect auth in DOM
+    if (newAuth) {
+        document.body.setAttribute('data-auth', 'true');
+    } else {
+        document.body.removeAttribute('data-auth');
+    }
+
+    // Update page auth state once
+    if (page) {
+        page.authState = newAuth;
+        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
+        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+    }
 
     // 🔐 Auth transition detection
     if (!prevAuth && newAuth) {
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
-        document.body.setAttribute('data-auth', 'true');
-
-        if (this.pageHandlers?.index) {
-
-            const page = this.pageHandlers.index;
-
-            page.authState = true;
-            page.authUser  = payload?.auth?.username ?? null;
-            page.authRole  = payload?.auth?.role ?? null;
-
-            if (page.transitionToCommandInterface) {
-                page.transitionToCommandInterface();
-            }
-
-            // Ensure footer updates AFTER card exists
-            page.renderFooterStatus();
+        if (page?.transitionToCommandInterface) {
+            page.transitionToCommandInterface();
         }
+
+        page?.renderFooterStatus();
     }
 
     if (prevAuth && !newAuth) {
 
         console.log('[SkyIndex] Auth lost → Login Interface');
 
-        document.body.removeAttribute('data-auth');
-
-        if (this.pageHandlers?.index) {
-
-            const page = this.pageHandlers.index;
-
-            page.authState = false;
-            page.authUser  = null;
-            page.authRole  = null;
-
-            if (page.renderLoginCard) {
-                page.renderLoginCard();
-            }
-
-            page.renderFooterStatus();
+        if (page?.renderLoginCard) {
+            page.renderLoginCard();
         }
+
+        page?.renderFooterStatus();
     }
 
+    // Update header/status block
     try {
         this.updateHSB(payload);
     } catch (err) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // 🚫 Prevent page handler from overriding authenticated UI
-    if (!payload?.auth?.authenticated) {
-
+    // Route SSE updates only when authenticated
+    if (newAuth) {
         try {
             this.routeSSEToPage(payload);
         } catch (err) {
             console.error("❌ routeSSEToPage failed:", err);
         }
-
     }
 
 };
