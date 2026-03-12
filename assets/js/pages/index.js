@@ -406,9 +406,9 @@ window.SkyIndex = {
         clear_screen() {
             SkyIndex.clearSessionSurface();
         },
-
+        // Logout
         logout() {
-
+            // Immediate UI Projection
             SkyIndex.appendSystemLine('Logging out…');
 
             // Immediately invalidate client auth state
@@ -421,15 +421,34 @@ window.SkyIndex = {
             SkyIndex.renderLoginCard();
             SkyIndex.renderFooterStatus();
 
-            // Reset SSE auth memory to allow clean re-login
+            // Close SSE stream
+            if (window.SkyeApp?.sse) {
+                window.SkyeApp.sse.close();
+            }
+
+            // Reset SSE auth memory
             if (window.SkyeApp) {
                 window.SkyeApp.lastSSE = null;
             }
 
-            // Call server logout
-            setTimeout(() => SkyIndex.logout('ui_action'), 300);
+            // Call server logout endpoint
+            setTimeout(() => SkyIndex.uiActionRegistry.performServerLogout(), 300);
         },
+        // Perform Server Logout (Session Destruction)
+        performServerLogout() {
+            // Fire-and-forget logout request to destroy server session and invalidate SSE stream
+            fetch('/api/logout.php', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(() => {
+                console.log('[SkyIndex] Server logout complete');
+            })
+            .catch(err => {
+                console.error('[SkyIndex] Logout failed', err);
+            });
 
+        },
         // #region 🛡 Governance Actions
         accept_merkle: async () => {
 
@@ -475,7 +494,6 @@ window.SkyIndex = {
             }
         },
         // #endregion
-
 
         // #region 📦 Repository Inventory
         reconcile_inventory: async () => {
