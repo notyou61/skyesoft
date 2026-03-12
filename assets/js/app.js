@@ -114,6 +114,8 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
+    if (!payload?.auth) return;
+
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
     const newAuth  = payload?.auth?.authenticated === true;
 
@@ -121,13 +123,6 @@ window.SkyeApp.handleSSE = function (payload) {
     this.lastSSE = payload;
 
     const page = this.pageHandlers[this.currentPage];
-
-    // Reflect auth in DOM
-    if (newAuth) {
-        document.body.setAttribute('data-auth', 'true');
-    } else {
-        document.body.removeAttribute('data-auth');
-    }
 
     // Update page auth state once
     if (page) {
@@ -137,16 +132,15 @@ window.SkyeApp.handleSSE = function (payload) {
     }
 
     // 🔐 Auth transition detection
-    if (newAuth && !document.body.hasAttribute('data-auth')) {
+    if (!prevAuth && newAuth) {
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
-        document.body.setAttribute('data-auth', 'true');
+        document.body.setAttribute('data-auth','true');
 
         const page = this.pageHandlers?.index;
 
         if (page) {
-
             page.authState = true;
             page.authUser  = payload?.auth?.username ?? null;
             page.authRole  = payload?.auth?.role ?? null;
@@ -154,11 +148,14 @@ window.SkyeApp.handleSSE = function (payload) {
             page.transitionToCommandInterface?.();
             page.renderFooterStatus?.();
         }
-}
+
+    }
 
     if (prevAuth && !newAuth) {
 
         console.log('[SkyIndex] Auth lost → Login Interface');
+
+        document.body.removeAttribute('data-auth');
 
         if (page?.renderLoginCard) {
             page.renderLoginCard();
