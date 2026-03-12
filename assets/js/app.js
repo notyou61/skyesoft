@@ -143,21 +143,18 @@ window.SkyeApp.handleSSE = function (payload) {
 
         document.body.setAttribute('data-auth', 'true');
 
-        if (this.pageHandlers?.index) {
+        const page = this.pageHandlers?.index;
 
-            const page = this.pageHandlers.index;
+        if (page) {
 
             page.authState = true;
             page.authUser  = payload?.auth?.username ?? null;
             page.authRole  = payload?.auth?.role ?? null;
 
-            if (page.transitionToCommandInterface) {
-                page.transitionToCommandInterface();
-            }
-
-            page.renderFooterStatus();
+            page.transitionToCommandInterface?.();
+            page.renderFooterStatus?.();
         }
-    }
+}
 
     if (prevAuth && !newAuth) {
 
