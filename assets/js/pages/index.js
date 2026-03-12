@@ -347,20 +347,29 @@ window.SkyIndex = {
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
-        // 🔐 Auth state snapshot
         const isAuthed = this.authState === true;
-
-        // 🛡 Sentinel governance state
         const sentinel = this.currentSentinelState;
 
-        // 🧾 Resolve footer elements dynamically (post UI transition safety)
-        const dot = document.querySelector('.footerDot');
-        const textEl = document.querySelector('.footerText');
+        let dot = document.querySelector('.footerDot');
+        let textEl = document.querySelector('.footerText');
 
-        // 🧾 Footer DOM guard
-        if (!dot || !textEl) return;
+        // 🧾 Footer DOM guard with race-condition retry
+        if (!dot || !textEl) {
 
-        // 🧾 Footer render helper
+            requestAnimationFrame(() => {
+
+                dot = document.querySelector('.footerDot');
+                textEl = document.querySelector('.footerText');
+
+                if (!dot || !textEl) return;
+
+                this.renderFooterStatus();
+
+            });
+
+            return;
+        }
+
         const render = (dotColor, text) => {
             dot.style.background = dotColor;
             textEl.textContent = text;
@@ -386,6 +395,7 @@ window.SkyIndex = {
             const structuralCount   = Number(sentinel.unresolvedViolations || 0);
 
             if (hasIntegrityDrift === true) {
+
                 const text = structuralCount > 0
                     ? `Integrity Drift • ${structuralCount} Structural Deviations`
                     : `Codex Integrity Drift`;
@@ -1184,7 +1194,6 @@ window.SkyIndex = {
 
                     this.renderLoginCard();
                     this.commandSurfaceActive = false;
-
                 }
             }
 
