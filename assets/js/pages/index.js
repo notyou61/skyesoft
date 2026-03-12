@@ -1175,14 +1175,8 @@ window.SkyIndex = {
 
                     console.log('[SkyIndex] Authenticated → Command Interface');
 
-                    // 🪟 Replace login UI with command interface
                     this.renderCommandInterfaceCard();
                     this.commandSurfaceActive = true;
-
-                    // 🧾 Render footer after DOM replacement
-                    requestAnimationFrame(() => {
-                        this.renderFooterStatus();
-                    });
 
                 } else {
 
@@ -1190,17 +1184,10 @@ window.SkyIndex = {
 
                     this.renderLoginCard();
                     this.commandSurfaceActive = false;
-
-                    // 🧾 Footer can render immediately
-                    this.renderFooterStatus();
                 }
-
-            } else {
-
-                // 🔄 Auth state unchanged — safe to update footer normally
-                this.renderFooterStatus();
-
             }
+
+            this.renderFooterStatus();
         }
 
          // Cache the latest SSE data for projections and state
