@@ -1110,10 +1110,16 @@ window.SkyIndex = {
             error.textContent = 'Authenticating...';
             error.hidden = false;
 
-            // Restart SSE so PHP reads the new session
-            setTimeout(() => {
-                window.SkySSE?.restart?.();
-            }, 150);
+            // Immediately read auth state
+            const snap = await fetch('/skyesoft/api/sse.php?mode=snapshot', {
+                credentials: 'same-origin'
+            }).then(r => r.json());
+
+            // Feed snapshot into the same handler SSE uses
+            window.SkyeApp.handleSSE?.(snap);
+
+            // Restart SSE afterward for live updates
+            window.SkySSE?.restart?.();
 
         } catch (err) {
 
