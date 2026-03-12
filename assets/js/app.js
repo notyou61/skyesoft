@@ -137,15 +137,26 @@ window.SkyeApp.handleSSE = function (payload) {
     }
 
     // 🔐 Auth transition detection
-    if (!prevAuth && newAuth) {
+    if (newAuth && !document.body.hasAttribute('data-auth')) {
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
-        if (page?.transitionToCommandInterface) {
-            page.transitionToCommandInterface();
-        }
+        document.body.setAttribute('data-auth', 'true');
 
-        page?.renderFooterStatus();
+        if (this.pageHandlers?.index) {
+
+            const page = this.pageHandlers.index;
+
+            page.authState = true;
+            page.authUser  = payload?.auth?.username ?? null;
+            page.authRole  = payload?.auth?.role ?? null;
+
+            if (page.transitionToCommandInterface) {
+                page.transitionToCommandInterface();
+            }
+
+            page.renderFooterStatus();
+        }
     }
 
     if (prevAuth && !newAuth) {
