@@ -49,6 +49,11 @@ $isSnapshot =
 #region SECTION 1 — Snapshot Mode (Finite, Non-SSE)
 if ($isSnapshot) {
 
+    // Rebind to the browser's session cookie
+    if (isset($_COOKIE[session_name()])) {
+        session_id($_COOKIE[session_name()]);
+    }
+
     // Read session once in read-only mode
     session_start([
         'read_and_close' => true
