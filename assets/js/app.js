@@ -111,84 +111,111 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
-/* #region 🌐 GLOBAL SSE HANDLER — Skyesoft Runtime Authority */
+/* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
-    // 🛑 Payload guard — SSE frame must contain auth projection
     if (!payload?.auth) return;
 
-    // 🔍 Determine previous vs new authentication state
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
     const newAuth  = payload.auth.authenticated === true;
 
-    // 🛑 First-frame guard — prevent race conditions on initial stream attach
+    // 🔍 SSE auth diagnostic (every frame)
+    console.log('[SSE AUTH FRAME]', {
+        prev: this.lastSSE?.auth?.authenticated,
+        next: payload.auth.authenticated
+    });
+
+    // 🛑 Ignore first SSE frame to avoid race condition
     if (!this.lastSSE) {
+        console.log('[SSE INIT FRAME IGNORED]', payload.auth);
         this.lastSSE = payload;
         return;
     }
 
-    // 📄 Resolve active page handler (page-agnostic routing)
+    // 🔐 AUTH STATE TRANSITION DETECTION
     const page = this.pageHandlers?.[this.currentPage];
 
-    // 🔄 Synchronize page-level auth state from authoritative SSE payload
+    console.log('[PAGE HANDLER]', this.currentPage, page);
+
+    // 🔄 Synchronize page auth state from SSE projection
     if (page) {
         page.authState = newAuth;
         page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
         page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
     }
 
-    // 🔐 AUTH TRANSITION — Login detected
+    // 🧠 Login transition detected
     if (!prevAuth && newAuth) {
+
+        console.log('[AUTH TRANSITION]', {
+            from: prevAuth,
+            to: newAuth,
+            action: 'LOGIN'
+        });
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
-        // 🧭 Reflect authenticated state in DOM root
+        // 🔐 Reflect auth state in DOM
         document.body.setAttribute('data-auth', 'true');
 
         if (page) {
 
-            // 🪟 UI Transition — Login Card → Command Interface
+            // 🪟 Switch UI from login → command interface
             page.transitionToCommandInterface?.();
 
-            // 🧾 Footer refresh after DOM reflow
+            // 🧾 Refresh footer status after UI transition
             requestAnimationFrame(() => {
+
+                console.log('[FOOTER REFRESH AFTER LOGIN]', {
+                    authState: page.authState
+                });
+
                 page.renderFooterStatus?.call(page);
             });
         }
     }
 
-    // 🔐 AUTH TRANSITION — Logout detected
+    // 🧠 Logout transition detected
     if (prevAuth && !newAuth) {
+
+        console.log('[AUTH TRANSITION]', {
+            from: prevAuth,
+            to: newAuth,
+            action: 'LOGOUT'
+        });
 
         console.log('[SkyIndex] Auth lost → Login Interface');
 
-        // 🧭 Remove authenticated DOM marker
+        // 🔐 Remove DOM auth marker
         document.body.removeAttribute('data-auth');
 
         if (page) {
 
-            // 🪟 UI Transition — Command Interface → Login Card
+            // 🪟 Switch UI from command interface → login card
             page.renderLoginCard?.();
 
-            // 🧾 Footer status update
+            console.log('[FOOTER REFRESH AFTER LOGOUT]', {
+                authState: page.authState
+            });
+
+            // 🧾 Update footer status
             page.renderFooterStatus?.call(page);
         }
     }
 
-    // 🧠 Commit authoritative SSE snapshot
-    // (Source of Truth for next transition comparison)
+    // 🔄 Commit authoritative SSE snapshot
     this.lastSSE = payload;
 
-    // 📊 Update Header Status Block (HSB-X)
-    // Weather • Time • Interval countdown
+    console.log('[SSE SNAPSHOT COMMITTED]', payload.auth);
+
+    // 📊 Update Header Status Block (HSB)
     try {
         this.updateHSB(payload);
     } catch (err) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // 📡 Route payload to page domain handler
-    // Only permitted when authenticated
+    // 📡 Route SSE updates only when authenticated
     if (newAuth) {
         try {
             this.routeSSEToPage(payload);
@@ -197,11 +224,14 @@ window.SkyeApp.handleSSE = function (payload) {
         }
     }
 
-    // 🧾 Footer refresh — single authority render
-    // Ensures status always reflects latest auth + sentinel state
+    // 🧾 Refresh footer status (single authority)
     const pageHandler = this.pageHandlers?.[this.currentPage];
-    pageHandler?.renderFooterStatus?.call(pageHandler);
 
+    console.log('[FOOTER FINAL REFRESH]', {
+        authState: pageHandler?.authState
+    });
+
+    pageHandler?.renderFooterStatus?.call(pageHandler);
 };
 /* #endregion */
 
