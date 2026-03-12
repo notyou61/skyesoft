@@ -119,44 +119,52 @@ window.SkyeApp.handleSSE = function (payload) {
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
     const newAuth  = payload.auth.authenticated === true;
 
-    const page = this.pageHandlers[this.currentPage];
+    // 🔐 AUTH STATE TRANSITION DETECTION
+    const page = this.pageHandlers?.index;
 
-    // Update page auth state
+    // 🔄 Synchronize page auth state from SSE projection
     if (page) {
         page.authState = newAuth;
-        page.authUser  = newAuth ? payload.auth.username ?? null : null;
-        page.authRole  = newAuth ? payload.auth.role ?? null : null;
+        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
+        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
     }
 
-    // 🔐 Auth transition detection
+    // 🧠 Login transition detected
     if (!prevAuth && newAuth) {
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
+        // 🔐 Reflect auth state in DOM
         document.body.setAttribute('data-auth', 'true');
-
-        const page = this.pageHandlers?.index;
 
         if (page) {
 
-            // Transition UI
+            // 🪟 Switch UI from login → command interface
             page.transitionToCommandInterface?.();
 
-            // Ensure footer reflects authenticated state
+            // 🧾 Refresh footer status after UI transition
             requestAnimationFrame(() => {
                 page.renderFooterStatus?.();
             });
         }
     }
 
+    // 🧠 Logout transition detected
     if (prevAuth && !newAuth) {
 
         console.log('[SkyIndex] Auth lost → Login Interface');
 
+        // 🔐 Remove DOM auth marker
         document.body.removeAttribute('data-auth');
 
-        page?.renderLoginCard?.();
-        page?.renderFooterStatus?.();
+        if (page) {
+
+            // 🪟 Switch UI from command interface → login card
+            page.renderLoginCard?.();
+
+            // 🧾 Update footer status
+            page.renderFooterStatus?.();
+        }
     }
 
     // NOW update the snapshot
