@@ -8,7 +8,7 @@ ini_set('display_errors', '0');
 session_cache_limiter('');
 
 // Session Start
-session_start();
+//session_start();
 
 // ======================================================================
 //  Skyesoft — sse.php
@@ -49,7 +49,12 @@ $isSnapshot =
 #region SECTION 1 — Snapshot Mode (Finite, Non-SSE)
 if ($isSnapshot) {
 
-    // Capture auth once
+    // Read session once in read-only mode
+    session_start([
+        'read_and_close' => true
+    ]);
+
+    // Capture auth state
     $auth = [
         'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
         'username'      => $_SESSION['username'] ?? null,
@@ -64,13 +69,11 @@ if ($isSnapshot) {
         'lastActivity'     => null
     ];
 
-    // Release session lock immediately
-    session_write_close();
-
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
 
     $payload = require __DIR__ . "/getDynamicData.php";
+
     $payload['auth'] = $auth;
     $payload['idle'] = $idle;
 
@@ -119,7 +122,11 @@ ignore_user_abort(true);
 
 #region SECTION 4 — Loop Initialization
 
-// Capture auth snapshot
+// Read session once to capture initial auth snapshot
+session_start([
+    'read_and_close' => true
+]);
+
 $auth = [
     'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
     'username'      => $_SESSION['username'] ?? null,
@@ -133,9 +140,6 @@ $idle = [
     'timeoutSeconds'   => null,
     'lastActivity'     => null
 ];
-
-// Release session lock so SSE does not block other requests
-session_write_close();
 
 $streamId = bin2hex(random_bytes(8));
 
@@ -161,12 +165,6 @@ while (true) {
     // Prevents stale session state in long-running SSE
     // ─────────────────────────────────────────────
 
-    // Close any active session first
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
-
-    // Reopen session in read-only mode
     session_start([
         'read_and_close' => true
     ]);
@@ -176,9 +174,6 @@ while (true) {
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
-
-    // Release lock immediately
-    session_write_close();
 
     // ─────────────────────────────────────────────
     // 15-Second Keepalive Ping (prevents proxy timeouts)

@@ -1359,6 +1359,7 @@ window.SkyIndex = {
         }
 
     },
+     // #endregion
 
     // #region 📘 Canonical Domain Rendering
     updateDomainSurface(domainKey, domainData) {
