@@ -166,13 +166,10 @@ while (true) {
         session_write_close();
     }
 
-    // Rebind to current browser session cookie
-    if (isset($_COOKIE[session_name()])) {
-        session_id($_COOKIE[session_name()]);
-    }
-
-    // Reopen session
-    session_start();
+    // Reopen session in read-only mode
+    session_start([
+        'read_and_close' => true
+    ]);
 
     $auth = [
         'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
@@ -182,7 +179,6 @@ while (true) {
 
     // Release lock immediately
     session_write_close();
-
 
     // ─────────────────────────────────────────────
     // 15-Second Keepalive Ping (prevents proxy timeouts)
