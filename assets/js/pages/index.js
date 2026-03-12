@@ -347,15 +347,20 @@ window.SkyIndex = {
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
-        if (!this.dom?.footerDot || !this.dom?.footerText) return;
-
+        // 🔐 Auth state snapshot
         const isAuthed = this.authState === true;
+
+        // 🛡 Sentinel governance state
         const sentinel = this.currentSentinelState;
 
-        const dot = this.dom.footerDot;
-        const textEl = this.dom.footerText;
+        // 🧾 Resolve footer elements dynamically (post UI transition safety)
+        const dot = document.querySelector('.footerDot');
+        const textEl = document.querySelector('.footerText');
 
-        // Helper
+        // 🧾 Footer DOM guard
+        if (!dot || !textEl) return;
+
+        // 🧾 Footer render helper
         const render = (dotColor, text) => {
             dot.style.background = dotColor;
             textEl.textContent = text;
