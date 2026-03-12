@@ -1184,6 +1184,7 @@ window.SkyIndex = {
 
                     this.renderLoginCard();
                     this.commandSurfaceActive = false;
+
                 }
             }
 
