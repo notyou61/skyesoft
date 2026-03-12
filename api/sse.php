@@ -157,12 +157,22 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────────
-    // Refresh auth snapshot every loop cycle
-    // (briefly reopens session without holding lock)
+    // AUTH REFRESH (force fresh session read)
+    // Prevents stale session state in long-running SSE
     // ─────────────────────────────────────────────
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+
+    // Close any active session first
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
+
+    // Rebind to current browser session cookie
+    if (isset($_COOKIE[session_name()])) {
+        session_id($_COOKIE[session_name()]);
+    }
+
+    // Reopen session
+    session_start();
 
     $auth = [
         'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
@@ -170,6 +180,7 @@ while (true) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // Release lock immediately
     session_write_close();
 
 
