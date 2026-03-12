@@ -133,15 +133,20 @@ window.SkyeApp.handleSSE = function (payload) {
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
-        document.body.setAttribute('data-auth','true');
+        document.body.setAttribute('data-auth', 'true');
 
         const page = this.pageHandlers?.index;
 
         if (page) {
-            page.transitionToCommandInterface?.();
-            page.renderFooterStatus?.();
-        }
 
+            // Transition UI
+            page.transitionToCommandInterface?.();
+
+            // Ensure footer reflects authenticated state
+            requestAnimationFrame(() => {
+                page.renderFooterStatus?.();
+            });
+        }
     }
 
     if (prevAuth && !newAuth) {
