@@ -184,13 +184,11 @@ window.SkyeApp.handleSSE = function (payload) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // 📡 Route SSE updates only when authenticated
-    if (newAuth) {
-        try {
-            this.routeSSEToPage(payload);
-        } catch (err) {
-            console.error("❌ routeSSEToPage failed:", err);
-        }
+    // 📡 Route SSE updates to page controller
+    try {
+        this.routeSSEToPage(payload);
+    } catch (err) {
+        console.error("❌ routeSSEToPage failed:", err);
     }
 
     // 🧾 Refresh footer status (single authority)
