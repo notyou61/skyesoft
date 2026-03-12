@@ -144,7 +144,7 @@ window.SkyeApp.handleSSE = function (payload) {
 
             // 🧾 Refresh footer status after UI transition
             requestAnimationFrame(() => {
-                page.renderFooterStatus?.();
+                page.renderFooterStatus?.call(page);
             });
         }
     }
@@ -163,7 +163,7 @@ window.SkyeApp.handleSSE = function (payload) {
             page.renderLoginCard?.();
 
             // 🧾 Update footer status
-            page.renderFooterStatus?.();
+            page.renderFooterStatus?.call(page);
         }
     }
 
@@ -187,7 +187,8 @@ window.SkyeApp.handleSSE = function (payload) {
     }
 
     // 🧾 Refresh footer status (single authority)
-    this.pageHandlers?.index?.renderFooterStatus?.();
+    const pageHandler = this.pageHandlers?.index;
+    pageHandler?.renderFooterStatus?.call(pageHandler);
 };
 /* #endregion */
 
