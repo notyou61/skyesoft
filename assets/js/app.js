@@ -119,8 +119,23 @@ window.SkyeApp.handleSSE = function (payload) {
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
     const newAuth  = payload.auth.authenticated === true;
 
+    // 🔍 SSE auth diagnostic (every frame)
+    console.log('[SSE AUTH FRAME]', {
+        prev: this.lastSSE?.auth?.authenticated,
+        next: payload.auth.authenticated
+    });
+
+    // 🛑 Ignore first SSE frame to avoid race condition
+    if (!this.lastSSE) {
+        console.log('[SSE INIT FRAME IGNORED]', payload.auth);
+        this.lastSSE = payload;
+        return;
+    }
+
     // 🔐 AUTH STATE TRANSITION DETECTION
-    const page = this.pageHandlers?.index;
+    const page = this.pageHandlers?.[this.currentPage];
+
+    console.log('[PAGE HANDLER]', this.currentPage, page);
 
     // 🔄 Synchronize page auth state from SSE projection
     if (page) {
@@ -131,6 +146,12 @@ window.SkyeApp.handleSSE = function (payload) {
 
     // 🧠 Login transition detected
     if (!prevAuth && newAuth) {
+
+        console.log('[AUTH TRANSITION]', {
+            from: prevAuth,
+            to: newAuth,
+            action: 'LOGIN'
+        });
 
         console.log('[SkyIndex] Authenticated → Command Interface');
 
@@ -144,6 +165,10 @@ window.SkyeApp.handleSSE = function (payload) {
 
             // 🧾 Refresh footer status after UI transition
             requestAnimationFrame(() => {
+                console.log('[FOOTER REFRESH AFTER LOGIN]', {
+                    authState: page.authState
+                });
+
                 page.renderFooterStatus?.call(page);
             });
         }
@@ -151,6 +176,12 @@ window.SkyeApp.handleSSE = function (payload) {
 
     // 🧠 Logout transition detected
     if (prevAuth && !newAuth) {
+
+        console.log('[AUTH TRANSITION]', {
+            from: prevAuth,
+            to: newAuth,
+            action: 'LOGOUT'
+        });
 
         console.log('[SkyIndex] Auth lost → Login Interface');
 
@@ -162,6 +193,10 @@ window.SkyeApp.handleSSE = function (payload) {
             // 🪟 Switch UI from command interface → login card
             page.renderLoginCard?.();
 
+            console.log('[FOOTER REFRESH AFTER LOGOUT]', {
+                authState: page.authState
+            });
+
             // 🧾 Update footer status
             page.renderFooterStatus?.call(page);
         }
@@ -169,6 +204,8 @@ window.SkyeApp.handleSSE = function (payload) {
 
     // 🔄 Commit authoritative SSE snapshot
     this.lastSSE = payload;
+
+    console.log('[SSE SNAPSHOT COMMITTED]', payload.auth);
 
     // 📊 Update Header Status Block (HSB)
     try {
@@ -188,6 +225,11 @@ window.SkyeApp.handleSSE = function (payload) {
 
     // 🧾 Refresh footer status (single authority)
     const pageHandler = this.pageHandlers?.index;
+
+    console.log('[FOOTER FINAL REFRESH]', {
+        authState: pageHandler?.authState
+    });
+
     pageHandler?.renderFooterStatus?.call(pageHandler);
 };
 /* #endregion */
