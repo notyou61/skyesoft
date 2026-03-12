@@ -436,13 +436,21 @@ window.SkyIndex = {
         },
         // Perform Server Logout (Session Destruction)
         performServerLogout() {
-            // Fire-and-forget logout request to destroy server session and invalidate SSE stream
-            fetch('/api/logout.php', {
+
+            fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
-                credentials: 'include'
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=logout'
             })
-            .then(() => {
+            .then(res => {
+
+                if (!res.ok) {
+                    throw new Error(`Logout failed (${res.status})`);
+                }
+
                 console.log('[SkyIndex] Server logout complete');
+
             })
             .catch(err => {
                 console.error('[SkyIndex] Logout failed', err);

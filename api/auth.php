@@ -268,6 +268,7 @@ if ($action === "logout") {
 
     // Destroy session
     session_destroy();
+    session_write_close();
 
     // Remove session cookie
     if (ini_get("session.use_cookies")) {
