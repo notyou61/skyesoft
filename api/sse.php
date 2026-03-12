@@ -157,25 +157,21 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────────
-    // Refresh auth snapshot every 2 seconds
+    // Refresh auth snapshot every loop cycle
     // (briefly reopens session without holding lock)
     // ─────────────────────────────────────────────
-    if (($now - $lastAuthRefresh) >= 2) {
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
-
-        $auth = [
-            'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
-            'username'      => $_SESSION['username'] ?? null,
-            'role'          => $_SESSION['role'] ?? null
-        ];
-
-        session_write_close();
-
-        $lastAuthRefresh = $now;
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
     }
+
+    $auth = [
+        'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? null
+    ];
+
+    session_write_close();
+
 
     // ─────────────────────────────────────────────
     // 15-Second Keepalive Ping (prevents proxy timeouts)
@@ -188,6 +184,7 @@ while (true) {
         @ob_flush();
         @flush();
     }
+
 
     // ─────────────────────────────────────────────
     // 1 Hz Update Cadence
