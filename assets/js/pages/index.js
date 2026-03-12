@@ -1085,7 +1085,7 @@ window.SkyIndex = {
 
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
-                credentials: 'same-origin',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'login',
@@ -1112,7 +1112,7 @@ window.SkyIndex = {
 
             // Immediately read auth state
             const snap = await fetch('/skyesoft/api/sse.php?mode=snapshot', {
-                credentials: 'same-origin'
+                credentials: 'include'
             }).then(r => r.json());
 
             // Feed snapshot into the same handler SSE uses

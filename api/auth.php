@@ -237,6 +237,9 @@ if ($action === "login") {
         "ua"       => safeUserAgent()
     ]);
 
+    // Ensure session is persisted immediately
+    session_write_close();
+
     jsonOut(true);
 }
 
