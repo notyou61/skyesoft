@@ -117,18 +117,15 @@ window.SkyeApp.handleSSE = function (payload) {
     if (!payload?.auth) return;
 
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
-    const newAuth  = payload?.auth?.authenticated === true;
-
-    // Update authoritative SSE snapshot
-    this.lastSSE = payload;
+    const newAuth  = payload.auth.authenticated === true;
 
     const page = this.pageHandlers[this.currentPage];
 
-    // Update page auth state once
+    // Update page auth state
     if (page) {
         page.authState = newAuth;
-        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
-        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+        page.authUser  = newAuth ? payload.auth.username ?? null : null;
+        page.authRole  = newAuth ? payload.auth.role ?? null : null;
     }
 
     // 🔐 Auth transition detection
@@ -141,10 +138,6 @@ window.SkyeApp.handleSSE = function (payload) {
         const page = this.pageHandlers?.index;
 
         if (page) {
-            page.authState = true;
-            page.authUser  = payload?.auth?.username ?? null;
-            page.authRole  = payload?.auth?.role ?? null;
-
             page.transitionToCommandInterface?.();
             page.renderFooterStatus?.();
         }
@@ -157,12 +150,12 @@ window.SkyeApp.handleSSE = function (payload) {
 
         document.body.removeAttribute('data-auth');
 
-        if (page?.renderLoginCard) {
-            page.renderLoginCard();
-        }
-
-        page?.renderFooterStatus();
+        page?.renderLoginCard?.();
+        page?.renderFooterStatus?.();
     }
+
+    // NOW update the snapshot
+    this.lastSSE = payload;
 
     // Update header/status block
     try {
@@ -179,7 +172,6 @@ window.SkyeApp.handleSSE = function (payload) {
             console.error("❌ routeSSEToPage failed:", err);
         }
     }
-
 };
 /* #endregion */
 
