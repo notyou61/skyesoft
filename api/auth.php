@@ -237,6 +237,9 @@ if ($action === "login") {
         "ua"       => safeUserAgent()
     ]);
 
+    error_log("LOGIN SESSION ID: " . session_id());
+    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION)); 
+
     // Ensure session is persisted immediately
     session_write_close();
 

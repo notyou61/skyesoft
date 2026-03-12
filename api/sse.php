@@ -83,6 +83,8 @@ if ($isSnapshot) {
     $payload['idle'] = $idle;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
+    error_log("SSE SESSION ID: " . session_id());
+    error_log("SSE SESSION DATA: " . json_encode($_SESSION));
     exit;
 }
 #endregion
