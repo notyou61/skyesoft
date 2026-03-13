@@ -240,6 +240,8 @@ if ($action === "login") {
     error_log("LOGIN SESSION ID: " . session_id());
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION)); 
 
+    session_regenerate_id(true);
+
     // Ensure session is persisted immediately
     session_write_close();
 
