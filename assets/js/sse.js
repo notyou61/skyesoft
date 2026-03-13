@@ -23,8 +23,6 @@ window.SkySSE = {
 
         const currentStream = this.streamId;
 
-        console.log('[SkySSE] starting stream', currentStream);
-
         // Close any existing stream
         if (this.es) {
             try {
@@ -39,11 +37,11 @@ window.SkySSE = {
         this.es = es;
 
         es.onopen = () => {
-            console.log('[SkySSE] OPEN', currentStream);
+            //console.log('[SkySSE] OPEN', currentStream);
         };
 
         es.onerror = (err) => {
-            console.warn('[SkySSE] ERROR / reconnecting', err);
+            //console.warn('[SkySSE] ERROR / reconnecting', err);
         };
 
         es.onmessage = (event) => {
@@ -55,18 +53,9 @@ window.SkySSE = {
 
             if (!event.data) return;
 
-            //console.log('[SkySSE] message received', event.data);
-
             try {
 
                 const payload = JSON.parse(event.data);
-
-                console.log('[SkySSE] parsed payload', payload);
-
-                // 🔎 Diagnostic: detect auth projection
-                if (payload.auth !== undefined) {
-                    console.log('[SkySSE] auth projection', payload.auth);
-                }
 
                 window.SkyeApp?.handleSSE?.(payload);
 
@@ -82,7 +71,7 @@ window.SkySSE = {
     // 🔁 Restart stream (safe restart)
     restart: function () {
 
-        console.log('[SkySSE] restarting stream');
+        //console.log('[SkySSE] restarting stream');
 
         // Cancel any pending restart
         if (this.restartTimer) {
