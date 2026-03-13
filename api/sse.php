@@ -170,14 +170,17 @@ while (true) {
     // AUTH REFRESH
     // ─────────────────────────────────────────────
 
+    // Close any existing session
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // No need to touch $_SESSION here — next session_start() will overwrite it
-    // No need to re-set session_id() every loop — it persists from the initial one
-    // (but if you want to be ultra-defensive, keep it)
+    // Rebind session to the browser cookie
+    if (isset($_COOKIE[session_name()])) {
+        session_id($_COOKIE[session_name()]);
+    }
 
+    // Read latest session state
     session_start(['read_and_close' => true]);
 
     $auth = [
