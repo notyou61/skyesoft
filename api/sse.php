@@ -134,7 +134,12 @@ if (isset($_COOKIE[session_name()])) {
     session_id($_COOKIE[session_name()]);
 }
 
-// Read session once to capture initial auth snapshot
+// Bind to browser session cookie
+if (isset($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
+
+// Read session snapshot
 session_start([
     'read_and_close' => true
 ]);
@@ -162,6 +167,10 @@ while (true) {
     // AUTH REFRESH (force fresh session read)
     // Prevents stale session state in long-running SSE
     // ─────────────────────────────────────────────
+
+    if (isset($_COOKIE[session_name()])) {
+        session_id($_COOKIE[session_name()]);
+    }
 
     session_start([
         'read_and_close' => true
