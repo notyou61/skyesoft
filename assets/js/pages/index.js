@@ -1143,21 +1143,14 @@ window.SkyIndex = {
 
             console.log('[AUTH 7] Authentication accepted');
 
-            // Hide previous errors
             error.hidden = true;
 
-            // Show the application UI immediately
-            document.body.classList.add("authenticated");
-
-            // Hide login modal
-            document.getElementById("loginModal")?.classList.add("hidden");
-
-            // Show app surface
-            document.getElementById("appSurface")?.classList.remove("hidden");
+            // Authoritative UI state
+            document.body.setAttribute("data-auth", "true");
 
             console.log('[AUTH 8] UI revealed');
 
-            // Restart SSE connection
+            // Restart SSE
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
 
