@@ -12,6 +12,13 @@ window.SkySSE = {
     // 🌐 Start SSE Connection
     start: function () {
 
+        // Ensure no restart timer remains
+        if (this.restartTimer) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = null;
+        }
+
+        // Increment authoritative stream ID
         this.streamId++;
 
         const currentStream = this.streamId;
@@ -20,7 +27,11 @@ window.SkySSE = {
 
         // Close any existing stream
         if (this.es) {
-            try { this.es.close(); } catch (e) {}
+            try {
+                this.es.close();
+            } catch (e) {
+                console.warn('[SkySSE] previous stream close failed', e);
+            }
             this.es = null;
         }
 
@@ -37,7 +48,7 @@ window.SkySSE = {
 
         es.onmessage = (event) => {
 
-            // Ignore stale streams
+            // Ignore messages from stale streams
             if (currentStream !== this.streamId) {
                 return;
             }
@@ -48,18 +59,19 @@ window.SkySSE = {
 
                 const payload = JSON.parse(event.data);
 
+                // Forward authoritative payload
                 window.SkyeApp?.handleSSE?.(payload);
 
-            } catch(err) {
+            } catch (err) {
 
-                console.warn('⚠ SSE parse error', err);
+                console.warn('[SkySSE] SSE parse error', err);
 
             }
 
         };
     },
 
-    // 🔁 Restart stream
+    // 🔁 Restart stream (safe restart)
     restart: function () {
 
         console.log('[SkySSE] restarting stream');
@@ -70,14 +82,13 @@ window.SkySSE = {
             this.restartTimer = null;
         }
 
-        // Small delay ensures session cookie is committed
+        // Small delay ensures session cookie commit
         this.restartTimer = setTimeout(() => {
 
             this.restartTimer = null;
             this.start();
 
         }, 150);
-
     },
 
     // ⛔ Stop stream
@@ -90,13 +101,16 @@ window.SkySSE = {
         }
 
         if (this.es) {
-            try { this.es.close(); } catch (e) {}
+            try {
+                this.es.close();
+            } catch (e) {
+                console.warn('[SkySSE] stop close failed', e);
+            }
         }
 
         this.es = null;
 
         console.log('[SkySSE] stopped');
-
     }
 
 };
