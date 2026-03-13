@@ -121,7 +121,31 @@ window.SkyeApp.handleSSE = function (payload) {
 
     // 🛑 Ignore first SSE frame to avoid race condition
     if (!this.lastSSE) {
+
+        // Initialize authoritative state from first SSE frame
         this.lastSSE = payload;
+
+        const page = this.pageHandlers?.[this.currentPage];
+
+        if (page) {
+
+            const isAuth = payload?.auth?.authenticated === true;
+
+            page.authState = isAuth;
+            page.authUser  = isAuth ? payload?.auth?.username ?? null : null;
+            page.authRole  = isAuth ? payload?.auth?.role ?? null : null;
+
+            document.body.toggleAttribute('data-auth', isAuth);
+
+            if (isAuth) {
+                page.transitionToCommandInterface?.();
+            } else {
+                page.renderLoginCard?.();
+            }
+
+            page.renderFooterStatus?.call(page);
+        }
+
         return;
     }
 
