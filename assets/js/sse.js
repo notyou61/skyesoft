@@ -55,7 +55,7 @@ window.SkySSE = {
 
             if (!event.data) return;
 
-            console.log('[SkySSE] message received', event.data);
+            //console.log('[SkySSE] message received', event.data);
 
             try {
 
