@@ -1347,15 +1347,17 @@ window.SkyIndex = {
                 try {
                     window.SkySSE.es.close();
                     window.SkySSE.es = null;
-                    console.log('[SkyIndex] SSE connection closed');
+                    console.log('[SkyIndex] Previous SSE stream closed');
                 } catch (e) {
                     console.warn('[SkyIndex] SSE close failed', e);
                 }
             }
+
             // #endregion
 
             // #region Reset UI Auth Projection
             document.body.removeAttribute('data-auth');
+            this.authState = false;   // ← ensure UI state machine resets
             // #endregion
 
             // #region Reset Runtime State
