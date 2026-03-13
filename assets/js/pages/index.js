@@ -1146,22 +1146,22 @@ window.SkyIndex = {
             // Hide previous errors
             error.hidden = true;
 
-            // Reveal application UI immediately
-            document.getElementById('loginModal')?.classList.add('hidden');
-            document.getElementById('appSurface')?.classList.remove('hidden');
+            // Show the application UI immediately
+            document.body.classList.add("authenticated");
 
-            console.log('[AUTH 8] Restarting SSE stream');
+            // Hide login modal
+            document.getElementById("loginModal")?.classList.add("hidden");
 
-            // Immediately terminate the old SSE connection
+            // Show app surface
+            document.getElementById("appSurface")?.classList.remove("hidden");
+
+            console.log('[AUTH 8] UI revealed');
+
+            // Restart SSE connection
             window.SkySSE?.stop?.();
-
-            // Restart SSE after cookie commit delay
             window.SkySSE?.restart?.();
 
-            console.log('[AUTH 9] Awaiting SSE auth projection');
-
-            // NOTE:
-            // Authentication state will now be projected by the SSE stream
+            console.log('[AUTH 9] SSE restarted');
 
         } catch (err) {
 
