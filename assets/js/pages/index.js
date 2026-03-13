@@ -434,7 +434,6 @@ window.SkyIndex = {
             document.body.removeAttribute('data-auth');
             
             // Revert to login card
-            SkyIndex.renderLoginCard();
             SkyIndex.renderFooterStatus();
 
             // Reset SSE auth memory
