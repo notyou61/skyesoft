@@ -168,15 +168,17 @@ while (true) {
 
     // ─────────────────────────────────────────────
     // AUTH REFRESH (force fresh session read)
-    // Prevents stale session state in long-running SSE
     // ─────────────────────────────────────────────
 
-    // Ensure any previous session handle is closed
+    // Close any existing handle
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // Rebind to browser session cookie
+    // Reset in-memory session cache
+    $_SESSION = [];
+
+    // Rebind to browser cookie
     if (isset($_COOKIE[session_name()])) {
         session_id($_COOKIE[session_name()]);
     }
