@@ -129,6 +129,11 @@ ignore_user_abort(true);
 
 #region SECTION 4 — Loop Initialization
 
+// Rebind to the browser's session cookie
+if (isset($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
+
 // Read session once to capture initial auth snapshot
 session_start([
     'read_and_close' => true
@@ -139,20 +144,6 @@ $auth = [
     'username'      => $_SESSION['username'] ?? null,
     'role'          => $_SESSION['role'] ?? null
 ];
-
-// Stable idle schema (Phase 1 scaffold)
-$idle = [
-    'state'            => 'unknown',
-    'remainingSeconds' => null,
-    'timeoutSeconds'   => null,
-    'lastActivity'     => null
-];
-
-$streamId = bin2hex(random_bytes(8));
-
-$lastPing        = 0;
-$lastSecond      = 0;
-$lastAuthRefresh = 0;   // allows auth state to update without reconnect
 
 #endregion
 
