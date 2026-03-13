@@ -57,6 +57,10 @@ window.SkySSE = {
 
                 const payload = JSON.parse(event.data);
 
+                if (payload.auth !== undefined) {
+                    console.log('[SkySSE] auth projection', payload.auth);
+                }
+
                 window.SkyeApp?.handleSSE?.(payload);
 
             } catch (err) {
@@ -82,7 +86,11 @@ window.SkySSE = {
         // Small delay ensures session cookie commit
         this.restartTimer = setTimeout(() => {
 
+            //
             this.restartTimer = null;
+            //
+            console.log('[SkySSE] restart timer fired');
+            //
             this.start();
 
         }, 650);
