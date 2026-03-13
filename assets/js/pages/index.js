@@ -1148,7 +1148,10 @@ window.SkyIndex = {
 
             console.log('[AUTH 8] Restarting SSE stream');
 
-            // 🔁 Restart SSE so the server can project new auth state
+            // Immediately terminate the old SSE connection
+            window.SkySSE?.stop?.();
+
+            // Restart SSE after cookie commit delay
             window.SkySSE?.restart?.();
 
             console.log('[AUTH 9] Awaiting SSE auth projection');
