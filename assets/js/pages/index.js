@@ -1130,9 +1130,12 @@ window.SkyIndex = {
 
             // Feed snapshot into same handler SSE uses
             window.SkyeApp.handleSSE?.(snap);
-            SkyIndex.onSSE(snap); 
+            SkyIndex.onSSE(snap);
 
-            // Restart SSE for live stream
+            // 🛑 Stop any existing SSE stream
+            window.SkySSE?.stop?.();
+
+            // 🔁 Restart SSE for live stream
             window.SkySSE?.restart?.();
 
         } catch (err) {
