@@ -163,9 +163,18 @@ window.SkyeApp.handleSSE = function (payload) {
     // Login Transition
     if (!prevAuth && newAuth) {
 
+        console.log('[LOGIN TRANSITION DETECTED]', {
+            prevAuth,
+            newAuth,
+            page: !!page,
+            currentPage: this.currentPage
+        });
+
         document.body.setAttribute('data-auth', 'true');
 
         if (page) {
+
+            console.log('[TRANSITIONING TO COMMAND INTERFACE]');
 
             page.transitionToCommandInterface?.();
 
