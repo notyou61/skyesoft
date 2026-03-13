@@ -167,29 +167,21 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────────
-    // AUTH REFRESH (force fresh session read)
+    // AUTH REFRESH
     // ─────────────────────────────────────────────
 
-    // Close any existing handle
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // Reset in-memory session cache
-    $_SESSION = [];
+    // No need to touch $_SESSION here — next session_start() will overwrite it
+    // No need to re-set session_id() every loop — it persists from the initial one
+    // (but if you want to be ultra-defensive, keep it)
 
-    // Rebind to browser cookie
-    if (isset($_COOKIE[session_name()])) {
-        session_id($_COOKIE[session_name()]);
-    }
-
-    // Re-read latest session state
-    session_start([
-        'read_and_close' => true
-    ]);
+    session_start(['read_and_close' => true]);
 
     $auth = [
-        'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
+        'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
