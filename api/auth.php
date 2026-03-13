@@ -220,6 +220,9 @@ if ($action === "login") {
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
+    // Force session write so SSE can read it immediately
+    session_write_close();
+
     // Optional: update tblContacts lastActivityUnix
     try {
         $stmt = $pdo->prepare("
