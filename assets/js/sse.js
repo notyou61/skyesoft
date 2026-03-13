@@ -63,6 +63,11 @@ window.SkySSE = {
 
                 console.log('[SkySSE] parsed payload', payload);
 
+                // 🔎 Diagnostic: detect auth projection
+                if (payload.auth !== undefined) {
+                    console.log('[SkySSE] auth projection', payload.auth);
+                }
+
                 window.SkyeApp?.handleSSE?.(payload);
 
             } catch (err) {
