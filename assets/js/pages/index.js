@@ -1317,12 +1317,12 @@ window.SkyIndex = {
     logout: async function (source = 'manual') {
 
         try {
-            //
+
             console.log('[SkyIndex] Sending logout request');
-            //
+
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
-                credentials: 'include',   // important fix
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'logout' })
             });
@@ -1345,22 +1345,14 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Session destroyed', { source });
 
-            // #region 🔌 Close SSE Connection
-            if (window.SkySSE?.es) {
-                try {
-                    window.SkySSE.es.close();
-                    window.SkySSE.es = null;
-                    console.log('[SkyIndex] Previous SSE stream closed');
-                } catch (e) {
-                    console.warn('[SkyIndex] SSE close failed', e);
-                }
-            }
-
+            // #region 🔌 Reset SSE Stream (authoritative state refresh)
+            window.SkySSE?.stop?.();
+            window.SkySSE?.restart?.();
             // #endregion
 
             // #region Reset UI Auth Projection
             document.body.removeAttribute('data-auth');
-            this.authState = false;   // ← ensure UI state machine resets
+            this.authState = false;
             // #endregion
 
             // #region Reset Runtime State
@@ -1384,7 +1376,7 @@ window.SkyIndex = {
         }
 
     },
-     // #endregion
+    // #endregion
 
     // #region 📘 Canonical Domain Rendering
     updateDomainSurface(domainKey, domainData) {
