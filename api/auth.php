@@ -206,7 +206,14 @@ if ($action === "login") {
         jsonOut(false, "Invalid password.");
     }
 
+    // Ensure session is active
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
     // Establish Authoritative Session
+    session_regenerate_id(true);
+
     $_SESSION["authenticated"] = true;
     $_SESSION["userId"]        = (int)$user["contactId"];
     $_SESSION["username"]      = (string)$user["contactEmail"];
@@ -225,9 +232,7 @@ if ($action === "login") {
             "unix" => time(),
             "id"   => (int)$user["contactId"]
         ]);
-    } catch (Throwable $e) {
-        // Non-blocking
-    }
+    } catch (Throwable $e) {}
 
     // Log successful login
     logAuthAction($pdo, "auth.login", (int)$user["contactId"], [
@@ -238,14 +243,13 @@ if ($action === "login") {
     ]);
 
     error_log("LOGIN SESSION ID: " . session_id());
-    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION)); 
+    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
-    session_regenerate_id(true);
-
-    // Ensure session is persisted immediately
+    // Persist session
     session_write_close();
 
     jsonOut(true);
+
 }
 
 #endregion
