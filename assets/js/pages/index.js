@@ -1083,14 +1083,21 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth)
+   // #region 🔑 Login Logic (Server Auth)
     async handleLoginSubmit(form) {
 
+        console.log('[AUTH 1] Login submit received');
+
+        // Extract credentials
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
+        // Basic validation
         if (!email || !pass) {
+
+            console.log('[AUTH 2] Validation failed');
+
             error.textContent = 'Please enter email and password.';
             error.hidden = false;
             return;
@@ -1098,6 +1105,9 @@ window.SkyIndex = {
 
         try {
 
+            console.log('[AUTH 3] Sending login request');
+
+            // Send login request
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1109,45 +1119,47 @@ window.SkyIndex = {
                 })
             });
 
+            console.log('[AUTH 4] auth.php response received', {
+                status: res.status
+            });
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const data = await res.json();
 
+            console.log('[AUTH 5] auth.php payload', data);
+
+            // Authentication failure
             if (!data.success) {
+
+                console.log('[AUTH 6] Authentication rejected');
+
                 error.textContent = data.message || 'Login failed.';
                 error.hidden = false;
                 return;
             }
 
-            // Hide any previous error
+            console.log('[AUTH 7] Authentication accepted');
+
+            // Hide previous errors
             error.hidden = true;
 
-            console.log('[SkyIndex] Login successful — awaiting SSE auth projection');
+            console.log('[AUTH 8] Restarting SSE stream');
 
-            // 🛑 Stop any existing SSE stream
-            window.SkySSE?.stop?.();
-
-            // 🔁 Restart SSE for fresh authenticated session
+            // 🔁 Restart SSE so the server can project new auth state
             window.SkySSE?.restart?.();
 
-            // #region 🔌 Reset SSE Stream (after session commit)
-            window.SkySSE?.stop?.();
+            console.log('[AUTH 9] Awaiting SSE auth projection');
 
-            setTimeout(() => {
-                window.SkySSE?.restart?.();
-            }, 200);
-            // #endregion
-
-            // Read auth state immediately
-            const snap = await fetch('/skyesoft/api/sse.php?mode=snapshot', {
-                credentials: 'include'
-            }).then(r => r.json());
-
-            // Feed snapshot into same handler SSE uses
-            window.SkyeApp.handleSSE?.(snap);
-            SkyIndex.onSSE(snap);
+            // NOTE:
+            // Authentication state will now be projected by the SSE stream
 
         } catch (err) {
 
-            console.error('[SkyIndex] Login error:', err);
+            console.error('[AUTH ERROR]', err);
+
             error.textContent = 'Connection error.';
             error.hidden = false;
 
