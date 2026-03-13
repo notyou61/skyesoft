@@ -1339,42 +1339,18 @@ window.SkyIndex = {
                 throw new Error(`HTTP ${res.status}`);
             }
 
-            let data = null;
-
-            try {
-                data = await res.json();
-            } catch {
-                console.warn('[SkyIndex] Logout returned non-JSON response');
-            }
-
-            if (data && data.success === false) {
-                console.warn('[SkyIndex] Logout rejected by server:', data.message);
-            }
-
             console.log('[SkyIndex] Session destroyed', { source });
 
-            // #region 🔌 Reset SSE Stream (authoritative state refresh)
-            window.SkySSE?.stop?.();
-            window.SkySSE?.restart?.();
-            // #endregion
-
-            // #region Reset UI Auth Projection
-            document.body.removeAttribute('data-auth');
-            this.authState = false;
-            // #endregion
-
-            // #region Reset Runtime State
+            // Reset runtime state only
             this.lastSSE = null;
             this.currentSentinelState = null;
             this.isThinking = false;
             this.activeDomainKey = null;
             this.activeDomainModel = null;
-            // #endregion
 
-            // #region Render Login Surface
-            this.renderLoginCard();
-            this.renderFooterStatus();
-            // #endregion
+            // Restart SSE so server projects new auth state
+            window.SkySSE?.stop?.();
+            window.SkySSE?.restart?.();
 
         } catch (err) {
 
