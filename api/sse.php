@@ -7,9 +7,6 @@ ini_set('display_errors', '0');
 // Prevent PHP session cache headers from being re-sent during SSE auth refresh
 session_cache_limiter('');
 
-// Session Start
-//session_start();
-
 // ======================================================================
 //  Skyesoft — sse.php
 //  Version: 1.2.2
@@ -134,11 +131,6 @@ if (isset($_COOKIE[session_name()])) {
     session_id($_COOKIE[session_name()]);
 }
 
-// Bind to browser session cookie
-if (isset($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
-
 // Read session snapshot
 session_start([
     'read_and_close' => true
@@ -149,6 +141,17 @@ $auth = [
     'username'      => $_SESSION['username'] ?? null,
     'role'          => $_SESSION['role'] ?? null
 ];
+
+$idle = [
+    'state'            => 'unknown',
+    'remainingSeconds' => null,
+    'timeoutSeconds'   => null,
+    'lastActivity'     => null
+];
+
+$streamId   = bin2hex(random_bytes(8));
+$lastPing   = 0;
+$lastSecond = 0;
 
 #endregion
 

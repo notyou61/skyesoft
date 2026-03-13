@@ -96,7 +96,7 @@ window.SkySSE = {
             this.restartTimer = null;
             this.start();
 
-        }, 150);
+        }, 650);
     },
 
     // ⛔ Stop stream
