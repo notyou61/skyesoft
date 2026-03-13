@@ -171,10 +171,17 @@ while (true) {
     // Prevents stale session state in long-running SSE
     // ─────────────────────────────────────────────
 
+    // Rebind to browser session cookie
     if (isset($_COOKIE[session_name()])) {
         session_id($_COOKIE[session_name()]);
     }
 
+    // Ensure previous session handle is closed
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    // Re-read latest session state
     session_start([
         'read_and_close' => true
     ]);
