@@ -993,15 +993,16 @@ window.SkyIndex = {
             // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
 
-                // Normalize aliases
                 const actionMap = {
                     cls: 'clear_screen',
                     clear: 'clear_screen',
                     reset: 'clear_screen'
                 };
 
+                const action = data.action ?? data.response;
+
                 const canonicalAction =
-                    actionMap[data.action] ?? data.action;
+                    actionMap[action] ?? action;
 
                 const handler = this.uiActionRegistry?.[canonicalAction];
 
