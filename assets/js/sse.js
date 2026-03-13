@@ -55,11 +55,14 @@ window.SkySSE = {
 
             if (!event.data) return;
 
+            console.log('[SkySSE] message received', event.data);
+
             try {
 
                 const payload = JSON.parse(event.data);
 
-                // Forward authoritative payload
+                console.log('[SkySSE] parsed payload', payload);
+
                 window.SkyeApp?.handleSSE?.(payload);
 
             } catch (err) {
