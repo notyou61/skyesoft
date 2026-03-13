@@ -1123,11 +1123,13 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Login successful — awaiting SSE auth projection');
 
-            // 🛑 Stop any existing SSE stream
+            // #region 🔌 Reset SSE Stream (after session commit)
             window.SkySSE?.stop?.();
 
-            // 🔁 Restart SSE for fresh authenticated session
-            window.SkySSE?.restart?.();
+            setTimeout(() => {
+                window.SkySSE?.restart?.();
+            }, 200);
+            // #endregion
 
             // Read auth state immediately
             const snap = await fetch('/skyesoft/api/sse.php?mode=snapshot', {
