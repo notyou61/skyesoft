@@ -1146,6 +1146,10 @@ window.SkyIndex = {
             // Hide previous errors
             error.hidden = true;
 
+            // Reveal application UI immediately
+            document.getElementById('loginModal')?.classList.add('hidden');
+            document.getElementById('appSurface')?.classList.remove('hidden');
+
             console.log('[AUTH 8] Restarting SSE stream');
 
             // Immediately terminate the old SSE connection
