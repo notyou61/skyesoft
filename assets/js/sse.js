@@ -7,6 +7,7 @@ window.SkySSE = {
 
     es: null,
     streamId: 0,
+    restartTimer: null,
 
     // 🌐 Start SSE Connection
     start: function () {
@@ -17,6 +18,7 @@ window.SkySSE = {
 
         console.log('[SkySSE] starting stream', currentStream);
 
+        // Close any existing stream
         if (this.es) {
             try { this.es.close(); } catch (e) {}
             this.es = null;
@@ -35,6 +37,7 @@ window.SkySSE = {
 
         es.onmessage = (event) => {
 
+            // Ignore stale streams
             if (currentStream !== this.streamId) {
                 return;
             }
@@ -49,24 +52,42 @@ window.SkySSE = {
 
             } catch(err) {
 
-                console.warn("⚠ SSE parse error", err);
+                console.warn('⚠ SSE parse error', err);
 
             }
 
         };
     },
+
     // 🔁 Restart stream
     restart: function () {
 
         console.log('[SkySSE] restarting stream');
 
+        // Cancel any pending restart
+        if (this.restartTimer) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = null;
+        }
+
         // Small delay ensures session cookie is committed
-        setTimeout(() => {
+        this.restartTimer = setTimeout(() => {
+
+            this.restartTimer = null;
             this.start();
+
         }, 150);
+
     },
+
     // ⛔ Stop stream
     stop: function () {
+
+        // Cancel pending restart
+        if (this.restartTimer) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = null;
+        }
 
         if (this.es) {
             try { this.es.close(); } catch (e) {}
