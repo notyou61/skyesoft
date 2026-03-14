@@ -1,6 +1,5 @@
 <?php
 declare(strict_types=1);
-session_start();
 
 // ======================================================================
 //  Skyesoft — auth.php
@@ -147,7 +146,7 @@ $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
 #endregion
 
-#region SECTION — SESSION CHECK (diagnostic)
+#region SECTION — SESSION CHECK (diagnostic- remove when finished!)
 
 if ($action === "check") {
 
@@ -240,9 +239,6 @@ if ($action === "login") {
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
-    // Force session write so SSE can read it immediately
-    session_write_close();
-
     // Optional: update tblContacts lastActivityUnix
     try {
         $stmt = $pdo->prepare("
@@ -267,7 +263,6 @@ if ($action === "login") {
 
     error_log("LOGIN SESSION ID: " . session_id());
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
-
     // Persist session
     session_write_close();
 

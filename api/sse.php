@@ -28,6 +28,10 @@ if ($isSnapshot) {
 
     session_start();
 
+    /* DEBUG — compare with auth.php */
+    error_log("SSE SESSION ID: " . session_id());
+    error_log("SSE SESSION DATA: " . json_encode($_SESSION));
+
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
