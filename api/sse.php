@@ -1,69 +1,41 @@
 <?php
 declare(strict_types=1);
 
-// Ini Set
-ini_set('display_errors', '0');
+// ======================================================================
+// Skyesoft — sse.php
+// Version: 1.3.0
+// Real-Time Projection Engine
+// ======================================================================
 
-// Prevent PHP session cache headers from being re-sent during SSE auth refresh
+ini_set('display_errors','0');
 session_cache_limiter('');
 
-// ======================================================================
-//  Skyesoft — sse.php
-//  Version: 1.2.2
-//  Last Updated: 2026-03-03
-//  Codex Tier: 4 — SSE Engine / Real-Time Projection
-//
-//  Role:
-//  Authoritative real-time stream endpoint for Skyesoft UI.
-//  Modes:
-//   • Default: Continuous SSE stream (1 Hz) of getDynamicData() payload
-//   • ?mode=snapshot : One-time JSON snapshot and exit
-//
-//  Inputs:
-//   • GET: mode (optional)
-//   • Dependency: getDynamicData.php (MUST return array $payload)
-//
-//  Outputs:
-//   • SSE: text/event-stream (streaming mode)
-//   • JSON: application/json (snapshot mode)
-//
-//  Forbidden:
-//   • No compression (gzip/br) on SSE responses
-//   • No buffering that delays SSE delivery
-//   • No early output before headers in streaming mode
-//
-//  Notes:
-//   • SSE is sensitive to proxy/CDN transforms; prefer no-transform caching.
-//   • Keepalive pings are recommended to prevent upstream timeouts.
-// ======================================================================
+#region MODE DETECTION
 
-#region SECTION 0 — Mode Detection
 $isSnapshot =
-    isset($_GET["mode"])
-    && $_GET["mode"] === "snapshot";
+    isset($_GET["mode"]) &&
+    $_GET["mode"] === "snapshot";
+
 #endregion
 
-#region SECTION 1 — Snapshot Mode (Finite, Non-SSE)
+#region SNAPSHOT MODE
+
 if ($isSnapshot) {
 
-    // Rebind to the browser's session cookie
     if (isset($_COOKIE[session_name()])) {
         session_id($_COOKIE[session_name()]);
     }
 
-    // Read session once in read-only mode
-    session_start([
-        'read_and_close' => true
-    ]);
+    session_start();
 
-    // Capture auth state
     $auth = [
-        'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
+        'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    // Stable idle schema (Phase 1 scaffold)
+    session_write_close();
+
     $idle = [
         'state'            => 'unknown',
         'remainingSeconds' => null,
@@ -76,34 +48,32 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    $payload['auth'] = $auth;
-    $payload['idle'] = $idle;
+    $payload["auth"] = $auth;
+    $payload["idle"] = $idle;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
-    error_log("SSE SESSION ID: " . session_id());
-    error_log("SSE SESSION DATA: " . json_encode($_SESSION));
     exit;
 }
+
 #endregion
 
-#region SECTION 2 — SSE Headers (Streaming Mode)
+#region SSE HEADERS
 
-// Disable PHP-level compression/buffering
-@ini_set('zlib.output_compression', '0');
-@ini_set('output_buffering', '0');
-@ini_set('implicit_flush', '1');
+@ini_set('zlib.output_compression','0');
+@ini_set('output_buffering','0');
+@ini_set('implicit_flush','1');
 
-// Disable Apache gzip if possible (does NOT stop br from Cloudflare)
 if (function_exists('apache_setenv')) {
-    @apache_setenv('no-gzip', '1');
-    @apache_setenv('dont-vary', '1');
+    @apache_setenv('no-gzip','1');
+    @apache_setenv('dont-vary','1');
 }
 
-// Clear buffers (do not flush)
-while (ob_get_level() > 0) { @ob_end_clean(); }
+while (ob_get_level() > 0) {
+    @ob_end_clean();
+}
+
 @ob_implicit_flush(true);
 
-// Required SSE headers
 header('Content-Type: text/event-stream; charset=UTF-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
 header('Pragma: no-cache');
@@ -111,36 +81,32 @@ header('Expires: 0');
 header('Connection: keep-alive');
 header('X-Accel-Buffering: no');
 
-// Defensive: remove any server-added encoding (won't override Cloudflare br)
 header_remove('Content-Encoding');
-/* Kickstart streaming to defeat proxy buffering */
-echo ":" . str_repeat(" ", 2048) . "\n\n";
-@ob_flush();
+
+echo ":" . str_repeat(" ",2048) . "\n\n";
 @flush();
+
 #endregion
 
-#region SECTION 3 — PHP Runtime Controls
+#region PHP RUNTIME
+
 set_time_limit(0);
 ignore_user_abort(true);
+
 #endregion
 
-#region SECTION 4 — Loop Initialization
+#region STREAM INITIALIZATION
 
-// Rebind to the browser's session cookie
 if (isset($_COOKIE[session_name()])) {
     session_id($_COOKIE[session_name()]);
 }
 
-// Read session snapshot
-session_start([
-    'read_and_close' => true
-]);
+session_start();
+session_write_close();
 
-$auth = [
-    'authenticated' => ($_SESSION['authenticated'] ?? false) === true,
-    'username'      => $_SESSION['username'] ?? null,
-    'role'          => $_SESSION['role'] ?? null
-];
+$streamId   = bin2hex(random_bytes(8));
+$lastPing   = 0;
+$lastSecond = 0;
 
 $idle = [
     'state'            => 'unknown',
@@ -149,92 +115,76 @@ $idle = [
     'lastActivity'     => null
 ];
 
-$streamId   = bin2hex(random_bytes(8));
-$lastPing   = 0;
-$lastSecond = 0;
-
 #endregion
 
-#region SECTION 5 — SSE 1 Hz Continuous Loop
+#region STREAM LOOP
 
 while (true) {
 
-    // Exit if client disconnects
     if (connection_aborted()) {
         break;
     }
 
     $now = time();
 
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────
     // AUTH REFRESH
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────
 
-    // Ensure any previous session handle is closed
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
-
-    // Rebind to the browser's session cookie
     if (isset($_COOKIE[session_name()])) {
         session_id($_COOKIE[session_name()]);
     }
 
-    // Open the session fresh
     session_start();
 
-    // Read auth state
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    // Immediately release the lock so other scripts can write
     session_write_close();
 
-    // ─────────────────────────────────────────────
-    // 15-Second Keepalive Ping (prevents proxy timeouts)
-    // ─────────────────────────────────────────────
+
+    // ─────────────────────────────────────────
+    // KEEPALIVE PING (15s)
+    // ─────────────────────────────────────────
+
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
+
         $lastPing = $now;
 
-        @ob_flush();
         @flush();
     }
 
 
-    // ─────────────────────────────────────────────
-    // 1 Hz Update Cadence
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────
+    // 1 Hz DATA UPDATE
+    // ─────────────────────────────────────────
+
     if ($now > $lastSecond) {
 
         $lastSecond = $now;
 
-        // SINGLE SOURCE OF TRUTH
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        // Inject stable state projections
-        $payload['auth']     = $auth;
-        $payload['idle']     = $idle;
-        $payload['streamId'] = $streamId;
+        $payload["auth"]     = $auth;
+        $payload["idle"]     = $idle;
+        $payload["streamId"] = $streamId;
 
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
         if ($json !== false && $json !== '') {
 
-            echo "data: " . $json . "\n\n";
+            echo "data: ".$json."\n\n";
 
-            @ob_flush();
             @flush();
         }
     }
 
-    // Reduce CPU usage while maintaining responsiveness
     usleep(20000);
-
 }
 
 #endregion
