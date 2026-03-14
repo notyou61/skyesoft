@@ -177,6 +177,7 @@ while (true) {
         $payload["auth"]     = $auth;
         $payload["idle"]     = $idle;
         $payload["streamId"] = $streamId;
+        $payload["sessionId"]   = session_id();   // DEBUG
 
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 

@@ -59,7 +59,7 @@ window.SkySSE = {
 
                 if (payload.auth !== undefined) {
                     // Console log auth projection for debugging (can be removed in production)
-                    console.log('[SkySSE] auth projection', payload.auth);
+                    console.log('[SkySSE] auth projection', payload.auth, 'session:', payload.sessionId);
                 }
 
                 window.SkyeApp?.handleSSE?.(payload);
