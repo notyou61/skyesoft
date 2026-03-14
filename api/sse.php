@@ -10,7 +10,7 @@ declare(strict_types=1);
 ini_set('display_errors','0');
 session_cache_limiter('');
 
-#region MODE DETECTION
+#region SECTION 0 — MODE DETECTION
 
 $isSnapshot =
     isset($_GET["mode"]) &&
@@ -18,7 +18,7 @@ $isSnapshot =
 
 #endregion
 
-#region SNAPSHOT MODE
+#region SECTION 1 — SNAPSHOT MODE
 
 if ($isSnapshot) {
 
@@ -57,7 +57,7 @@ if ($isSnapshot) {
 
 #endregion
 
-#region SSE HEADERS
+#region SECTION 2 — SSE HEADERS
 
 @ini_set('zlib.output_compression','0');
 @ini_set('output_buffering','0');
@@ -88,14 +88,14 @@ echo ":" . str_repeat(" ",2048) . "\n\n";
 
 #endregion
 
-#region PHP RUNTIME
+#region SECTION 3 — PHP RUNTIME
 
 set_time_limit(0);
 ignore_user_abort(true);
 
 #endregion
 
-#region STREAM INITIALIZATION
+#region SECTION 4 — STREAM INITIALIZATION
 
 if (isset($_COOKIE[session_name()])) {
     session_id($_COOKIE[session_name()]);
@@ -117,7 +117,7 @@ $idle = [
 
 #endregion
 
-#region STREAM LOOP
+#region SECTION 5 — STREAM LOOP
 
 while (true) {
 
