@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.3.0
+// Version: 1.3.1
 // Real-Time Projection Engine
 // ======================================================================
 
 ini_set('display_errors','0');
 session_cache_limiter('');
+
 // Ensure session cookie scope matches the entire site
 session_set_cookie_params([
     'lifetime' => 0,
@@ -17,6 +18,19 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
+
+// Attach existing browser session
+$cookieName = session_name();
+
+if (isset($_COOKIE[$cookieName])) {
+    session_id($_COOKIE[$cookieName]);
+}
+
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+session_write_close();
 
 #region SECTION 0 — MODE DETECTION
 
@@ -30,7 +44,9 @@ $isSnapshot =
 
 if ($isSnapshot) {
 
-    session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
 
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
@@ -54,8 +70,8 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    $payload["auth"] = $auth;
-    $payload["idle"] = $idle;
+    $payload["auth"]      = $auth;
+    $payload["idle"]      = $idle;
     $payload["sessionId"] = $sessionId;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
@@ -131,13 +147,13 @@ while (true) {
     // AUTH REFRESH
     // ─────────────────────────────────────────
 
-    $cookieName = session_name();
-
     if (isset($_COOKIE[$cookieName])) {
         session_id($_COOKIE[$cookieName]);
     }
 
-    session_start();
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
 
     $sessionId = session_id();
 
@@ -154,8 +170,10 @@ while (true) {
     // ─────────────────────────────────────────
 
     if (($now - $lastPing) >= 15) {
+
         echo ": ping\n\n";
         $lastPing = $now;
+
         @flush();
     }
 
@@ -177,7 +195,9 @@ while (true) {
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
         if ($json !== false && $json !== '') {
-            echo "data: ".$json."\n\n";
+
+            echo "data: " . $json . "\n\n";
+
             @flush();
         }
     }
