@@ -170,24 +170,28 @@ while (true) {
     // AUTH REFRESH
     // ─────────────────────────────────────────────
 
-    // Close any existing session
+    // Ensure any previous session handle is closed
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // Rebind session to the browser cookie
+    // Rebind to the browser's session cookie
     if (isset($_COOKIE[session_name()])) {
         session_id($_COOKIE[session_name()]);
     }
 
-    // Read latest session state
-    session_start(['read_and_close' => true]);
+    // Open the session fresh
+    session_start();
 
+    // Read auth state
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
+
+    // Immediately release the lock so other scripts can write
+    session_write_close();
 
     // ─────────────────────────────────────────────
     // 15-Second Keepalive Ping (prevents proxy timeouts)
