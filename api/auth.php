@@ -225,8 +225,6 @@ if ($action === "login") {
         session_start();
     }
 
-    session_regenerate_id(true);
-
     $_SESSION["authenticated"] = true;
     $_SESSION["userId"]        = (int)$user["contactId"];
     $_SESSION["username"]      = (string)$user["contactEmail"];
