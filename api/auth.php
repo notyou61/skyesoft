@@ -143,7 +143,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 #region SECTION 2 — Parse JSON Input
 
 $input  = json_decode(file_get_contents("php://input"), true) ?? [];
-$action = trim((string)($input["action"] ?? ""));
+$action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
 #endregion
 
