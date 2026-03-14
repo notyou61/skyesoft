@@ -150,20 +150,17 @@ while (true) {
     session_write_close();
 
     // ─────────────────────────────────────────
-    // KEEPALIVE PING (15s)
+    // KEEPALIVE PING
     // ─────────────────────────────────────────
 
     if (($now - $lastPing) >= 15) {
-
         echo ": ping\n\n";
-
         $lastPing = $now;
-
         @flush();
     }
 
     // ─────────────────────────────────────────
-    // 1 Hz DATA UPDATE
+    // DATA UPDATE
     // ─────────────────────────────────────────
 
     if ($now > $lastSecond) {
@@ -175,85 +172,12 @@ while (true) {
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
-        $payload["sessionId"] = $sessionId; // DEBUG
+        $payload["sessionId"] = $sessionId;
 
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
         if ($json !== false && $json !== '') {
-            echo "data: " . $json . "\n\n";
-            @flush();
-        }
-    }
-
-    usleep(20000);
-}
-
-#endregion
-
-#region SECTION 5 — STREAM LOOP
-
-while (true) {
-
-    if (connection_aborted()) {
-        break;
-    }
-
-    $now = time();
-
-    // ─────────────────────────────────────────
-    // AUTH REFRESH
-    // ─────────────────────────────────────────
-
-    if (isset($_COOKIE[session_name()])) {
-        session_id($_COOKIE[session_name()]);
-    }
-
-    session_start();
-
-    $auth = [
-        'authenticated' => !empty($_SESSION['authenticated']),
-        'username'      => $_SESSION['username'] ?? null,
-        'role'          => $_SESSION['role'] ?? null
-    ];
-
-    session_write_close();
-
-
-    // ─────────────────────────────────────────
-    // KEEPALIVE PING (15s)
-    // ─────────────────────────────────────────
-
-    if (($now - $lastPing) >= 15) {
-
-        echo ": ping\n\n";
-
-        $lastPing = $now;
-
-        @flush();
-    }
-
-
-    // ─────────────────────────────────────────
-    // 1 Hz DATA UPDATE
-    // ─────────────────────────────────────────
-
-    if ($now > $lastSecond) {
-
-        $lastSecond = $now;
-
-        $payload = require __DIR__ . "/getDynamicData.php";
-
-        $payload["auth"]     = $auth;
-        $payload["idle"]     = $idle;
-        $payload["streamId"] = $streamId;
-        $payload["sessionId"]   = session_id();   // DEBUG
-
-        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
-
-        if ($json !== false && $json !== '') {
-
             echo "data: ".$json."\n\n";
-
             @flush();
         }
     }
