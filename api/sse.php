@@ -131,9 +131,13 @@ while (true) {
     // AUTH REFRESH
     // ─────────────────────────────────────────
 
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    $cookieName = session_name();
+
+    if (isset($_COOKIE[$cookieName])) {
+        session_id($_COOKIE[$cookieName]);
     }
+
+    session_start();
 
     $sessionId = session_id();
 
