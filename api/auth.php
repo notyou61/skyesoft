@@ -42,26 +42,6 @@ session_start();
 
 header("Content-Type: application/json; charset=UTF-8");
 
-#region SECTION — SESSION CHECK (diagnostic)
-
-if ($action === "check") {
-
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
-
-    echo json_encode([
-        "authenticated" => $_SESSION["authenticated"] ?? false,
-        "username"      => $_SESSION["username"] ?? null,
-        "role"          => $_SESSION["role"] ?? null,
-        "sessionId"     => session_id()
-    ]);
-
-    exit;
-}
-
-#endregion
-
 #region SECTION 0 — Environment Bootstrap
 
 /** @var callable getPDO */
@@ -164,6 +144,26 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 
 $input  = json_decode(file_get_contents("php://input"), true) ?? [];
 $action = trim((string)($input["action"] ?? ""));
+
+#endregion
+
+#region SECTION — SESSION CHECK (diagnostic)
+
+if ($action === "check") {
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    echo json_encode([
+        "authenticated" => $_SESSION["authenticated"] ?? false,
+        "username"      => $_SESSION["username"] ?? null,
+        "role"          => $_SESSION["role"] ?? null,
+        "sessionId"     => session_id()
+    ]);
+
+    exit;
+}
 
 #endregion
 
