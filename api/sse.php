@@ -22,10 +22,6 @@ $isSnapshot =
 
 if ($isSnapshot) {
 
-    if (isset($_COOKIE[session_name()])) {
-        session_id($_COOKIE[session_name()]);
-    }
-
     session_start();
 
     /* DEBUG — compare with auth.php */
@@ -101,10 +97,7 @@ ignore_user_abort(true);
 
 #region SECTION 4 — STREAM INITIALIZATION
 
-if (isset($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
-
+// Initialize session in read-only mode to get auth state without locking session file
 session_start();
 session_write_close();
 
