@@ -12,10 +12,13 @@ header("Content-Type: application/json; charset=UTF-8");
 
 #region SESSION COOKIE CONFIGURATION (SSE COMPATIBLE)
 
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => isset($_SERVER['HTTPS']),
+    'domain'   => $_SERVER['HTTP_HOST'],   // ensures SSE + auth share cookie scope
+    'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);

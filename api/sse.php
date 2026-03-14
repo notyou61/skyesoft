@@ -9,6 +9,14 @@ declare(strict_types=1);
 
 ini_set('display_errors','0');
 session_cache_limiter('');
+// Ensure session cookie scope matches the entire site
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => true,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
 
 #region SECTION 0 — MODE DETECTION
 
