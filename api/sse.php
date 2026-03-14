@@ -22,10 +22,15 @@ $isSnapshot =
 
 if ($isSnapshot) {
 
-    session_start();
+    // Ensure session is available
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    $sessionId = session_id();
 
     /* DEBUG — compare with auth.php */
-    error_log("SSE SESSION ID: " . session_id());
+    error_log("SSE SESSION ID: " . $sessionId);
     error_log("SSE SESSION DATA: " . json_encode($_SESSION));
 
     $auth = [
@@ -34,6 +39,7 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // Release session lock immediately
     session_write_close();
 
     $idle = [
@@ -48,8 +54,9 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    $payload["auth"] = $auth;
-    $payload["idle"] = $idle;
+    $payload["auth"]      = $auth;
+    $payload["idle"]      = $idle;
+    $payload["sessionId"] = $sessionId; // DEBUG visibility
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
@@ -97,10 +104,6 @@ ignore_user_abort(true);
 
 #region SECTION 4 — STREAM INITIALIZATION
 
-// Initialize session in read-only mode to get auth state without locking session file
-session_start();
-session_write_close();
-
 $streamId   = bin2hex(random_bytes(8));
 $lastPing   = 0;
 $lastSecond = 0;
@@ -111,6 +114,75 @@ $idle = [
     'timeoutSeconds'   => null,
     'lastActivity'     => null
 ];
+
+#endregion
+
+#region SECTION 5 — STREAM LOOP
+
+while (true) {
+
+    if (connection_aborted()) {
+        break;
+    }
+
+    $now = time();
+
+    // ─────────────────────────────────────────
+    // AUTH REFRESH
+    // ─────────────────────────────────────────
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    $sessionId = session_id();
+
+    $auth = [
+        'authenticated' => !empty($_SESSION['authenticated']),
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? null
+    ];
+
+    session_write_close();
+
+    // ─────────────────────────────────────────
+    // KEEPALIVE PING (15s)
+    // ─────────────────────────────────────────
+
+    if (($now - $lastPing) >= 15) {
+
+        echo ": ping\n\n";
+
+        $lastPing = $now;
+
+        @flush();
+    }
+
+    // ─────────────────────────────────────────
+    // 1 Hz DATA UPDATE
+    // ─────────────────────────────────────────
+
+    if ($now > $lastSecond) {
+
+        $lastSecond = $now;
+
+        $payload = require __DIR__ . "/getDynamicData.php";
+
+        $payload["auth"]      = $auth;
+        $payload["idle"]      = $idle;
+        $payload["streamId"]  = $streamId;
+        $payload["sessionId"] = $sessionId; // DEBUG
+
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+
+        if ($json !== false && $json !== '') {
+            echo "data: " . $json . "\n\n";
+            @flush();
+        }
+    }
+
+    usleep(20000);
+}
 
 #endregion
 
