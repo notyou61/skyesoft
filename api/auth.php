@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — auth.php
-//  Version: 1.1.3
+//  Version: 1.1.4
 //  Last Updated: 2026-03-14
 //  Codex Tier: 4 — Session Mutation Endpoint
 // ======================================================================
@@ -17,7 +17,7 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => $_SERVER['HTTP_HOST'],   // ensures SSE + auth share cookie scope
+    'domain'   => 'skyelighting.com',
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
@@ -85,7 +85,6 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
                 WHERE actionTypeName = :k
                 LIMIT 1
             ");
-
             $stmt->execute(["k" => $actionKey]);
 
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -121,7 +120,19 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 
 #region SECTION 2 — Parse JSON Input
 
-$input  = json_decode(file_get_contents("php://input"), true) ?? [];
+$rawInput = file_get_contents("php://input");
+$input = [];
+
+if ($rawInput !== false && trim($rawInput) !== "") {
+    $decoded = json_decode($rawInput, true);
+
+    if (!is_array($decoded)) {
+        jsonOut(false, "Invalid JSON input.");
+    }
+
+    $input = $decoded;
+}
+
 $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
 #endregion
@@ -139,8 +150,9 @@ if ($action === "check") {
         "username"      => $_SESSION["username"] ?? null,
         "role"          => $_SESSION["role"] ?? null,
         "sessionId"     => session_id()
-    ]);
+    ], JSON_UNESCAPED_SLASHES);
 
+    session_write_close();
     exit;
 }
 
@@ -221,16 +233,22 @@ if ($action === "login") {
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
-    error_log("LOGIN SESSION ID: " . session_id());
+    $contactId = (int)$user["contactId"];
+    $email     = (string)$user["contactEmail"];
+    $role      = (string)($user["role"] ?? "user");
+    $sessionId = session_id();
+
+    error_log("LOGIN SESSION ID: " . $sessionId);
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
     session_write_close();
 
-    logAuthAction($pdo, "auth.login", (int)$user["contactId"], [
-        "username" => (string)$user["contactEmail"],
-        "role"     => (string)($_SESSION["role"] ?? "user"),
+    logAuthAction($pdo, "auth.login", $contactId, [
+        "username" => $email,
+        "role"     => $role,
         "ip"       => safeIp(),
-        "ua"       => safeUserAgent()
+        "ua"       => safeUserAgent(),
+        "sessionId"=> $sessionId
     ]);
 
     jsonOut(true);
@@ -255,8 +273,7 @@ if ($action === "logout") {
     $role      = $_SESSION["role"] ?? null;
 
     if ($pdo instanceof PDO) {
-
-        logAuthAction($pdo, "auth.logout", $contactId, [
+        logAuthAction($pdo, "auth.logout", is_numeric($contactId) ? (int)$contactId : null, [
             "username" => $username,
             "role"     => $role,
             "ip"       => safeIp(),
@@ -270,18 +287,14 @@ if ($action === "logout") {
     session_write_close();
 
     if (ini_get("session.use_cookies")) {
-
-        $params = session_get_cookie_params();
-
-        setcookie(
-            session_name(),
-            '',
-            time() - 42000,
-            $params["path"],
-            $params["domain"],
-            $params["secure"],
-            $params["httponly"]
-        );
+        setcookie(session_name(), '', [
+            'expires'  => time() - 42000,
+            'path'     => '/',
+            'domain'   => 'skyelighting.com',
+            'secure'   => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
     }
 
     jsonOut(true);
