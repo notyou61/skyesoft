@@ -58,7 +58,7 @@ window.SkySSE = {
                 const payload = JSON.parse(event.data);
 
                 if (payload.auth !== undefined) {
-                    console.log('[SkySSE] auth projection', payload.auth);
+                    //console.log('[SkySSE] auth projection', payload.auth);
                 }
 
                 window.SkyeApp?.handleSSE?.(payload);
