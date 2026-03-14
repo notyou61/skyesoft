@@ -22,16 +22,7 @@ $isSnapshot =
 
 if ($isSnapshot) {
 
-    // Ensure session is available
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
-
-    $sessionId = session_id();
-
-    /* DEBUG — compare with auth.php */
-    error_log("SSE SESSION ID: " . $sessionId);
-    error_log("SSE SESSION DATA: " . json_encode($_SESSION));
+    session_start();
 
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
@@ -39,7 +30,8 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    // Release session lock immediately
+    $sessionId = session_id();
+
     session_write_close();
 
     $idle = [
@@ -54,9 +46,9 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
-    $payload["auth"]      = $auth;
-    $payload["idle"]      = $idle;
-    $payload["sessionId"] = $sessionId; // DEBUG visibility
+    $payload["auth"] = $auth;
+    $payload["idle"] = $idle;
+    $payload["sessionId"] = $sessionId;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
     exit;
