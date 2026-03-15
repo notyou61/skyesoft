@@ -436,8 +436,19 @@ window.SkyIndex = {
         // 3️⃣ Idle Session Warning
         if (this.idleState && this.idleState.remainingSeconds != null) {
 
-            const remaining = Number(this.idleState.remainingSeconds);
-            const timeout   = Number(this.idleState.timeoutSeconds || 1);
+            // Normalize idle fields (server variations tolerated)
+            const remaining = Number(
+                this.idleState.remainingSeconds ??
+                this.idleState.remaining ??
+                this.idleState.secondsRemaining
+            );
+
+            const timeout = Number(
+                this.idleState.timeoutSeconds ??
+                this.idleState.timeout ??
+                this.idleState.maxSeconds ??
+                1
+            );
 
             // Ignore expired states (Auth gate will handle)
             if (remaining <= 0) {
@@ -451,8 +462,9 @@ window.SkyIndex = {
 
                 // Final countdown (~7%)
                 if (pct <= 0.07 && remaining > 0) {
-                    const secs = String(remaining).padStart(2,'0');
-                    render('#ffcc00', `Session expiring in ${secs}s`);
+                    const secs = Math.max(0, Math.floor(remaining));
+                    const padded = String(secs).padStart(2,'0');
+                    render('#ffcc00', `Session expiring in ${padded}s`);
                     return;
                 }
 
@@ -1285,6 +1297,7 @@ window.SkyIndex = {
         // ⏳ Idle State Projection
         if ('idle' in event) {
             this.idleState = event.idle;
+            console.log('[Idle SSE]', event.idle);
             this.renderFooterStatus();
         }
 
