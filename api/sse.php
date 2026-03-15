@@ -7,10 +7,21 @@ declare(strict_types=1);
 // Real-Time Projection Engine
 // ======================================================================
 
+#region ⚙️ SECTION 0 — RUNTIME BOOTSTRAP & MODE DETECTION
+
+// ─────────────────────────────────────────
+// PHP RUNTIME SETTINGS
+// ─────────────────────────────────────────
+
 ini_set('display_errors','0');
 session_cache_limiter('');
 
-// Ensure session cookie scope matches the entire site
+
+// ─────────────────────────────────────────
+// SESSION COOKIE POLICY
+// Ensures SSE + API endpoints share the same cookie scope
+// ─────────────────────────────────────────
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
@@ -19,7 +30,11 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-// Attach existing browser session
+
+// ─────────────────────────────────────────
+// ATTACH EXISTING SESSION (if present)
+// ─────────────────────────────────────────
+
 $cookieName = session_name();
 
 if (isset($_COOKIE[$cookieName])) {
@@ -32,7 +47,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 session_write_close();
 
-#region SECTION 0 — MODE DETECTION
+
+// ─────────────────────────────────────────
+// MODE DETECTION
+// Snapshot mode returns a single JSON payload
+// instead of opening the SSE stream
+// ─────────────────────────────────────────
 
 $isSnapshot =
     isset($_GET["mode"]) &&
@@ -40,7 +60,35 @@ $isSnapshot =
 
 #endregion
 
-#region SECTION 1 — SNAPSHOT MODE
+#region 🧰 SECTION 1 — SESSION HELPERS
+
+// ⏱ Update Last Activity
+// Touches session activity only when user is authenticated.
+// Useful for authenticated API endpoints or future manual touch hooks.
+function updateLastActivity(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    if (!empty($_SESSION['authenticated'])) {
+        $_SESSION['lastActivity'] = time();
+    }
+
+    session_write_close();
+}
+
+#endregion
+
+#region ⏳ SECTION 2 — SESSION IDLE POLICY
+
+// ⏱ Idle session timeout (seconds)
+// 15 minutes = 900 seconds
+$idleTimeoutSeconds = 900;
+
+#endregion
+
+#region 📸 SECTION 3 — SNAPSHOT MODE
 
 if ($isSnapshot) {
 
@@ -48,22 +96,22 @@ if ($isSnapshot) {
         session_start();
     }
 
+    $sessionId = session_id();
+
     $auth = [
         'authenticated' => !empty($_SESSION['authenticated']),
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    $sessionId = session_id();
-
-    session_write_close();
-
     $idle = [
         'state'            => 'unknown',
         'remainingSeconds' => null,
-        'timeoutSeconds'   => null,
-        'lastActivity'     => null
+        'timeoutSeconds'   => $idleTimeoutSeconds,
+        'lastActivity'     => $_SESSION['lastActivity'] ?? null
     ];
+
+    session_write_close();
 
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
@@ -80,7 +128,7 @@ if ($isSnapshot) {
 
 #endregion
 
-#region SECTION 2 — SSE HEADERS
+#region 📡 SECTION 4 — SSE HEADERS
 
 @ini_set('zlib.output_compression','0');
 @ini_set('output_buffering','0');
@@ -111,14 +159,14 @@ echo ":" . str_repeat(" ",2048) . "\n\n";
 
 #endregion
 
-#region SECTION 3 — PHP RUNTIME
+#region ⚙️ SECTION 5 — PHP RUNTIME
 
 set_time_limit(0);
 ignore_user_abort(true);
 
 #endregion
 
-#region SECTION 4 — STREAM INITIALIZATION
+#region 🚀 SECTION 6 — STREAM INITIALIZATION
 
 $streamId   = bin2hex(random_bytes(8));
 $lastPing   = 0;
@@ -127,13 +175,13 @@ $lastSecond = 0;
 $idle = [
     'state'            => 'unknown',
     'remainingSeconds' => null,
-    'timeoutSeconds'   => null,
+    'timeoutSeconds'   => $idleTimeoutSeconds,
     'lastActivity'     => null
 ];
 
 #endregion
 
-#region SECTION 5 — STREAM LOOP
+#region 🔄 SECTION 7 — STREAM LOOP
 
 while (true) {
 
@@ -144,7 +192,7 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
-    // AUTH REFRESH
+    // 🔐 AUTH REFRESH + IDLE TIMEOUT
     // ─────────────────────────────────────────
 
     if (isset($_COOKIE[$cookieName])) {
@@ -157,16 +205,55 @@ while (true) {
 
     $sessionId = session_id();
 
+    $isAuthenticated = !empty($_SESSION['authenticated']);
+    $lastActivity    = $_SESSION['lastActivity'] ?? null;
+
     $auth = [
-        'authenticated' => !empty($_SESSION['authenticated']),
+        'authenticated' => $isAuthenticated,
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // ⏱ Authenticated Idle State
+    if ($isAuthenticated && $lastActivity) {
+
+        $idleSeconds = $now - (int)$lastActivity;
+        $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
+
+        $idle = [
+            'state'            => $remaining > 0 ? 'active' : 'expired',
+            'remainingSeconds' => $remaining,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => $lastActivity
+        ];
+
+        // ⛔ Idle timeout reached
+        if ($remaining <= 0) {
+
+            $_SESSION = [];
+            session_destroy();
+
+            $auth = [
+                'authenticated' => false,
+                'reason'        => 'timeout'
+            ];
+        }
+
+    } else {
+
+        // 👤 Anonymous / Logged-Out State
+        $idle = [
+            'state'            => 'anonymous',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+    }
+
     session_write_close();
 
     // ─────────────────────────────────────────
-    // KEEPALIVE PING
+    // 💓 KEEPALIVE PING
     // ─────────────────────────────────────────
 
     if (($now - $lastPing) >= 15) {
@@ -178,7 +265,7 @@ while (true) {
     }
 
     // ─────────────────────────────────────────
-    // DATA UPDATE
+    // 📦 1 HZ DATA UPDATE
     // ─────────────────────────────────────────
 
     if ($now > $lastSecond) {

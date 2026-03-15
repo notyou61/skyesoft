@@ -1,8 +1,21 @@
-/* Skyesoft — index.js
-   🧠 Command / Portal Interface Controller
-   Phase 1: Card-Based Bootstrap (Login → Command Interface)
-   Header / Footer driven exclusively by SSE (Server Side Events)
-*/
+// ======================================================================
+// Skyesoft — index.js
+// Version: 1.0.0
+// Command / Portal Interface Controller
+// ======================================================================
+//
+// Primary Responsibilities
+// • Bootstrap the UI (Login → Command Interface)
+// • Manage command execution and output surface
+// • Project domain surfaces from SSE snapshots
+// • Maintain client-side runtime state
+//
+// Architectural Principles
+// • Header / Footer state driven exclusively by SSE
+// • UI reacts to server projection (no local time authority)
+// • Command surface remains stateless between sessions
+//
+// ======================================================================
 
 // #region 📦 Canonical Domain Surface Dependencies
 import { adaptStreamedDomain } from '/skyesoft/assets/js/domainAdapter.js';
@@ -335,6 +348,37 @@ window.SkyIndex = {
     updateGovernanceFooter(sentinel) {
         this.currentSentinelState = sentinel || null;
         this.renderFooterStatus();
+    },
+    // #endregion
+
+    // #region ⏱ Session Activity Ping
+
+    startActivityPing() {
+
+        if (this.activityPingTimer) return;
+
+        this.activityPingTimer = setInterval(() => {
+
+            if (!this.authState) return;
+
+            fetch('/skyesoft/api/auth.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'touch' })
+            }).catch(() => {});
+
+        }, 60000);
+
+    },
+
+    stopActivityPing() {
+
+        if (this.activityPingTimer) {
+            clearInterval(this.activityPingTimer);
+            this.activityPingTimer = null;
+        }
+
     },
     // #endregion
 
