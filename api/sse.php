@@ -25,6 +25,7 @@ session_cache_limiter('');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
+    'domain'   => '.skyelighting.com',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'

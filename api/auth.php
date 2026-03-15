@@ -17,7 +17,7 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => 'skyelighting.com',
+    'domain'   => '.skyelighting.com',
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
@@ -295,7 +295,6 @@ $sessionId = session_id();
 error_log("LOGIN SESSION ID: " . $sessionId);
 error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
-session_write_close();
 
 // Log authentication event
 logAuthAction($pdo, "auth.login", $contactId, [
