@@ -19,12 +19,39 @@ declare(strict_types=1);
 //   • Standing Orders must be injected from Codex SOT
 // ======================================================================
 
-#region SECTION 0 — Fail Handler
+#region SECTION 0 — Environment Bootstrap
+
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
-skyesoftLoadEnv();
-// Header
+
 header("Content-Type: application/json; charset=UTF-8");
+
+// ─────────────────────────────────────────
+// SESSION COOKIE POLICY
+// Must match auth.php / sse.php exactly
+// ─────────────────────────────────────────
+
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'domain'   => '.skyelighting.com',
+    'secure'   => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+// Attach existing browser session if present
+$cookieName = session_name();
+
+if (isset($_COOKIE[$cookieName])) {
+    session_id($_COOKIE[$cookieName]);
+}
+
+// Load environment
+skyesoftLoadEnv();
+
 // AI Fail Function
 function aiFail(string $msg): never {
     echo json_encode([
@@ -34,6 +61,7 @@ function aiFail(string $msg): never {
     ], JSON_UNESCAPED_SLASHES);
     exit;
 }
+
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
@@ -1010,25 +1038,35 @@ if (!isset($response) || trim((string)$response) === '') {
 // Safe logging only
 error_log('ASK_OPENAI RESPONSE RAW: ' . substr((string)$response, 0, 500));
 
-
+// ------------------------------------------------
 // Session Activity Heartbeat
+// ------------------------------------------------
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+$sessionUserId = $_SESSION["userId"] ?? null;
+
 if (!empty($_SESSION['authenticated'])) {
     $_SESSION['lastActivity'] = time();
 }
+
 session_write_close();
 
+// ------------------------------------------------
 // Prompt Ledger (Non-blocking)
+// ------------------------------------------------
+
 if (isset($query) && isset($response)) {
+
     try {
 
         $root = dirname(__DIR__);
         $ledgerPath = $root . "/data/authoritative/promptLedger.json";
 
         if (file_exists($ledgerPath)) {
+
             $ledgerData = json_decode(file_get_contents($ledgerPath), true);
 
             if (is_array($ledgerData) && isset($ledgerData["entries"])) {
@@ -1037,7 +1075,7 @@ if (isset($query) && isset($response)) {
 
                 $ledgerData["entries"][] = [
                     "promptId"         => sprintf("PRL-%06d", $nextNumber),
-                    "userId"           => 1,
+                    "userId"           => $sessionUserId,
                     "promptText"       => $query,
                     "responseText"     => trim($response),
                     "intent"           => $intent ?? "unknown",
@@ -1059,7 +1097,10 @@ if (isset($query) && isset($response)) {
     }
 }
 
+// ------------------------------------------------
 // Final JSON Output (Single Authority)
+// ------------------------------------------------
+
 echo json_encode([
     "success"            => true,
     "role"               => $role ?? "askOpenAI",

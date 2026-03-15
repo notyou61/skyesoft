@@ -7,47 +7,49 @@ declare(strict_types=1);
 // Real-Time Projection Engine
 // ======================================================================
 
-#region ⚙️ SECTION 0 — RUNTIME BOOTSTRAP & MODE DETECTION
+#region SECTION 0 — Environment Bootstrap
 
-ini_set('display_errors', '0');
-session_cache_limiter('');
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+// Header
+header("Content-Type: application/json; charset=UTF-8");
 
 // ─────────────────────────────────────────
-// ATTACH EXISTING SESSION
+// SESSION COOKIE POLICY
+// Must match auth.php / sse.php exactly
 // ─────────────────────────────────────────
 
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'domain'   => '.skyelighting.com',
+    'secure'   => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+// Attach existing session if present
 $cookieName = session_name();
 
 if (isset($_COOKIE[$cookieName])) {
     session_id($_COOKIE[$cookieName]);
 }
 
-session_start();
+// Load environment
+skyesoftLoadEnv();
 
-$sessionId = session_id();
-
-$isAuthenticated = !empty($_SESSION['authenticated']);
-
-$userId = isset($_SESSION['userId'])
-    ? (int)$_SESSION['userId']
-    : null;
-
-$auth = [
-    'authenticated' => $isAuthenticated,
-    'username'      => $_SESSION['username'] ?? null,
-    'role'          => $_SESSION['role'] ?? null
-];
-
-// Release session lock so other requests work
-session_write_close();
-
-// ─────────────────────────────────────────
-// MODE DETECTION
-// ─────────────────────────────────────────
-
-$isSnapshot =
-    isset($_GET['mode']) &&
-    $_GET['mode'] === 'snapshot';
+// AI Fail Function
+function aiFail(string $msg): never {
+    echo json_encode([
+        "success" => false,
+        "role"    => "askOpenAI",
+        "error"   => "❌ $msg"
+    ], JSON_UNESCAPED_SLASHES);
+    exit;
+}
 
 #endregion
 

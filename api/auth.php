@@ -12,11 +12,7 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
-// ─────────────────────────────────────────
 // SESSION COOKIE POLICY
-// Must match all other endpoints exactly
-// ─────────────────────────────────────────
-
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
 session_set_cookie_params([
@@ -28,12 +24,7 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-// ─────────────────────────────────────────
-// ATTACH EXISTING SESSION (if present)
-// Ensures login writes into the same session
-// used by SSE and other endpoints
-// ─────────────────────────────────────────
-
+// Attach existing session
 $cookieName = session_name();
 
 if (isset($_COOKIE[$cookieName])) {
@@ -42,10 +33,12 @@ if (isset($_COOKIE[$cookieName])) {
 
 session_start();
 
-// ─────────────────────────────────────────
-// DATABASE CONNECTION
-// ─────────────────────────────────────────
+// Read session context then release lock
+$sessionUserId = $_SESSION["userId"] ?? null;
 
+session_write_close();
+
+// DATABASE CONNECTION
 require_once __DIR__ . "/dbConnect.php";
 
 #endregion
