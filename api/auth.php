@@ -233,12 +233,20 @@ if ($action === "check") {
 
 if ($action === "login") {
 
+    // ─────────────────────────────────────────
+    // INPUT VALIDATION
+    // ─────────────────────────────────────────
+
     $username = trim((string)($input["username"] ?? ""));
     $password = trim((string)($input["password"] ?? ""));
 
     if ($username === "" || $password === "") {
         jsonOut(false, "Missing credentials.");
     }
+
+    // ─────────────────────────────────────────
+    // USER LOOKUP
+    // ─────────────────────────────────────────
 
     $pdo = getPDO();
 
@@ -257,6 +265,10 @@ if ($action === "login") {
     $stmt->execute(["email" => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // ─────────────────────────────────────────
+    // USER NOT FOUND
+    // ─────────────────────────────────────────
+
     if (!$user) {
 
         logAuthAction($pdo, "auth.login.fail", null, [
@@ -267,6 +279,10 @@ if ($action === "login") {
 
         jsonOut(false, "User not found.");
     }
+
+    // ─────────────────────────────────────────
+    // ACCOUNT INACTIVE
+    // ─────────────────────────────────────────
 
     if ((int)($user["isActive"] ?? 0) !== 1) {
 
@@ -280,6 +296,10 @@ if ($action === "login") {
         jsonOut(false, "Account inactive.");
     }
 
+    // ─────────────────────────────────────────
+    // PASSWORD VALIDATION
+    // ─────────────────────────────────────────
+
     if (!password_verify($password, (string)($user["passwordHash"] ?? ""))) {
 
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
@@ -292,43 +312,50 @@ if ($action === "login") {
         jsonOut(false, "Invalid password.");
     }
 
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+    // ─────────────────────────────────────────
+    // PREVENT SESSION FIXATION
+    // ─────────────────────────────────────────
 
-// Prevent session fixation
-session_regenerate_id(true);
+    session_regenerate_id(true);
 
-// ─────────────────────────────────────────
-// 🔐 ESTABLISH AUTHENTICATED SESSION
-// ─────────────────────────────────────────
+    // ─────────────────────────────────────────
+    // ESTABLISH AUTHENTICATED SESSION
+    // ─────────────────────────────────────────
 
-$_SESSION["authenticated"] = true;
-$_SESSION["userId"]        = (int)$user["contactId"];
-$_SESSION["username"]      = (string)$user["contactEmail"];
-$_SESSION["role"]          = (string)($user["role"] ?? "user");
-$_SESSION["lastActivity"]  = time();
+    $_SESSION["authenticated"] = true;
+    $_SESSION["userId"]        = (int)$user["contactId"];
+    $_SESSION["username"]      = (string)$user["contactEmail"];
+    $_SESSION["role"]          = (string)($user["role"] ?? "user");
+    $_SESSION["lastActivity"]  = time();
 
-// Define variables BEFORE logging
-$contactId = (int)$user["contactId"];
-$email     = (string)$user["contactEmail"];
-$role      = (string)($user["role"] ?? "user");
-$sessionId = session_id();
+    // ─────────────────────────────────────────
+    // SESSION CONTEXT VARIABLES
+    // ─────────────────────────────────────────
 
-error_log("LOGIN SESSION ID: " . $sessionId);
-error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
+    $contactId = (int)$user["contactId"];
+    $email     = (string)$user["contactEmail"];
+    $role      = (string)($user["role"] ?? "user");
+    $sessionId = session_id();
 
+    error_log("LOGIN SESSION ID: " . $sessionId);
+    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
-// Log authentication event
-logAuthAction($pdo, "auth.login", $contactId, [
-    "username"  => $email,
-    "role"      => $role,
-    "ip"        => safeIp(),
-    "ua"        => safeUserAgent(),
-    "sessionId" => $sessionId
-]);
+    // ─────────────────────────────────────────
+    // AUTHENTICATION EVENT LOG
+    // ─────────────────────────────────────────
 
-jsonOut(true);
+    logAuthAction($pdo, "auth.login", $contactId, [
+        "username"  => $email,
+        "role"      => $role,
+        "ip"        => safeIp(),
+        "ua"        => safeUserAgent(),
+        "sessionId" => $sessionId
+    ]);
+
+    // Release session lock before responding
+    session_write_close();
+
+    jsonOut(true);
 }
 
 #endregion
