@@ -132,7 +132,16 @@ $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 if ($isSnapshot) {
 
-    // Ensure session available
+    // ─────────────────────────────────────────
+    // ATTACH EXISTING SESSION
+    // Snapshot requests must explicitly attach
+    // to the browser's session cookie.
+    // ─────────────────────────────────────────
+
+    if (isset($_COOKIE[$cookieName])) {
+        session_id($_COOKIE[$cookieName]);
+    }
+
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
@@ -147,11 +156,13 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // Release session lock immediately
     session_write_close();
 
     // ─────────────────────────────────────────
     // LOAD FULL PROJECTION PAYLOAD
-    // dynamicData.php now calculates idle state
+    // dynamicData.php generates the full system
+    // projection including idle state.
     // ─────────────────────────────────────────
 
     $payload = require __DIR__ . "/getDynamicData.php";
