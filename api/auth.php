@@ -393,7 +393,7 @@ if ($action === "logout") {
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
             'path'     => '/',
-            'domain'   => 'skyelighting.com',
+            'domain'   => '.skyelighting.com',
             'secure'   => $secure,
             'httponly' => true,
             'samesite' => 'Lax'
