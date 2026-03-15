@@ -1243,6 +1243,8 @@ window.SkyIndex = {
     // #region 📡 SSE Event Handling
     onSSE(event) {
 
+        console.log('[SSE EVENT RAW]', event);
+
         if (!event || typeof event !== 'object') return;
 
         // 🧠 Ignore stale SSE streams

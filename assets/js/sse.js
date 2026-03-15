@@ -38,6 +38,7 @@ window.SkySSE = {
 
         es.onopen = () => {
             //console.log('[SkySSE] OPEN', currentStream);
+            console.log('[SkySSE] connected');
         };
 
         es.onerror = (err) => {
@@ -54,15 +55,22 @@ window.SkySSE = {
             if (!event.data) return;
 
             try {
-
+                // Parse JSON payload
                 const payload = JSON.parse(event.data);
+                //
+                console.log('[SkySSE MESSAGE]', payload);
 
+                // Handle auth projection (if present)
                 if (payload.auth !== undefined) {
                     // Console log auth projection for debugging (can be removed in production)
                     //console.log('[SkySSE] auth projection', payload.auth, 'session:', payload.sessionId);
                 }
 
+                // Existing handler
                 window.SkyeApp?.handleSSE?.(payload);
+
+                // Temporary direct handler
+                window.SkyIndex?.handleSSE?.(payload);
 
             } catch (err) {
 
