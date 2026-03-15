@@ -415,66 +415,25 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧩 UI Action Registry
+    // #region 🧩 UI Action Registry — Command Surface Action Router
     uiActionRegistry: {
-
+        // 🧹 Clear Session Surface
         clear_screen() {
             SkyIndex.clearSessionSurface();
         },
-        // Logout
+        // 🔓 Logout (Manual User Logout)
         logout() {
-            // Immediate UI Projection
+
+            // Inform the command thread
             SkyIndex.appendSystemLine('Logging out…');
 
-            // Immediately invalidate client auth state
-            SkyIndex.authState = false;
-            SkyIndex.commandSurfaceActive = false;
-            
-            // Clear any cached user info
-            document.body.removeAttribute('data-auth');
-            
-            // Revert to login card
-            SkyIndex.renderFooterStatus();
-
-            // Reset SSE auth memory
-            if (window.SkyeApp) {
-                window.SkyeApp.lastSSE = null;
-            }
-
-            // Call server logout endpoint
-            SkyIndex.uiActionRegistry.performServerLogout();
-
-            // Close SSE stream shortly after
-            setTimeout(() => {
-                if (window.SkyeApp?.sse) {
-                    window.SkyeApp.sse.close();
-                }
-            }, 200);
-        },
-        // Perform Server Logout (Session Destruction)
-        performServerLogout() {
-
-            fetch('/skyesoft/api/auth.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=logout'
-            })
-            .then(res => {
-
-                if (!res.ok) {
-                    throw new Error(`Logout failed (${res.status})`);
-                }
-
-                console.log('[SkyIndex] Server logout complete');
-
-            })
-            .catch(err => {
-                console.error('[SkyIndex] Logout failed', err);
-            });
+            // Delegate to canonical logout handler
+            SkyIndex.logout('command');
 
         },
-        // #region 🛡 Governance Actions
+        // #region 🛡 Governance Actions — Codex Compliance Operations
+        
+        // 🌳 Accept Merkle Snapshot
         accept_merkle: async () => {
 
             SkyIndex.appendSystemLine('Processing Merkle acceptance...');
@@ -502,9 +461,9 @@ window.SkyIndex = {
                 }
 
                 const governedRoot = data.governedRoot ?? '(missing governed root)';
-                const treeRoot = data.treeRoot ?? '(missing tree root)';
-                const leaves = Number.isFinite(data.leaves) ? data.leaves : '(unknown)';
-                const fixed = Number.isFinite(data.violationsFixed) ? data.violationsFixed : 0;
+                const treeRoot     = data.treeRoot ?? '(missing tree root)';
+                const leaves       = Number.isFinite(data.leaves) ? data.leaves : '(unknown)';
+                const fixed        = Number.isFinite(data.violationsFixed) ? data.violationsFixed : 0;
 
                 SkyIndex.appendSystemLine('✅ Merkle snapshot accepted.');
                 SkyIndex.appendSystemLine(`🔐 Governed Root: ${governedRoot}`);
@@ -516,11 +475,16 @@ window.SkyIndex = {
 
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Merkle acceptance failed: ${err.message}`);
+
             }
         },
+
         // #endregion
 
-        // #region 📦 Repository Inventory
+        // #region 📦 Repository Inventory — Structural Integrity
+
+        // 📦 Reconcile Repository Inventory
+        // Rebuilds the repository inventory index and resolves discrepancies.
         reconcile_inventory: async () => {
 
             SkyIndex.appendSystemLine('Reconciling repository inventory...');
@@ -558,22 +522,26 @@ window.SkyIndex = {
 
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Inventory reconciliation failed: ${err.message}`);
+
             }
         },
+
         // #endregion
 
-
+        // 🔎 Review Unexpected Files
         review_unexpected: async () => {
 
             SkyIndex.appendSystemLine('Reviewing unexpected files…');
 
             try {
-                // placeholder for future implementation
-            }
-            catch (err) {
+
+                // Future: repository anomaly inspection
+
+            } catch (err) {
 
                 console.error(err);
                 SkyIndex.appendSystemLine(`❌ Unexpected review failed: ${err.message}`);
+
             }
         }
 
@@ -1350,18 +1318,14 @@ window.SkyIndex = {
                 throw new Error(`HTTP ${res.status}`);
             }
 
-            console.log('[SkyIndex] Session destroyed', { source });
+            console.log('[SkyIndex] Logout request accepted', { source });
 
-            // Reset runtime state only
-            this.lastSSE = null;
-            this.currentSentinelState = null;
-            this.isThinking = false;
-            this.activeDomainKey = null;
-            this.activeDomainModel = null;
-
-            // Restart SSE so server projects new auth state
+            // Restart SSE so the server projects the new auth state
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
+
+            // Do NOT change UI state here.
+            // SSE will project authenticated:false and trigger renderLoginCard().
 
         } catch (err) {
 

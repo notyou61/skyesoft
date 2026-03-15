@@ -279,11 +279,10 @@ if ($action === "logout") {
         ]);
     }
 
+    // Clear session variables
     $_SESSION = [];
 
-    session_destroy();
-    session_write_close();
-
+    // Remove session cookie
     if (ini_get("session.use_cookies")) {
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
@@ -294,6 +293,9 @@ if ($action === "logout") {
             'samesite' => 'Lax'
         ]);
     }
+
+    // Destroy session
+    session_destroy();
 
     jsonOut(true);
 }
