@@ -1285,6 +1285,7 @@ window.SkyIndex = {
         // ⏳ Idle State Projection
         if ('idle' in event) {
             this.idleState = event.idle;
+            this.renderFooterStatus();
         }
 
         // 🕒 Time
