@@ -142,15 +142,14 @@ $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 if ($isSnapshot) {
 
+    // Ensure session available
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
 
     $sessionId = session_id();
+
     $isAuthenticated = !empty($_SESSION['authenticated']);
-    $userId = isset($_SESSION['userId'])
-        ? (int)$_SESSION['userId']
-        : null;
 
     $auth = [
         'authenticated' => $isAuthenticated,
@@ -158,54 +157,25 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    $lastActivity = ($isAuthenticated && $userId)
-        ? getLastPromptActivity($userId)
-        : null;
-
-    if ($isAuthenticated && $userId && $lastActivity) {
-
-        $idleSeconds = time() - $lastActivity;
-        $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
-
-        $idle = [
-            'state'            => $remaining > 0 ? 'active' : 'expired',
-            'remainingSeconds' => $remaining,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => $lastActivity
-        ];
-
-    } elseif ($isAuthenticated) {
-
-        $idle = [
-            'state'            => 'unknown',
-            'remainingSeconds' => null,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-
-    } else {
-
-        $idle = [
-            'state'            => 'anonymous',
-            'remainingSeconds' => null,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-    }
-
     session_write_close();
+
+    // ─────────────────────────────────────────
+    // LOAD FULL PROJECTION PAYLOAD
+    // dynamicData.php now calculates idle state
+    // ─────────────────────────────────────────
+
+    $payload = require __DIR__ . "/getDynamicData.php";
+
+    // Attach session context
+    $payload["auth"]      = $auth;
+    $payload["streamId"]  = "snapshot";
+    $payload["sessionId"] = $sessionId;
 
     header("Content-Type: application/json; charset=UTF-8");
     header("Cache-Control: no-cache");
 
-    $payload = require __DIR__ . "/getDynamicData.php";
-
-    $payload["auth"]      = $auth;
-    $payload["idle"]      = $idle;
-    $payload["streamId"]  = 'snapshot';
-    $payload["sessionId"] = $sessionId;
-
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
+
     exit;
 }
 
