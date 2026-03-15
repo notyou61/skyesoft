@@ -277,7 +277,8 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
-    // 🔐 AUTH REFRESH + LEDGER-BASED IDLE STATE
+    // 🔐 ATTACH EXISTING SESSION
+    // Only reopen session briefly to read state
     // ─────────────────────────────────────────
 
     if (isset($_COOKIE[$cookieName])) {
@@ -291,6 +292,7 @@ while (true) {
     $sessionId = session_id();
 
     $isAuthenticated = !empty($_SESSION['authenticated']);
+
     $userId = isset($_SESSION['userId'])
         ? (int)$_SESSION['userId']
         : null;
@@ -301,25 +303,46 @@ while (true) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    // ─────────────────────────────────────────
+    // ⏱ LEDGER-BASED LAST ACTIVITY
+    // ─────────────────────────────────────────
+
     $lastActivity = ($isAuthenticated && $userId)
         ? getLastPromptActivity($userId)
         : null;
 
-    // ⏱ Authenticated + Ledger Activity Found
     if ($isAuthenticated && $userId && $lastActivity) {
 
         $idleSeconds = $now - $lastActivity;
-        $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
+
+        $remaining = max(
+            0,
+            $idleTimeoutSeconds - $idleSeconds
+        );
+
+        // Determine state
+        if ($remaining <= 0) {
+
+            $idleState = "expired";
+
+        } elseif ($remaining <= 120) {
+
+            $idleState = "warning";
+
+        } else {
+
+            $idleState = "active";
+        }
 
         $idle = [
-            'state'            => $remaining > 0 ? 'active' : 'expired',
+            'state'            => $idleState,
             'remainingSeconds' => $remaining,
             'timeoutSeconds'   => $idleTimeoutSeconds,
             'lastActivity'     => $lastActivity
         ];
 
         // ⛔ Idle timeout reached
-        if ($remaining <= 0) {
+        if ($idleState === "expired") {
 
             $_SESSION = [];
             session_destroy();
@@ -330,9 +353,9 @@ while (true) {
             ];
         }
 
-    // ⏱ Authenticated But No Ledger Match Yet
     } elseif ($isAuthenticated) {
 
+        // Authenticated but no activity record yet
         $idle = [
             'state'            => 'unknown',
             'remainingSeconds' => null,
@@ -340,9 +363,9 @@ while (true) {
             'lastActivity'     => null
         ];
 
-    // 👤 Anonymous / Logged-Out State
     } else {
 
+        // Not logged in
         $idle = [
             'state'            => 'anonymous',
             'remainingSeconds' => null,
@@ -360,6 +383,7 @@ while (true) {
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
+
         $lastPing = $now;
 
         @flush();
@@ -380,10 +404,15 @@ while (true) {
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
 
-        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $json = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES
+        );
 
         if ($json !== false && $json !== '') {
+
             echo "data: " . $json . "\n\n";
+
             @flush();
         }
     }
