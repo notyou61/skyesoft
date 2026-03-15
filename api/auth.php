@@ -270,38 +270,43 @@ if ($action === "login") {
     }
 
     if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
+    session_start();
+}
 
-    // Prevent session fixation
-    session_regenerate_id(true);
+// Prevent session fixation
+session_regenerate_id(true);
 
-    // ─────────────────────────────────────────
-    // 🔐 ESTABLISH AUTHENTICATED SESSION
-    // ─────────────────────────────────────────
+// ─────────────────────────────────────────
+// 🔐 ESTABLISH AUTHENTICATED SESSION
+// ─────────────────────────────────────────
 
-    $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"];      // canonical identity
-    $_SESSION["username"]      = (string)$user["contactEmail"];
-    $_SESSION["role"]          = (string)($user["role"] ?? "user");
+$_SESSION["authenticated"] = true;
+$_SESSION["userId"]        = (int)$user["contactId"];
+$_SESSION["username"]      = (string)$user["contactEmail"];
+$_SESSION["role"]          = (string)($user["role"] ?? "user");
+$_SESSION["lastActivity"]  = time();
 
-    // legacy activity field (kept for compatibility)
-    $_SESSION["lastActivity"]  = time();
+// Define variables BEFORE logging
+$contactId = (int)$user["contactId"];
+$email     = (string)$user["contactEmail"];
+$role      = (string)($user["role"] ?? "user");
+$sessionId = session_id();
 
-    error_log("LOGIN SESSION ID: " . $sessionId);
-    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
+error_log("LOGIN SESSION ID: " . $sessionId);
+error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
-    session_write_close();
+session_write_close();
 
-    logAuthAction($pdo, "auth.login", $contactId, [
-        "username" => $email,
-        "role"     => $role,
-        "ip"       => safeIp(),
-        "ua"       => safeUserAgent(),
-        "sessionId"=> $sessionId
-    ]);
+// Log authentication event
+logAuthAction($pdo, "auth.login", $contactId, [
+    "username"  => $email,
+    "role"      => $role,
+    "ip"        => safeIp(),
+    "ua"        => safeUserAgent(),
+    "sessionId" => $sessionId
+]);
 
-    jsonOut(true);
+jsonOut(true);
 }
 
 #endregion
