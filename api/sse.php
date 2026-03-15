@@ -22,15 +22,16 @@ session_cache_limiter('');
 // Ensures SSE + API endpoints share the same cookie scope
 // ─────────────────────────────────────────
 
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
     'domain'   => '.skyelighting.com',
-    'secure'   => true,
+    'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
-
 
 // ─────────────────────────────────────────
 // ATTACH EXISTING SESSION (if present)
