@@ -11,54 +11,50 @@ declare(strict_types=1);
 
 // ─────────────────────────────────────────
 // PHP RUNTIME SETTINGS
+// Disable visible errors for SSE stability
+// and prevent cache headers from altering
+// session behavior.
 // ─────────────────────────────────────────
 
-ini_set('display_errors','0');
+ini_set('display_errors', '0');
 session_cache_limiter('');
 
 
 // ─────────────────────────────────────────
-// SESSION COOKIE POLICY
-// Ensures SSE + API endpoints share the same cookie scope
+// SESSION ATTACHMENT
+// This endpoint must attach to an existing
+// PHP session created by the login flow.
+// No cookie policy should be redefined here.
 // ─────────────────────────────────────────
 
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'domain'   => '.skyelighting.com',
-    'secure'   => $secure,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-// ─────────────────────────────────────────
-// ATTACH EXISTING SESSION (if present)
-// ─────────────────────────────────────────
-
+// Determine the active PHP session cookie name
 $cookieName = session_name();
 
+// If a session cookie exists, attach to it
 if (isset($_COOKIE[$cookieName])) {
     session_id($_COOKIE[$cookieName]);
 }
 
+// Start session only if not already active
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+// Immediately release the session lock so the
+// SSE stream does not block other requests
 session_write_close();
 
 
 // ─────────────────────────────────────────
 // MODE DETECTION
 // Snapshot mode returns a single JSON payload
-// instead of opening the SSE stream
+// rather than opening the persistent SSE stream.
+// Used for diagnostics and quick state checks.
 // ─────────────────────────────────────────
 
 $isSnapshot =
-    isset($_GET["mode"]) &&
-    $_GET["mode"] === "snapshot";
+    isset($_GET['mode']) &&
+    $_GET['mode'] === 'snapshot';
 
 #endregion
 
