@@ -130,31 +130,62 @@ if ($isSnapshot) {
 
 #region 📡 SECTION 4 — SSE HEADERS
 
-@ini_set('zlib.output_compression','0');
-@ini_set('output_buffering','0');
-@ini_set('implicit_flush','1');
+// ─────────────────────────────────────────
+// STREAM OUTPUT CONFIGURATION
+// SSE requires a raw, uncompressed, continuously
+// flushing output stream. Any buffering or
+// compression will corrupt the event stream.
+// ─────────────────────────────────────────
 
+// Disable PHP compression and buffering
+@ini_set('zlib.output_compression', '0');
+@ini_set('output_buffering', '0');
+@ini_set('implicit_flush', '1');
+
+// Disable Apache / LiteSpeed gzip if available
 if (function_exists('apache_setenv')) {
-    @apache_setenv('no-gzip','1');
-    @apache_setenv('dont-vary','1');
+    @apache_setenv('no-gzip', '1');
+    @apache_setenv('dont-vary', '1');
 }
 
+// Clear all active output buffers
 while (ob_get_level() > 0) {
     @ob_end_clean();
 }
 
+// Force implicit flushing
 @ob_implicit_flush(true);
+
+
+// ─────────────────────────────────────────
+// SSE RESPONSE HEADERS
+// These headers ensure the browser treats the
+// response as a persistent event stream and
+// prevents proxy or CDN buffering.
+// ─────────────────────────────────────────
 
 header('Content-Type: text/event-stream; charset=UTF-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
 header('Pragma: no-cache');
 header('Expires: 0');
 header('Connection: keep-alive');
+
+// Prevent proxy buffering (NGINX / reverse proxies)
 header('X-Accel-Buffering: no');
 
+// Prevent compression which breaks SSE
+header('Content-Encoding: none');
 header_remove('Content-Encoding');
 
-echo ":" . str_repeat(" ",2048) . "\n\n";
+
+// ─────────────────────────────────────────
+// INITIAL STREAM PRIMER
+// Sends padding to force the browser to begin
+// processing the stream immediately.
+// ─────────────────────────────────────────
+
+echo ":" . str_repeat(" ", 2048) . "\n\n";
+
 @flush();
 
 #endregion

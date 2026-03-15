@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
-#region SESSION COOKIE CONFIGURATION (SSE COMPATIBLE)
+#region SECTION 0 — Environment Bootstrap
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
@@ -23,15 +23,16 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-#endregion
-
-#region SECTION 0 — Environment Bootstrap
-
 require_once __DIR__ . "/dbConnect.php";
 
 #endregion
 
 #region SECTION 1 — Helpers
+
+// ─────────────────────────────────────────
+// 📤 JSON RESPONSE HELPER
+// Standardized JSON response output
+// ─────────────────────────────────────────
 
 function jsonOut(bool $success, string $message = ""): void
 {
@@ -45,6 +46,10 @@ function jsonOut(bool $success, string $message = ""): void
     exit;
 }
 
+// ─────────────────────────────────────────
+// 🌐 REQUEST CONTEXT HELPERS
+// Safe accessors for request metadata
+// ─────────────────────────────────────────
 function safeIp(): string
 {
     return (string)($_SERVER["REMOTE_ADDR"] ?? "");
@@ -54,6 +59,31 @@ function safeUserAgent(): string
 {
     return (string)($_SERVER["HTTP_USER_AGENT"] ?? "");
 }
+
+
+// ─────────────────────────────────────────
+// ⏱ SESSION ACTIVITY HELPER
+// Updates the user's last activity timestamp
+// Used by API endpoints to reset idle timeout
+// ─────────────────────────────────────────
+
+function updateLastActivity(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    if (!empty($_SESSION["authenticated"])) {
+        $_SESSION["lastActivity"] = time();
+    }
+
+    session_write_close();
+}
+
+// ─────────────────────────────────────────
+// 📜 AUTH ACTION LOGGER
+// Writes authentication events to tblActions
+// ─────────────────────────────────────────
 
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
@@ -137,7 +167,24 @@ $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
 #endregion
 
-#region SECTION — SESSION CHECK (diagnostic)
+#region SECTION 3 — TOUCH (Activity Update)
+
+if ($action === "touch") {
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    if (!empty($_SESSION["authenticated"])) {
+        updateLastActivity();
+    }
+
+    jsonOut(true);
+}
+
+#endregion
+
+#region SECTION 4 — SESSION CHECK (diagnostic)
 
 if ($action === "check") {
 
@@ -158,7 +205,7 @@ if ($action === "check") {
 
 #endregion
 
-#region SECTION 3 — LOGIN
+#region SECTION 5 — LOGIN
 
 if ($action === "login") {
 
@@ -254,7 +301,7 @@ if ($action === "login") {
 
 #endregion
 
-#region SECTION 4 — LOGOUT
+#region SECTION 6 — LOGOUT
 
 if ($action === "logout") {
 
@@ -302,7 +349,7 @@ if ($action === "logout") {
 
 #endregion
 
-#region SECTION 5 — Invalid Action
+#region SECTION 7 — Invalid Action
 
 jsonOut(false, "Invalid action.");
 
