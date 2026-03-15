@@ -72,37 +72,38 @@ $isSnapshot =
 // ─────────────────────────────────────────
 function getLastPromptActivity(int $userId): ?int
 {
-    $ledgerFile = __DIR__ . "/../data/promptLedger.json";
+    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
 
     if (!file_exists($ledgerFile)) {
         return null;
     }
 
     $json = file_get_contents($ledgerFile);
+
     if ($json === false || trim($json) === '') {
         return null;
     }
 
     $data = json_decode($json, true);
 
-    if (!is_array($data)) {
+    if (!is_array($data) || !isset($data["entries"])) {
         return null;
     }
 
+    $entries = $data["entries"];
     $latest = null;
 
-    foreach ($data as $entry) {
+    foreach ($entries as $entry) {
 
         if (!is_array($entry)) {
             continue;
         }
 
-        if ((int)($entry['userId'] ?? 0) !== $userId) {
+        if ((int)($entry["userId"] ?? 0) !== $userId) {
             continue;
         }
 
-        $timestamp =
-            (int)($entry['createdUnixTime'] ?? 0);
+        $timestamp = (int)($entry["createdUnixTime"] ?? 0);
 
         if ($timestamp <= 0) {
             continue;
