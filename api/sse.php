@@ -62,20 +62,12 @@ $isSnapshot =
 
 #region 🧰 SECTION 1 — SESSION HELPERS
 
-// ⏱ Update Last Activity
-function updateLastActivity(): void
-{
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
-
-    if (!empty($_SESSION['authenticated'])) {
-        $_SESSION['lastActivity'] = time();
-    }
-
-    session_write_close();
-}
-// ⏱ Get Last Prompt Activity
+// ─────────────────────────────────────────
+// ⏱ LAST PROMPT ACTIVITY LOOKUP
+// Reads the canonical prompt ledger and finds
+// the latest prompt timestamp for the given user.
+// This is the authoritative idle source.
+// ─────────────────────────────────────────
 function getLastPromptActivity(int $userId): ?int
 {
     $ledgerFile = __DIR__ . "/../data/promptLedger.json";
@@ -85,9 +77,13 @@ function getLastPromptActivity(int $userId): ?int
     }
 
     $json = file_get_contents($ledgerFile);
+    if ($json === false || trim($json) === '') {
+        return null;
+    }
+
     $data = json_decode($json, true);
 
-    if (!$data || !is_array($data)) {
+    if (!is_array($data)) {
         return null;
     }
 
@@ -95,13 +91,23 @@ function getLastPromptActivity(int $userId): ?int
 
     foreach ($data as $entry) {
 
-        if (($entry['userId'] ?? null) === $userId) {
+        if (!is_array($entry)) {
+            continue;
+        }
 
-            $t = $entry['createdUnixTime'] ?? null;
+        if ((int)($entry['userId'] ?? 0) !== $userId) {
+            continue;
+        }
 
-            if ($t && ($latest === null || $t > $latest)) {
-                $latest = $t;
-            }
+        $timestamp =
+            (int)($entry['createdUnixTime'] ?? 0);
+
+        if ($timestamp <= 0) {
+            continue;
+        }
+
+        if ($latest === null || $timestamp > $latest) {
+            $latest = $timestamp;
         }
     }
 
@@ -139,25 +145,51 @@ if ($isSnapshot) {
     }
 
     $sessionId = session_id();
+    $isAuthenticated = !empty($_SESSION['authenticated']);
+    $userId = isset($_SESSION['userId'])
+        ? (int)$_SESSION['userId']
+        : null;
 
     $auth = [
-        'authenticated' => !empty($_SESSION['authenticated']),
+        'authenticated' => $isAuthenticated,
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
 
-    $userId = $_SESSION['userId'] ?? null;
-
-    $lastActivity = $userId
-        ? getLastPromptActivity((int)$userId)
+    $lastActivity = ($isAuthenticated && $userId)
+        ? getLastPromptActivity($userId)
         : null;
 
-    $idle = [
-        'state'            => 'unknown',
-        'remainingSeconds' => null,
-        'timeoutSeconds'   => $idleTimeoutSeconds,
-        'lastActivity'     => $lastActivity
-    ];
+    if ($isAuthenticated && $userId && $lastActivity) {
+
+        $idleSeconds = time() - $lastActivity;
+        $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
+
+        $idle = [
+            'state'            => $remaining > 0 ? 'active' : 'expired',
+            'remainingSeconds' => $remaining,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => $lastActivity
+        ];
+
+    } elseif ($isAuthenticated) {
+
+        $idle = [
+            'state'            => 'unknown',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+
+    } else {
+
+        $idle = [
+            'state'            => 'anonymous',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+    }
 
     session_write_close();
 
@@ -168,6 +200,7 @@ if ($isSnapshot) {
 
     $payload["auth"]      = $auth;
     $payload["idle"]      = $idle;
+    $payload["streamId"]  = 'snapshot';
     $payload["sessionId"] = $sessionId;
 
     echo json_encode($payload, JSON_UNESCAPED_SLASHES);
@@ -271,25 +304,22 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
-    // 🔐 AUTH REFRESH + IDLE TIMEOUT
+    // 🔐 AUTH REFRESH + LEDGER-BASED IDLE STATE
     // ─────────────────────────────────────────
-    // Re-attach session on each loop to refresh auth state and track idle activity.
+
     if (isset($_COOKIE[$cookieName])) {
         session_id($_COOKIE[$cookieName]);
     }
-    // Ensure session is started to access session data for authentication and idle tracking.
+
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
-    // We use session_id as a stable identifier for the client connection, but authentication is determined by session data.
+
     $sessionId = session_id();
-    // Check if user is authenticated based on session data
+
     $isAuthenticated = !empty($_SESSION['authenticated']);
-    // For idle timeout, we track the last prompt activity time instead of session activity.
-    $userId = $_SESSION['userId'] ?? null;
-    // For idle timeout, we track the last prompt activity time instead of session activity.
-    $lastActivity = $userId
-        ? getLastPromptActivity((int)$userId)
+    $userId = isset($_SESSION['userId'])
+        ? (int)$_SESSION['userId']
         : null;
 
     $auth = [
@@ -297,10 +327,15 @@ while (true) {
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
-    // ⏱ Authenticated Idle State
-    if ($isAuthenticated && $lastActivity) {
 
-        $idleSeconds = $now - (int)$lastActivity;
+    $lastActivity = ($isAuthenticated && $userId)
+        ? getLastPromptActivity($userId)
+        : null;
+
+    // ⏱ Authenticated + Ledger Activity Found
+    if ($isAuthenticated && $userId && $lastActivity) {
+
+        $idleSeconds = $now - $lastActivity;
         $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
 
         $idle = [
@@ -322,9 +357,19 @@ while (true) {
             ];
         }
 
+    // ⏱ Authenticated But No Ledger Match Yet
+    } elseif ($isAuthenticated) {
+
+        $idle = [
+            'state'            => 'unknown',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+
+    // 👤 Anonymous / Logged-Out State
     } else {
 
-        // 👤 Anonymous / Logged-Out State
         $idle = [
             'state'            => 'anonymous',
             'remainingSeconds' => null,
@@ -365,9 +410,7 @@ while (true) {
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
         if ($json !== false && $json !== '') {
-
             echo "data: " . $json . "\n\n";
-
             @flush();
         }
     }

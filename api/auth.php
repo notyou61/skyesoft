@@ -194,6 +194,7 @@ if ($action === "check") {
 
     echo json_encode([
         "authenticated" => $_SESSION["authenticated"] ?? false,
+        "userId"        => $_SESSION["userId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
         "role"          => $_SESSION["role"] ?? null,
         "sessionId"     => session_id()
@@ -272,16 +273,20 @@ if ($action === "login") {
         session_start();
     }
 
+    // Prevent session fixation
+    session_regenerate_id(true);
+
+    // ─────────────────────────────────────────
+    // 🔐 ESTABLISH AUTHENTICATED SESSION
+    // ─────────────────────────────────────────
+
     $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"];
+    $_SESSION["userId"]        = (int)$user["contactId"];      // canonical identity
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
-    $_SESSION["lastActivity"]  = time();
 
-    $contactId = (int)$user["contactId"];
-    $email     = (string)$user["contactEmail"];
-    $role      = (string)($user["role"] ?? "user");
-    $sessionId = session_id();
+    // legacy activity field (kept for compatibility)
+    $_SESSION["lastActivity"]  = time();
 
     error_log("LOGIN SESSION ID: " . $sessionId);
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
