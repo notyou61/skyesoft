@@ -4428,7 +4428,10 @@
                         "promptLedger.json must begin from an empty state at the start of any governed lifecycle.",
                         "All entries created prior to SIS execution are non-canonical and must not persist into the governed operational lifecycle.",
                         "promptLedger.json is explicitly excluded from SIS-governed Sources of Truth and Merkle verification.",
-                        "At official system launch, promptLedger.json must either be reset or archived outside the governed repository by explicit human decision."
+                        "At official system launch, promptLedger.json must either be reset or archived outside the governed repository by explicit human decision.",
+                        "Observational ledgers must never be used to determine authentication state or session validity.",
+                        "System authentication and idle session governance must rely exclusively on server-managed session state.",
+                        "Ledger files such as promptLedger.json may record activity events but must not govern system behavior."
                     ]
                 },
                 "auditMetaRules": {

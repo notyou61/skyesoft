@@ -82,9 +82,21 @@ function updateLastActivity(): void
 
 #region ⏳ SECTION 2 — SESSION IDLE POLICY
 
-// ⏱ Idle session timeout (seconds)
-// 15 minutes = 900 seconds
-$idleTimeoutSeconds = 900;
+// ─────────────────────────────────────────
+// ⏱ IDLE SESSION TIMEOUT
+// Production: 900 seconds (15 minutes)
+// Test mode: 60 seconds
+// ─────────────────────────────────────────
+
+// ======================================================================
+// ⏱ Idle Session Policy
+// MTCO Test Mode — Timeout temporarily reduced to 60 seconds
+// to verify server-side idle termination behavior.
+// Restore to 900 seconds after validation.
+// ======================================================================
+
+define('SKYESOFT_IDLE_TIMEOUT', 60);   // TEMP TEST VALUE
+$idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
 
