@@ -38,7 +38,7 @@ window.SkySSE = {
 
         es.onopen = () => {
             //console.log('[SkySSE] OPEN', currentStream);
-            console.log('[SkySSE] connected');
+            //console.log('[SkySSE] connected');
         };
 
         es.onerror = (err) => {
@@ -58,7 +58,7 @@ window.SkySSE = {
                 // Parse JSON payload
                 const payload = JSON.parse(event.data);
                 //
-                console.log('[SkySSE MESSAGE]', payload);
+                //console.log('[SkySSE MESSAGE]', payload);
 
                 // Handle auth projection (if present)
                 if (payload.auth !== undefined) {

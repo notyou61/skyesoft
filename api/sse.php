@@ -95,7 +95,7 @@ function updateLastActivity(): void
 // Restore to 900 seconds after validation.
 // ======================================================================
 
-define('SKYESOFT_IDLE_TIMEOUT', 60);   // TEMP TEST VALUE
+define('SKYESOFT_IDLE_TIMEOUT', 900);   // TEMP TEST VALUE
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
