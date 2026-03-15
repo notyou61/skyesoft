@@ -33,11 +33,6 @@ if (isset($_COOKIE[$cookieName])) {
 
 session_start();
 
-// Read session context then release lock
-$sessionUserId = $_SESSION["userId"] ?? null;
-
-session_write_close();
-
 // DATABASE CONNECTION
 require_once __DIR__ . "/dbConnect.php";
 
