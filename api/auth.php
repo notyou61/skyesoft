@@ -8,9 +8,14 @@ declare(strict_types=1);
 //  Codex Tier: 4 — Session Mutation Endpoint
 // ======================================================================
 
+#region SECTION 0 — Environment Bootstrap
+
 header("Content-Type: application/json; charset=UTF-8");
 
-#region SECTION 0 — Environment Bootstrap
+// ─────────────────────────────────────────
+// SESSION COOKIE POLICY
+// Must match all other endpoints exactly
+// ─────────────────────────────────────────
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
@@ -22,6 +27,24 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
+
+// ─────────────────────────────────────────
+// ATTACH EXISTING SESSION (if present)
+// Ensures login writes into the same session
+// used by SSE and other endpoints
+// ─────────────────────────────────────────
+
+$cookieName = session_name();
+
+if (isset($_COOKIE[$cookieName])) {
+    session_id($_COOKIE[$cookieName]);
+}
+
+session_start();
+
+// ─────────────────────────────────────────
+// DATABASE CONNECTION
+// ─────────────────────────────────────────
 
 require_once __DIR__ . "/dbConnect.php";
 

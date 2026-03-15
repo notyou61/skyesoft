@@ -321,8 +321,12 @@ while (true) {
                 session_start();
             }
 
+            // Destroy session state
             $_SESSION = [];
             session_destroy();
+
+            // Ensure PHP releases session lock
+            session_write_close();
 
             $isAuthenticated = false;
             $userId = null;
