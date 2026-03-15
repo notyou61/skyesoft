@@ -12,44 +12,45 @@ declare(strict_types=1);
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-// Header
-header("Content-Type: application/json; charset=UTF-8");
-
-// ─────────────────────────────────────────
-// SESSION COOKIE POLICY
-// Must match auth.php / sse.php exactly
-// ─────────────────────────────────────────
+session_cache_limiter('');
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => '.skyelighting.com',
+    'domain'   => 'skyelighting.com',
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-// Attach existing session if present
 $cookieName = session_name();
 
 if (isset($_COOKIE[$cookieName])) {
     session_id($_COOKIE[$cookieName]);
 }
 
-// Load environment
-skyesoftLoadEnv();
+session_start();
 
-// AI Fail Function
-function aiFail(string $msg): never {
-    echo json_encode([
-        "success" => false,
-        "role"    => "askOpenAI",
-        "error"   => "❌ $msg"
-    ], JSON_UNESCAPED_SLASHES);
-    exit;
-}
+$sessionId = session_id();
+
+$isAuthenticated = !empty($_SESSION['authenticated']);
+$userId = isset($_SESSION['userId'])
+    ? (int)$_SESSION['userId']
+    : null;
+
+$auth = [
+    'authenticated' => $isAuthenticated,
+    'username'      => $_SESSION['username'] ?? null,
+    'role'          => $_SESSION['role'] ?? null
+];
+
+session_write_close();
+
+$isSnapshot =
+    isset($_GET['mode']) &&
+    $_GET['mode'] === 'snapshot';
 
 #endregion
 
