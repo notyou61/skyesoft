@@ -9,47 +9,40 @@ declare(strict_types=1);
 
 #region ⚙️ SECTION 0 — RUNTIME BOOTSTRAP & MODE DETECTION
 
-// ─────────────────────────────────────────
-// PHP RUNTIME SETTINGS
-// Disable visible errors for SSE stability
-// and prevent cache headers from altering
-// session behavior.
-// ─────────────────────────────────────────
-
 ini_set('display_errors', '0');
 session_cache_limiter('');
 
-
 // ─────────────────────────────────────────
-// SESSION ATTACHMENT
-// This endpoint must attach to an existing
-// PHP session created by the login flow.
-// No cookie policy should be redefined here.
+// ATTACH EXISTING SESSION
 // ─────────────────────────────────────────
 
-// Determine the active PHP session cookie name
 $cookieName = session_name();
 
-// If a session cookie exists, attach to it
 if (isset($_COOKIE[$cookieName])) {
     session_id($_COOKIE[$cookieName]);
 }
 
-// Start session only if not already active
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+session_start();
 
-// Immediately release the session lock so the
-// SSE stream does not block other requests
+$sessionId = session_id();
+
+$isAuthenticated = !empty($_SESSION['authenticated']);
+
+$userId = isset($_SESSION['userId'])
+    ? (int)$_SESSION['userId']
+    : null;
+
+$auth = [
+    'authenticated' => $isAuthenticated,
+    'username'      => $_SESSION['username'] ?? null,
+    'role'          => $_SESSION['role'] ?? null
+];
+
+// Release session lock so other requests work
 session_write_close();
-
 
 // ─────────────────────────────────────────
 // MODE DETECTION
-// Snapshot mode returns a single JSON payload
-// rather than opening the persistent SSE stream.
-// Used for diagnostics and quick state checks.
 // ─────────────────────────────────────────
 
 $isSnapshot =
@@ -273,34 +266,8 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
-    // 🔐 ATTACH EXISTING SESSION
-    // Only reopen session briefly to read state
-    // ─────────────────────────────────────────
-
-    if (isset($_COOKIE[$cookieName])) {
-        session_id($_COOKIE[$cookieName]);
-    }
-
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
-
-    $sessionId = session_id();
-
-    $isAuthenticated = !empty($_SESSION['authenticated']);
-
-    $userId = isset($_SESSION['userId'])
-        ? (int)$_SESSION['userId']
-        : null;
-
-    $auth = [
-        'authenticated' => $isAuthenticated,
-        'username'      => $_SESSION['username'] ?? null,
-        'role'          => $_SESSION['role'] ?? null
-    ];
-
-    // ─────────────────────────────────────────
     // ⏱ LEDGER-BASED LAST ACTIVITY
+    // Uses bootstrap auth truth + canonical prompt ledger
     // ─────────────────────────────────────────
 
     $lastActivity = ($isAuthenticated && $userId)
@@ -316,18 +283,12 @@ while (true) {
             $idleTimeoutSeconds - $idleSeconds
         );
 
-        // Determine state
         if ($remaining <= 0) {
-
-            $idleState = "expired";
-
+            $idleState = 'expired';
         } elseif ($remaining <= 120) {
-
-            $idleState = "warning";
-
+            $idleState = 'warning';
         } else {
-
-            $idleState = "active";
+            $idleState = 'active';
         }
 
         $idle = [
@@ -338,20 +299,33 @@ while (true) {
         ];
 
         // ⛔ Idle timeout reached
-        if ($idleState === "expired") {
+        // Reopen the real session only when enforcement is needed
+        if ($idleState === 'expired') {
+
+            if (isset($_COOKIE[$cookieName])) {
+                session_id($_COOKIE[$cookieName]);
+            }
+
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
 
             $_SESSION = [];
             session_destroy();
 
+            $isAuthenticated = false;
+            $userId = null;
+
             $auth = [
                 'authenticated' => false,
+                'username'      => null,
+                'role'          => null,
                 'reason'        => 'timeout'
             ];
         }
 
     } elseif ($isAuthenticated) {
 
-        // Authenticated but no activity record yet
         $idle = [
             'state'            => 'unknown',
             'remainingSeconds' => null,
@@ -361,7 +335,6 @@ while (true) {
 
     } else {
 
-        // Not logged in
         $idle = [
             'state'            => 'anonymous',
             'remainingSeconds' => null,
@@ -370,8 +343,6 @@ while (true) {
         ];
     }
 
-    session_write_close();
-
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING
     // ─────────────────────────────────────────
@@ -379,7 +350,6 @@ while (true) {
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
-
         $lastPing = $now;
 
         @flush();
@@ -406,9 +376,7 @@ while (true) {
         );
 
         if ($json !== false && $json !== '') {
-
             echo "data: " . $json . "\n\n";
-
             @flush();
         }
     }
