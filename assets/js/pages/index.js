@@ -205,6 +205,7 @@ window.SkyIndex = {
     activeDomainModel: null,
     authState: null,
     commandSurfaceActive: false,
+    idleState: null,
     // #endregion
 
     // #region 🛠️ Command Output Helpers
@@ -432,7 +433,45 @@ window.SkyIndex = {
             return;
         }
 
-        // 3️⃣ Governance (post-auth only)
+        // 3️⃣ Idle Session Warning
+        if (this.idleState && this.idleState.remainingSeconds != null) {
+
+            const remaining = Number(this.idleState.remainingSeconds);
+            const timeout   = Number(this.idleState.timeoutSeconds || 1);
+
+            // Ignore expired states (Auth gate will handle)
+            if (remaining <= 0) {
+                render('#111', 'Authorization required to continue');
+                return;
+            }
+
+            if (Number.isFinite(remaining) && Number.isFinite(timeout)) {
+
+                const pct = remaining / timeout;
+
+                // Final countdown (~7%)
+                if (pct <= 0.07 && remaining > 0) {
+                    const secs = String(remaining).padStart(2,'0');
+                    render('#ffcc00', `Session expiring in ${secs}s`);
+                    return;
+                }
+
+                // Warning (~33%)
+                if (pct <= 0.33) {
+                    render('#ffcc00', 'No activity detected • Session expiring soon');
+                    return;
+                }
+
+                // Idle notice (~66%)
+                if (pct <= 0.66) {
+                    render('#ffcc00', 'Idle protection active');
+                    return;
+                }
+
+            }
+        }
+
+        // 4️⃣ Governance (post-auth only)
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
@@ -454,7 +493,7 @@ window.SkyIndex = {
             }
         }
 
-        // 4️⃣ Clean state
+        // 5️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
     },
     // #endregion
@@ -1242,6 +1281,11 @@ window.SkyIndex = {
             ...event
         };
         //console.log('[SSE] cached keys:', Object.keys(event || {}));
+        
+        // ⏳ Idle State Projection
+        if ('idle' in event) {
+            this.idleState = event.idle;
+        }
 
         // 🕒 Time
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {

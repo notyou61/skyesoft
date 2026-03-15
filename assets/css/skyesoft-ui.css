@@ -470,4 +470,16 @@ body[data-page="index"] .cardFooter .ellipsis::after{
     font-weight:600;
 }
 
+/* ---------- Footer Warning ---------- */
+
+.footer-warning{
+  color:#c28a00;
+  font-weight:500;
+}
+
+.footer-warning::before{
+  content:"● ";
+  color:#f2b400;
+}
+
 /* #endregion */
