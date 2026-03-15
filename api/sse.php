@@ -63,8 +63,6 @@ $isSnapshot =
 #region 🧰 SECTION 1 — SESSION HELPERS
 
 // ⏱ Update Last Activity
-// Touches session activity only when user is authenticated.
-// Useful for authenticated API endpoints or future manual touch hooks.
 function updateLastActivity(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -76,6 +74,38 @@ function updateLastActivity(): void
     }
 
     session_write_close();
+}
+// ⏱ Get Last Prompt Activity
+function getLastPromptActivity(int $userId): ?int
+{
+    $ledgerFile = __DIR__ . "/../data/promptLedger.json";
+
+    if (!file_exists($ledgerFile)) {
+        return null;
+    }
+
+    $json = file_get_contents($ledgerFile);
+    $data = json_decode($json, true);
+
+    if (!$data || !is_array($data)) {
+        return null;
+    }
+
+    $latest = null;
+
+    foreach ($data as $entry) {
+
+        if (($entry['userId'] ?? null) === $userId) {
+
+            $t = $entry['createdUnixTime'] ?? null;
+
+            if ($t && ($latest === null || $t > $latest)) {
+                $latest = $t;
+            }
+        }
+    }
+
+    return $latest;
 }
 
 #endregion
@@ -95,7 +125,7 @@ function updateLastActivity(): void
 // Restore to 900 seconds after validation.
 // ======================================================================
 
-define('SKYESOFT_IDLE_TIMEOUT', 900);   // TEMP TEST VALUE
+define('SKYESOFT_IDLE_TIMEOUT', 60);   // TEMP TEST VALUE
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -116,11 +146,17 @@ if ($isSnapshot) {
         'role'          => $_SESSION['role'] ?? null
     ];
 
+    $userId = $_SESSION['userId'] ?? null;
+
+    $lastActivity = $userId
+        ? getLastPromptActivity((int)$userId)
+        : null;
+
     $idle = [
         'state'            => 'unknown',
         'remainingSeconds' => null,
         'timeoutSeconds'   => $idleTimeoutSeconds,
-        'lastActivity'     => $_SESSION['lastActivity'] ?? null
+        'lastActivity'     => $lastActivity
     ];
 
     session_write_close();
@@ -237,26 +273,30 @@ while (true) {
     // ─────────────────────────────────────────
     // 🔐 AUTH REFRESH + IDLE TIMEOUT
     // ─────────────────────────────────────────
-
+    // Re-attach session on each loop to refresh auth state and track idle activity.
     if (isset($_COOKIE[$cookieName])) {
         session_id($_COOKIE[$cookieName]);
     }
-
+    // Ensure session is started to access session data for authentication and idle tracking.
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
     }
-
+    // We use session_id as a stable identifier for the client connection, but authentication is determined by session data.
     $sessionId = session_id();
-
+    // Check if user is authenticated based on session data
     $isAuthenticated = !empty($_SESSION['authenticated']);
-    $lastActivity    = $_SESSION['lastActivity'] ?? null;
+    // For idle timeout, we track the last prompt activity time instead of session activity.
+    $userId = $_SESSION['userId'] ?? null;
+    // For idle timeout, we track the last prompt activity time instead of session activity.
+    $lastActivity = $userId
+        ? getLastPromptActivity((int)$userId)
+        : null;
 
     $auth = [
         'authenticated' => $isAuthenticated,
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
     ];
-
     // ⏱ Authenticated Idle State
     if ($isAuthenticated && $lastActivity) {
 

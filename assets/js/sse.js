@@ -69,9 +69,6 @@ window.SkySSE = {
                 // Existing handler
                 window.SkyeApp?.handleSSE?.(payload);
 
-                // Temporary direct handler
-                window.SkyIndex?.handleSSE?.(payload);
-
             } catch (err) {
 
                 console.warn('[SkySSE] SSE parse error', err);
