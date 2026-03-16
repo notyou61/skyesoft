@@ -163,7 +163,7 @@ function getLastPromptActivity(int $userId): ?int
 // Restore to 900 seconds after validation.
 // ======================================================================
 
-define('SKYESOFT_IDLE_TIMEOUT', 3600);   // TEMP TEST VALUE
+define('SKYESOFT_IDLE_TIMEOUT', 900);   // TEMP TEST VALUE
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -349,12 +349,22 @@ while (true) {
             0,
             $idleTimeoutSeconds - $idleSeconds
         );
-
+        
+        // Idle Notice Conditional
         if ($remaining <= 0) {
+
             $idleState = 'expired';
+
         } elseif ($remaining <= 120) {
+
             $idleState = 'warning';
+
+        } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
+
+            $idleState = 'idle-active';
+
         } else {
+
             $idleState = 'active';
         }
 
@@ -371,7 +381,7 @@ while (true) {
         // is reached.
         // ─────────────────────────────────────────
 
-        if ($idleState === 'expired' && $isAuthenticated) {
+        if ($idleState === 'expired' && $isAuthenticated === true) {
 
             if (session_status() !== PHP_SESSION_ACTIVE) {
                 session_start();
@@ -383,6 +393,13 @@ while (true) {
 
             $isAuthenticated = false;
             $userId = null;
+
+            $idle = [
+                'state'            => 'expired',
+                'remainingSeconds' => 0,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => $lastActivity
+            ];
 
             $auth = [
                 'authenticated' => false,
