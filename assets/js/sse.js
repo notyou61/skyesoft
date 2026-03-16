@@ -58,7 +58,7 @@ window.SkySSE = {
                 // Parse JSON payload
                 const payload = JSON.parse(event.data);
                 //
-                console.log('[SkySSE MESSAGE]', payload);
+                //console.log('[SkySSE MESSAGE]', payload);
 
                 // Handle auth projection (if present)
                 if (payload.auth !== undefined) {

@@ -111,14 +111,16 @@ function getLastPromptActivity(int $userId): ?int
 
     $data = json_decode($json, true);
 
-    if (!is_array($data) || !isset($data["entries"])) {
+    if (!is_array($data) || !isset($data["entries"]) || !is_array($data["entries"])) {
         return null;
     }
 
     $entries = $data["entries"];
-    $latest = null;
 
-    foreach ($entries as $entry) {
+    // Scan from newest entry backwards
+    for ($i = count($entries) - 1; $i >= 0; $i--) {
+
+        $entry = $entries[$i];
 
         if (!is_array($entry)) {
             continue;
@@ -137,16 +139,12 @@ function getLastPromptActivity(int $userId): ?int
 
         $timestamp = (int)($entry["createdUnixTime"] ?? 0);
 
-        if ($timestamp <= 0) {
-            continue;
-        }
-
-        if ($latest === null || $timestamp > $latest) {
-            $latest = $timestamp;
+        if ($timestamp > 0) {
+            return $timestamp;
         }
     }
 
-    return $latest;
+    return null;
 }
 #endregion
 
