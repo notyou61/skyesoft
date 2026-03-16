@@ -147,6 +147,36 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         return;
     }
 }
+// ─────────────────────────────────────────
+// GENERATE PROMPT LEDGER ID
+// Produces sequential PRL identifiers
+// Example: PRL-000467
+// ─────────────────────────────────────────
+function generatePromptId(): string
+{
+    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
+
+    if (!file_exists($ledgerFile)) {
+        return "PRL-000001";
+    }
+
+    $json = file_get_contents($ledgerFile);
+    $data = json_decode($json, true);
+
+    if (!is_array($data) || empty($data["entries"])) {
+        return "PRL-000001";
+    }
+
+    $last = end($data["entries"]);
+
+    $lastId = $last["promptId"] ?? "PRL-000000";
+
+    $num = (int)preg_replace('/[^0-9]/', '', $lastId);
+
+    $num++;
+
+    return "PRL-" . str_pad((string)$num, 6, "0", STR_PAD_LEFT);
+}
 
 #endregion
 
@@ -335,6 +365,45 @@ if ($action === "login") {
         "ua"        => safeUserAgent(),
         "sessionId" => $sessionId
     ]);
+
+    // ─────────────────────────────────────────
+    // PROMPT LEDGER — LOGIN EVENT
+    // Establishes authoritative idle baseline
+    // for SSE session monitoring.
+    // ─────────────────────────────────────────
+
+    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
+
+    $entry = [
+        "promptId"         => generatePromptId(), // use your existing ID generator
+        "userId"           => $contactId,
+        "promptText"       => "system login",
+        "responseText"     => "login",
+        "intent"           => "ui_login",
+        "intentConfidence" => 1.0,
+        "createdUnixTime"  => time()
+    ];
+
+    if (file_exists($ledgerFile)) {
+
+        $data = json_decode(file_get_contents($ledgerFile), true);
+
+        if (!is_array($data)) {
+            $data = ["entries" => []];
+        }
+
+    } else {
+
+        $data = ["entries" => []];
+    }
+
+    $data["entries"][] = $entry;
+
+    file_put_contents(
+        $ledgerFile,
+        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+        LOCK_EX
+    );
 
     // Release session lock before responding
     session_write_close();
