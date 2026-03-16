@@ -138,8 +138,14 @@ if ($isSnapshot) {
     // to the browser's session cookie.
     // ─────────────────────────────────────────
 
+    $cookieName = session_name();
+
     if (isset($_COOKIE[$cookieName])) {
         session_id($_COOKIE[$cookieName]);
+    }
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
     }
 
     if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -311,7 +317,7 @@ while (true) {
 
         // ⛔ Idle timeout reached
         // Reopen the real session only when enforcement is needed
-        if ($idleState === 'expired') {
+        if ($idleState === 'expired' && $isAuthenticated) {
 
             if (isset($_COOKIE[$cookieName])) {
                 session_id($_COOKIE[$cookieName]);
@@ -321,11 +327,9 @@ while (true) {
                 session_start();
             }
 
-            // Destroy session state
             $_SESSION = [];
             session_destroy();
 
-            // Ensure PHP releases session lock
             session_write_close();
 
             $isAuthenticated = false;
