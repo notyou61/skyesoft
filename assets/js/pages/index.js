@@ -1208,10 +1208,22 @@ window.SkyIndex = {
 
             error.hidden = true;
 
-            // Authoritative UI state
+            // Update internal auth state
+            this.authState = true;
+
+            // Update UI state
             document.body.setAttribute("data-auth", "true");
 
             console.log('[AUTH 8] UI revealed');
+
+            // Confirm session from server
+            const check = await fetch('/skyesoft/api/auth.php?action=check', {
+                credentials: 'include'
+            });
+
+            const session = await check.json();
+
+            console.log('[AUTH 9] Session verified', session);
 
             // Restart SSE
             window.SkySSE?.stop?.();
