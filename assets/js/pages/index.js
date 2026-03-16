@@ -434,7 +434,7 @@ window.SkyIndex = {
         }
 
         // 3️⃣ Idle Session Warning
-        if (this.idleState && this.idleState.remainingSeconds != null) {
+        if (this.idleState && Number.isFinite(this.idleState.remainingSeconds)) {
 
             // Normalize idle fields (server variations tolerated)
             const remaining = Number(
@@ -458,25 +458,25 @@ window.SkyIndex = {
 
             if (Number.isFinite(remaining) && Number.isFinite(timeout)) {
 
-                const pct = remaining / timeout;
+                const idleSeconds = timeout - remaining;
 
-                // Final countdown (~7%)
-                if (pct <= 0.07 && remaining > 0) {
+                // 🔔 Idle notice (10 seconds after 1 minute idle)
+                if (idleSeconds >= 60 && idleSeconds <= 70) {
+                    render('#ffcc00', 'Idle protection active');
+                    return;
+                }
+
+                // ⏱ Final countdown (last 60 seconds)
+                if (remaining <= 60) {
                     const secs = Math.max(0, Math.floor(remaining));
                     const padded = String(secs).padStart(2,'0');
                     render('#ffcc00', `Session expiring in ${padded}s`);
                     return;
                 }
 
-                // Warning (~33%)
-                if (pct <= 0.33) {
+                // ⚠ Warning window (last 2 minutes)
+                if (remaining <= 120) {
                     render('#ffcc00', 'No activity detected • Session expiring soon');
-                    return;
-                }
-
-                // Idle notice (~66%)
-                if (pct <= 0.66) {
-                    render('#ffcc00', 'Idle protection active');
                     return;
                 }
 
