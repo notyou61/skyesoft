@@ -114,24 +114,29 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
-    if (!payload?.auth) return;
+    const page = this.pageHandlers?.[this.currentPage];
 
-    const newAuth = payload.auth.authenticated === true;
+    const newAuth = payload?.auth?.authenticated === true;
+    const prevAuth = this.lastSSE?.auth?.authenticated === true;
 
     // ───────────────────────────────────────────────
     // First SSE Frame → Initialize Authoritative State
     // ───────────────────────────────────────────────
-   if (this.lastSSE === null) {
+    if (this.lastSSE === null) {
 
         this.lastSSE = payload;
 
-        const page = this.pageHandlers?.[this.currentPage];
-
         if (page) {
 
+            // Auth projection
             page.authState = newAuth;
             page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
             page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+
+            // Idle projection
+            if (payload?.idle) {
+                page.idleState = payload.idle;
+            }
 
             document.body.toggleAttribute('data-auth', newAuth);
 
@@ -147,20 +152,23 @@ window.SkyeApp.handleSSE = function (payload) {
         return;
     }
 
-    const prevAuth = this.lastSSE?.auth?.authenticated === true;
-
     // ───────────────────────────────────────────────
-    // Auth Transition Detection
+    // State Projection (Auth + Idle)
     // ───────────────────────────────────────────────
-    const page = this.pageHandlers?.[this.currentPage];
-
     if (page) {
+
         page.authState = newAuth;
         page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
         page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+
+        if (payload?.idle) {
+            page.idleState = payload.idle;
+        }
     }
 
+    // ───────────────────────────────────────────────
     // Login Transition
+    // ───────────────────────────────────────────────
     if (!prevAuth && newAuth) {
 
         console.log('[LOGIN TRANSITION DETECTED]', {
@@ -189,38 +197,46 @@ window.SkyeApp.handleSSE = function (payload) {
         }
     }
 
+    // ───────────────────────────────────────────────
     // Logout Transition
+    // ───────────────────────────────────────────────
     if (prevAuth && !newAuth) {
 
         document.body.removeAttribute('data-auth');
 
         if (page) {
-
             page.renderLoginCard?.();
             page.renderFooterStatus?.call(page);
         }
     }
 
+    // ───────────────────────────────────────────────
     // Commit authoritative snapshot
+    // ───────────────────────────────────────────────
     this.lastSSE = payload;
 
-    // Update header status block
+    // ───────────────────────────────────────────────
+    // Update Header Status Block
+    // ───────────────────────────────────────────────
     try {
         this.updateHSB(payload);
     } catch (err) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // Route SSE to page
+    // ───────────────────────────────────────────────
+    // Route SSE to page modules
+    // ───────────────────────────────────────────────
     try {
         this.routeSSEToPage(payload);
     } catch (err) {
         console.error("❌ routeSSEToPage failed:", err);
     }
 
+    // ───────────────────────────────────────────────
     // Final footer refresh
-    const pageHandler = this.pageHandlers?.[this.currentPage];
-    pageHandler?.renderFooterStatus?.call(pageHandler);
+    // ───────────────────────────────────────────────
+    page?.renderFooterStatus?.call(page);
 };
 /* #endregion */
 

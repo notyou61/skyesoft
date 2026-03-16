@@ -434,7 +434,7 @@ window.SkyIndex = {
         }
 
         //
-        console.log('Idle State:', this.idleState)
+        //console.log('Idle State:', this.idleState)
         // 3️⃣ Idle Session Warning
         if (this.idleState) {
 
