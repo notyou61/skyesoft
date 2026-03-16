@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
-// SESSION COOKIE POLICY
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
 session_set_cookie_params([
@@ -23,7 +22,6 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-// Start PHP session
 session_start();
 
 // DATABASE CONNECTION
@@ -374,7 +372,6 @@ if ($action === "logout") {
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
             'path'     => '/',
-            'domain'   => '.skyelighting.com',
             'secure'   => $secure,
             'httponly' => true,
             'samesite' => 'Lax'

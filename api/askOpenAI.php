@@ -36,18 +36,12 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => '.skyelighting.com',
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-// Attach existing browser session if present
-$cookieName = session_name();
-
-if (isset($_COOKIE[$cookieName])) {
-    session_id($_COOKIE[$cookieName]);
-}
+session_start();
 
 // Load environment
 skyesoftLoadEnv();

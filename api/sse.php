@@ -19,13 +19,12 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'domain'   => 'skyelighting.com',
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-$cookieName = session_name();
+session_start();
 
 if (isset($_COOKIE[$cookieName])) {
     session_id($_COOKIE[$cookieName]);
