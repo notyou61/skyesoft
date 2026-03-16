@@ -158,7 +158,7 @@ function getLastPromptActivity(int $userId): ?int
 // Restore to 900 seconds after validation.
 // ======================================================================
 
-define('SKYESOFT_IDLE_TIMEOUT', 60);   // TEMP TEST VALUE
+define('SKYESOFT_IDLE_TIMEOUT', 3600);   // TEMP TEST VALUE
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -342,7 +342,7 @@ while (true) {
 
         // ⛔ Idle timeout reached
         // Reopen the real session only when enforcement is needed
-        if ($idleState === 'expired' && $isAuthenticated) {
+        if ($idleState === 'expired' && $isAuthenticated && 1 == 0) {
 
             if (session_status() !== PHP_SESSION_ACTIVE) {
                 session_start();
@@ -362,6 +362,21 @@ while (true) {
                 'role'          => null,
                 'reason'        => 'timeout'
             ];
+        }
+        // ⛔ Idle timeout reached
+        // DEBUG MODE — idle enforcement disabled
+        // This bypass allows verification that SSE auth logic
+        // is functioning without session destruction.
+
+        if ($idleState === 'expired' && $isAuthenticated) {
+
+            $auth = [
+                'authenticated' => true,
+                'username'      => $liveSession['username'],
+                'role'          => $liveSession['role'],
+                'debug'         => 'idle-bypass'
+            ];
+
         }
 
     } elseif ($isAuthenticated) {
