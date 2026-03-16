@@ -1146,17 +1146,15 @@ window.SkyIndex = {
     },
     // #endregion
 
-   // #region 🔑 Login Logic (Server Auth)
+    // #region 🔑 Login Logic (Server Auth)
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
 
-        // Extract credentials
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
-        // Basic validation
         if (!email || !pass) {
 
             console.log('[AUTH 2] Validation failed');
@@ -1170,7 +1168,6 @@ window.SkyIndex = {
 
             console.log('[AUTH 3] Sending login request');
 
-            // Send login request
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1194,7 +1191,6 @@ window.SkyIndex = {
 
             console.log('[AUTH 5] auth.php payload', data);
 
-            // Authentication failure
             if (!data.success) {
 
                 console.log('[AUTH 6] Authentication rejected');
@@ -1208,15 +1204,11 @@ window.SkyIndex = {
 
             error.hidden = true;
 
-            // Update internal auth state
             this.authState = true;
-
-            // Update UI state
             document.body.setAttribute("data-auth", "true");
 
             console.log('[AUTH 8] UI revealed');
 
-            // Confirm session from server
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
@@ -1225,11 +1217,24 @@ window.SkyIndex = {
 
             console.log('[AUTH 9] Session verified', session);
 
-            // Restart SSE
+            // ⭐ ADD THIS BLOCK
+            if (session.authenticated === true) {
+
+                this.authUser = session.username ?? null;
+                this.authRole = session.role ?? null;
+
+                this.renderCommandInterfaceCard?.();
+                this.commandSurfaceActive = true;
+
+                this.renderFooterStatus?.();
+
+                console.log('[AUTH 10] Command interface activated');
+            }
+
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
 
-            console.log('[AUTH 9] SSE restarted');
+            console.log('[AUTH 11] SSE restarted');
 
         } catch (err) {
 
