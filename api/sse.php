@@ -7,7 +7,7 @@ declare(strict_types=1);
 // Real-Time Projection Engine
 // ======================================================================
 
-#region SECTION 0 — Environment Bootstrap
+#region ⚙️ SECTION 0 — Environment Bootstrap (Runtime Initialization / Session Attach)
 
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
@@ -24,17 +24,15 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-session_start();
-
-if (isset($_COOKIE[$cookieName])) {
-    session_id($_COOKIE[$cookieName]);
+// Start session once
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
-
-session_start();
 
 $sessionId = session_id();
 
 $isAuthenticated = !empty($_SESSION['authenticated']);
+
 $userId = isset($_SESSION['userId'])
     ? (int)$_SESSION['userId']
     : null;
