@@ -118,12 +118,6 @@ window.SkyeApp.handleSSE = function (payload) {
 
     const newAuth = payload.auth.authenticated === true;
 
-    // Ignore stale timeout frame immediately after login verification
-    if (!newAuth && this.lastSSE === null && payload?.auth?.reason === 'timeout') {
-        console.warn('[SSE] ignoring stale timeout frame');
-        return;
-    }
-
     // ───────────────────────────────────────────────
     // First SSE Frame → Initialize Authoritative State
     // ───────────────────────────────────────────────
