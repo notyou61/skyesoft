@@ -434,7 +434,7 @@ window.SkyIndex = {
         }
 
         // 3️⃣ Idle Session Warning
-        if (this.idleState && Number.isFinite(this.idleState.remainingSeconds)) {
+        if (this.idleState) {
 
             // Normalize idle fields (server variations tolerated)
             const remaining = Number(
@@ -447,8 +447,12 @@ window.SkyIndex = {
                 this.idleState.timeoutSeconds ??
                 this.idleState.timeout ??
                 this.idleState.maxSeconds ??
-                1
+                0
             );
+
+            if (!Number.isFinite(remaining) || !Number.isFinite(timeout)) {
+                return;
+            }
 
             // Ignore expired states (Auth gate will handle)
             if (remaining <= 0) {
@@ -456,30 +460,26 @@ window.SkyIndex = {
                 return;
             }
 
-            if (Number.isFinite(remaining) && Number.isFinite(timeout)) {
+            const idleSeconds = timeout - remaining;
 
-                const idleSeconds = timeout - remaining;
+            // 🔔 Idle notice (10 seconds after 1 minute idle)
+            if (idleSeconds >= 60 && idleSeconds <= 70) {
+                render('#ffcc00', 'Idle protection active');
+                return;
+            }
 
-                // 🔔 Idle notice (10 seconds after 1 minute idle)
-                if (idleSeconds >= 60 && idleSeconds <= 70) {
-                    render('#ffcc00', 'Idle protection active');
-                    return;
-                }
+            // ⏱ Final countdown (last 60 seconds)
+            if (remaining <= 60) {
+                const secs = Math.max(0, Math.floor(remaining));
+                const padded = String(secs).padStart(2,'0');
+                render('#ffcc00', `Session expiring in ${padded}s`);
+                return;
+            }
 
-                // ⏱ Final countdown (last 60 seconds)
-                if (remaining <= 60) {
-                    const secs = Math.max(0, Math.floor(remaining));
-                    const padded = String(secs).padStart(2,'0');
-                    render('#ffcc00', `Session expiring in ${padded}s`);
-                    return;
-                }
-
-                // ⚠ Warning window (last 2 minutes)
-                if (remaining <= 120) {
-                    render('#ffcc00', 'No activity detected • Session expiring soon');
-                    return;
-                }
-
+            // ⚠ Warning window (last 2 minutes)
+            if (remaining <= 120) {
+                render('#ffcc00', 'No activity detected • Session expiring soon');
+                return;
             }
         }
 
