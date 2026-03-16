@@ -315,8 +315,28 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
+    // 🔐 REFRESH LIVE SESSION STATE
+    // Each loop tick retrieves the authoritative
+    // session truth so SSE reflects real login
+    // and logout state.
+    // ─────────────────────────────────────────
+
+    $liveSession = getLiveSessionAuth();
+
+    $isAuthenticated = $liveSession['authenticated'];
+    $userId          = $liveSession['userId'];
+    $sessionId       = $liveSession['sessionId'];
+
+    $auth = [
+        'authenticated' => $liveSession['authenticated'],
+        'username'      => $liveSession['username'],
+        'role'          => $liveSession['role']
+    ];
+
+    // ─────────────────────────────────────────
     // ⏱ LEDGER-BASED LAST ACTIVITY
-    // Uses bootstrap auth truth + canonical prompt ledger
+    // Uses canonical prompt ledger to determine
+    // idle state for authenticated users.
     // ─────────────────────────────────────────
 
     $lastActivity = ($isAuthenticated && $userId)
@@ -347,9 +367,13 @@ while (true) {
             'lastActivity'     => $lastActivity
         ];
 
-        // ⛔ Idle timeout reached
-        // Reopen the real session only when enforcement is needed
-        if ($idleState === 'expired' && $isAuthenticated && 1 == 0) {
+        // ─────────────────────────────────────────
+        // ⛔ IDLE TIMEOUT ENFORCEMENT
+        // Destroy session once timeout threshold
+        // is reached.
+        // ─────────────────────────────────────────
+
+        if ($idleState === 'expired' && $isAuthenticated) {
 
             if (session_status() !== PHP_SESSION_ACTIVE) {
                 session_start();
@@ -361,7 +385,6 @@ while (true) {
 
             $isAuthenticated = false;
             $userId = null;
-            $sessionId = session_id();
 
             $auth = [
                 'authenticated' => false,
@@ -370,24 +393,10 @@ while (true) {
                 'reason'        => 'timeout'
             ];
         }
-        // ⛔ Idle timeout reached
-        // DEBUG MODE — idle enforcement disabled
-        // This bypass allows verification that SSE auth logic
-        // is functioning without session destruction.
-
-        if ($idleState === 'expired' && $isAuthenticated) {
-
-            $auth = [
-                'authenticated' => true,
-                'username'      => $liveSession['username'],
-                'role'          => $liveSession['role'],
-                'debug'         => 'idle-bypass'
-            ];
-
-        }
 
     } elseif ($isAuthenticated) {
 
+        // Authenticated but no ledger activity yet
         $idle = [
             'state'            => 'active',
             'remainingSeconds' => $idleTimeoutSeconds,
@@ -397,6 +406,7 @@ while (true) {
 
     } else {
 
+        // Anonymous user
         $idle = [
             'state'            => 'anonymous',
             'remainingSeconds' => null,
@@ -407,6 +417,7 @@ while (true) {
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING
+    // Prevents connection timeouts
     // ─────────────────────────────────────────
 
     if (($now - $lastPing) >= 15) {
@@ -418,7 +429,8 @@ while (true) {
     }
 
     // ─────────────────────────────────────────
-    // 📦 1 HZ DATA UPDATE
+    // 📦 1HZ DATA UPDATE
+    // Sends dynamic projection payload
     // ─────────────────────────────────────────
 
     if ($now > $lastSecond) {
@@ -430,7 +442,7 @@ while (true) {
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
-        $payload["sessionId"] = session_id();
+        $payload["sessionId"] = $sessionId;
 
         $json = json_encode(
             $payload,
