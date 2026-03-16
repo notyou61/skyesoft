@@ -423,25 +423,125 @@ if ($action === "logout") {
 
     $pdo = null;
 
-    try { $pdo = getPDO(); } catch (Throwable $e) { $pdo = null; }
+    try {
+        $pdo = getPDO();
+    } catch (Throwable $e) {
+        $pdo = null;
+    }
 
-    $contactId = $_SESSION["userId"] ?? null;
-    $username  = $_SESSION["username"] ?? null;
-    $role      = $_SESSION["role"] ?? null;
+    // ─────────────────────────────────────────
+    // CAPTURE SESSION CONTEXT BEFORE DESTROY
+    // ─────────────────────────────────────────
+
+    $contactId = isset($_SESSION["userId"])
+        ? (int)$_SESSION["userId"]
+        : null;
+
+    $username = isset($_SESSION["username"])
+        ? (string)$_SESSION["username"]
+        : null;
+
+    $role = isset($_SESSION["role"])
+        ? (string)$_SESSION["role"]
+        : null;
+
+    $sessionId = session_id();
+
+    // ─────────────────────────────────────────
+    // AUTHENTICATION EVENT LOG
+    // ─────────────────────────────────────────
 
     if ($pdo instanceof PDO) {
-        logAuthAction($pdo, "auth.logout", is_numeric($contactId) ? (int)$contactId : null, [
-            "username" => $username,
-            "role"     => $role,
-            "ip"       => safeIp(),
-            "ua"       => safeUserAgent()
+        logAuthAction($pdo, "auth.logout", $contactId, [
+            "username"  => $username,
+            "role"      => $role,
+            "ip"        => safeIp(),
+            "ua"        => safeUserAgent(),
+            "sessionId" => $sessionId
         ]);
     }
 
-    // Clear session variables
+    // ─────────────────────────────────────────
+    // PROMPT LEDGER — LOGOUT EVENT
+    // ─────────────────────────────────────────
+
+    if ($contactId !== null) {
+
+        $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
+
+        $json = file_exists($ledgerFile)
+            ? file_get_contents($ledgerFile)
+            : false;
+
+        $data = is_string($json)
+            ? json_decode($json, true)
+            : null;
+
+        if (!is_array($data)) {
+            $data = [
+                "meta" => [
+                    "objectType" => "promptLedger",
+                    "schemaVersion" => "1.0.0",
+                    "codexTier" => 2,
+                    "description" => "Append-only ledger recording user prompts and optional system replies for auditability and historical reference only.",
+                    "governance" => [
+                        "authoritative" => true,
+                        "binding" => false,
+                        "mutable" => false
+                    ],
+                    "createdUnixTime" => time(),
+                    "lastUpdatedUnixTime" => time(),
+                    "notes" => [
+                        "Entries are descriptive only.",
+                        "Presence of a reply does not imply correctness, reuse, or authority.",
+                        "Ledger does not govern routing, execution, or inference.",
+                        "All timestamps are stored as Unix time (seconds)."
+                    ]
+                ],
+                "entries" => []
+            ];
+        }
+
+        if (!isset($data["entries"]) || !is_array($data["entries"])) {
+            $data["entries"] = [];
+        }
+
+        $nextId = "PRL-" . str_pad(
+            (string)(count($data["entries"]) + 1),
+            6,
+            "0",
+            STR_PAD_LEFT
+        );
+
+        $data["entries"][] = [
+            "promptId"         => $nextId,
+            "userId"           => $contactId,
+            "promptText"       => "system logout",
+            "responseText"     => "logout",
+            "intent"           => "ui_logout",
+            "intentConfidence" => 1,
+            "createdUnixTime"  => time()
+        ];
+
+        $data["meta"]["lastUpdatedUnixTime"] = time();
+
+        file_put_contents(
+            $ledgerFile,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            LOCK_EX
+        );
+    }
+
+    // ─────────────────────────────────────────
+    // CLEAR SESSION VARIABLES
+    // ─────────────────────────────────────────
+
     $_SESSION = [];
 
-    // Remove session cookie
+    // ─────────────────────────────────────────
+    // REMOVE SESSION COOKIE
+    // ─────────────────────────────────────────
+
     if (ini_get("session.use_cookies")) {
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
@@ -452,7 +552,10 @@ if ($action === "logout") {
         ]);
     }
 
-    // Destroy session
+    // ─────────────────────────────────────────
+    // DESTROY SESSION
+    // ─────────────────────────────────────────
+
     session_destroy();
 
     jsonOut(true);
