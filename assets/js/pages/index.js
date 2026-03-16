@@ -433,6 +433,8 @@ window.SkyIndex = {
             return;
         }
 
+        //
+        console.log('Idle State:', this.idleState)
         // 3️⃣ Idle Session Warning
         if (this.idleState) {
 
