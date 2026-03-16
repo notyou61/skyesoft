@@ -194,6 +194,11 @@ if ($action === "check") {
         session_start();
     }
 
+    // Refresh session activity timestamp
+    if (!empty($_SESSION["authenticated"])) {
+        $_SESSION["lastActivity"] = time();
+    }
+
     echo json_encode([
         "authenticated" => $_SESSION["authenticated"] ?? false,
         "userId"        => $_SESSION["userId"] ?? null,
