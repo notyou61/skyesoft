@@ -24,26 +24,62 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-// Start session once
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
+$cookieName = session_name();
+
+
+// ─────────────────────────────────────────
+// 🔐 LIVE SESSION AUTH LOOKUP
+// Reads the authoritative PHP session state
+// and returns the normalized auth payload.
+// This helper is used both at bootstrap and
+// during the live SSE loop.
+// ─────────────────────────────────────────
+function getLiveSessionAuth(): array
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+
+    $result = [
+        'authenticated' => !empty($_SESSION['authenticated']),
+        'userId'        => isset($_SESSION['userId']) ? (int)$_SESSION['userId'] : null,
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? null,
+        'sessionId'     => session_id()
+    ];
+
+    session_write_close();
+
+    return $result;
 }
 
-$sessionId = session_id();
 
-$isAuthenticated = !empty($_SESSION['authenticated']);
+// ─────────────────────────────────────────
+// 📡 INITIAL SESSION SNAPSHOT
+// Captures the current session state so the
+// stream has an authoritative starting point.
+// The live loop will refresh this later.
+// ─────────────────────────────────────────
 
-$userId = isset($_SESSION['userId'])
-    ? (int)$_SESSION['userId']
-    : null;
+$liveSession = getLiveSessionAuth();
+
+$isAuthenticated = $liveSession['authenticated'];
+$userId          = $liveSession['userId'];
+$sessionId       = $liveSession['sessionId'];
 
 $auth = [
     'authenticated' => $isAuthenticated,
-    'username'      => $_SESSION['username'] ?? null,
-    'role'          => $_SESSION['role'] ?? null
+    'username'      => $liveSession['username'],
+    'role'          => $liveSession['role']
 ];
 
-session_write_close();
+
+// ─────────────────────────────────────────
+// 📸 SNAPSHOT MODE DETECTION
+// Snapshot requests return a single JSON
+// payload rather than initiating an SSE
+// streaming connection.
+// ─────────────────────────────────────────
 
 $isSnapshot =
     isset($_GET['mode']) &&
@@ -105,7 +141,6 @@ function getLastPromptActivity(int $userId): ?int
 
     return $latest;
 }
-
 #endregion
 
 #region ⏳ SECTION 2 — SESSION IDLE POLICY
@@ -137,16 +172,6 @@ if ($isSnapshot) {
     // Snapshot requests must explicitly attach
     // to the browser's session cookie.
     // ─────────────────────────────────────────
-
-    $cookieName = session_name();
-
-    if (isset($_COOKIE[$cookieName])) {
-        session_id($_COOKIE[$cookieName]);
-    }
-
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
 
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
@@ -319,21 +344,17 @@ while (true) {
         // Reopen the real session only when enforcement is needed
         if ($idleState === 'expired' && $isAuthenticated) {
 
-            if (isset($_COOKIE[$cookieName])) {
-                session_id($_COOKIE[$cookieName]);
-            }
-
             if (session_status() !== PHP_SESSION_ACTIVE) {
                 session_start();
             }
 
             $_SESSION = [];
             session_destroy();
-
             session_write_close();
 
             $isAuthenticated = false;
             $userId = null;
+            $sessionId = session_id();
 
             $auth = [
                 'authenticated' => false,
@@ -346,8 +367,8 @@ while (true) {
     } elseif ($isAuthenticated) {
 
         $idle = [
-            'state'            => 'unknown',
-            'remainingSeconds' => null,
+            'state'            => 'active',
+            'remainingSeconds' => $idleTimeoutSeconds,
             'timeoutSeconds'   => $idleTimeoutSeconds,
             'lastActivity'     => null
         ];
@@ -387,7 +408,7 @@ while (true) {
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
-        $payload["sessionId"] = $sessionId;
+        $payload["sessionId"] = session_id();
 
         $json = json_encode(
             $payload,
