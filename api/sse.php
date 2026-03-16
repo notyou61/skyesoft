@@ -124,7 +124,14 @@ function getLastPromptActivity(int $userId): ?int
             continue;
         }
 
+        // Only consider events from this user
         if ((int)($entry["userId"] ?? 0) !== $userId) {
+            continue;
+        }
+
+        // Ignore logout events
+        $intent = $entry["intent"] ?? "";
+        if ($intent === "ui_logout") {
             continue;
         }
 
