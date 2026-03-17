@@ -56,6 +56,36 @@ function aiFail(string $msg): never {
     exit;
 }
 
+// DB Connection
+
+$dbUser = skyesoftGetEnv("DB_USER");
+$dbPass = skyesoftGetEnv("DB_PASS");
+$dbHost = skyesoftGetEnv("DB_HOST") ?? "localhost";
+$dbName = skyesoftGetEnv("DB_NAME") ?? "skyesoft";
+
+if (!$dbUser || !$dbPass) {
+    error_log('[env] DB credentials missing');
+    aiFail("Database configuration error.");
+}
+
+try {
+    $db = new PDO(
+        "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
+        $dbUser,
+        $dbPass,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_PERSISTENT => true
+        ]
+    );
+
+    error_log('[db] connection established');
+
+} catch (Throwable $e) {
+    error_log("[db] connection failed: " . $e->getMessage());
+    aiFail("Database connection failed.");
+}
+
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
@@ -353,50 +383,62 @@ TEXT;
 }
 
 // Append Prompt Ledger Entry (non-blocking, best-effort) — creates ledger if missing, appends entry with sequential ID, updates meta timestamp
-function appendPromptLedgerEntry(array $entry): void {
+function insertActionPrompt(array $entry, PDO $db): void {
 
-    $root       = dirname(__DIR__);
-    $ledgerPath = "$root/reports/promptLedger.json";
+    // #region 🧾 Validate input
 
-    // Create ledger if missing
-    if (!file_exists($ledgerPath)) {
-
-        $initial = [
-            "meta" => [
-                "objectType"    => "promptLedger",
-                "schemaVersion" => "1.0.0",
-                "codexTier"     => 2,
-                "createdAt"     => time(),
-                "lastUpdatedAt" => time()
-            ],
-            "entries" => []
-        ];
-
-        file_put_contents(
-            $ledgerPath,
-            json_encode($initial, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
-    }
-
-    $ledger = json_decode(file_get_contents($ledgerPath), true);
-
-    if (!is_array($ledger) || !isset($ledger["entries"])) {
-        error_log("[prompt-ledger] Invalid ledger structure");
+    if (!isset($entry['userId']) || !isset($entry['promptText'])) {
+        error_log('[actions] Missing required fields');
         return;
     }
 
-    $count = count($ledger["entries"]) + 1;
+    // Defaults
+    $response   = $entry['responseText']     ?? null;
+    $intent     = $entry['intent']           ?? null;
+    $confidence = $entry['intentConfidence'] ?? null;
+    $unixTime   = $entry['createdUnixTime'] ?? time();
 
-    $entry["promptId"]        = sprintf("PRL-%06d", $count);
-    $entry["createdUnixTime"] = $entry["createdUnixTime"] ?? time();
+    // #endregion
 
-    $ledger["entries"][] = $entry;
-    $ledger["meta"]["lastUpdatedAt"] = time();
 
-    file_put_contents(
-        $ledgerPath,
-        json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-    );
+    // #region 🧠 Map to action type
+
+    // Default = prompt
+    $actionTypeId = 3;
+
+    if ($intent === 'ui_login')  $actionTypeId = 1;
+    if ($intent === 'ui_logout') $actionTypeId = 2;
+
+    // #endregion
+
+
+    // #region 📥 Insert into tblActions
+
+    $stmt = $db->prepare("
+        INSERT INTO tblActions (
+            actionTypeId,
+            contactId,
+            actionOrigin,
+            actionUnix,
+            promptText,
+            responseText,
+            intent,
+            intentConfidence
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $stmt->execute([
+        $actionTypeId,
+        $entry['userId'],     // maps to contactId
+        0,                    // origin (user)
+        $unixTime,
+        $entry['promptText'],
+        $response,
+        $intent,
+        $confidence
+    ]);
+
+    // #endregion
 }
 
 // Load Runtome Domain Registry Keys (Authoritative list of valid domains for intent classification)
@@ -1049,45 +1091,24 @@ if (!empty($_SESSION['authenticated'])) {
 session_write_close();
 
 // ------------------------------------------------
-// Prompt Ledger (Non-blocking)
+// Action Logging (Authoritative - tblActions)
 // ------------------------------------------------
 
-if (isset($query) && isset($response)) {
+if (isset($query) && isset($response) && $sessionUserId) {
 
     try {
 
-        $root = dirname(__DIR__);
-        $ledgerPath = $root . "/data/authoritative/promptLedger.json";
-
-        if (file_exists($ledgerPath)) {
-
-            $ledgerData = json_decode(file_get_contents($ledgerPath), true);
-
-            if (is_array($ledgerData) && isset($ledgerData["entries"])) {
-
-                $nextNumber = count($ledgerData["entries"]) + 1;
-
-                $ledgerData["entries"][] = [
-                    "promptId"         => sprintf("PRL-%06d", $nextNumber),
-                    "userId"           => $sessionUserId,
-                    "promptText"       => $query,
-                    "responseText"     => trim($response),
-                    "intent"           => $intent ?? "unknown",
-                    "intentConfidence" => $confidence ?? null,
-                    "createdUnixTime"  => time()
-                ];
-
-                $ledgerData["meta"]["lastUpdatedUnixTime"] = time();
-
-                file_put_contents(
-                    $ledgerPath,
-                    json_encode($ledgerData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-                );
-            }
-        }
+        insertActionPrompt([
+            "userId" => $sessionUserId,
+            "promptText" => $query,
+            "responseText" => trim($response),
+            "intent" => $intent ?? "unknown",
+            "intentConfidence" => $confidence ?? null,
+            "createdUnixTime" => time()
+        ], $db);
 
     } catch (Throwable $e) {
-        error_log("[prompt-ledger] append failed: " . $e->getMessage());
+        error_log("[actions] insert failed: " . $e->getMessage());
     }
 }
 
