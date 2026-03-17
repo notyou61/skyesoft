@@ -56,6 +56,11 @@ function aiFail(string $msg): never {
     exit;
 }
 
+//  Action Origins
+const ACTION_ORIGIN_USER = 1;
+const ACTION_ORIGIN_SYSTEM = 2;
+const ACTION_ORIGIN_AUTOMATION = 3;
+
 // DB Connection
 
 $dbUser = skyesoftGetEnv("DB_USER");
@@ -79,7 +84,9 @@ try {
         ]
     );
 
-    error_log('[db] connection established');
+    if (skyesoftGetEnv("APP_ENV") === "local") {
+        error_log('[db] connection established');
+    }
 
 } catch (Throwable $e) {
     error_log("[db] connection failed: " . $e->getMessage());
@@ -343,24 +350,41 @@ function loadSseSnapshot(): ?array {
 // Extract Permit Context
 function extractPermitContext(array $sse): string {
 
+    // #region Extract + Safe Defaults
+
     $kpi       = $sse["kpi"]["atAGlance"] ?? [];
     $breakdown = $sse["kpi"]["statusBreakdown"] ?? [];
+
+    $totalActive       = $kpi["totalActive"] ?? 0;
+    $oldestOutstanding = $kpi["oldestOutstandingDays"] ?? 0;
+    $avgTurnaround     = $kpi["averageTurnaroundDays"] ?? 0;
+
+    $underReview = $breakdown["under_review"] ?? 0;
+    $corrections = $breakdown["corrections"] ?? 0;
+    $ready       = $breakdown["ready_to_issue"] ?? 0;
+    $issued      = $breakdown["issued"] ?? 0;
+
+    // #endregion
+
+    // #region Render Output
 
     return <<<TEXT
 Operational Permit Snapshot (read-only, current):
 
-- Total active permits: {$kpi["totalActive"]}
-- Oldest outstanding: {$kpi["oldestOutstandingDays"]} days
-- Average turnaround: {$kpi["averageTurnaroundDays"]} days
+- Total active permits: {$totalActive}
+- Oldest outstanding: {$oldestOutstanding} days
+- Average turnaround: {$avgTurnaround} days
 
 Status breakdown:
-- Under review: {$breakdown["under_review"]}
-- Corrections: {$breakdown["corrections"]}
-- Ready to issue: {$breakdown["ready_to_issue"]}
-- Issued: {$breakdown["issued"]}
+- Under review: {$underReview}
+- Corrections: {$corrections}
+- Ready to issue: {$ready}
+- Issued: {$issued}
 
 Source: SSE snapshot (not persisted)
 TEXT;
+
+    // #endregion
 }
 
 // Extracts current date/time from SSE snapshot
@@ -369,7 +393,7 @@ function extractTimeContext(array $sse): string {
     $time = $sse["timeDateArray"]["currentLocalTime"] ?? null;
     $date = $sse["timeDateArray"]["currentDate"] ?? null;
 
-    if (!$time || !$date) {
+    if (empty($time) || empty($date)) {
         return "";
     }
 
@@ -383,65 +407,104 @@ TEXT;
 }
 
 // Append Prompt Ledger Entry (non-blocking, best-effort) — creates ledger if missing, appends entry with sequential ID, updates meta timestamp
-function insertActionPrompt(array $entry, PDO $db): void {
+function insertActionPrompt(array $entry, ?PDO $db): void {
 
-    // #region 🧾 Validate input
+    // #region 🧾 Validate
 
-    if (!isset($entry['userId']) || !isset($entry['promptText'])) {
-        error_log('[actions] Missing required fields');
+    if (!$db) {
+        error_log('[actions] DB not available');
         return;
     }
 
-    // Defaults
-    $response   = $entry['responseText']     ?? null;
-    $intent     = $entry['intent']           ?? null;
-    $confidence = $entry['intentConfidence'] ?? null;
-    $unixTime   = $entry['createdUnixTime'] ?? time();
+    if (!isset($entry['promptText'])) {
+        error_log('[actions] Missing promptText');
+        return;
+    }
+
+    // Normalize contactId (backward compatibility)
+    $contactId = $entry['contactId'] ?? $entry['userId'] ?? null;
+
+    if (!$contactId) {
+        error_log('[actions] Missing contactId');
+        return;
+    }
 
     // #endregion
 
 
-    // #region 🧠 Map to action type
+    // #region 🧠 Defaults
+
+    $response   = $entry['responseText']     ?? null;
+    $intent     = $entry['intent']           ?? null;
+    $confidence = $entry['intentConfidence'] ?? null;
+    $unixTime   = $entry['createdUnixTime']  ?? time();
+
+    // #endregion
+
+
+    // #region 🧭 Action Origin (use global constants ideally)
+
+    $origin = defined('ACTION_ORIGIN_USER')
+        ? ACTION_ORIGIN_USER
+        : 1; // fallback safe default
+
+    // #endregion
+
+
+    // #region 🧠 Action Type Mapping
 
     // Default = prompt
     $actionTypeId = 3;
 
-    if ($intent === 'ui_login')  $actionTypeId = 1;
-    if ($intent === 'ui_logout') $actionTypeId = 2;
-
+    if ($intent === 'ui_login') {
+        $actionTypeId = 1;
+    } elseif ($intent === 'ui_logout') {
+        $actionTypeId = 2;
+    } elseif (!$intent) {
+        error_log('[actions] missing intent, defaulting to prompt');
+    }
     // #endregion
 
 
-    // #region 📥 Insert into tblActions
+    // #region 📥 Insert
 
-    $stmt = $db->prepare("
-        INSERT INTO tblActions (
-            actionTypeId,
-            contactId,
-            actionOrigin,
-            actionUnix,
-            promptText,
-            responseText,
-            intent,
-            intentConfidence
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ");
+    try {
 
-    $stmt->execute([
-        $actionTypeId,
-        $entry['userId'],     // maps to contactId
-        0,                    // origin (user)
-        $unixTime,
-        $entry['promptText'],
-        $response,
-        $intent,
-        $confidence
-    ]);
+        $stmt = $db->prepare("
+            INSERT INTO tblActions (
+                action_type_id,
+                contact_id,
+                action_origin,
+                action_unix,
+                prompt_text,
+                response_text,
+                intent,
+                intent_confidence
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $promptText = mb_substr((string)$entry['promptText'], 0, 5000);
+        $response   = $response ? mb_substr((string)$response, 0, 10000) : null;
+
+        $stmt->execute([
+            $actionTypeId,
+            $contactId,
+            $origin,
+            $unixTime,
+            $promptText,
+            $response,
+            $intent,
+            $confidence
+        ]);
+
+    } catch (Throwable $e) {
+        error_log('[actions] insert failed: ' . $e->getMessage());
+    }
 
     // #endregion
 }
 
-// Load Runtome Domain Registry Keys (Authoritative list of valid domains for intent classification)
+// Load Runtime Domain Registry Keys (Authoritative list of valid domains for intent classification)
 function loadRuntimeDomainRegistryKeys(): array {
 
     $root = dirname(__DIR__);
@@ -471,17 +534,6 @@ function loadRuntimeDomainRegistryKeys(): array {
             fn ($k) => is_string($k) && $k !== ""
         )
     );
-}
-
-// Returns formatted governance/remediation action URL (or empty string)
-function formatGovernanceActionLink(string $action): string{
-    $map = [
-        "run_inventory_builder"    => "https://skyelighting.com/skyesoft/api/repositoryInventoryBuilder.php?mode=reconcile",
-        "run_merkle_builder"       => "https://skyelighting.com/skyesoft/api/merkleBuilder.php?mode=accept",
-        "review_unexpected_files"  => "https://skyelighting.com/skyesoft/api/violationActionResolver.php"
-    ];
-
-    return $map[$action] ?? '';
 }
 
 // Build Governance Surface Summary (for AI injection and developer visibility) based on unresolved structural violations — includes Merkle integrity status, inventory deviation details, and actionable next steps for developers.
@@ -688,22 +740,33 @@ function callOpenAI(
         $payload["response_format"] = $responseFormat;
     }
 
+    // ✅ Safe JSON encoding
+    $encodedPayload = json_encode($payload);
+    if ($encodedPayload === false) {
+        error_log("[askOpenAI] JSON encode failed");
+        return null;
+    }
+
     $context = stream_context_create([
         "http" => [
             "method"        => "POST",
-            "header"        => implode("\r\n", [
+            "header"        => [
                 "Content-Type: application/json",
                 "Authorization: Bearer {$apiKey}"
-            ]),
-            "content"       => json_encode($payload),
+            ],
+            "content"       => $encodedPayload,
             "timeout"       => 30,
-            "ignore_errors" => true // lets us read non-200 bodies
+            "ignore_errors" => true
         ]
     ]);
 
     $response = @file_get_contents($url, false, $context);
 
-    $statusLine = $http_response_header[0] ?? "no-status";
+    $statusLine = isset($http_response_header[0])
+        ? $http_response_header[0]
+        : "no-status";
+
+    // ✅ FIXED
     $is200 = (strpos($statusLine, " 200 ") !== false);
 
     if (!$response || !$is200) {
@@ -809,6 +872,10 @@ if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
 #endregion
 
 #region SECTION 5 — Input Resolution
+$intent     = null;
+$confidence = null;
+$query      = null;
+
 $root   = dirname(__DIR__);
 
 $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
@@ -827,12 +894,15 @@ if (!$aiFlag) {
 #endregion
 
 #region SECTION 6 — Narrative Generation
+
 $response           = null;
 $narrativeGenerated = false;
 $reportPath         = null;
+$role               = "askOpenAI";
 
 if ($type === "narrative") {
 
+    // 🧾 Resolve task input
     $task = $_GET["task"] ?? ($argv[3] ?? null);
     if (!$task) {
         aiFail("task required for narrative generation.");
@@ -844,17 +914,26 @@ if ($type === "narrative") {
         aiFail("Report not found: {$reportPath}");
     }
 
+    // 📥 Load report
     $report = json_decode(file_get_contents($reportPath), true);
     if (!is_array($report)) {
         aiFail("Invalid report JSON.");
     }
 
+    // 🧠 Build audit facts
     $auditFacts = $report["auditFacts"]
         ?? buildAuditFacts($report);
 
+    $auditFactsJson = json_encode(
+        $auditFacts,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
+
+    // 🗓 Metadata
     $date   = date("Y-m-d", $report["timestamp"] ?? time());
     $codexV = getCodexVersion();
 
+    // 🤖 Prompt Construction
     $basePrompt = <<<PROMPT
 This is a pre-System Initialization Standard (SIS) audit narrative.
 All findings are informational and non-binding.
@@ -874,23 +953,34 @@ Max 400 words. Professional tone.
 Date: {$date}. Codex v{$codexV}.
 
 Audit Facts (JSON):
-{json_encode($auditFacts, JSON_PRETTY_PRINT)}
+{$auditFactsJson}
 PROMPT;
 
+    // 🚀 AI Execution
     $response = callOpenAI(
         injectStandingOrders($basePrompt),
         $apiKey
     );
 
+    // 💾 Persist Narrative
+
     if ($response) {
-        $report["narrative"] = $response;
+
+        $report["narrative"] = trim($response);
+
         file_put_contents(
             $reportPath,
-            json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+            json_encode(
+                $report,
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+            )
         );
+
         $narrativeGenerated = true;
     }
+
 }
+
 #endregion
 
 #region SECTION 7 — Skyebot (Authority-Aware, Deterministic)
@@ -1035,7 +1125,7 @@ PROMPT;
     $sseSnapshot = loadSseSnapshot();
 
     $authoritativeContext = $sseSnapshot
-        ? json_encode($sseSnapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        ? extractPermitContext($sseSnapshot) . "\n\n" . extractTimeContext($sseSnapshot)
         : "No authoritative context available.";
 
     $responsePrompt = loadResponseGenerationPrompt();
@@ -1072,15 +1162,13 @@ if (!isset($response) || trim((string)$response) === '') {
 }
 
 // Safe logging only
-error_log('ASK_OPENAI RESPONSE RAW: ' . substr((string)$response, 0, 500));
+error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode([
+    'preview' => mb_substr((string)$response, 0, 300)
+]));
 
 // ------------------------------------------------
 // Session Activity Heartbeat
 // ------------------------------------------------
-
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
 
 $sessionUserId = $_SESSION["userId"] ?? null;
 
@@ -1094,13 +1182,13 @@ session_write_close();
 // Action Logging (Authoritative - tblActions)
 // ------------------------------------------------
 
-if (isset($query) && isset($response) && $sessionUserId) {
+if ($sessionUserId && isset($response)) {
 
     try {
 
         insertActionPrompt([
             "userId" => $sessionUserId,
-            "promptText" => $query,
+            "promptText" => $query ?? '[system:narrative]',
             "responseText" => trim($response),
             "intent" => $intent ?? "unknown",
             "intentConfidence" => $confidence ?? null,
