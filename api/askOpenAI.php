@@ -100,39 +100,55 @@ try {
 // Loads .env from secure location (3 levels up) → putenv, $_ENV, $_SERVER
 function skyesoftLoadEnv(): void {
 
-    $envPath = dirname(__DIR__, 3) . '/secure/db.env';
+    // #region Resolve paths
 
-    // Validate .env existence
-    if (!file_exists($envPath) || !is_readable($envPath)) {
-        error_log("[env-loader] FAILED to load .env at $envPath");
-        return;
-    }
+    $basePath = dirname(__DIR__, 3) . '/secure';
 
-    // Parse file line-by-line
-    foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    $envFiles = [
+        $basePath . '/.env',    // general / OpenAI
+        $basePath . '/db.env'   // database
+    ];
 
-        $line = trim($line);
+    // #endregion
 
-        // Skip comments / invalid lines
-        if (
-            $line === '' ||
-            str_starts_with($line, '#') ||
-            !str_contains($line, '=')
-        ) {
+
+    // #region Load each env file
+
+    foreach ($envFiles as $envPath) {
+
+        if (!file_exists($envPath) || !is_readable($envPath)) {
+            error_log("[env-loader] Skipped missing: $envPath");
             continue;
         }
 
-        [$key, $value] = explode('=', $line, 2);
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
 
-        $key   = trim($key);
-        $value = trim($value, " \t\n\r\0\x0B\"'");
+            $line = trim($line);
 
-        putenv("$key=$value");
-        $_ENV[$key]    = $value;
-        $_SERVER[$key] = $value;
+            // Skip comments / invalid lines
+            if (
+                $line === '' ||
+                str_starts_with($line, '#') ||
+                !str_contains($line, '=')
+            ) {
+                continue;
+            }
+
+            [$key, $value] = explode('=', $line, 2);
+
+            $key   = trim($key);
+            $value = trim($value, " \t\n\r\0\x0B\"'");
+
+            // Set into environment
+            putenv("$key=$value");
+            $_ENV[$key]    = $value;
+            $_SERVER[$key] = $value;
+        }
+
+        error_log("[env-loader] Loaded: $envPath");
     }
 
-    error_log("[env-loader] Loaded .env from $envPath");
+    // #endregion
 }
 
 // Safe env var reader — checks getenv → $_ENV → $_SERVER
