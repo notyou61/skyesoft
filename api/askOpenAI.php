@@ -100,7 +100,7 @@ try {
 // Loads .env from secure location (3 levels up) → putenv, $_ENV, $_SERVER
 function skyesoftLoadEnv(): void {
 
-    $envPath = dirname(__DIR__, 3) . '/secure/.env';
+    $envPath = dirname(__DIR__, 3) . '/secure/db.env';
 
     // Validate .env existence
     if (!file_exists($envPath) || !is_readable($envPath)) {
