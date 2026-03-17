@@ -881,10 +881,15 @@ function buildAuditFacts(array $report): array {
 #endregion
 
 #region SECTION 4.5 — Library Mode Guard
-// Stop controller execution when used as a library (e.g., review-elc-staging.php)
-if (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE) {
+
+// Prevent controller execution when included internally (test harness, CLI, etc.)
+if (
+    (defined('SKYESOFT_INTERNAL') && SKYESOFT_INTERNAL) ||
+    (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE)
+) {
     return;
 }
+
 #endregion
 
 #region SECTION 5 — Input Resolution
