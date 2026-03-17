@@ -4365,6 +4365,132 @@
                     "governedBy": "constitution.articleIII"
                 }
             },
+            "crudActionClassificationStandard": {
+                "title": {
+                "icon": 16,
+                "text": "CRUD Action Classification Standard"
+                },
+                "tier": 2,
+                "type": "Behavioral / Data Intent Standard",
+                "hierarchyOrder": 4,
+                "version": "1.0.0",
+
+                "preamble": {
+                "icon": 7,
+                "text": "This Standard defines the interpretation of CRUD classifications within Skyesoft’s immutable, append-only architecture. All system activity is recorded as new action entries. CRUD classifications describe the intent and effect of an action, not physical database operations."
+                },
+
+                "corePrinciple": {
+                "text": "All actions are INSERT operations. CRUD defines meaning, not mechanics."
+                },
+
+                "definitions": {
+
+                "create": {
+                    "label": "CREATE",
+                    "icon": 67,
+                    "description": "Represents the introduction of a new event or state into the system.",
+                    "examples": [
+                    "User login",
+                    "User logout",
+                    "Prompt received",
+                    "Contact created",
+                    "Permit submitted"
+                    ],
+                    "definition": "A CREATE action records that something has occurred. All actions are physically created as new records."
+                },
+
+                "read": {
+                    "label": "READ",
+                    "icon": 12,
+                    "description": "Represents the retrieval or observation of system state without altering it.",
+                    "examples": [
+                    "Asking the time",
+                    "Viewing permit status",
+                    "Loading dashboard data"
+                    ],
+                    "definition": "A READ action records that information was requested or observed. No system state is changed."
+                },
+
+                "update": {
+                    "label": "UPDATE",
+                    "icon": 24,
+                    "description": "Represents the correction or supersession of previously recorded information, captured as a new action.",
+                    "examples": [
+                    "Permit status changed",
+                    "Contact information revised",
+                    "Correction of an error (e.g., modifying an incorrect date)"
+                    ],
+                    "definition": "An UPDATE action records that prior information was incorrect or outdated and has been replaced by a new authoritative value. The original record remains unchanged; the new record defines the current state."
+                },
+
+                "delete": {
+                    "label": "DELETE",
+                    "icon": 59,
+                    "description": "Represents logical invalidation or deactivation of an entity.",
+                    "examples": [
+                    "Contact archived",
+                    "Permit voided",
+                    "Record marked inactive"
+                    ],
+                    "definition": "A DELETE action does not remove data. It records that a prior entity is no longer valid or active."
+                }
+                },
+
+                "nonDestructiveRule": {
+                "rules": [
+                    "No records are physically deleted.",
+                    "No records are overwritten.",
+                    "All state changes are represented by new action entries."
+                ]
+                },
+
+                "interpretationNotes": [
+                "Login and logout are both CREATE actions (independent events).",
+                "Actions do not modify prior actions.",
+                "Corrections are recorded as UPDATE actions, not edits.",
+                "State is derived from the sequence of actions, not mutation.",
+                "Multiple actions may reference the same entity across time to represent lifecycle."
+                ],
+
+                "dataAlignment": {
+                "tblActionTypes": {
+                    "requiredColumns": [
+                    "action_type_id",
+                    "crud_class",
+                    "action_name",
+                    "is_active",
+                    "created_unix"
+                    ]
+                },
+                "tblActions": {
+                    "requirements": [
+                    "All actions must be stored as new records.",
+                    "No UPDATE or DELETE operations are permitted on action records.",
+                    "tblActions serves as the authoritative event ledger."
+                    ]
+                }
+                },
+
+                "enforcement": {
+                "notes": "Any mutation or deletion of action records constitutes a structural violation.",
+                "auditedBy": "repositoryAuditor",
+                "violationSeverity": "structural"
+                },
+
+                "relationships": {
+                "references": [
+                    "sessionAuditStandard",
+                    "dataIntentStandard",
+                    "repositoryStandard"
+                ],
+                "governedBy": "constitution.articleIII"
+                },
+
+                "summary": {
+                "text": "Skyesoft records reality as a sequence of immutable actions. CRUD defines the meaning of those actions, not how data is physically stored or modified."
+                }
+            },
             "systemInitializationStandard": {
                 "title": {
                     "icon": 68,
