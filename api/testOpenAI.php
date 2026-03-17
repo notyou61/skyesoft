@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/api/askOpenAI.php';
+require_once __DIR__ . '/askOpenAI.php';
 
 // Simulate env load
 skyesoftLoadEnv();
