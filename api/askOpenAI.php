@@ -523,6 +523,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     try {
 
+        // Prepare Statement
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId,
@@ -540,6 +541,10 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
+        // Error Log
+        error_log('[actions] INSERT ATTEMPT');
+
+        // Execute Statement
         $stmt->execute([
             $actionTypeId,
             $contactId,
@@ -559,6 +564,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
+        throw $e; // 🚨 FORCE VISIBILITY
     }
 
     // #endregion
