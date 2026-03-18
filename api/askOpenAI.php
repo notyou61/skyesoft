@@ -963,7 +963,8 @@ $aiFlag =
     || (($argv[2] ?? "") === "ai=true");
 
 if (!$aiFlag) {
-    aiFail("ai=true required to invoke AI.");
+    error_log('[askOpenAI] AI flag missing — defaulting to enabled');
+    $aiFlag = true;
 }
 #endregion
 
@@ -1238,7 +1239,10 @@ PROMPT;
 
 // Ensure response exists
 if (!isset($response) || trim((string)$response) === '') {
-    $response = "⚠ AI returned no usable response.";
+    
+    error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
+
+    $response = "I'm here and ready — try asking that again.";
 }
 
 // Safe logging only (mbstring-safe)

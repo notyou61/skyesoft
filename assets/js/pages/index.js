@@ -1085,7 +1085,7 @@ window.SkyIndex = {
             // Console Log (Remove When Finished)
             console.log('[Geo]', location);
             // Fetch
-            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+            const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
