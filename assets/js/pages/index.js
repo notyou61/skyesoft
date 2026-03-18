@@ -332,6 +332,37 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🌍 Location Resolver (non-blocking, permission-aware)
+    async getLocationSafe() {
+
+        return new Promise((resolve) => {
+
+            if (!navigator.geolocation) {
+                resolve({ latitude: null, longitude: null });
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+
+                // Success
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude
+                }),
+
+                // Fail (permission denied, timeout, etc)
+                () => resolve({
+                    latitude: null,
+                    longitude: null
+                }),
+
+                { timeout: 2500 } // keep UI snappy
+
+            );
+        });
+    },
+    // #endregion
+
     // #region ⏳ Thinking State
     setThinking(isThinking) {
         this.isThinking = isThinking;
@@ -1044,9 +1075,26 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
-            const res = await fetch(
-                `/skyesoft/api/askOpenAI.php?ai=true&type=skyebot&userQuery=${encodeURIComponent(prompt)}`
-            );
+            // 🌍 Resolve Location (non-blocking)
+            const location = await Promise.race([
+                this.getLocationSafe(),
+                new Promise(resolve =>
+                    setTimeout(() => resolve({ latitude: null, longitude: null }), 1500)
+                )
+            ]);
+            // Console Log (Remove When Finished)
+            console.log('[Geo]', location);
+            // Fetch
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userQuery: prompt,
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                })
+            });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
