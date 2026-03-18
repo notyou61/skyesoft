@@ -466,15 +466,15 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     // #region 🧠 Defaults
 
     $response   = $entry['responseText']     ?? null;
-    $intent     = $entry['intent']           ?? null;
-    $confidence = $entry['intentConfidence'] ?? null;
+    $intent     = $entry['intent']           ?? 'unknown';
+    $confidence = $entry['intentConfidence'] ?? 0.0;
     $unixTime   = $entry['createdUnixTime']  ?? time();
 
     // #endregion
 
     // #region 🧭 Action Origin (use global constants ideally)
 
-    $origin = ($contactId === ($_SESSION['contactId'] ?? null))
+    $origin = isset($_SESSION['contactId']) && $contactId == $_SESSION['contactId']
         ? ACTION_ORIGIN_USER
         : ACTION_ORIGIN_SYSTEM;
 
@@ -535,6 +535,9 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $intent,
             $confidence
         ]);
+
+        // Log success with key details (avoid logging full prompt/response for privacy)
+        error_log('[actions] INSERT SUCCESS: contactId=' . $contactId . ', intent=' . $intent);
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
