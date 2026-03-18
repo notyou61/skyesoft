@@ -541,7 +541,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
-        // Error Log
         error_log('[actions] INSERT ATTEMPT');
 
         // Execute Statement
@@ -560,11 +559,14 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $userAgent
         ]);
 
-        error_log('[actions] INSERT SUCCESS: contactId=' . $contactId . ', intent=' . $intent);
+        // ✅ RIGHT HERE
+        $actionId = $db->lastInsertId();
+
+        error_log('[actions] INSERT SUCCESS: actionId=' . $actionId);
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
-        throw $e; // 🚨 FORCE VISIBILITY
+        throw $e;
     }
 
     // #endregion
