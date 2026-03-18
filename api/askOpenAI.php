@@ -1275,6 +1275,8 @@ $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] 
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
 // Session Contact ID
 $sessionContactId = $_SESSION["contactId"] ?? null;
+//
+error_log('[SESSION DEBUG] ' . json_encode($_SESSION));
 // Session Contact ID Conditional
 if ($sessionContactId && isset($response)) {
 
