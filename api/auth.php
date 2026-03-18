@@ -232,6 +232,7 @@ if ($action === "check") {
     echo json_encode([
         "authenticated" => $_SESSION["authenticated"] ?? false,
         "userId"        => $_SESSION["userId"] ?? null,
+        "contactId"     => $_SESSION["contactId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
         "role"          => $_SESSION["role"] ?? null,
         "sessionId"     => session_id()
@@ -337,7 +338,8 @@ if ($action === "login") {
     // ─────────────────────────────────────────
 
     $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"];
+    $_SESSION["userId"]        = (int)$user["contactId"];   // legacy compatibility
+    $_SESSION["contactId"]     = (int)$user["contactId"];   // canonical session identity
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
@@ -433,9 +435,11 @@ if ($action === "logout") {
     // CAPTURE SESSION CONTEXT BEFORE DESTROY
     // ─────────────────────────────────────────
 
-    $contactId = isset($_SESSION["userId"])
-        ? (int)$_SESSION["userId"]
-        : null;
+    $contactId = isset($_SESSION["contactId"])
+        ? (int)$_SESSION["contactId"]
+        : (isset($_SESSION["userId"])
+            ? (int)$_SESSION["userId"]
+            : null);
 
     $username = isset($_SESSION["username"])
         ? (string)$_SESSION["username"]
