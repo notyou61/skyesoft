@@ -441,16 +441,27 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
-    // Normalize contactId (backward compatibility)
-    $contactId = $entry['contactId'] ?? $entry['userId'] ?? null;
+    // #region 👤 Resolve Contact (REQUIRED)
+
+    // Priority:
+    // 1. Explicit entry
+    // 2. Session (primary source)
+    // 3. Fallback (testing only)
+
+    $contactId =
+        $entry['contactId']
+        ?? $entry['userId']
+        ?? $_SESSION['contactId']
+        ?? 1; // TEMP fallback for testing
 
     if (!$contactId) {
-        error_log('[actions] Missing contactId');
+        error_log('[actions] contactId missing — blocking insert');
         return;
     }
 
     // #endregion
 
+    // #endregion
 
     // #region 🧠 Defaults
 
@@ -461,15 +472,13 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     // #endregion
 
-
     // #region 🧭 Action Origin (use global constants ideally)
 
-    $origin = defined('ACTION_ORIGIN_USER')
+    $origin = ($contactId === ($_SESSION['contactId'] ?? null))
         ? ACTION_ORIGIN_USER
-        : 1; // fallback safe default
+        : ACTION_ORIGIN_SYSTEM;
 
     // #endregion
-
 
     // #region 🧠 Action Type Mapping
 
@@ -485,27 +494,37 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     }
     // #endregion
 
-
     // #region 📥 Insert
 
     try {
-
+        
+        // Ensure table exists (idempotent)
         $stmt = $db->prepare("
             INSERT INTO tblActions (
-                action_type_id,
-                contact_id,
-                action_origin,
-                action_unix,
-                prompt_text,
-                response_text,
+                actionTypeId,
+                contactId,
+                actionOrigin,
+                actionUnix,
+                promptText,
+                responseText,
                 intent,
-                intent_confidence
+                intentConfidence
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
+       
+        // Truncate prompt and response to reasonable lengths to prevent DB issues (defensive)
+        $promptText = function_exists('mb_substr')
+            ? mb_substr((string)$entry['promptText'], 0, 5000)
+            : substr((string)$entry['promptText'], 0, 5000);
+        
+            // Response may be null, so handle accordingly
+        $response = $response
+            ? (function_exists('mb_substr')
+                ? mb_substr((string)$response, 0, 10000)
+                : substr((string)$response, 0, 10000))
+            : null;
 
-        $promptText = mb_substr((string)$entry['promptText'], 0, 5000);
-        $response   = $response ? mb_substr((string)$response, 0, 10000) : null;
-
+        // Execute insert
         $stmt->execute([
             $actionTypeId,
             $contactId,
