@@ -1129,12 +1129,33 @@ window.SkyIndex = {
 
             // ───────────────────────────────────────────────
             // Domain Intent (authoritative short-circuit)
+            // Parse backend payload → route to domain handlers
             // ───────────────────────────────────────────────
-            if (data?.type === 'domain_intent' && typeof data.domain === 'string') {
+            if (data?.type === 'domain_intent') {
 
-                const domainKey = data.domain;
-                const mode      = data.mode;
+                // #region 🧾 Normalize Payload (backend returns JSON string)
+                let parsed = null;
 
+                try {
+                    parsed = typeof data.response === 'string'
+                        ? JSON.parse(data.response)
+                        : data.response;
+                } catch (e) {
+                    console.warn('[SkyIndex] Failed to parse domain intent response');
+                }
+
+                if (!parsed || typeof parsed.domain !== 'string') {
+                    this.appendSystemLine('⚠ Invalid domain response.');
+                    return;
+                }
+                // #endregion
+
+                // #region 🧠 Extract Intent Components
+                const domainKey = parsed.domain;
+                const mode      = parsed.mode;
+                // #endregion
+
+                // #region 🔍 Resolve Domain Config
                 const domainConfig = this.getDomainConfig(domainKey);
 
                 if (!domainConfig) {
@@ -1142,27 +1163,33 @@ window.SkyIndex = {
                     this.appendSystemLine('⚠ Unknown domain.');
                     return;
                 }
+                // #endregion
 
-                // Inquiry (read)
+                // #region 📖 Inquiry (read-only)
                 if (mode === 'inquiry' && domainConfig.capabilities?.read === true) {
                     this.showDomain(domainKey);
                     return;
                 }
+                // #endregion
 
-                // Future: Repair request
+                // #region 🛠 Repair Request (planned capability)
                 if (mode === 'repair_request' && domainConfig.capabilities?.repair === true) {
                     this.showDomainRepairPlan?.(domainKey);
                     return;
                 }
+                // #endregion
 
-                // Future: Execute
+                // #region ⚙ Execute (planned capability)
                 if (mode === 'execute' && domainConfig.capabilities?.execute === true) {
                     this.executeDomainAction?.(domainKey);
                     return;
                 }
+                // #endregion
 
+                // #region ⚠ Fallback (unhandled mode)
                 console.warn('[SkyIndex] Unhandled domain mode:', mode);
                 return;
+                // #endregion
             }
 
             // ───────────────────────────────────────────────
