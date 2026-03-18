@@ -429,7 +429,7 @@ TEXT;
 // Append Prompt Ledger Entry (non-blocking, best-effort) — creates ledger if missing, appends entry with sequential ID, updates meta timestamp
 function insertActionPrompt(array $entry, ?PDO $db): void {
 
-    // #region 🧾 Validate
+    // #region 🧾 Validate — baseline sanity checks before we touch the ledger
 
     if (!$db) {
         error_log('[actions] DB not available');
@@ -441,18 +441,20 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
-    // #region 👤 Resolve Contact (REQUIRED)
+    // #endregion
 
-    // Priority:
-    // 1. Explicit entry
-    // 2. Session (primary source)
-    // 3. Fallback (testing only)
+    // #region 👤 Resolve Contact (REQUIRED) — every action must have an accountable owner
+
+    // Priority order:
+    // 1. Explicitly provided (API / internal call)
+    // 2. Session-bound identity (primary source of truth)
+    // 3. Controlled fallback (local testing only — never rely on this in production)
 
     $contactId =
         $entry['contactId']
         ?? $entry['userId']
         ?? $_SESSION['contactId']
-        ?? 1; // TEMP fallback for testing
+        ?? 1; // ⚠️ TEMP: local testing fallback (remove once auth fully enforced)
 
     if (!$contactId) {
         error_log('[actions] contactId missing — blocking insert');
@@ -461,18 +463,19 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     // #endregion
 
-    // #endregion
-
-    // #region 🧠 Defaults
+    // #region 🧠 Defaults — normalize optional fields to stable, query-safe values
 
     $response   = $entry['responseText']     ?? null;
-    $intent     = $entry['intent']           ?? 'unknown';
-    $confidence = $entry['intentConfidence'] ?? 0.0;
-    $unixTime   = $entry['createdUnixTime']  ?? time();
+    $intent     = $entry['intent']           ?? 'unknown';   // Always deterministic
+    $confidence = $entry['intentConfidence'] ?? 0.0;         // Default low confidence
+    $unixTime   = $entry['createdUnixTime']  ?? time();      // Server-authoritative time
 
     // #endregion
 
-    // #region 🧭 Action Origin (use global constants ideally)
+    // #region 🧭 Action Origin — distinguish who initiated the action
+
+    // USER: matches active session identity
+    // SYSTEM: anything outside direct user interaction (AI, backend processes, etc.)
 
     $origin = isset($_SESSION['contactId']) && $contactId == $_SESSION['contactId']
         ? ACTION_ORIGIN_USER
@@ -480,25 +483,34 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     // #endregion
 
-    // #region 🧠 Action Type Mapping
 
-    // Default = prompt
+    // #region 🧠 Action Type Mapping — normalize intent → action classification
+
+    // Default classification = prompt (general interaction)
     $actionTypeId = 3;
 
-    if ($intent === 'ui_login') {
-        $actionTypeId = 1;
-    } elseif ($intent === 'ui_logout') {
-        $actionTypeId = 2;
-    } elseif (!$intent) {
-        error_log('[actions] missing intent, defaulting to prompt');
+    switch ($intent) {
+        case 'ui_login':
+            $actionTypeId = 1;
+            break;
+
+        case 'ui_logout':
+            $actionTypeId = 2;
+            break;
+
+        default:
+            // Remains 3 (prompt / general action)
+            break;
     }
+
     // #endregion
 
-    // #region 📥 Insert
+
+    // #region 📥 Insert — commit to ledger (non-blocking, fail-safe)
 
     try {
-        
-        // Ensure table exists (idempotent)
+
+        // Prepared statement → protects against injection and ensures consistency
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId,
@@ -511,13 +523,12 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
                 intentConfidence
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-       
-        // Truncate prompt and response to reasonable lengths to prevent DB issues (defensive)
+
+        // Defensive truncation — prevents oversized payloads from breaking inserts
         $promptText = function_exists('mb_substr')
             ? mb_substr((string)$entry['promptText'], 0, 5000)
             : substr((string)$entry['promptText'], 0, 5000);
-        
-            // Response may be null, so handle accordingly
+
         $response = $response
             ? (function_exists('mb_substr')
                 ? mb_substr((string)$response, 0, 10000)
@@ -536,10 +547,12 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $confidence
         ]);
 
-        // Log success with key details (avoid logging full prompt/response for privacy)
+        // Lightweight success log (no sensitive payloads)
         error_log('[actions] INSERT SUCCESS: contactId=' . $contactId . ', intent=' . $intent);
 
     } catch (Throwable $e) {
+
+        // Non-blocking failure — system continues, but issue is recorded
         error_log('[actions] insert failed: ' . $e->getMessage());
     }
 
