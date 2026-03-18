@@ -1186,9 +1186,13 @@ if (!isset($response) || trim((string)$response) === '') {
     $response = "⚠ AI returned no usable response.";
 }
 
-// Safe logging only
+// Safe logging only (mbstring-safe)
+$preview = function_exists('mb_substr')
+    ? mb_substr((string)$response, 0, 300)
+    : substr((string)$response, 0, 300);
+
 error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode([
-    'preview' => mb_substr((string)$response, 0, 300)
+    'preview' => $preview
 ]));
 
 // ------------------------------------------------
