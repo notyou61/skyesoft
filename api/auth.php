@@ -99,96 +99,95 @@ function updateLastActivity(): void
 // 📜 AUTH ACTION LOGGER
 // Writes authentication events to tblActions
 // ─────────────────────────────────────────
-
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    $metaJson = json_encode($meta, JSON_UNESCAPED_SLASHES);
+    // #region 🧾 Resolve Contact (REQUIRED)
+
+    if (!$contactId) {
+        error_log('[auth] missing contactId — skipping log');
+        return;
+    }
+
+    // #endregion
+
+
+    // #region 🧠 Map Auth Action → Intent
+
+    $intent = match ($actionKey) {
+        'auth.login'       => 'ui_login',
+        'auth.logout'      => 'ui_logout',
+        'auth.login.fail'  => 'auth_fail',
+        default            => 'auth_event'
+    };
+
+    // #endregion
+
+
+    // #region 🧠 Action Type Mapping
+
+    $actionTypeId = match ($intent) {
+        'ui_login'  => 1,
+        'ui_logout' => 2,
+        default     => 3
+    };
+
+    // #endregion
+
+
+    // #region 🧠 Build Metadata
+
+    $metaJson = !empty($meta)
+        ? json_encode($meta, JSON_UNESCAPED_SLASHES)
+        : null;
+
+    $promptText = $actionKey;
+    $response   = $metaJson;
+
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+    // #endregion
+
+
+    // #region 📥 Insert → tblActions
 
     try {
 
-        $actionTypeId = null;
-
         $stmt = $pdo->prepare("
-            SELECT actionTypeId
-            FROM tblActionTypes
-            WHERE actionTypeKey = :k
-            LIMIT 1
-        ");
-        $stmt->execute(["k" => $actionKey]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row["actionTypeId"])) {
-
-            $actionTypeId = (int)$row["actionTypeId"];
-
-        } else {
-
-            $stmt = $pdo->prepare("
-                SELECT actionTypeId
-                FROM tblActionTypes
-                WHERE actionTypeName = :k
-                LIMIT 1
-            ");
-            $stmt->execute(["k" => $actionKey]);
-
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($row && isset($row["actionTypeId"])) {
-                $actionTypeId = (int)$row["actionTypeId"];
-            }
-        }
-
-        if ($actionTypeId === null) {
-            return;
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO tblActions
-                (actionTypeId, actionDate, actionNote)
-            VALUES
-                (:typeId, :unix, :note)
+            INSERT INTO tblActions (
+                actionTypeId,
+                contactId,
+                actionOrigin,
+                actionUnix,
+                promptText,
+                responseText,
+                intent,
+                intentConfidence,
+                ipAddress,
+                userAgent
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
-            "typeId" => $actionTypeId,
-            "unix"   => time(),
-            "note"   => $metaJson
+            $actionTypeId,
+            $contactId,
+            ACTION_ORIGIN_SYSTEM, // auth = system-triggered
+            time(),
+            $promptText,
+            $response,
+            $intent,
+            1.0,
+            $ipAddress,
+            $userAgent
         ]);
 
+        error_log('[auth] action logged: ' . $intent);
+
     } catch (Throwable $e) {
-        return;
-    }
-}
-// ─────────────────────────────────────────
-// GENERATE PROMPT LEDGER ID
-// Produces sequential PRL identifiers
-// Example: PRL-000467
-// ─────────────────────────────────────────
-function generatePromptId(): string
-{
-    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
-
-    if (!file_exists($ledgerFile)) {
-        return "PRL-000001";
+        error_log('[auth] log failed: ' . $e->getMessage());
     }
 
-    $json = file_get_contents($ledgerFile);
-    $data = json_decode($json, true);
-
-    if (!is_array($data) || empty($data["entries"])) {
-        return "PRL-000001";
-    }
-
-    $last = end($data["entries"]);
-
-    $lastId = $last["promptId"] ?? "PRL-000000";
-
-    $num = (int)preg_replace('/[^0-9]/', '', $lastId);
-
-    $num++;
-
-    return "PRL-" . str_pad((string)$num, 6, "0", STR_PAD_LEFT);
+    // #endregion
 }
 
 #endregion
@@ -278,6 +277,17 @@ if ($action === "login") {
 
     $pdo = getPDO();
 
+    // 🔥 DEBUG — STEP 1 (PLACE HERE)
+    error_log('[LOGIN] STEP 1 - reached');
+
+    require_once __DIR__ . '/utils/actions.php';
+    error_log('[LOGIN] STEP 2 - actions included');
+
+    error_log('[LOGIN] STEP 3 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
+
+    $debugContactId = $user["contactId"] ?? null;
+    error_log('[LOGIN] STEP 4 - contactId (pre-session): ' . json_encode($debugContactId));
+
     $stmt = $pdo->prepare("
         SELECT
             contactId,
@@ -351,14 +361,14 @@ if ($action === "login") {
     // ─────────────────────────────────────────
 
     $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"];   // legacy compatibility
-    $_SESSION["contactId"]     = (int)$user["contactId"];   // canonical session identity
+    $_SESSION["userId"]        = (int)$user["contactId"]; // legacy
+    $_SESSION["contactId"]     = (int)$user["contactId"]; // canonical
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
     // ─────────────────────────────────────────
-    // SESSION CONTEXT VARIABLES
+    // SESSION CONTEXT
     // ─────────────────────────────────────────
 
     $contactId = (int)$user["contactId"];
@@ -370,7 +380,7 @@ if ($action === "login") {
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
     // ─────────────────────────────────────────
-    // AUTHENTICATION EVENT LOG
+    // AUTH EVENT LOG (Structured)
     // ─────────────────────────────────────────
 
     logAuthAction($pdo, "auth.login", $contactId, [
@@ -382,45 +392,23 @@ if ($action === "login") {
     ]);
 
     // ─────────────────────────────────────────
-    // PROMPT LEDGER — LOGIN EVENT
-    // Establishes authoritative idle baseline
-    // for SSE session monitoring.
+    // ACTION EVENT LOG (Authoritative — tblActions)
+    // Establishes session baseline for SSE
     // ─────────────────────────────────────────
 
-    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
+    insertActionPrompt([
+        "contactId"         => $contactId,
+        "promptText"        => "system login",
+        "responseText"      => "login",
+        "intent"            => "ui_login",
+        "intentConfidence"  => 1.0,
+        "createdUnixTime"   => time()
+    ], $pdo);
 
-    $entry = [
-        "promptId"         => generatePromptId(), // use your existing ID generator
-        "userId"           => $contactId,
-        "promptText"       => "system login",
-        "responseText"     => "login",
-        "intent"           => "ui_login",
-        "intentConfidence" => 1.0,
-        "createdUnixTime"  => time()
-    ];
+    // ─────────────────────────────────────────
+    // RELEASE SESSION LOCK + RESPOND
+    // ─────────────────────────────────────────
 
-    if (file_exists($ledgerFile)) {
-
-        $data = json_decode(file_get_contents($ledgerFile), true);
-
-        if (!is_array($data)) {
-            $data = ["entries" => []];
-        }
-
-    } else {
-
-        $data = ["entries" => []];
-    }
-
-    $data["entries"][] = $entry;
-
-    file_put_contents(
-        $ledgerFile,
-        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-        LOCK_EX
-    );
-
-    // Release session lock before responding
     session_write_close();
 
     jsonOut(true);
@@ -436,6 +424,10 @@ if ($action === "logout") {
         session_start();
     }
 
+    // ─────────────────────────────────────────
+    // DB CONNECTION (SAFE)
+    // ─────────────────────────────────────────
+
     $pdo = null;
 
     try {
@@ -445,30 +437,22 @@ if ($action === "logout") {
     }
 
     // ─────────────────────────────────────────
-    // CAPTURE SESSION CONTEXT BEFORE DESTROY
+    // CAPTURE SESSION CONTEXT (BEFORE DESTROY)
     // ─────────────────────────────────────────
 
-    $contactId = isset($_SESSION["contactId"])
-        ? (int)$_SESSION["contactId"]
-        : (isset($_SESSION["userId"])
-            ? (int)$_SESSION["userId"]
-            : null);
+    $contactId = $_SESSION["contactId"] ?? $_SESSION["userId"] ?? null;
+    $contactId = $contactId !== null ? (int)$contactId : null;
 
-    $username = isset($_SESSION["username"])
-        ? (string)$_SESSION["username"]
-        : null;
-
-    $role = isset($_SESSION["role"])
-        ? (string)$_SESSION["role"]
-        : null;
-
+    $username = $_SESSION["username"] ?? null;
+    $role     = $_SESSION["role"] ?? null;
     $sessionId = session_id();
 
     // ─────────────────────────────────────────
-    // AUTHENTICATION EVENT LOG
+    // AUTH EVENT LOG (STRUCTURED)
     // ─────────────────────────────────────────
 
     if ($pdo instanceof PDO) {
+
         logAuthAction($pdo, "auth.logout", $contactId, [
             "username"  => $username,
             "role"      => $role,
@@ -476,81 +460,25 @@ if ($action === "logout") {
             "ua"        => safeUserAgent(),
             "sessionId" => $sessionId
         ]);
+
+        // ─────────────────────────────────────────
+        // ACTION EVENT LOG (AUTHORITATIVE)
+        // ─────────────────────────────────────────
+
+        if ($contactId) {
+            insertActionPrompt([
+                "contactId"         => $contactId,
+                "promptText"        => "system logout",
+                "responseText"      => "logout",
+                "intent"            => "ui_logout",
+                "intentConfidence"  => 1.0,
+                "createdUnixTime"   => time()
+            ], $pdo);
+        }
     }
 
     // ─────────────────────────────────────────
-    // PROMPT LEDGER — LOGOUT EVENT
-    // ─────────────────────────────────────────
-
-    if ($contactId !== null) {
-
-        $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
-
-        $json = file_exists($ledgerFile)
-            ? file_get_contents($ledgerFile)
-            : false;
-
-        $data = is_string($json)
-            ? json_decode($json, true)
-            : null;
-
-        if (!is_array($data)) {
-            $data = [
-                "meta" => [
-                    "objectType" => "promptLedger",
-                    "schemaVersion" => "1.0.0",
-                    "codexTier" => 2,
-                    "description" => "Append-only ledger recording user prompts and optional system replies for auditability and historical reference only.",
-                    "governance" => [
-                        "authoritative" => true,
-                        "binding" => false,
-                        "mutable" => false
-                    ],
-                    "createdUnixTime" => time(),
-                    "lastUpdatedUnixTime" => time(),
-                    "notes" => [
-                        "Entries are descriptive only.",
-                        "Presence of a reply does not imply correctness, reuse, or authority.",
-                        "Ledger does not govern routing, execution, or inference.",
-                        "All timestamps are stored as Unix time (seconds)."
-                    ]
-                ],
-                "entries" => []
-            ];
-        }
-
-        if (!isset($data["entries"]) || !is_array($data["entries"])) {
-            $data["entries"] = [];
-        }
-
-        $nextId = "PRL-" . str_pad(
-            (string)(count($data["entries"]) + 1),
-            6,
-            "0",
-            STR_PAD_LEFT
-        );
-
-        $data["entries"][] = [
-            "promptId"         => $nextId,
-            "userId"           => $contactId,
-            "promptText"       => "system logout",
-            "responseText"     => "logout",
-            "intent"           => "ui_logout",
-            "intentConfidence" => 1,
-            "createdUnixTime"  => time()
-        ];
-
-        $data["meta"]["lastUpdatedUnixTime"] = time();
-
-        file_put_contents(
-            $ledgerFile,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-            LOCK_EX
-        );
-    }
-
-    // ─────────────────────────────────────────
-    // CLEAR SESSION VARIABLES
+    // CLEAR SESSION
     // ─────────────────────────────────────────
 
     $_SESSION = [];
