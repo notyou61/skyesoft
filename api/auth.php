@@ -12,6 +12,11 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
+// Debug (optional during dev)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Session Security
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
 session_set_cookie_params([
@@ -24,8 +29,16 @@ session_set_cookie_params([
 
 session_start();
 
-// DATABASE CONNECTION
+// Action Origins (required by actions layer)
+const ACTION_ORIGIN_USER = 1;
+const ACTION_ORIGIN_SYSTEM = 2;
+const ACTION_ORIGIN_AUTOMATION = 3;
+
+// Database Connection
 require_once __DIR__ . "/dbConnect.php";
+
+// Actions Layer (Execution + Logging)
+require_once __DIR__ . '/utils/actions.php';
 
 #endregion
 

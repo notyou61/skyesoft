@@ -97,6 +97,11 @@ try {
     aiFail("Database connection failed.");
 }
 
+// ─────────────────────────────────────────
+// Actions Layer (Execution + Logging)
+// ─────────────────────────────────────────
+require_once __DIR__ . '/utils/actions.php';
+
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
@@ -424,152 +429,6 @@ Current system time (from SSE snapshot):
 
 This information is current as of the snapshot and is read-only.
 TEXT;
-}
-
-// Append Prompt Ledger Entry (non-blocking, best-effort)
-function insertActionPrompt(array $entry, ?PDO $db): void {
-
-    // #region 🧾 Validate
-
-    if (!$db) {
-        error_log('[actions] DB not available');
-        return;
-    }
-
-    if (empty($entry['promptText'])) {
-        error_log('[actions] Missing promptText');
-        return;
-    }
-
-    // #endregion
-
-    // #region 👤 Resolve Contact (STRICT)
-
-    $contactId =
-        $entry['contactId']
-        ?? $_SESSION['contactId']
-        ?? null;
-
-    if (!$contactId) {
-        error_log('[actions] contactId missing — blocking insert');
-        return;
-    }
-
-    // #endregion
-
-    // #region 🧠 Normalize Fields
-
-    $response   = $entry['responseText'] ?? null;
-    $intent     = $entry['intent'] ?? 'unknown';
-    $confidence = isset($entry['intentConfidence'])
-        ? (float)$entry['intentConfidence']
-        : 0.0;
-
-    $unixTime = isset($entry['createdUnixTime'])
-        ? (int)$entry['createdUnixTime']
-        : time();
-
-    // 🌍 Geo (validated)
-    $latitude = is_numeric($entry['latitude'] ?? null)
-        ? (float)$entry['latitude']
-        : null;
-
-    $longitude = is_numeric($entry['longitude'] ?? null)
-        ? (float)$entry['longitude']
-        : null;
-
-    // 🌐 Network / Device
-    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
-    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
-
-    // #endregion
-
-    // #region 🧭 Action Origin
-
-    $origin = (
-        isset($_SESSION['contactId']) &&
-        $contactId === $_SESSION['contactId']
-    )
-        ? ACTION_ORIGIN_USER
-        : ACTION_ORIGIN_SYSTEM;
-
-    // #endregion
-
-    // #region 🧠 Action Type Mapping
-
-    $actionTypeId = match ($intent) {
-        'ui_login'  => 1,
-        'ui_logout' => 2,
-        default     => 3
-    };
-
-    // #endregion
-
-    // #region ✂️ Truncate Payloads
-
-    $promptText = function_exists('mb_substr')
-        ? mb_substr((string)$entry['promptText'], 0, 5000)
-        : substr((string)$entry['promptText'], 0, 5000);
-
-    $response = $response
-        ? (function_exists('mb_substr')
-            ? mb_substr((string)$response, 0, 10000)
-            : substr((string)$response, 0, 10000))
-        : null;
-
-    // #endregion
-
-    // #region 📥 Insert
-
-    try {
-
-        // Prepare Statement
-        $stmt = $db->prepare("
-            INSERT INTO tblActions (
-                actionTypeId,
-                contactId,
-                actionOrigin,
-                actionUnix,
-                promptText,
-                responseText,
-                intent,
-                intentConfidence,
-                ipAddress,
-                latitude,
-                longitude,
-                userAgent
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
-        error_log('[actions] INSERT ATTEMPT');
-
-        // Execute Statement
-        $stmt->execute([
-            $actionTypeId,
-            $contactId,
-            $origin,
-            $unixTime,
-            $promptText,
-            $response,
-            $intent,
-            $confidence,
-            $ipAddress,
-            $latitude,
-            $longitude,
-            $userAgent
-        ]);
-
-        // ✅ RIGHT HERE
-        $actionId = $db->lastInsertId();
-
-        error_log('[actions] INSERT SUCCESS: actionId=' . $actionId);
-
-    } catch (Throwable $e) {
-        error_log('[actions] insert failed: ' . $e->getMessage());
-        throw $e;
-    }
-
-    // #endregion
 }
 
 // Load Runtime Domain Registry Keys (Authoritative list of valid domains for intent classification)
@@ -1151,15 +1010,11 @@ PROMPT;
     // 3. UI ACTIONS
     // ─────────────────────────────────────────────
 
-    if ($intent === "ui_clear" && $confidence >= 0.80) {
-        $type = "ui_action";
-        $response = "clear_screen";
-        goto SKY_OUTPUT;
-    }
+    $execution = executeIntent($intent, $confidence);
 
-    if ($intent === "ui_logout" && $confidence >= 0.90) {
-        $type = "ui_action";
-        $response = "logout";
+    if ($execution) {
+        $type     = $execution['type'];
+        $response = $execution['response'];
         goto SKY_OUTPUT;
     }
 
