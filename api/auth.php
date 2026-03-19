@@ -401,6 +401,7 @@ if ($action === "login") {
         "promptText"        => "system login",
         "responseText"      => "login",
         "intent"            => "ui_login",
+        "origin"            => ACTION_ORIGIN_SYSTEM, // 🔥 ADD THIS
         "intentConfidence"  => 1.0,
         "createdUnixTime"   => time()
     ], $pdo);
@@ -420,8 +421,13 @@ if ($action === "login") {
 
 if ($action === "logout") {
 
+    error_log('[LOGOUT] STEP 1 - reached');
+
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
+        error_log('[LOGOUT] STEP 2 - session started');
+    } else {
+        error_log('[LOGOUT] STEP 2 - session already active');
     }
 
     // ─────────────────────────────────────────
@@ -432,7 +438,9 @@ if ($action === "logout") {
 
     try {
         $pdo = getPDO();
+        error_log('[LOGOUT] STEP 3 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
     } catch (Throwable $e) {
+        error_log('[LOGOUT] PDO ERROR: ' . $e->getMessage());
         $pdo = null;
     }
 
@@ -443,15 +451,24 @@ if ($action === "logout") {
     $contactId = $_SESSION["contactId"] ?? $_SESSION["userId"] ?? null;
     $contactId = $contactId !== null ? (int)$contactId : null;
 
-    $username = $_SESSION["username"] ?? null;
-    $role     = $_SESSION["role"] ?? null;
+    $username  = $_SESSION["username"] ?? null;
+    $role      = $_SESSION["role"] ?? null;
     $sessionId = session_id();
+
+    error_log('[LOGOUT] STEP 4 - session snapshot: ' . json_encode([
+        'contactId' => $contactId,
+        'username'  => $username,
+        'role'      => $role,
+        'sessionId' => $sessionId
+    ]));
 
     // ─────────────────────────────────────────
     // AUTH EVENT LOG (STRUCTURED)
     // ─────────────────────────────────────────
 
     if ($pdo instanceof PDO) {
+
+        error_log('[LOGOUT] STEP 5 - logAuthAction firing');
 
         logAuthAction($pdo, "auth.logout", $contactId, [
             "username"  => $username,
@@ -465,16 +482,27 @@ if ($action === "logout") {
         // ACTION EVENT LOG (AUTHORITATIVE)
         // ─────────────────────────────────────────
 
-        if ($contactId) {
+        error_log('[LOGOUT] STEP 6 - insertActionPrompt firing');
+
+        try {
             insertActionPrompt([
-                "contactId"         => $contactId,
-                "promptText"        => "system logout",
-                "responseText"      => "logout",
-                "intent"            => "ui_logout",
-                "intentConfidence"  => 1.0,
-                "createdUnixTime"   => time()
+                "contactId"        => $contactId ?: 999999, // 🔥 force insert
+                "promptText"       => "system logout",
+                "responseText"     => "logout",
+                "intent"           => "ui_logout",
+                "origin"           => defined('ACTION_ORIGIN_SYSTEM') ? ACTION_ORIGIN_SYSTEM : 'system',
+                "intentConfidence" => 1.0,
+                "createdUnixTime"  => time()
             ], $pdo);
+
+            error_log('[LOGOUT] STEP 7 - insertActionPrompt completed');
+
+        } catch (Throwable $e) {
+            error_log('[LOGOUT] INSERT ERROR: ' . $e->getMessage());
         }
+
+    } else {
+        error_log('[LOGOUT] STEP 5 - PDO INVALID, skipping DB ops');
     }
 
     // ─────────────────────────────────────────
@@ -482,16 +510,20 @@ if ($action === "logout") {
     // ─────────────────────────────────────────
 
     $_SESSION = [];
+    error_log('[LOGOUT] STEP 8 - session cleared');
 
     // ─────────────────────────────────────────
     // REMOVE SESSION COOKIE
     // ─────────────────────────────────────────
 
     if (ini_get("session.use_cookies")) {
+
+        error_log('[LOGOUT] STEP 9 - removing session cookie');
+
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
             'path'     => '/',
-            'secure'   => $secure,
+            'secure'   => $secure ?? false,
             'httponly' => true,
             'samesite' => 'Lax'
         ]);
@@ -502,6 +534,9 @@ if ($action === "logout") {
     // ─────────────────────────────────────────
 
     session_destroy();
+    error_log('[LOGOUT] STEP 10 - session destroyed');
+
+    error_log('[LOGOUT] COMPLETE');
 
     jsonOut(true);
 }

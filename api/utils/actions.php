@@ -29,6 +29,8 @@ declare(strict_types=1);
 // Append Prompt Ledger Entry (non-blocking, best-effort)
 function insertActionPrompt(array $entry, ?PDO $db): void {
 
+    error_log('[ACTIONS] FUNCTION ENTERED');
+
     // #region 🧾 Validate Input
 
     if (!$db) {
