@@ -30,6 +30,7 @@ declare(strict_types=1);
 function insertActionPrompt(array $entry, ?PDO $db): void {
 
     error_log('[ACTIONS] FUNCTION ENTERED');
+    error_log('[ACTIONS] ENTRY: ' . json_encode($entry));
 
     // #region 🧾 Validate Input
 
@@ -54,8 +55,8 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ?? null;
 
     if (!$contactId) {
-        error_log('[actions] contactId missing — blocking insert');
-        return;
+        error_log('[ACTIONS] WARNING - missing contactId, using fallback');
+        $contactId = 999999; // 🔥 debug fallback
     }
 
     // #endregion
