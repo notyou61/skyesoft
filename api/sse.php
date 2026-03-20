@@ -24,8 +24,6 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-$cookieName = session_name();
-
 
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
@@ -52,27 +50,6 @@ function getLiveSessionAuth(): array
 
     return $result;
 }
-
-
-// ─────────────────────────────────────────
-// 📡 INITIAL SESSION SNAPSHOT
-// Captures the current session state so the
-// stream has an authoritative starting point.
-// The live loop will refresh this later.
-// ─────────────────────────────────────────
-
-$liveSession = getLiveSessionAuth();
-
-$isAuthenticated = $liveSession['authenticated'];
-$userId          = $liveSession['userId'];
-$sessionId       = $liveSession['sessionId'];
-
-$auth = [
-    'authenticated' => $isAuthenticated,
-    'username'      => $liveSession['username'],
-    'role'          => $liveSession['role']
-];
-
 
 // ─────────────────────────────────────────
 // 📸 SNAPSHOT MODE DETECTION
@@ -388,8 +365,18 @@ while (true) {
             }
 
             $_SESSION = [];
+
+            if (ini_get("session.use_cookies")) {
+                setcookie(session_name(), '', [
+                    'expires'  => time() - 42000,
+                    'path'     => '/',
+                    'secure'   => $secure ?? false,
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            }
+
             session_destroy();
-            session_write_close();
 
             $isAuthenticated = false;
             $userId = null;
@@ -470,7 +457,7 @@ while (true) {
         }
     }
 
-    usleep(20000);
+    usleep(100000);
 }
 
 #endregion

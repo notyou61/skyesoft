@@ -57,14 +57,33 @@ window.SkySSE = {
             try {
                 // Parse JSON payload
                 const payload = JSON.parse(event.data);
-                //
+                // Console Log
                 //console.log('[SkySSE MESSAGE]', payload);
 
-                // Handle auth projection (if present)
+                // #region 🔐 Auth State Transition
                 if (payload.auth !== undefined) {
-                    // Console log auth projection for debugging (can be removed in production)
-                    //console.log('[SkySSE] auth projection', payload.auth, 'session:', payload.sessionId);
+
+                    const isAuthenticated = payload.auth.authenticated === true;
+
+                    // Detect logout transition
+                    if (!isAuthenticated && window.SkyState?.authenticated === true) {
+
+                        console.log('[SkySSE] detected logout via stream');
+
+                        // Stop stream immediately
+                        this.stop();
+
+                        // Optional: redirect or trigger UI reset
+                        window.SkyeApp?.handleLogout?.('sse');
+
+                        return;
+                    }
+
+                    // Update global auth state
+                    window.SkyState = window.SkyState || {};
+                    window.SkyState.authenticated = isAuthenticated;
                 }
+                // #endregion
 
                 // Existing handler
                 window.SkyeApp?.handleSSE?.(payload);
@@ -99,7 +118,7 @@ window.SkySSE = {
             //
             this.start();
 
-        }, 650);
+        }, 800);
     },
 
     // ⛔ Stop stream
