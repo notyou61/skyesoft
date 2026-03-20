@@ -24,15 +24,9 @@ declare(strict_types=1);
 //
 // ======================================================================
 
-#region SECTION 1 — Action Logging (tblActions)
+#region SECTION 1 — Action Logging
 
-// Append Prompt Ledger Entry (non-blocking, best-effort)
 function insertActionPrompt(array $entry, ?PDO $db): void {
-
-    error_log('[ACTIONS] FUNCTION ENTERED');
-    error_log('[ACTIONS] ENTRY: ' . json_encode($entry));
-
-    // #region 🧾 Validate Input
 
     if (!$db) {
         error_log('[actions] DB not available');
@@ -44,54 +38,29 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
-    // #endregion
-
-
-    // #region 👤 Resolve Contact (STRICT — REQUIRED)
-
     $contactId =
         $entry['contactId']
         ?? $_SESSION['contactId']
         ?? null;
 
     if (!$contactId) {
-        error_log('[ACTIONS] WARNING - missing contactId, using fallback');
-        $contactId = 999999; // 🔥 debug fallback
+        error_log('[actions] contactId missing — blocking insert');
+        return;
     }
-
-    // #endregion
-
-
-    // #region 🧠 Normalize Fields
 
     $response   = $entry['responseText'] ?? null;
     $intent     = $entry['intent'] ?? 'unknown';
-
     $confidence = isset($entry['intentConfidence'])
         ? (float)$entry['intentConfidence']
         : 0.0;
 
-    $unixTime = isset($entry['createdUnixTime'])
-        ? (int)$entry['createdUnixTime']
-        : time();
+    $unixTime = $entry['createdUnixTime'] ?? time();
 
-    // 🌍 Geo (validated numeric only)
-    $latitude = is_numeric($entry['latitude'] ?? null)
-        ? (float)$entry['latitude']
-        : null;
+    $latitude  = is_numeric($entry['latitude'] ?? null) ? (float)$entry['latitude'] : null;
+    $longitude = is_numeric($entry['longitude'] ?? null) ? (float)$entry['longitude'] : null;
 
-    $longitude = is_numeric($entry['longitude'] ?? null)
-        ? (float)$entry['longitude']
-        : null;
-
-    // 🌐 Network / Device Context
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
-
-    // #endregion
-
-
-    // #region 🧭 Action Origin Resolution
 
     $origin = (
         isset($_SESSION['contactId']) &&
@@ -100,36 +69,14 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ? ACTION_ORIGIN_USER
         : ACTION_ORIGIN_SYSTEM;
 
-    // #endregion
-
-
-    // #region 🧠 Action Type Mapping
-
     $actionTypeId = match ($intent) {
         'ui_login'  => 1,
         'ui_logout' => 2,
-        default     => 3 // prompt / general action
+        default     => 3
     };
 
-    // #endregion
-
-
-    // #region ✂️ Truncate Payloads (DB Safety)
-
-    $promptText = function_exists('mb_substr')
-        ? mb_substr((string)$entry['promptText'], 0, 5000)
-        : substr((string)$entry['promptText'], 0, 5000);
-
-    $response = $response
-        ? (function_exists('mb_substr')
-            ? mb_substr((string)$response, 0, 10000)
-            : substr((string)$response, 0, 10000))
-        : null;
-
-    // #endregion
-
-
-    // #region 📥 Insert → tblActions
+    $promptText = mb_substr((string)$entry['promptText'], 0, 5000);
+    $response   = $response ? mb_substr((string)$response, 0, 10000) : null;
 
     try {
 
@@ -150,8 +97,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
-        error_log('[actions] INSERT ATTEMPT');
-
         $stmt->execute([
             $actionTypeId,
             $contactId,
@@ -167,54 +112,28 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $userAgent
         ]);
 
-        $actionId = $db->lastInsertId();
-
-        error_log('[actions] INSERT SUCCESS: actionId=' . $actionId);
+        error_log('[actions] INSERT SUCCESS');
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
-        throw $e;
     }
-
-    // #endregion
 }
 
 #endregion
 
-#region SECTION 2 — Intent Execution Engine
+#region SECTION 2 — Intent Execution
 
-// Execute Intent → returns UI action payload or null
 function executeIntent(string $intent, float $confidence): ?array {
 
-    // #region 🧹 UI Clear Screen
-
     if ($intent === "ui_clear" && $confidence >= 0.80) {
-        return [
-            "type"     => "ui_action",
-            "response" => "clear_screen"
-        ];
+        return ["type" => "ui_action", "response" => "clear_screen"];
     }
-
-    // #endregion
-
-
-    // #region 🚪 UI Logout (frontend-handled)
 
     if ($intent === "ui_logout" && $confidence >= 0.90) {
-        return [
-            "type"     => "ui_action",
-            "response" => "logout"
-        ];
+        return ["type" => "ui_action", "response" => "logout"];
     }
 
-    // #endregion
-
-
-    // #region 🧭 Default (No Execution)
-
     return null;
-
-    // #endregion
 }
 
 #endregion
