@@ -101,7 +101,7 @@ function updateLastActivity(): void
 // ─────────────────────────────────────────
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    // #region 🧾 Resolve Contact (REQUIRED)
+    // #region 🧾 Resolve Contact
 
     if (!$contactId) {
         error_log('[auth] missing contactId — skipping log');
@@ -114,78 +114,35 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     // #region 🧠 Map Auth Action → Intent
 
     $intent = match ($actionKey) {
-        'auth.login'       => 'ui_login',
-        'auth.logout'      => 'ui_logout',
-        'auth.login.fail'  => 'auth_fail',
-        default            => 'auth_event'
+        'auth.login'      => 'ui_login',
+        'auth.logout'     => 'ui_logout',
+        'auth.login.fail' => 'auth_fail',
+        default           => 'auth_event'
     };
 
     // #endregion
 
 
-    // #region 🧠 Action Type Mapping
+    // #region 🧠 Build Payload (Delegate to Action Layer)
 
-    $actionTypeId = match ($intent) {
-        'ui_login'  => 1,
-        'ui_logout' => 2,
-        default     => 3
-    };
-
-    // #endregion
-
-
-    // #region 🧠 Build Metadata
-
-    $metaJson = !empty($meta)
-        ? json_encode($meta, JSON_UNESCAPED_SLASHES)
-        : null;
-
-    $promptText = $actionKey;
-    $response   = $metaJson;
-
-    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
-    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $payload = [
+        "contactId"        => $contactId,
+        "promptText"       => $actionKey, // preserves audit meaning
+        "responseText"     => !empty($meta)
+            ? json_encode($meta, JSON_UNESCAPED_SLASHES)
+            : null,
+        "intent"           => $intent,
+        "origin"           => ACTION_ORIGIN_SYSTEM,
+        "intentConfidence" => 1.0,
+        "createdUnixTime"  => time()
+    ];
 
     // #endregion
 
 
-    // #region 📥 Insert → tblActions
+    // #region 🚀 Delegate (SINGLE SOURCE OF TRUTH)
 
-    try {
-
-        $stmt = $pdo->prepare("
-            INSERT INTO tblActions (
-                actionTypeId,
-                contactId,
-                actionOrigin,
-                actionUnix,
-                promptText,
-                responseText,
-                intent,
-                intentConfidence,
-                ipAddress,
-                userAgent
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-
-        $stmt->execute([
-            $actionTypeId,
-            $contactId,
-            ACTION_ORIGIN_SYSTEM, // auth = system-triggered
-            time(),
-            $promptText,
-            $response,
-            $intent,
-            1.0,
-            $ipAddress,
-            $userAgent
-        ]);
-
-        error_log('[auth] action logged: ' . $intent);
-
-    } catch (Throwable $e) {
-        error_log('[auth] log failed: ' . $e->getMessage());
-    }
+    insertActionPrompt($payload, $pdo);
 
     // #endregion
 }
