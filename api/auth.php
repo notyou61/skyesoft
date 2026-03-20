@@ -348,20 +348,6 @@ if ($action === "login") {
         "sessionId" => $sessionId
     ]);
 
-    // ─────────────────────────────────────────
-    // ACTION EVENT LOG (Authoritative — tblActions)
-    // Establishes session baseline for SSE
-    // ─────────────────────────────────────────
-
-    insertActionPrompt([
-        "contactId"         => $contactId,
-        "promptText"        => "system login",
-        "responseText"      => "login",
-        "intent"            => "ui_login",
-        "origin"            => ACTION_ORIGIN_SYSTEM, // 🔥 ADD THIS
-        "intentConfidence"  => 1.0,
-        "createdUnixTime"   => time()
-    ], $pdo);
 
     // ─────────────────────────────────────────
     // RELEASE SESSION LOCK + RESPOND
@@ -434,29 +420,6 @@ if ($action === "logout") {
             "ua"        => safeUserAgent(),
             "sessionId" => $sessionId
         ]);
-
-        // ─────────────────────────────────────────
-        // ACTION EVENT LOG (AUTHORITATIVE)
-        // ─────────────────────────────────────────
-
-        error_log('[LOGOUT] STEP 6 - insertActionPrompt firing');
-
-        try {
-            insertActionPrompt([
-                "contactId"        => $contactId ?: 999999, // 🔥 force insert
-                "promptText"       => "system logout",
-                "responseText"     => "logout",
-                "intent"           => "ui_logout",
-                "origin"           => defined('ACTION_ORIGIN_SYSTEM') ? ACTION_ORIGIN_SYSTEM : 'system',
-                "intentConfidence" => 1.0,
-                "createdUnixTime"  => time()
-            ], $pdo);
-
-            error_log('[LOGOUT] STEP 7 - insertActionPrompt completed');
-
-        } catch (Throwable $e) {
-            error_log('[LOGOUT] INSERT ERROR: ' . $e->getMessage());
-        }
 
     } else {
         error_log('[LOGOUT] STEP 5 - PDO INVALID, skipping DB ops');
