@@ -1360,7 +1360,7 @@ window.SkyIndex = {
     onSSE(event) {
 
         //
-        console.log('[SSE] Event:', data);
+        console.log('[SSE] Event:', event);
 
         if (!event || typeof event !== 'object') return;
 
