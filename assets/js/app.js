@@ -117,7 +117,12 @@ window.SkyeApp.handleSSE = function (payload) {
     const page = this.pageHandlers?.[this.currentPage];
 
     const newAuth = payload?.auth?.authenticated === true;
-    const prevAuth = this.lastSSE?.auth?.authenticated === true;
+
+    const hasPrev = this.lastSSE !== null;
+
+    const prevAuth = hasPrev
+        ? this.lastSSE?.auth?.authenticated === true
+        : null;
 
     // ───────────────────────────────────────────────
     // First SSE Frame → Initialize Authoritative State
@@ -140,10 +145,9 @@ window.SkyeApp.handleSSE = function (payload) {
 
             document.body.toggleAttribute('data-auth', newAuth);
 
+            // New Auth Conditional
             if (newAuth) {
                 page.transitionToCommandInterface?.();
-            } else {
-                page.renderLoginCard?.();
             }
 
             page.renderFooterStatus?.call(page);
@@ -169,7 +173,7 @@ window.SkyeApp.handleSSE = function (payload) {
     // ───────────────────────────────────────────────
     // Login Transition
     // ───────────────────────────────────────────────
-    if (!prevAuth && newAuth) {
+    if (hasPrev && !prevAuth && newAuth) {
 
         console.log('[LOGIN TRANSITION DETECTED]', {
             prevAuth,
@@ -200,7 +204,7 @@ window.SkyeApp.handleSSE = function (payload) {
     // ───────────────────────────────────────────────
     // Logout Transition
     // ───────────────────────────────────────────────
-    if (prevAuth && !newAuth) {
+    if (hasPrev && !prevAuth && newAuth) {
 
         document.body.removeAttribute('data-auth');
 
