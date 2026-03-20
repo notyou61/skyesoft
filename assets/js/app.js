@@ -116,22 +116,6 @@ window.SkyeApp.handleSSE = function (payload) {
 
     const page = this.pageHandlers?.[this.currentPage];
 
-    // 🔥 FIX #1 — FORCE LOGOUT (authoritative override)
-    if (payload?.auth?.authenticated === false) {
-
-        console.log('[SkyIndex] FORCE LOGOUT UI');
-
-        document.body.removeAttribute('data-auth');
-
-        if (page) {
-            page.renderLoginCard?.();
-            page.renderFooterStatus?.call(page);
-        }
-
-        this.lastSSE = payload;
-        return;
-    }
-
     const newAuth = payload?.auth?.authenticated === true;
     const prevAuth = this.lastSSE?.auth?.authenticated === true;
 
