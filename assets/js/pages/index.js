@@ -713,6 +713,39 @@ window.SkyIndex = {
             return;
         }
 
+        // #region 🧭 UI Action Registry (authoritative)
+        this.uiActionRegistry = {
+
+            clear_screen: () => {
+                this.clearScreen?.();
+            },
+
+            logout: async () => {
+
+                console.log('[UI] Logout handler fired');
+
+                try {
+
+                    await fetch('/api/auth.php?action=logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+
+                    console.log('[UI] Session destroyed');
+
+                    // 🔥 reset UI state
+                    window.location.reload();
+
+                } catch (err) {
+
+                    console.error('[UI] Logout failed', err);
+                    this.appendSystemLine('⚠ Logout failed.');
+
+                }
+            }
+        };
+        // #endregion
+
         // Load registries in order of preference
         await this.loadRuntimeDomainRegistry();
         await this.loadIconMap();
