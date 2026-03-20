@@ -34,9 +34,12 @@ session_set_cookie_params([
 // ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    // 🔥 ALWAYS re-attach session (force fresh read)
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
+
+    session_start();
 
     $result = [
         'authenticated' => !empty($_SESSION['authenticated']),
