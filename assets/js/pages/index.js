@@ -715,35 +715,22 @@ window.SkyIndex = {
 
         // #region 🧭 UI Action Registry (authoritative)
         this.uiActionRegistry = {
-
+            // Clear Screen
             clear_screen: () => {
                 this.clearScreen?.();
             },
 
-            logout: async () => {
+            // Logout
+            logout: () => {
 
                 console.log('[UI] Logout handler fired');
 
-                try {
+                // Optional UX message
+                SkyIndex.appendSystemLine('🔒 Ending session…');
 
-                    await fetch('/api/auth.php?action=logout', {
-                        method: 'GET',
-                        credentials: 'include'
-                    });
+                // ✅ Delegate to canonical system
+                SkyIndex.logout('command');
 
-                    console.log('[UI] Session destroyed');
-
-                    // ensure DB logging completes
-                    await new Promise(r => setTimeout(r, 150));
-
-                    window.location.reload();
-
-                } catch (err) {
-
-                    console.error('[UI] Logout failed', err);
-                    this.appendSystemLine('⚠ Logout failed.');
-
-                }
             }
         };
         // #endregion
