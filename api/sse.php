@@ -377,6 +377,7 @@ while (true) {
             }
 
             session_destroy();
+            session_write_close(); // 🔥 ADD THIS LINE
 
             $isAuthenticated = false;
             $userId = null;

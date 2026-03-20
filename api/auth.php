@@ -454,6 +454,7 @@ if ($action === "logout") {
     // ─────────────────────────────────────────
 
     session_destroy();
+    session_write_close(); // 🔥 CRITICAL FIX
     error_log('[LOGOUT] STEP 10 - session destroyed');
 
     error_log('[LOGOUT] COMPLETE');
