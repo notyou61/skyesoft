@@ -1378,34 +1378,40 @@ window.SkyIndex = {
 
             const isAuth = Boolean(event.auth?.authenticated);
 
-            const authChanged = this.authState !== isAuth;
-            this.authState = isAuth;
+            // 🔥 ALWAYS handle logout explicitly
+            if (!isAuth) {
 
-            document.body.toggleAttribute('data-auth', isAuth);
-            
-            // Is Auth Conditional
-            if (isAuth) {
+                console.log('[SkyIndex] SSE → forcing logout UI');
 
-                if (authChanged) {
-                    console.log('[SkyIndex] Authenticated → Command Interface');
-                }
+                this.authState = false;
+
+                document.body.removeAttribute('data-auth');
+
+                this.renderLoginCard();
+                this.commandSurfaceActive = false;
+
+                this.renderFooterStatus();
+
+                return; // 🔥 stop further processing
+            }
+
+            // Normal login transition
+            if (this.authState !== isAuth) {
+
+                this.authState = isAuth;
+
+                document.body.toggleAttribute('data-auth', isAuth);
 
                 this.authUser = event.auth.username ?? null;
                 this.authRole = event.auth.role ?? null;
 
+                console.log('[SkyIndex] Authenticated → Command Interface');
+
                 this.renderCommandInterfaceCard();
                 this.commandSurfaceActive = true;
 
-            } else {
-
-                console.log('[SkyIndex] Not authenticated → Login Interface');
-
-                // 🔥 ALWAYS render login when not authenticated
-                this.renderLoginCard();
-                this.commandSurfaceActive = false;
+                this.renderFooterStatus();
             }
-
-            this.renderFooterStatus();
         }
 
          // Cache the latest SSE data for projections and state
@@ -1526,6 +1532,12 @@ window.SkyIndex = {
     // #region 🔓 Logout
     logout: async function (source = 'manual') {
 
+        if (this._loggingOut) return;
+        this._loggingOut = true;
+
+        console.log('SkySSE exists?', !!window.SkySSE);
+        console.log('SkySSE methods:', Object.keys(window.SkySSE || {}));
+
         try {
 
             console.log('[SkyIndex] Sending logout request');
@@ -1543,17 +1555,26 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
-            // Restart SSE so the server projects the new auth state
-            window.SkySSE?.stop?.();
-            window.SkySSE?.restart?.();
+            if (window.SkySSE) {
 
-            // Do NOT change UI state here.
-            // SSE will project authenticated:false and trigger renderLoginCard().
+                window.SkySSE.stop();
+
+                await new Promise(r => setTimeout(r, 300)); // safer buffer
+
+                window.SkySSE.start();
+
+            } else {
+                console.warn('[SkyIndex] SkySSE not available');
+            }
 
         } catch (err) {
 
             console.error('[SkyIndex] Logout error:', err);
             this.appendSystemLine('❌ Logout failed.');
+
+        } finally {
+
+            this._loggingOut = false;
 
         }
 
