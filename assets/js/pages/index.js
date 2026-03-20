@@ -1378,29 +1378,31 @@ window.SkyIndex = {
 
             const isAuth = Boolean(event.auth?.authenticated);
 
-            if (this.authState !== isAuth) {
+            const authChanged = this.authState !== isAuth;
+            this.authState = isAuth;
 
-                this.authState = isAuth;
+            document.body.toggleAttribute('data-auth', isAuth);
+            
+            // Is Auth Conditional
+            if (isAuth) {
 
-                document.body.toggleAttribute('data-auth', isAuth);
-
-                if (isAuth) {
-
-                    this.authUser = event.auth.username ?? null;
-                    this.authRole = event.auth.role ?? null;
-
+                if (authChanged) {
                     console.log('[SkyIndex] Authenticated → Command Interface');
-
-                    this.renderCommandInterfaceCard();
-                    this.commandSurfaceActive = true;
-
-                } else {
-
-                    console.log('[SkyIndex] Not authenticated → Login Interface');
-
-                    this.renderLoginCard();
-                    this.commandSurfaceActive = false;
                 }
+
+                this.authUser = event.auth.username ?? null;
+                this.authRole = event.auth.role ?? null;
+
+                this.renderCommandInterfaceCard();
+                this.commandSurfaceActive = true;
+
+            } else {
+
+                console.log('[SkyIndex] Not authenticated → Login Interface');
+
+                // 🔥 ALWAYS render login when not authenticated
+                this.renderLoginCard();
+                this.commandSurfaceActive = false;
             }
 
             this.renderFooterStatus();
