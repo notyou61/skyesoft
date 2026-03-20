@@ -24,6 +24,40 @@ declare(strict_types=1);
 //
 // ======================================================================
 
+#region SECTION 0 — Environment Bootstrap
+
+header("Content-Type: application/json; charset=UTF-8");
+
+// Debug (optional during dev)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Session Security
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+session_start();
+
+// Action Origins (required by actions layer)
+const ACTION_ORIGIN_USER = 1;
+const ACTION_ORIGIN_SYSTEM = 2;
+const ACTION_ORIGIN_AUTOMATION = 3;
+
+// Database Connection
+require_once __DIR__ . "/dbConnect.php";
+
+// Actions Layer (Execution + Logging)
+require_once __DIR__ . '/utils/actions.php';
+
+#endregion
+
 #region SECTION 1 — Action Logging (tblActions)
 
 // Append Prompt Ledger Entry (non-blocking, best-effort)
