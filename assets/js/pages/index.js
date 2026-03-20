@@ -727,13 +727,15 @@ window.SkyIndex = {
                 try {
 
                     await fetch('/api/auth.php?action=logout', {
-                        method: 'POST',
+                        method: 'GET',
                         credentials: 'include'
                     });
 
                     console.log('[UI] Session destroyed');
 
-                    // 🔥 reset UI state
+                    // ensure DB logging completes
+                    await new Promise(r => setTimeout(r, 150));
+
                     window.location.reload();
 
                 } catch (err) {
