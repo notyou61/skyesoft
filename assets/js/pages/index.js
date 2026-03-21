@@ -1559,12 +1559,13 @@ window.SkyIndex = {
 
                 window.SkySSE.stop();
 
-                await new Promise(r => setTimeout(r, 300)); // safer buffer
+                // 🔥 CRITICAL — reset SSE state so transitions work
+                window.SkyeApp.lastSSE = null;
+
+                await new Promise(r => setTimeout(r, 300));
 
                 window.SkySSE.start();
 
-            } else {
-                console.warn('[SkyIndex] SkySSE not available');
             }
 
         } catch (err) {
