@@ -133,21 +133,28 @@ window.SkyeApp.handleSSE = function (payload) {
 
         if (page) {
 
-            // Auth projection
             page.authState = newAuth;
             page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
             page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
 
-            // Idle projection
             if (payload?.idle) {
                 page.idleState = payload.idle;
             }
 
             document.body.toggleAttribute('data-auth', newAuth);
 
-            // New Auth Conditional
-            if (newAuth) {
+            // 🔥 CRITICAL FIX
+            // Treat first-frame unauthenticated as authoritative logout
+            if (!newAuth) {
+
+                console.log('[SSE INIT] forcing logout UI');
+
+                page.renderLoginCard?.();
+
+            } else {
+
                 page.transitionToCommandInterface?.();
+
             }
 
             page.renderFooterStatus?.call(page);
@@ -171,45 +178,28 @@ window.SkyeApp.handleSSE = function (payload) {
     }
 
     // ───────────────────────────────────────────────
-    // Login Transition
+    // 🔥 AUTHORITATIVE UI STATE (STABLE RENDER)
     // ───────────────────────────────────────────────
-    if (hasPrev && !prevAuth && newAuth) {
+    if (page) {
 
-        console.log('[LOGIN TRANSITION DETECTED]', {
-            prevAuth,
-            newAuth,
-            page: !!page,
-            currentPage: this.currentPage
-        });
+        const prevRenderedAuth = page._lastRenderedAuth;
 
-        document.body.setAttribute('data-auth', 'true');
+        // Only update UI if auth state actually changed
+        if (prevRenderedAuth !== newAuth) {
 
-        if (page) {
-
-            console.log('[TRANSITIONING TO COMMAND INTERFACE]');
-
-            page.transitionToCommandInterface?.();
-
-            requestAnimationFrame(() => {
-
-                console.log('[FOOTER REFRESH AFTER LOGIN]', {
-                    authState: page.authState
-                });
-
-                page.renderFooterStatus?.call(page);
+            console.log('[UI STATE CHANGE]', {
+                from: prevRenderedAuth,
+                to: newAuth
             });
-        }
-    }
 
-    // ───────────────────────────────────────────────
-    // Logout Transition
-    // ───────────────────────────────────────────────
-    if (hasPrev && !prevAuth && newAuth) {
+            if (newAuth) {
+                page.transitionToCommandInterface?.();
+            } else {
+                page.renderLoginCard?.();
+            }
 
-        document.body.removeAttribute('data-auth');
+            page._lastRenderedAuth = newAuth;
 
-        if (page) {
-            page.renderLoginCard?.();
             page.renderFooterStatus?.call(page);
         }
     }
