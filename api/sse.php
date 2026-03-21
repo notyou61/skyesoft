@@ -34,18 +34,30 @@ session_set_cookie_params([
 // ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
-    // 🔥 ALWAYS re-attach session (force fresh read)
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
     }
 
-    session_start();
+    $isAuth = !empty($_SESSION['authenticated']);
+
+    // 🔥 CRITICAL FIX
+    // If session is empty → force false
+    if (!$isAuth) {
+        session_write_close();
+        return [
+            'authenticated' => false,
+            'userId'        => null,
+            'username'      => null,
+            'role'          => null,
+            'sessionId'     => session_id()
+        ];
+    }
 
     $result = [
-        'authenticated' => !empty($_SESSION['authenticated']),
-        'userId'        => isset($_SESSION['userId']) ? (int)$_SESSION['userId'] : null,
-        'username'      => $_SESSION['username'] ?? null,
-        'role'          => $_SESSION['role'] ?? null,
+        'authenticated' => true,
+        'userId'        => (int)$_SESSION['userId'],
+        'username'      => $_SESSION['username'],
+        'role'          => $_SESSION['role'],
         'sessionId'     => session_id()
     ];
 
