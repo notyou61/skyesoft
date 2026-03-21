@@ -1554,17 +1554,32 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
+            // Window-level logout handling (SSE stop, UI reset) is critical to ensure session is fully terminated and UI reflects that immediately.
             if (window.SkySSE) {
 
                 window.SkySSE.stop();
 
-                setTimeout(() => {
-                    console.log('[SkySSE] restarting after logout');
-                    window.SkySSE.start();
-                }, 150);
+                // Reset SSE memory
+                window.SkyeApp.lastSSE = null;
 
-            } else {
-                console.warn('[SkyIndex] SkySSE not available');
+                // 🔥 FORCE UI STATE IMMEDIATELY (CRITICAL)
+                const app = window.SkyeApp;
+                const page = app?.pageHandlers?.[app?.currentPage];
+
+                if (page) {
+                    console.log('[UI] forcing logout state (client-side)');
+                    document.body.removeAttribute('data-auth');
+                    page.renderLoginCard?.();
+                    page.renderFooterStatus?.call(page);
+                }
+
+                // 🔥 delayed restart
+                setTimeout(() => {
+
+                    console.log('[SkySSE] restarting after logout (delayed)');
+                    window.SkySSE.start();
+
+                }, 800);
             }
 
         })
