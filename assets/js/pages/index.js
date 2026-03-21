@@ -1530,7 +1530,7 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🔓 Logout
-    logout: async function (source = 'manual') {
+    logout: function (source = 'manual') {
 
         if (this._loggingOut) return;
         this._loggingOut = true;
@@ -1538,16 +1538,15 @@ window.SkyIndex = {
         console.log('SkySSE exists?', !!window.SkySSE);
         console.log('SkySSE methods:', Object.keys(window.SkySSE || {}));
 
-        try {
+        console.log('[SkyIndex] Sending logout request');
 
-            console.log('[SkyIndex] Sending logout request');
-
-            const res = await fetch('/skyesoft/api/auth.php', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'logout' })
-            });
+        fetch('/skyesoft/api/auth.php', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'logout' })
+        })
+        .then(res => {
 
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
@@ -1555,29 +1554,36 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
+            // 🔥 Restart SSE with fresh session state
             if (window.SkySSE) {
 
                 window.SkySSE.stop();
 
-                // 🔥 CRITICAL — reset SSE state so transitions work
+                // 🔥 Reset SSE history so next frame is authoritative
                 window.SkyeApp.lastSSE = null;
 
-                await new Promise(r => setTimeout(r, 300));
+                // 🔥 Non-blocking restart (critical)
+                setTimeout(() => {
+                    console.log('[SkySSE] restarting after logout');
+                    window.SkySSE.start();
+                }, 150);
 
-                window.SkySSE.start();
-
+            } else {
+                console.warn('[SkyIndex] SkySSE not available');
             }
 
-        } catch (err) {
+        })
+        .catch(err => {
 
             console.error('[SkyIndex] Logout error:', err);
             this.appendSystemLine('❌ Logout failed.');
 
-        } finally {
+        })
+        .finally(() => {
 
             this._loggingOut = false;
 
-        }
+        });
 
     },
     // #endregion
