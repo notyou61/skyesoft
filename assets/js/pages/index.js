@@ -1554,15 +1554,10 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
-            // 🔥 Restart SSE with fresh session state
             if (window.SkySSE) {
 
                 window.SkySSE.stop();
 
-                // 🔥 Reset SSE history so next frame is authoritative
-                window.SkyeApp.lastSSE = null;
-
-                // 🔥 Non-blocking restart (critical)
                 setTimeout(() => {
                     console.log('[SkySSE] restarting after logout');
                     window.SkySSE.start();
