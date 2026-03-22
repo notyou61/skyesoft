@@ -217,10 +217,6 @@ if ($action === "check") {
 
 if ($action === "login") {
 
-    // ─────────────────────────────────────────
-    // INPUT VALIDATION
-    // ─────────────────────────────────────────
-
     $username = trim((string)($input["username"] ?? ""));
     $password = trim((string)($input["password"] ?? ""));
 
@@ -228,22 +224,10 @@ if ($action === "login") {
         jsonOut(false, "Missing credentials.");
     }
 
-    // ─────────────────────────────────────────
-    // USER LOOKUP
-    // ─────────────────────────────────────────
-
     $pdo = getPDO();
 
-    // 🔥 DEBUG — STEP 1 (PLACE HERE)
     error_log('[LOGIN] STEP 1 - reached');
-
-    require_once __DIR__ . '/utils/actions.php';
-    error_log('[LOGIN] STEP 2 - actions included');
-
-    error_log('[LOGIN] STEP 3 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
-
-    $debugContactId = $user["contactId"] ?? null;
-    error_log('[LOGIN] STEP 4 - contactId (pre-session): ' . json_encode($debugContactId));
+    error_log('[LOGIN] STEP 2 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
 
     $stmt = $pdo->prepare("
         SELECT
@@ -260,10 +244,6 @@ if ($action === "login") {
     $stmt->execute(["email" => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // ─────────────────────────────────────────
-    // USER NOT FOUND
-    // ─────────────────────────────────────────
-
     if (!$user) {
 
         logAuthAction($pdo, "auth.login.fail", null, [
@@ -274,10 +254,6 @@ if ($action === "login") {
 
         jsonOut(false, "User not found.");
     }
-
-    // ─────────────────────────────────────────
-    // ACCOUNT INACTIVE
-    // ─────────────────────────────────────────
 
     if ((int)($user["isActive"] ?? 0) !== 1) {
 
@@ -291,10 +267,6 @@ if ($action === "login") {
         jsonOut(false, "Account inactive.");
     }
 
-    // ─────────────────────────────────────────
-    // PASSWORD VALIDATION
-    // ─────────────────────────────────────────
-
     if (!password_verify($password, (string)($user["passwordHash"] ?? ""))) {
 
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
@@ -307,26 +279,14 @@ if ($action === "login") {
         jsonOut(false, "Invalid password.");
     }
 
-    // ─────────────────────────────────────────
-    // PREVENT SESSION FIXATION
-    // ─────────────────────────────────────────
-
     session_regenerate_id(true);
 
-    // ─────────────────────────────────────────
-    // ESTABLISH AUTHENTICATED SESSION
-    // ─────────────────────────────────────────
-
     $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"]; // legacy
-    $_SESSION["contactId"]     = (int)$user["contactId"]; // canonical
+    $_SESSION["userId"]        = (int)$user["contactId"];
+    $_SESSION["contactId"]     = (int)$user["contactId"];
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
-
-    // ─────────────────────────────────────────
-    // SESSION CONTEXT
-    // ─────────────────────────────────────────
 
     $contactId = (int)$user["contactId"];
     $email     = (string)$user["contactEmail"];
@@ -336,10 +296,6 @@ if ($action === "login") {
     error_log("LOGIN SESSION ID: " . $sessionId);
     error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
 
-    // ─────────────────────────────────────────
-    // AUTH EVENT LOG (Structured)
-    // ─────────────────────────────────────────
-
     logAuthAction($pdo, "auth.login", $contactId, [
         "username"  => $email,
         "role"      => $role,
@@ -348,13 +304,7 @@ if ($action === "login") {
         "sessionId" => $sessionId
     ]);
 
-
-    // ─────────────────────────────────────────
-    // RELEASE SESSION LOCK + RESPOND
-    // ─────────────────────────────────────────
-
     session_write_close();
-
     jsonOut(true);
 }
 
@@ -439,11 +389,12 @@ if ($action === "logout") {
     if (ini_get("session.use_cookies")) {
 
         error_log('[LOGOUT] STEP 9 - removing session cookie');
-
+        // Note: session_name() retrieves the name of the session cookie (default is usually "PHPSESSID")
         setcookie(session_name(), '', [
             'expires'  => time() - 42000,
             'path'     => '/',
-            'secure'   => $secure ?? false,
+            'domain'   => '',
+            'secure'   => $secure,
             'httponly' => true,
             'samesite' => 'Lax'
         ]);
