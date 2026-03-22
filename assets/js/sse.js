@@ -30,15 +30,15 @@ window.SkySSE = {
 
         try {
 
-            // 🔥 NEW: fetch-based SSE with credentials
-            const res = await fetch('/skyesoft/api/sse.php', {
+            const sseUrl = `${location.protocol}//${location.host}/skyesoft/api/sse.php`;
+
+            const res = await fetch(sseUrl, {
                 method: 'GET',
-                credentials: 'include',   // 🔥 REQUIRED
-                mode: 'same-origin',      // 🔥 ADD THIS
+                credentials: 'include',
                 headers: {
                     'Accept': 'text/event-stream'
                 },
-                cache: 'no-store'         // 🔥 PREVENT weird caching
+                cache: 'no-store'
             });
 
             const reader = res.body.getReader();
