@@ -535,8 +535,8 @@ window.SkyIndex = {
                 }
 
             } else {
-
-                console.warn('[FOOTER] Invalid idle state — fully bypassed');
+                // Console Log (Remove When Finished)
+                //console.warn('[FOOTER] Invalid idle state — fully bypassed');
 
             }
         }
@@ -1486,11 +1486,46 @@ window.SkyIndex = {
         };
 
         // =====================================================
-        // ⏳ IDLE STATE
+        // ⏳ IDLE STATE (Normalized / Guarded)
         // =====================================================
         if ('idle' in event) {
-            this.idleState = event.idle;
-            console.log('[Idle SSE]', event.idle);
+
+            const r = Number(
+                event.idle?.remainingSeconds ??
+                event.idle?.remaining ??
+                event.idle?.secondsRemaining
+            );
+
+            const t = Number(
+                event.idle?.timeoutSeconds ??
+                event.idle?.timeout ??
+                event.idle?.maxSeconds
+            );
+
+            const isValidIdle =
+                Number.isFinite(r) &&
+                Number.isFinite(t) &&
+                t > 0;
+
+            if (isValidIdle) {
+
+                this.idleState = {
+                    ...event.idle,
+                    remainingSeconds: r,
+                    timeoutSeconds: t
+                };
+
+                console.log('[Idle SSE ✓]', this.idleState);
+
+            } else {
+
+                this.idleState = null;
+
+                // Optional: only log once if you want to reduce noise
+                // console.warn('[Idle SSE ✗] invalid → discarded', event.idle);
+
+            }
+
             this.renderFooterStatus();
         }
 
