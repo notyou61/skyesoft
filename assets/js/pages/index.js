@@ -420,6 +420,16 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🔐 Auth Resolver (Single Source of Truth)
+    getAuthState() {
+
+        const varClient = this.authState === true;
+        const varSSE    = window.SkyeApp?.lastSSE?.auth?.authenticated === true;
+
+        return varClient || varSSE;
+    },
+    // #endregion
+
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
@@ -431,9 +441,8 @@ window.SkyIndex = {
         // Access authoritative state
         const app = window.SkyeApp;
         // Determine auth status with fallback to last SSE snapshot
-        const isAuthed =
-            this.authState === true ||
-            app?.lastSSE?.auth?.authenticated === true;
+        const isAuthed = this.getAuthState();
+        // Sentinel state for governance status
         const sentinel = this.currentSentinelState;
         // Idle state from SSE
         let dot = document.querySelector('.footerDot');
