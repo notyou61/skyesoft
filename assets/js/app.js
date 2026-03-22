@@ -115,121 +115,111 @@ window.SkyeApp.updateHSB = function (payload) {
 window.SkyeApp.handleSSE = function (payload) {
 
     const page = this.pageHandlers?.[this.currentPage];
-
     const newAuth = payload?.auth?.authenticated === true;
 
     const hasPrev = this.lastSSE !== null;
-
     const prevAuth = hasPrev
         ? this.lastSSE?.auth?.authenticated === true
         : null;
 
-    // ───────────────────────────────────────────────
-    // First SSE Frame → Initialize Authoritative State
-    // ───────────────────────────────────────────────
-    if (this.lastSSE === null) {
+    // Commit authoritative SSE snapshot first
+    this.lastSSE = payload;
 
-        this.lastSSE = payload;
+    // Keep non-auth projections only
+    if (page && payload?.idle) {
+        page.idleState = payload.idle;
+    }
+
+    // First SSE frame: initialize UI carefully
+    if (!hasPrev) {
 
         if (page) {
 
-            page.authState = newAuth;
-            page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
-            page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
-
-            if (payload?.idle) {
-                page.idleState = payload.idle;
-            }
+            page.authUser = newAuth ? payload?.auth?.username ?? null : null;
+            page.authRole = newAuth ? payload?.auth?.role ?? null : null;
 
             document.body.toggleAttribute('data-auth', newAuth);
 
-            // 🔥 CRITICAL FIX
-            // Treat first-frame unauthenticated as authoritative logout
-            if (!newAuth) {
-
-                console.log('[SSE INIT] forcing logout UI');
-
-                page.renderLoginCard?.();
-
-            } else {
-
-                page.transitionToCommandInterface?.();
-
+            // Only set authState from SSE on first frame if client has not already authenticated
+            if (page.authState !== true) {
+                page.authState = newAuth;
             }
-
-            page.renderFooterStatus?.call(page);
-        }
-
-        return;
-    }
-
-    // ───────────────────────────────────────────────
-    // State Projection (Auth + Idle)
-    // ───────────────────────────────────────────────
-    if (page) {
-
-        page.authState = newAuth;
-        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
-        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
-
-        if (payload?.idle) {
-            page.idleState = payload.idle;
-        }
-    }
-
-    // ───────────────────────────────────────────────
-    // 🔥 AUTHORITATIVE UI STATE (STABLE RENDER)
-    // ───────────────────────────────────────────────
-    if (page) {
-
-        const prevRenderedAuth = page._lastRenderedAuth;
-
-        // Only update UI if auth state actually changed
-        if (prevRenderedAuth !== newAuth) {
-
-            console.log('[UI STATE CHANGE]', {
-                from: prevRenderedAuth,
-                to: newAuth
-            });
 
             if (newAuth) {
                 page.transitionToCommandInterface?.();
-            } else {
+            } else if (page.authState !== true) {
+                console.log('[SSE INIT] forcing logout UI');
                 page.renderLoginCard?.();
             }
 
-            page._lastRenderedAuth = newAuth;
-
+            page._lastRenderedAuth = page.getAuthState?.() === true;
             page.renderFooterStatus?.call(page);
+        }
+
+        try {
+            this.updateHSB(payload);
+        } catch (err) {
+            console.error("❌ updateHSB failed:", err);
+        }
+
+        try {
+            this.routeSSEToPage(payload);
+        } catch (err) {
+            console.error("❌ routeSSEToPage failed:", err);
+        }
+
+        page?.renderFooterStatus?.call(page);
+        return;
+    }
+
+    if (page) {
+
+        const clientAuth = page.authState === true;
+
+        // Promote only; do not downgrade active client auth
+        if (newAuth && !clientAuth) {
+            page.authState = true;
+            page.authUser  = payload?.auth?.username ?? null;
+            page.authRole  = payload?.auth?.role ?? null;
+            document.body.setAttribute('data-auth', 'true');
+        }
+
+        const resolvedAuth = page.getAuthState?.() === true;
+        const prevRenderedAuth = page._lastRenderedAuth;
+
+        if (prevRenderedAuth !== resolvedAuth) {
+
+            console.log('[UI STATE CHANGE]', {
+                from: prevRenderedAuth,
+                to: resolvedAuth
+            });
+
+            if (resolvedAuth) {
+                page.transitionToCommandInterface?.();
+            } else {
+                page.authState = false;
+                page.authUser = null;
+                page.authRole = null;
+                document.body.removeAttribute('data-auth');
+                page.renderLoginCard?.();
+            }
+
+            page._lastRenderedAuth = resolvedAuth;
         }
     }
 
-    // ───────────────────────────────────────────────
-    // Commit authoritative snapshot
-    // ───────────────────────────────────────────────
-    this.lastSSE = payload;
-
-    // ───────────────────────────────────────────────
-    // Update Header Status Block
-    // ───────────────────────────────────────────────
     try {
         this.updateHSB(payload);
     } catch (err) {
         console.error("❌ updateHSB failed:", err);
     }
 
-    // ───────────────────────────────────────────────
-    // Route SSE to page modules
-    // ───────────────────────────────────────────────
     try {
         this.routeSSEToPage(payload);
     } catch (err) {
         console.error("❌ routeSSEToPage failed:", err);
     }
 
-    // ───────────────────────────────────────────────
-    // Final footer refresh
-    // ───────────────────────────────────────────────
     page?.renderFooterStatus?.call(page);
 };
 /* #endregion */
