@@ -16,6 +16,9 @@ session_cache_limiter('');
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
+// 🔥 MUST MATCH ACROSS ALL FILES
+session_name('SKYESOFTSESSID');
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',

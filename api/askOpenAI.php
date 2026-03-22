@@ -37,6 +37,9 @@ header("Content-Type: application/json; charset=UTF-8");
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
+// 🔥 MUST MATCH ACROSS ALL FILES
+session_name('SKYESOFTSESSID');
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
