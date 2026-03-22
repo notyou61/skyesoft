@@ -423,10 +423,21 @@ window.SkyIndex = {
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
-        const isAuthed = this.authState === true;
+        // Context guard
+        if (!this) {
+            console.warn('[FOOTER] invalid context');
+            return;
+        }
+        // Access authoritative state
+        const app = window.SkyeApp;
+        // Determine auth status with fallback to last SSE snapshot
+        const isAuthed =
+            this.authState === true ||
+            app?.lastSSE?.auth?.authenticated === true;
         const sentinel = this.currentSentinelState;
-
+        // Idle state from SSE
         let dot = document.querySelector('.footerDot');
+        // Text element guard
         let textEl = document.querySelector('.footerText');
 
         // 🧾 Footer DOM guard with race-condition retry
@@ -464,8 +475,6 @@ window.SkyIndex = {
             return;
         }
 
-        //
-        //console.log('Idle State:', this.idleState)
         // 3️⃣ Idle Session Warning
         if (this.idleState) {
 
@@ -540,6 +549,12 @@ window.SkyIndex = {
 
         // 5️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
+
+        console.log('[FOOTER DEBUG]', {
+            thisRef: this,
+            authState: this.authState,
+            isAuthed: this.authState === true
+        });
     },
     // #endregion
 
