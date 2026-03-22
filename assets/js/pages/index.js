@@ -487,7 +487,6 @@ window.SkyIndex = {
         // 3️⃣ Idle Session Warning
         if (this.idleState) {
 
-            // Normalize idle fields (server variations tolerated)
             const remaining = Number(
                 this.idleState.remainingSeconds ??
                 this.idleState.remaining ??
@@ -497,40 +496,48 @@ window.SkyIndex = {
             const timeout = Number(
                 this.idleState.timeoutSeconds ??
                 this.idleState.timeout ??
-                this.idleState.maxSeconds ??
-                0
+                this.idleState.maxSeconds
             );
 
-            if (!Number.isFinite(remaining) || !Number.isFinite(timeout)) {
-                return;
-            }
+            const isValidIdle =
+                Number.isFinite(remaining) &&
+                Number.isFinite(timeout) &&
+                timeout > 0;
 
-            // Ignore expired states (Auth gate will handle)
-            if (remaining <= 0) {
-                render('#111', 'Authorization required to continue');
-                return;
-            }
+            if (isValidIdle) {
 
-            const idleSeconds = timeout - remaining;
+                // Ignore expired states (Auth gate will handle)
+                if (remaining <= 0) {
+                    render('#111', 'Authorization required to continue');
+                    return;
+                }
 
-            // 🔔 Idle notice (10 seconds after 1 minute idle)
-            if (idleSeconds >= 60 && idleSeconds <= 70) {
-                render('#ffcc00', 'Idle protection active');
-                return;
-            }
+                const idleSeconds = timeout - remaining;
 
-            // ⏱ Final countdown (last 60 seconds)
-            if (remaining <= 60) {
-                const secs = Math.max(0, Math.floor(remaining));
-                const padded = String(secs).padStart(2,'0');
-                render('#ffcc00', `Session expiring in ${padded}s`);
-                return;
-            }
+                // 🔔 Idle notice (10 seconds after 1 minute idle)
+                if (idleSeconds >= 60 && idleSeconds <= 70) {
+                    render('#ffcc00', 'Idle protection active');
+                    return;
+                }
 
-            // ⚠ Warning window (last 2 minutes)
-            if (remaining <= 120) {
-                render('#ffcc00', 'No activity detected • Session expiring soon');
-                return;
+                // ⏱ Final countdown (last 60 seconds)
+                if (remaining <= 60) {
+                    const secs = Math.max(0, Math.floor(remaining));
+                    const padded = String(secs).padStart(2,'0');
+                    render('#ffcc00', `Session expiring in ${padded}s`);
+                    return;
+                }
+
+                // ⚠ Warning window (last 2 minutes)
+                if (remaining <= 120) {
+                    render('#ffcc00', 'No activity detected • Session expiring soon');
+                    return;
+                }
+
+            } else {
+
+                console.warn('[FOOTER] Invalid idle state — fully bypassed');
+
             }
         }
 
