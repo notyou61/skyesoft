@@ -1411,7 +1411,7 @@ window.SkyIndex = {
             setTimeout(() => {
                 console.log('[SkySSE] starting after login delay');
                 window.SkySSE.start();
-            }, 300);
+            }, 700);
 
         } catch (err) {
 

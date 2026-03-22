@@ -118,7 +118,10 @@ function getLiveSessionAuth(): array
         'role'          => (string)($_SESSION['role'] ?? 'user'),
         'sessionId'     => $sessionId
     ];
+
+    error_log('[SSE SESSION DATA] ' . json_encode($_SESSION));
 }
+
 
 // ─────────────────────────────────────────
 // 📸 SNAPSHOT MODE DETECTION

@@ -334,7 +334,15 @@ if ($action === "login") {
     error_log('[LOGIN] FINAL session_id=' . $sessionId);
     error_log('[LOGIN] FINAL data=' . json_encode($_SESSION));
 
+    // 🔥 FORCE WRITE + VERIFY (CRITICAL)
     session_write_close();
+
+    // 🔍 reopen session immediately to confirm persistence
+    session_start();
+    error_log('[LOGIN VERIFY] session_id=' . session_id());
+    error_log('[LOGIN VERIFY] data=' . json_encode($_SESSION));
+    session_write_close();
+
     jsonOut(true);
 }
 
