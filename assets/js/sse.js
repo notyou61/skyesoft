@@ -9,7 +9,7 @@ window.SkySSE = {
     streamId: 0,
     restartTimer: null,
 
-    // 🌐 Start SSE Connection (fetch-based with credentials)
+    // 🌐 Start SSE Connection (Authoritative)
     start: async function () {
 
         if (this.restartTimer) {
@@ -20,36 +20,38 @@ window.SkySSE = {
         this.streamId++;
         const currentStream = this.streamId;
 
-        if (this.es) {
-            try { this.es.abort?.(); } catch {}
-            this.es = null;
+        if (this.controller) {
+            this.controller.abort();
+            this.controller = null;
         }
 
         const controller = new AbortController();
-        this.es = controller;
+        this.controller = controller;
 
         try {
 
-            const sseUrl = `${location.protocol}//${location.host}/skyesoft/api/sse.php`;
-
-            const res = await fetch(sseUrl, {
+            const res = await fetch('/skyesoft/api/sse.php', {
                 method: 'GET',
-                credentials: 'include',
+                credentials: 'include', // 🔥 THIS is what fixes everything
                 headers: {
                     'Accept': 'text/event-stream'
                 },
-                cache: 'no-store'
+                cache: 'no-store',
+                signal: controller.signal
             });
 
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
             const reader = res.body.getReader();
-            const decoder = new TextDecoder();
+            const decoder = new TextDecoder('utf-8');
 
             let buffer = '';
 
             while (true) {
 
                 const { done, value } = await reader.read();
-
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
@@ -61,16 +63,14 @@ window.SkySSE = {
 
                     if (currentStream !== this.streamId) return;
 
-                    const line = part.split("\n").find(l => l.startsWith("data:"));
+                    const line = part.split("\n").find(l => l.startsWith("data: "));
                     if (!line) continue;
-
-                    const jsonStr = line.replace(/^data:\s*/, '');
 
                     try {
 
-                        const payload = JSON.parse(jsonStr);
+                        const payload = JSON.parse(line.replace("data: ", ""));
 
-                        // 🔐 Auth State Transition
+                        // 🔐 Auth transition detection
                         if (payload.auth !== undefined) {
 
                             const isAuthenticated = payload.auth.authenticated === true;
@@ -97,7 +97,7 @@ window.SkySSE = {
             }
 
         } catch (err) {
-            console.warn('[SkySSE] fetch stream error', err);
+            console.warn('[SkySSE] stream error', err);
         }
     },
 
@@ -128,27 +128,12 @@ window.SkySSE = {
     // ⛔ Stop stream
     stop: function () {
 
-        if (!this.es) return;
-
-        try {
-
-            // 🔥 NEW: fetch-based SSE uses AbortController
-            if (typeof this.es.abort === 'function') {
-                this.es.abort();
-            }
-
-            // 🔥 OLD: EventSource fallback (if ever used)
-            else if (typeof this.es.close === 'function') {
-                this.es.close();
-            }
-
-        } catch (e) {
-            console.warn('[SkySSE] stop close failed', e);
+        if (this.controller) {
+            this.controller.abort();
+            this.controller = null;
         }
 
-        this.es = null;
-
         console.log('[SkySSE] stopped');
-    }
+    },
 
 };
