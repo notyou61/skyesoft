@@ -1662,9 +1662,6 @@ window.SkyIndex = {
         if (this._loggingOut) return;
         this._loggingOut = true;
 
-        console.log('SkySSE exists?', !!window.SkySSE);
-        console.log('SkySSE methods:', Object.keys(window.SkySSE || {}));
-
         console.log('[SkyIndex] Sending logout request');
 
         fetch('/skyesoft/api/auth.php', {
@@ -1681,47 +1678,38 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
-            // Window-level logout handling (SSE stop, UI reset) is critical to ensure session is fully terminated and UI reflects that immediately.
+            // #region 🔌 Stop SSE (authoritative reset)
             if (window.SkySSE) {
-
                 window.SkySSE.stop();
-
-                // Reset SSE memory
-                window.SkyeApp.lastSSE = null;
-
-                // 🔥 FORCE UI STATE IMMEDIATELY (CRITICAL)
-                const app = window.SkyeApp;
-                const page = app?.pageHandlers?.[app?.currentPage];
-                // Context correction (prevents shadow-instance bugs)
-                if (page) {
-
-                    console.log('[UI] forcing logout state (client-side)');
-
-                    // 🔥 HARD RESET AUTH STATE (CRITICAL)
-                    page.authState = false;
-                    page.authUser = null;
-                    page.authRole = null;
-
-                    // Optional but clean
-                    page.commandSurfaceActive = false;
-                    page.idleState = null;
-
-                    document.body.removeAttribute('data-auth');
-
-                    page.renderLoginCard?.();
-
-                    // Ensure correct context + immediate render
-                    page.renderFooterStatus?.call(page);
-                }
-
-                // 🔥 delayed restart
-                setTimeout(() => {
-
-                    console.log('[SkySSE] restarting after logout (delayed)');
-                    window.SkySSE.start();
-
-                }, 800);
             }
+            // #endregion
+
+            // #region 🧠 Reset SSE memory
+            window.SkyeApp.lastSSE = null;
+            // #endregion
+
+            // #region 🎨 Force UI logout state
+            const app  = window.SkyeApp;
+            const page = app?.pageHandlers?.[app?.currentPage];
+
+            if (page) {
+
+                console.log('[UI] forcing logout state (client-side)');
+
+                // Hard auth reset
+                page.authState = false;
+                page.authUser  = null;
+                page.authRole  = null;
+
+                page.commandSurfaceActive = false;
+                page.idleState = null;
+
+                document.body.removeAttribute('data-auth');
+
+                page.renderLoginCard?.();
+                page.renderFooterStatus?.call(page);
+            }
+            // #endregion
 
         })
         .catch(err => {

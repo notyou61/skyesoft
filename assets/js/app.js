@@ -245,10 +245,5 @@ document.addEventListener("DOMContentLoaded", function () {
     /* Footer (non-SSE, static bootstraps) */
     window.SkyeApp.initFooter();
 
-    if (window.SkySSE?.start) {
-        window.SkySSE.start();
-    } else {
-        console.error("❌ SSE engine missing: SkySSE.start not found");
-    }
 });
 /* #endregion */
