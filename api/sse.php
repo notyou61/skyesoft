@@ -24,7 +24,6 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
 // Reads authoritative PHP session state

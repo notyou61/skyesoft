@@ -281,7 +281,15 @@ if ($action === "login") {
         jsonOut(false, "Invalid password.");
     }
 
+    // 🔍 PRE-SESSION STATE
+    error_log('[LOGIN] PRE session_id=' . session_id());
+    error_log('[LOGIN] PRE cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
+
     session_regenerate_id(true);
+
+    // 🔍 POST-REGENERATE STATE
+    error_log('[LOGIN] POST-REGEN session_id=' . session_id());
+    error_log('[LOGIN] POST-REGEN cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
 
     $_SESSION["authenticated"] = true;
     $_SESSION["userId"]        = (int)$user["contactId"];
@@ -305,6 +313,10 @@ if ($action === "login") {
         "ua"        => safeUserAgent(),
         "sessionId" => $sessionId
     ]);
+
+    // 🔍 FINAL STATE
+    error_log('[LOGIN] FINAL session_id=' . $sessionId);
+    error_log('[LOGIN] FINAL data=' . json_encode($_SESSION));
 
     session_write_close();
     jsonOut(true);
