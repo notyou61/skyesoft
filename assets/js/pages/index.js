@@ -1405,7 +1405,13 @@ window.SkyIndex = {
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
 
-            console.log('[AUTH 10] SSE restarted');
+            // AUTH 10 — delayed restart (prevents session race)
+            console.log('[AUTH 10] SSE restart (delayed)');
+
+            setTimeout(() => {
+                console.log('[SkySSE] starting after login delay');
+                window.SkySSE.start();
+            }, 300);
 
         } catch (err) {
 

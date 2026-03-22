@@ -285,7 +285,7 @@ if ($action === "login") {
     error_log('[LOGIN] PRE session_id=' . session_id());
     error_log('[LOGIN] PRE cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
 
-    session_regenerate_id(true);
+    session_regenerate_id(false);
 
     // 🔍 POST-REGENERATE STATE
     error_log('[LOGIN] POST-REGEN session_id=' . session_id());
