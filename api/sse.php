@@ -33,13 +33,18 @@ session_set_cookie_params([
 // ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
+    error_log('[SSE COOKIE RAW] ' . ($_SERVER['HTTP_COOKIE'] ?? 'NONE'));
+    error_log('[SSE COOKIE PHPSESSID] ' . ($_COOKIE[session_name()] ?? 'NONE'));
+
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    session_start([
+    $started = @session_start([
         'read_and_close' => true
     ]);
+
+    error_log('[SSE SESSION START] started=' . ($started ? 'YES' : 'NO') . ' id=' . session_id());
 
     $sessionId = session_id();
     $isAuth = !empty($_SESSION['authenticated']);
@@ -237,6 +242,18 @@ while (ob_get_level() > 0) {
 
 
 // ─────────────────────────────────────────
+// 🔐 CRITICAL — INITIAL SESSION ATTACH
+// MUST occur BEFORE any output is sent
+// Ensures SSE binds to correct PHP session
+// ─────────────────────────────────────────
+
+$initialSession = getLiveSessionAuth();
+
+// Optional debug (safe during MTCO phase)
+error_log('[SSE BOOT] ' . json_encode($initialSession));
+
+
+// ─────────────────────────────────────────
 // SSE RESPONSE HEADERS
 // These headers ensure the browser treats the
 // response as a persistent event stream and
@@ -258,13 +275,11 @@ header_remove('Content-Encoding');
 
 
 // ─────────────────────────────────────────
-// INITIAL STREAM PRIMER
-// Sends padding to force the browser to begin
-// processing the stream immediately.
+// INITIAL STREAM PRIMER (DEFERRED)
+// Now safe — session already attached
 // ─────────────────────────────────────────
 
 echo ":" . str_repeat(" ", 2048) . "\n\n";
-
 @flush();
 
 #endregion

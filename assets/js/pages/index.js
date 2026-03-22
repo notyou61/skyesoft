@@ -575,11 +575,14 @@ window.SkyIndex = {
         // 5️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
 
-        console.log('[FOOTER DEBUG]', {
-            thisRef: this,
-            authState: this.authState,
-            isAuthed: this.authState === true
-        });
+        // Console Log (Remove When Finished)
+        if(1 == 0){
+            console.log('[FOOTER DEBUG]', {
+                thisRef: this,
+                authState: this.authState,
+                isAuthed: this.authState === true
+            });
+        }
     },
     // #endregion
 

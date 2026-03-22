@@ -97,6 +97,10 @@ window.SkySSE = {
             }
 
         } catch (err) {
+            // Ignore abort errors (expected on stop/restart)
+            if (err?.name === 'AbortError') {
+                return;
+            }
             console.warn('[SkySSE] stream error', err);
         }
     },
