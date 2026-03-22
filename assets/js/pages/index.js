@@ -1274,10 +1274,26 @@ window.SkyIndex = {
 
         console.log('[AUTH 1] Login submit received');
 
+        // Resolve ACTIVE PAGE INSTANCE (authoritative)
+        const app  = window.SkyeApp;
+        const page = app?.pageHandlers?.[app?.currentPage];
+
+        if (!page) {
+            console.error('[AUTH] No active page instance');
+            return;
+        }
+
+        // Context correction (prevents shadow-instance bugs)
+        if (this !== page) {
+            console.warn('[AUTH] Redirecting to active page instance');
+            return page.handleLoginSubmit(form);
+        }
+
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
+        // #region 🔍 Validation
         if (!email || !pass) {
 
             console.log('[AUTH 2] Validation failed');
@@ -1286,6 +1302,7 @@ window.SkyIndex = {
             error.hidden = false;
             return;
         }
+        // #endregion
 
         try {
 
@@ -1314,6 +1331,7 @@ window.SkyIndex = {
 
             console.log('[AUTH 5] auth.php payload', data);
 
+            // #region ❌ Auth Rejected
             if (!data.success) {
 
                 console.log('[AUTH 6] Authentication rejected');
@@ -1322,42 +1340,53 @@ window.SkyIndex = {
                 error.hidden = false;
                 return;
             }
+            // #endregion
 
             console.log('[AUTH 7] Authentication accepted');
 
             error.hidden = true;
 
-            this.authState = true;
-            document.body.setAttribute("data-auth", "true");
-
-            console.log('[AUTH 8] UI revealed');
-
+            // =====================================================
+            // 🔐 VERIFY SESSION (authoritative confirmation)
+            // =====================================================
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
 
             const session = await check.json();
 
-            console.log('[AUTH 9] Session verified', session);
+            console.log('[AUTH 8] Session verified', session);
 
-            // ⭐ ADD THIS BLOCK
             if (session.authenticated === true) {
 
-                this.authUser = session.username ?? null;
-                this.authRole = session.role ?? null;
+                // =====================================================
+                // 🔥 APPLY STATE TO ACTIVE INSTANCE (CRITICAL FIX)
+                // =====================================================
+                page.authState = true;
 
-                this.renderCommandInterfaceCard?.();
-                this.commandSurfaceActive = true;
+                document.body.setAttribute("data-auth", "true");
 
-                this.renderFooterStatus?.();
+                page.authUser = session.username ?? null;
+                page.authRole = session.role ?? null;
 
-                console.log('[AUTH 10] Command interface activated');
+                // =====================================================
+                // 🎯 RENDER UI IMMEDIATELY (client authority)
+                // =====================================================
+                page.renderCommandInterfaceCard?.();
+                page.commandSurfaceActive = true;
+
+                page.renderFooterStatus?.();
+
+                console.log('[AUTH 9] Command interface activated (authoritative)');
             }
 
+            // =====================================================
+            // 🔁 RESTART SSE (secondary confirmation layer)
+            // =====================================================
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
 
-            console.log('[AUTH 11] SSE restarted');
+            console.log('[AUTH 10] SSE restarted');
 
         } catch (err) {
 
@@ -1365,7 +1394,6 @@ window.SkyIndex = {
 
             error.textContent = 'Connection error.';
             error.hidden = false;
-
         }
     },
     // #endregion
