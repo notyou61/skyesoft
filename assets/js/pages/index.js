@@ -1383,9 +1383,6 @@ window.SkyIndex = {
     // #region 📡 SSE Event Handling
     onSSE(event) {
 
-        // Console Log
-        //console.log('[SSE] Event:', event);
-
         if (!event || typeof event !== 'object') return;
 
         // 🧠 Ignore stale SSE streams
@@ -1397,64 +1394,42 @@ window.SkyIndex = {
             return;
         }
 
-        // 🔐 Authoritative Auth Projection (SSE)
+        // =====================================================
+        // 🔐 AUTH PROJECTION (CLEAN + SINGLE AUTHORITY PATH)
+        // =====================================================
         if ('auth' in event) {
 
-            const isAuth = Boolean(event.auth?.authenticated);
+            const varSSEAuth    = Boolean(event.auth?.authenticated);
+            const varClientAuth = this.authState === true;
 
-            // 🔐 Authoritative Auth Projection (SSE)
-            if ('auth' in event) {
+            // 🚫 ONLY allow logout if client is NOT already authenticated
+            if (!varSSEAuth && !varClientAuth) {
 
-                const isAuth = Boolean(event.auth?.authenticated);
-                const varClientAuth = this.authState === true;
+                console.log('[SkyIndex] SSE → forcing logout UI');
 
-                // 🚫 Prevent SSE from overriding active login
-                if (!isAuth && !varClientAuth) {
+                this.authState = false;
 
-                    console.log('[SkyIndex] SSE → forcing logout UI');
+                document.body.removeAttribute('data-auth');
 
-                    this.authState = false;
+                this.renderLoginCard();
+                this.commandSurfaceActive = false;
 
-                    document.body.removeAttribute('data-auth');
+                this.renderFooterStatus();
 
-                    this.renderLoginCard();
-                    this.commandSurfaceActive = false;
-
-                    this.renderFooterStatus();
-
-                    return;
-                }
-
-                // ✅ Normal login transition
-                if (this.authState !== isAuth && isAuth) {
-
-                    this.authState = true;
-
-                    document.body.setAttribute('data-auth', 'true');
-
-                    this.authUser = event.auth.username ?? null;
-                    this.authRole = event.auth.role ?? null;
-
-                    console.log('[SkyIndex] Authenticated → Command Interface');
-
-                    this.renderCommandInterfaceCard();
-                    this.commandSurfaceActive = true;
-
-                    this.renderFooterStatus();
-                }
+                return;
             }
 
-            // Normal login transition
-            if (this.authState !== isAuth) {
+            // ✅ Promote auth ONLY if SSE confirms AND client not already set
+            if (varSSEAuth && !varClientAuth) {
 
-                this.authState = isAuth;
+                console.log('[SkyIndex] SSE → confirmed auth');
 
-                document.body.toggleAttribute('data-auth', isAuth);
+                this.authState = true;
+
+                document.body.setAttribute('data-auth', 'true');
 
                 this.authUser = event.auth.username ?? null;
                 this.authRole = event.auth.role ?? null;
-
-                console.log('[SkyIndex] Authenticated → Command Interface');
 
                 this.renderCommandInterfaceCard();
                 this.commandSurfaceActive = true;
@@ -1463,43 +1438,63 @@ window.SkyIndex = {
             }
         }
 
-         // Cache the latest SSE data for projections and state
+        // =====================================================
+        // 📦 CACHE SSE SNAPSHOT (AUTHORITATIVE STORE)
+        // =====================================================
         this.lastSSE = {
             ...this.lastSSE,
             ...event
         };
-        //console.log('[SSE] cached keys:', Object.keys(event || {}));
-        
-        // ⏳ Idle State Projection
+
+        // =====================================================
+        // ⏳ IDLE STATE
+        // =====================================================
         if ('idle' in event) {
             this.idleState = event.idle;
             console.log('[Idle SSE]', event.idle);
             this.renderFooterStatus();
         }
 
-        // 🕒 Time
+        // =====================================================
+        // 🕒 TIME
+        // =====================================================
         if (event.timeDateArray?.currentUnixTime && this.dom?.time) {
+
             const d = new Date(event.timeDateArray.currentUnixTime * 1000);
+
             const hh = d.getHours();
             const mm = d.getMinutes();
             const ss = d.getSeconds();
+
             const hour12 = hh % 12 || 12;
             const ampm   = hh >= 12 ? 'PM' : 'AM';
-            const pad    = n => String(n).padStart(2, '0');
-            this.dom.time.textContent = `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
+
+            const pad = n => String(n).padStart(2, '0');
+
+            this.dom.time.textContent =
+                `${pad(hour12)}:${pad(mm)}:${pad(ss)} ${ampm}`;
         }
 
-        // 🌤 Weather
+        // =====================================================
+        // 🌤 WEATHER
+        // =====================================================
         if (event.weather && this.dom?.weather) {
+
             const { temp, condition } = event.weather;
+
             if (temp != null && condition) {
-                this.dom.weather.textContent = `${temp}°F — ${condition}`;
+                this.dom.weather.textContent =
+                    `${temp}°F — ${condition}`;
             }
         }
 
-        // ⏳ Interval
+        // =====================================================
+        // ⏳ INTERVAL
+        // =====================================================
         if (event.currentInterval && this.dom?.interval) {
+
             const { key, secondsRemainingInterval } = event.currentInterval;
+
             const labelMap = {
                 beforeWork: 'Before Work',
                 worktime:   'Worktime',
@@ -1507,23 +1502,26 @@ window.SkyIndex = {
                 weekend:    'Weekend',
                 holiday:    'Holiday'
             };
+
             const label = labelMap[key] ?? key;
+
             if (typeof secondsRemainingInterval === 'number') {
-                this.dom.interval.textContent = `${label} - ${formatIntervalDHMS(secondsRemainingInterval)}`;
+                this.dom.interval.textContent =
+                    `${label} - ${formatIntervalDHMS(secondsRemainingInterval)}`;
             } else {
                 this.dom.interval.textContent = label;
             }
         }
 
-        // Merge when SSE provides siteMeta
+        // =====================================================
+        // 🔔 SITE META / VERSION FOOTER
+        // =====================================================
         if (event.siteMeta) {
 
-            // Init cache
             if (!this.siteMetaCache) {
                 this.siteMetaCache = {};
             }
 
-            // Merge incoming metadata
             this.siteMetaCache = {
                 ...this.siteMetaCache,
                 ...event.siteMeta
@@ -1531,7 +1529,6 @@ window.SkyIndex = {
 
             const newVersion = this.siteMetaCache.siteVersion;
 
-            // Trigger indicator only when version actually changes
             if (
                 newVersion &&
                 this.lastSiteVersion &&
@@ -1540,17 +1537,14 @@ window.SkyIndex = {
                 window.SkyVersion.show();
             }
 
-            // Track last version
             this.lastSiteVersion = newVersion;
 
-            // 🔔 Immediately update the footer
             if (this.dom?.version) {
                 this.dom.version.innerHTML =
                     formatVersionFooter(this.siteMetaCache);
             }
         }
 
-        // Always render if we have cached metadata
         if (this.dom?.version && this.siteMetaCache) {
 
             const newText = formatVersionFooter(this.siteMetaCache);
@@ -1558,19 +1552,17 @@ window.SkyIndex = {
             if (this.dom.version.innerHTML !== newText) {
                 this.dom.version.innerHTML = newText;
             }
-
         }
 
-        // 🛡️ Sentinel Governance Projection
-        const sentinel = event.sentinelMeta;
+        // =====================================================
+        // 🛡️ SENTINEL GOVERNANCE
+        // =====================================================
+        if (event.sentinelMeta) {
 
-        if (sentinel) {
-            this.currentSentinelState = sentinel;
+            this.currentSentinelState = event.sentinelMeta;
 
-            const isAuth = event.auth?.authenticated === true;
-
-            if (isAuth) {
-                this.updateGovernanceFooter(sentinel);
+            if (this.getAuthState?.()) {
+                this.updateGovernanceFooter(event.sentinelMeta);
             } else {
                 this.renderFooterStatus();
             }
