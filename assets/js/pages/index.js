@@ -422,11 +422,13 @@ window.SkyIndex = {
 
     // #region 🔐 Auth Resolver (Single Source of Truth)
     getAuthState() {
+        const varSSE = window.SkyeApp?.lastSSE?.auth?.authenticated;
+        const varClient = this.authState;
 
-        const varClient = this.authState === true;
-        const varSSE    = window.SkyeApp?.lastSSE?.auth?.authenticated === true;
+        if (varClient === false) return false;
+        if (varSSE === false) return false;
 
-        return varClient || varSSE;
+        return varClient === true || varSSE === true;
     },
     // #endregion
 
@@ -1680,11 +1682,25 @@ window.SkyIndex = {
                 // 🔥 FORCE UI STATE IMMEDIATELY (CRITICAL)
                 const app = window.SkyeApp;
                 const page = app?.pageHandlers?.[app?.currentPage];
-
+                // Context correction (prevents shadow-instance bugs)
                 if (page) {
+
                     console.log('[UI] forcing logout state (client-side)');
+
+                    // 🔥 HARD RESET AUTH STATE (CRITICAL)
+                    page.authState = false;
+                    page.authUser = null;
+                    page.authRole = null;
+
+                    // Optional but clean
+                    page.commandSurfaceActive = false;
+                    page.idleState = null;
+
                     document.body.removeAttribute('data-auth');
+
                     page.renderLoginCard?.();
+
+                    // Ensure correct context + immediate render
                     page.renderFooterStatus?.call(page);
                 }
 
