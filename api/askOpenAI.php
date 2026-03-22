@@ -31,30 +31,30 @@ ini_set('error_log', __DIR__ . '/logs/php-error.log');
 header("Content-Type: application/json; charset=UTF-8");
 
 // ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// 🔐 SESSION BOOTSTRAP (CANONICAL — FIXED)
 // Must match across ALL endpoints
 // ─────────────────────────────────────────
 
 // Force same session name across system
 session_name('SKYESOFTSESSID');
 
-// Attach to existing session (CRITICAL for SSE + APIs)
-if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
+// 🔥 FORCE HTTPS COOKIE (do NOT auto-detect)
+$secure = true;
 
-// Detect HTTPS
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-
-// Apply cookie policy BEFORE session_start
+// Apply cookie policy FIRST (CRITICAL)
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => $secure,
+    'path'     => '/skyesoft/',       // 🔥 MATCH YOUR APP ROOT
+    'domain'   => 'skyelighting.com', // or '.skyelighting.com'
+    'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
+// Attach to existing session (AFTER params, BEFORE start)
+if (!empty($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
 
 // Start session
 session_start();

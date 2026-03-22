@@ -14,114 +14,70 @@ error_reporting(E_ALL);
 
 session_cache_limiter('');
 
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-
 // ─────────────────────────────────────────
-// 🔐 SESSION CONFIGURATION (AUTHORITATIVE)
-// Must be defined BEFORE session binding
-// ─────────────────────────────────────────
-
-// ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// 🔐 SESSION BOOTSTRAP (CANONICAL — FINAL)
 // Must match across ALL endpoints
 // ─────────────────────────────────────────
 
 // Force same session name across system
 session_name('SKYESOFTSESSID');
 
-// Detect HTTPS
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+// 🔥 FORCE HTTPS COOKIE (stable for GoDaddy)
+$secure = true;
 
-// Attach to existing session (CRITICAL for SSE + APIs)
-if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
-
-// Apply cookie policy BEFORE session_start
+// Apply cookie policy BEFORE session binding
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => $secure,
+    'path'     => '/skyesoft/',
+    'domain'   => 'skyelighting.com',
+    'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-// Start session
-session_start([
-    'read_and_close' => true
-]);
-
-error_log('[AUTH SESSION PATH] ' . session_save_path());
-
-// ─────────────────────────────────────────
-// 🔐 CRITICAL — FORCE SESSION ID FROM COOKIE
-// Ensures SSE uses SAME session as auth.php
-// MUST run BEFORE any session_start()
-// ─────────────────────────────────────────
-
-$sessionName = session_name();
-
-if (!empty($_COOKIE[$sessionName])) {
-    session_id($_COOKIE[$sessionName]);
-    error_log('[SSE BOOT] using cookie session_id=' . $_COOKIE[$sessionName]);
+// 🔥 Attach to existing session BEFORE start
+if (!empty($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+    error_log('[SSE BOOT] using cookie session_id=' . $_COOKIE[session_name()]);
 } else {
     error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
 }
 
+// Start session ONCE (no read_and_close here)
+session_start();
+
+error_log('[SSE SESSION STARTED] id=' . session_id());
+
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
-// Reads authoritative PHP session state
-// without holding the session lock.
+// Reads authoritative PHP session state safely
 // ─────────────────────────────────────────
-
 function getLiveSessionAuth(): array
 {
-    // Raw visibility
-    error_log('[SSE COOKIE RAW] ' . ($_SERVER['HTTP_COOKIE'] ?? 'NONE'));
-
-    // Ensure no lock
+    // Release lock first
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // Start session (READ ONLY)
-    $started = @session_start([
-        'read_and_close' => true
-    ]);
+    // Re-open session for fresh read
+    session_start();
 
     $sessionId = session_id();
-    $isAuth    = !empty($_SESSION['authenticated']);
+    $isAuth = !empty($_SESSION['authenticated']);
 
-    // 🔍 Unified debug (single line, high signal)
-    error_log(sprintf(
-        '[SSE SESSION] started=%s | id=%s | auth=%s | cookie=%s',
-        $started ? 'YES' : 'NO',
-        $sessionId ?: '(none)',
-        $isAuth ? 'YES' : 'NO',
-        $_COOKIE[session_name()] ?? '(none)'
-    ));
-
-    if (!$isAuth) {
-        return [
-            'authenticated' => false,
-            'userId'        => null,
-            'username'      => null,
-            'role'          => null,
-            'sessionId'     => $sessionId
-        ];
-    }
-
-    return [
-        'authenticated' => true,
-        'userId'        => (int)($_SESSION['userId'] ?? 0),
-        'username'      => (string)($_SESSION['username'] ?? ''),
-        'role'          => (string)($_SESSION['role'] ?? 'user'),
+    $result = [
+        'authenticated' => $isAuth,
+        'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
+        'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
+        'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
         'sessionId'     => $sessionId
     ];
 
-    error_log('[SSE SESSION DATA] ' . json_encode($_SESSION));
-}
+    // Release immediately after read
+    session_write_close();
 
+    return $result;
+}
 
 // ─────────────────────────────────────────
 // 📸 SNAPSHOT MODE DETECTION

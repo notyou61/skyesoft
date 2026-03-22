@@ -15,31 +15,32 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// 🔐 SESSION BOOTSTRAP (CANONICAL — FIXED)
 // Must match across ALL endpoints
 // ─────────────────────────────────────────
 
 // Force same session name across system
 session_name('SKYESOFTSESSID');
 
-// Detect HTTPS
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+// 🔥 FORCE HTTPS COOKIE (do NOT auto-detect)
+$secure = true;
 
-// Attach to existing session (CRITICAL for SSE + APIs)
-if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
-
-// Apply cookie policy BEFORE session_start
+// Apply cookie policy FIRST (CRITICAL)
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => $secure,
+    'path'     => '/skyesoft/',       // 🔥 MATCH YOUR APP ROOT
+    'domain'   => 'skyelighting.com', // or '.skyelighting.com'
+    'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-// 🔥 START SESSION FIRST (CRITICAL)
+// Attach to existing session (AFTER params, BEFORE start)
+if (!empty($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
+
+// Start session
 session_start();
 
 error_log('[AUTH SESSION PATH] ' . session_save_path());
