@@ -22,6 +22,7 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
+    'domain'   => $_SERVER['HTTP_HOST'], // 🔥 ADD THIS
     'secure'   => $secure,
     'httponly' => true,
     'samesite' => 'Lax'

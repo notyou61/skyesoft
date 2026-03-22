@@ -30,13 +30,15 @@ window.SkySSE = {
 
         try {
 
+            // 🔥 NEW: fetch-based SSE with credentials
             const res = await fetch('/skyesoft/api/sse.php', {
                 method: 'GET',
-                credentials: 'include', // 🔥 GUARANTEED COOKIE
+                credentials: 'include',   // 🔥 REQUIRED
+                mode: 'same-origin',      // 🔥 ADD THIS
                 headers: {
                     'Accept': 'text/event-stream'
                 },
-                signal: controller.signal
+                cache: 'no-store'         // 🔥 PREVENT weird caching
             });
 
             const reader = res.body.getReader();
@@ -126,18 +128,22 @@ window.SkySSE = {
     // ⛔ Stop stream
     stop: function () {
 
-        // Cancel pending restart
-        if (this.restartTimer) {
-            clearTimeout(this.restartTimer);
-            this.restartTimer = null;
-        }
+        if (!this.es) return;
 
-        if (this.es) {
-            try {
-                this.es.close();
-            } catch (e) {
-                console.warn('[SkySSE] stop close failed', e);
+        try {
+
+            // 🔥 NEW: fetch-based SSE uses AbortController
+            if (typeof this.es.abort === 'function') {
+                this.es.abort();
             }
+
+            // 🔥 OLD: EventSource fallback (if ever used)
+            else if (typeof this.es.close === 'function') {
+                this.es.close();
+            }
+
+        } catch (e) {
+            console.warn('[SkySSE] stop close failed', e);
         }
 
         this.es = null;

@@ -388,7 +388,7 @@ while (true) {
                 setcookie(session_name(), '', [
                     'expires'  => time() - 42000,
                     'path'     => '/',
-                    'domain'   => '',
+                    'domain' => $_SERVER['HTTP_HOST'],
                     'secure'   => $secure,
                     'httponly' => true,
                     'samesite' => 'Lax'
