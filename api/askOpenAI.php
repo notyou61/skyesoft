@@ -31,12 +31,22 @@ ini_set('error_log', __DIR__ . '/logs/php-error.log');
 header("Content-Type: application/json; charset=UTF-8");
 
 // ─────────────────────────────────────────
-// SESSION COOKIE POLICY
-// Must match auth.php / sse.php exactly
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// Must match across ALL endpoints
 // ─────────────────────────────────────────
 
+// Force same session name across system
+session_name('SKYESOFTSESSID');
+
+// Attach to existing session (CRITICAL for SSE + APIs)
+if (!empty($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
+
+// Detect HTTPS
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
+// Apply cookie policy BEFORE session_start
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
@@ -45,6 +55,8 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
+
+// Start session
 session_start();
 
 // Load environment

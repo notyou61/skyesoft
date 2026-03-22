@@ -21,8 +21,23 @@ $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 // Must be defined BEFORE session binding
 // ─────────────────────────────────────────
 
-session_name('PHPSESSID'); // 🔒 enforce consistency across all endpoints
+// ─────────────────────────────────────────
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// Must match across ALL endpoints
+// ─────────────────────────────────────────
 
+// Force same session name across system
+session_name('SKYESOFTSESSID');
+
+// Detect HTTPS
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
+// Attach to existing session (CRITICAL for SSE + APIs)
+if (!empty($_COOKIE[session_name()])) {
+    session_id($_COOKIE[session_name()]);
+}
+
+// Apply cookie policy BEFORE session_start
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
@@ -30,6 +45,13 @@ session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
+
+// Start session
+session_start([
+    'read_and_close' => true
+]);
+
+error_log('[AUTH SESSION PATH] ' . session_save_path());
 
 // ─────────────────────────────────────────
 // 🔐 CRITICAL — FORCE SESSION ID FROM COOKIE
