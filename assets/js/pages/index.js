@@ -1402,21 +1402,46 @@ window.SkyIndex = {
 
             const isAuth = Boolean(event.auth?.authenticated);
 
-            // 🔥 ALWAYS handle logout explicitly
-            if (!isAuth) {
+            // 🔐 Authoritative Auth Projection (SSE)
+            if ('auth' in event) {
 
-                console.log('[SkyIndex] SSE → forcing logout UI');
+                const isAuth = Boolean(event.auth?.authenticated);
+                const varClientAuth = this.authState === true;
 
-                this.authState = false;
+                // 🚫 Prevent SSE from overriding active login
+                if (!isAuth && !varClientAuth) {
 
-                document.body.removeAttribute('data-auth');
+                    console.log('[SkyIndex] SSE → forcing logout UI');
 
-                this.renderLoginCard();
-                this.commandSurfaceActive = false;
+                    this.authState = false;
 
-                this.renderFooterStatus();
+                    document.body.removeAttribute('data-auth');
 
-                return; // 🔥 stop further processing
+                    this.renderLoginCard();
+                    this.commandSurfaceActive = false;
+
+                    this.renderFooterStatus();
+
+                    return;
+                }
+
+                // ✅ Normal login transition
+                if (this.authState !== isAuth && isAuth) {
+
+                    this.authState = true;
+
+                    document.body.setAttribute('data-auth', 'true');
+
+                    this.authUser = event.auth.username ?? null;
+                    this.authRole = event.auth.role ?? null;
+
+                    console.log('[SkyIndex] Authenticated → Command Interface');
+
+                    this.renderCommandInterfaceCard();
+                    this.commandSurfaceActive = true;
+
+                    this.renderFooterStatus();
+                }
             }
 
             // Normal login transition
