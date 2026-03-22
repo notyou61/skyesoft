@@ -27,43 +27,39 @@ session_set_cookie_params([
 
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
-// Reads the authoritative PHP session state
-// and returns the normalized auth payload.
-// This helper is used both at bootstrap and
-// during the live SSE loop.
+// Reads authoritative PHP session state
+// without holding the session lock.
 // ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
     }
 
+    session_start([
+        'read_and_close' => true
+    ]);
+
+    $sessionId = session_id();
     $isAuth = !empty($_SESSION['authenticated']);
 
-    // 🔥 CRITICAL FIX
-    // If session is empty → force false
     if (!$isAuth) {
-        session_write_close();
         return [
             'authenticated' => false,
             'userId'        => null,
             'username'      => null,
             'role'          => null,
-            'sessionId'     => session_id()
+            'sessionId'     => $sessionId
         ];
     }
 
-    $result = [
+    return [
         'authenticated' => true,
-        'userId'        => (int)$_SESSION['userId'],
-        'username'      => $_SESSION['username'],
-        'role'          => $_SESSION['role'],
-        'sessionId'     => session_id()
+        'userId'        => (int)($_SESSION['userId'] ?? 0),
+        'username'      => (string)($_SESSION['username'] ?? ''),
+        'role'          => (string)($_SESSION['role'] ?? 'user'),
+        'sessionId'     => $sessionId
     ];
-
-    session_write_close();
-
-    return $result;
 }
 
 // ─────────────────────────────────────────
@@ -313,6 +309,8 @@ while (true) {
 
     $liveSession = getLiveSessionAuth();
 
+    error_log('[SSE] auth=' . json_encode($liveSession));
+
     $isAuthenticated = $liveSession['authenticated'];
     $userId          = $liveSession['userId'];
     $sessionId       = $liveSession['sessionId'];
@@ -373,9 +371,14 @@ while (true) {
         // is reached.
         // ─────────────────────────────────────────
 
+        // If user is idle and timeout has expired, destroy session
         if ($idleState === 'expired' && $isAuthenticated === true) {
 
-            if (session_status() !== PHP_SESSION_ACTIVE) {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
+           if (session_status() !== PHP_SESSION_ACTIVE) {
                 session_start();
             }
 
@@ -385,30 +388,32 @@ while (true) {
                 setcookie(session_name(), '', [
                     'expires'  => time() - 42000,
                     'path'     => '/',
-                    'secure'   => $secure ?? false,
+                    'domain'   => '',
+                    'secure'   => $secure,
                     'httponly' => true,
                     'samesite' => 'Lax'
                 ]);
             }
 
             session_destroy();
-            session_write_close(); // 🔥 ADD THIS LINE
+            session_write_close();
 
+            // 🔥 CRITICAL — update runtime state
             $isAuthenticated = false;
             $userId = null;
-
-            $idle = [
-                'state'            => 'expired',
-                'remainingSeconds' => 0,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => $lastActivity
-            ];
 
             $auth = [
                 'authenticated' => false,
                 'username'      => null,
                 'role'          => null,
                 'reason'        => 'timeout'
+            ];
+
+            $idle = [
+                'state'            => 'expired',
+                'remainingSeconds' => 0,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => $lastActivity
             ];
         }
 
@@ -461,6 +466,10 @@ while (true) {
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
+        $payload["authDebug"] = [
+            "sessionId"     => $sessionId,
+            "authenticated" => $auth["authenticated"] ?? false
+        ];
 
         $json = json_encode(
             $payload,
