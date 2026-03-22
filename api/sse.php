@@ -16,6 +16,13 @@ session_cache_limiter('');
 
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 
+// ─────────────────────────────────────────
+// 🔐 SESSION CONFIGURATION (AUTHORITATIVE)
+// Must be defined BEFORE session binding
+// ─────────────────────────────────────────
+
+session_name('PHPSESSID'); // 🔒 enforce consistency across all endpoints
+
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
@@ -25,27 +32,52 @@ session_set_cookie_params([
 ]);
 
 // ─────────────────────────────────────────
+// 🔐 CRITICAL — FORCE SESSION ID FROM COOKIE
+// Ensures SSE uses SAME session as auth.php
+// MUST run BEFORE any session_start()
+// ─────────────────────────────────────────
+
+$sessionName = session_name();
+
+if (!empty($_COOKIE[$sessionName])) {
+    session_id($_COOKIE[$sessionName]);
+    error_log('[SSE BOOT] using cookie session_id=' . $_COOKIE[$sessionName]);
+} else {
+    error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
+}
+
+// ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
 // Reads authoritative PHP session state
 // without holding the session lock.
 // ─────────────────────────────────────────
+
 function getLiveSessionAuth(): array
 {
+    // Raw visibility
     error_log('[SSE COOKIE RAW] ' . ($_SERVER['HTTP_COOKIE'] ?? 'NONE'));
-    error_log('[SSE COOKIE PHPSESSID] ' . ($_COOKIE[session_name()] ?? 'NONE'));
 
+    // Ensure no lock
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
+    // Start session (READ ONLY)
     $started = @session_start([
         'read_and_close' => true
     ]);
 
-    error_log('[SSE SESSION START] started=' . ($started ? 'YES' : 'NO') . ' id=' . session_id());
-
     $sessionId = session_id();
-    $isAuth = !empty($_SESSION['authenticated']);
+    $isAuth    = !empty($_SESSION['authenticated']);
+
+    // 🔍 Unified debug (single line, high signal)
+    error_log(sprintf(
+        '[SSE SESSION] started=%s | id=%s | auth=%s | cookie=%s',
+        $started ? 'YES' : 'NO',
+        $sessionId ?: '(none)',
+        $isAuth ? 'YES' : 'NO',
+        $_COOKIE[session_name()] ?? '(none)'
+    ));
 
     if (!$isAuth) {
         return [
@@ -68,9 +100,6 @@ function getLiveSessionAuth(): array
 
 // ─────────────────────────────────────────
 // 📸 SNAPSHOT MODE DETECTION
-// Snapshot requests return a single JSON
-// payload rather than initiating an SSE
-// streaming connection.
 // ─────────────────────────────────────────
 
 $isSnapshot =
