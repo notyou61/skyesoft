@@ -1427,10 +1427,14 @@ window.SkyIndex = {
         // =====================================================
         if ('auth' in event) {
 
-            const varSSEAuth    = Boolean(event.auth?.authenticated);
-            const varClientAuth = this.authState === true;
+            const varSSEAuth = Boolean(event.auth?.authenticated);
 
-            // 🚫 ONLY allow logout if client is NOT already authenticated
+            const app  = window.SkyeApp;
+            const page = app?.pageHandlers?.[app?.currentPage];
+
+            const varClientAuth = page?.authState === true;
+
+            // 🚫 DO NOT override a valid login (CRITICAL FIX)
             if (!varSSEAuth && !varClientAuth) {
 
                 console.log('[SkyIndex] SSE → forcing logout UI');
@@ -1447,22 +1451,22 @@ window.SkyIndex = {
                 return;
             }
 
-            // ✅ Promote auth ONLY if SSE confirms AND client not already set
+            // ✅ Promote auth if SSE confirms AND client not set
             if (varSSEAuth && !varClientAuth) {
 
                 console.log('[SkyIndex] SSE → confirmed auth');
 
-                this.authState = true;
+                page.authState = true;
 
                 document.body.setAttribute('data-auth', 'true');
 
-                this.authUser = event.auth.username ?? null;
-                this.authRole = event.auth.role ?? null;
+                page.authUser = event.auth.username ?? null;
+                page.authRole = event.auth.role ?? null;
 
-                this.renderCommandInterfaceCard();
-                this.commandSurfaceActive = true;
+                page.renderCommandInterfaceCard?.();
+                page.commandSurfaceActive = true;
 
-                this.renderFooterStatus();
+                page.renderFooterStatus();
             }
         }
 
