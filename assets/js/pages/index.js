@@ -422,11 +422,18 @@ window.SkyIndex = {
 
     // #region 🔐 Auth Resolver (Single Source of Truth)
     getAuthState() {
-        const varSSE = window.SkyeApp?.lastSSE?.auth?.authenticated;
-        const varClient = this.authState;
 
+        const varClient = this.authState === true;
+        const varSSE    = window.SkyeApp?.lastSSE?.auth?.authenticated;
+
+        // 🔒 logout still wins
         if (varClient === false) return false;
-        if (varSSE === false) return false;
+
+        // ⚠ only trust SSE false AFTER it has ever been true
+        if (this._sseConfirmed && varSSE === false) return false;
+
+        // mark confirmation
+        if (varSSE === true) this._sseConfirmed = true;
 
         return varClient === true || varSSE === true;
     },
