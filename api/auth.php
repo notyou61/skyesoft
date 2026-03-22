@@ -8,11 +8,9 @@ declare(strict_types=1);
 //  Codex Tier: 4 — Session Mutation Endpoint
 // ======================================================================
 
-#region SECTION 0 — Environment Bootstrap
+// #region SECTION 0 — Environment Bootstrap
 
-header("Content-Type: application/json; charset=UTF-8");
-
-// Debug (optional during dev)
+// Debug
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -27,7 +25,11 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
+// 🔥 START SESSION FIRST (CRITICAL)
 session_start();
+
+// 🔥 THEN send headers
+header("Content-Type: application/json; charset=UTF-8");
 
 // Action Origins (required by actions layer)
 const ACTION_ORIGIN_USER = 1;
