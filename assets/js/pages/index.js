@@ -1318,35 +1318,57 @@ window.SkyIndex = {
 
             error.hidden = true;
 
-            this.authState = true;
-            document.body.setAttribute("data-auth", "true");
+            // ─────────────────────────────────────────
+            // 🔥 FORCE UI STATE (CRITICAL FIX)
+            // ─────────────────────────────────────────
 
-            console.log('[AUTH 8] UI revealed');
+            const app  = window.SkyeApp;
+            const page = app?.pageHandlers?.[app?.currentPage];
 
-            const check = await fetch('/skyesoft/api/auth.php?action=check', {
-                credentials: 'include'
-            });
+            if (page) {
 
-            const session = await check.json();
+                console.log('[UI] forcing login state (client-side)');
 
-            console.log('[AUTH 9] Session verified', session);
+                document.body.setAttribute("data-auth", "true");
 
-            // ⭐ ADD THIS BLOCK
-            if (session.authenticated === true) {
+                page.authState = true;
 
-                this.authUser = session.username ?? null;
-                this.authRole = session.role ?? null;
+                // Pull fresh session context
+                const check = await fetch('/skyesoft/api/auth.php?action=check', {
+                    credentials: 'include'
+                });
 
-                this.renderCommandInterfaceCard?.();
-                this.commandSurfaceActive = true;
+                const session = await check.json();
 
-                this.renderFooterStatus?.();
+                console.log('[AUTH 9] Session verified', session);
+
+                page.authUser = session.username ?? null;
+                page.authRole = session.role ?? null;
+
+                // 🔥 Immediate UI render (no SSE dependency)
+                page.transitionToCommandInterface?.();
+
+                page.renderFooterStatus?.call(page);
 
                 console.log('[AUTH 10] Command interface activated');
             }
 
-            window.SkySSE?.stop?.();
-            window.SkySSE?.restart?.();
+            // ─────────────────────────────────────────
+            // 🔄 SSE RESTART (CLEAN HANDOFF)
+            // ─────────────────────────────────────────
+
+            if (window.SkySSE) {
+
+                window.SkySSE.stop();
+
+                // Reset SSE memory so next frame is authoritative
+                window.SkyeApp.lastSSE = null;
+
+                setTimeout(() => {
+                    console.log('[SkySSE] restarting after login');
+                    window.SkySSE.start();
+                }, 300);
+            }
 
             console.log('[AUTH 11] SSE restarted');
 
