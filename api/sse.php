@@ -67,7 +67,7 @@ function getLiveSessionAuth(): array
     }
 
     // Re-open session
-    session_start();
+    //session_start();
 
     $sessionId = session_id();
     $auth  = $_SESSION['authenticated'] ?? false;
@@ -189,10 +189,6 @@ if ($isSnapshot) {
     // Snapshot requests must explicitly attach
     // to the browser's session cookie.
     // ─────────────────────────────────────────
-
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
 
     $sessionId = session_id();
 
@@ -400,40 +396,14 @@ while (true) {
             'lastActivity'     => $lastActivity
         ];
 
-        // ─────────────────────────────────────────
-        // ⛔ IDLE TIMEOUT ENFORCEMENT
-        // Destroy session once timeout threshold
-        // is reached.
-        // ─────────────────────────────────────────
+        // ⛔ IDLE TIMEOUT ENFORCEMENT (SSE-safe)
 
-        // If user is idle and timeout has expired, destroy session
+        // DO NOT touch PHP session here
         if ($idleState === 'expired' && $isAuthenticated === true) {
 
-            if (session_status() === PHP_SESSION_ACTIVE) {
-                session_write_close();
-            }
+            // 🔥 DO NOT reopen or destroy session in SSE
 
-           if (session_status() !== PHP_SESSION_ACTIVE) {
-                session_start();
-            }
-
-            $_SESSION = [];
-
-            if (ini_get("session.use_cookies")) {
-                setcookie(session_name(), '', [
-                    'expires'  => time() - 42000,
-                    'path'     => '/',
-                    'domain' => $_SERVER['HTTP_HOST'],
-                    'secure'   => $secure,
-                    'httponly' => true,
-                    'samesite' => 'Lax'
-                ]);
-            }
-
-            session_destroy();
-            session_write_close();
-
-            // 🔥 CRITICAL — update runtime state
+            // Just update runtime state
             $isAuthenticated = false;
             $userId = null;
 
