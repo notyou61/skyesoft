@@ -70,10 +70,22 @@ window.SkySSE = {
 
                         const payload = JSON.parse(line.replace("data: ", ""));
 
+                        console.log('[SkySSE RAW AUTH]', {
+                            incoming: payload.auth,
+                            prevState: window.SkyState?.authenticated,
+                            falseCount: window.SkyState?._falseCount
+                        });
+
                         // 🔐 Auth transition detection
                         if (payload.auth !== undefined) {
 
                             const isAuthenticated = payload.auth.authenticated === true;
+
+                            console.log('[SkySSE EVAL]', {
+                                isAuthenticated,
+                                prevState: window.SkyState?.authenticated,
+                                falseCount: window.SkyState?._falseCount
+                            });
 
                             window.SkyState = window.SkyState || {};
 
