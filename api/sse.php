@@ -46,7 +46,9 @@ if (!empty($_COOKIE[session_name()])) {
 // Start session ONCE (no read_and_close here)
 session_start();
 
-error_log('[SSE SESSION STARTED] id=' . session_id());
+// 🔍 DEBUG HERE (CORRECT LOCATION)
+error_log('[SSE SESSION ID] ' . session_id());
+error_log('[SSE SESSION DATA] ' . json_encode($_SESSION));
 
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
