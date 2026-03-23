@@ -46,6 +46,9 @@ window.SkySSE = {
 
                     const payload = JSON.parse(event.data);
 
+                    // ✅ ADD IT HERE
+                    console.log('[SSE FULL PAYLOAD]', payload);
+
                     // 🔍 DEBUG
                     console.log('[SkySSE RAW AUTH]', {
                         incoming: payload.auth,
