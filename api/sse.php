@@ -298,6 +298,10 @@ header_remove('Content-Encoding');
 // ─────────────────────────────────────────
 
 echo ":" . str_repeat(" ", 2048) . "\n\n";
+
+if (function_exists('ob_flush')) {
+    @ob_flush();
+}
 @flush();
 
 #endregion
@@ -510,6 +514,11 @@ while (true) {
 
         if ($json !== false && $json !== '') {
             echo "data: " . $json . "\n\n";
+
+            // 🔥 FORCE FLUSH (GoDaddy / LiteSpeed safe)
+            if (function_exists('ob_flush')) {
+                @ob_flush();
+            }
             @flush();
         }
     }
