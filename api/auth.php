@@ -312,7 +312,7 @@ if ($action === "login") {
     $_SESSION["auth_ready"] = time();
 
     // 🔄 NOW regenerate (after state is complete)
-    session_regenerate_id(false);
+    session_regenerate_id(true);
 
     $contactId = (int)$user["contactId"];
     $email     = (string)$user["contactEmail"];
