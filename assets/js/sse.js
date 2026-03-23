@@ -75,28 +75,37 @@ window.SkySSE = {
 
                             const isAuthenticated = payload.auth.authenticated === true;
 
-                            // 🔥 TRANSIENT RACE GUARD
-                            if (!isAuthenticated && window.SkyState?.authenticated === true) {
-
-                                console.log('[SkySSE] transient false detected (race), ignoring');
-
-                                // DO NOT logout yet — wait for next tick
-                                return;
-                            }
-
-                            // ✅ REAL STATE UPDATE
                             window.SkyState = window.SkyState || {};
-                            window.SkyState.authenticated = isAuthenticated;
 
-                            // 🔓 REAL LOGOUT (only if stable false)
+                            // 🔥 Track transient false count
+                            window.SkyState._falseCount = window.SkyState._falseCount || 0;
+
                             if (!isAuthenticated) {
 
-                                console.log('[SkySSE] confirmed logout via stream');
+                                window.SkyState._falseCount++;
 
-                                this.stop();
-                                window.SkyeApp?.handleLogout?.('sse');
-                                return;
+                                // 🔥 IGNORE first false (race condition)
+                                if (window.SkyState._falseCount === 1 && window.SkyState.authenticated === true) {
+                                    console.log('[SkySSE] transient false (race) ignored');
+                                    return;
+                                }
+
+                                // 🔓 REAL LOGOUT (confirmed)
+                                if (window.SkyState._falseCount >= 2) {
+                                    console.log('[SkySSE] confirmed logout via stream');
+
+                                    this.stop();
+                                    window.SkyeApp?.handleLogout?.('sse');
+                                    return;
+                                }
+
+                            } else {
+                                // ✅ Reset on true
+                                window.SkyState._falseCount = 0;
                             }
+
+                            // ✅ Update state
+                            window.SkyState.authenticated = isAuthenticated;
                         }
 
                         window.SkyeApp?.handleSSE?.(payload);
