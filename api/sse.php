@@ -54,32 +54,26 @@ error_log('[SSE SESSION STARTED] id=' . session_id());
 // ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
-    // Release lock first
+    // Release lock
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // Re-open session for fresh read
+    // Re-open session
     session_start();
 
     $sessionId = session_id();
-    $auth  = $_SESSION['authenticated'] ?? false;
-    $ready = $_SESSION['auth_ready'] ?? null;
-
-    $isAuth = ($auth && $ready !== null);
+    $isAuth = !empty($_SESSION['authenticated']);
 
     $result = [
         'authenticated' => $isAuth,
         'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
         'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
-        'sessionId'     => $sessionId,
-        'reason'        => !$isAuth
-            ? ($ready === null ? 'commit_missing' : 'auth_false')
-            : 'ok'
+        'sessionId'     => $sessionId
     ];
 
-    // Release immediately after read
+    // 🔒 Always release
     session_write_close();
 
     return $result;
