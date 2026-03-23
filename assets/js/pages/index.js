@@ -852,6 +852,17 @@ window.SkyIndex = {
         });
         // #endregion
 
+        // =====================================================
+        // 📡 GLOBAL SSE START (AUTHORITATIVE)
+        // =====================================================
+        console.log('[INIT] Starting SSE globally');
+
+        if (window.SkySSE) {
+            window.SkySSE.start();
+        } else {
+            console.error('[INIT] SkySSE not found');
+        }
+
     },
     // #endregion
 
@@ -1407,11 +1418,6 @@ window.SkyIndex = {
 
             // AUTH 10 — delayed restart (prevents session race)
             console.log('[AUTH 10] SSE restart (delayed)');
-
-            setTimeout(() => {
-                console.log('[SkySSE] starting after login delay');
-                window.SkySSE.start();
-            }, 700);
 
         } catch (err) {
 

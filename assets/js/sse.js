@@ -10,65 +10,99 @@ window.SkySSE = {
     restartTimer: null,
 
     // 🌐 Start SSE Connection (Authoritative)
-    start: function () {
+    start: async function () {
 
-        if (this.es) {
-            this.es.close();
+        if (this.restartTimer) {
+            clearTimeout(this.restartTimer);
+            this.restartTimer = null;
         }
 
         this.streamId++;
         const currentStream = this.streamId;
 
-        const es = new EventSource('/skyesoft/api/sse.php', {
-            withCredentials: true
-        });
+        if (this.controller) {
+            this.controller.abort();
+            this.controller = null;
+        }
 
-        this.es = es;
+        const controller = new AbortController();
+        this.controller = controller;
 
-        es.onopen = () => {
-            console.log('[SkySSE] connected');
-        };
+        try {
 
-        es.onmessage = (event) => {
+            const res = await fetch('/skyesoft/api/sse.php', {
+                method: 'GET',
+                credentials: 'include', // 🔥 THIS is what fixes everything
+                headers: {
+                    'Accept': 'text/event-stream'
+                },
+                cache: 'no-store',
+                signal: controller.signal
+            });
 
-            if (currentStream !== this.streamId) return;
-
-            try {
-
-                const payload = JSON.parse(event.data);
-
-                // 🔐 Auth transition detection
-                if (payload.auth !== undefined) {
-
-                    const isAuthenticated = payload.auth.authenticated === true;
-
-                    if (!isAuthenticated && window.SkyState?.authenticated === true) {
-
-                        console.log('[SkySSE] detected logout via stream');
-
-                        this.stop();
-                        window.SkyeApp?.handleLogout?.('sse');
-                        return;
-                    }
-
-                    window.SkyState = window.SkyState || {};
-                    window.SkyState.authenticated = isAuthenticated;
-                }
-
-                window.SkyeApp?.handleSSE?.(payload);
-
-            } catch (err) {
-                console.warn('[SkySSE] parse error', err);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
             }
-        };
 
-        es.onerror = (err) => {
-            console.warn('[SkySSE] connection error', err);
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
 
-            // Auto-reconnect handled by browser
-            // Optional manual restart:
-            this.restart();
-        };
+            let buffer = '';
+
+            while (true) {
+
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop();
+
+                for (const part of parts) {
+
+                    if (currentStream !== this.streamId) return;
+
+                    const line = part.split("\n").find(l => l.startsWith("data: "));
+                    if (!line) continue;
+
+                    try {
+
+                        const payload = JSON.parse(line.replace("data: ", ""));
+
+                        // 🔐 Auth transition detection
+                        if (payload.auth !== undefined) {
+
+                            const isAuthenticated = payload.auth.authenticated === true;
+
+                            if (!isAuthenticated && window.SkyState?.authenticated === true) {
+
+                                console.log('[SkySSE] detected logout via stream');
+
+                                this.stop();
+                                window.SkyeApp?.handleLogout?.('sse');
+                                return;
+                            }
+
+                            window.SkyState = window.SkyState || {};
+                            window.SkyState.authenticated = isAuthenticated;
+                        }
+
+                        window.SkyeApp?.handleSSE?.(payload);
+
+                    } catch (err) {
+                        console.warn('[SkySSE] parse error', err);
+                    }
+                }
+            }
+
+        } catch (err) {
+            // Ignore abort errors (expected on stop/restart)
+            if (err?.name === 'AbortError') {
+                return;
+            }
+            console.warn('[SkySSE] stream error', err);
+        }
     },
 
     // 🔁 Restart stream (safe restart)
