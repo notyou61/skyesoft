@@ -1582,6 +1582,17 @@ window.SkyOfficeBoard = {
             lastBoardPayload = window.SkyeApp.lastSSE;
             updateAllCards(lastBoardPayload);
         }
+        
+        // =====================================================
+        // 📡 GLOBAL SSE START (OFFICE BOARD)
+        // =====================================================
+        console.log('[OfficeBoard INIT] Starting SSE');
+
+        if (window.SkySSE) {
+            window.SkySSE.start();
+        } else {
+            console.error('[OfficeBoard INIT] SkySSE not found');
+        }
     },
 
     updatePermitTable(activePermits) {
