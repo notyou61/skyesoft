@@ -272,32 +272,31 @@ error_log('[SSE BOOT] ' . json_encode($initialSession));
 
 
 // ─────────────────────────────────────────
-// SSE RESPONSE HEADERS
-// These headers ensure the browser treats the
-// response as a persistent event stream and
-// prevents proxy or CDN buffering.
+// SSE RESPONSE HEADERS (Clean + Stable)
 // ─────────────────────────────────────────
 
 header('Content-Type: text/event-stream; charset=UTF-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
-header('Pragma: no-cache');
-header('Expires: 0');
 header('Connection: keep-alive');
 
-// Prevent proxy buffering (NGINX / reverse proxies)
+// 🔥 Prevent proxy buffering (NGINX / LiteSpeed)
 header('X-Accel-Buffering: no');
 
-// Prevent compression which breaks SSE
-header('Content-Encoding: none');
-header_remove('Content-Encoding');
+// 🔥 LiteSpeed / GoDaddy anti-buffering
+header('X-LiteSpeed-Cache-Control: no-cache');
+header('X-LiteSpeed-Cache: no-cache');
 
+// 🔥 Disable compression at PHP level
+@ini_set('zlib.output_compression', 0);
 
 // ─────────────────────────────────────────
-// INITIAL STREAM PRIMER (DEFERRED)
-// Now safe — session already attached
+// INITIAL STREAM PRIMER (SAFE + VALID)
 // ─────────────────────────────────────────
 
-echo ":" . str_repeat(" ", 2048) . "\n\n";
+echo ": connected\n\n";
+
+// 🔥 Force LiteSpeed flush
+echo str_repeat(" ", 1024) . "\n";
 
 if (function_exists('ob_flush')) {
     @ob_flush();
@@ -475,16 +474,22 @@ while (true) {
     }
 
     // ─────────────────────────────────────────
-    // 💓 KEEPALIVE PING
-    // Prevents connection timeouts
+    // 💓 KEEPALIVE PING (LiteSpeed-safe)
     // ─────────────────────────────────────────
 
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
-        $lastPing = $now;
 
+        // 🔥 CRITICAL — break LiteSpeed buffering
+        echo str_repeat(" ", 512) . "\n";
+
+        if (function_exists('ob_flush')) {
+            @ob_flush();
+        }
         @flush();
+
+        $lastPing = $now;
     }
 
     // ─────────────────────────────────────────
@@ -515,7 +520,9 @@ while (true) {
         if ($json !== false && $json !== '') {
             echo "data: " . $json . "\n\n";
 
-            // 🔥 FORCE FLUSH (GoDaddy / LiteSpeed safe)
+            // 🔥 CRITICAL: break LiteSpeed buffering
+            echo str_repeat(" ", 1024) . "\n";
+
             if (function_exists('ob_flush')) {
                 @ob_flush();
             }
