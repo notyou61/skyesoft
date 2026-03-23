@@ -10,99 +10,65 @@ window.SkySSE = {
     restartTimer: null,
 
     // 🌐 Start SSE Connection (Authoritative)
-    start: async function () {
+    start: function () {
 
-        if (this.restartTimer) {
-            clearTimeout(this.restartTimer);
-            this.restartTimer = null;
+        if (this.es) {
+            this.es.close();
         }
 
         this.streamId++;
         const currentStream = this.streamId;
 
-        if (this.controller) {
-            this.controller.abort();
-            this.controller = null;
-        }
+        const es = new EventSource('/skyesoft/api/sse.php', {
+            withCredentials: true
+        });
 
-        const controller = new AbortController();
-        this.controller = controller;
+        this.es = es;
 
-        try {
+        es.onopen = () => {
+            console.log('[SkySSE] connected');
+        };
 
-            const res = await fetch('/skyesoft/api/sse.php', {
-                method: 'GET',
-                credentials: 'include', // 🔥 THIS is what fixes everything
-                headers: {
-                    'Accept': 'text/event-stream'
-                },
-                cache: 'no-store',
-                signal: controller.signal
-            });
+        es.onmessage = (event) => {
 
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (currentStream !== this.streamId) return;
 
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder('utf-8');
+            try {
 
-            let buffer = '';
+                const payload = JSON.parse(event.data);
 
-            while (true) {
+                // 🔐 Auth transition detection
+                if (payload.auth !== undefined) {
 
-                const { done, value } = await reader.read();
-                if (done) break;
+                    const isAuthenticated = payload.auth.authenticated === true;
 
-                buffer += decoder.decode(value, { stream: true });
+                    if (!isAuthenticated && window.SkyState?.authenticated === true) {
 
-                const parts = buffer.split("\n\n");
-                buffer = parts.pop();
+                        console.log('[SkySSE] detected logout via stream');
 
-                for (const part of parts) {
-
-                    if (currentStream !== this.streamId) return;
-
-                    const line = part.split("\n").find(l => l.startsWith("data: "));
-                    if (!line) continue;
-
-                    try {
-
-                        const payload = JSON.parse(line.replace("data: ", ""));
-
-                        // 🔐 Auth transition detection
-                        if (payload.auth !== undefined) {
-
-                            const isAuthenticated = payload.auth.authenticated === true;
-
-                            if (!isAuthenticated && window.SkyState?.authenticated === true) {
-
-                                console.log('[SkySSE] detected logout via stream');
-
-                                this.stop();
-                                window.SkyeApp?.handleLogout?.('sse');
-                                return;
-                            }
-
-                            window.SkyState = window.SkyState || {};
-                            window.SkyState.authenticated = isAuthenticated;
-                        }
-
-                        window.SkyeApp?.handleSSE?.(payload);
-
-                    } catch (err) {
-                        console.warn('[SkySSE] parse error', err);
+                        this.stop();
+                        window.SkyeApp?.handleLogout?.('sse');
+                        return;
                     }
-                }
-            }
 
-        } catch (err) {
-            // Ignore abort errors (expected on stop/restart)
-            if (err?.name === 'AbortError') {
-                return;
+                    window.SkyState = window.SkyState || {};
+                    window.SkyState.authenticated = isAuthenticated;
+                }
+
+                window.SkyeApp?.handleSSE?.(payload);
+
+            } catch (err) {
+                console.warn('[SkySSE] parse error', err);
             }
-            console.warn('[SkySSE] stream error', err);
-        }
+        };
+
+        es.onerror = (err) => {
+            console.warn('[SkySSE] connection error', err);
+
+            // Auto-reconnect handled by browser
+            // Optional manual restart:
+            this.restart();
+        };
     },
 
     // 🔁 Restart stream (safe restart)
