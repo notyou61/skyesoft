@@ -75,17 +75,28 @@ window.SkySSE = {
 
                             const isAuthenticated = payload.auth.authenticated === true;
 
+                            // 🔥 TRANSIENT RACE GUARD
                             if (!isAuthenticated && window.SkyState?.authenticated === true) {
 
-                                console.log('[SkySSE] detected logout via stream');
+                                console.log('[SkySSE] transient false detected (race), ignoring');
+
+                                // DO NOT logout yet — wait for next tick
+                                return;
+                            }
+
+                            // ✅ REAL STATE UPDATE
+                            window.SkyState = window.SkyState || {};
+                            window.SkyState.authenticated = isAuthenticated;
+
+                            // 🔓 REAL LOGOUT (only if stable false)
+                            if (!isAuthenticated) {
+
+                                console.log('[SkySSE] confirmed logout via stream');
 
                                 this.stop();
                                 window.SkyeApp?.handleLogout?.('sse');
                                 return;
                             }
-
-                            window.SkyState = window.SkyState || {};
-                            window.SkyState.authenticated = isAuthenticated;
                         }
 
                         window.SkyeApp?.handleSSE?.(payload);

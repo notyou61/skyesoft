@@ -63,7 +63,10 @@ function getLiveSessionAuth(): array
     session_start();
 
     $sessionId = session_id();
-    $isAuth = !empty($_SESSION['authenticated']);
+    $auth  = $_SESSION['authenticated'] ?? false;
+    $ready = $_SESSION['auth_ready'] ?? null;
+
+    $isAuth = ($auth && $ready !== null);
 
     $result = [
         'authenticated' => $isAuth,
