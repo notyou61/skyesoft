@@ -339,12 +339,10 @@ while (true) {
 
     $liveSession = getLiveSessionAuth();
 
-    error_log('[SSE SESSION RAW] ' . json_encode($_SESSION));
-    error_log('[SSE AUTH EVAL] auth=' . ($auth ? '1' : '0') . 
-            ' ready=' . ($ready ?? 'null') . 
-            ' result=' . ($isAuth ? '1' : '0'));
+    $auth  = $_SESSION['authenticated'] ?? false;
+    $ready = $_SESSION['auth_ready'] ?? null;
 
-    $isAuthenticated = $liveSession['authenticated'];
+    $isAuthenticated = ($auth && $ready !== null);
     $userId          = $liveSession['userId'];
     $sessionId       = $liveSession['sessionId'];
 
