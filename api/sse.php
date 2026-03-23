@@ -47,8 +47,13 @@ if (!empty($_COOKIE[session_name()])) {
 session_start();
 
 // 🔍 DEBUG HERE (CORRECT LOCATION)
-error_log('[SSE SESSION ID] ' . session_id());
-error_log('[SSE SESSION DATA] ' . json_encode($_SESSION));
+file_put_contents(
+    __DIR__ . '/sse_debug.log',
+    "[SSE SESSION ID] " . session_id() . PHP_EOL .
+    "[SSE SESSION DATA] " . json_encode($_SESSION) . PHP_EOL .
+    "------------------------" . PHP_EOL,
+    FILE_APPEND
+);
 
 // ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
