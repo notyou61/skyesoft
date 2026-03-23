@@ -315,6 +315,9 @@ if ($action === "login") {
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
+    // 🔥 COMMIT MARKER (CRITICAL)
+    $_SESSION["auth_ready"] = time();
+
     $contactId = (int)$user["contactId"];
     $email     = (string)$user["contactEmail"];
     $role      = (string)($user["role"] ?? "user");
@@ -336,7 +339,7 @@ if ($action === "login") {
     error_log('[LOGIN] FINAL data=' . json_encode($_SESSION));
 
     // 🔥 FORCE WRITE + VERIFY (CRITICAL)
-    session_write_close();
+    session_commit(); // slightly stronger flush signal
 
     // 🔍 reopen session immediately to confirm persistence
     session_start();

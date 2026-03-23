@@ -63,14 +63,20 @@ function getLiveSessionAuth(): array
     session_start();
 
     $sessionId = session_id();
-    $isAuth = !empty($_SESSION['authenticated']);
+    $auth  = $_SESSION['authenticated'] ?? false;
+    $ready = $_SESSION['auth_ready'] ?? null;
+
+    $isAuth = ($auth && $ready !== null);
 
     $result = [
         'authenticated' => $isAuth,
         'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
         'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
-        'sessionId'     => $sessionId
+        'sessionId'     => $sessionId,
+        'reason'        => !$isAuth
+            ? ($ready === null ? 'commit_missing' : 'auth_false')
+            : 'ok'
     ];
 
     // Release immediately after read
@@ -333,7 +339,10 @@ while (true) {
 
     $liveSession = getLiveSessionAuth();
 
-    error_log('[SSE] auth=' . json_encode($liveSession));
+    error_log('[SSE SESSION RAW] ' . json_encode($_SESSION));
+    error_log('[SSE AUTH EVAL] auth=' . ($auth ? '1' : '0') . 
+            ' ready=' . ($ready ?? 'null') . 
+            ' result=' . ($isAuth ? '1' : '0'));
 
     $isAuthenticated = $liveSession['authenticated'];
     $userId          = $liveSession['userId'];
