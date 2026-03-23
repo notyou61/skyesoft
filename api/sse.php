@@ -333,10 +333,7 @@ while (true) {
 
     $liveSession = getLiveSessionAuth();
 
-    $auth  = $_SESSION['authenticated'] ?? false;
-    $ready = $_SESSION['auth_ready'] ?? null;
-
-    $isAuthenticated = ($auth && $ready !== null);
+    $isAuthenticated = $liveSession['authenticated'];
     $userId          = $liveSession['userId'];
     $sessionId       = $liveSession['sessionId'];
 
