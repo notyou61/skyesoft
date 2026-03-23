@@ -15,17 +15,14 @@ error_reporting(E_ALL);
 session_cache_limiter('');
 
 // ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL — FINAL)
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
 // Must match across ALL endpoints
 // ─────────────────────────────────────────
 
-// Force same session name across system
 session_name('SKYESOFTSESSID');
 
-// 🔥 FORCE HTTPS COOKIE (stable for GoDaddy)
 $secure = true;
 
-// Apply cookie policy BEFORE session binding
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/skyesoft/',
@@ -35,7 +32,7 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 
-// 🔥 Attach to existing session BEFORE start
+// Attach to existing session BEFORE start
 if (!empty($_COOKIE[session_name()])) {
     session_id($_COOKIE[session_name()]);
     error_log('[SSE BOOT] using cookie session_id=' . $_COOKIE[session_name()]);
@@ -43,10 +40,10 @@ if (!empty($_COOKIE[session_name()])) {
     error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
 }
 
-// Start session ONCE (no read_and_close here)
+// Start session ONCE
 session_start();
 
-// 🔍 DEBUG HERE (CORRECT LOCATION)
+// Debug
 file_put_contents(
     __DIR__ . '/sse_debug.log',
     "[SSE SESSION ID] " . session_id() . PHP_EOL .
@@ -55,43 +52,23 @@ file_put_contents(
     FILE_APPEND
 );
 
-// ─────────────────────────────────────────
 // 🔐 LIVE SESSION AUTH LOOKUP
-// Reads authoritative PHP session state safely
-// ─────────────────────────────────────────
 function getLiveSessionAuth(): array
 {
-    // Release lock
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
-
-    // Re-open session
-    //session_start();
-
     $sessionId = session_id();
-    $auth  = $_SESSION['authenticated'] ?? false;
-    $ready = $_SESSION['auth_ready'] ?? null;
+    $auth      = $_SESSION['authenticated'] ?? false;
+    $ready     = $_SESSION['auth_ready'] ?? null;
 
     $isAuth = ($auth && $ready !== null);
 
-    $result = [
+    return [
         'authenticated' => $isAuth,
         'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
         'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
         'sessionId'     => $sessionId
     ];
-
-    // 🔒 Always release
-    session_write_close();
-
-    return $result;
 }
-
-// ─────────────────────────────────────────
-// 📸 SNAPSHOT MODE DETECTION
-// ─────────────────────────────────────────
 
 $isSnapshot =
     isset($_GET['mode']) &&
