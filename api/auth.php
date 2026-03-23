@@ -14,11 +14,6 @@ declare(strict_types=1);
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL — FIXED)
-// Must match across ALL endpoints
-// ─────────────────────────────────────────
-
 // Force same session name across system
 session_name('SKYESOFTSESSID');
 
@@ -302,9 +297,7 @@ if ($action === "login") {
     error_log('[LOGIN] PRE session_id=' . session_id());
     error_log('[LOGIN] PRE cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
 
-    session_regenerate_id(false);
-
-    // 🔍 POST-REGENERATE STATE
+      // 🔍 POST-REGENERATE STATE
     error_log('[LOGIN] POST-REGEN session_id=' . session_id());
     error_log('[LOGIN] POST-REGEN cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
 
@@ -317,6 +310,9 @@ if ($action === "login") {
 
     // 🔥 COMMIT MARKER (CRITICAL)
     $_SESSION["auth_ready"] = time();
+
+    // 🔄 NOW regenerate (after state is complete)
+    session_regenerate_id(false);
 
     $contactId = (int)$user["contactId"];
     $email     = (string)$user["contactEmail"];
