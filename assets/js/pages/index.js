@@ -517,7 +517,7 @@ window.SkyIndex = {
 
                 // Ignore expired states (Auth gate will handle)
                 if (remaining <= 0) {
-                    render('#111', 'Authorization required to continue');
+                    render('#111', 'Authorization required to continue (idle)');
                     return;
                 }
 
@@ -575,14 +575,6 @@ window.SkyIndex = {
         // 5️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
 
-        // Console Log (Remove When Finished)
-        if(1 == 0){
-            console.log('[FOOTER DEBUG]', {
-                thisRef: this,
-                authState: this.authState,
-                isAuthed: this.authState === true
-            });
-        }
     },
     // #endregion
 
