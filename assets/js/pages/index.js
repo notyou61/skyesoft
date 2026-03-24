@@ -523,8 +523,10 @@ window.SkyIndex = {
         // 5️⃣ Version (always render if available)
         try {
 
-            const versionEl = document.getElementById('versionFooter');
             const version = window.SkyeApp?.lastSSE?.siteMeta?.siteVersion;
+
+            // Use cached DOM reference (authoritative)
+            const versionEl = this.dom?.version;
 
             if (versionEl && version) {
 
