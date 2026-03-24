@@ -1480,11 +1480,8 @@ window.SkyIndex = {
             ...event
         };
 
-        // 🔁 Re-render footer after SSE update (authoritative)
-        const app  = window.SkyeApp;
-        const page = app?.pageHandlers?.[app?.currentPage];
-
-        page?.renderFooterStatus?.();
+        // 🔁 Re-render footer (correct context)
+        this.renderFooterStatus?.();
 
         // =====================================================
         // ⏳ IDLE STATE (Normalized / Guarded)
