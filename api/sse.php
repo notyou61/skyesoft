@@ -361,21 +361,13 @@ while (true) {
             $idleTimeoutSeconds - $idleSeconds
         );
         
-        // Idle Notice Conditional
         if ($remaining <= 0) {
-
             $idleState = 'expired';
-
         } elseif ($remaining <= 120) {
-
             $idleState = 'warning';
-
         } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
-
             $idleState = 'idle-active';
-
         } else {
-
             $idleState = 'active';
         }
 
@@ -387,34 +379,12 @@ while (true) {
         ];
 
         // ⛔ IDLE TIMEOUT ENFORCEMENT (SSE-safe)
-
-        // DO NOT touch PHP session here
-        //if($idleState === 'expired' && $isAuthenticated === true) {
         if (false && $idleState === 'expired' && $isAuthenticated === true) {
-            // 🔥 DO NOT reopen or destroy session in SSE
-
-            // Just update runtime state
-            $isAuthenticated = false;
-            $userId = null;
-
-            $auth = [
-                'authenticated' => false,
-                'username'      => null,
-                'role'          => null,
-                'reason'        => 'timeout'
-            ];
-
-            $idle = [
-                'state'            => 'expired',
-                'remainingSeconds' => 0,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => $lastActivity
-            ];
+            // disabled
         }
 
     } elseif ($isAuthenticated) {
 
-        // Authenticated but no ledger activity yet
         $idle = [
             'state'            => 'active',
             'remainingSeconds' => $idleTimeoutSeconds,
@@ -424,7 +394,6 @@ while (true) {
 
     } else {
 
-        // Anonymous user
         $idle = [
             'state'            => 'anonymous',
             'remainingSeconds' => null,
