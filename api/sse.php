@@ -55,20 +55,14 @@ file_put_contents(
 // 🔐 LIVE SESSION AUTH LOOKUP
 function getLiveSessionAuth(): array
 {
-    // 🔓 Release lock BEFORE reading
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
 
-    // 🔁 Re-open session for fresh read
     session_start();
 
     $sessionId = session_id();
-
-    $auth  = $_SESSION['authenticated'] ?? false;
-    $ready = $_SESSION['auth_ready'] ?? null;
-
-    $isAuth = ($auth && $ready !== null);
+    $isAuth = !empty($_SESSION['authenticated']);
 
     $result = [
         'authenticated' => $isAuth,
@@ -78,7 +72,6 @@ function getLiveSessionAuth(): array
         'sessionId'     => $sessionId
     ];
 
-    // 🔓 Release lock immediately after read
     session_write_close();
 
     return $result;
