@@ -66,12 +66,12 @@ window.SkySSE = {
                         const prev = window.SkyState.authenticated;
                         const initialized = window.SkyState._authInitialized === true;
 
-                        console.log('[SkySSE EVAL]', {
-                            isAuthenticated,
-                            prevState: prev,
-                            initialized,
-                            falseCount: window.SkyState._falseCount
-                        });
+                       //onsole.log('[SkySSE EVAL]', {
+                       //   isAuthenticated,
+                       //   prevState: prev,
+                       //   initialized,
+                       //   falseCount: window.SkyState._falseCount
+                       //);
 
                         // ─────────────────────────────
                         // INITIALIZATION PHASE
