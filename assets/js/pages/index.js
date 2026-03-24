@@ -442,38 +442,25 @@ window.SkyIndex = {
     // #region 🧾 Footer Status (Single Authority)
     renderFooterStatus() {
 
-        // Context guard
         if (!this) {
             console.warn('[FOOTER] invalid context');
             return;
         }
 
-        // Access authoritative state
-        const app = window.SkyeApp;
-
-        // Determine auth status
         const isAuthed = this.getAuthState();
-
-        // Sentinel state
         const sentinel = this.currentSentinelState;
 
         let dot = document.querySelector('.footerDot');
         let textEl = document.querySelector('.footerText');
 
-        // DOM guard
         if (!dot || !textEl) {
-
             requestAnimationFrame(() => {
-
                 dot = document.querySelector('.footerDot');
                 textEl = document.querySelector('.footerText');
 
                 if (!dot || !textEl) return;
-
                 this.renderFooterStatus();
-
             });
-
             return;
         }
 
@@ -482,6 +469,24 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
+        // 0️⃣ Version (must run regardless of auth state)
+        try {
+
+            const version = window.SkyeApp?.lastSSE?.siteMeta?.siteVersion;
+            const versionEl = this.dom?.version || document.getElementById('versionFooter');
+
+            if (versionEl && version) {
+                const display = `v${version}`;
+
+                if (versionEl.textContent !== display) {
+                    versionEl.textContent = display;
+                }
+            }
+
+        } catch (err) {
+            // silent fail
+        }
+
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
             dot.style.background = '#007aff';
@@ -489,20 +494,19 @@ window.SkyIndex = {
             return;
         }
 
-        // 2️⃣ Auth gate (ONLY place for auth message)
+        // 2️⃣ Auth gate
         if (!isAuthed) {
             render('#111', 'Authorization required to continue');
             return;
         }
 
-        // 3️⃣ Governance (post-auth only)
+        // 3️⃣ Governance
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
             const structuralCount   = Number(sentinel.unresolvedViolations || 0);
 
             if (hasIntegrityDrift === true) {
-
                 const text = structuralCount > 0
                     ? `Integrity Drift • ${structuralCount} Structural Deviations`
                     : `Codex Integrity Drift`;
@@ -519,27 +523,6 @@ window.SkyIndex = {
 
         // 4️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
-
-        // 5️⃣ Version (always render if available)
-        try {
-
-            const version = window.SkyeApp?.lastSSE?.siteMeta?.siteVersion;
-
-            // Use cached DOM reference (authoritative)
-            const versionEl = this.dom?.version;
-
-            if (versionEl && version) {
-
-                const display = `v${version}`;
-
-                if (versionEl.textContent !== display) {
-                    versionEl.textContent = display;
-                }
-            }
-
-        } catch (err) {
-            // silent fail
-        }
 
     },
     // #endregion
