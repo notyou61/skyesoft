@@ -1480,8 +1480,11 @@ window.SkyIndex = {
             ...event
         };
 
-        // 🔁 Re-render footer (correct context)
-        this.renderFooterStatus?.();
+        // 🔁 Re-render footer (authoritative page instance)
+        const app  = window.SkyeApp;
+        const page = app?.pageHandlers?.[app?.currentPage];
+
+        page?.renderFooterStatus?.();
 
         // =====================================================
         // ⏳ IDLE STATE (Normalized / Guarded)
