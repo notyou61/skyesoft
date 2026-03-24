@@ -1568,34 +1568,38 @@ window.SkyIndex = {
         }
 
         // =====================================================
-        // 🔔 SITE META / VERSION FOOTER
+        // 🔔 SITE META / VERSION FOOTER (Authoritative)
         // =====================================================
         if (event.siteMeta) {
 
-            if (!this.siteMetaCache) {
-                this.siteMetaCache = {};
-            }
-
+            // 🧠 Merge SSE payload into cache
             this.siteMetaCache = {
-                ...this.siteMetaCache,
+                ...(this.siteMetaCache || {}),
                 ...event.siteMeta
             };
 
             const newVersion = this.siteMetaCache.siteVersion;
 
+            // 🔔 Detect version change (safe for first load)
             if (
                 newVersion &&
-                this.lastSiteVersion &&
                 newVersion !== this.lastSiteVersion
             ) {
-                window.SkyVersion.show();
+                if (this.lastSiteVersion) {
+                    window.SkyVersion?.show?.(); // notify only on change after init
+                }
+
+                this.lastSiteVersion = newVersion;
             }
 
-            this.lastSiteVersion = newVersion;
-
+            // 🎯 Update footer (only if changed)
             if (this.dom?.version) {
-                this.dom.version.innerHTML =
-                    formatVersionFooter(this.siteMetaCache);
+
+                const newHTML = formatVersionFooter(this.siteMetaCache);
+
+                if (this.dom.version.innerHTML !== newHTML) {
+                    this.dom.version.innerHTML = newHTML;
+                }
             }
         }
 
