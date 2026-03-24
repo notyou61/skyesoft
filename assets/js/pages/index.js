@@ -1570,29 +1570,31 @@ window.SkyIndex = {
         // =====================================================
         // 🔔 SITE META / VERSION FOOTER (Authoritative)
         // =====================================================
-        if (event.siteMeta) {
 
-            // 🧠 Merge SSE payload into cache
+        // Always pull from authoritative SSE snapshot
+        const meta = window.SkyeApp?.lastSSE?.siteMeta;
+
+        if (meta) {
+
+            // 🧠 Merge into cache
             this.siteMetaCache = {
                 ...(this.siteMetaCache || {}),
-                ...event.siteMeta
+                ...meta
             };
 
             const newVersion = this.siteMetaCache.siteVersion;
 
             // 🔔 Detect version change (safe for first load)
-            if (
-                newVersion &&
-                newVersion !== this.lastSiteVersion
-            ) {
+            if (newVersion && newVersion !== this.lastSiteVersion) {
+
                 if (this.lastSiteVersion) {
-                    window.SkyVersion?.show?.(); // notify only on change after init
+                    window.SkyVersion?.show?.(); // notify only after init
                 }
 
                 this.lastSiteVersion = newVersion;
             }
 
-            // 🎯 Update footer (only if changed)
+            // 🎯 Update footer
             const versionEl = document.getElementById('versionFooter');
 
             if (versionEl) {
