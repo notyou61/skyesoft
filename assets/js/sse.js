@@ -64,59 +64,34 @@ window.SkySSE = {
                         window.SkyState = window.SkyState || {};
 
                         const prev = window.SkyState.authenticated;
-                        const initialized = window.SkyState._authInitialized === true;
 
-                       //onsole.log('[SkySSE EVAL]', {
-                       //   isAuthenticated,
-                       //   prevState: prev,
-                       //   initialized,
-                       //   falseCount: window.SkyState._falseCount
-                       //);
-
-                        // ─────────────────────────────
-                        // INITIALIZATION PHASE
-                        // ─────────────────────────────
-                        if (!initialized) {
+                        // INITIALIZATION
+                        if (prev === undefined) {
                             window.SkyState.authenticated = isAuthenticated;
-                            window.SkyState._authInitialized = true;
-                            window.SkyState._falseCount = 0;
-
-                            console.log('[SkySSE] auth initialized →', isAuthenticated);
                             return;
                         }
 
-                        // ─────────────────────────────
-                        // NORMALIZED STATE HANDLING
-                        // ─────────────────────────────
-                        window.SkyState._falseCount = window.SkyState._falseCount || 0;
-
-                        if (!isAuthenticated) {
-
-                            window.SkyState._falseCount++;
-
-                            // Ignore transient false
-                            if (window.SkyState._falseCount === 1) {
-                                console.log('[SkySSE] transient false ignored');
-                                return;
-                            }
-
-                            // ✅ ONLY logout if user WAS authenticated
-                            if (
-                                window.SkyState._falseCount >= 2 &&
-                                window.SkyState.authenticated === true
-                            ) {
-                                console.log('[SkySSE] confirmed logout via stream');
-
-                                this.stop();
-                                window.SkyeApp?.handleLogout?.('sse');
-                                return;
-                            }
-
-                        } else {
-                            window.SkyState._falseCount = 0;
+                        // NO CHANGE
+                        if (prev === isAuthenticated) {
+                            return;
                         }
 
-                        window.SkyState.authenticated = isAuthenticated;
+                        // TRANSITIONS
+                        if (prev === false && isAuthenticated === true) {
+                            console.log('[SkySSE] login detected');
+
+                            window.SkyState.authenticated = true;
+                            window.SkyeApp?.handleLogin?.();
+                            return;
+                        }
+
+                        if (prev === true && isAuthenticated === false) {
+                            console.log('[SkySSE] logout detected');
+
+                            window.SkyState.authenticated = false;
+                            window.SkyeApp?.handleLogout?.('sse');
+                            return;
+                        }
                     }
 
                     window.SkyeApp?.handleSSE?.(payload);
