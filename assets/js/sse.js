@@ -94,14 +94,17 @@ window.SkySSE = {
 
                             window.SkyState._falseCount++;
 
-                            // 🔥 Ignore FIRST false ALWAYS (race-safe)
+                            // Ignore transient false
                             if (window.SkyState._falseCount === 1) {
                                 console.log('[SkySSE] transient false ignored');
                                 return;
                             }
 
-                            // ✅ Confirmed logout
-                            if (window.SkyState._falseCount >= 2) {
+                            // ✅ ONLY logout if user WAS authenticated
+                            if (
+                                window.SkyState._falseCount >= 2 &&
+                                window.SkyState.authenticated === true
+                            ) {
                                 console.log('[SkySSE] confirmed logout via stream');
 
                                 this.stop();
@@ -110,8 +113,6 @@ window.SkySSE = {
                             }
 
                         } else {
-
-                            // Reset on valid auth
                             window.SkyState._falseCount = 0;
                         }
 
