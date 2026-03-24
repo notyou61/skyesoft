@@ -195,6 +195,12 @@ if ($isSnapshot) {
 
     $payload = require __DIR__ . "/getDynamicData.php";
 
+    // 🔥 TEMP: Disable idle expiration (LGBAS isolation)
+    if (isset($payload['idle'])) {
+        $payload['idle']['state'] = 'active';
+        $payload['idle']['remainingSeconds'] = 9999;
+    }
+
     // Attach session context
     $payload["auth"]      = $auth;
     $payload["streamId"]  = "snapshot";
@@ -383,8 +389,8 @@ while (true) {
         // ⛔ IDLE TIMEOUT ENFORCEMENT (SSE-safe)
 
         // DO NOT touch PHP session here
-        if ($idleState === 'expired' && $isAuthenticated === true) {
-
+        //if($idleState === 'expired' && $isAuthenticated === true) {
+        if (false && $idleState === 'expired' && $isAuthenticated === true) {
             // 🔥 DO NOT reopen or destroy session in SSE
 
             // Just update runtime state
@@ -456,6 +462,12 @@ while (true) {
         $lastSecond = $now;
 
         $payload = require __DIR__ . "/getDynamicData.php";
+
+        // 🔥 TEMP: Disable idle expiration (LGBAS isolation)
+        if (isset($payload['idle'])) {
+            $payload['idle']['state'] = 'active';
+            $payload['idle']['remainingSeconds'] = 9999;
+        }
 
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
