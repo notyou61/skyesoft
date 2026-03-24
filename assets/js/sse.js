@@ -46,15 +46,12 @@ window.SkySSE = {
 
                     const payload = JSON.parse(event.data);
 
-                    // ✅ ADD IT HERE
-                    //console.log('[SSE FULL PAYLOAD]', payload);
+                    // 🔥 STORE LAST PAYLOAD
+                    window.SkyeApp = window.SkyeApp || {};
+                    window.SkyeApp.lastSSE = payload;
 
-                    // 🔍 DEBUG
-                    //console.log('[SkySSE RAW AUTH]', {
-                    //  incoming: payload.auth,
-                    //  prevState: window.SkyState?.authenticated,
-                    //  falseCount: window.SkyState?._falseCount
-                    //;
+                    // Existing logic
+                    window.SkyeApp?.handleSSE?.(payload);
 
                     // 🔐 Auth transition detection
                     if (payload.auth !== undefined) {
