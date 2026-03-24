@@ -482,23 +482,6 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
-        // ─────────────────────────────────────────
-        // 🔹 Version (ALWAYS update — independent)
-        // ─────────────────────────────────────────
-        try {
-
-            const versionEl = document.getElementById('footerVersion');
-            const version =
-                window.SkyeApp?.lastSSE?.system?.siteVersion || '--';
-
-            if (versionEl) {
-                versionEl.textContent = version;
-            }
-
-        } catch (err) {
-            // silent fail (footer must never break)
-        }
-
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
             dot.style.background = '#007aff';
@@ -536,6 +519,25 @@ window.SkyIndex = {
 
         // 4️⃣ Clean state
         render('#00c853', 'Authenticated • Ready');
+
+        // 5️⃣ Version (always render if available)
+        try {
+
+            const versionEl = document.getElementById('versionFooter');
+            const version = window.SkyeApp?.lastSSE?.siteMeta?.siteVersion;
+
+            if (versionEl && version) {
+
+                const display = `v${version}`;
+
+                if (versionEl.textContent !== display) {
+                    versionEl.textContent = display;
+                }
+            }
+
+        } catch (err) {
+            // silent fail
+        }
 
     },
     // #endregion
