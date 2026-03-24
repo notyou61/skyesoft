@@ -1480,6 +1480,12 @@ window.SkyIndex = {
             ...event
         };
 
+        // 🔁 Re-render footer after SSE update (authoritative)
+        const app  = window.SkyeApp;
+        const page = app?.pageHandlers?.[app?.currentPage];
+
+        page?.renderFooterStatus?.();
+
         // =====================================================
         // ⏳ IDLE STATE (Normalized / Guarded)
         // =====================================================
@@ -1579,15 +1585,6 @@ window.SkyIndex = {
                     `${label} - ${formatIntervalDHMS(secondsRemainingInterval)}`;
             } else {
                 this.dom.interval.textContent = label;
-            }
-        }
-
-        if (this.dom?.version && this.siteMetaCache) {
-
-            const newText = formatVersionFooter(this.siteMetaCache);
-
-            if (this.dom.version.innerHTML !== newText) {
-                this.dom.version.innerHTML = newText;
             }
         }
 
