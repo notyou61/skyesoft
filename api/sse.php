@@ -352,55 +352,50 @@ while (true) {
         ? getLastPromptActivity($userId)
         : null;
 
-    if ($isAuthenticated && $userId && $lastActivity) {
+        if ($isAuthenticated && $userId && $lastActivity) {
 
-        $idleSeconds = $now - $lastActivity;
+            $idleSeconds = $now - $lastActivity;
 
-        $remaining = max(
-            0,
-            $idleTimeoutSeconds - $idleSeconds
-        );
-        
-        if ($remaining <= 0) {
-            $idleState = 'expired';
-        } elseif ($remaining <= 120) {
-            $idleState = 'warning';
-        } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
-            $idleState = 'idle-active';
+            $remaining = max(
+                0,
+                $idleTimeoutSeconds - $idleSeconds
+            );
+            
+            if ($remaining <= 0) {
+                $idleState = 'expired';
+            } elseif ($remaining <= 120) {
+                $idleState = 'warning';
+            } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
+                $idleState = 'idle-active';
+            } else {
+                $idleState = 'active';
+            }
+
+            $idle = [
+                'state'            => $idleState,
+                'remainingSeconds' => $remaining,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => $lastActivity
+            ];
+
+        } elseif ($isAuthenticated) {
+
+            $idle = [
+                'state'            => 'active',
+                'remainingSeconds' => $idleTimeoutSeconds,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => null
+            ];
+
         } else {
-            $idleState = 'active';
+
+            $idle = [
+                'state'            => 'anonymous',
+                'remainingSeconds' => null,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => null
+            ];
         }
-
-        $idle = [
-            'state'            => $idleState,
-            'remainingSeconds' => $remaining,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => $lastActivity
-        ];
-
-        // ⛔ IDLE TIMEOUT ENFORCEMENT (SSE-safe)
-        if (false && $idleState === 'expired' && $isAuthenticated === true) {
-            // disabled
-        }
-
-    } elseif ($isAuthenticated) {
-
-        $idle = [
-            'state'            => 'active',
-            'remainingSeconds' => $idleTimeoutSeconds,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-
-    } else {
-
-        $idle = [
-            'state'            => 'anonymous',
-            'remainingSeconds' => null,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-    }
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
@@ -431,12 +426,6 @@ while (true) {
         $lastSecond = $now;
 
         $payload = require __DIR__ . "/getDynamicData.php";
-
-        // 🔥 TEMP: Disable idle expiration (LGBAS isolation)
-        if (isset($payload['idle'])) {
-            $payload['idle']['state'] = 'active';
-            $payload['idle']['remainingSeconds'] = 9999;
-        }
 
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;

@@ -400,7 +400,7 @@ window.SkyIndex = {
                 body: JSON.stringify({ action: 'touch' })
             }).catch(() => {});
 
-        }, 60000);
+        }, 5000);
 
     },
 
@@ -1408,8 +1408,10 @@ window.SkyIndex = {
                 page.renderFooterStatus?.();
 
                 console.log('[AUTH 9] Command interface activated (authoritative)');
-            }
 
+                page.startActivityPing?.();
+            }
+            
             // =====================================================
             // 🔁 RESTART SSE (secondary confirmation layer)
             // =====================================================
@@ -1696,14 +1698,20 @@ window.SkyIndex = {
             }
             // #endregion
 
+            // #region 🔥 Stop Activity Tracking
+            const app  = window.SkyeApp;
+            const page = app?.pageHandlers?.[app?.currentPage];
+
+            if (page) {
+                page.stopActivityPing?.();
+            }
+            // #endregion
+
             // #region 🧠 Reset SSE memory
             window.SkyeApp.lastSSE = null;
             // #endregion
 
             // #region 🎨 Force UI logout state
-            const app  = window.SkyeApp;
-            const page = app?.pageHandlers?.[app?.currentPage];
-
             if (page) {
 
                 console.log('[UI] forcing logout state (client-side)');
