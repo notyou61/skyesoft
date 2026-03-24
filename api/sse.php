@@ -55,19 +55,33 @@ file_put_contents(
 // 🔐 LIVE SESSION AUTH LOOKUP
 function getLiveSessionAuth(): array
 {
+    // 🔓 Release lock BEFORE reading
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    // 🔁 Re-open session for fresh read
+    session_start();
+
     $sessionId = session_id();
-    $auth      = $_SESSION['authenticated'] ?? false;
-    $ready     = $_SESSION['auth_ready'] ?? null;
+
+    $auth  = $_SESSION['authenticated'] ?? false;
+    $ready = $_SESSION['auth_ready'] ?? null;
 
     $isAuth = ($auth && $ready !== null);
 
-    return [
+    $result = [
         'authenticated' => $isAuth,
         'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
         'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
         'sessionId'     => $sessionId
     ];
+
+    // 🔓 Release lock immediately after read
+    session_write_close();
+
+    return $result;
 }
 
 $isSnapshot =
