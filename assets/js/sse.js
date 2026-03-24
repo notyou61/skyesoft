@@ -61,24 +61,46 @@ window.SkySSE = {
 
                         const isAuthenticated = payload.auth.authenticated === true;
 
+                        window.SkyState = window.SkyState || {};
+
+                        const prev = window.SkyState.authenticated;
+                        const initialized = window.SkyState._authInitialized === true;
+
                         console.log('[SkySSE EVAL]', {
                             isAuthenticated,
-                            prevState: window.SkyState?.authenticated,
-                            falseCount: window.SkyState?._falseCount
+                            prevState: prev,
+                            initialized,
+                            falseCount: window.SkyState._falseCount
                         });
 
-                        window.SkyState = window.SkyState || {};
+                        // ─────────────────────────────
+                        // INITIALIZATION PHASE
+                        // ─────────────────────────────
+                        if (!initialized) {
+                            window.SkyState.authenticated = isAuthenticated;
+                            window.SkyState._authInitialized = true;
+                            window.SkyState._falseCount = 0;
+
+                            console.log('[SkySSE] auth initialized →', isAuthenticated);
+                            return;
+                        }
+
+                        // ─────────────────────────────
+                        // NORMALIZED STATE HANDLING
+                        // ─────────────────────────────
                         window.SkyState._falseCount = window.SkyState._falseCount || 0;
 
                         if (!isAuthenticated) {
 
                             window.SkyState._falseCount++;
 
-                            if (window.SkyState._falseCount === 1 && window.SkyState.authenticated === true) {
-                                console.log('[SkySSE] transient false (race) ignored');
+                            // 🔥 Ignore FIRST false ALWAYS (race-safe)
+                            if (window.SkyState._falseCount === 1) {
+                                console.log('[SkySSE] transient false ignored');
                                 return;
                             }
 
+                            // ✅ Confirmed logout
                             if (window.SkyState._falseCount >= 2) {
                                 console.log('[SkySSE] confirmed logout via stream');
 
@@ -88,6 +110,8 @@ window.SkySSE = {
                             }
 
                         } else {
+
+                            // Reset on valid auth
                             window.SkyState._falseCount = 0;
                         }
 
