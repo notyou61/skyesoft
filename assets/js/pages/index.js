@@ -440,141 +440,102 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🧾 Footer Status (Single Authority)
-    renderFooterStatus() {
+    renderFooterStatus: function () {
 
-        // Context guard
-        if (!this) {
-            console.warn('[FOOTER] invalid context');
-            return;
-        }
-        // Access authoritative state
-        const app = window.SkyeApp;
-        // Determine auth status with fallback to last SSE snapshot
-        const isAuthed = this.getAuthState();
-        // Sentinel state for governance status
-        const sentinel = this.currentSentinelState;
-        // Idle state from SSE
-        let dot = document.querySelector('.footerDot');
-        // Text element guard
-        let textEl = document.querySelector('.footerText');
+        const footerText = document.querySelector('.footerText');
+        const versionEl  = document.getElementById('footerVersion');
 
-        // 🧾 Footer DOM guard with race-condition retry
-        if (!dot || !textEl) {
+        if (!footerText) return;
 
-            requestAnimationFrame(() => {
-
-                dot = document.querySelector('.footerDot');
-                textEl = document.querySelector('.footerText');
-
-                if (!dot || !textEl) return;
-
-                this.renderFooterStatus();
-
-            });
-
-            return;
-        }
-
-        const render = (dotColor, text) => {
-            dot.style.background = dotColor;
-            textEl.textContent = text;
+        const render = (color, text) => {
+            footerText.textContent = text;
+            footerText.style.color = color;
         };
 
-        // 1️⃣ Thinking dominates
-        if (this.isThinking === true) {
-            dot.style.background = '#007aff';
-            textEl.innerHTML = '⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>';
-            return;
-        }
+        const isAuthed = this.authState === true;
 
-        // 2️⃣ Auth gate
+        // ─────────────────────────────
+        // 1️⃣ AUTH (authoritative gate)
+        // ─────────────────────────────
         if (!isAuthed) {
             render('#111', 'Authorization required to continue');
-            return;
         }
 
-        // 3️⃣ Idle Session Warning
-        if (this.idleState) {
+        // ─────────────────────────────
+        // 2️⃣ AUTHENTICATED STATES
+        // ─────────────────────────────
+        else {
 
-            const remaining = Number(
-                this.idleState.remainingSeconds ??
-                this.idleState.remaining ??
-                this.idleState.secondsRemaining
-            );
+            let handled = false;
 
-            const timeout = Number(
-                this.idleState.timeoutSeconds ??
-                this.idleState.timeout ??
-                this.idleState.maxSeconds
-            );
+            // ─────────────────────────
+            // IDLE
+            // ─────────────────────────
+            if (this.idleState) {
 
-            const isValidIdle =
-                Number.isFinite(remaining) &&
-                Number.isFinite(timeout) &&
-                timeout > 0;
+                const remaining = Number(
+                    this.idleState.remainingSeconds ??
+                    this.idleState.remaining ??
+                    this.idleState.secondsRemaining
+                );
 
-            if (isValidIdle) {
+                const timeout = Number(
+                    this.idleState.timeoutSeconds ??
+                    this.idleState.timeout ??
+                    this.idleState.maxSeconds
+                );
 
-                // Ignore expired states (Auth gate will handle)
-                if (remaining <= 0) {
-                    render('#111', 'Authorization required to continue (idle)');
-                    return;
+                const isValidIdle =
+                    Number.isFinite(remaining) &&
+                    Number.isFinite(timeout) &&
+                    timeout > 0;
+
+                if (isValidIdle) {
+
+                    const idleSeconds = timeout - remaining;
+
+                    // 🔴 Expired
+                    if (remaining <= 0) {
+                        render('#ff9500', 'Session expired');
+                        handled = true;
+                    }
+
+                    // ⏱ Countdown
+                    else if (remaining <= 60) {
+                        const secs = Math.floor(remaining);
+                        render('#ffcc00', `Session expiring in ${secs}s`);
+                        handled = true;
+                    }
+
+                    // ⚠ Warning
+                    else if (remaining <= 120) {
+                        render('#ffcc00', 'No activity detected • Session expiring soon');
+                        handled = true;
+                    }
+
+                    // 🔔 Idle notice
+                    else if (idleSeconds >= 60 && idleSeconds <= 70) {
+                        render('#ffcc00', 'Idle protection active');
+                        handled = true;
+                    }
                 }
+            }
 
-                const idleSeconds = timeout - remaining;
-
-                // 🔔 Idle notice (10 seconds after 1 minute idle)
-                if (idleSeconds >= 60 && idleSeconds <= 70) {
-                    render('#ffcc00', 'Idle protection active');
-                    return;
-                }
-
-                // ⏱ Final countdown (last 60 seconds)
-                if (remaining <= 60) {
-                    const secs = Math.max(0, Math.floor(remaining));
-                    const padded = String(secs).padStart(2,'0');
-                    render('#ffcc00', `Session expiring in ${padded}s`);
-                    return;
-                }
-
-                // ⚠ Warning window (last 2 minutes)
-                if (remaining <= 120) {
-                    render('#ffcc00', 'No activity detected • Session expiring soon');
-                    return;
-                }
-
-            } else {
-                // Console Log (Remove When Finished)
-                //console.warn('[FOOTER] Invalid idle state — fully bypassed');
-
+            // ─────────────────────────
+            // DEFAULT AUTH STATE
+            // ─────────────────────────
+            if (!handled) {
+                const username = this.authUser || 'User';
+                render('#00c853', `Authenticated as ${username}`);
             }
         }
 
-        // 4️⃣ Governance (post-auth only)
-        if (sentinel && typeof sentinel === 'object') {
-
-            const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
-            const structuralCount   = Number(sentinel.unresolvedViolations || 0);
-
-            if (hasIntegrityDrift === true) {
-
-                const text = structuralCount > 0
-                    ? `Integrity Drift • ${structuralCount} Structural Deviations`
-                    : `Codex Integrity Drift`;
-
-                render('#ff3b30', text);
-                return;
-            }
-
-            if (structuralCount > 0) {
-                render('#ff9500', `Structural Deviations • ${structuralCount}`);
-                return;
-            }
+        // ─────────────────────────────
+        // 3️⃣ VERSION (independent)
+        // ─────────────────────────────
+        if (versionEl && this.lastSSE?.system?.siteVersion) {
+            versionEl.textContent = this.lastSSE.system.siteVersion;
         }
-
-        // 5️⃣ Clean state
-        render('#00c853', 'Authenticated • Ready');
-
     },
     // #endregion
 
