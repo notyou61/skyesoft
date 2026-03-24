@@ -1593,12 +1593,14 @@ window.SkyIndex = {
             }
 
             // 🎯 Update footer (only if changed)
-            if (this.dom?.version) {
+            const versionEl = document.getElementById('versionFooter');
+
+            if (versionEl) {
 
                 const newHTML = formatVersionFooter(this.siteMetaCache);
 
-                if (this.dom.version.innerHTML !== newHTML) {
-                    this.dom.version.innerHTML = newHTML;
+                if (versionEl.innerHTML !== newHTML) {
+                    versionEl.innerHTML = newHTML;
                 }
             }
         }
