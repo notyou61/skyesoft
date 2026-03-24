@@ -49,17 +49,6 @@ window.SkySSE = {
                     // 🔥 STORE LAST PAYLOAD
                     window.SkyeApp = window.SkyeApp || {};
                     window.SkyeApp.lastSSE = payload;
-                    // 🔄 Trigger footer render (global-safe)
-                    try {
-                        const app = window.SkyeApp;
-                        const page = app?.pageHandlers?.[app?.currentPage];
-
-                        if (page?.renderFooterStatus) {
-                            page.renderFooterStatus();
-                        }
-                    } catch (err) {
-                        // silent
-                    }
 
                     // Existing logic
                     window.SkyeApp?.handleSSE?.(payload);

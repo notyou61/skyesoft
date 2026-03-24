@@ -1374,8 +1374,21 @@ window.SkyIndex = {
             window.SkySSE?.stop?.();
             window.SkySSE?.restart?.();
 
-            // AUTH 10 — delayed restart (prevents session race)
             console.log('[AUTH 10] SSE restart (delayed)');
+
+            // 🔥 ENSURE footer re-renders after SSE reconnect
+            setTimeout(() => {
+                try {
+                    const app = window.SkyeApp;
+                    const page = app?.pageHandlers?.[app?.currentPage];
+
+                    if (page?.renderFooterStatus) {
+                        page.renderFooterStatus();
+                    } else if (app?.renderFooterStatus) {
+                        app.renderFooterStatus();
+                    }
+                } catch (err) {}
+            }, 250);
 
         } catch (err) {
 
