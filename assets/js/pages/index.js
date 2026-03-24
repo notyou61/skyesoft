@@ -482,6 +482,23 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
+        // ─────────────────────────────────────────
+        // 🔹 Version (ALWAYS update — independent)
+        // ─────────────────────────────────────────
+        try {
+
+            const versionEl = document.getElementById('footerVersion');
+            const version =
+                window.SkyeApp?.lastSSE?.system?.siteVersion || '--';
+
+            if (versionEl) {
+                versionEl.textContent = version;
+            }
+
+        } catch (err) {
+            // silent fail (footer must never break)
+        }
+
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
             dot.style.background = '#007aff';
