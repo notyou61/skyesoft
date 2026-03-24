@@ -469,17 +469,18 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
-        // 0️⃣ Version (must run regardless of auth state)
+        // 0️⃣ Version (humanized – shared formatter)
         try {
 
-            const version = window.SkyeApp?.lastSSE?.siteMeta?.siteVersion;
+            const meta = window.SkyeApp?.lastSSE?.siteMeta;
             const versionEl = this.dom?.version || document.getElementById('versionFooter');
 
-            if (versionEl && version) {
-                const display = `v${version}`;
+            if (versionEl && meta) {
 
-                if (versionEl.textContent !== display) {
-                    versionEl.textContent = display;
+                const newHTML = formatVersionFooter(meta);
+
+                if (versionEl.innerHTML !== newHTML) {
+                    versionEl.innerHTML = newHTML;
                 }
             }
 
