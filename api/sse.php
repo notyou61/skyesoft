@@ -348,39 +348,31 @@ while (true) {
     ];
 
     // ─────────────────────────────────────────
-    // ⏱ LAST ACTIVITY (DB — SAFE)
+    // ⏱ LAST ACTIVITY (DB — SESSION-BASED)
+    // Uses session contactId directly (authoritative)
     // ─────────────────────────────────────────
 
     $lastActivity = null;
 
-    if ($isAuthenticated && $userId) {
+    if ($isAuthenticated && !empty($_SESSION['contactId'])) {
 
         try {
 
-            // 🔗 Resolve contactId
+            $contactId = (int)$_SESSION['contactId'];
+
             $stmt = $db->prepare("
-                SELECT contactId
-                FROM tblContacts
-                WHERE userId = :userId
+                SELECT actionUnix
+                FROM tblActions
+                WHERE contactId = :contactId
+                ORDER BY actionUnix DESC
                 LIMIT 1
             ");
-            $stmt->execute([':userId' => $userId]);
 
-            $contactId = (int)($stmt->fetchColumn() ?: 0);
+            $stmt->execute([
+                ':contactId' => $contactId
+            ]);
 
-            // ⏱ Fetch latest activity
-            if ($contactId > 0) {
-                $stmt = $db->prepare("
-                    SELECT actionUnix
-                    FROM tblActions
-                    WHERE contactId = :contactId
-                    ORDER BY actionUnix DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([':contactId' => $contactId]);
-
-                $lastActivity = (int)($stmt->fetchColumn() ?: 0);
-            }
+            $lastActivity = (int)($stmt->fetchColumn() ?: 0);
 
         } catch (Throwable $e) {
             error_log('[SSE IDLE ERROR] ' . $e->getMessage());
