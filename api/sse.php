@@ -86,62 +86,59 @@ $isSnapshot =
 #region 🧰 SECTION 1 — SESSION HELPERS
 
 // ─────────────────────────────────────────
-// ⏱ LAST PROMPT ACTIVITY LOOKUP
-// Reads the canonical prompt ledger and finds
-// the latest prompt timestamp for the given user.
-// This is the authoritative idle source.
+// ⏱ LAST ACTIVITY LOOKUP (DB — Authoritative)
+// Resolves contactId from userId, then retrieves
+// the most recent action timestamp from tblActions.
+//
+// This replaces file-based promptLedger usage and
+// serves as the canonical idle activity source.
 // ─────────────────────────────────────────
-function getLastPromptActivity(int $userId): ?int
+function getLastActivity(PDO $pdo, int $userId): ?int
 {
-    $ledgerFile = __DIR__ . "/../data/authoritative/promptLedger.json";
-
-    if (!file_exists($ledgerFile)) {
+    if ($userId <= 0) {
         return null;
     }
 
-    $json = file_get_contents($ledgerFile);
+    // ─────────────────────────────────────────
+    // 🔗 Resolve contactId from userId
+    // ─────────────────────────────────────────
+    $stmt = $pdo->prepare("
+        SELECT contactId
+        FROM tblContacts
+        WHERE userId = :userId
+        LIMIT 1
+    ");
 
-    if ($json === false || trim($json) === '') {
+    $stmt->execute([
+        ':userId' => $userId
+    ]);
+
+    $contactId = (int)($stmt->fetchColumn() ?: 0);
+
+    if ($contactId <= 0) {
         return null;
     }
 
-    $data = json_decode($json, true);
+    // ─────────────────────────────────────────
+    // ⏱ Fetch latest activity from tblActions
+    // ─────────────────────────────────────────
+    $stmt = $pdo->prepare("
+        SELECT actionUnix
+        FROM tblActions
+        WHERE contactId = :contactId
+        ORDER BY actionUnix DESC
+        LIMIT 1
+    ");
 
-    if (!is_array($data) || !isset($data["entries"]) || !is_array($data["entries"])) {
-        return null;
-    }
+    $stmt->execute([
+        ':contactId' => $contactId
+    ]);
 
-    $entries = $data["entries"];
+    $timestamp = (int)($stmt->fetchColumn() ?: 0);
 
-    // Scan from newest entry backwards
-    for ($i = count($entries) - 1; $i >= 0; $i--) {
-
-        $entry = $entries[$i];
-
-        if (!is_array($entry)) {
-            continue;
-        }
-
-        // Only consider events from this user
-        if ((int)($entry["userId"] ?? 0) !== $userId) {
-            continue;
-        }
-
-        // Ignore logout events
-        $intent = $entry["intent"] ?? "";
-        if ($intent === "ui_logout") {
-            continue;
-        }
-
-        $timestamp = (int)($entry["createdUnixTime"] ?? 0);
-
-        if ($timestamp > 0) {
-            return $timestamp;
-        }
-    }
-
-    return null;
+    return ($timestamp > 0) ? $timestamp : null;
 }
+
 #endregion
 
 #region ⏳ SECTION 2 — SESSION IDLE POLICY
@@ -349,7 +346,7 @@ while (true) {
     // ─────────────────────────────────────────
 
     $lastActivity = ($isAuthenticated && $userId)
-        ? getLastPromptActivity($userId)
+        ? getLastActivity($pdo, $userId)
         : null;
 
         if ($isAuthenticated && $userId && $lastActivity) {
