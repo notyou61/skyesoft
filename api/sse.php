@@ -325,9 +325,6 @@ while (true) {
 
     // ─────────────────────────────────────────
     // 🔐 REFRESH LIVE SESSION STATE
-    // Each loop tick retrieves the authoritative
-    // session truth so SSE reflects real login
-    // and logout state.
     // ─────────────────────────────────────────
 
     $liveSession = getLiveSessionAuth();
@@ -343,59 +340,84 @@ while (true) {
     ];
 
     // ─────────────────────────────────────────
-    // ⏱ LEDGER-BASED LAST ACTIVITY
-    // Uses canonical prompt ledger to determine
-    // idle state for authenticated users.
+    // 🔗 CONTACT RESOLUTION (Session-Based)
+    // Uses contactId stored at login
     // ─────────────────────────────────────────
 
-    $lastActivity = ($isAuthenticated && $userId)
-        ? getLastPromptActivity($userId)
-        : null;
+    $contactId = $_SESSION['contactId'] ?? null;
 
-        if ($isAuthenticated && $userId && $lastActivity) {
+    // ─────────────────────────────────────────
+    // ⏱ LAST ACTIVITY (DB — Authoritative)
+    // Reads latest action from tblActions
+    // ─────────────────────────────────────────
 
-            $idleSeconds = $now - $lastActivity;
+    $lastActivity = null;
 
-            $remaining = max(
-                0,
-                $idleTimeoutSeconds - $idleSeconds
-            );
-            
-            if ($remaining <= 0) {
-                $idleState = 'expired';
-            } elseif ($remaining <= 120) {
-                $idleState = 'warning';
-            } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
-                $idleState = 'idle-active';
-            } else {
-                $idleState = 'active';
-            }
+    if ($isAuthenticated && $contactId) {
 
-            $idle = [
-                'state'            => $idleState,
-                'remainingSeconds' => $remaining,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => $lastActivity
-            ];
+        $stmt = $pdo->prepare("
+            SELECT actionUnix
+            FROM tblActions
+            WHERE contactId = :contactId
+            ORDER BY actionUnix DESC
+            LIMIT 1
+        ");
 
-        } elseif ($isAuthenticated) {
+        $stmt->execute([
+            ':contactId' => $contactId
+        ]);
 
-            $idle = [
-                'state'            => 'active',
-                'remainingSeconds' => $idleTimeoutSeconds,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => null
-            ];
+        $lastActivity = (int)($stmt->fetchColumn() ?: 0);
+    }
 
+    // ─────────────────────────────────────────
+    // ⏱ IDLE STATE CALCULATION
+    // ─────────────────────────────────────────
+
+    if ($isAuthenticated && $contactId && $lastActivity) {
+
+        $idleSeconds = $now - $lastActivity;
+
+        $remaining = max(
+            0,
+            $idleTimeoutSeconds - $idleSeconds
+        );
+
+        if ($remaining <= 0) {
+            $idleState = 'expired';
+        } elseif ($remaining <= 120) {
+            $idleState = 'warning';
+        } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
+            $idleState = 'idle-active';
         } else {
-
-            $idle = [
-                'state'            => 'anonymous',
-                'remainingSeconds' => null,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => null
-            ];
+            $idleState = 'active';
         }
+
+        $idle = [
+            'state'            => $idleState,
+            'remainingSeconds' => $remaining,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => $lastActivity
+        ];
+
+    } elseif ($isAuthenticated) {
+
+        $idle = [
+            'state'            => 'active',
+            'remainingSeconds' => $idleTimeoutSeconds,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+
+    } else {
+
+        $idle = [
+            'state'            => 'anonymous',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+    }
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
@@ -405,7 +427,6 @@ while (true) {
 
         echo ": ping\n\n";
 
-        // 🔥 CRITICAL — break LiteSpeed buffering
         echo str_repeat(" ", 512) . "\n";
 
         if (function_exists('ob_flush')) {
@@ -418,7 +439,6 @@ while (true) {
 
     // ─────────────────────────────────────────
     // 📦 1HZ DATA UPDATE
-    // Sends dynamic projection payload
     // ─────────────────────────────────────────
 
     if ($now > $lastSecond) {
@@ -444,7 +464,6 @@ while (true) {
         if ($json !== false && $json !== '') {
             echo "data: " . $json . "\n\n";
 
-            // 🔥 CRITICAL: break LiteSpeed buffering
             echo str_repeat(" ", 1024) . "\n";
 
             if (function_exists('ob_flush')) {
