@@ -341,46 +341,7 @@ while (true) {
         'username'      => $liveSession['username'],
         'role'          => $liveSession['role']
     ];
-
-    // ─────────────────────────────────────────
-    // 🔗 CONTACT RESOLUTION (User → Contact Mapping)
-    // Resolves the authenticated user's contactId
-    // from tblContacts using userId.
-    //
-    // This establishes the correct linkage between:
-    //   🔐 Authentication Layer → (userId)
-    //   🧾 Activity Ledger      → (contactId)
-    //
-    // Required because:
-    //   tblActions is keyed by contactId, NOT userId.
-    //
-    // Performance Note:
-    //   This lookup occurs per SSE loop iteration.
-    //   Consider caching contactId in session at login:
-    //     $_SESSION['contactId'] = $contactId;
-    //
-    // Failure Mode:
-    //   If no mapping exists, contactId = 0
-    //   → downstream activity queries will return no results.
-    // ─────────────────────────────────────────
-
-    $contactId = null;
-
-    if ($isAuthenticated && $userId) {
-
-        $stmt = $pdo->prepare("
-            SELECT contactId
-            FROM tblContacts
-            WHERE userId = :userId
-            LIMIT 1
-        ");
-
-        $stmt->execute([
-            ':userId' => $userId
-        ]);
-
-        $contactId = (int)($stmt->fetchColumn() ?: 0);
-    }
+    
 
     // ─────────────────────────────────────────
     // ⏱ LEDGER-BASED LAST ACTIVITY
@@ -390,7 +351,7 @@ while (true) {
 
     $lastActivity = null;
 
-    if ($isAuthenticated && $contactId) {
+    if ($isAuthenticated && $userId) {
 
         $stmt = $pdo->prepare("
             SELECT actionUnix
@@ -401,12 +362,11 @@ while (true) {
         ");
 
         $stmt->execute([
-            ':contactId' => $contactId
+            ':contactId' => $userId // ⚠️ confirm mapping
         ]);
 
         $lastActivity = (int)($stmt->fetchColumn() ?: 0);
     }
-
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
