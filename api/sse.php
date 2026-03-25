@@ -407,53 +407,6 @@ while (true) {
         $lastActivity = (int)($stmt->fetchColumn() ?: 0);
     }
 
-    // ─────────────────────────────────────────
-    // ⏱ IDLE STATE CALCULATION (Authoritative)
-    // Converts lastActivity → idle state
-    // ─────────────────────────────────────────
-
-    if ($isAuthenticated && $contactId && $lastActivity) {
-
-        $idleSeconds = $now - $lastActivity;
-
-        $remaining = max(
-            0,
-            $idleTimeoutSeconds - $idleSeconds
-        );
-
-        if ($remaining <= 0) {
-            $idleState = 'expired';
-        } elseif ($remaining <= 120) {
-            $idleState = 'warning';
-        } else {
-            $idleState = 'active';
-        }
-
-        $idle = [
-            'state'            => $idleState,
-            'remainingSeconds' => $remaining,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => $lastActivity
-        ];
-
-    } elseif ($isAuthenticated) {
-
-        $idle = [
-            'state'            => 'active',
-            'remainingSeconds' => $idleTimeoutSeconds,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-
-    } else {
-
-        $idle = [
-            'state'            => 'anonymous',
-            'remainingSeconds' => null,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-    }
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
