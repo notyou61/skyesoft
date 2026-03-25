@@ -341,7 +341,6 @@ while (true) {
         'username'      => $liveSession['username'],
         'role'          => $liveSession['role']
     ];
-    
 
     // ─────────────────────────────────────────
     // ⏱ LEDGER-BASED LAST ACTIVITY
@@ -349,24 +348,54 @@ while (true) {
     // idle state for authenticated users.
     // ─────────────────────────────────────────
 
-    $lastActivity = null;
+    $lastActivity = ($isAuthenticated && $userId)
+        ? getLastPromptActivity($userId)
+        : null;
 
-    if ($isAuthenticated && $userId) {
+        if ($isAuthenticated && $userId && $lastActivity) {
 
-        $stmt = $pdo->prepare("
-            SELECT actionUnix
-            FROM tblActions
-            WHERE contactId = :contactId
-            ORDER BY actionUnix DESC
-            LIMIT 1
-        ");
+            $idleSeconds = $now - $lastActivity;
 
-        $stmt->execute([
-            ':contactId' => $userId // ⚠️ confirm mapping
-        ]);
+            $remaining = max(
+                0,
+                $idleTimeoutSeconds - $idleSeconds
+            );
+            
+            if ($remaining <= 0) {
+                $idleState = 'expired';
+            } elseif ($remaining <= 120) {
+                $idleState = 'warning';
+            } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
+                $idleState = 'idle-active';
+            } else {
+                $idleState = 'active';
+            }
 
-        $lastActivity = (int)($stmt->fetchColumn() ?: 0);
-    }
+            $idle = [
+                'state'            => $idleState,
+                'remainingSeconds' => $remaining,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => $lastActivity
+            ];
+
+        } elseif ($isAuthenticated) {
+
+            $idle = [
+                'state'            => 'active',
+                'remainingSeconds' => $idleTimeoutSeconds,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => null
+            ];
+
+        } else {
+
+            $idle = [
+                'state'            => 'anonymous',
+                'remainingSeconds' => null,
+                'timeoutSeconds'   => $idleTimeoutSeconds,
+                'lastActivity'     => null
+            ];
+        }
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
