@@ -85,6 +85,13 @@ $isSnapshot =
 
 #region 🧰 SECTION 1 — SESSION HELPERS
 
+echo "data: " . json_encode([
+    'debug' => 'before getLastActivity',
+    'isAuthenticated' => $isAuthenticated,
+    'userId' => $userId
+]) . "\n\n";
+flush();
+
 // ─────────────────────────────────────────
 // ⏱ LAST ACTIVITY LOOKUP (DB — Authoritative)
 // Resolves contactId from userId, then retrieves
@@ -148,6 +155,12 @@ function getLastActivity(PDO $db, int $userId): ?int
         return null;
     }
 }
+
+echo "data: " . json_encode([
+    'debug' => 'after getLastActivity',
+    'lastActivity' => $lastActivity ?? null
+]) . "\n\n";
+flush();
 
 #endregion
 
