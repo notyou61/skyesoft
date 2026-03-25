@@ -93,50 +93,60 @@ $isSnapshot =
 // This replaces file-based promptLedger usage and
 // serves as the canonical idle activity source.
 // ─────────────────────────────────────────
-function getLastActivity(PDO $pdo, int $userId): ?int
+function getLastActivity(PDO $db, int $userId): ?int
 {
     if ($userId <= 0) {
         return null;
     }
 
-    // ─────────────────────────────────────────
-    // 🔗 Resolve contactId from userId
-    // ─────────────────────────────────────────
-    $stmt = $pdo->prepare("
-        SELECT contactId
-        FROM tblContacts
-        WHERE userId = :userId
-        LIMIT 1
-    ");
+    try {
 
-    $stmt->execute([
-        ':userId' => $userId
-    ]);
+        // ─────────────────────────────────────────
+        // 🔗 Resolve contactId from userId
+        // ─────────────────────────────────────────
+        $stmt = $db->prepare("
+            SELECT contactId
+            FROM tblContacts
+            WHERE userId = :userId
+            LIMIT 1
+        ");
 
-    $contactId = (int)($stmt->fetchColumn() ?: 0);
+        $stmt->execute([
+            ':userId' => $userId
+        ]);
 
-    if ($contactId <= 0) {
+        $contactId = (int)($stmt->fetchColumn() ?: 0);
+
+        if ($contactId <= 0) {
+            return null;
+        }
+
+        // ─────────────────────────────────────────
+        // ⏱ Fetch latest activity from tblActions
+        // ─────────────────────────────────────────
+        $stmt = $db->prepare("
+            SELECT actionUnix
+            FROM tblActions
+            WHERE contactId = :contactId
+            ORDER BY actionUnix DESC
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            ':contactId' => $contactId
+        ]);
+
+        $timestamp = (int)($stmt->fetchColumn() ?: 0);
+
+        return ($timestamp > 0) ? $timestamp : null;
+
+    } catch (Throwable $e) {
+
+        // 🔥 CRITICAL — never break SSE loop
+        error_log('[getLastActivity ERROR] ' . $e->getMessage());
+
         return null;
     }
-
-    // ─────────────────────────────────────────
-    // ⏱ Fetch latest activity from tblActions
-    // ─────────────────────────────────────────
-    $stmt = $pdo->prepare("
-        SELECT actionUnix
-        FROM tblActions
-        WHERE contactId = :contactId
-        ORDER BY actionUnix DESC
-        LIMIT 1
-    ");
-
-    $stmt->execute([
-        ':contactId' => $contactId
-    ]);
-
-    $timestamp = (int)($stmt->fetchColumn() ?: 0);
-
-    return ($timestamp > 0) ? $timestamp : null;
 }
 
 #endregion
@@ -346,7 +356,7 @@ while (true) {
     // ─────────────────────────────────────────
 
     $lastActivity = ($isAuthenticated && $userId)
-        ? getLastActivity($pdo, $userId)
+        ? getLastActivity($db, $userId)
         : null;
 
         if ($isAuthenticated && $userId && $lastActivity) {
