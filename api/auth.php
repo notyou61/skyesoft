@@ -8,7 +8,7 @@ declare(strict_types=1);
 //  Codex Tier: 4 — Session Mutation Endpoint
 // ======================================================================
 
-// #region SECTION 0 — Environment Bootstrap
+#region SECTION 0 — Environment Bootstrap
 
 // Debug
 ini_set('display_errors', 1);

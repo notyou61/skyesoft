@@ -343,59 +343,117 @@ while (true) {
     ];
 
     // ─────────────────────────────────────────
+    // 🔗 CONTACT RESOLUTION (User → Contact Mapping)
+    // Resolves the authenticated user's contactId
+    // from tblContacts using userId.
+    //
+    // This establishes the correct linkage between:
+    //   🔐 Authentication Layer → (userId)
+    //   🧾 Activity Ledger      → (contactId)
+    //
+    // Required because:
+    //   tblActions is keyed by contactId, NOT userId.
+    //
+    // Performance Note:
+    //   This lookup occurs per SSE loop iteration.
+    //   Consider caching contactId in session at login:
+    //     $_SESSION['contactId'] = $contactId;
+    //
+    // Failure Mode:
+    //   If no mapping exists, contactId = 0
+    //   → downstream activity queries will return no results.
+    // ─────────────────────────────────────────
+
+    $contactId = null;
+
+    if ($isAuthenticated && $userId) {
+
+        $stmt = $pdo->prepare("
+            SELECT contactId
+            FROM tblContacts
+            WHERE userId = :userId
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            ':userId' => $userId
+        ]);
+
+        $contactId = (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    // ─────────────────────────────────────────
     // ⏱ LEDGER-BASED LAST ACTIVITY
     // Uses canonical prompt ledger to determine
     // idle state for authenticated users.
     // ─────────────────────────────────────────
 
-    $lastActivity = ($isAuthenticated && $userId)
-        ? getLastPromptActivity($userId)
-        : null;
+    $lastActivity = null;
 
-        if ($isAuthenticated && $userId && $lastActivity) {
+    if ($isAuthenticated && $contactId) {
 
-            $idleSeconds = $now - $lastActivity;
+        $stmt = $pdo->prepare("
+            SELECT actionUnix
+            FROM tblActions
+            WHERE contactId = :contactId
+            ORDER BY actionUnix DESC
+            LIMIT 1
+        ");
 
-            $remaining = max(
-                0,
-                $idleTimeoutSeconds - $idleSeconds
-            );
-            
-            if ($remaining <= 0) {
-                $idleState = 'expired';
-            } elseif ($remaining <= 120) {
-                $idleState = 'warning';
-            } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
-                $idleState = 'idle-active';
-            } else {
-                $idleState = 'active';
-            }
+        $stmt->execute([
+            ':contactId' => $contactId
+        ]);
 
-            $idle = [
-                'state'            => $idleState,
-                'remainingSeconds' => $remaining,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => $lastActivity
-            ];
+        $lastActivity = (int)($stmt->fetchColumn() ?: 0);
+    }
 
-        } elseif ($isAuthenticated) {
+    // ─────────────────────────────────────────
+    // ⏱ IDLE STATE CALCULATION (Authoritative)
+    // Converts lastActivity → idle state
+    // ─────────────────────────────────────────
 
-            $idle = [
-                'state'            => 'active',
-                'remainingSeconds' => $idleTimeoutSeconds,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => null
-            ];
+    if ($isAuthenticated && $contactId && $lastActivity) {
 
+        $idleSeconds = $now - $lastActivity;
+
+        $remaining = max(
+            0,
+            $idleTimeoutSeconds - $idleSeconds
+        );
+
+        if ($remaining <= 0) {
+            $idleState = 'expired';
+        } elseif ($remaining <= 120) {
+            $idleState = 'warning';
         } else {
-
-            $idle = [
-                'state'            => 'anonymous',
-                'remainingSeconds' => null,
-                'timeoutSeconds'   => $idleTimeoutSeconds,
-                'lastActivity'     => null
-            ];
+            $idleState = 'active';
         }
+
+        $idle = [
+            'state'            => $idleState,
+            'remainingSeconds' => $remaining,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => $lastActivity
+        ];
+
+    } elseif ($isAuthenticated) {
+
+        $idle = [
+            'state'            => 'active',
+            'remainingSeconds' => $idleTimeoutSeconds,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+
+    } else {
+
+        $idle = [
+            'state'            => 'anonymous',
+            'remainingSeconds' => null,
+            'timeoutSeconds'   => $idleTimeoutSeconds,
+            'lastActivity'     => null
+        ];
+    }
 
     // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
