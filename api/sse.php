@@ -81,16 +81,6 @@ $isSnapshot =
     isset($_GET['mode']) &&
     $_GET['mode'] === 'snapshot';
 
-#endregion
-
-#region 🧰 SECTION 1 — SESSION HELPERS
-
-// Delete the section
-
-#endregion
-
-#region ⏳ SECTION 2 — SESSION IDLE POLICY
-
 // ─────────────────────────────────────────
 // ⏱ IDLE SESSION TIMEOUT
 // Production: 900 seconds (15 minutes)
@@ -109,7 +99,7 @@ $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
 
-#region 📸 SECTION 3 — SNAPSHOT MODE
+#region 📸 SECTION 1 — SNAPSHOT MODE
 
 if ($isSnapshot) {
 
@@ -155,7 +145,7 @@ if ($isSnapshot) {
 
 #endregion
 
-#region 📡 SECTION 4 — SSE HEADERS
+#region 📡 SECTION 2 — SSE HEADERS
 
 // ─────────────────────────────────────────
 // STREAM OUTPUT CONFIGURATION
@@ -230,23 +220,22 @@ if (function_exists('ob_flush')) {
 
 #endregion
 
-#region ⚙️ SECTION 5 — PHP RUNTIME
+#region ⚙️ SECTION 3 — PHP RUNTIME
 
 set_time_limit(0);
 ignore_user_abort(true);
 
 #endregion
 
-#region 🚀 SECTION 6 — STREAM INITIALIZATION
+#region 🚀 SECTION 4 — STREAM INITIALIZATION
 
 $streamId   = bin2hex(random_bytes(8));
 $lastPing   = 0;
 $lastSecond = 0;
 
-
 #endregion
 
-#region 🔄 SECTION 7 — STREAM LOOP
+#region 🔄 SECTION 5 — STREAM LOOP
 
 while (true) {
 
