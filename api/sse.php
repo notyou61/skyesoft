@@ -113,10 +113,16 @@ if ($isSnapshot) {
 
     $isAuthenticated = !empty($_SESSION['authenticated']);
 
+    // Build auth FIRST
     $auth = [
         'authenticated' => $isAuthenticated,
         'username'      => $_SESSION['username'] ?? null,
         'role'          => $_SESSION['role'] ?? null
+    ];
+
+    // Then inject into context
+    $SKYE_CONTEXT = [
+        'auth' => $auth
     ];
 
     // Release session lock immediately

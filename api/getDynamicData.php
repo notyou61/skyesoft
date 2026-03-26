@@ -10,15 +10,11 @@ declare(strict_types=1);
 // ======================================================================
 
 #region SECTION 0 — Dependencies
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-error_log("[SESSION CHECK] ID=" . session_id() . " USER=" . ($_SESSION['userId'] ?? 'none'));
-error_log("[SESSION DATA] " . json_encode($_SESSION));
-
-// Holiday Interpreter Include
 require_once __DIR__ . '/holidayInterpreter.php';
+
+$auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
+
+error_log('[DYNAMIC AUTH] ' . json_encode($auth));
 
 #endregion
 
@@ -195,7 +191,7 @@ if (file_exists($paths["sentinel"])) {
     }
 }
 
-error_log("SSE READING: " . $paths["sentinel"]);
+//error_log("SSE READING: " . $paths["sentinel"]);
 
 #endregion
 
@@ -679,106 +675,6 @@ if ($lastUpdateUnix > 0) {
     $siteMeta["lastUpdateAgeSeconds"] = time() - $lastUpdateUnix;
 }
 
-// ============================================================
-// IDLE STATE RESOLUTION (Server Authoritative)
-// ============================================================
-$db = null;
-
-try {
-    $db = new PDO(
-        "mysql:host=localhost;dbname=skyesoft;charset=utf8mb4",
-        "YOUR_DB_USER",
-        "YOUR_DB_PASS",
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]
-    );
-} catch (Throwable $e) {
-    error_log("[Idle DB ERROR] " . $e->getMessage());
-}
-
-// --- Auth Context ---
-$isAuthenticated = isset($_SESSION['userId']) && (int)$_SESSION['userId'] > 0;
-$userId = (int)($_SESSION['userId'] ?? 0);
-
-// --- Default Idle ---
-$idleTimeoutSeconds = 900;
-
-$idle = [
-    "state" => "anonymous",
-    "remainingSeconds" => null,
-    "timeoutSeconds" => $idleTimeoutSeconds,
-    "lastActivity" => null
-];
-
-// --- Resolve Contact + Activity ---
-if ($isAuthenticated && $db && $userId > 0) {
-
-    $contactId = null;
-
-    try {
-        $stmt = $db->prepare("
-            SELECT contactId
-            FROM tblContacts
-            WHERE userId = :userId
-            LIMIT 1
-        ");
-        $stmt->execute([':userId' => $userId]);
-        $contactId = (int)($stmt->fetchColumn() ?: 0);
-    } catch (Throwable $e) {
-        error_log("[Idle contact lookup error] " . $e->getMessage());
-    }
-
-    $lastActivity = null;
-
-    if ($contactId > 0) {
-        try {
-            $stmt = $db->prepare("
-                SELECT actionUnix
-                FROM tblActions
-                WHERE contactId = :contactId
-                ORDER BY actionUnix DESC
-                LIMIT 1
-            ");
-            $stmt->execute([':contactId' => $contactId]);
-            $lastActivity = (int)($stmt->fetchColumn() ?: 0);
-        } catch (Throwable $e) {
-            error_log("[Idle activity lookup error] " . $e->getMessage());
-        }
-    }
-
-    // --- Compute Idle ---
-    if ($lastActivity > 0) {
-
-        $idleSeconds = time() - $lastActivity;
-        $remaining = max(0, $idleTimeoutSeconds - $idleSeconds);
-
-        $state = "active";
-
-        if ($remaining <= 0) {
-            $state = "expired";
-        } elseif ($remaining <= 120) {
-            $state = "warning";
-        }
-
-        $idle = [
-            "state" => $state,
-            "remainingSeconds" => $remaining,
-            "timeoutSeconds" => $idleTimeoutSeconds,
-            "lastActivity" => $lastActivity
-        ];
-
-    } else {
-        // Logged in but no activity yet
-        $idle = [
-            "state" => "active",
-            "remainingSeconds" => $idleTimeoutSeconds,
-            "timeoutSeconds" => $idleTimeoutSeconds,
-            "lastActivity" => null
-        ];
-    }
-}
-
 // ------------------------------------------------------------
 // FINAL PAYLOAD — Always flat + always normalized
 // ------------------------------------------------------------
@@ -794,7 +690,6 @@ $payload = [
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
-    "idle"            => $idle,
     // Sentinel Runtime Meta
     "sentinelMeta"    => $sentinelMeta
 ];
