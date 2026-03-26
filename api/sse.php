@@ -113,16 +113,16 @@ if ($isSnapshot) {
 
     $isAuthenticated = !empty($_SESSION['authenticated']);
 
-    // Build auth FIRST
+    // Build auth from SESSION (not liveSession)
     $auth = [
-        'authenticated' => $liveSession['authenticated'],
-        'userId'        => $liveSession['userId'],
-        'contactId'     => $_SESSION['contactId'] ?? null, // if available
-        'username'      => $liveSession['username'],
-        'role'          => $liveSession['role']
+        'authenticated' => $isAuthenticated,
+        'userId'        => $isAuthenticated ? (int)($_SESSION['userId'] ?? 0) : null,
+        'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
+        'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
+        'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
     ];
 
-    // Then inject into context
+    // Inject context
     $SKYE_CONTEXT = [
         'auth' => $auth
     ];
@@ -130,12 +130,7 @@ if ($isSnapshot) {
     // Release session lock immediately
     session_write_close();
 
-    // ─────────────────────────────────────────
-    // LOAD FULL PROJECTION PAYLOAD
-    // dynamicData.php generates the full system
-    // projection including idle state.
-    // ─────────────────────────────────────────
-
+    // Load payload
     $payload = require __DIR__ . "/getDynamicData.php";
 
     // Attach session context
@@ -254,29 +249,11 @@ while (true) {
     $now = time();
 
     // ─────────────────────────────────────────
-    // 🔐 REFRESH LIVE SESSION STATE
+    // 💓 KEEPALIVE PING
     // ─────────────────────────────────────────
-
-    $liveSession = getLiveSessionAuth();
-
-    $isAuthenticated = $liveSession['authenticated'];
-    $userId          = $liveSession['userId'];
-    $sessionId       = $liveSession['sessionId'];
-
-    $auth = [
-        'authenticated' => $liveSession['authenticated'],
-        'username'      => $liveSession['username'],
-        'role'          => $liveSession['role']
-    ];
-
-    // ─────────────────────────────────────────
-    // 💓 KEEPALIVE PING (LiteSpeed-safe)
-    // ─────────────────────────────────────────
-
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
-
         echo str_repeat(" ", 512) . "\n";
 
         if (function_exists('ob_flush')) {
@@ -288,15 +265,34 @@ while (true) {
     }
 
     // ─────────────────────────────────────────
-    // 📦 1HZ DATA UPDATE
+    // 📦 1HZ DATA UPDATE (ONLY PLACE WE BUILD PAYLOAD)
     // ─────────────────────────────────────────
-
     if ($now > $lastSecond) {
 
         $lastSecond = $now;
 
+        // 🔐 Refresh session state
+        $liveSession = getLiveSessionAuth();
+
+        $sessionId = $liveSession['sessionId'];
+
+        $auth = [
+            'authenticated' => $liveSession['authenticated'],
+            'userId'        => $liveSession['userId'],
+            'contactId'     => $liveSession['contactId'],
+            'username'      => $liveSession['username'],
+            'role'          => $liveSession['role']
+        ];
+
+        // ✅ Inject context JUST-IN-TIME
+        $SKYE_CONTEXT = [
+            'auth' => $auth
+        ];
+
+        // ✅ Build payload ONCE
         $payload = require __DIR__ . "/getDynamicData.php";
 
+        // Attach metadata
         $payload["auth"]      = $auth;
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
@@ -305,14 +301,11 @@ while (true) {
             "authenticated" => $auth["authenticated"] ?? false
         ];
 
-        $json = json_encode(
-            $payload,
-            JSON_UNESCAPED_SLASHES
-        );
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
         if ($json !== false && $json !== '') {
-            echo "data: " . $json . "\n\n";
 
+            echo "data: " . $json . "\n\n";
             echo str_repeat(" ", 1024) . "\n";
 
             if (function_exists('ob_flush')) {
