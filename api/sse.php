@@ -43,38 +43,6 @@ if (!empty($_COOKIE[session_name()])) {
 // Start session ONCE
 session_start();
 
-// ─────────────────────────────────────────
-// 🗄 DATABASE CONNECTION (SSE RUNTIME)
-// REQUIRED for idle activity lookup
-// ─────────────────────────────────────────
-
-require_once __DIR__ . '/config.php'; // or your env loader
-
-$dbUser = skyesoftGetEnv("DB_USER");
-$dbPass = skyesoftGetEnv("DB_PASS");
-$dbHost = skyesoftGetEnv("DB_HOST") ?? "localhost";
-$dbName = skyesoftGetEnv("DB_NAME") ?? "skyesoft";
-
-try {
-
-    $db = new PDO(
-        "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
-        $dbUser,
-        $dbPass,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_PERSISTENT => true
-        ]
-    );
-
-} catch (Throwable $e) {
-
-    error_log("[SSE DB ERROR] " . $e->getMessage());
-
-    // 🔥 DO NOT break stream
-    $db = null;
-}
-
 // Debug
 file_put_contents(
     __DIR__ . '/sse_debug.log',
