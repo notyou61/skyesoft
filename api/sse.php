@@ -66,7 +66,7 @@ function getLiveSessionAuth(): array
 
     $result = [
         'authenticated' => $isAuth,
-        'userId'        => $isAuth ? (int)($_SESSION['userId'] ?? 0) : null,
+        'contactId'     => $isAuth ? (int)($_SESSION['contactId'] ?? 0) : null,
         'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
         'sessionId'     => $sessionId
@@ -115,9 +115,11 @@ if ($isSnapshot) {
 
     // Build auth FIRST
     $auth = [
-        'authenticated' => $isAuthenticated,
-        'username'      => $_SESSION['username'] ?? null,
-        'role'          => $_SESSION['role'] ?? null
+        'authenticated' => $liveSession['authenticated'],
+        'userId'        => $liveSession['userId'],
+        'contactId'     => $_SESSION['contactId'] ?? null, // if available
+        'username'      => $liveSession['username'],
+        'role'          => $liveSession['role']
     ];
 
     // Then inject into context
