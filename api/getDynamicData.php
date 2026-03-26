@@ -13,6 +13,10 @@ declare(strict_types=1);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+error_log("[SESSION CHECK] ID=" . session_id() . " USER=" . ($_SESSION['userId'] ?? 'none'));
+error_log("[SESSION DATA] " . json_encode($_SESSION));
+
 // Holiday Interpreter Include
 require_once __DIR__ . '/holidayInterpreter.php';
 
