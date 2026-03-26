@@ -383,12 +383,10 @@ while (true) {
 
         try {
 
-            $stmt = $db->query("
-                SELECT actionUnix
-                FROM tblActions
-                ORDER BY actionUnix DESC
-                LIMIT 1
-            ");
+            $stmt = $db->query("SELECT COUNT(*) FROM tblActions");
+            $count = (int)$stmt->fetchColumn();
+
+            error_log("[SSE TEST] tblActions count = " . $count);
 
             $lastActivity = (int)($stmt->fetchColumn() ?: 0);
 
