@@ -379,28 +379,21 @@ while (true) {
 
     $lastActivity = null;
 
-   if ($isAuthenticated && !empty($_SESSION['contactId']) && $db) {
+    if ($isAuthenticated && $db) {
 
         try {
 
-            $contactId = (int)$_SESSION['contactId'];
-
-            $stmt = $db->prepare("
+            $stmt = $db->query("
                 SELECT actionUnix
                 FROM tblActions
-                WHERE contactId = :contactId
                 ORDER BY actionUnix DESC
                 LIMIT 1
             ");
 
-            $stmt->execute([
-                ':contactId' => $contactId
-            ]);
-
             $lastActivity = (int)($stmt->fetchColumn() ?: 0);
 
         } catch (Throwable $e) {
-            error_log('[SSE IDLE ERROR] ' . $e->getMessage());
+            error_log('[SSE TEST QUERY ERROR] ' . $e->getMessage());
         }
     }
 
