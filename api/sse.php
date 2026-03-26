@@ -43,31 +43,6 @@ if (!empty($_COOKIE[session_name()])) {
 // Start session ONCE
 session_start();
 
-// ─────────────────────────────────────────
-// 🗄 SIMPLE DB CONNECTION (SSE SAFE)
-// No config dependency
-// ─────────────────────────────────────────
-
-$db = null;
-
-try {
-
-    $db = new PDO(
-        "mysql:host=localhost;dbname=skyesoft;charset=utf8mb4",
-        "YOUR_DB_USER",
-        "YOUR_DB_PASS",
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]
-    );
-
-} catch (Throwable $e) {
-
-    error_log("[SSE DB ERROR] " . $e->getMessage());
-
-    $db = null; // never crash SSE
-}
-
 // Debug
 file_put_contents(
     __DIR__ . '/sse_debug.log',
@@ -110,70 +85,7 @@ $isSnapshot =
 
 #region 🧰 SECTION 1 — SESSION HELPERS
 
-
-// ─────────────────────────────────────────
-// ⏱ LAST ACTIVITY LOOKUP (DB — Authoritative)
-// Resolves contactId from userId, then retrieves
-// the most recent action timestamp from tblActions.
-//
-// This replaces file-based promptLedger usage and
-// serves as the canonical idle activity source.
-// ─────────────────────────────────────────
-function getLastActivity(PDO $db, int $userId): ?int
-{
-    if ($userId <= 0) {
-        return null;
-    }
-
-    try {
-
-        // ─────────────────────────────────────────
-        // 🔗 Resolve contactId from userId
-        // ─────────────────────────────────────────
-        $stmt = $db->prepare("
-            SELECT contactId
-            FROM tblContacts
-            WHERE userId = :userId
-            LIMIT 1
-        ");
-
-        $stmt->execute([
-            ':userId' => $userId
-        ]);
-
-        $contactId = (int)($stmt->fetchColumn() ?: 0);
-
-        if ($contactId <= 0) {
-            return null;
-        }
-
-        // ─────────────────────────────────────────
-        // ⏱ Fetch latest activity from tblActions
-        // ─────────────────────────────────────────
-        $stmt = $db->prepare("
-            SELECT actionUnix
-            FROM tblActions
-            WHERE contactId = :contactId
-            ORDER BY actionUnix DESC
-            LIMIT 1
-        ");
-
-        $stmt->execute([
-            ':contactId' => $contactId
-        ]);
-
-        $timestamp = (int)($stmt->fetchColumn() ?: 0);
-
-        return ($timestamp > 0) ? $timestamp : null;
-
-    } catch (Throwable $e) {
-
-        // 🔥 CRITICAL — never break SSE loop
-        error_log('[getLastActivity ERROR] ' . $e->getMessage());
-
-        return null;
-    }
-}
+// Delete the section
 
 #endregion
 
@@ -227,12 +139,6 @@ if ($isSnapshot) {
     // ─────────────────────────────────────────
 
     $payload = require __DIR__ . "/getDynamicData.php";
-
-    // 🔥 TEMP: Disable idle expiration (LGBAS isolation)
-    if (isset($payload['idle'])) {
-        $payload['idle']['state'] = 'active';
-        $payload['idle']['remainingSeconds'] = 9999;
-    }
 
     // Attach session context
     $payload["auth"]      = $auth;
@@ -337,12 +243,6 @@ $streamId   = bin2hex(random_bytes(8));
 $lastPing   = 0;
 $lastSecond = 0;
 
-$idle = [
-    'state'            => 'unknown',
-    'remainingSeconds' => null,
-    'timeoutSeconds'   => $idleTimeoutSeconds,
-    'lastActivity'     => null
-];
 
 #endregion
 
@@ -373,78 +273,6 @@ while (true) {
     ];
 
     // ─────────────────────────────────────────
-    // ⏱ LAST ACTIVITY (DB — SESSION-BASED)
-    // Uses session contactId directly (authoritative)
-    // ─────────────────────────────────────────
-
-    $lastActivity = null;
-
-    if ($isAuthenticated && $db) {
-
-        try {
-
-            $stmt = $db->query("SELECT COUNT(*) FROM tblActions");
-            $count = (int)$stmt->fetchColumn();
-
-            error_log("[SSE TEST] tblActions count = " . $count);
-
-            $lastActivity = (int)($stmt->fetchColumn() ?: 0);
-
-        } catch (Throwable $e) {
-            error_log('[SSE TEST QUERY ERROR] ' . $e->getMessage());
-        }
-    }
-
-    // ─────────────────────────────────────────
-    // ⏱ IDLE STATE CALCULATION
-    // ─────────────────────────────────────────
-
-    if ($isAuthenticated && $userId && $lastActivity) {
-
-        $idleSeconds = $now - $lastActivity;
-
-        $remaining = max(
-            0,
-            $idleTimeoutSeconds - $idleSeconds
-        );
-
-        if ($remaining <= 0) {
-            $idleState = 'expired';
-        } elseif ($remaining <= 120) {
-            $idleState = 'warning';
-        } elseif ($idleSeconds >= 60 && $idleSeconds <= 70) {
-            $idleState = 'idle-active';
-        } else {
-            $idleState = 'active';
-        }
-
-        $idle = [
-            'state'            => $idleState,
-            'remainingSeconds' => $remaining,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => $lastActivity
-        ];
-
-    } elseif ($isAuthenticated) {
-
-        $idle = [
-            'state'            => 'active',
-            'remainingSeconds' => $idleTimeoutSeconds,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-
-    } else {
-
-        $idle = [
-            'state'            => 'anonymous',
-            'remainingSeconds' => null,
-            'timeoutSeconds'   => $idleTimeoutSeconds,
-            'lastActivity'     => null
-        ];
-    }
-
-    // ─────────────────────────────────────────
     // 💓 KEEPALIVE PING (LiteSpeed-safe)
     // ─────────────────────────────────────────
 
@@ -473,7 +301,6 @@ while (true) {
         $payload = require __DIR__ . "/getDynamicData.php";
 
         $payload["auth"]      = $auth;
-        $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
         $payload["authDebug"] = [
