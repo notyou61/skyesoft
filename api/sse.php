@@ -43,6 +43,31 @@ if (!empty($_COOKIE[session_name()])) {
 // Start session ONCE
 session_start();
 
+// ─────────────────────────────────────────
+// 🗄 SIMPLE DB CONNECTION (SSE SAFE)
+// No config dependency
+// ─────────────────────────────────────────
+
+$db = null;
+
+try {
+
+    $db = new PDO(
+        "mysql:host=localhost;dbname=skyesoft;charset=utf8mb4",
+        "YOUR_DB_USER",
+        "YOUR_DB_PASS",
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]
+    );
+
+} catch (Throwable $e) {
+
+    error_log("[SSE DB ERROR] " . $e->getMessage());
+
+    $db = null; // never crash SSE
+}
+
 // Debug
 file_put_contents(
     __DIR__ . '/sse_debug.log',
