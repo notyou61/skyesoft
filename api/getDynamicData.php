@@ -60,7 +60,11 @@ if ($isAuthenticated && $contactId > 0) {
 
         $stmt->execute([':contactId' => $contactId]);
 
-        $lastActivity = (int)($stmt->fetchColumn() ?: 0);
+        $value = $stmt->fetchColumn();
+
+        error_log('[IDLE DEBUG] contactId=' . $contactId . ' raw=' . var_export($value, true));
+
+        $lastActivity = (int)($value ?: 0);
 
     } catch (Throwable $e) {
         error_log('[Idle DB ERROR] ' . $e->getMessage());
