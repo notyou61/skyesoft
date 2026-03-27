@@ -831,6 +831,7 @@ $payload = [
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
     "idle"            => $idle,
+    "idleDebug"       => $idleDebug ?? null,
     // Sentinel Runtime Meta
     "sentinelMeta"    => $sentinelMeta
 ];
