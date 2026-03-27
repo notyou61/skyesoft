@@ -116,7 +116,6 @@ if ($isSnapshot) {
     // Build auth from SESSION (not liveSession)
     $auth = [
         'authenticated' => $isAuthenticated,
-        'userId'        => $isAuthenticated ? (int)($_SESSION['userId'] ?? 0) : null,
         'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
         'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
         'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
@@ -278,7 +277,6 @@ while (true) {
 
         $auth = [
             'authenticated' => $liveSession['authenticated'],
-            'userId'        => $liveSession['userId'],
             'contactId'     => $liveSession['contactId'],
             'username'      => $liveSession['username'],
             'role'          => $liveSession['role']

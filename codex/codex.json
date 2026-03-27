@@ -2755,7 +2755,7 @@
                 "hierarchyOrder": 10,
                 "description": "Defines the required behavior, interaction protocol, and operational constraints for Skyebot as Skyesoft\u2019s primary conversational interface.",
                 "rules": [
-                    "Skyebot must use a standardized message schema: {sessionId, userId, timestamp, intent, payload, codexRefs}.",
+                    "Skyebot must use a standardized message schema: {sessionId, contactId, timestamp, intent, payload, codexRefs}.",
                     "All interactions must be logged with traceability to SSE state if applicable.",
                     "Intent routing must prioritize Codex doctrine queries before operational requests.",
                     "Skyebot may not execute code or alter files; read-only access enforced.",
@@ -2768,7 +2768,7 @@
                             "sessionId": {
                                 "type": "string"
                             },
-                            "userId": {
+                            "contactId": {
                                 "type": "string"
                             },
                             "timestamp": {

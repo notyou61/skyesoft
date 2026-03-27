@@ -214,7 +214,6 @@ if ($action === "check") {
 
     echo json_encode([
         "authenticated" => $_SESSION["authenticated"] ?? false,
-        "userId"        => $_SESSION["userId"] ?? null,
         "contactId"     => $_SESSION["contactId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
         "role"          => $_SESSION["role"] ?? null,
@@ -302,7 +301,6 @@ if ($action === "login") {
     error_log('[LOGIN] POST-REGEN cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
 
     $_SESSION["authenticated"] = true;
-    $_SESSION["userId"]        = (int)$user["contactId"];
     $_SESSION["contactId"]     = (int)$user["contactId"];
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
@@ -379,7 +377,7 @@ if ($action === "logout") {
     // CAPTURE SESSION CONTEXT (BEFORE DESTROY)
     // ─────────────────────────────────────────
 
-    $contactId = $_SESSION["contactId"] ?? $_SESSION["userId"] ?? null;
+    $contactId = $_SESSION["contactId"] ?? null;
     $contactId = $contactId !== null ? (int)$contactId : null;
 
     $username  = $_SESSION["username"] ?? null;
