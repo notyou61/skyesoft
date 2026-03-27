@@ -34,18 +34,34 @@ $idle = [
 if ($isAuthenticated && $contactId > 0) {
 
     $lastActivity = null;
-    $idleDebug = [];
+    $idleDebug = [
+        "contactId" => $contactId,
+        "isAuthenticated" => $isAuthenticated
+    ];
 
     try {
 
         // Load environment
         skyesoftLoadEnv();
 
+        $idleDebug["envCheck"] = [
+            "user_env"    => $_ENV['DB_USER'] ?? null,
+            "pass_env"    => $_ENV['DB_PASS'] ?? null,
+            "user_getenv" => getenv('DB_USER') ?: null,
+            "pass_getenv" => getenv('DB_PASS') ?: null
+        ];
+
         $dbHost = getenv('DB_HOST') ?: 'localhost';
         $dbName = getenv('DB_NAME') ?: '';
         $dbUser = getenv('DB_USER') ?: '';
         $dbPass = getenv('DB_PASS') ?: '';
         $dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
+
+        $idleDebug["env"] = [
+            "host" => $dbHost,
+            "db"   => $dbName,
+            "user" => $dbUser
+        ];
 
         // DB connection
         $db = new PDO(
@@ -55,26 +71,20 @@ if ($isAuthenticated && $contactId > 0) {
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
 
-        // ─────────────────────────────────────────
-        // 🔍 DB IDENTITY (CRITICAL)
-        // ─────────────────────────────────────────
+        // DB identity
         $identityStmt = $db->query("SELECT DATABASE() as db, USER() as user");
-        $identity = $identityStmt->fetch(PDO::FETCH_ASSOC);
+        $idleDebug["dbIdentity"] = $identityStmt->fetch(PDO::FETCH_ASSOC);
 
-        // ─────────────────────────────────────────
-        // 🔍 FULL TABLE SAMPLE
-        // ─────────────────────────────────────────
+        // Table sample
         $sampleStmt = $db->query("
             SELECT contactId, actionUnix
             FROM tblActions
             ORDER BY actionUnix DESC
             LIMIT 5
         ");
-        $tableSample = $sampleStmt->fetchAll(PDO::FETCH_ASSOC);
+        $idleDebug["tableSample"] = $sampleStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // ─────────────────────────────────────────
-        // 🎯 TARGET QUERY
-        // ─────────────────────────────────────────
+        // Target query
         $stmt = $db->prepare("
             SELECT actionUnix
             FROM tblActions
@@ -88,36 +98,16 @@ if ($isAuthenticated && $contactId > 0) {
 
         $value = $stmt->fetchColumn();
 
-        $lastActivity = (int)($value ?: 0);
+        $idleDebug["rawQueryResult"] = $value;
 
-        // ─────────────────────────────────────────
-        // 📦 DEBUG OBJECT
-        // ─────────────────────────────────────────
-        $idleDebug = [
-            "contactId" => $contactId,
-            "isAuthenticated" => $isAuthenticated,
-            "env" => [
-                "host" => $dbHost,
-                "db"   => $dbName,
-                "user" => $dbUser
-            ],
-            "dbIdentity" => $identity,
-            "rawQueryResult" => $value,
-            "castLastActivity" => $lastActivity,
-            "tableSample" => $tableSample
-        ];
+        $lastActivity = (int)($value ?: 0);
+        $idleDebug["castLastActivity"] = $lastActivity;
 
     } catch (Throwable $e) {
-
-        $idleDebug = [
-            "error" => $e->getMessage()
-        ];
+        $idleDebug["error"] = $e->getMessage();
     }
 
-    // ─────────────────────────────────────────
-    // 🧠 IDLE CALCULATION
-    // ─────────────────────────────────────────
-
+    // Idle calculation
     if ($lastActivity > 0) {
 
         $idleSeconds = time() - $lastActivity;
@@ -147,11 +137,6 @@ if ($isAuthenticated && $contactId > 0) {
             "lastActivity" => null
         ];
     }
-
-    // ─────────────────────────────────────────
-    // 📤 ATTACH DEBUG TO PAYLOAD
-    // ─────────────────────────────────────────
-    $payload["idleDebug"] = $idleDebug;
 }
 
 error_log('[DYNAMIC AUTH] ' . json_encode($auth));
