@@ -35,10 +35,18 @@ if ($isAuthenticated && $contactId > 0) {
     $lastActivity = null;
 
     try {
+        skyesoftLoadEnv(); // ← make sure this runs BEFORE PDO
+
+        $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
+        $dbName = $_ENV['DB_NAME'] ?? '';
+        $dbUser = $_ENV['DB_USER'] ?? '';
+        $dbPass = $_ENV['DB_PASS'] ?? '';
+        $dbChar = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+
         $db = new PDO(
-            "mysql:host=localhost;dbname=skyesoft;charset=utf8mb4",
-            "YOUR_DB_USER",
-            "YOUR_DB_PASS",
+            "mysql:host={$dbHost};dbname={$dbName};charset={$dbChar}",
+            $dbUser,
+            $dbPass,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
 
