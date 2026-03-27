@@ -41,11 +41,11 @@ if ($isAuthenticated && $contactId > 0) {
         // Load environment
         skyesoftLoadEnv();
 
-        $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
-        $dbName = $_ENV['DB_NAME'] ?? '';
-        $dbUser = $_ENV['DB_USER'] ?? '';
-        $dbPass = $_ENV['DB_PASS'] ?? '';
-        $dbChar = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+        $dbHost = getenv('DB_HOST') ?: 'localhost';
+        $dbName = getenv('DB_NAME') ?: '';
+        $dbUser = getenv('DB_USER') ?: '';
+        $dbPass = getenv('DB_PASS') ?: '';
+        $dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
 
         // DB connection
         $db = new PDO(
