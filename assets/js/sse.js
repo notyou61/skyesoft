@@ -48,7 +48,7 @@ window.SkySSE = {
 
                     // 🔥 STORE LAST PAYLOAD
                     window.SkyeApp = window.SkyeApp || {};
-                    window.SkyeApp.lastSSE = payload;
+                    window.SkyIndex.lastSSE = payload;
 
                     // Existing logic
                     window.SkyeApp?.handleSSE?.(payload);

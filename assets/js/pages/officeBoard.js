@@ -1579,7 +1579,7 @@ window.SkyOfficeBoard = {
 
         // If SSE already arrived before init
         if (window.SkyeApp?.lastSSE) {
-            lastBoardPayload = window.SkyeApp.lastSSE;
+            lastBoardPayload = window.SkyIndex.lastSSE;
             updateAllCards(lastBoardPayload);
         }
         

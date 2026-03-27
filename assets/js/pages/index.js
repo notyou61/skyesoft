@@ -177,6 +177,11 @@ window.SkyVersion = {
 };
 // #endregion
 
+// #region 🌍 Global State Init (SSE Safe)
+window.SkyIndex = window.SkyIndex || {};
+window.SkyIndex.lastSSE = {};
+// #endregion
+
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
 
@@ -1628,7 +1633,7 @@ window.SkyIndex = {
             // #endregion
 
             // #region 🧠 Reset SSE memory
-            window.SkyeApp.lastSSE = null;
+            window.SkyIndex.lastSSE = null;
             // #endregion
 
             // #region 🎨 Force UI logout state
