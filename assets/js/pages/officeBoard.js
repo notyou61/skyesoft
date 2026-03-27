@@ -3,6 +3,13 @@
    Unified Card Model – 2026 refactored edition
    Phoenix, Arizona – MST timezone
 */
+// ======================================================================
+// GLOBAL STATE CONTAINER (SSE SOURCE OF TRUTH)
+// ======================================================================
+
+window.SkyIndex = window.SkyIndex || {
+    lastSSE: null
+};
 
 // #region 🔔 Version Update Indicator Controller
 window.SkyVersion = {
@@ -1580,7 +1587,7 @@ window.SkyOfficeBoard = {
         // If SSE already arrived before init
         if (window.SkyeApp?.lastSSE) {
             lastBoardPayload = window.SkyIndex.lastSSE;
-            updateAllCards(lastBoardPayload);
+           // updateAllCards(lastBoardPayload);
         }
         
         // =====================================================
