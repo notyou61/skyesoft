@@ -14,6 +14,82 @@ require_once __DIR__ . '/holidayInterpreter.php';
 
 $auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
 
+// ─────────────────────────────────────────
+// IDLE STATE (CONTACT-BASED)
+// ─────────────────────────────────────────
+
+$contactId = (int)($auth['contactId'] ?? 0);
+$isAuthenticated = $auth['authenticated'] ?? false;
+
+$idleTimeoutSeconds = 900;
+
+$idle = [
+    "state" => "anonymous",
+    "remainingSeconds" => null,
+    "timeoutSeconds" => $idleTimeoutSeconds,
+    "lastActivity" => null
+];
+
+if ($isAuthenticated && $contactId > 0) {
+
+    $lastActivity = null;
+
+    try {
+        $db = new PDO(
+            "mysql:host=localhost;dbname=skyesoft;charset=utf8mb4",
+            "YOUR_DB_USER",
+            "YOUR_DB_PASS",
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+
+        $stmt = $db->prepare("
+            SELECT actionUnix
+            FROM tblActions
+            WHERE contactId = :contactId
+            ORDER BY actionUnix DESC
+            LIMIT 1
+        ");
+
+        $stmt->execute([':contactId' => $contactId]);
+
+        $lastActivity = (int)($stmt->fetchColumn() ?: 0);
+
+    } catch (Throwable $e) {
+        error_log('[Idle DB ERROR] ' . $e->getMessage());
+    }
+
+        if ($lastActivity > 0) {
+
+        $idleSeconds = time() - $lastActivity;
+        $remaining   = max(0, $idleTimeoutSeconds - $idleSeconds);
+
+        $state = "active";
+
+        if ($remaining <= 0) {
+            $state = "expired";
+        } elseif ($remaining <= 120) {
+            $state = "warning";
+        }
+
+        $idle = [
+            "state" => $state,
+            "remainingSeconds" => $remaining,
+            "timeoutSeconds" => $idleTimeoutSeconds,
+            "lastActivity" => $lastActivity
+        ];
+
+    } else {
+
+        // Logged in but no activity yet
+        $idle = [
+            "state" => "active",
+            "remainingSeconds" => $idleTimeoutSeconds,
+            "timeoutSeconds" => $idleTimeoutSeconds,
+            "lastActivity" => null
+        ];
+    }
+}
+
 error_log('[DYNAMIC AUTH] ' . json_encode($auth));
 
 #endregion
@@ -690,6 +766,7 @@ $payload = [
     "activePermits"   => $permitList,
     "permitNews"      => is_array($permitNews) ? $permitNews : null,
     "siteMeta"        => $siteMeta,
+    "idle"            => $idle,
     // Sentinel Runtime Meta
     "sentinelMeta"    => $sentinelMeta
 ];
