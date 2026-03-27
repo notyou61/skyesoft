@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 #region SECTION 0 — Dependencies
 require_once __DIR__ . '/holidayInterpreter.php';
+require_once __DIR__ . '/utils/envLoader.php';
 
 $auth = $SKYE_CONTEXT['auth'] ?? ['authenticated' => false];
 
