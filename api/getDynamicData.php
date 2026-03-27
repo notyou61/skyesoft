@@ -59,7 +59,8 @@ if ($isAuthenticated && $contactId > 0) {
             LIMIT 1
         ");
 
-        $stmt->execute([':contactId' => $contactId]);
+        $stmt->bindValue(':contactId', $contactId, PDO::PARAM_INT);
+        $stmt->execute();
 
         $value = $stmt->fetchColumn();
 
