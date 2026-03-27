@@ -2,7 +2,7 @@
 
 function skyesoftLoadEnv(): void {
 
-    $basePath = dirname(__DIR__, 3) . '/secure';
+    $basePath = dirname(__DIR__, 4) . '/secure';
 
     $envFiles = [
         $basePath . '/.env',
