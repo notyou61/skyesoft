@@ -2,7 +2,15 @@
 
 function skyesoftLoadEnv(): void {
 
-    $basePath = dirname(__DIR__, 4) . '/secure';
+    // Prevent reloading (SSE-safe)
+    static $loaded = false;
+    if ($loaded) return;
+    $loaded = true;
+
+    // Resolve base path (project root → /secure)
+    $basePath = rtrim(dirname(__DIR__, 4), '/') . '/secure';
+
+    error_log("[env-loader] basePath: $basePath");
 
     $envFiles = [
         $basePath . '/.env',
@@ -20,6 +28,7 @@ function skyesoftLoadEnv(): void {
 
             $line = trim($line);
 
+            // Skip comments / invalid lines
             if (
                 $line === '' ||
                 str_starts_with($line, '#') ||
@@ -33,6 +42,7 @@ function skyesoftLoadEnv(): void {
             $key   = trim($key);
             $value = trim($value, " \t\n\r\0\x0B\"'");
 
+            // Set environment
             putenv("$key=$value");
             $_ENV[$key]    = $value;
             $_SERVER[$key] = $value;
