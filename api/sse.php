@@ -21,21 +21,17 @@ session_cache_limiter('');
 
 session_name('SKYESOFTSESSID');
 
-$secure = true;
-
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/skyesoft/',
-    'domain'   => 'skyelighting.com',
+    'path'     => '/',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
 
-// Attach to existing session BEFORE start
+// Detect session cookie (for debug visibility only)
 if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-    error_log('[SSE BOOT] using cookie session_id=' . $_COOKIE[session_name()]);
+    error_log('[SSE BOOT] session cookie present');
 } else {
     error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
 }
@@ -43,39 +39,27 @@ if (!empty($_COOKIE[session_name()])) {
 // Start session ONCE
 session_start();
 
-// Debug
-file_put_contents(
-    __DIR__ . '/sse_debug.log',
-    "[SSE SESSION ID] " . session_id() . PHP_EOL .
-    "[SSE SESSION DATA] " . json_encode($_SESSION) . PHP_EOL .
-    "------------------------" . PHP_EOL,
-    FILE_APPEND
-);
+// Capture session state snapshot (source of truth for this stream)
+$initialSession = [
+    'authenticated' => !empty($_SESSION['authenticated']),
+    'contactId'     => $_SESSION['contactId'] ?? null,
+    'username'      => $_SESSION['username'] ?? null,
+    'role'          => $_SESSION['role'] ?? 'user',
+    'sessionId'     => session_id()
+];
 
-// 🔐 LIVE SESSION AUTH LOOKUP
-function getLiveSessionAuth(): array
-{
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_write_close();
-    }
+// Debug (safe for SSE)
+error_log('[SSE BOOT] ' . json_encode($initialSession));
 
-    session_start();
+// RELEASE LOCK immediately (critical for SSE performance)
+session_write_close();
 
-    $sessionId = session_id();
-    $isAuth = !empty($_SESSION['authenticated']);
+// Use frozen session state for entire stream lifecycle
+$liveSession = $initialSession;
 
-    $result = [
-        'authenticated' => $isAuth,
-        'contactId'     => $isAuth ? (int)($_SESSION['contactId'] ?? 0) : null,
-        'username'      => $isAuth ? (string)($_SESSION['username'] ?? '') : null,
-        'role'          => $isAuth ? (string)($_SESSION['role'] ?? 'user') : null,
-        'sessionId'     => $sessionId
-    ];
-
-    session_write_close();
-
-    return $result;
-}
+// ─────────────────────────────────────────
+// 🔐 SESSION ACCESS (SSE SAFE — READ ONLY)
+// ─────────────────────────────────────────
 
 // 👤 Resolve Contact Name (shared)
 function getContactName(?int $contactId): array {
@@ -118,17 +102,9 @@ $isSnapshot =
 // ─────────────────────────────────────────
 // ⏱ IDLE SESSION TIMEOUT
 // Production: 900 seconds (15 minutes)
-// Test mode: 60 seconds
 // ─────────────────────────────────────────
 
-// ======================================================================
-// ⏱ Idle Session Policy
-// MTCO Test Mode — Timeout temporarily reduced to 60 seconds
-// to verify server-side idle termination behavior.
-// Restore to 900 seconds after validation.
-// ======================================================================
-
-define('SKYESOFT_IDLE_TIMEOUT', 900);   // TEMP TEST VALUE
+define('SKYESOFT_IDLE_TIMEOUT', 900);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -216,11 +192,7 @@ while (ob_get_level() > 0) {
 // Ensures SSE binds to correct PHP session
 // ─────────────────────────────────────────
 
-$initialSession = getLiveSessionAuth();
-
-// Optional debug (safe during MTCO phase)
-error_log('[SSE BOOT] ' . json_encode($initialSession));
-
+$liveSession = $initialSession;
 
 // ─────────────────────────────────────────
 // SSE RESPONSE HEADERS (Clean + Stable)
@@ -245,9 +217,7 @@ header('X-LiteSpeed-Cache: no-cache');
 // ─────────────────────────────────────────
 
 echo ": connected\n\n";
-
-// 🔥 Force LiteSpeed flush
-echo str_repeat(" ", 1024) . "\n";
+echo "retry: 3000\n\n";
 
 if (function_exists('ob_flush')) {
     @ob_flush();
@@ -287,7 +257,6 @@ while (true) {
     if (($now - $lastPing) >= 15) {
 
         echo ": ping\n\n";
-        echo str_repeat(" ", 512) . "\n";
 
         if (function_exists('ob_flush')) {
             @ob_flush();
@@ -305,7 +274,7 @@ while (true) {
         $lastSecond = $now;
 
         // 🔐 Refresh session state
-        $liveSession = getLiveSessionAuth();
+        $liveSession = $initialSession;
 
         $sessionId = $liveSession['sessionId'];
 
@@ -335,10 +304,12 @@ while (true) {
 
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
+        // ─────────────────────────────────────────
+        // 📦 DATA EMIT (SSE SAFE)
+        // ─────────────────────────────────────────
         if ($json !== false && $json !== '') {
 
             echo "data: " . $json . "\n\n";
-            echo str_repeat(" ", 1024) . "\n";
 
             if (function_exists('ob_flush')) {
                 @ob_flush();
