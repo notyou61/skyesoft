@@ -454,6 +454,7 @@ window.SkyIndex = {
 
         const isAuthed = this.getAuthState();
         const sentinel = this.currentSentinelState;
+        const idle     = window.SkyeApp?.lastSSE?.idle;
 
         let dot = document.querySelector('.footerDot');
         let textEl = document.querySelector('.footerText');
@@ -474,24 +475,18 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
-        // 0️⃣ Version (humanized – shared formatter)
+        // 0️⃣ Version
         try {
-
             const meta = window.SkyeApp?.lastSSE?.siteMeta;
             const versionEl = this.dom?.version || document.getElementById('versionFooter');
 
             if (versionEl && meta) {
-
                 const newHTML = formatVersionFooter(meta);
-
                 if (versionEl.innerHTML !== newHTML) {
                     versionEl.innerHTML = newHTML;
                 }
             }
-
-        } catch (err) {
-            // silent fail
-        }
+        } catch (err) {}
 
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
@@ -506,7 +501,31 @@ window.SkyIndex = {
             return;
         }
 
-        // 3️⃣ Governance
+        // 3️⃣ 🆕 IDLE STATE (NEW LAYER)
+        if (idle) {
+
+            const seconds = idle.remainingSeconds ?? 0;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            const time = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+            if (idle.state === "expired") {
+                render('#ff3b30', 'Session expired');
+                return;
+            }
+
+            if (idle.state === "warning") {
+                render('#ff9500', `Idle warning • ${time}`);
+                return;
+            }
+
+            if (idle.state === "active") {
+                // DO NOT return — allow governance to override if needed
+                render('#00c853', `Active • ${time}`);
+            }
+        }
+
+        // 4️⃣ Governance (can override active idle)
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
@@ -527,9 +546,10 @@ window.SkyIndex = {
             }
         }
 
-        // 4️⃣ Clean state
-        render('#00c853', 'Authenticated • Ready');
-
+        // 5️⃣ Clean fallback (only if no idle)
+        if (!idle) {
+            render('#00c853', 'Authenticated • Ready');
+        }
     },
     // #endregion
 
