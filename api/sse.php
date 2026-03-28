@@ -287,12 +287,19 @@ while (true) {
 
         $sessionId = $liveSession['sessionId'];
 
+        // 🔐 AUTH BUILD (ENHANCED WITH NAME)
         $auth = [
-            'authenticated' => $liveSession['authenticated'],
-            'contactId'     => $liveSession['contactId'],
-            'username'      => $liveSession['username'],
-            'role'          => $liveSession['role']
+            'authenticated' => !empty($_SESSION['authenticated']),
+            'contactId'     => $_SESSION['contactId'] ?? null,
+            'username'      => $_SESSION['username'] ?? null,
+            'role'          => $_SESSION['role'] ?? 'user'
         ];
+
+        // 👤 ADD NAME RESOLUTION
+        $name = getContactName($auth['contactId']);
+
+        $auth['firstName'] = $name['firstName'];
+        $auth['lastName']  = $name['lastName'];
 
         // ✅ Inject context JUST-IN-TIME
         $SKYE_CONTEXT = [
