@@ -26,7 +26,7 @@ $secure = true;
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/skyesoft/',
-    'domain'   => 'skyelighting.com',
+    //'domain'   => 'skyelighting.com',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
