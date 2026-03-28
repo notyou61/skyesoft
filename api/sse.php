@@ -145,6 +145,7 @@ if ($isSnapshot) {
 
     $sessionId = session_id();
 
+    // Is session authenticated?
     $isAuthenticated = !empty($_SESSION['authenticated']);
 
     // Resolve contact name for current session
