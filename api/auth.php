@@ -24,7 +24,10 @@ $secure = true;
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => false,
+    'secure'   => (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+    ),
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
@@ -338,36 +341,30 @@ if ($action === "logout") {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
         error_log('[LOGOUT] STEP 2 - session started');
-    } else {
-        error_log('[LOGOUT] STEP 2 - session already active');
     }
 
     // ─────────────────────────────────────────
-    // DB CONNECTION (SAFE)
+    // DB CONNECTION
     // ─────────────────────────────────────────
 
     $pdo = null;
 
     try {
         $pdo = getPDO();
-        error_log('[LOGOUT] STEP 3 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
     } catch (Throwable $e) {
         error_log('[LOGOUT] PDO ERROR: ' . $e->getMessage());
-        $pdo = null;
     }
 
     // ─────────────────────────────────────────
-    // CAPTURE SESSION CONTEXT (BEFORE DESTROY)
+    // CAPTURE SESSION CONTEXT
     // ─────────────────────────────────────────
 
-    $contactId = $_SESSION["contactId"] ?? null;
-    $contactId = $contactId !== null ? (int)$contactId : null;
-
+    $contactId = isset($_SESSION["contactId"]) ? (int)$_SESSION["contactId"] : null;
     $username  = $_SESSION["username"] ?? null;
     $role      = $_SESSION["role"] ?? null;
     $sessionId = session_id();
 
-    error_log('[LOGOUT] STEP 4 - session snapshot: ' . json_encode([
+    error_log('[LOGOUT] snapshot: ' . json_encode([
         'contactId' => $contactId,
         'username'  => $username,
         'role'      => $role,
@@ -375,13 +372,10 @@ if ($action === "logout") {
     ]));
 
     // ─────────────────────────────────────────
-    // AUTH EVENT LOG (STRUCTURED)
+    // AUTH LOG
     // ─────────────────────────────────────────
 
     if ($pdo instanceof PDO) {
-
-        error_log('[LOGOUT] STEP 5 - logAuthAction firing');
-
         logAuthAction($pdo, "auth.logout", $contactId, [
             "username"  => $username,
             "role"      => $role,
@@ -389,43 +383,34 @@ if ($action === "logout") {
             "ua"        => safeUserAgent(),
             "sessionId" => $sessionId
         ]);
-
-    } else {
-        error_log('[LOGOUT] STEP 5 - PDO INVALID, skipping DB ops');
-    }
-
-    // ─────────────────────────────────────────
-    // CLEAR SESSION
-    // ─────────────────────────────────────────
-
-    $_SESSION = [];
-    error_log('[LOGOUT] STEP 8 - session cleared');
-
-    // ─────────────────────────────────────────
-    // REMOVE SESSION COOKIE
-    // ─────────────────────────────────────────
-
-    if (ini_get("session.use_cookies")) {
-
-        error_log('[LOGOUT] STEP 9 - removing session cookie');
-        // Note: session_name() retrieves the name of the session cookie (default is usually "PHPSESSID")
-        setcookie(session_name(), '', [
-            'expires'  => time() - 42000,
-            'path'     => '/',
-            'domain'   => '',
-            'secure'   => $secure,
-            'httponly' => true,
-            'samesite' => 'Lax'
-        ]);
     }
 
     // ─────────────────────────────────────────
     // DESTROY SESSION
     // ─────────────────────────────────────────
 
+    $_SESSION = [];
     session_destroy();
-    session_write_close(); // 🔥 CRITICAL FIX
-    error_log('[LOGOUT] STEP 10 - session destroyed');
+
+    // ─────────────────────────────────────────
+    // REMOVE COOKIE (MATCH LOGIN CONFIG)
+    // ─────────────────────────────────────────
+
+    if (ini_get("session.use_cookies")) {
+
+        $secure = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+            ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+        );
+
+        setcookie(session_name(), '', [
+            'expires'  => time() - 42000,
+            'path'     => '/',
+            'secure'   => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+    }
 
     error_log('[LOGOUT] COMPLETE');
 
