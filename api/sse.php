@@ -107,7 +107,7 @@ $isSnapshot =
 // Production: 900 seconds (15 minutes)
 // ─────────────────────────────────────────
 
-define('SKYESOFT_IDLE_TIMEOUT', 900);
+define('SKYESOFT_IDLE_TIMEOUT', 30);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
