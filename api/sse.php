@@ -26,7 +26,7 @@ $secure = true;
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/skyesoft/',
-    //'domain'   => 'skyelighting.com',
+    'domain'   => 'skyelighting.com',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
@@ -145,19 +145,13 @@ if ($isSnapshot) {
 
     $sessionId = session_id();
 
-    // Is session authenticated?
     $isAuthenticated = !empty($_SESSION['authenticated']);
-
-    // Resolve contact name for current session
-    $name = getContactName($isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null);
 
     // Build auth from SESSION (not liveSession)
     $auth = [
         'authenticated' => $isAuthenticated,
         'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
         'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
-        'firstName'     => $name['firstName'],
-        'lastName'      => $name['lastName'],
         'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
     ];
 
@@ -313,20 +307,13 @@ while (true) {
         // 🔐 Refresh session state
         $liveSession = getLiveSessionAuth();
 
-        // Seession ID is critical for correlating SSE stream to browser session
         $sessionId = $liveSession['sessionId'];
 
-        // User Name
-        $name = getContactName($isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null);
-
-        // Auth Object (canonical structure for all contexts)
         $auth = [
-            'authenticated' => $isAuthenticated,
-            'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
-            'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
-            'firstName'     => $name['firstName'],
-            'lastName'      => $name['lastName'],
-            'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
+            'authenticated' => $liveSession['authenticated'],
+            'contactId'     => $liveSession['contactId'],
+            'username'      => $liveSession['username'],
+            'role'          => $liveSession['role']
         ];
 
         // ✅ Inject context JUST-IN-TIME
