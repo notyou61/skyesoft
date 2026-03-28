@@ -452,18 +452,21 @@ window.SkyIndex = {
             return;
         }
 
-        const sse   = window.SkyeApp?.lastSSE || {};
-        const auth  = sse.auth || {};
-        const idle  = sse.idle || null;
+        const isAuthed = this.getAuthState();
         const sentinel = this.currentSentinelState;
-
-        const isAuthed = auth.authenticated === true;
+        const idle     = window.SkyeApp?.lastSSE?.idle;
 
         let dot = document.querySelector('.footerDot');
         let textEl = document.querySelector('.footerText');
 
         if (!dot || !textEl) {
-            requestAnimationFrame(() => this.renderFooterStatus());
+            requestAnimationFrame(() => {
+                dot = document.querySelector('.footerDot');
+                textEl = document.querySelector('.footerText');
+
+                if (!dot || !textEl) return;
+                this.renderFooterStatus();
+            });
             return;
         }
 
@@ -472,9 +475,9 @@ window.SkyIndex = {
             textEl.textContent = text;
         };
 
-        // 0️⃣ Version (safe)
+        // 0️⃣ Version
         try {
-            const meta = sse.siteMeta;
+            const meta = window.SkyeApp?.lastSSE?.siteMeta;
             const versionEl = this.dom?.version || document.getElementById('versionFooter');
 
             if (versionEl && meta) {
@@ -488,55 +491,41 @@ window.SkyIndex = {
         // 1️⃣ Thinking dominates
         if (this.isThinking === true) {
             dot.style.background = '#007aff';
-            textEl.innerHTML = '⏳ Thinking<span class="ellipsis"></span>';
+            textEl.innerHTML = '⏳ Thinking<span class="ellipsis" aria-hidden="true"></span>';
             return;
         }
 
-        // 🚨 2️⃣ AUTH GATE (SSE-driven ONLY)
+        // 2️⃣ Auth gate
         if (!isAuthed) {
             render('#111', 'Authorization required to continue');
             return;
         }
 
-        // 🔥 Ensure command surface unlock happens ONCE when auth flips
-        if (!this._uiUnlocked) {
-            this._uiUnlocked = true;
-            console.log('[FOOTER] unlocking UI');
-
-            if (typeof this.showCommandSurface === 'function') {
-                this.showCommandSurface();
-            }
-        }
-
-        // 3️⃣ IDLE STATE
+        // 3️⃣ 🆕 IDLE STATE (NEW LAYER)
         if (idle) {
-
-            const name =
-                `${auth.firstName || ''} ${auth.lastName || ''}`.trim() ||
-                auth.username ||
-                'User';
 
             const seconds = idle.remainingSeconds ?? 0;
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
-            const time = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            const time = `${mins}:${secs.toString().padStart(2, '0')}`;
 
             if (idle.state === "expired") {
-                render('#ff3b30', `Session Expired · ${name} · 00:00 remaining`);
+                render('#ff3b30', 'Session expired');
                 return;
             }
 
             if (idle.state === "warning") {
-                render('#ff9500', `Session Expiring · ${name} · ${time} remaining`);
+                render('#ff9500', `Idle warning • ${time}`);
                 return;
             }
 
             if (idle.state === "active") {
-                render('#00c853', `Session Active · ${name} · ${time} remaining`);
+                // DO NOT return — allow governance to override if needed
+                render('#00c853', `Active • ${time}`);
             }
         }
 
-        // 4️⃣ Governance overlay
+        // 4️⃣ Governance (can override active idle)
         if (sentinel && typeof sentinel === 'object') {
 
             const hasIntegrityDrift = Boolean(sentinel.integrityMismatch);
@@ -557,7 +546,7 @@ window.SkyIndex = {
             }
         }
 
-        // 5️⃣ Clean fallback
+        // 5️⃣ Clean fallback (only if no idle)
         if (!idle) {
             render('#00c853', 'Authenticated • Ready');
         }
