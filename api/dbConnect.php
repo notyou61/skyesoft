@@ -2,34 +2,11 @@
 declare(strict_types=1);
 
 // ======================================================================
-//  Skyesoft — dbConnect.php
-//  Version: 1.0.0
-//  Last Updated: 2026-03-04
-//  Codex Tier: 3 — Infrastructure / Database Connector
-//
-//  Role:
-//   Central PDO factory for Skyesoft API endpoints.
-//   Loads DB credentials from secure/db.env (outside public_html).
-//
-//  Notes:
-//   • Uses the same secure-path strategy as askOpenAI.php
-//   • db.env must exist alongside secure/.env
+// Skyesoft — dbConnect.php (UPDATED)
+// Uses envLoader instead of parse_ini_file
 // ======================================================================
 
-#region SECTION 0 — Configuration Load
-
-$secureDir = dirname(__DIR__, 3) . "/secure";
-$envFile   = $secureDir . "/db.env";
-
-$config = parse_ini_file($envFile);
-
-if (!$config) {
-    throw new RuntimeException("Database config parsing failed at: {$envFile}");
-}
-
-#endregion
-
-#region SECTION 1 — PDO Factory
+require_once __DIR__ . '/utils/envLoader.php';
 
 function getPDO(): PDO
 {
@@ -39,24 +16,28 @@ function getPDO(): PDO
         return $pdo;
     }
 
-    $secureDir = dirname(__DIR__, 3) . "/secure";
-    $envFile   = $secureDir . "/db.env";
+    // Load environment ONCE
+    skyesoftLoadEnv();
 
-    $config = parse_ini_file($envFile);
+    $dbHost = getenv('DB_HOST') ?: 'localhost';
+    $dbName = getenv('DB_NAME') ?: '';
+    $dbUser = getenv('DB_USER') ?: '';
+    $dbPass = getenv('DB_PASS') ?: '';
+    $dbChar = getenv('DB_CHARSET') ?: 'utf8mb4';
 
-    if (!$config) {
-        throw new RuntimeException("Database config parsing failed at: {$envFile}");
+    if (!$dbUser || !$dbPass) {
+        throw new RuntimeException("Database credentials missing from environment.");
     }
 
     $dsn =
-        "mysql:host={$config['DB_HOST']};" .
-        "dbname={$config['DB_NAME']};" .
-        "charset={$config['DB_CHARSET']}";
+        "mysql:host={$dbHost};" .
+        "dbname={$dbName};" .
+        "charset={$dbChar}";
 
     $pdo = new PDO(
         $dsn,
-        $config['DB_USER'],
-        $config['DB_PASS'],
+        $dbUser,
+        $dbPass,
         [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
@@ -65,5 +46,3 @@ function getPDO(): PDO
 
     return $pdo;
 }
-
-#endregion
