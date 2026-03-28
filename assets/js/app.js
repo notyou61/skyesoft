@@ -130,6 +130,39 @@ window.SkyeApp.handleSSE = function (payload) {
         page.idleState = payload.idle;
     }
 
+    // ─────────────────────────────────────────
+    // 🔐 AUTHORITATIVE LOGOUT (SERVER OVERRIDE)
+    // ─────────────────────────────────────────
+    if (payload?.auth?.authenticated === false) {
+
+        if (page && page.authState === true) {
+
+            console.warn('[AUTH] server forced logout → applying UI reset');
+
+            // Prevent repeated execution
+            if (page._logoutHandled === true) return;
+            page._logoutHandled = true;
+
+            // Reset auth state
+            page.authState = false;
+            page.authUser  = null;
+            page.authRole  = null;
+
+            // Reset DOM state
+            document.body.removeAttribute('data-auth');
+
+            // Transition UI
+            page.renderLoginCard?.();
+
+            page._lastRenderedAuth = false;
+
+            // Ensure footer reflects state
+            page.renderFooterStatus?.call(page);
+        }
+
+        return;
+    }
+
     // First SSE frame: initialize UI carefully
     if (!hasPrev) {
 
