@@ -23,17 +23,11 @@ $secure = true;
 // Apply cookie policy FIRST (CRITICAL)
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/skyesoft/',       // 🔥 MATCH YOUR APP ROOT
-    'domain'   => 'skyelighting.com', // or '.skyelighting.com'
+    'path'     => '/',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax'
 ]);
-
-// Attach to existing session (AFTER params, BEFORE start)
-if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
 
 // Start session
 session_start();
@@ -230,6 +224,9 @@ if ($action === "check") {
 
 if ($action === "login") {
 
+    // ─────────────────────────────────────────
+    // 📥 INPUT
+    // ─────────────────────────────────────────
     $username = trim((string)($input["username"] ?? ""));
     $password = trim((string)($input["password"] ?? ""));
 
@@ -237,10 +234,10 @@ if ($action === "login") {
         jsonOut(false, "Missing credentials.");
     }
 
+    // ─────────────────────────────────────────
+    // 🗄 DB LOOKUP
+    // ─────────────────────────────────────────
     $pdo = getPDO();
-
-    error_log('[LOGIN] STEP 1 - reached');
-    error_log('[LOGIN] STEP 2 - PDO OK: ' . ($pdo instanceof PDO ? 'YES' : 'NO'));
 
     $stmt = $pdo->prepare("
         SELECT
@@ -257,48 +254,41 @@ if ($action === "login") {
     $stmt->execute(["email" => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // ─────────────────────────────────────────
+    // ❌ VALIDATION
+    // ─────────────────────────────────────────
     if (!$user) {
-
         logAuthAction($pdo, "auth.login.fail", null, [
             "username" => $username,
             "ip"       => safeIp(),
             "ua"       => safeUserAgent()
         ]);
-
         jsonOut(false, "User not found.");
     }
 
     if ((int)($user["isActive"] ?? 0) !== 1) {
-
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
             "username" => $username,
             "reason"   => "inactive",
             "ip"       => safeIp(),
             "ua"       => safeUserAgent()
         ]);
-
         jsonOut(false, "Account inactive.");
     }
 
     if (!password_verify($password, (string)($user["passwordHash"] ?? ""))) {
-
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
             "username" => $username,
             "reason"   => "bad_password",
             "ip"       => safeIp(),
             "ua"       => safeUserAgent()
         ]);
-
         jsonOut(false, "Invalid password.");
     }
 
-    // 🔍 PRE-SESSION STATE
-    error_log('[LOGIN] PRE session_id=' . session_id());
-    error_log('[LOGIN] PRE cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
-
-      // 🔍 POST-REGENERATE STATE
-    error_log('[LOGIN] POST-REGEN session_id=' . session_id());
-    error_log('[LOGIN] POST-REGEN cookie=' . ($_COOKIE[session_name()] ?? 'NONE'));
+    // ─────────────────────────────────────────
+    // 🔐 SESSION SET (CORE FIX)
+    // ─────────────────────────────────────────
 
     $_SESSION["authenticated"] = true;
     $_SESSION["contactId"]     = (int)$user["contactId"];
@@ -306,10 +296,7 @@ if ($action === "login") {
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
 
-    // 🔥 COMMIT MARKER (CRITICAL)
-    $_SESSION["auth_ready"] = time();
-
-    // 🔄 NOW regenerate (after state is complete)
+    // Regenerate AFTER setting session
     session_regenerate_id(true);
 
     $contactId = (int)$user["contactId"];
@@ -317,8 +304,12 @@ if ($action === "login") {
     $role      = (string)($user["role"] ?? "user");
     $sessionId = session_id();
 
-    error_log("LOGIN SESSION ID: " . $sessionId);
-    error_log("LOGIN SESSION DATA: " . json_encode($_SESSION));
+    error_log('[LOGIN SUCCESS] session_id=' . $sessionId);
+    error_log('[LOGIN SUCCESS] data=' . json_encode($_SESSION));
+
+    // ─────────────────────────────────────────
+    // 📜 LOG ACTION
+    // ─────────────────────────────────────────
 
     logAuthAction($pdo, "auth.login", $contactId, [
         "username"  => $email,
@@ -328,17 +319,9 @@ if ($action === "login") {
         "sessionId" => $sessionId
     ]);
 
-    // 🔍 FINAL STATE
-    error_log('[LOGIN] FINAL session_id=' . $sessionId);
-    error_log('[LOGIN] FINAL data=' . json_encode($_SESSION));
-
-    // 🔥 FORCE WRITE + VERIFY (CRITICAL)
-    session_commit(); // slightly stronger flush signal
-
-    // 🔍 reopen session immediately to confirm persistence
-    session_start();
-    error_log('[LOGIN VERIFY] session_id=' . session_id());
-    error_log('[LOGIN VERIFY] data=' . json_encode($_SESSION));
+    // ─────────────────────────────────────────
+    // 🔥 CRITICAL: CLOSE SESSION (THIS FIXES SSE)
+    // ─────────────────────────────────────────
     session_write_close();
 
     jsonOut(true);
