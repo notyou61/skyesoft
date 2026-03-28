@@ -126,13 +126,19 @@ if ($isSnapshot) {
 
     $isAuthenticated = !empty($_SESSION['authenticated']);
 
-    // Build auth from SESSION (not liveSession)
+    // 🔐 AUTH BUILD (ENHANCED WITH NAME)
     $auth = [
-        'authenticated' => $isAuthenticated,
-        'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
-        'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
-        'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
+        'authenticated' => !empty($_SESSION['authenticated']),
+        'contactId'     => $_SESSION['contactId'] ?? null,
+        'username'      => $_SESSION['username'] ?? null,
+        'role'          => $_SESSION['role'] ?? 'user'
     ];
+
+    // 👤 ADD NAME RESOLUTION
+    $name = getContactName($auth['contactId']);
+
+    $auth['firstName'] = $name['firstName'];
+    $auth['lastName']  = $name['lastName'];
 
     // Inject context
     $SKYE_CONTEXT = [
