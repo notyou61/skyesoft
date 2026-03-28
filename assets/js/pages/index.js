@@ -454,7 +454,7 @@ window.SkyIndex = {
 
         const isAuthed = this.getAuthState();
         const sentinel = this.currentSentinelState;
-        const idle     = window.SkyeApp?.lastSSE?.idle;
+        const idle = this.lastSSE?.idle;
 
         let dot = document.querySelector('.footerDot');
         let textEl = document.querySelector('.footerText');
@@ -504,10 +504,24 @@ window.SkyIndex = {
         // 3️⃣ 🆕 IDLE STATE (NEW LAYER)
         if (idle) {
 
-            const auth = window.SkyeApp?.lastSSE?.auth || {};
+            const auth = this.lastSSE?.auth || {};
+
             const first = auth.firstName || '';
             const last  = auth.lastName || '';
-            const name  = `${first} ${last}`.trim() || auth.username || 'User';
+
+            let name =
+                `${first} ${last}`.trim() ||
+                auth.username ||
+                this.authUser ||
+                'User';
+
+            // Optional: clean email → display name
+            if (name.includes('@')) {
+                name = name
+                    .split('@')[0]
+                    .replace(/[._-]/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            }
 
             const seconds = idle.remainingSeconds ?? 0;
             const mins = Math.floor(seconds / 60);
