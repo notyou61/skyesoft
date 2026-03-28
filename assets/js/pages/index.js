@@ -504,24 +504,29 @@ window.SkyIndex = {
         // 3️⃣ 🆕 IDLE STATE (NEW LAYER)
         if (idle) {
 
+            const auth = window.SkyeApp?.lastSSE?.auth || {};
+            const first = auth.firstName || '';
+            const last  = auth.lastName || '';
+            const name  = `${first} ${last}`.trim() || auth.username || 'User';
+
             const seconds = idle.remainingSeconds ?? 0;
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
-            const time = `${mins}:${secs.toString().padStart(2, '0')}`;
+            const time = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
             if (idle.state === "expired") {
-                render('#ff3b30', 'Session expired');
+                render('#ff3b30', `Session Expired · ${name} · 00:00 remaining`);
                 return;
             }
 
             if (idle.state === "warning") {
-                render('#ff9500', `Idle warning • ${time}`);
+                render('#ff9500', `Session Expiring · ${name} · ${time} remaining`);
                 return;
             }
 
             if (idle.state === "active") {
-                // DO NOT return — allow governance to override if needed
-                render('#00c853', `Active • ${time}`);
+                // allow governance to override active state if needed
+                render('#00c853', `Session Active · ${name} · ${time} remaining`);
             }
         }
 
