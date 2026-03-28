@@ -77,6 +77,40 @@ function getLiveSessionAuth(): array
     return $result;
 }
 
+// 👤 Resolve Contact Name (shared)
+function getContactName(?int $contactId): array {
+
+    if (!$contactId) {
+        return ['firstName' => null, 'lastName' => null];
+    }
+
+    try {
+
+        require_once __DIR__ . '/dbConnect.php';
+        $pdo = getPDO();
+
+        $stmt = $pdo->prepare("
+            SELECT contactFirstName, contactLastName
+            FROM tblContacts
+            WHERE contactId = :id
+            LIMIT 1
+        ");
+
+        $stmt->execute([':id' => $contactId]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'firstName' => $row['contactFirstName'] ?? null,
+            'lastName'  => $row['contactLastName'] ?? null
+        ];
+
+    } catch (Throwable $e) {
+        error_log('[NAME RESOLVE ERROR] ' . $e->getMessage());
+        return ['firstName' => null, 'lastName' => null];
+    }
+}
+
 $isSnapshot =
     isset($_GET['mode']) &&
     $_GET['mode'] === 'snapshot';
@@ -113,11 +147,16 @@ if ($isSnapshot) {
 
     $isAuthenticated = !empty($_SESSION['authenticated']);
 
+    // Resolve contact name for current session
+    $name = getContactName($isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null);
+
     // Build auth from SESSION (not liveSession)
     $auth = [
         'authenticated' => $isAuthenticated,
         'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
         'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
+        'firstName'     => $name['firstName'],
+        'lastName'      => $name['lastName'],
         'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
     ];
 
@@ -273,13 +312,20 @@ while (true) {
         // 🔐 Refresh session state
         $liveSession = getLiveSessionAuth();
 
+        // Seession ID is critical for correlating SSE stream to browser session
         $sessionId = $liveSession['sessionId'];
 
+        // User Name
+        $name = getContactName($isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null);
+
+        // Auth Object (canonical structure for all contexts)
         $auth = [
-            'authenticated' => $liveSession['authenticated'],
-            'contactId'     => $liveSession['contactId'],
-            'username'      => $liveSession['username'],
-            'role'          => $liveSession['role']
+            'authenticated' => $isAuthenticated,
+            'contactId'     => $isAuthenticated ? (int)($_SESSION['contactId'] ?? 0) : null,
+            'username'      => $isAuthenticated ? (string)($_SESSION['username'] ?? '') : null,
+            'firstName'     => $name['firstName'],
+            'lastName'      => $name['lastName'],
+            'role'          => $isAuthenticated ? (string)($_SESSION['role'] ?? 'user') : null
         ];
 
         // ✅ Inject context JUST-IN-TIME
