@@ -121,7 +121,6 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 
     // #endregion
 
-
     // #region 🧠 Map Auth Action → Intent
 
     $intent = match ($actionKey) {
@@ -132,7 +131,6 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     };
 
     // #endregion
-
 
     // #region 🧠 Build Payload (Delegate to Action Layer)
 
@@ -149,7 +147,6 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     ];
 
     // #endregion
-
 
     // #region 🚀 Delegate (SINGLE SOURCE OF TRUTH)
 

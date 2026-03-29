@@ -344,12 +344,10 @@ while (true) {
 
                     if ($pdo instanceof PDO) {
                         logAuthAction($pdo, "auth.logout", $contactId, [
-                            "username"  => $username,
-                            "role"      => $role,
-                            "reason"    => "idle_timeout",
-                            "ip"        => safeIp(),
-                            "ua"        => safeUserAgent(),
-                            "sessionId" => $sessionId
+                            "actionOrigin" => "idle_timeout",
+                            "ip"           => safeIp(),
+                            "ua"           => safeUserAgent(),
+                            "sessionId"    => $sessionId
                         ]);
                     }
 
