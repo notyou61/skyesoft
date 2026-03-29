@@ -107,7 +107,7 @@ $isSnapshot =
 // Production: 900 seconds (15 minutes)
 // ─────────────────────────────────────────
 
-define('SKYESOFT_IDLE_TIMEOUT', 900);
+define('SKYESOFT_IDLE_TIMEOUT', 30);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -282,14 +282,18 @@ while (true) {
 
         $lastSecond = $now;
 
-        // 🔐 Refresh session state
-        $liveSession = $initialSession;
+        // ─────────────────────────────────────────
+        // 🔄 RE-ATTACH SESSION FIRST (AUTHORITATIVE)
+        // Must occur BEFORE any use of $_SESSION
+        // ─────────────────────────────────────────
+        session_start();
 
-        $sessionId = $liveSession['sessionId'];
+        $sessionId = session_id();
+        $isAuthed  = !empty($_SESSION['authenticated']);
 
         // 🔐 AUTH BUILD (ENHANCED WITH NAME)
         $auth = [
-            'authenticated' => !empty($_SESSION['authenticated']),
+            'authenticated' => $isAuthed,
             'contactId'     => $_SESSION['contactId'] ?? null,
             'username'      => $_SESSION['username'] ?? null,
             'role'          => $_SESSION['role'] ?? 'user'
@@ -304,8 +308,8 @@ while (true) {
         // ⏱ IDLE STATE CALCULATION
         // ─────────────────────────────────────────
         $lastActivity = $_SESSION['lastActivity'] ?? $now;
-        $elapsed = $now - $lastActivity;
-        $remaining = max(0, $idleTimeoutSeconds - $elapsed);
+        $elapsed      = $now - $lastActivity;
+        $remaining    = max(0, $idleTimeoutSeconds - $elapsed);
 
         $idleState = 'active';
 
@@ -316,66 +320,60 @@ while (true) {
         }
 
         $idle = [
-            'state' => $idleState,
+            'state'            => $idleState,
             'remainingSeconds' => $remaining,
-            'lastActivity' => $lastActivity,
-            'timeoutSeconds' => $idleTimeoutSeconds
+            'lastActivity'     => $lastActivity,
+            'timeoutSeconds'   => $idleTimeoutSeconds
         ];
 
-    // ─────────────────────────────────────────
-    // 🔒 HANDLE IDLE LOGOUT (SERVER AUTHORITY)
-    // ─────────────────────────────────────────
+        // ─────────────────────────────────────────
+        // 🔒 HANDLE IDLE LOGOUT (SERVER AUTHORITY)
+        // ─────────────────────────────────────────
+        if ($idleState === 'expired' && $isAuthed) {
 
-    // 🔄 Re-attach session for this cycle
-    session_start();
+            if (empty($_SESSION['idleLogoutLogged'])) {
 
-    $isAuthed = !empty($_SESSION['authenticated']);
+                $_SESSION['idleLogoutLogged'] = true;
 
-    if ($idleState === 'expired' && $isAuthed) {
+                error_log('[SSE] idle expired → logging logout');
 
-        if (empty($_SESSION['idleLogoutLogged'])) {
+                $contactId = $_SESSION['contactId'] ?? null;
 
-            $_SESSION['idleLogoutLogged'] = true;
+                try {
+                    require_once __DIR__ . '/dbConnect.php';
+                    $pdo = getPDO();
 
-            error_log('[SSE] idle expired → logging logout');
+                    if ($pdo instanceof PDO) {
+                        logAuthAction($pdo, "auth.logout", $contactId, [
+                            "actionOrigin" => "idle_timeout",
+                            "ip"           => safeIp(),
+                            "ua"           => safeUserAgent(),
+                            "sessionId"    => $sessionId
+                        ]);
+                    }
 
-            $contactId = $_SESSION['contactId'] ?? null;
-
-            try {
-                require_once __DIR__ . '/dbConnect.php';
-                $pdo = getPDO();
-
-                if ($pdo instanceof PDO) {
-                    logAuthAction($pdo, "auth.logout", $contactId, [
-                        "actionOrigin" => "idle_timeout",
-                        "ip"           => safeIp(),
-                        "ua"           => safeUserAgent(),
-                        "sessionId"    => session_id()
-                    ]);
+                } catch (Throwable $e) {
+                    error_log('[IDLE LOG ERROR] ' . $e->getMessage());
                 }
-
-            } catch (Throwable $e) {
-                error_log('[IDLE LOG ERROR] ' . $e->getMessage());
             }
+
+            // 🔥 Destroy session
+            $_SESSION = [];
+            session_destroy();
+
+            // 🔄 Force UI logout in outgoing payload
+            $auth = [
+                'authenticated' => false,
+                'contactId'     => null,
+                'username'      => null,
+                'role'          => null,
+                'firstName'     => null,
+                'lastName'      => null
+            ];
         }
 
-        // 🔥 Destroy session
-        $_SESSION = [];
-        session_destroy();
-
-        // 🔄 Force UI logout
-        $auth = [
-            'authenticated' => false,
-            'contactId'     => null,
-            'username'      => null,
-            'role'          => null,
-            'firstName'     => null,
-            'lastName'      => null
-        ];
-    }
-
-    // 🔓 Release lock again (VERY IMPORTANT)
-    session_write_close();
+        // 🔓 Release lock again
+        session_write_close();
 
         // ✅ Inject context JUST-IN-TIME
         $SKYE_CONTEXT = [
@@ -389,7 +387,7 @@ while (true) {
         // 📦 ATTACH STREAM DATA
         // ─────────────────────────────────────────
         $payload["auth"]      = $auth;
-        $payload["idle"]      = $idle;   // 🔥 NEW
+        $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
         $payload["authDebug"] = [
