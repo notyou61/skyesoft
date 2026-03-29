@@ -47,16 +47,13 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     // #endregion
 
 
-    // #region 👤 Resolve Contact (STRICT — REQUIRED)
+    // #region 👤 Resolve Contact (SSE-SAFE)
 
-    $contactId =
-        $entry['contactId']
-        ?? $_SESSION['contactId']
-        ?? null;
+    $contactId = $entry['contactId'] ?? null;
 
     if (!$contactId) {
-        error_log('[ACTIONS] WARNING - missing contactId, using fallback');
-        $contactId = 999999; // 🔥 debug fallback
+        error_log('[ACTIONS] ERROR - missing contactId (cannot insert)');
+        return; // 🔥 DO NOT fallback silently anymore
     }
 
     // #endregion
@@ -75,7 +72,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ? (int)$entry['createdUnixTime']
         : time();
 
-    // 🌍 Geo (validated numeric only)
+    // 🌍 Geo
     $latitude = is_numeric($entry['latitude'] ?? null)
         ? (float)$entry['latitude']
         : null;
@@ -84,21 +81,16 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ? (float)$entry['longitude']
         : null;
 
-    // 🌐 Network / Device Context
+    // 🌐 Network
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
     // #endregion
 
 
-    // #region 🧭 Action Origin Resolution
+    // #region 🧭 Action Origin (SSE SAFE — NO SESSION DEPENDENCY)
 
-    $origin = (
-        isset($_SESSION['contactId']) &&
-        $contactId === $_SESSION['contactId']
-    )
-        ? ACTION_ORIGIN_USER
-        : ACTION_ORIGIN_SYSTEM;
+    $origin = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
 
     // #endregion
 
@@ -106,15 +98,16 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     // #region 🧠 Action Type Mapping
 
     $actionTypeId = match ($intent) {
-        'ui_login'  => 1,
-        'ui_logout' => 2,
-        default     => 3 // prompt / general action
+        'ui_login'    => 1,
+        'ui_logout'   => 2,
+        'idle_logout' => 2, // 🔥 treat same as logout (or change if needed)
+        default       => 3
     };
 
     // #endregion
 
 
-    // #region ✂️ Truncate Payloads (DB Safety)
+    // #region ✂️ Truncate Payloads
 
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
@@ -151,6 +144,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ");
 
         error_log('[actions] INSERT ATTEMPT');
+        error_log('[actions] executing insert...');
 
         $stmt->execute([
             $actionTypeId,
@@ -167,13 +161,21 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $userAgent
         ]);
 
+        $rows = $stmt->rowCount();
         $actionId = $db->lastInsertId();
 
+        error_log('[actions] rows affected: ' . $rows);
         error_log('[actions] INSERT SUCCESS: actionId=' . $actionId);
 
     } catch (Throwable $e) {
+
         error_log('[actions] insert failed: ' . $e->getMessage());
-        throw $e;
+
+        if (isset($stmt)) {
+            error_log('[actions] SQL ERROR INFO: ' . json_encode($stmt->errorInfo()));
+        }
+
+        return; // 🔥 DO NOT throw inside SSE
     }
 
     // #endregion
