@@ -337,7 +337,22 @@ while (true) {
         // ─────────────────────────────────────────
         // ⏱ IDLE STATE
         // ─────────────────────────────────────────
-        $lastActivity = $_SESSION['lastActivity'] ?? ($now - 1000);
+        $lastActivity = $_SESSION['lastActivity'] ?? null;
+
+        if (!$lastActivity) {
+            $idleState = 'inactive'; // or 'unknown'
+        } else {
+            $elapsed   = $now - $lastActivity;
+            $remaining = max(0, $idleTimeoutSeconds - $elapsed);
+
+            if ($remaining <= 0) {
+                $idleState = 'expired';
+            } elseif ($remaining <= 60) {
+                $idleState = 'warning';
+            } else {
+                $idleState = 'active';
+            }
+        }
         $elapsed      = $now - $lastActivity;
         $remaining    = max(0, $idleTimeoutSeconds - $elapsed);
 
@@ -359,7 +374,7 @@ while (true) {
         // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
-        if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated) {
+        if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated && $lastActivity !== null) {
 
             try {
 
