@@ -322,65 +322,60 @@ while (true) {
             'timeoutSeconds' => $idleTimeoutSeconds
         ];
 
-        // ─────────────────────────────────────────
-        // 🔒 HANDLE IDLE LOGOUT (SERVER AUTHORITY)
-        // ─────────────────────────────────────────
-        if ($idleState === 'expired' && !empty($_SESSION['authenticated'])) {
+    // ─────────────────────────────────────────
+    // 🔒 HANDLE IDLE LOGOUT (SERVER AUTHORITY)
+    // ─────────────────────────────────────────
 
-            // Prevent duplicate logging across loop
-            if (empty($_SESSION['idleLogoutLogged'])) {
+    // 🔄 Re-attach session for this cycle
+    session_start();
 
-                $_SESSION['idleLogoutLogged'] = true;
+    $isAuthed = !empty($_SESSION['authenticated']);
 
-                error_log('[SSE] idle expired → logging logout');
+    if ($idleState === 'expired' && $isAuthed) {
 
-                $contactId = $_SESSION['contactId'] ?? null;
+        if (empty($_SESSION['idleLogoutLogged'])) {
 
-                try {
+            $_SESSION['idleLogoutLogged'] = true;
 
-                    require_once __DIR__ . '/dbConnect.php';
-                    $pdo = getPDO();
+            error_log('[SSE] idle expired → logging logout');
 
-                    if ($pdo instanceof PDO) {
+            $contactId = $_SESSION['contactId'] ?? null;
 
-                        logAuthAction($pdo, "auth.logout", $contactId, [
-                            "actionOrigin" => "idle_timeout", // 🔥 CRITICAL
-                            "ip"           => safeIp(),
-                            "ua"           => safeUserAgent(),
-                            "sessionId"    => $sessionId
-                        ]);
-                    }
+            try {
+                require_once __DIR__ . '/dbConnect.php';
+                $pdo = getPDO();
 
-                } catch (Throwable $e) {
-                    error_log('[IDLE LOG ERROR] ' . $e->getMessage());
+                if ($pdo instanceof PDO) {
+                    logAuthAction($pdo, "auth.logout", $contactId, [
+                        "actionOrigin" => "idle_timeout",
+                        "ip"           => safeIp(),
+                        "ua"           => safeUserAgent(),
+                        "sessionId"    => session_id()
+                    ]);
                 }
+
+            } catch (Throwable $e) {
+                error_log('[IDLE LOG ERROR] ' . $e->getMessage());
             }
-
-            // 🔥 HARD LOGOUT (authoritative)
-            $_SESSION = [];
-
-            if (ini_get("session.use_cookies")) {
-                setcookie(session_name(), '', [
-                    'expires'  => time() - 42000,
-                    'path'     => '/',
-                    'secure'   => true,
-                    'httponly' => true,
-                    'samesite' => 'Lax'
-                ]);
-            }
-
-            session_destroy();
-
-            // Force UI logout
-            $auth = [
-                'authenticated' => false,
-                'contactId'     => null,
-                'username'      => null,
-                'role'          => null,
-                'firstName'     => null,
-                'lastName'      => null
-            ];
         }
+
+        // 🔥 Destroy session
+        $_SESSION = [];
+        session_destroy();
+
+        // 🔄 Force UI logout
+        $auth = [
+            'authenticated' => false,
+            'contactId'     => null,
+            'username'      => null,
+            'role'          => null,
+            'firstName'     => null,
+            'lastName'      => null
+        ];
+    }
+
+    // 🔓 Release lock again (VERY IMPORTANT)
+    session_write_close();
 
         // ✅ Inject context JUST-IN-TIME
         $SKYE_CONTEXT = [
