@@ -329,7 +329,7 @@ while (true) {
         // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
-        if ($idleState === 'expired' && $wasAuthenticated) {
+        if ($idleState === 'expired' && $contactId) {
 
             error_log('[SSE] idle expired detected');
             error_log('[SSE] contactId=' . json_encode($contactId));
