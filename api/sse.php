@@ -384,9 +384,7 @@ while (true) {
 
                 if ($pdo instanceof PDO) {
 
-                    sseDebugLog('before_logAuthAction', [
-                        'contactIdForLog' => $contactIdForLog
-                    ]);
+                    //
 
                     $result = logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
@@ -395,9 +393,7 @@ while (true) {
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    sseDebugLog('after_logAuthAction', [
-                        'result' => $result
-                    ]);
+                    //
 
                     $logoutLogged = true; // 🔒 prevent loop spam
 
@@ -405,9 +401,7 @@ while (true) {
 
             } catch (Throwable $e) {
 
-                sseDebugLog('logAuthAction_error', [
-                    'error' => $e->getMessage()
-                ]);
+                //
             }
 
             // 🔄 Force logout state to UI
