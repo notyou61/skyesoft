@@ -357,19 +357,6 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 🧪 DEBUG — IDLE STATE TRACE
-        // ─────────────────────────────────────────
-        sseDebugLog('idle_check', [
-            'idleState'         => $idleState,
-            'contactIdForLog'   => $contactIdForLog,
-            'wasAuthenticated'  => $wasAuthenticated,
-            'remainingSeconds'  => $remaining,
-            'lastActivity'      => $lastActivity,
-            'now'               => $now,
-            'elapsed'           => $elapsed
-        ]);
-
-        // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
         if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated) {
@@ -385,11 +372,21 @@ while (true) {
 
                 if ($pdo instanceof PDO) {
 
+                    // 🔍 BEFORE CALL
+                    sseDebugLog('before_logAuthAction', [
+                        'contactIdForLog' => $contactIdForLog
+                    ]);
+
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
                         "ua"           => safeUserAgent(),
                         "sessionId"    => $sessionIdForLog
+                    ]);
+
+                    // 🔍 AFTER CALL
+                    sseDebugLog('after_logAuthAction', [
+                        'status' => 'completed'
                     ]);
 
                     $logoutLogged = true;
