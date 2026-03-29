@@ -276,36 +276,36 @@ while (true) {
     }
 
     // ─────────────────────────────────────────
-    // 📦 1HZ DATA UPDATE (ONLY PLACE WE BUILD PAYLOAD)
+    // 📦 1HZ DATA UPDATE
     // ─────────────────────────────────────────
     if ($now > $lastSecond) {
 
         $lastSecond = $now;
 
-        // ─────────────────────────────────────────
-        // 🔄 RE-ATTACH SESSION FIRST (AUTHORITATIVE)
-        // Must occur BEFORE any use of $_SESSION
-        // ─────────────────────────────────────────
+        // 🔄 RE-ATTACH SESSION FIRST
         session_start();
 
         $sessionId = session_id();
-        $isAuthed  = !empty($_SESSION['authenticated']);
 
-        // 🔐 AUTH BUILD (ENHANCED WITH NAME)
+        // 🔥 CAPTURE ONCE (CRITICAL)
+        $wasAuthenticated = !empty($_SESSION['authenticated']);
+        $contactId        = $_SESSION['contactId'] ?? null;
+
+        // 🔐 AUTH BUILD
         $auth = [
-            'authenticated' => $isAuthed,
-            'contactId'     => $_SESSION['contactId'] ?? null,
+            'authenticated' => $wasAuthenticated,
+            'contactId'     => $contactId,
             'username'      => $_SESSION['username'] ?? null,
             'role'          => $_SESSION['role'] ?? 'user'
         ];
 
-        // 👤 ADD NAME RESOLUTION
-        $name = getContactName($auth['contactId']);
+        // 👤 NAME RESOLUTION
+        $name = getContactName($contactId);
         $auth['firstName'] = $name['firstName'];
         $auth['lastName']  = $name['lastName'];
 
         // ─────────────────────────────────────────
-        // ⏱ IDLE STATE CALCULATION
+        // ⏱ IDLE STATE
         // ─────────────────────────────────────────
         $lastActivity = $_SESSION['lastActivity'] ?? $now;
         $elapsed      = $now - $lastActivity;
@@ -327,29 +327,36 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 🔒 HANDLE IDLE LOGOUT (SERVER AUTHORITY)
+        // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
-        if ($idleState === 'expired' && $isAuthed) {
+        if ($idleState === 'expired' && $wasAuthenticated) {
+
+            error_log('[SSE] idle expired detected');
+            error_log('[SSE] contactId=' . json_encode($contactId));
 
             if (empty($_SESSION['idleLogoutLogged'])) {
 
                 $_SESSION['idleLogoutLogged'] = true;
 
-                error_log('[SSE] idle expired → logging logout');
-
-                $contactId = $_SESSION['contactId'] ?? null;
-
                 try {
                     require_once __DIR__ . '/dbConnect.php';
                     $pdo = getPDO();
 
-                    if ($pdo instanceof PDO) {
+                    if ($pdo instanceof PDO && $contactId) {
+
+                        error_log('[SSE] calling logAuthAction');
+
                         logAuthAction($pdo, "auth.logout", $contactId, [
                             "actionOrigin" => "idle_timeout",
                             "ip"           => safeIp(),
                             "ua"           => safeUserAgent(),
                             "sessionId"    => $sessionId
                         ]);
+
+                        error_log('[SSE] logAuthAction complete');
+
+                    } else {
+                        error_log('[SSE] SKIPPED LOG — missing PDO or contactId');
                     }
 
                 } catch (Throwable $e) {
@@ -357,11 +364,11 @@ while (true) {
                 }
             }
 
-            // 🔥 Destroy session
+            // 🔥 DESTROY SESSION
             $_SESSION = [];
             session_destroy();
 
-            // 🔄 Force UI logout in outgoing payload
+            // 🔄 FORCE UI LOGOUT
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -372,20 +379,16 @@ while (true) {
             ];
         }
 
-        // 🔓 Release lock again
+        // 🔓 RELEASE SESSION LOCK
         session_write_close();
 
-        // ✅ Inject context JUST-IN-TIME
-        $SKYE_CONTEXT = [
-            'auth' => $auth
-        ];
+        // ─────────────────────────────────────────
+        // 📦 BUILD PAYLOAD
+        // ─────────────────────────────────────────
+        $SKYE_CONTEXT = ['auth' => $auth];
 
-        // ✅ Build payload ONCE
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        // ─────────────────────────────────────────
-        // 📦 ATTACH STREAM DATA
-        // ─────────────────────────────────────────
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
@@ -398,9 +401,6 @@ while (true) {
 
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
-        // ─────────────────────────────────────────
-        // 📦 DATA EMIT (SSE SAFE)
-        // ─────────────────────────────────────────
         if ($json !== false && $json !== '') {
 
             echo "data: " . $json . "\n\n";

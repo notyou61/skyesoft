@@ -137,26 +137,28 @@ window.SkyeApp.handleSSE = function (payload) {
 
         if (page && page.authState === true) {
 
-            console.log('[AUTH] idle logout → UI reset');
-
-            // Prevent repeated execution
+            // 🔥 GUARD FIRST
             if (page._logoutHandled === true) return;
             page._logoutHandled = true;
+
+            console.log('[AUTH] idle logout → UI reset');
 
             // Reset auth state
             page.authState = false;
             page.authUser  = null;
             page.authRole  = null;
 
-            // Reset DOM state
+            // Reset DOM
             document.body.removeAttribute('data-auth');
 
-            // Transition UI
+            // 🔥 STOP SSE (important)
+            window.SkySSE?.stop?.();
+
+            // Render UI
             page.renderLoginCard?.();
 
             page._lastRenderedAuth = false;
 
-            // Ensure footer reflects state
             page.renderFooterStatus?.call(page);
         }
 
@@ -228,6 +230,13 @@ window.SkyeApp.handleSSE = function (payload) {
             });
 
             if (resolvedAuth) {
+
+                if (page._logoutHandled === true) {
+                    console.log('[AUTH] resetting logout guard');
+                }
+
+                page._logoutHandled = false; // 🔥 RESET HERE
+
                 page.transitionToCommandInterface?.();
             } else {
                 page.authState = false;

@@ -99,8 +99,17 @@ function updateLastActivity(): void
         session_start();
     }
 
+    $sessionId = session_id();
+
     if (!empty($_SESSION["authenticated"])) {
+
         $_SESSION["lastActivity"] = time();
+
+        error_log('[TOUCH] updated lastActivity → ' . $_SESSION["lastActivity"] . ' | session=' . $sessionId);
+
+    } else {
+
+        error_log('[TOUCH] skipped — not authenticated | session=' . $sessionId);
     }
 
     session_write_close();
