@@ -367,34 +367,34 @@ while (true) {
             ]);
 
             try {
+
                 require_once __DIR__ . '/dbConnect.php';
                 $pdo = getPDO();
 
                 if ($pdo instanceof PDO) {
 
-                    // 🔍 BEFORE CALL
                     sseDebugLog('before_logAuthAction', [
                         'contactIdForLog' => $contactIdForLog
                     ]);
 
-                    logAuthAction($pdo, "auth.logout", $contactIdForLog, [
+                    $result = logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
                         "ua"           => safeUserAgent(),
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    // 🔍 AFTER CALL
                     sseDebugLog('after_logAuthAction', [
-                        'status' => 'completed'
+                        'result' => $result
                     ]);
-
-                    $logoutLogged = true;
 
                 }
 
             } catch (Throwable $e) {
-                error_log('[IDLE LOG ERROR] ' . $e->getMessage());
+
+                sseDebugLog('logAuthAction_error', [
+                    'error' => $e->getMessage()
+                ]);
             }
 
             // 🔄 Force logout state to UI
