@@ -29,8 +29,14 @@ declare(strict_types=1);
 // Append Prompt Ledger Entry (non-blocking, best-effort)
 function insertActionPrompt(array $entry, ?PDO $db): void {
 
-    error_log('[ACTIONS] FUNCTION ENTERED');
-    error_log('[ACTIONS] ENTRY: ' . json_encode($entry));
+    file_put_contents(
+        __DIR__ . '/auth_debug.log',
+        json_encode([
+            'time'  => date('Y-m-d H:i:s'),
+            'stage' => 'insert_function_entered'
+        ]) . PHP_EOL,
+        FILE_APPEND
+    );
 
     // #region 🧾 Validate Input
 
