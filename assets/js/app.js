@@ -114,6 +114,8 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
+    console.log('[SSE PAYLOAD AUTH]', payload?.auth);
+
     const page = this.pageHandlers?.[this.currentPage];
     const newAuth = payload?.auth?.authenticated === true;
 
@@ -133,7 +135,7 @@ window.SkyeApp.handleSSE = function (payload) {
     // ─────────────────────────────────────────
     // 🔐 AUTHORITATIVE LOGOUT (SERVER OVERRIDE)
     // ─────────────────────────────────────────
-    if (payload?.auth?.authenticated === false) {
+    if (payload?.auth?.authenticated === false && hasPrev && prevAuth === true) {
 
         if (page && page.authState === true) {
 
@@ -152,7 +154,7 @@ window.SkyeApp.handleSSE = function (payload) {
             document.body.removeAttribute('data-auth');
 
             // 🔥 STOP SSE (important)
-            window.SkySSE?.stop?.();
+            //window.SkySSE?.stop?.();
 
             // Render UI
             page.renderLoginCard?.();
