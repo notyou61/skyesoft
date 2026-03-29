@@ -35,6 +35,13 @@ error_reporting(E_ALL);
 session_cache_limiter('');
 
 // ─────────────────────────────────────────
+// ⚙️ BOOTSTRAP / INCLUDES
+// ─────────────────────────────────────────
+
+require_once __DIR__ . '/auth.php'; // ✅ REQUIRED
+require_once __DIR__ . '/dbConnect.php'; // ✅ REQUIRED
+
+// ─────────────────────────────────────────
 // 🔐 SESSION BOOTSTRAP (CANONICAL)
 // Must match across ALL endpoints
 // ─────────────────────────────────────────
@@ -89,13 +96,12 @@ if (!empty($_COOKIE[session_name()])) {
 // 👤 Resolve Contact Name (shared)
 function getContactName(?int $contactId): array {
 
-    if (!$contactId) {
+    if ($contactId === null) {
         return ['firstName' => null, 'lastName' => null];
     }
 
     try {
 
-        require_once __DIR__ . '/dbConnect.php';
         $pdo = getPDO();
 
         $stmt = $pdo->prepare("
@@ -373,7 +379,7 @@ while (true) {
 
             try {
 
-                require_once __DIR__ . '/dbConnect.php';
+                //
                 $pdo = getPDO();
 
                 if ($pdo instanceof PDO) {
