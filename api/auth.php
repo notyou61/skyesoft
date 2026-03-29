@@ -122,6 +122,15 @@ function updateLastActivity(): void
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
 
+   file_put_contents(__DIR__ . '/auth_debug.log',
+        json_encode([
+            'stage' => 'entered_logAuthAction',
+            'actionKey' => $actionKey,
+            'contactId' => $contactId
+        ]) . PHP_EOL,
+        FILE_APPEND
+    );
+
     // ─────────────────────────────────────────
     // 🧾 Resolve Contact
     // ─────────────────────────────────────────

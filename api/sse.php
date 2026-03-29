@@ -387,6 +387,8 @@ while (true) {
                     sseDebugLog('after_logAuthAction', [
                         'result' => $result
                     ]);
+                    
+                    $logoutLogged = true; // 🔒 prevent loop spam
 
                 }
 
