@@ -112,17 +112,35 @@ function updateLastActivity(): void
 // ─────────────────────────────────────────
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    // #region 🧾 Resolve Contact
+    // ─────────────────────────────────────────
+    // 🧪 DEBUG TRACE (FILE WRITE)
+    // ─────────────────────────────────────────
+    $debugFile = __DIR__ . '/auth_debug.log';
 
+    $debugEntry = [
+        'time'       => date('Y-m-d H:i:s'),
+        'actionKey'  => $actionKey,
+        'contactId'  => $contactId,
+        'meta'       => $meta
+    ];
+
+    file_put_contents(
+        $debugFile,
+        json_encode($debugEntry, JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND
+    );
+
+    // ─────────────────────────────────────────
+    // 🧾 Resolve Contact
+    // ─────────────────────────────────────────
     if (!$contactId) {
         error_log('[auth] missing contactId — skipping log');
         return;
     }
 
-    // #endregion
-
-    // #region 🧠 Map Auth Action → Intent
-
+    // ─────────────────────────────────────────
+    // 🧠 Map Auth Action → Intent
+    // ─────────────────────────────────────────
     $reason = $meta['actionOrigin'] ?? 'manual';
 
     $intent = match ($actionKey) {
@@ -134,13 +152,12 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         default           => 'auth_event'
     };
 
-    // #endregion
-
-    // #region 🧠 Build Payload (Delegate to Action Layer)
-
+    // ─────────────────────────────────────────
+    // 🧠 Build Payload
+    // ─────────────────────────────────────────
     $payload = [
         "contactId"        => $contactId,
-        "promptText"       => $actionKey, // preserves audit meaning
+        "promptText"       => $actionKey,
         "responseText"     => !empty($meta)
             ? json_encode($meta, JSON_UNESCAPED_SLASHES)
             : null,
@@ -150,13 +167,10 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         "createdUnixTime"  => time()
     ];
 
-    // #endregion
-
-    // #region 🚀 Delegate (SINGLE SOURCE OF TRUTH)
-
+    // ─────────────────────────────────────────
+    // 🚀 Delegate
+    // ─────────────────────────────────────────
     insertActionPrompt($payload, $pdo);
-
-    // #endregion
 }
 
 #endregion
