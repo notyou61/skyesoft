@@ -46,7 +46,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     // #endregion
 
-
     // #region 👤 Resolve Contact (SSE-SAFE)
 
     $contactId = $entry['contactId'] ?? null;
@@ -57,7 +56,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     }
 
     // #endregion
-
 
     // #region 🧠 Normalize Fields
 
@@ -87,13 +85,11 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     // #endregion
 
-
     // #region 🧭 Action Origin (SSE SAFE — NO SESSION DEPENDENCY)
 
     $origin = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
 
     // #endregion
-
 
     // #region 🧠 Action Type Mapping
 
@@ -105,7 +101,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     };
 
     // #endregion
-
 
     // #region ✂️ Truncate Payloads
 
@@ -120,7 +115,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         : null;
 
     // #endregion
-
 
     // #region 📥 Insert → tblActions
 

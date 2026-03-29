@@ -121,23 +121,6 @@ function updateLastActivity(): void
 // ─────────────────────────────────────────
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
-    // ─────────────────────────────────────────
-    // 🧪 DEBUG TRACE (FILE WRITE)
-    // ─────────────────────────────────────────
-    $debugFile = __DIR__ . '/auth_debug.log';
-
-    $debugEntry = [
-        'time'       => date('Y-m-d H:i:s'),
-        'actionKey'  => $actionKey,
-        'contactId'  => $contactId,
-        'meta'       => $meta
-    ];
-
-    file_put_contents(
-        $debugFile,
-        json_encode($debugEntry, JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
 
     // ─────────────────────────────────────────
     // 🧾 Resolve Contact
@@ -177,9 +160,37 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     ];
 
     // ─────────────────────────────────────────
-    // 🚀 Delegate
+    // 🚀 Delegate (TRACE WRAPPED)
     // ─────────────────────────────────────────
+
+    // 🧪 BEFORE CALL
+    file_put_contents(
+        __DIR__ . '/auth_debug.log',
+        json_encode([
+            'time'       => date('Y-m-d H:i:s'),
+            'stage'      => 'before_insert',
+            'actionKey'  => $actionKey,
+            'contactId'  => $contactId,
+            'payload'    => $payload
+        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND
+    );
+
+    // 🔥 CALL
     insertActionPrompt($payload, $pdo);
+
+    // 🧪 AFTER CALL
+    file_put_contents(
+        __DIR__ . '/auth_debug.log',
+        json_encode([
+            'time'       => date('Y-m-d H:i:s'),
+            'stage'      => 'after_insert',
+            'actionKey'  => $actionKey,
+            'contactId'  => $contactId
+        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND
+    );
+
 }
 
 #endregion
