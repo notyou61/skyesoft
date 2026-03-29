@@ -47,6 +47,10 @@ $initialSession = [
     'sessionId'     => session_id()
 ];
 
+// 🔒 Frozen auth context (SSE-safe)
+$contactIdForLog = $initialSession['contactId'] ?? null;
+$sessionIdForLog = $initialSession['sessionId'] ?? null;
+
 // Debug (safe for SSE)
 error_log('[SSE BOOT] ' . json_encode($initialSession));
 
@@ -243,6 +247,7 @@ ignore_user_abort(true);
 #region 🚀 SECTION 4 — STREAM INITIALIZATION
 
 $streamId   = bin2hex(random_bytes(8));
+$logoutLogged = false; // 🔒 prevent duplicate logs
 $lastPing   = 0;
 $lastSecond = 0;
 
@@ -300,9 +305,14 @@ while (true) {
         ];
 
         // 👤 NAME RESOLUTION
-        $name = getContactName($contactId);
-        $auth['firstName'] = $name['firstName'];
-        $auth['lastName']  = $name['lastName'];
+        if ($contactId) {
+            $name = getContactName($contactId);
+            $auth['firstName'] = $name['firstName'];
+            $auth['lastName']  = $name['lastName'];
+        } else {
+            $auth['firstName'] = null;
+            $auth['lastName']  = null;
+        }
 
         // ─────────────────────────────────────────
         // ⏱ IDLE STATE
@@ -329,46 +339,32 @@ while (true) {
         // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
-        if ($idleState === 'expired' && $contactId) {
+        if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated) {
 
-            error_log('[SSE] idle expired detected');
-            error_log('[SSE] contactId=' . json_encode($contactId));
+            error_log('[SSE] idle expired detected (SAFE PATH)');
 
-            if (empty($_SESSION['idleLogoutLogged'])) {
+            try {
+                require_once __DIR__ . '/dbConnect.php';
+                $pdo = getPDO();
 
-                $_SESSION['idleLogoutLogged'] = true;
+                if ($pdo instanceof PDO) {
 
-                try {
-                    require_once __DIR__ . '/dbConnect.php';
-                    $pdo = getPDO();
+                    logAuthAction($pdo, "auth.logout", $contactIdForLog, [
+                        "actionOrigin" => "idle_timeout",
+                        "ip"           => safeIp(),
+                        "ua"           => safeUserAgent(),
+                        "sessionId"    => $sessionIdForLog
+                    ]);
 
-                    if ($pdo instanceof PDO && $contactId) {
+                    $logoutLogged = true;
 
-                        error_log('[SSE] calling logAuthAction');
-
-                        logAuthAction($pdo, "auth.logout", $contactId, [
-                            "actionOrigin" => "idle_timeout",
-                            "ip"           => safeIp(),
-                            "ua"           => safeUserAgent(),
-                            "sessionId"    => $sessionId
-                        ]);
-
-                        error_log('[SSE] logAuthAction complete');
-
-                    } else {
-                        error_log('[SSE] SKIPPED LOG — missing PDO or contactId');
-                    }
-
-                } catch (Throwable $e) {
-                    error_log('[IDLE LOG ERROR] ' . $e->getMessage());
                 }
+
+            } catch (Throwable $e) {
+                error_log('[IDLE LOG ERROR] ' . $e->getMessage());
             }
 
-            // 🔥 DESTROY SESSION
-            $_SESSION = [];
-            session_destroy();
-
-            // 🔄 FORCE UI LOGOUT
+            // 🔄 Force logout state to UI
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
