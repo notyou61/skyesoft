@@ -7,6 +7,26 @@ declare(strict_types=1);
 // Real-Time Projection Engine
 // ======================================================================
 
+// ─────────────────────────────────────────
+// 🧪 LOCAL DEBUG LOGGER (FILE-BASED)
+// ─────────────────────────────────────────
+function sseDebugLog($label, $data = null) {
+
+    $logFile = __DIR__ . '/sse_debug.log';
+
+    $entry = [
+        'time'  => date('Y-m-d H:i:s'),
+        'label' => $label,
+        'data'  => $data
+    ];
+
+    file_put_contents(
+        $logFile,
+        json_encode($entry, JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND
+    );
+}
+
 #region ⚙️ SECTION 0 — Environment Bootstrap (Runtime Initialization / Session Attach)
 
 ini_set('display_errors', 0);
@@ -317,7 +337,7 @@ while (true) {
         // ─────────────────────────────────────────
         // ⏱ IDLE STATE
         // ─────────────────────────────────────────
-        $lastActivity = $_SESSION['lastActivity'] ?? $now;
+        $lastActivity = $_SESSION['lastActivity'] ?? ($now - 1000);
         $elapsed      = $now - $lastActivity;
         $remaining    = max(0, $idleTimeoutSeconds - $elapsed);
 
@@ -337,11 +357,27 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
+        // 🧪 DEBUG — IDLE STATE TRACE
+        // ─────────────────────────────────────────
+        sseDebugLog('idle_check', [
+            'idleState'         => $idleState,
+            'contactIdForLog'   => $contactIdForLog,
+            'wasAuthenticated'  => $wasAuthenticated,
+            'remainingSeconds'  => $remaining,
+            'lastActivity'      => $lastActivity,
+            'now'               => $now,
+            'elapsed'           => $elapsed
+        ]);
+
+        // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT
         // ─────────────────────────────────────────
         if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated) {
 
-            error_log('[SSE] idle expired detected (SAFE PATH)');
+            sseDebugLog('logout_triggered', [
+                'contactIdForLog' => $contactIdForLog,
+                'sessionId'       => $sessionIdForLog
+            ]);
 
             try {
                 require_once __DIR__ . '/dbConnect.php';
