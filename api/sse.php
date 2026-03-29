@@ -361,11 +361,6 @@ while (true) {
         // ─────────────────────────────────────────
         if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated) {
 
-            sseDebugLog('logout_triggered', [
-                'contactIdForLog' => $contactIdForLog,
-                'sessionId'       => $sessionIdForLog
-            ]);
-
             try {
 
                 require_once __DIR__ . '/dbConnect.php';
@@ -387,7 +382,7 @@ while (true) {
                     sseDebugLog('after_logAuthAction', [
                         'result' => $result
                     ]);
-                    
+
                     $logoutLogged = true; // 🔒 prevent loop spam
 
                 }
