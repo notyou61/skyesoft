@@ -114,8 +114,6 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
-    console.log('[SSE PAYLOAD AUTH]', payload?.auth);
-
     const page = this.pageHandlers?.[this.currentPage];
     const newAuth = payload?.auth?.authenticated === true;
 
