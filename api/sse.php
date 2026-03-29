@@ -29,22 +29,34 @@ session_set_cookie_params([
         ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
     ),
     'httponly' => true,
-    'samesite' => 'Lax'
+    'samesite' => 'None'
 ]);
 
-// Detect session cookie (for debug visibility only)
-if (!empty($_COOKIE[session_name()])) {
-    error_log('[SSE BOOT] session cookie present');
-} else {
-    error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
+// ─────────────────────────────────────────
+// 🔐 ATTACH SESSION (CRITICAL FIX)
+// ─────────────────────────────────────────
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
 
+$initialSession = [
+    'authenticated' => !empty($_SESSION['authenticated']),
+    'contactId'     => $_SESSION['contactId'] ?? null,
+    'username'      => $_SESSION['username'] ?? null,
+    'role'          => $_SESSION['role'] ?? 'user',
+    'sessionId'     => session_id()
+];
 
 // Debug (safe for SSE)
 error_log('[SSE BOOT] ' . json_encode($initialSession));
 
-// Use frozen session state for entire stream lifecycle
-$liveSession = $initialSession;
+session_write_close();
+
+// Optional debug BEFORE attach
+if (!empty($_COOKIE[session_name()])) {
+    error_log('[SSE BOOT] session cookie present');
+}
+
 
 // ─────────────────────────────────────────
 // 🔐 SESSION ACCESS (SSE SAFE — READ ONLY)
