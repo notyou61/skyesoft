@@ -137,7 +137,7 @@ window.SkyeApp.handleSSE = function (payload) {
 
         if (page && page.authState === true) {
 
-            console.warn('[AUTH] server forced logout → applying UI reset');
+            console.log('[AUTH] idle logout → UI reset');
 
             // Prevent repeated execution
             if (page._logoutHandled === true) return;

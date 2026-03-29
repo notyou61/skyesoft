@@ -123,9 +123,13 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
 
     // #region 🧠 Map Auth Action → Intent
 
+    $reason = $meta['actionOrigin'] ?? 'manual';
+
     $intent = match ($actionKey) {
         'auth.login'      => 'ui_login',
-        'auth.logout'     => 'ui_logout',
+        'auth.logout'     => $reason === 'idle_timeout'
+            ? 'idle_logout'
+            : 'ui_logout',
         'auth.login.fail' => 'auth_fail',
         default           => 'auth_event'
     };
@@ -141,7 +145,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
             ? json_encode($meta, JSON_UNESCAPED_SLASHES)
             : null,
         "intent"           => $intent,
-        "origin"           => ACTION_ORIGIN_SYSTEM,
+        "origin"           => $meta['actionOrigin'] ?? ACTION_ORIGIN_SYSTEM,
         "intentConfidence" => 1.0,
         "createdUnixTime"  => time()
     ];
