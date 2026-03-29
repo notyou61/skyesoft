@@ -10,22 +10,7 @@ declare(strict_types=1);
 // ─────────────────────────────────────────
 // 🧪 LOCAL DEBUG LOGGER (FILE-BASED)
 // ─────────────────────────────────────────
-function sseDebugLog($label, $data = null) {
-
-    $logFile = __DIR__ . '/sse_debug.log';
-
-    $entry = [
-        'time'  => date('Y-m-d H:i:s'),
-        'label' => $label,
-        'data'  => $data
-    ];
-
-    file_put_contents(
-        $logFile,
-        json_encode($entry, JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
-}
+//
 
 #region ⚙️ SECTION 0 — Environment Bootstrap (Runtime Initialization / Session Attach)
 
