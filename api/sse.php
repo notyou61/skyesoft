@@ -335,13 +335,18 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // ⏱ IDLE STATE
+        // ⏱ IDLE STATE (CLEAN + SINGLE SOURCE)
         // ─────────────────────────────────────────
+
         $lastActivity = $_SESSION['lastActivity'] ?? null;
 
-        if (!$lastActivity) {
-            $idleState = 'inactive'; // or 'unknown'
-        } else {
+        // 🔒 Initialize defaults
+        $elapsed   = null;
+        $remaining = null;
+        $idleState = 'inactive';
+
+        if ($lastActivity !== null) {
+
             $elapsed   = $now - $lastActivity;
             $remaining = max(0, $idleTimeoutSeconds - $elapsed);
 
@@ -352,16 +357,6 @@ while (true) {
             } else {
                 $idleState = 'active';
             }
-        }
-        $elapsed      = $now - $lastActivity;
-        $remaining    = max(0, $idleTimeoutSeconds - $elapsed);
-
-        $idleState = 'active';
-
-        if ($remaining <= 0) {
-            $idleState = 'expired';
-        } elseif ($remaining <= 60) {
-            $idleState = 'warning';
         }
 
         $idle = [
