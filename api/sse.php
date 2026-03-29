@@ -327,7 +327,7 @@ while (true) {
         // ─────────────────────────────────────────
         if ($idleState === 'expired' && !empty($_SESSION['authenticated'])) {
 
-            // 🔒 Prevent repeated execution across SSE loop
+            // Prevent duplicate logging across loop
             if (empty($_SESSION['idleLogoutLogged'])) {
 
                 $_SESSION['idleLogoutLogged'] = true;
@@ -335,16 +335,16 @@ while (true) {
                 error_log('[SSE] idle expired → logging logout');
 
                 $contactId = $_SESSION['contactId'] ?? null;
-                $username  = $_SESSION['username'] ?? null;
-                $role      = $_SESSION['role'] ?? null;
 
                 try {
+
                     require_once __DIR__ . '/dbConnect.php';
                     $pdo = getPDO();
 
                     if ($pdo instanceof PDO) {
+
                         logAuthAction($pdo, "auth.logout", $contactId, [
-                            "actionOrigin" => "idle_timeout",
+                            "actionOrigin" => "idle_timeout", // 🔥 CRITICAL
                             "ip"           => safeIp(),
                             "ua"           => safeUserAgent(),
                             "sessionId"    => $sessionId
@@ -356,11 +356,22 @@ while (true) {
                 }
             }
 
-            // 🔥 Destroy session (authoritative)
+            // 🔥 HARD LOGOUT (authoritative)
             $_SESSION = [];
+
+            if (ini_get("session.use_cookies")) {
+                setcookie(session_name(), '', [
+                    'expires'  => time() - 42000,
+                    'path'     => '/',
+                    'secure'   => true,
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+            }
+
             session_destroy();
 
-            // 🔄 Override auth for payload (forces UI logout)
+            // Force UI logout
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
