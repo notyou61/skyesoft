@@ -39,23 +39,9 @@ if (!empty($_COOKIE[session_name()])) {
     error_log('[SSE BOOT] NO SESSION COOKIE FOUND');
 }
 
-// Start session ONCE
-session_start();
-
-// Capture session state snapshot (source of truth for this stream)
-$initialSession = [
-    'authenticated' => !empty($_SESSION['authenticated']),
-    'contactId'     => $_SESSION['contactId'] ?? null,
-    'username'      => $_SESSION['username'] ?? null,
-    'role'          => $_SESSION['role'] ?? 'user',
-    'sessionId'     => session_id()
-];
 
 // Debug (safe for SSE)
 error_log('[SSE BOOT] ' . json_encode($initialSession));
-
-// RELEASE LOCK immediately (critical for SSE performance)
-session_write_close();
 
 // Use frozen session state for entire stream lifecycle
 $liveSession = $initialSession;
@@ -283,7 +269,9 @@ while (true) {
         $lastSecond = $now;
 
         // 🔄 RE-ATTACH SESSION FIRST
-        session_start();
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
 
         $sessionId = session_id();
 
