@@ -114,6 +114,18 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
+    // 🔥 FORCE LOGOUT MECHANISM
+    if (payload?.forceLogout === true) {
+
+        console.log('[SSE] forceLogout received → calling logout endpoint');
+
+        fetch('/api/auth.php?action=logout', {
+            method: 'POST'
+        });
+
+        return;
+    }
+
     const page = this.pageHandlers?.[this.currentPage];
     const newAuth = payload?.auth?.authenticated === true;
 

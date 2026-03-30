@@ -374,9 +374,11 @@ while (true) {
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    //
-
+                    // Logging successful, mark as logged
                     $logoutLogged = true; // 🔒 prevent loop spam
+
+                    // Payload flag to trigger client-side logout
+                    $payload["forceLogout"] = true;
 
                 }
 
