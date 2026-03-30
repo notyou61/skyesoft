@@ -367,47 +367,51 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 🔒 HANDLE IDLE LOGOUT (RUN ONCE)
+        // 🔒 HANDLE IDLE LOGOUT (FINAL)
         // ─────────────────────────────────────────
-        // 🔒 HANDLE IDLE LOGOUT
+
+        // 🔒 One-time guard per SSE loop
+        static $idleLogoutProcessed = false;
+
         if (
             $idleState === 'expired' &&
             $contactIdForLog &&
             $wasAuthenticated &&
-            $lastActivity !== null
+            $lastActivity !== null &&
+            !$idleLogoutProcessed
         ) {
 
-            // 🔒 HARD GUARD — prevent duplicate execution across SSE loops
-            if (!empty($_SESSION['idleLogoutProcessed'])) {
-                return;
-            }
+            $idleLogoutProcessed = true; // 🔒 HARD STOP
+
+            // Add Log Check Here
+            // Code Goes Here
 
             try {
 
                 if ($pdo instanceof PDO) {
 
-                    // Log Auth Action
+                    // ✅ LOG FIRST (CRITICAL ORDER)
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
                         "ua"           => safeUserAgent(),
                         "sessionId"    => $sessionIdForLog
                     ]);
-
-                    // 🔒 Mark as processed (THIS IS THE FIX)
-                    $_SESSION['idleLogoutProcessed'] = true;
-
-                    // 🔥 Reset state immediately
-                    $wasAuthenticated = false;
-                    $contactIdForLog  = null;
-
-                    $_SESSION = [];
-                    session_destroy();
                 }
 
             } catch (Throwable $e) {
-                // Add DeBugg Code Here
+
+                // Add Log Check Here
+                // Code Goes Here
             }
+
+            // 🔥 NOW destroy session (AFTER logging)
+            $_SESSION = [];
+            session_destroy();
+
+            // 🔥 Reset server state immediately
+            $wasAuthenticated = false;
+            $contactIdForLog  = null;
 
             // 🔥 Force UI logout
             $auth = [
