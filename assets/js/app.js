@@ -148,8 +148,15 @@ window.SkyeApp.handleSSE = function (payload) {
         // 🔥 Clear stale SSE snapshot (prevents re-auth flicker)
         window.SkyeApp.lastSSE = null;
 
-        // Restart SSE cleanly (no delay needed now)
-        window.SkySSE?.start?.();
+        // 🔒 Prevent multiple restart attempts
+        if (window.SkySSE?.isRestarting) return;
+        window.SkySSE.isRestarting = true;
+
+        // 🔁 Restart SSE safely (delayed)
+        setTimeout(() => {
+            window.SkySSE?.start?.();
+            window.SkySSE.isRestarting = false;
+        }, 100);
 
         // Return
         return;

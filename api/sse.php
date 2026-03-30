@@ -262,8 +262,16 @@ $lastSecond = 0;
 
 #region 🔄 SECTION 5 — STREAM LOOP
 
+// 🔒 Logout State Machine
+// none   → normal operation
+// logged → DB logged + session destroyed
+// sent   → forceLogout already sent to client
+$logoutState = 'none';
+
+// While
 while (true) {
 
+    // Connection Aborted
     if (connection_aborted()) {
         break;
     }
@@ -299,9 +307,16 @@ while (true) {
 
         $sessionId = session_id();
 
-        // 🔥 CAPTURE ONCE (CRITICAL)
-        $wasAuthenticated = !empty($_SESSION['authenticated']);
-        $contactId        = $_SESSION['contactId'] ?? null;
+        // ─────────────────────────────────────────
+        // 🔐 AUTH STATE (AUTHORITATIVE)
+        // ─────────────────────────────────────────
+        if ($logoutState !== 'none') {
+            $wasAuthenticated = false;
+            $contactId = null;
+        } else {
+            $wasAuthenticated = !empty($_SESSION['authenticated']);
+            $contactId        = $_SESSION['contactId'] ?? null;
+        }
 
         // 🔐 AUTH BUILD
         $auth = [
@@ -322,11 +337,10 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // ⏱ IDLE STATE (CLEAN + SINGLE SOURCE)
+        // ⏱ IDLE STATE
         // ─────────────────────────────────────────
         $lastActivity = $_SESSION['lastActivity'] ?? null;
 
-        // 🔒 Initialize defaults
         $elapsed   = null;
         $remaining = null;
         $idleState = 'inactive';
@@ -353,19 +367,23 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 🔒 HANDLE IDLE LOGOUT
+        // 🔒 HANDLE IDLE LOGOUT (RUN ONCE)
         // ─────────────────────────────────────────
-        if ($idleState === 'expired' && $contactIdForLog && !$logoutLogged && $wasAuthenticated && $lastActivity !== null) {
+        if (
+            $idleState === 'expired' &&
+            $contactIdForLog &&
+            $logoutState === 'none' &&
+            $wasAuthenticated &&
+            $lastActivity !== null
+        ) {
 
             try {
 
-                // Re-attach session to ensure we can log with correct context (if not already attached)
                 $pdo = getPDO();
 
-                // 🔒 Double-check session state to prevent
                 if ($pdo instanceof PDO) {
 
-                    // 🔥 Log the idle timeout logout event (NO assignment — function returns void)
+                    // 🔥 LOG IDLE LOGOUT
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
@@ -373,23 +391,19 @@ while (true) {
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    // 🔒 Mark as logged (prevents loop spam)
-                    $logoutLogged = true;
+                    // 🔒 Advance state
+                    $logoutState = 'logged';
 
-                    // 🔥 CRITICAL — RESET SERVER AUTH STATE
-                    $wasAuthenticated = false;
-                    $contactId = null;
-
-                    // 🔥 Destroy session (ensures next SSE frame is truly logged out)
+                    // 🔥 DESTROY SESSION
                     $_SESSION = [];
                     session_destroy();
                 }
 
             } catch (Throwable $e) {
-
+                // silent fail (intentional)
             }
 
-            // 🔄 Force logout state to UI
+            // 🔄 Force logout state to UI immediately
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -420,16 +434,21 @@ while (true) {
             "idleState"     => $idleState
         ];
 
-        // 🔥 Logout Logged Conditional
-        if ($logoutLogged) {
+        // ─────────────────────────────────────────
+        // 🚨 FORCE LOGOUT (SEND ONCE)
+        // ─────────────────────────────────────────
+        if ($logoutState === 'logged') {
+
             $payload["forceLogout"] = true;
-            $payload["logoutSource"] = "idle_timeout"; // 🔥 ADD THIS
+            $payload["logoutSource"] = "idle_timeout";
+
+            // 🔒 Advance to final state
+            $logoutState = 'sent';
         }
 
-        // JSON-encode and send payload
+        // JSON encode + send
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
-        // JSON Conditional (prevents sending invalid data to client)
         if ($json !== false && $json !== '') {
 
             echo "data: " . $json . "\n\n";
