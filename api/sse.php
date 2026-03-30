@@ -369,21 +369,23 @@ while (true) {
         // ─────────────────────────────────────────
         // 🔒 HANDLE IDLE LOGOUT (RUN ONCE)
         // ─────────────────────────────────────────
+        // 🔒 HANDLE IDLE LOGOUT
         if (
             $idleState === 'expired' &&
             $contactIdForLog &&
-            $logoutState === 'none' &&
             $wasAuthenticated &&
             $lastActivity !== null
         ) {
 
-            try {
+            // 🔒 HARD GUARD — prevent duplicate execution across SSE loops
+            if (!empty($_SESSION['idleLogoutProcessed'])) {
+                return;
+            }
 
-                $pdo = getPDO();
+            try {
 
                 if ($pdo instanceof PDO) {
 
-                    // 🔥 LOG IDLE LOGOUT
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
@@ -391,19 +393,22 @@ while (true) {
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    // 🔒 Advance state
-                    $logoutState = 'logged';
+                    // 🔒 Mark as processed (THIS IS THE FIX)
+                    $_SESSION['idleLogoutProcessed'] = true;
 
-                    // 🔥 DESTROY SESSION
+                    // 🔥 Reset state immediately
+                    $wasAuthenticated = false;
+                    $contactIdForLog  = null;
+
                     $_SESSION = [];
                     session_destroy();
                 }
 
             } catch (Throwable $e) {
-                // silent fail (intentional)
+                // Add DeBugg Code Here
             }
 
-            // 🔄 Force logout state to UI immediately
+            // 🔥 Force UI logout
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -412,6 +417,8 @@ while (true) {
                 'firstName'     => null,
                 'lastName'      => null
             ];
+
+            $forceLogout = true;
         }
 
         // 🔓 RELEASE SESSION LOCK
