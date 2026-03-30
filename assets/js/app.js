@@ -117,10 +117,41 @@ window.SkyeApp.handleSSE = function (payload) {
     // 🔥 FORCE LOGOUT MECHANISM
     if (payload?.forceLogout === true) {
 
-        console.log('[SSE] forceLogout received → calling logout endpoint');
+        if (page?._logoutHandled === true) return;
+        page._logoutHandled = true;
 
-        fetch('/api/auth.php?action=logout', {
-            method: 'POST'
+        console.log('[SSE] forceLogout received → stopping SSE + calling logout endpoint');
+
+        // Stop stale authenticated stream first
+        window.SkySSE?.stop?.();
+
+        // Force local logout state immediately
+        page.authState = false;
+        page.authUser  = null;
+        page.authRole  = null;
+        page.idleState = null;
+        page._lastRenderedAuth = false;
+        document.body.removeAttribute('data-auth');
+        page.renderLoginCard?.();
+        page.renderFooterStatus?.call(page);
+
+        fetch('/skyesoft/api/auth.php?action=logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store'
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log('[AUTH] logout request accepted', data);
+
+            // Clear stale SSE snapshot so next frame is treated fresh
+            window.SkyeApp.lastSSE = null;
+
+            // Restart SSE after logout completes
+            window.SkySSE?.start?.();
+        })
+        .catch(err => {
+            console.error('❌ logout request failed:', err);
         });
 
         return;
