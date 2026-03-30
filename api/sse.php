@@ -324,7 +324,6 @@ while (true) {
         // ─────────────────────────────────────────
         // ⏱ IDLE STATE (CLEAN + SINGLE SOURCE)
         // ─────────────────────────────────────────
-
         $lastActivity = $_SESSION['lastActivity'] ?? null;
 
         // 🔒 Initialize defaults
@@ -360,13 +359,13 @@ while (true) {
 
             try {
 
-                //
+                // Re-attach session to ensure we can log with correct context (if not already attached)
                 $pdo = getPDO();
 
+                // 🔒 Double-check session state to prevent
                 if ($pdo instanceof PDO) {
 
-                    //
-
+                    // Log the idle timeout logout event
                     $result = logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
@@ -377,14 +376,18 @@ while (true) {
                     // Logging successful, mark as logged
                     $logoutLogged = true; // 🔒 prevent loop spam
 
-                    // Payload flag to trigger client-side logout
-                    $payload["forceLogout"] = true;
+                    // 🔥 CRITICAL — RESET SERVER AUTH STATE
+                    $wasAuthenticated = false;
+                    $contactId = null;
+
+                    // Optional but clean
+                    $_SESSION = [];
+                    session_destroy();
 
                 }
 
             } catch (Throwable $e) {
 
-                //
             }
 
             // 🔄 Force logout state to UI
@@ -418,8 +421,15 @@ while (true) {
             "idleState"     => $idleState
         ];
 
+        // 🔥 ADD THIS RIGHT HERE
+        if ($logoutLogged) {
+            $payload["forceLogout"] = true;
+        }
+
+        // JSON-encode and send payload
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
+        // JSON Conditional (prevents sending invalid data to client)
         if ($json !== false && $json !== '') {
 
             echo "data: " . $json . "\n\n";
