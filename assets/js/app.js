@@ -130,41 +130,6 @@ window.SkyeApp.handleSSE = function (payload) {
         page.idleState = payload.idle;
     }
 
-    // ─────────────────────────────────────────
-    // 🔐 AUTHORITATIVE LOGOUT (SERVER OVERRIDE)
-    // ─────────────────────────────────────────
-    if (payload?.auth?.authenticated === false && hasPrev && prevAuth === true) {
-
-        if (page && page.authState === true) {
-
-            // 🔥 GUARD FIRST
-            if (page._logoutHandled === true) return;
-            page._logoutHandled = true;
-
-            console.log('[AUTH] idle logout → UI reset');
-
-            // Reset auth state
-            page.authState = false;
-            page.authUser  = null;
-            page.authRole  = null;
-
-            // Reset DOM
-            document.body.removeAttribute('data-auth');
-
-            // 🔥 STOP SSE (important)
-            //window.SkySSE?.stop?.();
-
-            // Render UI
-            page.renderLoginCard?.();
-
-            page._lastRenderedAuth = false;
-
-            page.renderFooterStatus?.call(page);
-        }
-
-        return;
-    }
-
     // First SSE frame: initialize UI carefully
     if (!hasPrev) {
 
@@ -206,18 +171,17 @@ window.SkyeApp.handleSSE = function (payload) {
         page?.renderFooterStatus?.call(page);
         return;
     }
-
+    // Subsequent SSE frames: sync authoritative auth state, but only if it changes (server wins)
     if (page) {
 
-        const clientAuth = page.authState === true;
+        // ─────────────────────────────────────────
+        // 🔐 AUTHORITATIVE AUTH SYNC (SERVER WINS)
+        // ─────────────────────────────────────────
+        page.authState = newAuth;
+        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
+        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
 
-        // Promote only; do not downgrade active client auth
-        if (newAuth && !clientAuth) {
-            page.authState = true;
-            page.authUser  = payload?.auth?.username ?? null;
-            page.authRole  = payload?.auth?.role ?? null;
-            document.body.setAttribute('data-auth', 'true');
-        }
+        document.body.toggleAttribute('data-auth', newAuth);
 
         const resolvedAuth = page.getAuthState?.() === true;
         const prevRenderedAuth = page._lastRenderedAuth;
@@ -248,6 +212,10 @@ window.SkyeApp.handleSSE = function (payload) {
 
             page._lastRenderedAuth = resolvedAuth;
         }
+    }
+    // Clear idle state on any auth change
+    if (page && !newAuth) {
+        page.idleState = null;
     }
 
     try {
