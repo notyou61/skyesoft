@@ -7,11 +7,6 @@ declare(strict_types=1);
 // Real-Time Projection Engine
 // ======================================================================
 
-// ─────────────────────────────────────────
-// 🧪 LOCAL DEBUG LOGGER (FILE-BASED)
-// ─────────────────────────────────────────
-//
-
 #region ⚙️ SECTION 0 — Environment Bootstrap (Runtime Initialization / Session Attach)
 
 ini_set('display_errors', 0);
@@ -23,7 +18,8 @@ session_cache_limiter('');
 // ⚙️ BOOTSTRAP / INCLUDES
 // ─────────────────────────────────────────
 
-require_once __DIR__ . '/auth.php'; // ✅ REQUIRED
+//require_once __DIR__ . '/auth.php'; // ✅ REQUIRED
+require_once __DIR__ . '/utils/authFunctions.php'; // ✅ REQUIRED
 require_once __DIR__ . '/dbConnect.php'; // ✅ REQUIRED
 
 // ─────────────────────────────────────────

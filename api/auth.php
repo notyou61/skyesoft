@@ -51,6 +51,9 @@ require_once __DIR__ . "/dbConnect.php";
 // Actions Layer (Execution + Logging)
 require_once __DIR__ . '/utils/actions.php';
 
+// Auth Utilities (Shared Helpers)
+require_once __DIR__ . '/utils/authFunctions.php';
+
 #endregion
 
 #region SECTION 1 — Helpers
@@ -70,136 +73,6 @@ function jsonOut(bool $success, string $message = ""): void
 
     echo json_encode($out, JSON_UNESCAPED_SLASHES);
     exit;
-}
-
-// ─────────────────────────────────────────
-// 🌐 REQUEST CONTEXT HELPERS
-// Safe accessors for request metadata
-// ─────────────────────────────────────────
-function safeIp(): string
-{
-    return (string)($_SERVER["REMOTE_ADDR"] ?? "");
-}
-
-function safeUserAgent(): string
-{
-    return (string)($_SERVER["HTTP_USER_AGENT"] ?? "");
-}
-
-
-// ─────────────────────────────────────────
-// ⏱ SESSION ACTIVITY HELPER
-// Updates the user's last activity timestamp
-// Used by API endpoints to reset idle timeout
-// ─────────────────────────────────────────
-
-function updateLastActivity(): void
-{
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
-
-    $sessionId = session_id();
-
-    if (!empty($_SESSION["authenticated"])) {
-
-        $_SESSION["lastActivity"] = time();
-
-        error_log('[TOUCH] updated lastActivity → ' . $_SESSION["lastActivity"] . ' | session=' . $sessionId);
-
-    } else {
-
-        error_log('[TOUCH] skipped — not authenticated | session=' . $sessionId);
-    }
-
-    session_write_close();
-}
-
-// ─────────────────────────────────────────
-// 📜 AUTH ACTION LOGGER
-// Writes authentication events to tblActions
-// ─────────────────────────────────────────
-function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
-{
-
-   file_put_contents(__DIR__ . '/auth_debug.log',
-        json_encode([
-            'stage' => 'entered_logAuthAction',
-            'actionKey' => $actionKey,
-            'contactId' => $contactId
-        ]) . PHP_EOL,
-        FILE_APPEND
-    );
-
-    // ─────────────────────────────────────────
-    // 🧾 Resolve Contact
-    // ─────────────────────────────────────────
-    if (!$contactId) {
-        error_log('[auth] missing contactId — skipping log');
-        return;
-    }
-
-    // ─────────────────────────────────────────
-    // 🧠 Map Auth Action → Intent
-    // ─────────────────────────────────────────
-    $reason = $meta['actionOrigin'] ?? 'manual';
-
-    $intent = match ($actionKey) {
-        'auth.login'      => 'ui_login',
-        'auth.logout'     => $reason === 'idle_timeout'
-            ? 'idle_logout'
-            : 'ui_logout',
-        'auth.login.fail' => 'auth_fail',
-        default           => 'auth_event'
-    };
-
-    // ─────────────────────────────────────────
-    // 🧠 Build Payload
-    // ─────────────────────────────────────────
-    $payload = [
-        "contactId"        => $contactId,
-        "promptText"       => $actionKey,
-        "responseText"     => !empty($meta)
-            ? json_encode($meta, JSON_UNESCAPED_SLASHES)
-            : null,
-        "intent"           => $intent,
-        "origin"           => $meta['actionOrigin'] ?? ACTION_ORIGIN_SYSTEM,
-        "intentConfidence" => 1.0,
-        "createdUnixTime"  => time()
-    ];
-
-    // ─────────────────────────────────────────
-    // 🚀 Delegate (TRACE WRAPPED)
-    // ─────────────────────────────────────────
-
-    // 🧪 BEFORE CALL
-    file_put_contents(
-        __DIR__ . '/auth_debug.log',
-        json_encode([
-            'time'       => date('Y-m-d H:i:s'),
-            'stage'      => 'before_insert',
-            'actionKey'  => $actionKey,
-            'contactId'  => $contactId,
-            'payload'    => $payload
-        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
-
-    // 🔥 CALL
-    insertActionPrompt($payload, $pdo);
-
-    // 🧪 AFTER CALL
-    file_put_contents(
-        __DIR__ . '/auth_debug.log',
-        json_encode([
-            'time'       => date('Y-m-d H:i:s'),
-            'stage'      => 'after_insert',
-            'actionKey'  => $actionKey,
-            'contactId'  => $contactId
-        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
-
 }
 
 #endregion
