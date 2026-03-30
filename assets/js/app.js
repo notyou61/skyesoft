@@ -117,16 +117,19 @@ window.SkyeApp.handleSSE = function (payload) {
     // Route to page-specific handler first for non-auth projections
     const page = this.pageHandlers?.[this.currentPage];
 
-    // 🔥 FORCE LOGOUT MECHANISM
+    // 🔥 FORCE LOGOUT MECHANISM (IDLE — SERVER ALREADY LOGGED)
     if (payload?.forceLogout === true) {
 
         if (page?._logoutHandled === true) return;
         page._logoutHandled = true;
 
-        console.log('[SSE] forceLogout received → stopping SSE + calling logout endpoint');
+        console.log('[SSE] forceLogout received → UI-only logout (no API call)');
 
         // Stop stale authenticated stream first
         window.SkySSE?.stop?.();
+
+        // 🔥 Mark logout source (for safety / future use)
+        page._logoutSource = payload?.logoutSource ?? 'idle_timeout';
 
         // Force local logout state immediately
         page.authState = false;
@@ -134,29 +137,21 @@ window.SkyeApp.handleSSE = function (payload) {
         page.authRole  = null;
         page.idleState = null;
         page._lastRenderedAuth = false;
+
+        // Reset DOM
         document.body.removeAttribute('data-auth');
+
+        // Render login UI
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
 
-        fetch('/skyesoft/api/auth.php?action=logout', {
-            method: 'POST',
-            credentials: 'same-origin',
-            cache: 'no-store'
-        })
-        .then(res => res.json())
-        .then(data => {
-            console.log('[AUTH] logout request accepted', data);
+        // 🔥 Clear stale SSE snapshot (prevents re-auth flicker)
+        window.SkyeApp.lastSSE = null;
 
-            // Clear stale SSE snapshot so next frame is treated fresh
-            window.SkyeApp.lastSSE = null;
+        // Restart SSE cleanly (no delay needed now)
+        window.SkySSE?.start?.();
 
-            // Restart SSE after logout completes
-            window.SkySSE?.start?.();
-        })
-        .catch(err => {
-            console.error('❌ logout request failed:', err);
-        });
-
+        // Return
         return;
     }
 

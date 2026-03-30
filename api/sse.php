@@ -365,25 +365,24 @@ while (true) {
                 // 🔒 Double-check session state to prevent
                 if ($pdo instanceof PDO) {
 
-                    // Log the idle timeout logout event
-                    $result = logAuthAction($pdo, "auth.logout", $contactIdForLog, [
+                    // 🔥 Log the idle timeout logout event (NO assignment — function returns void)
+                    logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
                         "ua"           => safeUserAgent(),
                         "sessionId"    => $sessionIdForLog
                     ]);
 
-                    // Logging successful, mark as logged
-                    $logoutLogged = true; // 🔒 prevent loop spam
+                    // 🔒 Mark as logged (prevents loop spam)
+                    $logoutLogged = true;
 
                     // 🔥 CRITICAL — RESET SERVER AUTH STATE
                     $wasAuthenticated = false;
                     $contactId = null;
 
-                    // Optional but clean
+                    // 🔥 Destroy session (ensures next SSE frame is truly logged out)
                     $_SESSION = [];
                     session_destroy();
-
                 }
 
             } catch (Throwable $e) {
@@ -421,9 +420,10 @@ while (true) {
             "idleState"     => $idleState
         ];
 
-        // 🔥 ADD THIS RIGHT HERE
+        // 🔥 Logout Logged Conditional
         if ($logoutLogged) {
             $payload["forceLogout"] = true;
+            $payload["logoutSource"] = "idle_timeout"; // 🔥 ADD THIS
         }
 
         // JSON-encode and send payload
