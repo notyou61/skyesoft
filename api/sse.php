@@ -386,6 +386,7 @@ while (true) {
 
                 if ($pdo instanceof PDO) {
 
+                    // Log Auth Action
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
