@@ -114,6 +114,9 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER */
 window.SkyeApp.handleSSE = function (payload) {
 
+    // Route to page-specific handler first for non-auth projections
+    const page = this.pageHandlers?.[this.currentPage];
+
     // 🔥 FORCE LOGOUT MECHANISM
     if (payload?.forceLogout === true) {
 
@@ -157,7 +160,6 @@ window.SkyeApp.handleSSE = function (payload) {
         return;
     }
 
-    const page = this.pageHandlers?.[this.currentPage];
     const newAuth = payload?.auth?.authenticated === true;
 
     const hasPrev = this.lastSSE !== null;
