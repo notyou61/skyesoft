@@ -289,11 +289,6 @@ while (true) {
 
             $idleLogoutProcessed = true;
 
-            sseDebugLog('idle_logout_start', [
-                'contactId' => $contactIdForLog,
-                'sessionId' => $sessionIdForLog
-            ]);
-
             if ($pdo instanceof PDO) {
                 try {
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
