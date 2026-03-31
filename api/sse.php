@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.0
+// Version: 1.5.1
 // Real-Time Projection Engine - Production Stable (DB Activity Source)
 // ======================================================================
 
@@ -105,6 +105,7 @@ while (ob_get_level() > 0) {
 header('Content-Type: text/event-stream; charset=UTF-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
 header('Connection: keep-alive');
+header('Keep-Alive: timeout=60');           // Added for stability
 header('X-Accel-Buffering: no');
 header('X-LiteSpeed-Cache-Control: no-cache');
 header('X-LiteSpeed-Cache: no-cache');
@@ -134,7 +135,7 @@ try {
 // Idle logout guard
 $idleLogoutProcessed = false;
 
-// Micro-cache for lastActivity (prevents 1 query/sec)
+// Micro-cache for lastActivity (prevents excessive queries)
 $lastActivityCache = [
     'timestamp' => 0,
     'value'     => null
@@ -201,7 +202,7 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 📊 FETCH LAST ACTIVITY FROM DATABASE (with micro-cache)
+        // 📊 FETCH LAST ACTIVITY FROM DATABASE (actionUnix)
         // ─────────────────────────────────────────
         $lastActivity = null;
 
@@ -212,7 +213,7 @@ while (true) {
             ) {
                 try {
                     $stmt = $pdo->prepare("
-                        SELECT MAX(actionCreatedAt) AS lastAction
+                        SELECT MAX(actionUnix) AS lastAction
                         FROM tblActions
                         WHERE contactId = :id
                         LIMIT 1
@@ -221,8 +222,8 @@ while (true) {
                     $stmt->execute([':id' => $contactId]);
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($row && $row['lastAction']) {
-                        $lastActivity = strtotime($row['lastAction']);
+                    if ($row && $row['lastAction'] !== null) {
+                        $lastActivity = (int)$row['lastAction'];   // Direct integer, no strtotime()
                     }
 
                     $lastActivityCache['value']     = $lastActivity;
@@ -230,7 +231,7 @@ while (true) {
 
                 } catch (Throwable $e) {
                     error_log('[SSE ACTIVITY QUERY ERROR] ' . $e->getMessage());
-                    $lastActivity = $lastActivityCache['value']; // fallback to cache
+                    $lastActivity = $lastActivityCache['value']; // fallback
                 }
             } else {
                 $lastActivity = $lastActivityCache['value'];
@@ -238,7 +239,7 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // ⏱ IDLE STATE CALCULATION (Original Logic Restored)
+        // ⏱ IDLE STATE CALCULATION (Original Logic Preserved)
         // ─────────────────────────────────────────
         $idle = [
             'state'            => 'inactive',
