@@ -1326,6 +1326,26 @@ window.SkyIndex = {
 
         try {
 
+            // 🌍 Resolve location BEFORE login (non-blocking)
+            let location = { latitude: null, longitude: null };
+
+            try {
+                location = await Promise.race([
+                    this.getLocationSafe(),
+                    new Promise(resolve =>
+                        setTimeout(() => resolve({ latitude: null, longitude: null }), 2000)
+                    )
+                ]);
+
+                // Cache for reuse
+                this.lastLocation = location;
+
+                console.log('[AUTH GEO]', location);
+
+            } catch (e) {
+                console.warn('[AUTH GEO] failed', e);
+            }
+
             console.log('[AUTH 3] Sending login request');
 
             const res = await fetch('/skyesoft/api/auth.php', {
@@ -1335,7 +1355,9 @@ window.SkyIndex = {
                 body: JSON.stringify({
                     action: 'login',
                     username: email,
-                    password: pass
+                    password: pass,
+                    latitude: location.latitude,
+                    longitude: location.longitude
                 })
             });
 
