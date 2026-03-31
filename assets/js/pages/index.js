@@ -844,7 +844,14 @@ window.SkyIndex = {
         console.log('[INIT] Starting SSE globally');
 
         if (window.SkySSE) {
-            window.SkySSE.start();
+
+            console.log('[AUTH] delaying SSE restart...');
+
+            setTimeout(() => {
+                console.log('[AUTH] starting SSE (delayed)');
+                window.SkySSE.start();
+            }, 300); // 🔥 300–500ms is ideal
+
         } else {
             console.error('[INIT] SkySSE not found');
         }
@@ -1137,15 +1144,26 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
-            // 🌍 Resolve Location (non-blocking)
-            const location = await Promise.race([
-                this.getLocationSafe(),
-                new Promise(resolve =>
-                    setTimeout(() => resolve({ latitude: null, longitude: null }), 1500)
-                )
-            ]);
+
+            // 🌍 Resolve Location (cached + non-blocking)
+            let location = this.lastLocation;
+
+            if (!location) {
+                location = await Promise.race([
+                    this.getLocationSafe(),
+                    new Promise(resolve =>
+                        setTimeout(() => resolve({ latitude: null, longitude: null }), 1500)
+                    )
+                ]);
+
+                // Cache for reuse
+                this.lastLocation = location;
+            }
+
             // Console Log (Remove When Finished)
             console.log('[Geo]', location);
+            console.log('[Geo Cached]', this.lastLocation);
+
             // Fetch
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
@@ -1191,11 +1209,10 @@ window.SkyIndex = {
 
             // ───────────────────────────────────────────────
             // Domain Intent (authoritative short-circuit)
-            // Parse backend payload → route to domain handlers
             // ───────────────────────────────────────────────
             if (data?.type === 'domain_intent') {
 
-                // #region 🧾 Normalize Payload (backend returns JSON string)
+                // #region 🧾 Normalize Payload
                 let parsed = null;
 
                 try {
@@ -1212,12 +1229,9 @@ window.SkyIndex = {
                 }
                 // #endregion
 
-                // #region 🧠 Extract Intent Components
                 const domainKey = parsed.domain;
                 const mode      = parsed.mode;
-                // #endregion
 
-                // #region 🔍 Resolve Domain Config
                 const domainConfig = this.getDomainConfig(domainKey);
 
                 if (!domainConfig) {
@@ -1225,47 +1239,37 @@ window.SkyIndex = {
                     this.appendSystemLine('⚠ Unknown domain.');
                     return;
                 }
-                // #endregion
 
-                // #region 📖 Inquiry (read-only)
                 if (mode === 'inquiry' && domainConfig.capabilities?.read === true) {
                     this.showDomain(domainKey);
                     return;
                 }
-                // #endregion
 
-                // #region 🛠 Repair Request (planned capability)
                 if (mode === 'repair_request' && domainConfig.capabilities?.repair === true) {
                     this.showDomainRepairPlan?.(domainKey);
                     return;
                 }
-                // #endregion
 
-                // #region ⚙ Execute (planned capability)
                 if (mode === 'execute' && domainConfig.capabilities?.execute === true) {
                     this.executeDomainAction?.(domainKey);
                     return;
                 }
-                // #endregion
 
-                // #region ⚠ Fallback (unhandled mode)
                 console.warn('[SkyIndex] Unhandled domain mode:', mode);
                 return;
-                // #endregion
             }
 
             // ───────────────────────────────────────────────
-            // Text Response (Conversational fallback)
+            // Text Response (fallback)
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
 
-                // Detect HTML-style governance payloads
-                const varLooksLikeHtml =
+                const looksLikeHtml =
                     data.response.includes('<div') ||
                     data.response.includes('<a ') ||
                     data.response.includes('<button');
 
-                if (varLooksLikeHtml) {
+                if (looksLikeHtml) {
                     this.appendSystemHtml(data.response);
                 } else {
                     this.appendSystemLine(data.response);
