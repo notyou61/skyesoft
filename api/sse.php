@@ -383,8 +383,10 @@ while (true) {
 
             $idleLogoutProcessed = true; // 🔒 HARD STOP
 
-            // Add Log Check Here
-            // Code Goes Here
+            sseDebugLog('idle_logout_start', [
+                'contactId' => $contactIdForLog,
+                'sessionId' => $sessionIdForLog
+            ]);
 
             try {
 
@@ -401,8 +403,9 @@ while (true) {
 
             } catch (Throwable $e) {
 
-                // Add Log Check Here
-                // Code Goes Here
+                sseDebugLog('idle_logout_error', [
+                    'error' => $e->getMessage()
+                ]);
             }
 
             // 🔥 NOW destroy session (AFTER logging)

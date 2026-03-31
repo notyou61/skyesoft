@@ -1656,31 +1656,23 @@ window.SkyIndex = {
 
             console.log('[SkyIndex] Logout request accepted', { source });
 
-            // #region 🔌 Stop SSE (authoritative reset)
-            if (window.SkySSE) {
-                window.SkySSE.stop();
-            }
-            // #endregion
+            // 🔌 Stop SSE (manual logout only)
+            window.SkySSE?.stop?.();
 
-            // #region 🔥 Stop Activity Tracking
             const app  = window.SkyeApp;
             const page = app?.pageHandlers?.[app?.currentPage];
 
-            if (page) {
-                page.stopActivityPing?.();
-            }
-            // #endregion
+            // 🔥 Stop activity tracking
+            page?.stopActivityPing?.();
 
-            // #region 🧠 Reset SSE memory
-            window.SkyIndex.lastSSE = null;
-            // #endregion
+            // 🧠 Reset SSE memory (FIXED)
+            window.SkyeApp.lastSSE = null;
 
-            // #region 🎨 Force UI logout state
+            // 🎨 Force UI logout state
             if (page) {
 
                 console.log('[UI] forcing logout state (client-side)');
 
-                // Hard auth reset
                 page.authState = false;
                 page.authUser  = null;
                 page.authRole  = null;
@@ -1693,7 +1685,11 @@ window.SkyIndex = {
                 page.renderLoginCard?.();
                 page.renderFooterStatus?.call(page);
             }
-            // #endregion
+
+            // 🔁 Restart SSE cleanly (FIXED)
+            setTimeout(() => {
+                window.SkySSE?.start?.();
+            }, 100);
 
         })
         .catch(err => {
@@ -1707,7 +1703,6 @@ window.SkyIndex = {
             this._loggingOut = false;
 
         });
-
     },
     // #endregion
 
