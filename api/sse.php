@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.4.1
-// Real-Time Projection Engine - Production Stable
+// Version: 1.5.0
+// Real-Time Projection Engine - Production Stable (DB Activity Source)
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
@@ -88,7 +88,6 @@ if ($isSnapshot) {
 
 #region 📡 SECTION 2 — SSE HEADERS
 
-// Disable compression and buffering
 @ini_set('zlib.output_compression', '0');
 @ini_set('output_buffering', '0');
 @ini_set('implicit_flush', '1');
@@ -123,9 +122,7 @@ if (function_exists('ob_flush')) @ob_flush();
 set_time_limit(0);
 ignore_user_abort(true);
 
-// ─────────────────────────────────────────
-// Safe PDO acquisition (once, before loop)
-// ─────────────────────────────────────────
+// Safe PDO (once)
 $pdo = null;
 try {
     $pdo = getPDO();
@@ -137,7 +134,13 @@ try {
 // Idle logout guard
 $idleLogoutProcessed = false;
 
-define('SKYESOFT_IDLE_TIMEOUT', 30);
+// Micro-cache for lastActivity (prevents 1 query/sec)
+$lastActivityCache = [
+    'timestamp' => 0,
+    'value'     => null
+];
+
+define('SKYESOFT_IDLE_TIMEOUT', 30);   // Change to 900 in production
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
 
 #endregion
@@ -160,9 +163,7 @@ while (true) {
 
     $now = time();
 
-    // ─────────────────────────────────────────
-    // 💓 KEEPALIVE PING
-    // ─────────────────────────────────────────
+    // Keepalive ping
     if (($now - $lastPing) >= 15) {
         echo ": ping\n\n";
         if (function_exists('ob_flush')) @ob_flush();
@@ -170,29 +171,22 @@ while (true) {
         $lastPing = $now;
     }
 
-    // ─────────────────────────────────────────
-    // 📦 1HZ DATA UPDATE
-    // ─────────────────────────────────────────
+    // 1Hz data update
     if ($now > $lastSecond) {
 
         $lastSecond = $now;
 
-        // Re-attach session for reading
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
 
         $sessionId = session_id();
 
-        // ─────────────────────────────────────────
-        // 🔐 SINGLE SOURCE OF TRUTH FOR AUTH
-        // ─────────────────────────────────────────
+        // Single source of truth for auth
         $wasAuthenticated = !empty($_SESSION['authenticated']);
         $contactId        = $_SESSION['contactId'] ?? null;
 
-        // ─────────────────────────────────────────
-        // 👤 NAME RESOLUTION (optimized)
-        // ─────────────────────────────────────────
+        // Optimized name resolution
         $name = $contactId 
             ? getContactName($contactId) 
             : ['firstName' => null, 'lastName' => null];
@@ -207,10 +201,45 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // ⏱ IDLE TIMEOUT DETECTION
+        // 📊 FETCH LAST ACTIVITY FROM DATABASE (with micro-cache)
         // ─────────────────────────────────────────
-        $lastActivity = $_SESSION['lastActivity'] ?? null;
+        $lastActivity = null;
 
+        if ($pdo instanceof PDO && $contactId) {
+            if (
+                $lastActivityCache['timestamp'] === 0 ||
+                ($now - $lastActivityCache['timestamp']) >= 3
+            ) {
+                try {
+                    $stmt = $pdo->prepare("
+                        SELECT MAX(actionCreatedAt) AS lastAction
+                        FROM tblActions
+                        WHERE contactId = :id
+                        LIMIT 1
+                    ");
+
+                    $stmt->execute([':id' => $contactId]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($row && $row['lastAction']) {
+                        $lastActivity = strtotime($row['lastAction']);
+                    }
+
+                    $lastActivityCache['value']     = $lastActivity;
+                    $lastActivityCache['timestamp'] = $now;
+
+                } catch (Throwable $e) {
+                    error_log('[SSE ACTIVITY QUERY ERROR] ' . $e->getMessage());
+                    $lastActivity = $lastActivityCache['value']; // fallback to cache
+                }
+            } else {
+                $lastActivity = $lastActivityCache['value'];
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // ⏱ IDLE STATE CALCULATION (Original Logic Restored)
+        // ─────────────────────────────────────────
         $idle = [
             'state'            => 'inactive',
             'remainingSeconds' => null,
@@ -234,7 +263,7 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // 🔒 IDLE LOGOUT (Single, Clean, Safe Handler)
+        // 🔒 IDLE LOGOUT (Safe Single Handler)
         // ─────────────────────────────────────────
         if (
             $idle['state'] === 'expired' &&
@@ -251,7 +280,6 @@ while (true) {
                 'sessionId' => $sessionIdForLog
             ]);
 
-            // Log action before destroying session
             if ($pdo instanceof PDO) {
                 try {
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
@@ -269,7 +297,7 @@ while (true) {
             $_SESSION = [];
             session_destroy();
 
-            // Force clean auth state for this SSE cycle
+            // Force clean auth state
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -279,13 +307,10 @@ while (true) {
                 'lastName'      => null
             ];
 
-            // Prevent any future duplicate logging on reconnect
             $contactIdForLog = null;
-
             $idle['state'] = 'expired';
         }
 
-        // Release session lock immediately
         session_write_close();
 
         // ─────────────────────────────────────────
@@ -309,7 +334,7 @@ while (true) {
         }
     }
 
-    usleep(100000); // 100ms sleep
+    usleep(100000); // 100ms
 }
 
 #endregion
