@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.1
+// Version: 1.5.3
 // Real-Time Projection Engine - Production Stable (DB Activity Source)
 // ======================================================================
 
@@ -105,7 +105,7 @@ while (ob_get_level() > 0) {
 header('Content-Type: text/event-stream; charset=UTF-8');
 header('Cache-Control: no-cache, no-store, must-revalidate, no-transform');
 header('Connection: keep-alive');
-header('Keep-Alive: timeout=60');           // Added for stability
+header('Keep-Alive: timeout=60');
 header('X-Accel-Buffering: no');
 header('X-LiteSpeed-Cache-Control: no-cache');
 header('X-LiteSpeed-Cache: no-cache');
@@ -135,7 +135,7 @@ try {
 // Idle logout guard
 $idleLogoutProcessed = false;
 
-// Micro-cache for lastActivity (prevents excessive queries)
+// Micro-cache for lastActivity
 $lastActivityCache = [
     'timestamp' => 0,
     'value'     => null
@@ -202,15 +202,17 @@ while (true) {
         ];
 
         // ─────────────────────────────────────────
-        // 📊 FETCH LAST ACTIVITY FROM DATABASE (actionUnix)
+        // 📊 FETCH LAST ACTIVITY FROM tblActions (actionUnix)
         // ─────────────────────────────────────────
         $lastActivity = null;
 
         if ($pdo instanceof PDO && $contactId) {
-            if (
+            $doQuery = (
                 $lastActivityCache['timestamp'] === 0 ||
                 ($now - $lastActivityCache['timestamp']) >= 3
-            ) {
+            );
+
+            if ($doQuery) {
                 try {
                     $stmt = $pdo->prepare("
                         SELECT MAX(actionUnix) AS lastAction
@@ -223,23 +225,34 @@ while (true) {
                     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
                     if ($row && $row['lastAction'] !== null) {
-                        $lastActivity = (int)$row['lastAction'];   // Direct integer, no strtotime()
+                        $lastActivity = (int)$row['lastAction'];
                     }
 
-                    $lastActivityCache['value']     = $lastActivity;
+                    // Update cache value ONLY if we got a real timestamp
+                    if ($lastActivity !== null) {
+                        $lastActivityCache['value'] = $lastActivity;
+                    }
+
+                    // ALWAYS update timestamp (prevents permanent query spam on NULL)
                     $lastActivityCache['timestamp'] = $now;
 
                 } catch (Throwable $e) {
                     error_log('[SSE ACTIVITY QUERY ERROR] ' . $e->getMessage());
-                    $lastActivity = $lastActivityCache['value']; // fallback
+                    // On error, do NOT update timestamp → will retry next cycle
                 }
             } else {
+                // Use cached value when not querying
                 $lastActivity = $lastActivityCache['value'];
             }
         }
 
+        // Final fallback: if still null after query, use last known good cache value
+        if ($lastActivity === null) {
+            $lastActivity = $lastActivityCache['value'];
+        }
+
         // ─────────────────────────────────────────
-        // ⏱ IDLE STATE CALCULATION (Original Logic Preserved)
+        // ⏱ IDLE STATE CALCULATION
         // ─────────────────────────────────────────
         $idle = [
             'state'            => 'inactive',
