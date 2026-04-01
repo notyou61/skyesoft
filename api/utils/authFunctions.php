@@ -126,3 +126,18 @@ function getContactName(?int $contactId): array {
         return ['firstName' => null, 'lastName' => null];
     }
 }
+function getLastAuthAction(PDO $pdo, int $contactId): ?string
+{
+    $stmt = $pdo->prepare("
+        SELECT promptText
+        FROM tblActions
+        WHERE contactId = :contactId
+        AND promptText IN ('auth.login','auth.logout')
+        ORDER BY actionUnix DESC
+        LIMIT 1
+    ");
+
+    $stmt->execute(['contactId' => $contactId]);
+
+    return $stmt->fetchColumn() ?: null;
+}

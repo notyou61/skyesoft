@@ -12,23 +12,16 @@ declare(strict_types=1);
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-session_name('SKYESOFTSESSID');
-
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => (
-        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-        ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
-    ),
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-session_start();
+// ─────────────────────────────────────────
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// ─────────────────────────────────────────
+require_once __DIR__ . '/sessionBootstrap.php';
 
 header("Content-Type: application/json; charset=UTF-8");
 
+// ─────────────────────────────────────────
+// 📦 Dependencies
+// ─────────────────────────────────────────
 require_once __DIR__ . "/dbConnect.php";
 require_once __DIR__ . '/utils/actions.php';
 require_once __DIR__ . '/utils/authFunctions.php';
@@ -46,21 +39,7 @@ function jsonOut(bool $success, string $message = ""): void
     echo json_encode($out, JSON_UNESCAPED_SLASHES);
     exit;
 }
-function getLastAuthAction(PDO $pdo, int $contactId): ?string
-{
-    $stmt = $pdo->prepare("
-        SELECT promptText
-        FROM tblActions
-        WHERE contactId = :contactId
-        AND promptText IN ('auth.login','auth.logout')
-        ORDER BY actionUnix DESC
-        LIMIT 1
-    ");
 
-    $stmt->execute(['contactId' => $contactId]);
-
-    return $stmt->fetchColumn() ?: null;
-}
 
 #endregion
 
@@ -243,10 +222,6 @@ if ($action === "login") {
 #region SECTION 6 — LOGOUT (with Geo + State Guard)
 
 if ($action === "logout") {
-
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_start();
-    }
 
     $pdo = null;
     try {

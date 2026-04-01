@@ -31,38 +31,19 @@ ini_set('error_log', __DIR__ . '/logs/php-error.log');
 header("Content-Type: application/json; charset=UTF-8");
 
 // ─────────────────────────────────────────
-// 🔐 SESSION BOOTSTRAP (CANONICAL — FIXED)
-// Must match across ALL endpoints
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// SINGLE SOURCE OF TRUTH
 // ─────────────────────────────────────────
+require_once __DIR__ . '/sessionBootstrap.php';
 
-// Force same session name across system
-session_name('SKYESOFTSESSID');
-
-// 🔥 FORCE HTTPS COOKIE (do NOT auto-detect)
-$secure = true;
-
-// Apply cookie policy FIRST (CRITICAL)
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/skyesoft/',       // 🔥 MATCH YOUR APP ROOT
-    'domain'   => 'skyelighting.com', // or '.skyelighting.com'
-    'secure'   => true,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
-
-// Attach to existing session (AFTER params, BEFORE start)
-if (!empty($_COOKIE[session_name()])) {
-    session_id($_COOKIE[session_name()]);
-}
-
-// Start session
-session_start();
-
-// Load environment
+// ─────────────────────────────────────────
+// 🌍 Load environment
+// ─────────────────────────────────────────
 skyesoftLoadEnv();
 
-// AI Fail Function
+// ─────────────────────────────────────────
+// 🤖 AI Fail Function
+// ─────────────────────────────────────────
 function aiFail(string $msg): never {
     echo json_encode([
         "success" => false,
@@ -72,13 +53,16 @@ function aiFail(string $msg): never {
     exit;
 }
 
-//  Action Origins
-const ACTION_ORIGIN_USER = 1;
-const ACTION_ORIGIN_SYSTEM = 2;
+// ─────────────────────────────────────────
+// 📌 Action Origins
+// ─────────────────────────────────────────
+const ACTION_ORIGIN_USER       = 1;
+const ACTION_ORIGIN_SYSTEM     = 2;
 const ACTION_ORIGIN_AUTOMATION = 3;
 
-// DB Connection
-
+// ─────────────────────────────────────────
+// 🗄️ DB Connection
+// ─────────────────────────────────────────
 $dbUser = skyesoftGetEnv("DB_USER");
 $dbPass = skyesoftGetEnv("DB_PASS");
 $dbHost = skyesoftGetEnv("DB_HOST") ?? "localhost";
@@ -110,7 +94,7 @@ try {
 }
 
 // ─────────────────────────────────────────
-// Actions Layer (Execution + Logging)
+// ⚙️ Actions Layer (Execution + Logging)
 // ─────────────────────────────────────────
 require_once __DIR__ . '/utils/actions.php';
 

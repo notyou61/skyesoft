@@ -12,26 +12,20 @@ declare(strict_types=1);
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
+// ─────────────────────────────────────────
+// 🔐 SESSION BOOTSTRAP (CANONICAL)
+// ─────────────────────────────────────────
+require_once __DIR__ . '/sessionBootstrap.php';
+
+// ─────────────────────────────────────────
+// 📦 Dependencies
+// ─────────────────────────────────────────
 require_once __DIR__ . '/utils/authFunctions.php';
 require_once __DIR__ . '/dbConnect.php';
 
-session_name('SKYESOFTSESSID');
-
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => (
-        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-        ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
-    ),
-    'httponly' => true,
-    'samesite' => 'None'
-]);
-
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
-
+// ─────────────────────────────────────────
+// 🧠 Snapshot current session state
+// ─────────────────────────────────────────
 $initialSession = [
     'authenticated' => !empty($_SESSION['authenticated']),
     'contactId'     => $_SESSION['contactId'] ?? null,
@@ -45,6 +39,7 @@ $sessionIdForLog = $initialSession['sessionId'] ?? null;
 
 error_log('[SSE BOOT] ' . json_encode($initialSession));
 
+// 🔓 Release session lock (CRITICAL for SSE)
 session_write_close();
 
 $isSnapshot = isset($_GET['mode']) && $_GET['mode'] === 'snapshot';
@@ -272,8 +267,10 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // 🔒 IDLE LOGOUT (with Geo from Session)
+        // 🔒 IDLE LOGOUT (Signal Only — NO Mutation)
         // ─────────────────────────────────────────
+        $forceLogout = false;
+
         if (
             $idle['state'] === 'expired' &&
             $lastActivity !== null &&
@@ -284,10 +281,11 @@ while (true) {
 
             $idleLogoutProcessed = true;
 
-            // Get geo from session (populated during login)
+            // Get geo from session (captured at login)
             $latitude  = $_SESSION['latitude']  ?? null;
             $longitude = $_SESSION['longitude'] ?? null;
 
+            // Log ONCE (authoritative audit trail)
             if ($pdo instanceof PDO) {
                 try {
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
@@ -303,43 +301,47 @@ while (true) {
                 }
             }
 
-            // Destroy session
-            $_SESSION = [];
-            session_destroy();
+            // 🔔 SIGNAL ONLY (client will handle UI)
+            $forceLogout = true;
 
-            // Force clean auth state
-            $auth = [
-                'authenticated' => false,
-                'contactId'     => null,
-                'username'      => null,
-                'role'          => null,
-                'firstName'     => null,
-                'lastName'      => null
-            ];
-
+            // Prevent re-trigger
             $contactIdForLog = null;
-            $idle['state'] = 'expired';
         }
 
         session_write_close();
 
         // ─────────────────────────────────────────
-        // 📦 BUILD & SEND PAYLOAD
+        // 📦 BUILD & SEND PAYLOAD (AUTHORITATIVE)
         // ─────────────────────────────────────────
+
+        // Context for downstream modules (read-only)
         $SKYE_CONTEXT = ['auth' => $auth];
 
+        // Get dynamic system data
         $payload = require __DIR__ . "/getDynamicData.php";
 
+        // 🔐 Attach core state (server authoritative)
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
         $payload["sessionId"] = $sessionId;
 
+        // 🔔 Apply force logout signal (if triggered earlier)
+        if (!empty($forceLogout)) {
+            $payload["forceLogout"] = true;
+        }
+
+        // Encode safely
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
+        // Send SSE frame
         if ($json !== false && $json !== '') {
-            echo "data: " . $json . "\n\n";
-            if (function_exists('ob_flush')) @ob_flush();
+            echo "data: {$json}\n\n";
+
+            if (function_exists('ob_flush')) {
+                @ob_flush();
+            }
+
             @flush();
         }
     }
