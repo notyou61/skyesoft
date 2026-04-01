@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — auth.php
-// Version: 1.2.0
+// Version: 1.2.1
 // Codex Tier: 4 — Session Mutation Endpoint (with Geo Support)
 // ======================================================================
 
@@ -66,7 +66,7 @@ $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
 #endregion
 
-#region SECTION 3 — TOUCH (Activity Update)
+#region SECTION 3 — TOUCH
 
 if ($action === "touch") {
     if (!empty($_SESSION["authenticated"])) {
@@ -105,7 +105,7 @@ if ($action === "login") {
     $username  = trim((string)($input["username"] ?? ""));
     $password  = trim((string)($input["password"] ?? ""));
 
-    // Safely extract geo (accept null, string, or number)
+    // Safely extract geo
     $latitude  = null;
     $longitude = null;
     if (isset($input["latitude"]) && $input["latitude"] !== null && $input["latitude"] !== "") {
@@ -131,37 +131,43 @@ if ($action === "login") {
     $stmt->execute(["email" => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+    // ─────────────────────────────────────────
+    // FAILURE LOGGING (Fixed)
+    // ─────────────────────────────────────────
     if (!$user) {
         logAuthAction($pdo, "auth.login.fail", null, [
-            "username" => $username,
-            "ip"       => safeIp(),
-            "ua"       => safeUserAgent()
+            "username"     => $username,
+            "ip"           => safeIp(),
+            "ua"           => safeUserAgent(),
+            "actionOrigin" => 2   // 2 = SYSTEM
         ]);
         jsonOut(false, "User not found.");
     }
 
     if ((int)($user["isActive"] ?? 0) !== 1) {
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
-            "username" => $username,
-            "reason"   => "inactive",
-            "ip"       => safeIp(),
-            "ua"       => safeUserAgent()
+            "username"     => $username,
+            "reason"       => "inactive",
+            "ip"           => safeIp(),
+            "ua"           => safeUserAgent(),
+            "actionOrigin" => 2   // 2 = SYSTEM
         ]);
         jsonOut(false, "Account inactive.");
     }
 
     if (!password_verify($password, (string)($user["passwordHash"] ?? ""))) {
         logAuthAction($pdo, "auth.login.fail", (int)$user["contactId"], [
-            "username" => $username,
-            "reason"   => "bad_password",
-            "ip"       => safeIp(),
-            "ua"       => safeUserAgent()
+            "username"     => $username,
+            "reason"       => "bad_password",
+            "ip"           => safeIp(),
+            "ua"           => safeUserAgent(),
+            "actionOrigin" => 2   // 2 = SYSTEM
         ]);
         jsonOut(false, "Invalid password.");
     }
 
     // ─────────────────────────────────────────
-    // 🔐 SESSION SETUP
+    // SUCCESS - SESSION SETUP
     // ─────────────────────────────────────────
     $_SESSION["authenticated"] = true;
     $_SESSION["contactId"]     = (int)$user["contactId"];
@@ -180,13 +186,14 @@ if ($action === "login") {
 
     // Log successful login with geo
     logAuthAction($pdo, "auth.login", $contactId, [
-        "username"  => $email,
-        "role"      => $role,
-        "ip"        => safeIp(),
-        "ua"        => safeUserAgent(),
-        "latitude"  => $latitude,
-        "longitude" => $longitude,
-        "sessionId" => $sessionId
+        "username"     => $email,
+        "role"         => $role,
+        "ip"           => safeIp(),
+        "ua"           => safeUserAgent(),
+        "latitude"     => $latitude,
+        "longitude"    => $longitude,
+        "sessionId"    => $sessionId,
+        "actionOrigin" => 1   // 1 = USER
     ]);
 
     session_write_close();
@@ -216,26 +223,25 @@ if ($action === "logout") {
     $role      = $_SESSION["role"] ?? null;
     $sessionId = session_id();
 
-    // Reuse geo from session (set during login)
     $latitude  = $_SESSION["latitude"]  ?? null;
     $longitude = $_SESSION["longitude"] ?? null;
 
-    if ($pdo instanceof PDO) {
+    if ($pdo instanceof PDO && $contactId !== null) {
         logAuthAction($pdo, "auth.logout", $contactId, [
-            "username"  => $username,
-            "role"      => $role,
-            "ip"        => safeIp(),
-            "ua"        => safeUserAgent(),
-            "latitude"  => $latitude,
-            "longitude" => $longitude,
-            "sessionId" => $sessionId
+            "username"     => $username,
+            "role"         => $role,
+            "ip"           => safeIp(),
+            "ua"           => safeUserAgent(),
+            "latitude"     => $latitude,
+            "longitude"    => $longitude,
+            "sessionId"    => $sessionId,
+            "actionOrigin" => 1   // 1 = USER
         ]);
     }
 
     $_SESSION = [];
     session_destroy();
 
-    // Clear cookie
     if (ini_get("session.use_cookies")) {
         $secure = (
             (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||

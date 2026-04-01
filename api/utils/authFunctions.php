@@ -42,31 +42,35 @@ function updateLastActivity(): void
 }
 
 // ─────────────────────────────────────────
-// 📜 AUTH ACTION LOGGER
+// 📜 AUTH ACTION LOGGER - FIXED (No undefined constants)
 // ─────────────────────────────────────────
-
 function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta = []): void
 {
+    // Safe debug logging
     file_put_contents(__DIR__ . '/../auth_debug.log',
         json_encode([
-            'stage' => 'entered_logAuthAction',
+            'time'      => date('Y-m-d H:i:s'),
+            'stage'     => 'entered_logAuthAction',
             'actionKey' => $actionKey,
-            'contactId' => $contactId
+            'contactId' => $contactId,
+            'meta'      => $meta
         ]) . PHP_EOL,
         FILE_APPEND
     );
 
-    if ($contactId === null) {
-        error_log('[auth] missing contactId — skipping log');
+    if ($contactId === null && strpos($actionKey, '.fail') === false) {
+        error_log('[auth] missing contactId — skipping log for ' . $actionKey);
         return;
     }
 
-    $reason = $meta['actionOrigin'] ?? 'manual';
+    // Safe origin (fallback to 2 = SYSTEM)
+    $origin = $meta['actionOrigin'] ?? 2;
 
+    // Intent mapping
     $intent = match ($actionKey) {
         'auth.login'      => 'ui_login',
-        'auth.logout'     => $reason === 'idle_timeout'
-            ? 'idle_logout'
+        'auth.logout'     => ($meta['actionOrigin'] ?? '') === 'idle_timeout' 
+            ? 'idle_logout' 
             : 'ui_logout',
         'auth.login.fail' => 'auth_fail',
         default           => 'auth_event'
@@ -75,39 +79,22 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     $payload = [
         "contactId"        => $contactId,
         "promptText"       => $actionKey,
-        "responseText"     => !empty($meta)
-            ? json_encode($meta, JSON_UNESCAPED_SLASHES)
+        "responseText"     => !empty($meta) 
+            ? json_encode($meta, JSON_UNESCAPED_SLASHES) 
             : null,
         "intent"           => $intent,
-        "origin"           => $meta['actionOrigin'] ?? ACTION_ORIGIN_SYSTEM,
+        "origin"           => $origin,                    // Fixed
         "intentConfidence" => 1.0,
-        "createdUnixTime"  => time()
+        "createdUnixTime"  => time(),
+        "latitude"         => $meta['latitude']  ?? null,
+        "longitude"        => $meta['longitude'] ?? null
     ];
 
-    file_put_contents(
-        __DIR__ . '/../auth_debug.log',
-        json_encode([
-            'time'       => date('Y-m-d H:i:s'),
-            'stage'      => 'before_insert',
-            'actionKey'  => $actionKey,
-            'contactId'  => $contactId,
-            'payload'    => $payload
-        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
-
-    insertActionPrompt($payload, $pdo);
-
-    file_put_contents(
-        __DIR__ . '/../auth_debug.log',
-        json_encode([
-            'time'       => date('Y-m-d H:i:s'),
-            'stage'      => 'after_insert',
-            'actionKey'  => $actionKey,
-            'contactId'  => $contactId
-        ], JSON_UNESCAPED_SLASHES) . PHP_EOL,
-        FILE_APPEND
-    );
+    try {
+        insertActionPrompt($payload, $pdo);
+    } catch (Throwable $e) {
+        error_log('[logAuthAction INSERT ERROR] ' . $e->getMessage());
+    }
 }
 function getContactName(?int $contactId): array {
 
