@@ -111,7 +111,7 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
-/* #region GLOBAL SSE HANDLER - FIXED & IMPROVED */
+/* #region GLOBAL SSE HANDLER - FIXED FOR IDLE COUNTDOWN */
 window.SkyeApp.handleSSE = function (payload) {
 
     const page = this.pageHandlers?.[this.currentPage];
@@ -121,16 +121,16 @@ window.SkyeApp.handleSSE = function (payload) {
     // 🔥 FORCE LOGOUT (Idle Timeout from Server)
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
-        if (page._logoutHandled) return;
+        if (page._logoutHandled === true) return;
         page._logoutHandled = true;
 
-        console.log('[SSE] forceLogout received → performing UI logout');
+        console.log('[SSE] forceLogout received → UI-only logout');
 
         window.SkySSE?.stop?.();
 
         page.authState = false;
-        page.authUser = null;
-        page.authRole = null;
+        page.authUser  = null;
+        page.authRole  = null;
         page.idleState = null;
         page._lastRenderedAuth = false;
 
@@ -138,7 +138,7 @@ window.SkyeApp.handleSSE = function (payload) {
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
 
-        // Safe delayed restart
+        // Safe restart
         setTimeout(() => {
             window.SkySSE?.start?.();
         }, 150);
@@ -148,85 +148,91 @@ window.SkyeApp.handleSSE = function (payload) {
 
     const newAuth = payload?.auth?.authenticated === true;
 
-    // Commit authoritative snapshot
+    // Always commit the latest authoritative snapshot
     this.lastSSE = payload;
 
     // ─────────────────────────────────────────
-    // 🔄 ALWAYS UPDATE IDLE STATE (This was missing!)
+    // 🔄 ALWAYS UPDATE IDLE STATE (CRITICAL FIX)
     // ─────────────────────────────────────────
-    if (payload?.idle) {
-        page.idleState = payload.idle;
-
-        // Optional: Auto-trigger warning UI when close to timeout
-        if (payload.idle.state === 'warning' && page.showIdleWarning) {
-            page.showIdleWarning(payload.idle.remainingSeconds);
-        }
+    if (page && payload?.idle) {
+        page.idleState = payload.idle;           // ← This now runs on EVERY message
     }
 
     // ─────────────────────────────────────────
-    // FIRST SSE FRAME (Initialization)
+    // FIRST SSE MESSAGE (Initialization)
     // ─────────────────────────────────────────
-    if (!this.lastSSE || this.lastSSE === payload) {  // First meaningful payload
-        page.authUser = newAuth ? payload?.auth?.username ?? null : null;
-        page.authRole = newAuth ? payload?.auth?.role ?? null : null;
+    const isFirstMessage = !this.hasReceivedFirstSSE;
+    if (isFirstMessage) {
+        this.hasReceivedFirstSSE = true;
 
-        document.body.toggleAttribute('data-auth', newAuth);
+        if (page) {
+            page.authUser = newAuth ? payload?.auth?.username ?? null : null;
+            page.authRole = newAuth ? payload?.auth?.role ?? null : null;
 
-        if (page.authState !== true) {
-            page.authState = newAuth;
+            document.body.toggleAttribute('data-auth', newAuth);
+
+            if (page.authState !== true) {
+                page.authState = newAuth;
+            }
+
+            if (newAuth) {
+                page.transitionToCommandInterface?.();
+            } else {
+                console.log('[SSE INIT] forcing logout UI');
+                page.renderLoginCard?.();
+            }
+
+            page._lastRenderedAuth = page.getAuthState?.() === true;
+            page.renderFooterStatus?.call(page);
         }
-
-        if (newAuth) {
-            page.transitionToCommandInterface?.();
-        } else {
-            page.renderLoginCard?.();
-        }
-
-        page._lastRenderedAuth = newAuth;
-        page.renderFooterStatus?.call(page);
 
         this.updateHSB?.(payload);
         this.routeSSEToPage?.(payload);
+        page?.renderFooterStatus?.call(page);
         return;
     }
 
     // ─────────────────────────────────────────
-    // SUBSEQUENT FRAMES - Authoritative Sync
+    // SUBSEQUENT MESSAGES – Authoritative Sync
     // ─────────────────────────────────────────
-    const prevAuth = page.authState;
+    if (page) {
+        const prevAuth = page.authState;
 
-    page.authState = newAuth;
-    page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
-    page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+        // Authoritative auth sync (server wins)
+        page.authState = newAuth;
+        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
+        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
 
-    document.body.toggleAttribute('data-auth', newAuth);
+        document.body.toggleAttribute('data-auth', newAuth);
 
-    // Only re-render on actual auth state change
-    if (prevAuth !== newAuth) {
-        console.log('[SSE] Auth state changed:', { from: prevAuth, to: newAuth });
+        // Only re-render on actual auth change
+        if (prevAuth !== newAuth && page._logoutHandled !== true) {
+            console.log('[SSE] Auth state changed:', { from: prevAuth, to: newAuth });
 
-        if (newAuth) {
-            page._logoutHandled = false;
-            page.transitionToCommandInterface?.();
-        } else {
-            page.authState = false;
-            page.authUser = null;
-            page.authRole = null;
-            page.idleState = null;
-            document.body.removeAttribute('data-auth');
-            page.renderLoginCard?.();
+            if (newAuth) {
+                page._logoutHandled = false;
+                page.transitionToCommandInterface?.();
+            } else {
+                page.authState = false;
+                page.authUser = null;
+                page.authRole = null;
+                page.idleState = null;
+                document.body.removeAttribute('data-auth');
+                page.renderLoginCard?.();
+            }
+            page._lastRenderedAuth = newAuth;
         }
-        page._lastRenderedAuth = newAuth;
     }
 
-    // Clear idle when logged out
-    if (!newAuth) {
+    // Clear idle when user is logged out
+    if (page && !newAuth) {
         page.idleState = null;
     }
 
+    // Route to page-specific handlers and update other UI
     this.updateHSB?.(payload);
     this.routeSSEToPage?.(payload);
-    page.renderFooterStatus?.call(page);
+    page?.renderFooterStatus?.call(page);
 };
 /* #endregion */
 
