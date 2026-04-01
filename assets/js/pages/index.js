@@ -1289,12 +1289,11 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth)
+    // #region 🔑 Login Logic (Server Auth) - FIXED GEO
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
 
-        // Resolve ACTIVE PAGE INSTANCE (authoritative)
         const app  = window.SkyeApp;
         const page = app?.pageHandlers?.[app?.currentPage];
 
@@ -1303,7 +1302,6 @@ window.SkyIndex = {
             return;
         }
 
-        // Context correction (prevents shadow-instance bugs)
         if (this !== page) {
             console.warn('[AUTH] Redirecting to active page instance');
             return page.handleLoginSubmit(form);
@@ -1313,40 +1311,40 @@ window.SkyIndex = {
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
 
-        // #region 🔍 Validation
         if (!email || !pass) {
-
-            console.log('[AUTH 2] Validation failed');
-
             error.textContent = 'Please enter email and password.';
             error.hidden = false;
             return;
         }
-        // #endregion
 
         try {
+            console.log('[AUTH 2] Resolving location...');
 
-            // 🌍 Resolve location BEFORE login (non-blocking)
-            let location = { latitude: null, longitude: null };
+            // 🌍 Get location with better timeout handling + caching
+            let location = this.lastLocation || { latitude: null, longitude: null };
 
-            try {
-                location = await Promise.race([
-                    this.getLocationSafe(),
-                    new Promise(resolve =>
-                        setTimeout(() => resolve({ latitude: null, longitude: null }), 2000)
-                    )
-                ]);
+            if (!location.latitude && !location.longitude) {
+                try {
+                    // Give location up to 4 seconds (geolocation prompt can be slow)
+                    location = await Promise.race([
+                        this.getLocationSafe(),
+                        new Promise(resolve =>
+                            setTimeout(() => resolve({ latitude: null, longitude: null }), 4000)
+                        )
+                    ]);
 
-                // Cache for reuse
-                this.lastLocation = location;
+                    // Cache it for future AI commands / actions
+                    this.lastLocation = location;
 
-                console.log('[AUTH GEO]', location);
+                    console.log('[AUTH GEO]', location);
 
-            } catch (e) {
-                console.warn('[AUTH GEO] failed', e);
+                } catch (geoErr) {
+                    console.warn('[AUTH GEO] failed or timed out', geoErr);
+                    location = { latitude: null, longitude: null };
+                }
             }
 
-            console.log('[AUTH 3] Sending login request');
+            console.log('[AUTH 3] Sending login request with geo');
 
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
@@ -1356,101 +1354,64 @@ window.SkyIndex = {
                     action: 'login',
                     username: email,
                     password: pass,
-                    latitude: location.latitude,
+                    latitude:  location.latitude,
                     longitude: location.longitude
                 })
             });
 
-            console.log('[AUTH 4] auth.php response received', {
-                status: res.status
-            });
+            console.log('[AUTH 4] auth.php response received', { status: res.status });
 
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-
             console.log('[AUTH 5] auth.php payload', data);
 
-            // #region ❌ Auth Rejected
             if (!data.success) {
-
-                console.log('[AUTH 6] Authentication rejected');
-
                 error.textContent = data.message || 'Login failed.';
                 error.hidden = false;
                 return;
             }
-            // #endregion
 
             console.log('[AUTH 7] Authentication accepted');
 
             error.hidden = true;
 
-            // =====================================================
-            // 🔐 VERIFY SESSION (authoritative confirmation)
-            // =====================================================
+            // Verify session
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
 
             const session = await check.json();
-
             console.log('[AUTH 8] Session verified', session);
 
             if (session.authenticated === true) {
 
-                // =====================================================
-                // 🔥 APPLY STATE TO ACTIVE INSTANCE (CRITICAL FIX)
-                // =====================================================
                 page.authState = true;
-
                 document.body.setAttribute("data-auth", "true");
 
                 page.authUser = session.username ?? null;
                 page.authRole = session.role ?? null;
 
-                // =====================================================
-                // 🎯 RENDER UI IMMEDIATELY (client authority)
-                // =====================================================
                 page.renderCommandInterfaceCard?.();
                 page.commandSurfaceActive = true;
-
                 page.renderFooterStatus?.();
 
-                console.log('[AUTH 9] Command interface activated (authoritative)');
-
+                console.log('[AUTH 9] Command interface activated');
                 page.startActivityPing?.();
             }
-            
-            // =====================================================
-            // 🔁 RESTART SSE (secondary confirmation layer)
-            // =====================================================
+
+            // Restart SSE
             window.SkySSE?.stop?.();
-            window.SkySSE?.restart?.();
+            setTimeout(() => window.SkySSE?.start?.(), 300);
 
-            console.log('[AUTH 10] SSE restart (delayed)');
-
-            // 🔥 ENSURE footer re-renders after SSE reconnect
+            // Final footer refresh
             setTimeout(() => {
-                try {
-                    const app = window.SkyeApp;
-                    const page = app?.pageHandlers?.[app?.currentPage];
-
-                    if (page?.renderFooterStatus) {
-                        page.renderFooterStatus();
-                    } else if (app?.renderFooterStatus) {
-                        app.renderFooterStatus();
-                    }
-                } catch (err) {}
-            }, 250);
+                page?.renderFooterStatus?.();
+            }, 400);
 
         } catch (err) {
-
             console.error('[AUTH ERROR]', err);
-
-            error.textContent = 'Connection error.';
+            error.textContent = 'Connection error. Please try again.';
             error.hidden = false;
         }
     },

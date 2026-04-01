@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.3
-// Real-Time Projection Engine - Production Stable (DB Activity Source)
+// Version: 1.5.4
+// Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // ======================================================================
 
 #region ⚙️ SECTION 0 — Environment Bootstrap
@@ -228,25 +228,20 @@ while (true) {
                         $lastActivity = (int)$row['lastAction'];
                     }
 
-                    // Update cache value ONLY if we got a real timestamp
                     if ($lastActivity !== null) {
                         $lastActivityCache['value'] = $lastActivity;
                     }
 
-                    // ALWAYS update timestamp (prevents permanent query spam on NULL)
                     $lastActivityCache['timestamp'] = $now;
 
                 } catch (Throwable $e) {
                     error_log('[SSE ACTIVITY QUERY ERROR] ' . $e->getMessage());
-                    // On error, do NOT update timestamp → will retry next cycle
                 }
             } else {
-                // Use cached value when not querying
                 $lastActivity = $lastActivityCache['value'];
             }
         }
 
-        // Final fallback: if still null after query, use last known good cache value
         if ($lastActivity === null) {
             $lastActivity = $lastActivityCache['value'];
         }
@@ -277,7 +272,7 @@ while (true) {
         }
 
         // ─────────────────────────────────────────
-        // 🔒 IDLE LOGOUT (Safe Single Handler)
+        // 🔒 IDLE LOGOUT (with Geo from Session)
         // ─────────────────────────────────────────
         if (
             $idle['state'] === 'expired' &&
@@ -289,12 +284,18 @@ while (true) {
 
             $idleLogoutProcessed = true;
 
+            // Get geo from session (populated during login)
+            $latitude  = $_SESSION['latitude']  ?? null;
+            $longitude = $_SESSION['longitude'] ?? null;
+
             if ($pdo instanceof PDO) {
                 try {
                     logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                         "actionOrigin" => "idle_timeout",
                         "ip"           => safeIp(),
                         "ua"           => safeUserAgent(),
+                        "latitude"     => $latitude,
+                        "longitude"    => $longitude,
                         "sessionId"    => $sessionIdForLog
                     ]);
                 } catch (Throwable $e) {
