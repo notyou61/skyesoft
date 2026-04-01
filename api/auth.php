@@ -104,8 +104,16 @@ if ($action === "login") {
 
     $username  = trim((string)($input["username"] ?? ""));
     $password  = trim((string)($input["password"] ?? ""));
-    $latitude  = $input["latitude"]  !== null ? (float)$input["latitude"]  : null;
-    $longitude = $input["longitude"] !== null ? (float)$input["longitude"] : null;
+
+    // Safely extract geo (accept null, string, or number)
+    $latitude  = null;
+    $longitude = null;
+    if (isset($input["latitude"]) && $input["latitude"] !== null && $input["latitude"] !== "") {
+        $latitude = is_numeric($input["latitude"]) ? (float)$input["latitude"] : null;
+    }
+    if (isset($input["longitude"]) && $input["longitude"] !== null && $input["longitude"] !== "") {
+        $longitude = is_numeric($input["longitude"]) ? (float)$input["longitude"] : null;
+    }
 
     if ($username === "" || $password === "") {
         jsonOut(false, "Missing credentials.");
@@ -160,8 +168,6 @@ if ($action === "login") {
     $_SESSION["username"]      = (string)$user["contactEmail"];
     $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
-
-    // Store geo for future actions (idle logout, etc.)
     $_SESSION["latitude"]      = $latitude;
     $_SESSION["longitude"]     = $longitude;
 
@@ -172,9 +178,7 @@ if ($action === "login") {
     $role      = (string)($user["role"] ?? "user");
     $sessionId = session_id();
 
-    // ─────────────────────────────────────────
-    // 📜 LOG LOGIN WITH GEO
-    // ─────────────────────────────────────────
+    // Log successful login with geo
     logAuthAction($pdo, "auth.login", $contactId, [
         "username"  => $email,
         "role"      => $role,
