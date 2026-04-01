@@ -111,173 +111,122 @@ window.SkyeApp.updateHSB = function (payload) {
 };
 /* #endregion */
 
-/* #region GLOBAL SSE HANDLER */
+/* #region GLOBAL SSE HANDLER - FIXED & IMPROVED */
 window.SkyeApp.handleSSE = function (payload) {
 
-    // Route to page-specific handler first for non-auth projections
     const page = this.pageHandlers?.[this.currentPage];
+    if (!page) return;
 
-    // 🔥 FORCE LOGOUT MECHANISM (IDLE — SERVER ALREADY LOGGED)
+    // ─────────────────────────────────────────
+    // 🔥 FORCE LOGOUT (Idle Timeout from Server)
+    // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
-
-        if (page?._logoutHandled === true) return;
+        if (page._logoutHandled) return;
         page._logoutHandled = true;
 
-        console.log('[SSE] forceLogout received → UI-only logout (no API call)');
+        console.log('[SSE] forceLogout received → performing UI logout');
 
-        // Stop stale authenticated stream first
         window.SkySSE?.stop?.();
 
-        // 🔥 Mark logout source (for safety / future use)
-        page._logoutSource = payload?.logoutSource ?? 'idle_timeout';
-
-        // Force local logout state immediately
         page.authState = false;
-        page.authUser  = null;
-        page.authRole  = null;
+        page.authUser = null;
+        page.authRole = null;
         page.idleState = null;
         page._lastRenderedAuth = false;
 
-        // Reset DOM
         document.body.removeAttribute('data-auth');
-
-        // Render login UI
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
 
-        // 🔥 Clear stale SSE snapshot (prevents re-auth flicker)
-        window.SkyeApp.lastSSE = null;
-
-        // 🔒 Prevent multiple restart attempts
-        if (window.SkySSE?.isRestarting) return;
-        window.SkySSE.isRestarting = true;
-
-        // 🔁 Restart SSE safely (delayed)
+        // Safe delayed restart
         setTimeout(() => {
             window.SkySSE?.start?.();
-            window.SkySSE.isRestarting = false;
-        }, 100);
+        }, 150);
 
-        // Return
         return;
     }
 
     const newAuth = payload?.auth?.authenticated === true;
 
-    const hasPrev = this.lastSSE !== null;
-    const prevAuth = hasPrev
-        ? this.lastSSE?.auth?.authenticated === true
-        : null;
-
-    // Commit authoritative SSE snapshot first
+    // Commit authoritative snapshot
     this.lastSSE = payload;
 
-    // Keep non-auth projections only
-    if (page && payload?.idle) {
+    // ─────────────────────────────────────────
+    // 🔄 ALWAYS UPDATE IDLE STATE (This was missing!)
+    // ─────────────────────────────────────────
+    if (payload?.idle) {
         page.idleState = payload.idle;
+
+        // Optional: Auto-trigger warning UI when close to timeout
+        if (payload.idle.state === 'warning' && page.showIdleWarning) {
+            page.showIdleWarning(payload.idle.remainingSeconds);
+        }
     }
 
-    // First SSE frame: initialize UI carefully
-    if (!hasPrev) {
-
-        if (page) {
-
-            page.authUser = newAuth ? payload?.auth?.username ?? null : null;
-            page.authRole = newAuth ? payload?.auth?.role ?? null : null;
-
-            document.body.toggleAttribute('data-auth', newAuth);
-
-            // Only set authState from SSE on first frame if client has not already authenticated
-            if (page.authState !== true) {
-                page.authState = newAuth;
-            }
-
-            if (newAuth) {
-                page.transitionToCommandInterface?.();
-            } else if (page.authState !== true) {
-                console.log('[SSE INIT] forcing logout UI');
-                page.renderLoginCard?.();
-            }
-
-            page._lastRenderedAuth = page.getAuthState?.() === true;
-            page.renderFooterStatus?.call(page);
-        }
-
-        try {
-            this.updateHSB(payload);
-        } catch (err) {
-            console.error("❌ updateHSB failed:", err);
-        }
-
-        try {
-            this.routeSSEToPage(payload);
-        } catch (err) {
-            console.error("❌ routeSSEToPage failed:", err);
-        }
-
-        page?.renderFooterStatus?.call(page);
-        return;
-    }
-    // Subsequent SSE frames: sync authoritative auth state, but only if it changes (server wins)
-    if (page) {
-
-        // ─────────────────────────────────────────
-        // 🔐 AUTHORITATIVE AUTH SYNC (SERVER WINS)
-        // ─────────────────────────────────────────
-        page.authState = newAuth;
-        page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
-        page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+    // ─────────────────────────────────────────
+    // FIRST SSE FRAME (Initialization)
+    // ─────────────────────────────────────────
+    if (!this.lastSSE || this.lastSSE === payload) {  // First meaningful payload
+        page.authUser = newAuth ? payload?.auth?.username ?? null : null;
+        page.authRole = newAuth ? payload?.auth?.role ?? null : null;
 
         document.body.toggleAttribute('data-auth', newAuth);
 
-        const resolvedAuth = page.getAuthState?.() === true;
-        const prevRenderedAuth = page._lastRenderedAuth;
-
-        if (prevRenderedAuth !== resolvedAuth) {
-
-            console.log('[UI STATE CHANGE]', {
-                from: prevRenderedAuth,
-                to: resolvedAuth
-            });
-
-            if (resolvedAuth) {
-
-                if (page._logoutHandled === true) {
-                    console.log('[AUTH] resetting logout guard');
-                }
-
-                page._logoutHandled = false; // 🔥 RESET HERE
-
-                page.transitionToCommandInterface?.();
-            } else {
-                page.authState = false;
-                page.authUser = null;
-                page.authRole = null;
-                document.body.removeAttribute('data-auth');
-                page.renderLoginCard?.();
-            }
-
-            page._lastRenderedAuth = resolvedAuth;
+        if (page.authState !== true) {
+            page.authState = newAuth;
         }
+
+        if (newAuth) {
+            page.transitionToCommandInterface?.();
+        } else {
+            page.renderLoginCard?.();
+        }
+
+        page._lastRenderedAuth = newAuth;
+        page.renderFooterStatus?.call(page);
+
+        this.updateHSB?.(payload);
+        this.routeSSEToPage?.(payload);
+        return;
     }
-    // Clear idle state on any auth change
-    if (page && !newAuth) {
+
+    // ─────────────────────────────────────────
+    // SUBSEQUENT FRAMES - Authoritative Sync
+    // ─────────────────────────────────────────
+    const prevAuth = page.authState;
+
+    page.authState = newAuth;
+    page.authUser  = newAuth ? payload?.auth?.username ?? null : null;
+    page.authRole  = newAuth ? payload?.auth?.role ?? null : null;
+
+    document.body.toggleAttribute('data-auth', newAuth);
+
+    // Only re-render on actual auth state change
+    if (prevAuth !== newAuth) {
+        console.log('[SSE] Auth state changed:', { from: prevAuth, to: newAuth });
+
+        if (newAuth) {
+            page._logoutHandled = false;
+            page.transitionToCommandInterface?.();
+        } else {
+            page.authState = false;
+            page.authUser = null;
+            page.authRole = null;
+            page.idleState = null;
+            document.body.removeAttribute('data-auth');
+            page.renderLoginCard?.();
+        }
+        page._lastRenderedAuth = newAuth;
+    }
+
+    // Clear idle when logged out
+    if (!newAuth) {
         page.idleState = null;
     }
 
-    try {
-        this.updateHSB(payload);
-    } catch (err) {
-        console.error("❌ updateHSB failed:", err);
-    }
-
-    try {
-        this.routeSSEToPage(payload);
-    } catch (err) {
-        console.error("❌ routeSSEToPage failed:", err);
-    }
-
-    page?.renderFooterStatus?.call(page);
+    this.updateHSB?.(payload);
+    this.routeSSEToPage?.(payload);
+    page.renderFooterStatus?.call(page);
 };
 /* #endregion */
 
