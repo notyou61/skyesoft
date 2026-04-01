@@ -114,6 +114,8 @@ window.SkyeApp.updateHSB = function (payload) {
 /* #region GLOBAL SSE HANDLER - FIXED FOR IDLE COUNTDOWN */
 window.SkyeApp.handleSSE = function (payload) {
 
+    if (!payload || typeof payload !== 'object') return;
+
     const page = this.pageHandlers?.[this.currentPage];
     if (!page) return;
 
@@ -121,13 +123,10 @@ window.SkyeApp.handleSSE = function (payload) {
     // 🔥 FORCE LOGOUT (Idle Timeout from Server)
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
-        if (page._logoutHandled === true) return;
-        page._logoutHandled = true;
 
         console.log('[SSE] forceLogout received → UI-only logout');
 
-        window.SkySSE?.stop?.();
-
+        // Apply UI state only (DO NOT stop SSE)
         page.authState = false;
         page.authUser  = null;
         page.authRole  = null;
@@ -135,13 +134,9 @@ window.SkyeApp.handleSSE = function (payload) {
         page._lastRenderedAuth = false;
 
         document.body.removeAttribute('data-auth');
+
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
-
-        // Safe restart
-        setTimeout(() => {
-            window.SkySSE?.start?.();
-        }, 150);
 
         return;
     }
@@ -175,10 +170,11 @@ window.SkyeApp.handleSSE = function (payload) {
                 page.authState = newAuth;
             }
 
+            // Only render logout UI if client is NOT already authenticated
             if (newAuth) {
                 page.transitionToCommandInterface?.();
-            } else {
-                console.log('[SSE INIT] forcing logout UI');
+            } else if (page.authState !== true) {
+                console.log('[SSE INIT] passive logout UI (safe)');
                 page.renderLoginCard?.();
             }
 
@@ -206,21 +202,22 @@ window.SkyeApp.handleSSE = function (payload) {
         document.body.toggleAttribute('data-auth', newAuth);
 
         // Only re-render on actual auth change
-        if (prevAuth !== newAuth && page._logoutHandled !== true) {
+        if (prevAuth !== newAuth) {
             console.log('[SSE] Auth state changed:', { from: prevAuth, to: newAuth });
 
             if (newAuth) {
-                page._logoutHandled = false;
                 page.transitionToCommandInterface?.();
             } else {
                 page.authState = false;
                 page.authUser = null;
                 page.authRole = null;
                 page.idleState = null;
+
                 document.body.removeAttribute('data-auth');
+
+                // 🔒 UI only (no logic trigger)
                 page.renderLoginCard?.();
             }
-            page._lastRenderedAuth = newAuth;
         }
     }
 
@@ -232,7 +229,6 @@ window.SkyeApp.handleSSE = function (payload) {
     // Route to page-specific handlers and update other UI
     this.updateHSB?.(payload);
     this.routeSSEToPage?.(payload);
-    page?.renderFooterStatus?.call(page);
 };
 /* #endregion */
 
