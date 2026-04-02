@@ -178,6 +178,40 @@ while (true) {
 
         $sessionId = session_id();
 
+        // 🔒 HARD STOP — Session already logged out
+        if (!empty($_SESSION['idleLogoutComplete']) && $_SESSION['idleLogoutComplete'] === true) {
+
+            $auth = [
+                'authenticated' => false,
+                'contactId'     => null,
+                'username'      => null,
+                'role'          => null,
+                'firstName'     => null,
+                'lastName'      => null
+            ];
+
+            $idle = null;
+            $forceLogout = true;
+
+            session_write_close();
+
+            $payload = require __DIR__ . "/getDynamicData.php";
+
+            $payload["auth"]        = $auth;
+            $payload["idle"]        = $idle;
+            $payload["forceLogout"] = true;
+            $payload["streamId"]    = $streamId;
+            $payload["sessionId"]   = $sessionId;
+
+            echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
+
+            if (function_exists('ob_flush')) @ob_flush();
+            @flush();
+
+            continue; // 🔥 skip entire loop logic
+        }
+
+
         // Single source of truth for auth
         $wasAuthenticated = !empty($_SESSION['authenticated']);
         $contactId        = $_SESSION['contactId'] ?? null;
@@ -279,23 +313,44 @@ while (true) {
             !$idleLogoutProcessed
         ) {
 
-            $idleLogoutProcessed = true;
+            $_SESSION['idleLogoutComplete'] = true;
+
+            // 🔄 FORCE STATE TRANSITION (same frame)
+            $auth = [
+                'authenticated' => false,
+                'contactId'     => null,
+                'username'      => null,
+                'role'          => null,
+                'firstName'     => null,
+                'lastName'      => null
+            ];
+
+            $idle = null;
 
             // Get geo from session (captured at login)
             $latitude  = $_SESSION['latitude']  ?? null;
             $longitude = $_SESSION['longitude'] ?? null;
 
             // Log ONCE (authoritative audit trail)
+            // 🔒 Prevent duplicate logout entries
             if ($pdo instanceof PDO) {
                 try {
-                    logAuthAction($pdo, "auth.logout", $contactIdForLog, [
-                        "actionOrigin" => "idle_timeout",
-                        "ip"           => safeIp(),
-                        "ua"           => safeUserAgent(),
-                        "latitude"     => $latitude,
-                        "longitude"    => $longitude,
-                        "sessionId"    => $sessionIdForLog
-                    ]);
+
+                    $lastAction = getLastAuthAction($pdo, $contactIdForLog);
+
+                    if ($lastAction !== 'auth.logout') {
+
+                        logAuthAction($pdo, "auth.logout", $contactIdForLog, [
+                            "actionOrigin" => "idle_timeout",
+                            "ip"           => safeIp(),
+                            "ua"           => safeUserAgent(),
+                            "latitude"     => $latitude,
+                            "longitude"    => $longitude,
+                            "sessionId"    => $sessionIdForLog
+                        ]);
+
+                    }
+
                 } catch (Throwable $e) {
                     error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getMessage());
                 }
