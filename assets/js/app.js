@@ -216,7 +216,6 @@ window.SkyeApp.handleSSE = function (payload) {
                 page.authState = false;
                 page.authUser = null;
                 page.authRole = null;
-                page.idleState = null;
 
                 document.body.removeAttribute('data-auth');
 

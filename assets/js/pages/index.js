@@ -1667,6 +1667,9 @@ window.SkyIndex = {
                 page.commandSurfaceActive = false;
                 page.idleState = null;
 
+                // 🔒 Prevent SSE re-processing logout
+                page._logoutHandled = true;
+
                 document.body.removeAttribute('data-auth');
 
                 page.renderLoginCard?.();
