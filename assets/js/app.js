@@ -124,21 +124,25 @@ window.SkyeApp.handleSSE = function (payload) {
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
 
-        if (page._logoutHandled === true) return;
-        page._logoutHandled = true;
-
         console.log('[SSE] forceLogout received → UI-only logout');
 
+        // 🔥 ALWAYS enforce logout state (no conditions)
         page.authState = false;
         page.authUser  = null;
         page.authRole  = null;
         page.idleState = null;
-        page._lastRenderedAuth = false;
+
+        // 🔥 CRITICAL — kill command UI
+        page.commandSurfaceActive = false;
 
         document.body.removeAttribute('data-auth');
 
+        // 🔥 ALWAYS force UI transition
         page.renderLoginCard?.();
         page.renderFooterStatus?.call(page);
+
+        // 🔒 mark handled AFTER UI reset
+        page._logoutHandled = true;
 
         return;
     }
