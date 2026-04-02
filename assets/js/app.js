@@ -124,9 +124,11 @@ window.SkyeApp.handleSSE = function (payload) {
     // ─────────────────────────────────────────
     if (payload?.forceLogout === true) {
 
+        if (page._logoutHandled === true) return;
+        page._logoutHandled = true;
+
         console.log('[SSE] forceLogout received → UI-only logout');
 
-        // Apply UI state only (DO NOT stop SSE)
         page.authState = false;
         page.authUser  = null;
         page.authRole  = null;
@@ -150,7 +152,10 @@ window.SkyeApp.handleSSE = function (payload) {
     // 🔄 ALWAYS UPDATE IDLE STATE (CRITICAL FIX)
     // ─────────────────────────────────────────
     if (page && payload?.idle) {
-        page.idleState = payload.idle;           // ← This now runs on EVERY message
+        page.idleState = payload.idle;
+
+        // 🔄 FORCE UI UPDATE (THIS IS THE FIX)
+        page.renderFooterStatus?.call(page);
     }
 
     // ─────────────────────────────────────────
@@ -219,11 +224,6 @@ window.SkyeApp.handleSSE = function (payload) {
                 page.renderLoginCard?.();
             }
         }
-    }
-
-    // Clear idle when user is logged out
-    if (page && !newAuth) {
-        page.idleState = null;
     }
 
     // Route to page-specific handlers and update other UI
