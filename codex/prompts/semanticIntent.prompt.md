@@ -141,6 +141,72 @@ Clear directives to modify the **interaction surface** (not asking for informati
 
 ---
 
+<details>
+<summary><strong>Contact Proposal Intent</strong></summary>
+
+When the user input semantically represents an attempt to provide or submit contact information — typically in the form of an email signature, contact block, or structured personal/business identity data — the intent must be classified as:
+
+contact_propose
+
+### Recognition Criteria
+
+This classification applies when the input contains a combination of:
+
+- Personal name (first and last)
+- One or more of:
+  - phone number
+  - email address
+  - company / organization name
+  - job title
+  - physical address or location
+
+### Examples
+
+| Input Example | Intent |
+|------|--------|
+| "Alex Bohlin, City of Scottsdale, (480) 312-4139" | contact_propose |
+| Email signature block | contact_propose |
+| "Here is a new contact:" + structured data | contact_propose |
+
+### Exclusions
+
+- Questions about contacts → `contacts_inquiry`
+- General discussion → `general_query`
+- Requests to list/view → `contacts_inquiry`
+
+### Disambiguation Rule
+
+If the dominant semantic meaning is to retrieve, inspect, or view existing contacts,
+the intent MUST be classified as a domain inquiry rather than `contact_propose`.
+
+### Confidence Guidance
+
+- Clear signature block → ≥ 0.90  
+- Partial → 0.70–0.85  
+- Ambiguous → ≤ 0.65  
+
+### Imperative Clarification
+
+Inputs like "add this contact" MUST still be classified as `contact_propose`
+when structured data is present.
+
+### Structural Role
+
+`contact_propose` represents a submission event only.
+
+No validation, persistence, or execution occurs here.
+
+### Important
+
+- Non-domain intent  
+- No `{domain}_{mode}`  
+- Not UI command  
+- Not a query  
+
+</details>
+
+This intent represents **data submission for evaluation**, not immediate execution.
+
 ## Governance Domain Intents
 When input semantically concerns Codex structural integrity, audit state, violations, drift, reconciliation, or formal amendment:
 
@@ -180,3 +246,8 @@ Return **valid JSON only**. No prose, markdown, explanations, or wrappers outsid
   "confidence": 0.92,
   "reasoning": "User explicitly requests to end the current session using clear imperative language."
 }
+
+### Codex Alignment
+
+This intent supports the system principle:
+"All create operations originate as proposed actions before execution."
