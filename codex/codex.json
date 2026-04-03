@@ -4518,7 +4518,8 @@
                     "Email addresses must be unique within the scope of an entity (contactEntityId + contactEmail).",
                     "All relational integrity must be enforced via database constraints, not solely application logic.",
                     "Duplicate detection must be performed at both application and database layers.",
-                    "Location duplication must be resolved prior to contact insertion."
+                    "Location duplication must be resolved prior to contact insertion.",
+                    "All create operations must originate as proposed actions and pass through validation before execution."
                 ],
                 "inputModes": {
                     "supported": [
