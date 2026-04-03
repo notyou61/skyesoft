@@ -4516,30 +4516,29 @@
                     "If no explicit location is available during ingestion, a default location must be created or assigned.",
                     "Default location naming convention must follow: '{entityName} - Primary'.",
                     "Email addresses must be unique within the scope of an entity (contactEntityId + contactEmail).",
-                    "All relational integrity must be enforced via database constraints, not solely application logic."
+                    "All relational integrity must be enforced via database constraints, not solely application logic.",
+                    "Duplicate detection must be performed at both application and database layers.",
+                    "Location duplication must be resolved prior to contact insertion."
                 ],
+                "inputModes": {
+                    "supported": [
+                        "structured",
+                        "signature"
+                    ],
+                    "description": "Contacts may be created from structured input or parsed from email signatures."
+                },
+                "acceptanceCriteria": {
+                    "definition": "A contact is accepted only if all ELC components are resolved.",
+                    "statuses": ["resolved", "partial", "reject"],
+                    "rules": [
+                        "resolved: entity, location, and contact are fully identified",
+                        "partial: one or more ELC components require resolution",
+                        "reject: insufficient data to determine entity or contact identity"
+                    ]
+                },
                 "schema": {
                     "identityModel": {
                         "type": "object",
-                        "properties": {
-                            "entity": {
-                                "type": "object",
-                                "required": ["entityName", "entityType"]
-                            },
-                            "location": {
-                                "type": "object",
-                                "required": ["locationEntityId"]
-                            },
-                            "contact": {
-                                "type": "object",
-                                "required": [
-                                    "contactFirstName",
-                                    "contactLastName",
-                                    "contactEntityId",
-                                    "contactLocationId"
-                                ]
-                            }
-                        },
                         "required": ["entity", "location", "contact"]
                     }
                 },
@@ -4565,15 +4564,110 @@
                         "tblContacts.contactLocationId → tblLocations.locationId"
                     ]
                 },
+                "duplicateDetection": {
+                    "location": {
+                        "matchCriteria": [
+                            "locationEntityId + address",
+                            "locationEntityId + locationName"
+                        ],
+                        "action": "reuse_or_create"
+                    },
+                    "contact": {
+                        "primaryMatch": [
+                            "contactEntityId",
+                            "contactLocationId",
+                            "contactFirstName",
+                            "contactLastName"
+                        ],
+                        "secondaryMatch": [
+                            "contactEntityId + contactEmail",
+                            "contactEntityId + contactPrimaryPhone"
+                        ],
+                        "actions": {
+                            "exactMatch": "update_or_ignore",
+                            "secondaryMatch": "create_new_or_flag",
+                            "conflict": "flag_for_review"
+                        }
+                    }
+                },
+                "processingModel": {
+                    "description": "Defines the two-phase contact creation process separating resolution from decision-making.",
+                    "phases": {
+                        "resolutionPhase": {
+                            "description": "Resolves entity, location, and contact existence without branching.",
+                            "steps": [
+                                "resolveEntity",
+                                "resolveLocation",
+                                "checkLocationDuplicate",
+                                "checkContactDuplicate"
+                            ]
+                        },
+                        "decisionPhase": {
+                            "description": "Determines system action based on resolved data.",
+                            "outcomes": [
+                                "reject",
+                                "partial",
+                                "resolved_duplicate",
+                                "resolved_new",
+                                "resolved_conflict"
+                            ]
+                        }
+                    }
+                },
                 "flow": [
                     "ingestInput",
-                    "extractFields",
-                    "resolveEntity",
-                    "resolveLocation",
-                    "resolveContact",
+                    "parseSignature (if applicable)",
+                    "validateAIResponse",
+                    "resolutionPhase",
+                    "decisionPhase",
                     "insertOrUpdate",
                     "returnStructuredObject"
                 ],
+                "decisionLogic": {
+                    "reject": {
+                        "condition": "Missing required entity or contact identity",
+                        "action": "halt_process"
+                    },
+                    "partial": {
+                        "condition": "Incomplete ELC resolution",
+                        "action": "request_user_input"
+                    },
+                    "resolved_duplicate": {
+                        "condition": "Exact ELC match exists",
+                        "action": "update_or_ignore"
+                    },
+                    "resolved_new": {
+                        "condition": "No existing match",
+                        "action": "insert_new_contact"
+                    },
+                    "resolved_conflict": {
+                        "condition": "Conflicting secondary match (email/phone mismatch)",
+                        "action": "flag_for_review"
+                    }
+                },
+                "aiRole": {
+                    "description": "Defines the responsibility of AI in the contact creation process.",
+                    "responsibilities": [
+                        "parse unstructured input (email signatures)",
+                        "extract entity, location, and contact fields",
+                        "classify input as resolved, partial, or reject"
+                    ],
+                    "limitations": [
+                        "AI must not perform database operations",
+                        "AI must not determine duplicates",
+                        "AI output must be validated by the application layer"
+                    ]
+                },
+                "applicationRole": {
+                    "description": "Defines the responsibility of the PHP application layer.",
+                    "responsibilities": [
+                        "resolve entity and location records",
+                        "perform duplicate detection queries",
+                        "enforce ELC constraints",
+                        "handle insert/update logic",
+                        "manage conflict resolution and review flags"
+                    ]
+                },
                 "edgeCases": {
                     "sameNameDifferentEntity": {
                         "rule": "createNewContact",
@@ -4595,22 +4689,18 @@
                     "conflictingData": {
                         "strategy": "flagForReview",
                         "autoOverwrite": false
-                    },
-                    "companyNameVariations": {
-                        "strategy": "normalize_or_alias",
-                        "futureEnhancement": true
                     }
                 },
                 "examples": {
                     "valid": [
-                        "Mackenzie Foster @ ID. Associates, Inc @ ID. Associates, Inc - Primary",
-                        "Wahid Alam @ City of Phoenix @ Phoenix City Hall"
+                        "Alex Bohlin @ City of Scottsdale @ City of Scottsdale - Primary",
+                        "Kimberly Osborne @ [Resolved Entity] @ Omaha Office"
                     ],
                     "invalid": [
-                        "Contact without location",
-                        "Duplicate contact within same entity and location",
-                        "Contact with non-existent entityId",
-                        "Contact with NULL locationId"
+                        "Contact without entity",
+                        "Contact without resolvable location",
+                        "Duplicate ELC contact",
+                        "Unresolved signature input"
                     ]
                 },
                 "validation": {
@@ -4620,13 +4710,14 @@
                         "ai_parser"
                     ],
                     "frequency": "on-insert-and-update",
-                    "action": "Reject or normalize non-compliant records"
+                    "action": "Reject, normalize, or flag non-compliant records"
                 },
                 "notes": [
                     "ELC enforcement guarantees that all contacts are fully qualified relational objects.",
-                    "This standard eliminates ambiguity in contact identity across multiple locations.",
-                    "Database constraints are the primary enforcement mechanism; application logic is secondary.",
-                    "This standard serves as the foundation for all contact ingestion, querying, and AI-driven parsing."
+                    "Duplicate prevention is enforced at both application and database levels.",
+                    "Signature parsing must resolve to a complete ELC triplet before insertion.",
+                    "Database constraints serve as the final enforcement layer.",
+                    "This standard governs all contact ingestion including AI-driven parsing and manual entry."
                 ]
             },
             "systemInitializationStandard": {
