@@ -4491,6 +4491,144 @@
                 "text": "Skyesoft records reality as a sequence of immutable actions. CRUD defines the meaning of those actions, not how data is physically stored or modified."
                 }
             },
+            "contactCreationELC": {
+                "title": {
+                    "icon": 15,
+                    "text": "Entity–Location–Contact (ELC) Contact Creation Standard"
+                },
+                "tier": 2,
+                "type": "Relational Integrity Standard",
+                "hierarchyOrder": 3,
+                "preamble": {
+                    "text": "Defines the mandatory triune relationship between entities, locations, and contacts. All contacts must exist within a fully qualified relational context to ensure identity integrity, eliminate ambiguity, and enforce Codex-aligned data structure."
+                },
+                "purpose": {
+                    "icon": 6,
+                    "text": "Establish a strict relational identity model where contacts are uniquely defined by their association to both an entity and a location, enabling accurate data ingestion, querying, and system-wide consistency."
+                },
+                "rules": [
+                    "All contacts must reference a valid entityId and locationId (ELC enforcement).",
+                    "Contacts cannot exist independently; entity and location are required components.",
+                    "The unique identity of a contact is defined by (contactEntityId, contactLocationId, contactFirstName, contactLastName).",
+                    "Duplicate contacts within the same entity-location context are prohibited and must be rejected at the database level.",
+                    "Entity names must be unique across the system.",
+                    "Location records must be associated with a valid entityId and cannot be orphaned.",
+                    "If no explicit location is available during ingestion, a default location must be created or assigned.",
+                    "Default location naming convention must follow: '{entityName} - Primary'.",
+                    "Email addresses must be unique within the scope of an entity (contactEntityId + contactEmail).",
+                    "All relational integrity must be enforced via database constraints, not solely application logic."
+                ],
+                "schema": {
+                    "identityModel": {
+                        "type": "object",
+                        "properties": {
+                            "entity": {
+                                "type": "object",
+                                "required": ["entityName", "entityType"]
+                            },
+                            "location": {
+                                "type": "object",
+                                "required": ["locationEntityId"]
+                            },
+                            "contact": {
+                                "type": "object",
+                                "required": [
+                                    "contactFirstName",
+                                    "contactLastName",
+                                    "contactEntityId",
+                                    "contactLocationId"
+                                ]
+                            }
+                        },
+                        "required": ["entity", "location", "contact"]
+                    }
+                },
+                "databaseConstraints": {
+                    "entity": {
+                        "unique": ["entityName"]
+                    },
+                    "contact": {
+                        "uniqueComposite": [
+                            "contactEntityId",
+                            "contactLocationId",
+                            "contactFirstName",
+                            "contactLastName"
+                        ],
+                        "emailScopedUnique": [
+                            "contactEntityId",
+                            "contactEmail"
+                        ]
+                    },
+                    "foreignKeys": [
+                        "tblLocations.locationEntityId → tblEntities.entityId",
+                        "tblContacts.contactEntityId → tblEntities.entityId",
+                        "tblContacts.contactLocationId → tblLocations.locationId"
+                    ]
+                },
+                "flow": [
+                    "ingestInput",
+                    "extractFields",
+                    "resolveEntity",
+                    "resolveLocation",
+                    "resolveContact",
+                    "insertOrUpdate",
+                    "returnStructuredObject"
+                ],
+                "edgeCases": {
+                    "sameNameDifferentEntity": {
+                        "rule": "createNewContact",
+                        "reason": "Entity defines identity scope"
+                    },
+                    "sameNameSameEntityDifferentLocation": {
+                        "rule": "createNewContact",
+                        "reason": "Location defines operational context"
+                    },
+                    "missingLocation": {
+                        "rule": "createDefaultLocation",
+                        "format": "{entityName} - Primary",
+                        "blocking": false
+                    },
+                    "existingContactUpdate": {
+                        "strategy": "fillNullOnly",
+                        "overwrite": "restricted"
+                    },
+                    "conflictingData": {
+                        "strategy": "flagForReview",
+                        "autoOverwrite": false
+                    },
+                    "companyNameVariations": {
+                        "strategy": "normalize_or_alias",
+                        "futureEnhancement": true
+                    }
+                },
+                "examples": {
+                    "valid": [
+                        "Mackenzie Foster @ ID. Associates, Inc @ ID. Associates, Inc - Primary",
+                        "Wahid Alam @ City of Phoenix @ Phoenix City Hall"
+                    ],
+                    "invalid": [
+                        "Contact without location",
+                        "Duplicate contact within same entity and location",
+                        "Contact with non-existent entityId",
+                        "Contact with NULL locationId"
+                    ]
+                },
+                "validation": {
+                    "enforcedBy": [
+                        "database_constraints",
+                        "api_layer",
+                        "ai_parser"
+                    ],
+                    "frequency": "on-insert-and-update",
+                    "action": "Reject or normalize non-compliant records"
+                },
+                "notes": [
+                    "ELC enforcement guarantees that all contacts are fully qualified relational objects.",
+                    "This standard eliminates ambiguity in contact identity across multiple locations.",
+                    "Database constraints are the primary enforcement mechanism; application logic is secondary.",
+                    "This standard serves as the foundation for all contact ingestion, querying, and AI-driven parsing."
+                ]
+            },
             "systemInitializationStandard": {
                 "title": {
                     "icon": 68,
