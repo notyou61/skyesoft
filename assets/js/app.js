@@ -29,6 +29,81 @@ window.SkyeApp.detectPage = function () {
 };
 /* #endregion */
 
+/* #region INTENT RECOGNITION (STEP 0) */
+window.SkyeApp.handleUserInput = async function (inputText) {
+
+    // 🔒 Basic guard
+    if (!inputText || typeof inputText !== "string") return;
+
+    try {
+
+        // 🔄 Immediate UX feedback
+        this.showSystemMessage?.("Analyzing input...");
+
+        // 🔗 Correct backend endpoint (GoDaddy / PHP)
+        const res = await fetch("/skyesoft/api/askOpenAI.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mode: "intent",
+                prompt: inputText
+            })
+        });
+
+        // 🔒 Safe response handling
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const intentResult = await res.json();
+
+        console.log("[Intent]", intentResult);
+
+        const intent = intentResult?.intent;
+        const confidence = intentResult?.confidence ?? 0;
+
+        // ─────────────────────────────────────────
+        // CONTACT PROPOSE DETECTED
+        // ─────────────────────────────────────────
+        if (intent === "contact_propose") {
+
+            // 🟢 HIGH CONFIDENCE → AUTO PROCEED
+            if (confidence >= 0.90) {
+                this.showSystemMessage?.("✅ Contact Signature Recognized");
+                this.startContactFlow?.(inputText);
+                return;
+            }
+
+            // 🟡 MEDIUM CONFIDENCE → CONFIRM
+            if (confidence >= 0.70) {
+                this.showConfirmation?.(
+                    "Contact information detected. Create new contact?",
+                    () => this.startContactFlow?.(inputText),
+                    () => console.log("[Intent] user declined contact creation")
+                );
+                return;
+            }
+
+            // 🔴 LOW CONFIDENCE → FALLBACK
+            console.log("[Intent] low confidence → fallback to chat");
+        }
+
+        // ─────────────────────────────────────────
+        // FALLBACK → NORMAL CHAT FLOW
+        // ─────────────────────────────────────────
+        this.handleStandardChat?.(inputText);
+
+    } catch (err) {
+
+        console.error("[Intent Error]", err);
+
+        // 🔴 HARD FAILSAFE → NEVER BLOCK USER
+        this.showSystemMessage?.("⚠ Unable to analyze input — continuing...");
+        this.handleStandardChat?.(inputText);
+    }
+};
+/* #endregion */
+
 /* #region PAGE REGISTRATION */
 window.SkyeApp.registerPage = function (pageName, handlerObj) {
     this.pageHandlers[pageName] = handlerObj;
