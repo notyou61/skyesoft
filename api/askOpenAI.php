@@ -608,7 +608,31 @@ function discoverDomains(array $payload): array {
         fn($key) => !in_array($key, $exclude, true)
     ));
 }
-// Build Authoritative System Context from SSE snapshot
+// Load recent user/system actions (for context and potential audit) — retrieves the latest 25 actions of type 'user' or 'system' from the database, ordered by most recent, and returns them as an associative array.
+function loadRecentActions(int $limit = 25): array {
+
+    try {
+        $pdo = getPDO();
+
+        $stmt = $pdo->prepare("
+            SELECT promptText, intent, actionUnix
+            FROM tblActions
+            WHERE actionTypeId = 3
+            ORDER BY actionUnix DESC
+            LIMIT :limit
+        ");
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    } catch (Throwable $e) {
+        error_log("[DB Actions Error] " . $e->getMessage());
+        return [];
+    }
+}
+// Build Authoritative System Context from SSE snapshot + activity
 function buildSystemContext(?array $sse): string {
 
     if (!$sse) {
@@ -629,8 +653,7 @@ function buildSystemContext(?array $sse): string {
     ));
 
     // ─────────────────────────────────────────
-    // 🎯 Priority Context (light, stable anchors)
-    // NOTE: This is NOT logic — just convenience
+    // 🎯 Priority Context (light anchors only)
     // ─────────────────────────────────────────
     $priority = [
         "time"    => $sse["timeDateArray"] ?? null,
@@ -638,11 +661,38 @@ function buildSystemContext(?array $sse): string {
     ];
 
     // ─────────────────────────────────────────
-    // 📦 Full Domain Exposure (no transformation)
+    // 📊 Load Recent Actions (behavior layer)
+    // NOTE: no transformation — raw exposure
+    // ─────────────────────────────────────────
+    $actions = [];
+
+    try {
+        $pdo = getPDO();
+
+        $stmt = $pdo->prepare("
+            SELECT promptText, intent, actionUnix
+            FROM tblActions
+            WHERE actionTypeId = 3
+            ORDER BY actionUnix DESC
+            LIMIT 200
+        ");
+
+        $stmt->execute();
+        $actions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    } catch (Throwable $e) {
+        error_log("[buildSystemContext actions error] " . $e->getMessage());
+    }
+
+    // ─────────────────────────────────────────
+    // 📦 Unified Context (state + behavior)
     // ─────────────────────────────────────────
     $context = [
         "priority" => $priority,
         "domains"  => $sse,
+        "activity" => [
+            "recentActions" => $actions
+        ],
         "meta" => [
             "source" => "SSE snapshot",
             "readOnly" => true,
