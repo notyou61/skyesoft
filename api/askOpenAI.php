@@ -608,28 +608,72 @@ function discoverDomains(array $payload): array {
         fn($key) => !in_array($key, $exclude, true)
     ));
 }
-// Load recent user/system actions (for context and potential audit) — retrieves the latest 25 actions of type 'user' or 'system' from the database, ordered by most recent, and returns them as an associative array.
-function loadRecentActions(int $limit = 25): array {
+// Load recent user/system actions (context + behavioral insight)
+function loadRecentActions(int $limit = 30, bool $todayOnly = false): array {
 
     try {
         $pdo = getPDO();
 
-        $stmt = $pdo->prepare("
-            SELECT promptText, intent, actionUnix
+        // ─────────────────────────────────────────
+        // ⏱ Optional time filter (today)
+        // ─────────────────────────────────────────
+        $whereTime = "";
+        if ($todayOnly) {
+            $todayStart = strtotime("today midnight");
+            $whereTime = "AND actionUnix >= :todayStart";
+        }
+
+        // ─────────────────────────────────────────
+        // 📊 Query (expanded fields, still lightweight)
+        // ─────────────────────────────────────────
+        $sql = "
+            SELECT 
+                actionId,
+                promptText,
+                intent,
+                intentConfidence,
+                actionUnix
             FROM tblActions
             WHERE actionTypeId = 3
+            {$whereTime}
             ORDER BY actionUnix DESC
             LIMIT :limit
-        ");
+        ";
+
+        $stmt = $pdo->prepare($sql);
+
+        if ($todayOnly) {
+            $stmt->bindValue(':todayStart', $todayStart, PDO::PARAM_INT);
+        }
 
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // ─────────────────────────────────────────
+        // 📦 Add lightweight metadata (no logic)
+        // ─────────────────────────────────────────
+        return [
+            "rows" => $results,
+            "meta" => [
+                "count" => count($results),
+                "latest" => $results[0]["actionUnix"] ?? null,
+                "earliest" => $results[count($results) - 1]["actionUnix"] ?? null,
+                "filtered" => $todayOnly ? "today" : "recent"
+            ]
+        ];
 
     } catch (Throwable $e) {
         error_log("[DB Actions Error] " . $e->getMessage());
-        return [];
+        return [
+            "rows" => [],
+            "meta" => [
+                "count" => 0,
+                "error" => true
+            ]
+        ];
     }
 }
 // Build Authoritative System Context from SSE snapshot + activity
