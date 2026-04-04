@@ -597,40 +597,35 @@ function buildGovernanceResponse(): string {
 
     return $html;
 }
-// Build Authoritative System Context from SSE snapshot (for AI injection) — includes current time, weather, holiday registry, and KPI overview with clear read-only disclaimers.
+// Build Authoritative System Context from SSE snapshot
 function buildSystemContext(?array $sse): string {
 
     if (!$sse) {
-        return json_encode(["status" => "no_data"]);
+        return json_encode([
+            "status" => "no_data",
+            "message" => "No SSE snapshot available"
+        ]);
     }
 
-    // 🔥 Normalize holiday structure (critical fix)
-    $holidayRaw = $sse["holidayRegistry"] ?? [];
-
-    $normalizedHoliday = [
-        "nextHolidayName" => $holidayRaw["nextHoliday"]["name"]
-            ?? $holidayRaw["nextHolidayName"]
-            ?? null,
-
-        "nextHolidayDate" => $holidayRaw["nextHoliday"]["date"]
-            ?? $holidayRaw["nextHolidayDate"]
-            ?? null,
-
-        "isTodayHoliday" => $holidayRaw["isHoliday"] ?? false
-    ];
+    // ✅ Use canonical SSE fields directly (no transformation)
+    $time     = $sse["timeDateArray"] ?? null;
+    $holiday  = $sse["holidayState"] ?? null;
+    $weather  = $sse["weather"] ?? null;
+    $kpi      = $sse["kpi"]["atAGlance"] ?? null;
 
     return json_encode([
         "priority" => [
-            "time" => $sse["timeDateArray"] ?? null,
-            "holiday" => $normalizedHoliday,
-            "weather" => $sse["weather"] ?? null,
-            "kpiSummary" => $sse["kpi"]["atAGlance"] ?? null
+            "time" => $time,
+            "holiday" => $holiday,
+            "weather" => $weather,
+            "kpiSummary" => $kpi
         ],
         "meta" => [
             "source" => "SSE snapshot",
-            "normalized" => true
+            "readOnly" => true,
+            "schema" => "canonical-pass-through"
         ]
-    ], JSON_PRETTY_PRINT);
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 
 #endregion
