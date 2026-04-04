@@ -4513,15 +4513,33 @@
                     "Duplicate contacts within the same entity-location context are prohibited and must be rejected at the database level.",
                     "Entity names must be unique across the system.",
                     "Location records must be associated with a valid entityId and cannot be orphaned.",
-                    "If no explicit location is available during ingestion, a default location must be created or assigned.",
+                    "If no explicit location is available, a default location must be created and must still pass Google validation to obtain a locationPlaceId before persistence.",
+                    "Duplicate detection for locations must not execute unless locationPlaceId has been successfully resolved.",
                     "Default location naming convention must follow: '{entityName} - Primary'.",
                     "Email addresses must be unique within the scope of an entity (contactEntityId + contactEmail).",
                     "All relational integrity must be enforced via database constraints, not solely application logic.",
                     "Duplicate detection must be performed at both application and database layers.",
                     "Location duplication must be resolved prior to contact insertion.",
                     "All create operations must originate as proposed actions and pass through validation before execution.",
-                    "Action names must represent behavior (verbs), not entities (nouns)."
+                    "Action names must represent behavior (verbs), not entities (nouns).",
+                    "Location identity must be derived from a validated external geospatial authority (Google Places).",
+                    "Each location must include a canonical locationPlaceId, which serves as the primary identity key.",
+                    "Location uniqueness is defined by (locationEntityId, locationPlaceId), not by address string comparison.",
+                    "Address fields are considered descriptive, not authoritative identifiers.",
+                    "Location must pass Tier 1 validation (Google Places) before being considered resolved.",
+                    "Location enrichment (parcel, jurisdiction, zoning) must not block contact creation.",
+                    "All duplicate detection for locations must prioritize locationPlaceId over address comparison.",
+                    "Location validation must always occur before location persistence or duplicate detection.",
+                    "locationPlaceId is required for all persisted location records."
                 ],
+                "commitRules": {
+                    "description": "Defines when database writes are allowed.",
+                    "rules": [
+                        "No database insert or update may occur prior to resolutionOutcome.",
+                        "All commits must follow userDecision unless system automation explicitly allows.",
+                        "Location must be validated (placeId present) before commit."
+                    ]
+                },
                 "inputModes": {
                     "supported": [
                         "structured",
@@ -4533,10 +4551,43 @@
                     "definition": "A contact is accepted only if all ELC components are resolved.",
                     "statuses": ["resolved", "partial", "reject"],
                     "rules": [
-                        "resolved: entity, location, and contact are fully identified",
-                        "partial: one or more ELC components require resolution",
+                        "resolved: entity, validated location (locationPlaceId), and contact are fully identified",
+                        "partial: missing location validation (no placeId) or unresolved ELC components",
                         "reject: insufficient data to determine entity or contact identity"
                     ]
+                },
+                "locationValidation": {
+                    "description": "Defines required validation and optional enrichment of location data.",
+                    "tiers": {
+                        "tier1_required": {
+                            "source": "Google Places API",
+                            "requiredFields": [
+                                "locationPlaceId",
+                                "locationLatitude",
+                                "locationLongitude",
+                                "locationCity",
+                                "locationState",
+                                "locationZip"
+                            ],
+                            "rule": "Location must be validated via Google Places before proceeding."
+                        },
+                        "tier2_conditional": {
+                            "source": "Regional APIs (e.g., Maricopa County)",
+                            "fields": [
+                                "locationParcelNumber",
+                                "locationJurisdiction",
+                                "locationCounty",
+                                "locationCountyFips"
+                            ],
+                            "rule": "Applied only when regional support exists; non-blocking."
+                        },
+                        "tier3_optional": {
+                            "fields": [
+                                "locationZone"
+                            ],
+                            "rule": "Zoning is optional and may be derived via API or manual entry; never blocks insertion."
+                        }
+                    }
                 },
                 "schema": {
                     "identityModel": {
@@ -4569,9 +4620,12 @@
                 "duplicateDetection": {
                     "location": {
                         "matchCriteria": [
-                            "locationEntityId + address",
-                            "locationEntityId + locationName"
+                            "locationEntityId + locationPlaceId"
                         ],
+                        "secondaryCriteria": [
+                            "locationEntityId + normalizedAddress"
+                        ],
+                        "rule": "Primary duplicate detection must rely exclusively on locationPlaceId when available.",
                         "action": "reuse_or_create"
                     },
                     "contact": {
@@ -4588,7 +4642,8 @@
                         "actions": {
                             "exactMatch": "update_or_ignore",
                             "secondaryMatch": "create_new_or_flag",
-                            "conflict": "flag_for_review"
+                            "conflict": "flag_for_review",
+                            "note": "Phone numbers must be normalized prior to comparison."
                         }
                     }
                 },
@@ -4599,7 +4654,9 @@
                             "description": "Resolves entity, location, and contact existence without branching.",
                             "steps": [
                                 "resolveEntity",
-                                "resolveLocation",
+                                "validateLocationWithGoogle",
+                                "resolveLocationRecord",
+                                "applyConditionalEnrichment",
                                 "checkLocationDuplicate",
                                 "checkContactDuplicate"
                             ]
@@ -4617,12 +4674,15 @@
                     }
                 },
                 "flow": [
-                    "ingestInput",
-                    "parseSignature (if applicable)",
-                    "validateAIResponse",
-                    "resolutionPhase",
-                    "decisionPhase",
-                    "insertOrUpdate",
+                    "proposedContactSubmitted",
+                    "createProposedContactObject",
+                    "completenessCheck",
+                    "validateLocationWithGoogle",
+                    "enrichLocationIfAvailable",
+                    "duplicateReview",
+                    "resolutionOutcome",
+                    "userDecision",
+                    "commit",
                     "returnStructuredObject"
                 ],
                 "decisionLogic": {
@@ -4691,6 +4751,12 @@
                     "conflictingData": {
                         "strategy": "flagForReview",
                         "autoOverwrite": false
+                    },
+                    "locationValidationFailure": {
+                        "rule": "partial",
+                        "action": "request_user_input_or_retry",
+                        "blocking": true,
+                        "reason": "Location identity cannot be established without placeId"
                     }
                 },
                 "examples": {
