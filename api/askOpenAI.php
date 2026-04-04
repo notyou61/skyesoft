@@ -597,6 +597,35 @@ function buildGovernanceResponse(): string {
 
     return $html;
 }
+// Build Authoritative System Context from SSE snapshot (for AI injection) — includes current time, weather, holiday registry, and KPI overview with clear read-only disclaimers.
+function buildSystemContext(?array $sse): string {
+
+    if (!$sse) {
+        return json_encode([
+            "status" => "no_data",
+            "message" => "No SSE snapshot available"
+        ]);
+    }
+
+    return json_encode([
+        "priority" => [
+            // 🔥 AI will look here FIRST
+            "time" => $sse["timeDateArray"] ?? null,
+            "holiday" => $sse["holidayRegistry"]["nextHoliday"] ?? null,
+            "weather" => $sse["weather"] ?? null,
+            "kpiSummary" => $sse["kpi"]["atAGlance"] ?? null
+        ],
+        "extended" => [
+            // 🔹 AI can look deeper if needed
+            "kpi" => $sse["kpi"] ?? null,
+            "systemRegistry" => $sse["systemRegistry"] ?? null
+        ],
+        "meta" => [
+            "source" => "SSE snapshot",
+            "readOnly" => true
+        ]
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+}
 
 #endregion
 
@@ -1064,20 +1093,26 @@ PROMPT;
 
     $sseSnapshot = loadSseSnapshot();
 
-    $authoritativeContext = $sseSnapshot
-        ? extractPermitContext($sseSnapshot) . "\n\n" . extractTimeContext($sseSnapshot)
-        : "No authoritative context available.";
-
     $responsePrompt = loadResponseGenerationPrompt();
     if ($responsePrompt === "") {
         aiFail("Response generation prompt not available.");
     }
 
-    $basePrompt = <<<PROMPT
+$systemContext = buildSystemContext($sseSnapshot);
+
+$basePrompt = <<<PROMPT
 {$responsePrompt}
 
-Authoritative Context (read-only):
-{$authoritativeContext}
+You are operating with real-time system data.
+
+Guidelines:
+- Prefer "priority" data when available
+- Use "extended" only if needed
+- If required data is missing, explicitly say so
+- Do NOT infer values not present in SYSTEM DATA
+
+SYSTEM DATA (JSON):
+{$systemContext}
 
 User Input:
 {$query}
