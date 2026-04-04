@@ -601,30 +601,36 @@ function buildGovernanceResponse(): string {
 function buildSystemContext(?array $sse): string {
 
     if (!$sse) {
-        return json_encode([
-            "status" => "no_data",
-            "message" => "No SSE snapshot available"
-        ]);
+        return json_encode(["status" => "no_data"]);
     }
+
+    // 🔥 Normalize holiday structure (critical fix)
+    $holidayRaw = $sse["holidayRegistry"] ?? [];
+
+    $normalizedHoliday = [
+        "nextHolidayName" => $holidayRaw["nextHoliday"]["name"]
+            ?? $holidayRaw["nextHolidayName"]
+            ?? null,
+
+        "nextHolidayDate" => $holidayRaw["nextHoliday"]["date"]
+            ?? $holidayRaw["nextHolidayDate"]
+            ?? null,
+
+        "isTodayHoliday" => $holidayRaw["isHoliday"] ?? false
+    ];
 
     return json_encode([
         "priority" => [
-            // 🔥 AI will look here FIRST
             "time" => $sse["timeDateArray"] ?? null,
-            "holiday" => $sse["holidayRegistry"]["nextHoliday"] ?? null,
+            "holiday" => $normalizedHoliday,
             "weather" => $sse["weather"] ?? null,
             "kpiSummary" => $sse["kpi"]["atAGlance"] ?? null
         ],
-        "extended" => [
-            // 🔹 AI can look deeper if needed
-            "kpi" => $sse["kpi"] ?? null,
-            "systemRegistry" => $sse["systemRegistry"] ?? null
-        ],
         "meta" => [
             "source" => "SSE snapshot",
-            "readOnly" => true
+            "normalized" => true
         ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    ], JSON_PRETTY_PRINT);
 }
 
 #endregion
