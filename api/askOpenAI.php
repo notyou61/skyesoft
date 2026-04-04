@@ -687,7 +687,7 @@ function buildSystemContext(?array $sse): string {
     }
 
     // ─────────────────────────────────────────
-    // 🔍 Discover Domains (dynamic, no hardcoding)
+    // 🔍 Discover Domains
     // ─────────────────────────────────────────
     $exclude = ["auth", "idle", "streamId", "sessionId", "forceLogout"];
 
@@ -697,7 +697,7 @@ function buildSystemContext(?array $sse): string {
     ));
 
     // ─────────────────────────────────────────
-    // 🎯 Priority Context (light anchors only)
+    // 🎯 Priority Context
     // ─────────────────────────────────────────
     $priority = [
         "time"    => $sse["timeDateArray"] ?? null,
@@ -705,37 +705,23 @@ function buildSystemContext(?array $sse): string {
     ];
 
     // ─────────────────────────────────────────
-    // 📊 Load Recent Actions (behavior layer)
-    // NOTE: no transformation — raw exposure
+    // 📊 Use SINGLE SOURCE OF TRUTH (IMPORTANT)
     // ─────────────────────────────────────────
-    $actions = [];
+    $activityData = loadRecentActions(30); // ✅ use your function
 
-    try {
-        $pdo = getPDO();
-
-        $stmt = $pdo->prepare("
-            SELECT promptText, intent, actionUnix
-            FROM tblActions
-            WHERE actionTypeId = 3
-            ORDER BY actionUnix DESC
-            LIMIT 200
-        ");
-
-        $stmt->execute();
-        $actions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    } catch (Throwable $e) {
-        error_log("[buildSystemContext actions error] " . $e->getMessage());
-    }
+    // Flatten for AI clarity
+    $recentActions = $activityData["rows"] ?? [];
+    $activityMeta  = $activityData["meta"] ?? [];
 
     // ─────────────────────────────────────────
-    // 📦 Unified Context (state + behavior)
+    // 📦 Unified Context
     // ─────────────────────────────────────────
     $context = [
         "priority" => $priority,
         "domains"  => $sse,
         "activity" => [
-            "recentActions" => $actions
+            "recentActions" => $recentActions,
+            "meta" => $activityMeta
         ],
         "meta" => [
             "source" => "SSE snapshot",
