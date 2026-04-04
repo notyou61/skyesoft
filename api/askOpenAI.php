@@ -597,6 +597,17 @@ function buildGovernanceResponse(): string {
 
     return $html;
 }
+// Discover Domains from payload (for dynamic intent classification) — excludes known system/meta fields and returns a clean list of candidate domains for AI processing.
+function discoverDomains(array $payload): array {
+
+    // exclude system/meta fields
+    $exclude = ["auth", "idle", "streamId", "sessionId", "forceLogout"];
+
+    return array_values(array_filter(
+        array_keys($payload),
+        fn($key) => !in_array($key, $exclude, true)
+    ));
+}
 // Build Authoritative System Context from SSE snapshot
 function buildSystemContext(?array $sse): string {
 
@@ -607,25 +618,43 @@ function buildSystemContext(?array $sse): string {
         ]);
     }
 
-    // ✅ Use canonical SSE fields directly (no transformation)
-    $time     = $sse["timeDateArray"] ?? null;
-    $holiday  = $sse["holidayState"] ?? null;
-    $weather  = $sse["weather"] ?? null;
-    $kpi      = $sse["kpi"]["atAGlance"] ?? null;
+    // ─────────────────────────────────────────
+    // 🔍 Discover Domains (dynamic, no hardcoding)
+    // ─────────────────────────────────────────
+    $exclude = ["auth", "idle", "streamId", "sessionId", "forceLogout"];
 
-    return json_encode([
-        "priority" => [
-            "time" => $time,
-            "holiday" => $holiday,
-            "weather" => $weather,
-            "kpiSummary" => $kpi
-        ],
+    $domains = array_values(array_filter(
+        array_keys($sse),
+        fn($key) => !in_array($key, $exclude, true)
+    ));
+
+    // ─────────────────────────────────────────
+    // 🎯 Priority Context (light, stable anchors)
+    // NOTE: This is NOT logic — just convenience
+    // ─────────────────────────────────────────
+    $priority = [
+        "time"    => $sse["timeDateArray"] ?? null,
+        "holiday" => $sse["holidayState"] ?? null
+    ];
+
+    // ─────────────────────────────────────────
+    // 📦 Full Domain Exposure (no transformation)
+    // ─────────────────────────────────────────
+    $context = [
+        "priority" => $priority,
+        "domains"  => $sse,
         "meta" => [
             "source" => "SSE snapshot",
             "readOnly" => true,
-            "schema" => "canonical-pass-through"
+            "schema" => "dynamic",
+            "availableDomains" => $domains
         ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    ];
+
+    return json_encode(
+        $context,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+    );
 }
 
 #endregion
