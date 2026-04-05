@@ -1137,6 +1137,8 @@ window.SkyIndex = {
 
         // Console log for debugging (remove when AI handling is solid)
         console.log('[CMD]', normalized, canonicalAction);
+        console.log('[REGISTRY]', this.uiActionRegistry);
+        console.log('[HANDLER]', this.uiActionRegistry?.[canonicalAction]);
 
         // ───────────────────────────────────────────────
         // Otherwise defer to AI
