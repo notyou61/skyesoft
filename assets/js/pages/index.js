@@ -285,11 +285,13 @@ window.SkyIndex = {
 
     appendCodeBlock(html) {
 
-        const output = this.cardHost.querySelector('.commandOutput');
+        const output = this.cardHost?.querySelector('.commandOutput');
         if (!output) return;
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'commandLine system code';
+
+        // 🔥 IMPORTANT — remove "system"
+        wrapper.className = 'commandLine code';
 
         wrapper.innerHTML = html;
 
@@ -1360,9 +1362,13 @@ window.SkyIndex = {
                     data.response.includes('<button');
 
                 if (looksLikeHtml) {
-                    this.appendSystemHtml(data.response);
-                } else {
-                    this.appendSystemLine(data.response);
+
+                    if (data.response.includes('codeBlock')) {
+                        this.appendCodeBlock(data.response);
+                    } else {
+                        this.appendSystemHtml(data.response);
+                    }
+
                 }
 
                 return;

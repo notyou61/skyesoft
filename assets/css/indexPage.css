@@ -596,7 +596,12 @@ body[data-page="index"] .authText {
 }
 /* #endregion */
 
-/* #region 🧾 Code Block */
+/* #region 🧾 Command Line & Code Block */
+.commandLine.code {
+    background: transparent;
+    padding: 0;
+}
+
 .codeBlock {
     background: #111;
     color: #eaeaea;
@@ -607,5 +612,6 @@ body[data-page="index"] .authText {
     line-height: 1.4;
     overflow-x: auto;
     white-space: pre;
+    margin: 6px 0;
 }
 /* #endregion */
