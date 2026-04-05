@@ -746,7 +746,7 @@ window.SkyIndex = {
         this.uiActionRegistry = {
             // Clear Screen
             clear_screen: () => {
-                this.clearScreen?.();
+                this.clearSessionSurface();
             },
 
             // Logout
