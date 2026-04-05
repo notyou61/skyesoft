@@ -992,6 +992,15 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🔐 Helpers — Safe Rendering
+    escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    },
+    // #endregion
+
     // #region 🧠 Command Interface Card
     renderCommandInterfaceCard() {
 

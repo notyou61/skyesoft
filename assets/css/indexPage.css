@@ -595,3 +595,17 @@ body[data-page="index"] .authText {
     background: #1565c0;
 }
 /* #endregion */
+
+/* #region 🧾 Code Block */
+.codeBlock {
+    background: #111;
+    color: #eaeaea;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+}
+/* #endregion */
