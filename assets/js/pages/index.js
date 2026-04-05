@@ -1148,7 +1148,7 @@ window.SkyIndex = {
             // 🌍 Resolve Location (cached + non-blocking)
             let location = this.lastLocation;
 
-            if (!location) {
+            if (!location || location.latitude === null || location.longitude === null) {
                 location = await Promise.race([
                     this.getLocationSafe(),
                     new Promise(resolve =>
@@ -1323,7 +1323,7 @@ window.SkyIndex = {
             // 🌍 Get location with better timeout handling + caching
             let location = this.lastLocation || { latitude: null, longitude: null };
 
-            if (!location.latitude && !location.longitude) {
+            if (location.latitude === null || location.longitude === null) {
                 try {
                     // Give location up to 4 seconds (geolocation prompt can be slow)
                     location = await Promise.race([
@@ -1334,7 +1334,9 @@ window.SkyIndex = {
                     ]);
 
                     // Cache it for future AI commands / actions
-                    this.lastLocation = location;
+                    if (location.latitude !== null && location.longitude !== null) {
+                        this.lastLocation = location;
+                    }
 
                     console.log('[AUTH GEO]', location);
 
