@@ -576,7 +576,7 @@ window.SkyIndex = {
     uiActionRegistry: {
         // 🧹 Clear Session Surface
         clear_screen() {
-            this.clearSessionSurface?.();
+            this.clearSessionSurface();
         },
         // 🔓 Logout (Manual User Logout)
         logout() {
