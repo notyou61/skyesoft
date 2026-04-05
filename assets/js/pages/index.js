@@ -971,11 +971,17 @@ window.SkyIndex = {
 
             this.appendSystemLine(`📄 ${file}`);
 
-            const preview = data.content.length > 5000
+            // Truncate large files for UI safety
+            const content = data.content.length > 5000
                 ? data.content.slice(0, 5000) + '\n\n... (truncated)'
                 : data.content;
 
-            this.appendSystemLine(preview);
+            // Render as formatted code block
+            this.appendSystemHtml(`
+                <div class="codeBlock">
+                    <pre>${this.escapeHtml(content)}</pre>
+                </div>
+            `);
 
         } catch (err) {
 
