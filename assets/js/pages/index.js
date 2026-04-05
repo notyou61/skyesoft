@@ -956,6 +956,36 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📄 Code Reader
+    async readCodeFile(file) {
+
+        try {
+
+            const res = await fetch(`/skyesoft/api/codeReader.php?file=${encodeURIComponent(file)}`);
+            const data = await res.json();
+
+            if (data.error) {
+                this.appendSystemLine(`❌ ${data.error}`);
+                return;
+            }
+
+            this.appendSystemLine(`📄 ${file}`);
+
+            const preview = data.content.length > 5000
+                ? data.content.slice(0, 5000) + '\n\n... (truncated)'
+                : data.content;
+
+            this.appendSystemLine(preview);
+
+        } catch (err) {
+
+            console.error('[CodeReader]', err);
+            this.appendSystemLine('❌ Failed to read file');
+
+        }
+    },
+    // #endregion
+
     // #region 🧠 Command Interface Card
     renderCommandInterfaceCard() {
 
@@ -1099,7 +1129,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🧠 Command Router
+    // #region 🧠 Command Router 
     async handleCommand(text) {
 
         this.appendSystemLine(text, 'user');
@@ -1110,35 +1140,48 @@ window.SkyIndex = {
             .toLowerCase();
 
         // ───────────────────────────────────────────────
-        // 🎯 Canonical Action Resolver (authoritative)
+        // 📄 Code Reader Command
+        // ───────────────────────────────────────────────
+        if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
+
+            const file = normalized
+                .replace(/^read\s+/, '')
+                .replace(/^open\s+/, '')
+                .trim();
+
+            console.log('[CODE READ]', file);
+
+            await this.readCodeFile(file);
+            return;
+        }
+
+        // ───────────────────────────────────────────────
+        // 🎯 Canonical Action Resolver
         // ───────────────────────────────────────────────
         let canonicalAction = null;
 
-        // Direct commands
         if (normalized === 'cls' || normalized === 'clear' || normalized === 'reset') {
             canonicalAction = 'clear_screen';
         }
         else if (normalized === 'logout' || normalized === 'exit') {
             canonicalAction = 'logout';
         }
-        // Fuzzy matching (AI-like phrasing)
         else if (normalized.includes('clear')) {
             canonicalAction = 'clear_screen';
         }
 
         // ───────────────────────────────────────────────
-        // ⚙️ Execute Native Action (if resolved)
+        // ⚙️ Execute Native Action
         // ───────────────────────────────────────────────
         if (canonicalAction) {
 
             const handler = this.uiActionRegistry?.[canonicalAction];
 
-            // Debug (remove later)
             console.log('[CMD]', normalized, canonicalAction);
             console.log('[HANDLER]', handler);
 
             if (typeof handler === 'function') {
-                await handler.call(this); // 🔥 critical fix (bind context)
+                await handler.call(this);
                 return;
             }
 
@@ -1146,7 +1189,7 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
-        // 🤖 Defer to AI (fallback)
+        // 🤖 AI fallback
         // ───────────────────────────────────────────────
         await this.executeAICommand(text);
 
