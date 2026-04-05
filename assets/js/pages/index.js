@@ -1107,9 +1107,9 @@ window.SkyIndex = {
         const normalized = text.trim().toLowerCase();
 
         // ───────────────────────────────────────────────
-        // Native Terminal Commands (Immediate)
+        // Canonical Action Resolver (shared logic)
         // ───────────────────────────────────────────────
-        const nativeCommands = {
+        const actionMap = {
             cls: 'clear_screen',
             clear: 'clear_screen',
             reset: 'clear_screen',
@@ -1117,16 +1117,20 @@ window.SkyIndex = {
             exit: 'logout'
         };
 
-        if (nativeCommands[normalized]) {
+        let canonicalAction =
+            actionMap[normalized] ||
+            (normalized.includes('clear') ? 'clear_screen' : null);
 
-            const action = nativeCommands[normalized];
-            const handler = this.uiActionRegistry?.[action];
+        // ───────────────────────────────────────────────
+        // Execute Native Action (if matched)
+        // ───────────────────────────────────────────────
+        if (canonicalAction) {
+
+            const handler = this.uiActionRegistry?.[canonicalAction];
 
             if (typeof handler === 'function') {
-
-                await handler();   // ensure async handlers complete
+                await handler();
                 return;
-
             }
 
         }
@@ -1134,7 +1138,7 @@ window.SkyIndex = {
         // ───────────────────────────────────────────────
         // Otherwise defer to AI
         // ───────────────────────────────────────────────
-        this.executeAICommand(text);
+        await this.executeAICommand(text);
 
     },
     // #endregion
@@ -1191,15 +1195,19 @@ window.SkyIndex = {
                     reset: 'clear_screen'
                 };
 
-                const action = data.action ?? data.response;
+                const rawAction = (data.action ?? data.response ?? '')
+                    .toString()
+                    .trim()
+                    .toLowerCase();
 
                 const canonicalAction =
-                    actionMap[action] ?? action;
+                    actionMap[rawAction] ||
+                    (rawAction.includes('clear') ? 'clear_screen' : rawAction);
 
                 const handler = this.uiActionRegistry?.[canonicalAction];
 
                 if (typeof handler === 'function') {
-                    handler();
+                    await handler(); // ✅ ensures execution completes
                     return;
                 }
 
