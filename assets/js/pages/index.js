@@ -283,6 +283,20 @@ window.SkyIndex = {
         output.scrollTop = output.scrollHeight;
     },
 
+    appendCodeBlock(html) {
+
+        const output = this.cardHost.querySelector('.commandOutput');
+        if (!output) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'commandLine system code';
+
+        wrapper.innerHTML = html;
+
+        output.appendChild(wrapper);
+        output.scrollTop = output.scrollHeight;
+    },
+
     // #endregion
 
     // #region 📦 Registry Loaders
@@ -977,7 +991,7 @@ window.SkyIndex = {
                 : data.content;
 
             // Render as formatted code block
-            this.appendSystemHtml(`
+            this.appendCodeBlock(`
                 <div class="codeBlock">
                     <pre>${this.escapeHtml(content)}</pre>
                 </div>
