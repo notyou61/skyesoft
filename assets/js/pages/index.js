@@ -1104,44 +1104,49 @@ window.SkyIndex = {
 
         this.appendSystemLine(text, 'user');
 
-        const normalized = text.trim().toLowerCase();
+        const normalized = (text || '')
+            .toString()
+            .trim()
+            .toLowerCase();
 
         // ───────────────────────────────────────────────
-        // Canonical Action Resolver (shared logic)
+        // 🎯 Canonical Action Resolver (authoritative)
         // ───────────────────────────────────────────────
-        const actionMap = {
-            cls: 'clear_screen',
-            clear: 'clear_screen',
-            reset: 'clear_screen',
-            logout: 'logout',
-            exit: 'logout'
-        };
+        let canonicalAction = null;
 
-        let canonicalAction =
-            actionMap[normalized] ||
-            (normalized.includes('clear') ? 'clear_screen' : null);
+        // Direct commands
+        if (normalized === 'cls' || normalized === 'clear' || normalized === 'reset') {
+            canonicalAction = 'clear_screen';
+        }
+        else if (normalized === 'logout' || normalized === 'exit') {
+            canonicalAction = 'logout';
+        }
+        // Fuzzy matching (AI-like phrasing)
+        else if (normalized.includes('clear')) {
+            canonicalAction = 'clear_screen';
+        }
 
         // ───────────────────────────────────────────────
-        // Execute Native Action (if matched)
+        // ⚙️ Execute Native Action (if resolved)
         // ───────────────────────────────────────────────
         if (canonicalAction) {
 
             const handler = this.uiActionRegistry?.[canonicalAction];
 
+            // Debug (remove later)
+            console.log('[CMD]', normalized, canonicalAction);
+            console.log('[HANDLER]', handler);
+
             if (typeof handler === 'function') {
-                await handler();
+                await handler.call(this); // 🔥 critical fix (bind context)
                 return;
             }
 
+            console.warn('[CMD] No handler found for:', canonicalAction);
         }
 
-        // Console log for debugging (remove when AI handling is solid)
-        console.log('[CMD]', normalized, canonicalAction);
-        console.log('[REGISTRY]', this.uiActionRegistry);
-        console.log('[HANDLER]', this.uiActionRegistry?.[canonicalAction]);
-
         // ───────────────────────────────────────────────
-        // Otherwise defer to AI
+        // 🤖 Defer to AI (fallback)
         // ───────────────────────────────────────────────
         await this.executeAICommand(text);
 
