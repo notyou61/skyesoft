@@ -1553,6 +1553,51 @@
                     "text": "All modules performing CRUD operations must respect the lifecycle rules declared by their domain. No deletion behavior may be assumed."
                 }
             },
+            "proposalLifecyclePolicy": {
+                "description": "Defines the lifecycle of all proposed data within the system, separating submission, evaluation, and execution into distinct stages.",
+                "stages": [
+                    "propose",
+                    "acknowledge",
+                    "accept"
+                ],
+                "definitions": {
+                    "propose": "Represents the initial submission of data by a user. No validation or persistence has occurred.",
+                    "acknowledge": "Represents the system's evaluation of the proposed data, including parsing, validation, resolution, and classification.",
+                    "accept": "Represents the system's execution of a validated proposal, resulting in database persistence or state change."
+                },
+                "rules": [
+                    "Every proposed input must generate a propose action before any processing occurs.",
+                    "Every proposal must result in an acknowledge action, regardless of outcome.",
+                    "Accept actions must result in database persistence or state change aligned with the recommendedAction defined in resolutionOutcome.",
+                    "Accept must only execute when resolutionOutcome.status = 'resolved'.",
+                    "No database persistence may occur prior to acknowledge.",
+                    "Acknowledge actions must persist the resolutionOutcome object as the authoritative representation of system evaluation.",
+                    "If acknowledge results in 'partial' or 'reject', accept must not execute.",
+                    "The lifecycle must be strictly ordered: propose → acknowledge → accept.",
+                    "All lifecycle stages must be logged as actions and must map to valid actionTypeId entries in tblActionTypes.",
+                    "Each propose, acknowledge, and accept action must be traceable via a shared proposalId or equivalent correlation identifier."
+                ],
+                "mapping": {
+                    "propose": {
+                    "actionType": "propose",
+                    "stage": "input"
+                    },
+                    "acknowledge": {
+                    "actionType": "acknowledge",
+                    "stage": "evaluation"
+                    },
+                    "accept": {
+                    "actionType": "accept",
+                    "stage": "execution"
+                    }
+                },
+                "integration": {
+                    "tier1": "propose → acknowledge",
+                    "tier2": "accept (conditional)",
+                    "resolutionDependency": "acknowledge must be derived from resolutionOutcome",
+                    "transactionDependency": "accept triggers database transaction"
+                }
+            },
             "dataGovernance": {
                 "icon": 20,
                 "title": "Data Governance Standards",
