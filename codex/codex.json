@@ -4542,12 +4542,13 @@
                 "locationValidationStrategy": {
                     "description": "Defines mandatory validation behavior for all location inputs.",
                     "rules": [
-                        "All proposed locations must undergo validation via Google Places prior to any duplicate detection or persistence.",
+                        "All proposed locations must undergo validation via Google Places prior to any duplicate detection, resolution, or persistence.",
                         "locationPlaceId must be resolved from Google Places and is required for all persisted location records.",
                         "Census API must be executed for all validated locations to determine state, county, and countyFips.",
                         "Parcel lookup must execute only when Census resolves state = 'AZ' AND county = 'Maricopa'.",
-                        "Location identity is determined only after validation completes.",
+                        "Location identity must only be determined after validation completes.",
                         "Duplicate detection for locations must only occur after validation has resolved locationPlaceId.",
+                        "No database operations may occur until location validation has successfully completed.",
                         "If locationPlaceId cannot be resolved, location validation fails and contact creation must not proceed."
                     ]
                 },
@@ -4766,6 +4767,7 @@
                         "contactStatus"
                     ],
                     "rules": [
+                        "Fork evaluation must occur only after location validation and resolution have completed.",
                         "If contactStatus = existing, system must not create a duplicate record.",
                         "If contactStatus = possible_match, system must flag for review.",
                         "If entityStatus = new, entity must be created before continuing.",
