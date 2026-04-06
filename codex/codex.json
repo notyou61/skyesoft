@@ -4518,16 +4518,14 @@
                         "logAction"
                     ],
                     "rules": [
-                        "Entity must be resolved or created before location.",
-                        "Location must be validated with Google Places and include locationPlaceId before persistence.",
-                        "Census API must be used to determine state, county, and countyFips prior to any parcel lookup decision.",
-                        "If state = AZ and county = Maricopa, Maricopa County API must be used to resolve parcel number and jurisdiction.",
-                        "Location must be inserted before contact due to foreign key constraints.",
-                        "Contact must be inserted before action logging.",
-                        "All operations must occur within a single transaction.",
-                        "Failure at any step must result in full rollback.",
-                        "locationPlaceId must be resolved prior to any location insert and is required for all persisted location records.",
-                        "Action logging must occur after contact insertion and must reference a valid contactId."
+                        "Entity must be resolved or created before location processing begins.",
+                        "Location validation must complete before any location record is resolved or persisted.",
+                        "Census resolution must occur after Google validation and prior to any parcel lookup decision.",
+                        "Parcel lookup must execute only when Census resolves state = 'AZ' AND county = 'Maricopa'.",
+                        "Location must be resolved and persisted before contact insertion due to foreign key constraints.",
+                        "Contact must be inserted before action logging due to foreign key constraints.",
+                        "Action logging must occur after contact insertion and must reference a valid contactId.",
+                        "All steps in the creation sequence must complete successfully before any dependent step executes."
                     ]
                 },
                 "jurisdictionModel": {
@@ -4541,13 +4539,32 @@
                         "All permitting logic must reference locationJurisdiction, not locationCity."
                     ]
                 },
+                "locationValidationStrategy": {
+                    "description": "Defines mandatory validation behavior for all location inputs.",
+                    "rules": [
+                        "All proposed locations must undergo validation via Google Places prior to any duplicate detection or persistence.",
+                        "locationPlaceId must be resolved from Google Places and is required for all persisted location records.",
+                        "Census API must be executed for all validated locations to determine state, county, and countyFips.",
+                        "Parcel lookup must execute only when Census resolves state = 'AZ' AND county = 'Maricopa'.",
+                        "Location identity is determined only after validation completes.",
+                        "Duplicate detection for locations must only occur after validation has resolved locationPlaceId.",
+                        "If locationPlaceId cannot be resolved, location validation fails and contact creation must not proceed."
+                    ]
+                },
+                "placeIdLifecycle": {
+                    "description": "Defines how locationPlaceId is maintained over time.",
+                    "rules": [
+                        "locationPlaceId is treated as the primary external identity reference but is not assumed to be permanently static.",
+                        "Existing locations must not have their placeId overwritten without validation.",
+                        "PlaceId revalidation may occur based on staleness thresholds.",
+                        "If a new placeId is returned, the system must compare geospatial and address data before updating.",
+                        "PlaceId changes must be treated as potential identity shifts and flagged for review if inconsistencies are detected.",
+                        "Location records must remain stable even if external identifiers change."
+                    ]
+                },
                 "transactionRules": {
                     "description": "Defines database transaction integrity for ELC creation.",
                     "rules": [
-                        "All ELC creation operations must execute within a single transaction.",
-                        "Entity, location, contact, and action inserts must succeed together or fail together.",
-                        "Partial persistence is strictly prohibited.",
-                        "Rollback must occur on any constraint violation or API failure that blocks required fields.",
                         "Database constraints are the final enforcement layer."
                     ]
                 },
@@ -4560,32 +4577,18 @@
                     "Entity names must be globally unique across the system (entityName).",
                     "Location records must be associated with a valid entityId and cannot be orphaned.",
                     "Location identity must be derived from a validated external geospatial authority (Google Places).",
-                    "Each location must include a canonical locationPlaceId, which serves as the primary identity key.",
-                    "locationPlaceId is required for all persisted location records and must be resolved prior to duplicate detection or insert.",
                     "Location uniqueness is defined by (locationEntityId, locationPlaceId), not by address string comparison.",
                     "Address fields are descriptive only and must not be used as authoritative identifiers.",
-                    "Location must pass Tier 1 validation (Google Places) before being considered resolved.",
-                    "Duplicate detection for locations must not execute unless locationPlaceId has been successfully resolved.",
-                    "All duplicate detection for locations must prioritize locationPlaceId over address comparison.",
-                    "Location validation must always occur before location persistence or duplicate detection.",
-                    "If no explicit location is available, a default location must be created using the format '{entityName} - Primary' and must still pass Google validation.",
+                    "If no explicit location is available, contact creation must be marked as partial until a valid locationPlaceId can be resolved.",
                     "Location resolution must include Census-based determination of state, county, and countyFips.",
-                    "Parcel lookup must execute only when state = AZ and county = Maricopa.",
-                    "Location enrichment must not block contact creation except when required identity fields (locationPlaceId) are missing. Parcel and jurisdiction enrichment remain non-blocking.",
+                    "Parcel lookup must execute only when Census resolves state = 'AZ' AND county = 'Maricopa'.",
+                    "Location enrichment must not block contact creation except when required identity fields (locationPlaceId) are missing.",
                     "locationCity represents mailing/postal city derived from Google Places and must never be overridden by parcel or jurisdiction data.",
                     "locationJurisdiction represents governing authority and must be derived from parcel data when available, otherwise from county fallback.",
                     "locationCity and locationJurisdiction are independent fields and must never be assumed equal.",
-                    "If parcel data is unavailable and county = Maricopa, locationJurisdiction must default to 'Maricopa County'.",
+                    "If parcel data is unavailable and county = 'Maricopa', locationJurisdiction must default to 'Maricopa County'.",
                     "All permitting and jurisdictional logic must reference locationJurisdiction, not locationCity.",
-                    "Contact creation must follow strict insert order: entity → location → contact → action.",
-                    "Entity must be resolved or created before location processing begins.",
-                    "Location must be resolved and persisted before contact insertion due to foreign key constraints.",
-                    "Contact must be inserted before action logging due to foreign key constraints.",
                     "All create operations must originate as proposed actions and pass through validation before execution.",
-                    "All ELC creation operations must execute within a single transaction.",
-                    "Entity, location, contact, and action inserts must succeed together or fail together (atomicity).",
-                    "Partial persistence of ELC records is strictly prohibited.",
-                    "Rollback must occur on any failure affecting required fields or relational integrity.",
                     "All relational integrity must be enforced via database constraints, not solely application logic.",
                     "Duplicate detection must be performed at both application and database layers.",
                     "Location duplication must be resolved prior to contact insertion.",
@@ -4755,6 +4758,20 @@
                     "logAction",
                     "returnStructuredObject"
                 ],
+                "resolutionFork": {
+                    "description": "Determines system path after initial resolution checks.",
+                    "dimensions": [
+                        "entityStatus",
+                        "locationStatus",
+                        "contactStatus"
+                    ],
+                    "rules": [
+                        "If contactStatus = existing, system must not create a duplicate record.",
+                        "If contactStatus = possible_match, system must flag for review.",
+                        "If entityStatus = new, entity must be created before continuing.",
+                        "Fork evaluation must occur before any database write."
+                    ]
+                },
                 "actionLogging": {
                     "description": "Defines required logging behavior for all contact creation events.",
                     "rules": [
@@ -4820,9 +4837,10 @@
                         "reason": "Location defines operational context"
                     },
                     "missingLocation": {
-                        "rule": "createDefaultLocation",
-                        "format": "{entityName} - Primary",
-                        "blocking": false
+                        "rule": "partial",
+                        "action": "request_location_input",
+                        "blocking": true,
+                        "reason": "Location data is required to resolve locationPlaceId via Google Places."
                     },
                     "existingContactUpdate": {
                         "strategy": "fillNullOnly",
