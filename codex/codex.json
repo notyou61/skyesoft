@@ -4763,8 +4763,85 @@
                         }
                     }
                 },
+                "pipelineModel": {
+                    "description": "Defines the end-to-end execution pipeline for all data ingestion, separating input capture, evaluation, decision-making, and persistence into distinct stages.",
+                    "stages": {
+                        "proposeStage": {
+                            "order": 1,
+                            "description": "Initial stage where user-submitted data is captured and logged prior to parsing and validation.",
+                            "position": "pre-resolution",
+                            "trigger": "proposedContactSubmitted",
+                            "outputs": [
+                                "proposalId",
+                                "rawInput",
+                                "inputType",
+                                "submittedAt",
+                                "submittedBy"
+                            ],
+                            "rules": [
+                                "All input must be logged as a propose action before any processing occurs.",
+                                "Raw input must be preserved exactly as submitted.",
+                                "No parsing or validation may occur at this stage.",
+                                "Each proposal must generate a unique proposalId.",
+                                "Propose stage must not interact with ELC tables.",
+                                "Propose stage must initiate the proposalLifecycleModel."
+                            ]
+                        },
+                        "processingModel": {
+                            "order": 2
+                        },
+                        "decisionPhase": {
+                            "order": 3
+                        },
+                        "commitPhase": {
+                            "order": 4
+                        },
+                        "actionLogging": {
+                            "order": 5
+                        }
+                    },
+                    "definitions": {
+                        "proposeStage": "Captures raw user input and logs a propose action. No parsing, validation, or database operations occur.",
+                        "processingModel": "Parses and resolves entity, location, and contact data. Includes validation and duplicate detection. No database writes occur.",
+                        "decisionPhase": "Determines system outcome based on resolution results (reject, partial, resolved). Produces resolutionOutcome.",
+                        "commitPhase": "Executes database operations when resolutionOutcome permits. Inserts or updates records under transaction control.",
+                        "actionLogging": "Logs all lifecycle actions (propose, acknowledge, accept) with full traceability and context."
+                    },
+                    "rules": [
+                        "Stages must execute strictly in defined order with no skipping.",
+                        "No database operations may occur before commitPhase.",
+                        "All input must pass through proposeStage before entering processingModel.",
+                        "processingModel must complete before decisionPhase begins.",
+                        "decisionPhase must produce a resolutionOutcome before commitPhase.",
+                        "commitPhase may only execute when resolutionOutcome.status = 'resolved'.",
+                        "All stages must generate corresponding action logs aligned with proposalLifecycleModel.",
+                        "Each pipeline execution must be traceable via a shared proposalId.",
+                        "Failure at any stage must halt downstream stages unless explicitly handled.",
+                        "All stages must maintain separation of concerns and must not overlap responsibilities."
+                    ],
+                    "lifecycleMapping": {
+                        "proposeStage": "propose",
+                        "processingModel": "acknowledge",
+                        "decisionPhase": "acknowledge",
+                        "commitPhase": "accept",
+                        "actionLogging": "propose | acknowledge | accept"
+                    },
+                    "dependencies": {
+                        "proposalLifecycleModel": "Defines stage-to-action relationships.",
+                        "contactCreationELC": "Defines processingModel and commit rules.",
+                        "resolutionOutcome": "Drives decisionPhase and commit eligibility.",
+                        "recordLifecyclePolicy": "Defines persistence and deletion behavior."
+                    },
+                    "enforcement": {
+                        "transactionBoundary": "commitPhase",
+                        "validationBoundary": "processingModel",
+                        "decisionBoundary": "decisionPhase",
+                        "inputBoundary": "proposeStage"
+                    }
+                },
                 "processingModel": {
-                    "description": "Defines the two-phase contact creation process separating resolution from decision-making.",
+                    "order": 2,
+                    "description": "Parses and resolves entity, location, and contact data.",
                     "phases": {
                         "resolutionPhase": {
                             "description": "Resolves entity, location, and contact existence without branching.",
@@ -4776,16 +4853,6 @@
                                 "resolveLocationRecord",
                                 "checkLocationDuplicate",
                                 "checkContactDuplicate"
-                            ]
-                        },
-                        "decisionPhase": {
-                            "description": "Determines system action based on resolved data.",
-                            "outcomes": [
-                                "reject",
-                                "partial",
-                                "resolved_duplicate",
-                                "resolved_new",
-                                "resolved_conflict"
                             ]
                         }
                     }
