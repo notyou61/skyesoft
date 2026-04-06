@@ -4640,7 +4640,9 @@
                     "Location duplication must be resolved prior to contact insertion.",
                     "Action names must represent behavior (verbs), not entities (nouns).",
                     "Every successful contact creation must generate a corresponding action record linked by contactId.",
-                    "Geospatial enrichment must not override core identity fields (placeId, entityId, locationId)."
+                    "Geospatial enrichment must not override core identity fields (placeId, entityId, locationId).",
+                    "Every propose action must be followed by an acknowledge action.",
+                    "Accept actions may only occur after acknowledge and only when resolutionOutcome.status = 'resolved'."
                 ],
                 "commitRules": {
                     "description": "Defines when database writes are allowed.",
