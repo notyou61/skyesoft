@@ -4506,31 +4506,92 @@
                     "icon": 6,
                     "text": "Establish a strict relational identity model where contacts are uniquely defined by their association to both an entity and a location, enabling accurate data ingestion, querying, and system-wide consistency."
                 },
+                "creationStandard": {
+                    "description": "Defines the exact database-aligned creation sequence for ELC records.",
+                    "order": [
+                        "resolveEntity",
+                        "validateLocationWithGoogle",
+                        "resolveCensusGeography",
+                        "conditionallyResolveParcel",
+                        "resolveLocationRecord",
+                        "insertContact",
+                        "logAction"
+                    ],
+                    "rules": [
+                        "Entity must be resolved or created before location.",
+                        "Location must be validated with Google Places and include locationPlaceId before persistence.",
+                        "Census API must be used to determine state, county, and countyFips prior to any parcel lookup decision.",
+                        "If state = AZ and county = Maricopa, Maricopa County API must be used to resolve parcel number and jurisdiction.",
+                        "Location must be inserted before contact due to foreign key constraints.",
+                        "Contact must be inserted before action logging.",
+                        "All operations must occur within a single transaction.",
+                        "Failure at any step must result in full rollback.",
+                        "locationPlaceId must be resolved prior to any location insert and is required for all persisted location records.",
+                        "Action logging must occur after contact insertion and must reference a valid contactId."
+                    ]
+                },
+                "jurisdictionModel": {
+                    "description": "Defines the separation of mailing geography and governing authority.",
+                    "rules": [
+                        "locationCity represents mailing/postal city derived from Google Places.",
+                        "locationJurisdiction represents governing authority and must be derived from parcel data or county logic.",
+                        "locationCity and locationJurisdiction are independent and must never be assumed equal.",
+                        "Parcel-derived jurisdiction overrides county fallback.",
+                        "If parcel data is unavailable and county is Maricopa, jurisdiction defaults to 'Maricopa County'.",
+                        "All permitting logic must reference locationJurisdiction, not locationCity."
+                    ]
+                },
+                "transactionRules": {
+                    "description": "Defines database transaction integrity for ELC creation.",
+                    "rules": [
+                        "All ELC creation operations must execute within a single transaction.",
+                        "Entity, location, contact, and action inserts must succeed together or fail together.",
+                        "Partial persistence is strictly prohibited.",
+                        "Rollback must occur on any constraint violation or API failure that blocks required fields.",
+                        "Database constraints are the final enforcement layer."
+                    ]
+                },
                 "rules": [
-                    "All contacts must reference a valid entityId and locationId (ELC enforcement).",
+                    "All contacts must reference a valid contactEntityId and contactLocationId (ELC enforcement).",
                     "Contacts cannot exist independently; entity and location are required components.",
                     "The unique identity of a contact is defined by (contactEntityId, contactLocationId, contactFirstName, contactLastName).",
                     "Duplicate contacts within the same entity-location context are prohibited and must be rejected at the database level.",
-                    "Entity names must be unique across the system.",
-                    "Location records must be associated with a valid entityId and cannot be orphaned.",
-                    "If no explicit location is available, a default location must be created and must still pass Google validation to obtain a locationPlaceId before persistence.",
-                    "Duplicate detection for locations must not execute unless locationPlaceId has been successfully resolved.",
-                    "Default location naming convention must follow: '{entityName} - Primary'.",
                     "Email addresses must be unique within the scope of an entity (contactEntityId + contactEmail).",
+                    "Entity names must be globally unique across the system (entityName).",
+                    "Location records must be associated with a valid entityId and cannot be orphaned.",
+                    "Location identity must be derived from a validated external geospatial authority (Google Places).",
+                    "Each location must include a canonical locationPlaceId, which serves as the primary identity key.",
+                    "locationPlaceId is required for all persisted location records and must be resolved prior to duplicate detection or insert.",
+                    "Location uniqueness is defined by (locationEntityId, locationPlaceId), not by address string comparison.",
+                    "Address fields are descriptive only and must not be used as authoritative identifiers.",
+                    "Location must pass Tier 1 validation (Google Places) before being considered resolved.",
+                    "Duplicate detection for locations must not execute unless locationPlaceId has been successfully resolved.",
+                    "All duplicate detection for locations must prioritize locationPlaceId over address comparison.",
+                    "Location validation must always occur before location persistence or duplicate detection.",
+                    "If no explicit location is available, a default location must be created using the format '{entityName} - Primary' and must still pass Google validation.",
+                    "Location resolution must include Census-based determination of state, county, and countyFips.",
+                    "Parcel lookup must execute only when state = AZ and county = Maricopa.",
+                    "Location enrichment must not block contact creation except when required identity fields (locationPlaceId) are missing. Parcel and jurisdiction enrichment remain non-blocking.",
+                    "locationCity represents mailing/postal city derived from Google Places and must never be overridden by parcel or jurisdiction data.",
+                    "locationJurisdiction represents governing authority and must be derived from parcel data when available, otherwise from county fallback.",
+                    "locationCity and locationJurisdiction are independent fields and must never be assumed equal.",
+                    "If parcel data is unavailable and county = Maricopa, locationJurisdiction must default to 'Maricopa County'.",
+                    "All permitting and jurisdictional logic must reference locationJurisdiction, not locationCity.",
+                    "Contact creation must follow strict insert order: entity → location → contact → action.",
+                    "Entity must be resolved or created before location processing begins.",
+                    "Location must be resolved and persisted before contact insertion due to foreign key constraints.",
+                    "Contact must be inserted before action logging due to foreign key constraints.",
+                    "All create operations must originate as proposed actions and pass through validation before execution.",
+                    "All ELC creation operations must execute within a single transaction.",
+                    "Entity, location, contact, and action inserts must succeed together or fail together (atomicity).",
+                    "Partial persistence of ELC records is strictly prohibited.",
+                    "Rollback must occur on any failure affecting required fields or relational integrity.",
                     "All relational integrity must be enforced via database constraints, not solely application logic.",
                     "Duplicate detection must be performed at both application and database layers.",
                     "Location duplication must be resolved prior to contact insertion.",
-                    "All create operations must originate as proposed actions and pass through validation before execution.",
                     "Action names must represent behavior (verbs), not entities (nouns).",
-                    "Location identity must be derived from a validated external geospatial authority (Google Places).",
-                    "Each location must include a canonical locationPlaceId, which serves as the primary identity key.",
-                    "Location uniqueness is defined by (locationEntityId, locationPlaceId), not by address string comparison.",
-                    "Address fields are considered descriptive, not authoritative identifiers.",
-                    "Location must pass Tier 1 validation (Google Places) before being considered resolved.",
-                    "Location enrichment (parcel, jurisdiction, zoning) must not block contact creation.",
-                    "All duplicate detection for locations must prioritize locationPlaceId over address comparison.",
-                    "Location validation must always occur before location persistence or duplicate detection.",
-                    "locationPlaceId is required for all persisted location records."
+                    "Every successful contact creation must generate a corresponding action record linked by contactId.",
+                    "Geospatial enrichment must not override core identity fields (placeId, entityId, locationId)."
                 ],
                 "commitRules": {
                     "description": "Defines when database writes are allowed.",
@@ -4572,14 +4633,18 @@
                             "rule": "Location must be validated via Google Places before proceeding."
                         },
                         "tier2_conditional": {
-                            "source": "Regional APIs (e.g., Maricopa County)",
+                            "source": "Regional APIs (e.g., Maricopa County, Census)",
                             "fields": [
                                 "locationParcelNumber",
                                 "locationJurisdiction",
                                 "locationCounty",
                                 "locationCountyFips"
                             ],
-                            "rule": "Applied only when regional support exists; non-blocking."
+                            "conditions": [
+                                "Census must resolve state and county",
+                                "Parcel lookup executes only when Census resolves state = 'AZ' AND county = 'Maricopa'"
+                            ],
+                            "rule": "Conditional enrichment is applied based on geographic eligibility and is non-blocking for contact creation."
                         },
                         "tier3_optional": {
                             "fields": [
@@ -4655,8 +4720,9 @@
                             "steps": [
                                 "resolveEntity",
                                 "validateLocationWithGoogle",
+                                "resolveCensusGeography",
+                                "conditionallyResolveParcel",
                                 "resolveLocationRecord",
-                                "applyConditionalEnrichment",
                                 "checkLocationDuplicate",
                                 "checkContactDuplicate"
                             ]
@@ -4677,14 +4743,28 @@
                     "proposedContactSubmitted",
                     "createProposedContactObject",
                     "completenessCheck",
+                    "resolveEntity",
                     "validateLocationWithGoogle",
-                    "enrichLocationIfAvailable",
+                    "resolveCensusGeography",
+                    "conditionallyResolveParcel",
+                    "resolveLocationRecord",
                     "duplicateReview",
                     "resolutionOutcome",
                     "userDecision",
-                    "commit",
+                    "transactionCommit",
+                    "logAction",
                     "returnStructuredObject"
                 ],
+                "actionLogging": {
+                    "description": "Defines required logging behavior for all contact creation events.",
+                    "rules": [
+                        "Every successful contact creation must generate a corresponding action record.",
+                        "Action must include promptText, responseText, intent, and intentConfidence.",
+                        "Action must include geospatial metadata when available (latitude, longitude, ipAddress).",
+                        "Action logging must occur after contact creation within the same transaction.",
+                        "Actions must reference contactId via foreign key."
+                    ]
+                },
                 "decisionLogic": {
                     "reject": {
                         "condition": "Missing required entity or contact identity",
@@ -4756,7 +4836,13 @@
                         "rule": "partial",
                         "action": "request_user_input_or_retry",
                         "blocking": true,
-                        "reason": "Location identity cannot be established without placeId"
+                        "stage": "location_resolution",
+                        "reason": "Location identity cannot be established without a valid locationPlaceId from Google Places.",
+                        "enforcement": [
+                            "Contact creation must not proceed without locationPlaceId.",
+                            "No location record may be inserted without locationPlaceId.",
+                            "No duplicate detection may execute without locationPlaceId."
+                        ]
                     }
                 },
                 "examples": {
