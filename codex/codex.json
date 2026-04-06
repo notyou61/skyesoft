@@ -5024,6 +5024,54 @@
                     "All subsequent audits, Merkle checks, and EGS error lineage depend on correct SIS execution.",
                     "This standard prevents development noise from contaminating operational history."
                 ]
+            },
+            "resolutionOutcome": {
+                "description": "Defines the deterministic result of Tier 1 resolution and drives all downstream system behavior.",
+                "structure": {
+                    "status": "resolved | partial | reject",
+                    "entityStatus": "existing | possible_match | missing | new",
+                    "locationStatus": "existing | possible_match | missing | new",
+                    "contactStatus": "existing | possible_match | new",
+                    "blocking": "boolean",
+                    "requiresUserInput": "boolean",
+                    "recommendedAction": "insert | update | flag_for_review | request_input | halt"
+                },
+                "rules": [
+                    "resolutionOutcome must be produced after completion of validation and resolution phases.",
+                    "resolutionOutcome must be deterministic and derived solely from resolved entityStatus, locationStatus, and contactStatus.",
+                    "resolutionOutcome must be generated before any database operation or commit decision.",
+                    "If status = 'reject', processing must halt immediately.",
+                    "If status = 'partial', system must request user input and must not proceed to commit.",
+                    "If blocking = true, no database operations may occur.",
+                    "If contactStatus = 'existing', recommendedAction must be 'update' or 'ignore'.",
+                    "If contactStatus = 'possible_match', recommendedAction must be 'flag_for_review'.",
+                    "If contactStatus = 'new' and all ELC components are resolved, recommendedAction must be 'insert'.",
+                    "resolutionOutcome must be the only object used to drive UI prompts, decision logic, and database commit behavior."
+                ],
+                "derivation": {
+                    "resolved": {
+                        "condition": "entityStatus != 'missing' AND locationStatus != 'missing' AND contactStatus != null AND locationPlaceId is present",
+                        "blocking": false,
+                        "requiresUserInput": false
+                    },
+                    "partial": {
+                        "condition": "missing required fields OR locationPlaceId not resolved OR ambiguous matches exist",
+                        "blocking": true,
+                        "requiresUserInput": true
+                    },
+                    "reject": {
+                        "condition": "insufficient data to determine entity or contact identity",
+                        "blocking": true,
+                        "requiresUserInput": false
+                    }
+                },
+                "actionMapping": {
+                    "resolved_new": "insert",
+                    "resolved_duplicate": "update_or_ignore",
+                    "resolved_conflict": "flag_for_review",
+                    "partial": "request_input",
+                    "reject": "halt"
+                }
             }
         }
     },
