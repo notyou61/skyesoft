@@ -33,8 +33,7 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once __DIR__ . '/sessionBootstrap.php';
 skyesoftLoadEnv();
 
-//#endregion
-
+#endregion
 
 #region SECTION 1 — Input Intake
 
@@ -48,8 +47,7 @@ if (!$rawInput) {
     exit;
 }
 
-//#endregion
-
+#endregion
 
 #region SECTION 2 — Prompt Construction
 
@@ -82,8 +80,7 @@ Rules:
 - Normalize phone number format if possible
 EOT;
 
-//#endregion
-
+#endregion
 
 #region SECTION 3 — OpenAI Execution
 
@@ -123,8 +120,7 @@ if ($response === false) {
     exit;
 }
 
-//#endregion
-
+#endregion
 
 #region SECTION 4 — Response Parsing
 
@@ -150,8 +146,7 @@ if (!$parsed) {
     exit;
 }
 
-//#endregion
-
+#endregion
 
 #region SECTION 5 — Output
 
@@ -163,4 +158,4 @@ echo json_encode([
 
 exit;
 
-//#endregion
+#endregion
