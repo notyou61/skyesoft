@@ -355,8 +355,10 @@ window.SkyeApp.proposeContact = async function (rawInput) {
 
         this.showSystemMessage?.("📥 Contact proposal submitted");
 
-        // future → Step 2 trigger
-        // this.parseContact?.(data);
+        this.parseContact?.({
+            proposalId: data.proposalId,
+            rawInput: rawInput
+        });
 
     } catch (err) {
         console.error('[Propose Error]', err);
