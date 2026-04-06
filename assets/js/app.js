@@ -364,3 +364,35 @@ window.SkyeApp.proposeContact = async function (rawInput) {
     }
 };
 // #endregion
+
+// #region Parse Contact
+window.SkyeApp.parseContact = async function (proposalData) {
+    try {
+        const res = await fetch('/api/parseContact.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                proposalId: proposalData.proposalId,
+                rawInput: proposalData.rawInput
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const parsed = await res.json();
+
+        console.log('[Parsed Contact]', parsed);
+
+        this.showSystemMessage?.("🧠 Contact parsed successfully");
+
+        this.lastParsedContact = parsed;
+
+        // future → validation step
+    } catch (err) {
+        console.error('[Parse Error]', err);
+        this.showSystemMessage?.("⚠ Failed to parse contact");
+    }
+};
+// #endregion
