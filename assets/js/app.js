@@ -40,7 +40,7 @@ window.SkyeApp.handleUserInput = async function (inputText) {
         // 🔄 Immediate UX feedback
         this.showSystemMessage?.("Analyzing input...");
 
-        // 🔗 Correct backend endpoint (GoDaddy / PHP)
+        // 🔗 Backend endpoint (GoDaddy / PHP)
         const res = await fetch("/skyesoft/api/askOpenAI.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ window.SkyeApp.handleUserInput = async function (inputText) {
             // 🟢 HIGH CONFIDENCE → AUTO PROCEED
             if (confidence >= 0.90) {
                 this.showSystemMessage?.("✅ Contact Signature Recognized");
-                this.startContactFlow?.(inputText);
+                this.proposeContact(inputText); // ✅ FIXED
                 return;
             }
 
@@ -78,7 +78,7 @@ window.SkyeApp.handleUserInput = async function (inputText) {
             if (confidence >= 0.70) {
                 this.showConfirmation?.(
                     "Contact information detected. Create new contact?",
-                    () => this.startContactFlow?.(inputText),
+                    () => this.proposeContact(inputText), // ✅ FIXED
                     () => console.log("[Intent] user declined contact creation")
                 );
                 return;
@@ -333,3 +333,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 /* #endregion */
+
+// #region Propose Contact
+window.SkyeApp.proposeContact = async function (rawInput) {
+    try {
+        const res = await fetch('/api/proposeContact.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawInput })
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        console.log('[Propose]', data);
+
+        this.lastProposal = data; // ✅ NEW
+
+        this.showSystemMessage?.("📥 Contact proposal submitted");
+
+        // future → Step 2 trigger
+        // this.parseContact?.(data);
+
+    } catch (err) {
+        console.error('[Propose Error]', err);
+        this.showSystemMessage?.("⚠ Failed to submit contact");
+    }
+};
+// #endregion
