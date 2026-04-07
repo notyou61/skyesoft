@@ -26,7 +26,7 @@ declare(strict_types=1);
 #region SECTION 0 — Core Function
 function resolveLocation(array $input): array {
 
-    // #region Default Structure
+    #region Default Structure
 
     $result = [
         'placeId' => null,
@@ -41,9 +41,9 @@ function resolveLocation(array $input): array {
         'parcelNumber' => null
     ];
 
-    // #endregion
+    #endregion
 
-    // #region STEP 1 — Google Places (Stub / Replace Later)
+    #region STEP 1 — Google Places (Stub / Replace Later)
 
     $google = getGoogleGeocode($input);
 
@@ -58,18 +58,18 @@ function resolveLocation(array $input): array {
     $result['state'] = $google['state'];
     $result['zip'] = $google['zip'];
 
-    // #endregion
+    #endregion
 
-    // #region STEP 2 — Census (REAL IMPLEMENTATION)
+    #region STEP 2 — Census (REAL IMPLEMENTATION)
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
     $result['county'] = $census['county'];
     $result['countyFips'] = $census['countyFips'];
 
-    // #endregion
+    #endregion
 
-    // #region STEP 3 — Conditional Parcel Logic (Still Stubbed)
+    #region STEP 3 — Conditional Parcel Logic (Still Stubbed)
 
     if ($result['state'] === 'AZ' && $result['county'] === 'Maricopa County') {
 
@@ -85,10 +85,10 @@ function resolveLocation(array $input): array {
         }
 
     } else {
-        $result['jurisdiction'] = $census['county'];
+        $result['jurisdiction'] = $census['county'] ?? 'Unknown';
     }
 
-    // #endregion
+    #endregion
 
     return $result;
 }
@@ -238,6 +238,11 @@ function getGoogleGeocode(array $input): ?array {
         if (!$response) return null;
 
         $data = json_decode($response, true);
+
+        // 🛡️ NEW — Google status validation (MTCO fix)
+        if (($data['status'] ?? null) !== 'OK') {
+            return null;
+        }
 
         if (
             empty($data['results']) ||
