@@ -1,4 +1,12 @@
 <?php
+require_once __DIR__ . '/utils/envLoader.php';
+skyesoftLoadEnv();
+
+echo "<pre>";
+echo "GOOGLE KEY: " . getenv("GOOGLE_API_KEY") . "\n";
+echo "MCA KEY: " . getenv("MARICOPA_COUNTY_API_KEY") . "\n";
+echo "</pre>";
+
 require_once __DIR__ . '/resolveLocation.php';
 
 // 🔍 TEST INPUT (REAL ADDRESS)
