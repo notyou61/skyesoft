@@ -23,8 +23,7 @@ declare(strict_types=1);
 //   • No contact/entity logic
 // ======================================================================
 
-// #region SECTION 0 — Core Function
-
+#region SECTION 0 — Core Function
 function resolveLocation(array $input): array {
 
     // #region Default Structure
@@ -46,7 +45,7 @@ function resolveLocation(array $input): array {
 
     // #region STEP 1 — Google Places (Stub / Replace Later)
 
-    $google = mockGoogleLookup($input);
+    $google = getGooglePlaceDetails($input);
 
     if (!$google || empty($google['placeId'])) {
         return $result;
@@ -74,7 +73,9 @@ function resolveLocation(array $input): array {
 
     if ($result['state'] === 'AZ' && $result['county'] === 'Maricopa County') {
 
-        $parcel = mockParcelLookup($result['lat'], $result['lng']);
+        $address = $google['address'] ?? null;
+
+        $parcel = getMaricopaParcelFromAddress($address);
 
         if ($parcel) {
             $result['parcelNumber'] = $parcel['parcelNumber'];
@@ -92,9 +93,9 @@ function resolveLocation(array $input): array {
     return $result;
 }
 
-// #endregion
+#endregion
 
-// #region SECTION 1 — Census API Integration
+#region SECTION 1 — Census API Integration
 
 function getCensusGeography(?float $lat, ?float $lng): array {
 
@@ -146,4 +147,74 @@ function getCensusGeography(?float $lat, ?float $lng): array {
     }
 }
 
-// #endregion
+#endregion
+
+#region SECTION 2 — Maricopa Parcel API
+
+function getMaricopaParcelFromAddress(string $address): ?array {
+
+    $query = urlencode($address);
+    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+
+    $headers = [
+        "AUTHORIZATION: " . getenv("MCA_API_TOKEN"),
+        "user-agent: null"
+    ];
+
+    try {
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers)
+            ]
+        ]);
+
+        $response = file_get_contents($url, false, $context);
+
+        if (!$response) return null;
+
+        $data = json_decode($response, true);
+
+        $first = $data['results'][0]['parcelNumber'] ?? null;
+
+        if (!$first) return null;
+
+        // 🔍 Fetch parcel details
+        $parcelUrl = "https://mcassessor.maricopa.gov/parcel/{$first}";
+
+        $parcelResponse = file_get_contents($parcelUrl, false, $context);
+
+        if (!$parcelResponse) return null;
+
+        $parcelData = json_decode($parcelResponse, true);
+
+        return [
+            'parcelNumber' => $first,
+            'jurisdiction' => $parcelData['propertyAddress']['city'] ?? null
+        ];
+
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+#endregion
+
+#region SECTION 3 — Google Lookup Stub (TEMP)
+
+function getGooglePlaceDetails(array $input): ?array {
+
+    // Expecting input to already contain structured location data
+    return [
+        'placeId' => $input['placeId'] ?? null,
+        'lat' => $input['lat'] ?? null,
+        'lng' => $input['lng'] ?? null,
+        'city' => $input['city'] ?? null,
+        'state' => $input['state'] ?? null,
+        'zip' => $input['zip'] ?? null,
+        'address' => $input['address'] ?? null
+    ];
+}
+
+#endregion
