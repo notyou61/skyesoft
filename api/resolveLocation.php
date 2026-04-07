@@ -24,6 +24,7 @@ declare(strict_types=1);
 // ======================================================================
 
 #region SECTION 0 — Core Function
+
 function resolveLocation(array $input): array {
 
     #region Default Structure
@@ -35,6 +36,7 @@ function resolveLocation(array $input): array {
         'city' => null,
         'state' => null,
         'zip' => null,
+        'address' => null, // 🔥 NEW
         'county' => null,
         'countyFips' => null,
         'jurisdiction' => null,
@@ -43,11 +45,18 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 1 — Google Places (Stub / Replace Later)
+
+    #region STEP 1 — Google Geocode (REAL)
 
     $google = getGoogleGeocode($input);
 
-    if (!$google || empty($google['placeId'])) {
+    // 🛡️ Strong validation
+    if (
+        !$google ||
+        empty($google['placeId']) ||
+        empty($google['lat']) ||
+        empty($google['lng'])
+    ) {
         return $result;
     }
 
@@ -57,35 +66,47 @@ function resolveLocation(array $input): array {
     $result['city'] = $google['city'];
     $result['state'] = $google['state'];
     $result['zip'] = $google['zip'];
+    $result['address'] = $google['address'] ?? null; // 🔥 NEW
 
     #endregion
 
-    #region STEP 2 — Census (REAL IMPLEMENTATION)
+    #region STEP 2 — Census Geography
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
-    $result['county'] = $census['county'];
-    $result['countyFips'] = $census['countyFips'];
+    $result['county'] = $census['county'] ?? null;
+    $result['countyFips'] = $census['countyFips'] ?? null;
 
     #endregion
 
-    #region STEP 3 — Conditional Parcel Logic (Still Stubbed)
+    #region STEP 3 — Conditional Parcel Logic
 
-    if ($result['state'] === 'AZ' && $result['county'] === 'Maricopa County') {
+    if (
+        $result['state'] === 'AZ' &&
+        $result['county'] === 'Maricopa County'
+    ) {
 
-        $address = $google['address'] ?? null;
+        $address = $result['address'];
 
-        $parcel = getMaricopaParcelFromAddress($address);
+        if ($address) {
 
-        if ($parcel) {
-            $result['parcelNumber'] = $parcel['parcelNumber'];
-            $result['jurisdiction'] = $parcel['jurisdiction'];
+            $parcel = getMaricopaParcelFromAddress($address);
+
+            if ($parcel) {
+                $result['parcelNumber'] = $parcel['parcelNumber'];
+                $result['jurisdiction'] = $parcel['jurisdiction'];
+            } else {
+                $result['jurisdiction'] = 'Maricopa County';
+            }
+
         } else {
             $result['jurisdiction'] = 'Maricopa County';
         }
 
     } else {
-        $result['jurisdiction'] = $census['county'] ?? 'Unknown';
+
+        $result['jurisdiction'] = $result['county'] ?? 'Unknown';
+
     }
 
     #endregion
