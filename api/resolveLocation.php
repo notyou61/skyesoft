@@ -244,7 +244,7 @@ function getGoogleGeocode(array $input): ?array {
 
     if (!$address) return null;
 
-    $apiKey = getenv("GOOGLE_API_KEY");
+    $apiKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
 
     if (!$apiKey) return null;
 
