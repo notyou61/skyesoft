@@ -205,8 +205,16 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
         $apiAddress = strtoupper(trim($r['SitusAddress'] ?? ''));
 
-        // Exact match
-        if ($apiAddress === $targetAddress) {
+        // Normalize function (inline for clarity)
+        $normalize = function($str) {
+            return preg_replace('/[^A-Z0-9]/', '', strtoupper($str));
+        };
+
+        $targetNorm = $normalize($targetAddress);
+        $apiNorm    = $normalize($apiAddress);
+
+        // Match using normalized comparison
+        if ($apiNorm === $targetNorm) {
 
             $apn = preg_replace('/\D+/', '', $r['APN']);
 
