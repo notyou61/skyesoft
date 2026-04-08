@@ -45,7 +45,6 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-
     #region STEP 1 — Google Geocode (REAL)
 
     $google = getGoogleGeocode($input);
@@ -90,7 +89,10 @@ function resolveLocation(array $input): array {
 
         if ($address) {
 
-            $parcel = getMaricopaParcelFromAddress($address);
+            $parcel = getMaricopaParcelFromCoordinates(
+                $result['lat'],
+                $result['lng']
+            );
 
             // TEMP DEBUG OUTPUT
             if (isset($parcel['debug'])) {
@@ -175,80 +177,48 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 2 — Maricopa Parcel API
+#region SECTION 2 — Maricopa Parcel API (Coordinate-Based)
 
-function getMaricopaParcelFromAddress(string $address): ?array {
+function getMaricopaParcelFromCoordinates(float $lat, float $lng): ?array {
 
-    if (!$address) return null;
+    if (!$lat || !$lng) return null;
 
-    $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-
-    $query = urlencode($address);
-
-    // ⚠️ KEEP YOUR CURRENT URL FOR NOW (we're testing it)
-    $url = "https://mcassessor.maricopa.gov/api/v1/search/property?query={$query}";
-
-    $headers = [
-        "Authorization: Bearer {$apiKey}",
-        "Accept: application/json",
-        "User-Agent: Skyesoft/1.0"
-    ];
-
-    $debug = [
-        'url' => $url,
-        'apiKeyPresent' => $apiKey ? true : false,
-        'rawResponse' => null,
-        'decoded' => null
-    ];
+    // 🔥 Maricopa GIS Parcel Layer (public ArcGIS service)
+    $url = "https://gis.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+        . "?geometry={$lng},{$lat}"
+        . "&geometryType=esriGeometryPoint"
+        . "&inSR=4326"
+        . "&spatialRel=esriSpatialRelIntersects"
+        . "&outFields=APN,OWNER_NAME,SITE_ADDRESS,PROPERTY_CITY"
+        . "&returnGeometry=false"
+        . "&f=json";
 
     try {
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'header' => implode("\r\n", $headers),
-                'timeout' => 5
-            ]
-        ]);
+        $response = file_get_contents($url);
 
-        $response = file_get_contents($url, false, $context);
-
-        if ($response === false) {
-            return ['debug' => $debug + ['error' => 'Request failed']];
-        }
-
-        $debug['rawResponse'] = substr($response, 0, 1000); // limit size
+        if (!$response) return null;
 
         $data = json_decode($response, true);
 
-        $debug['decoded'] = $data;
-
-        // If decoding failed
-        if (!$data) {
-            return ['debug' => $debug + ['error' => 'Invalid JSON']];
+        if (
+            !isset($data['features']) ||
+            empty($data['features'])
+        ) {
+            return null;
         }
 
-        if (!isset($data['results']) || empty($data['results'])) {
-            return ['debug' => $debug + ['error' => 'No results']];
-        }
+        $attributes = $data['features'][0]['attributes'] ?? null;
 
-        $parcelNumber = $data['results'][0]['parcelNumber'] ?? null;
-
-        if (!$parcelNumber) {
-            return ['debug' => $debug + ['error' => 'No parcelNumber']];
-        }
+        if (!$attributes) return null;
 
         return [
-            'parcelNumber' => $parcelNumber,
-            'jurisdiction' => $data['results'][0]['propertyAddress']['city'] ?? null,
-            'debug' => $debug
+            'parcelNumber' => $attributes['APN'] ?? null,
+            'jurisdiction' => $attributes['PROPERTY_CITY'] ?? 'Maricopa County'
         ];
 
     } catch (Throwable $e) {
-
-        return [
-            'debug' => $debug + ['exception' => $e->getMessage()]
-        ];
+        return null;
     }
 }
 
