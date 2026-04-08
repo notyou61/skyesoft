@@ -59,10 +59,11 @@ function resolveLocation(array $input): array {
 
         if (!empty($result['address']) && !empty($result['city'])) {
 
-            $street = extractStreetAddress($result['address']);
+            // Use full address for higher match accuracy
+            $searchAddress = $result['address'];
 
             $parcel = getMaricopaParcelFromAddress(
-                $street,
+                $searchAddress,
                 $result['city']
             );
 
@@ -164,7 +165,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     if (!$apiKey || !$address || !$city) return null;
 
     // Build search query (same as curl test)
-    $query = urlencode($address . ' ' . $city);
+    $query = urlencode($address);
 
     $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
