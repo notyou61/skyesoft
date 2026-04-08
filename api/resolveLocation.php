@@ -164,7 +164,6 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
     if (!$apiKey || !$address || !$city) return null;
 
-    // Build search query (same as curl test)
     $query = urlencode($address);
 
     $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
@@ -187,7 +186,6 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     curl_close($ch);
 
-    // Debug logging
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
@@ -197,36 +195,31 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     if ($error || $status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
-
     if (empty($data['Results'])) return null;
 
-    $targetAddress = strtoupper(trim($address));
+    // Normalize helper
+    $normalize = function($str) {
+        return preg_replace('/[^A-Z0-9]/', '', strtoupper($str));
+    };
+
+    // ✅ CRITICAL FIX: compare street only
+    $targetStreet = trim(explode(',', $address)[0]);
+    $targetNorm   = $normalize($targetStreet);
 
     foreach ($data['Results'] as $r) {
 
-        $apiAddress = strtoupper(trim($r['SitusAddress'] ?? ''));
-
-        // Normalize function (inline for clarity)
-        $normalize = function($str) {
-            return preg_replace('/[^A-Z0-9]/', '', strtoupper($str));
-        };
-
-        $targetNorm = $normalize($targetAddress);
+        $apiAddress = $r['SitusAddress'] ?? '';
         $apiNorm    = $normalize($apiAddress);
 
-        // Match using normalized comparison
         if ($apiNorm === $targetNorm) {
 
             $apn = preg_replace('/\D+/', '', $r['APN']);
 
-            if (strlen($apn) === 8) {
-                $formatted =
-                    substr($apn, 0, 3) . '-' .
-                    substr($apn, 3, 2) . '-' .
-                    substr($apn, 5, 3);
-            } else {
-                $formatted = $r['APN'];
-            }
+            $formatted = (strlen($apn) === 8)
+                ? substr($apn, 0, 3) . '-' .
+                  substr($apn, 3, 2) . '-' .
+                  substr($apn, 5, 3)
+                : $r['APN'];
 
             return [
                 'parcelNumber' => $formatted,
