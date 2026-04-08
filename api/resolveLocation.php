@@ -145,6 +145,12 @@ function getMaricopaParcelFromAddress(string $street, string $city): ?array {
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
+    file_put_contents(
+        __DIR__ . '/mca_debug.log',
+        "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
+        FILE_APPEND
+    );
+
     if ($status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
