@@ -92,6 +92,11 @@ function resolveLocation(array $input): array {
 
             $parcel = getMaricopaParcelFromAddress($address);
 
+            // TEMP DEBUG OUTPUT
+            if (isset($parcel['debug'])) {
+                $result['mcaDebug'] = $parcel['debug'];
+            }
+
             if ($parcel) {
                 $result['parcelNumber'] = $parcel['parcelNumber'];
                 $result['jurisdiction'] = $parcel['jurisdiction'];
@@ -177,14 +182,23 @@ function getMaricopaParcelFromAddress(string $address): ?array {
     if (!$address) return null;
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-    if (!$apiKey) return null;
 
-    $url = "https://mcassessor.maricopa.gov/api/v1/search/property?query=" . urlencode($address);
+    $query = urlencode($address);
+
+    // ⚠️ KEEP YOUR CURRENT URL FOR NOW (we're testing it)
+    $url = "https://mcassessor.maricopa.gov/api/v1/search/property?query={$query}";
 
     $headers = [
         "Authorization: Bearer {$apiKey}",
         "Accept: application/json",
         "User-Agent: Skyesoft/1.0"
+    ];
+
+    $debug = [
+        'url' => $url,
+        'apiKeyPresent' => $apiKey ? true : false,
+        'rawResponse' => null,
+        'decoded' => null
     ];
 
     try {
@@ -200,39 +214,41 @@ function getMaricopaParcelFromAddress(string $address): ?array {
         $response = file_get_contents($url, false, $context);
 
         if ($response === false) {
-            throw new RuntimeException("MCA request failed: " . $url);
+            return ['debug' => $debug + ['error' => 'Request failed']];
         }
+
+        $debug['rawResponse'] = substr($response, 0, 1000); // limit size
 
         $data = json_decode($response, true);
 
-        if (
-            !isset($data['results']) ||
-            !is_array($data['results']) ||
-            empty($data['results'])
-        ) {
-            return null;
+        $debug['decoded'] = $data;
+
+        // If decoding failed
+        if (!$data) {
+            return ['debug' => $debug + ['error' => 'Invalid JSON']];
+        }
+
+        if (!isset($data['results']) || empty($data['results'])) {
+            return ['debug' => $debug + ['error' => 'No results']];
         }
 
         $parcelNumber = $data['results'][0]['parcelNumber'] ?? null;
 
-        if (!$parcelNumber) return null;
-
-        // 🔍 Get parcel detail
-        $detailUrl = "https://mcassessor.maricopa.gov/api/v1/parcel/{$parcelNumber}";
-
-        $detailResponse = @file_get_contents($detailUrl, false, $context);
-
-        if (!$detailResponse) return null;
-
-        $detail = json_decode($detailResponse, true);
+        if (!$parcelNumber) {
+            return ['debug' => $debug + ['error' => 'No parcelNumber']];
+        }
 
         return [
             'parcelNumber' => $parcelNumber,
-            'jurisdiction' => $detail['propertyAddress']['city'] ?? 'Maricopa County'
+            'jurisdiction' => $data['results'][0]['propertyAddress']['city'] ?? null,
+            'debug' => $debug
         ];
 
     } catch (Throwable $e) {
-        return null;
+
+        return [
+            'debug' => $debug + ['exception' => $e->getMessage()]
+        ];
     }
 }
 
