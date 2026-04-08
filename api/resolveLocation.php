@@ -166,19 +166,10 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     // 🔍 Debug (keep temporarily)
     file_put_contents(
-        __DIR__ . "/../logs/mca_debug.log",
+        __DIR__ . '/mca_debug.log',
         "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
-
-    if ($status !== 200 || !$response) return null;
-
-    $data = json_decode($response, true);
-
-    if (
-        empty($data['parcels']) ||
-        !is_array($data['parcels'])
-    ) return null;
 
     $parcel = $data['parcels'][0]['apn'] ?? null;
 
