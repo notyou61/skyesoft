@@ -89,10 +89,7 @@ function resolveLocation(array $input): array {
 
         if ($address) {
 
-            $parcel = getMaricopaParcelFromCoordinates(
-                $result['lat'],
-                $result['lng']
-            );
+            $parcel = getMaricopaParcelFromAddress($result['address']);
 
             // TEMP DEBUG OUTPUT
             if (isset($parcel['debug'])) {
@@ -179,41 +176,43 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #region SECTION 2 — Maricopa Parcel API (Coordinate-Based)
 
-function getMaricopaParcelFromCoordinates(float $lat, float $lng): ?array {
+function getMaricopaParcelFromAddress(string $address): ?array {
 
-    if (!$lat || !$lng) return null;
+    if (!$address) return null;
 
-    $url = "https://gis.maricopa.gov/arcgis/rest/services/Parcels/TaxParcel/MapServer/0/query"
-        . "?geometry=" . urlencode("{$lng},{$lat}")
-        . "&geometryType=esriGeometryPoint"
-        . "&inSR=4326"
-        . "&spatialRel=esriSpatialRelIntersects"
-        . "&distance=10"
-        . "&units=esriSRUnit_Meter"
-        . "&outFields=*"
-        . "&returnGeometry=false"
-        . "&f=json";
+    $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
+
+    $url = "https://mcassessor.maricopa.gov/api/property/search"
+        . "?q=" . urlencode($address)
+        . "&limit=1";
+
+    $headers = [
+        "x-api-key: {$apiKey}",
+        "Accept: application/json"
+    ];
 
     try {
 
-        $response = file_get_contents($url);
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => implode("\r\n", $headers),
+                'timeout' => 5
+            ]
+        ]);
+
+        $response = file_get_contents($url, false, $context);
         if (!$response) return null;
 
         $data = json_decode($response, true);
 
-        if (empty($data['features'])) return null;
+        if (empty($data) || !isset($data[0])) return null;
 
-        $attr = $data['features'][0]['attributes'];
+        $item = $data[0];
 
         return [
-            'parcelNumber' => $attr['APN'] 
-                ?? $attr['PARCEL_NUM'] 
-                ?? $attr['PARCELNUMBER'] 
-                ?? null,
-
-            'jurisdiction' => $attr['SITUS_CITY'] 
-                ?? $attr['PROPERTY_CITY'] 
-                ?? 'Maricopa County'
+            'parcelNumber' => $item['apn'] ?? null,
+            'jurisdiction' => $item['situsCity'] ?? 'Maricopa County'
         ];
 
     } catch (Throwable $e) {
