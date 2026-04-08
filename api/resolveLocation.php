@@ -54,20 +54,23 @@ function resolveLocation(array $input): array {
 
     if (
         $result['state'] === 'AZ' &&
-        $result['county'] === 'Maricopa County'
+        strtoupper($result['county'] ?? '') === 'MARICOPA'
     ) {
 
         if (!empty($result['address']) && !empty($result['city'])) {
 
             $street = extractStreetAddress($result['address']);
 
-            $parcel = getMaricopaParcelFromAddress($street, $result['city']);
+            $parcel = getMaricopaParcelFromAddress(
+                $street,
+                $result['city']
+            );
 
             if ($parcel) {
                 $result['parcelNumber'] = $parcel['parcelNumber'];
                 $result['jurisdiction'] = $parcel['jurisdiction'];
             } else {
-                $result['jurisdiction'] = $result['city'];
+                $result['jurisdiction'] = $result['city'] ?? 'Maricopa County';
             }
 
         } else {
@@ -75,7 +78,12 @@ function resolveLocation(array $input): array {
         }
 
     } else {
-        $result['jurisdiction'] = $result['county'] ?? 'Unknown';
+
+        $result['jurisdiction'] =
+            $result['city']
+            ?? $result['county']
+            ?? 'Unknown';
+
     }
 
     #endregion
@@ -131,32 +139,44 @@ function getMaricopaParcelFromAddress(string $street, string $city): ?array {
 
     $url = "https://api.mcassessor.maricopa.gov/api/v1/parcel/search?$query";
 
-    $ch = curl_init($url);
+    $ch = curl_init();
 
     curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10,
+        CURLOPT_TIMEOUT => 15,
+
+        // 🔥 CRITICAL FIXES
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+
         CURLOPT_HTTPHEADER => [
-            "Ocp-Apim-Subscription-Key: {$apiKey}"
+            "Ocp-Apim-Subscription-Key: {$apiKey}",
+            "Accept: application/json"
         ]
     ]);
 
     $response = curl_exec($ch);
+
+    $error  = curl_error($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
     curl_close($ch);
 
+    // 🔥 DEBUG (keep temporarily)
     file_put_contents(
         __DIR__ . '/mca_debug.log',
-        "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
+        "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
 
-    if ($status !== 200 || !$response) return null;
+    if ($error || $status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
 
-    if (!is_array($data) || count($data) !== 1) return null;
+    if (!is_array($data) || empty($data)) return null;
 
+    // ✔ TAKE FIRST MATCH (IMPORTANT FIX)
     $parcel = $data[0]['apn'] ?? null;
     if (!$parcel) return null;
 
