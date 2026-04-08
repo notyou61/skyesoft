@@ -176,11 +176,14 @@ function getMaricopaParcelFromAddress(string $address): ?array {
 
     if (!$address) return null;
 
-    $query = urlencode($address);
-    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+    $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
+    if (!$apiKey) return null;
+
+    $url = "https://mcassessor.maricopa.gov/api/v1/search/property?query=" . urlencode($address);
 
     $headers = [
-        "Authorization: Bearer " . getenv("MARICOPA_COUNTY_API_KEY"),
+        "Authorization: Bearer {$apiKey}",
+        "Accept: application/json",
         "User-Agent: Skyesoft/1.0"
     ];
 
@@ -200,27 +203,30 @@ function getMaricopaParcelFromAddress(string $address): ?array {
 
         $data = json_decode($response, true);
 
-        // 🛡️ Validate response structure
-        if (!isset($data['results']) || !is_array($data['results']) || empty($data['results'])) {
+        if (
+            !isset($data['results']) ||
+            !is_array($data['results']) ||
+            empty($data['results'])
+        ) {
             return null;
         }
 
-        $first = $data['results'][0]['parcelNumber'] ?? null;
+        $parcelNumber = $data['results'][0]['parcelNumber'] ?? null;
 
-        if (!$first) return null;
+        if (!$parcelNumber) return null;
 
-        // 🔍 Fetch parcel details
-        $parcelUrl = "https://mcassessor.maricopa.gov/parcel/{$first}";
+        // 🔍 Get parcel detail
+        $detailUrl = "https://mcassessor.maricopa.gov/api/v1/parcel/{$parcelNumber}";
 
-        $parcelResponse = @file_get_contents($parcelUrl, false, $context);
+        $detailResponse = @file_get_contents($detailUrl, false, $context);
 
-        if (!$parcelResponse) return null;
+        if (!$detailResponse) return null;
 
-        $parcelData = json_decode($parcelResponse, true);
+        $detail = json_decode($detailResponse, true);
 
         return [
-            'parcelNumber' => $first,
-            'jurisdiction' => $parcelData['propertyAddress']['city'] ?? null
+            'parcelNumber' => $parcelNumber,
+            'jurisdiction' => $detail['propertyAddress']['city'] ?? 'Maricopa County'
         ];
 
     } catch (Throwable $e) {
