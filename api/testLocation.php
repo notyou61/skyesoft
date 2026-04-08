@@ -37,14 +37,6 @@ echo "<h2>Maricopa Test</h2>";
 if ($google && !empty($google['city'])) {
 
     $street = extractStreetAddress($google['address']);
-    // Normalize street BEFORE sending to API
-    $street = extractStreetAddress($result['address']);
-
-    // Clean common variations
-    $street = strtoupper($street);
-    $street = str_replace(['.', ' AVENUE'], ['', ' AVE'], $street);
-    $street = preg_replace('/\s+/', ' ', $street);
-    $street = trim($street);
 
     echo "<pre>Street Used: {$street}</pre>";
 

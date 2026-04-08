@@ -37,11 +37,12 @@ function resolveLocation(array $input): array {
         return $result;
     }
 
+    // Canonical merge (Google is source of truth)
     $result = array_merge($result, $google);
 
     #endregion
 
-    #region STEP 1 — Census
+    #region STEP 2 — Census
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
@@ -50,50 +51,49 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 2 — Maricopa Parcel
+    #region STEP 3 — Maricopa Parcel
 
     if (
         $result['state'] === 'AZ' &&
         strtoupper($result['county'] ?? '') === 'MARICOPA'
     ) {
 
-        if (!empty($result['address']) && !empty($result['city'])) {
+        // 🔥 Use GOOGLE as canonical source (not $result)
+        if (!empty($google['address']) && !empty($google['city'])) {
 
-            // Use full address for higher match accuracy
-            $searchAddress = $result['address'];
+            // Extract street EXACTLY like working test
+            $street = extractStreetAddress($google['address']);
 
             $parcel = getMaricopaParcelFromAddress(
-                $searchAddress,
-                $result['city']
+                $street,
+                $google['city']
             );
 
-            // Validate parcel response (structure + value)
+            // Validate parcel response
             if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
 
-                // Set parcel
                 $result['parcelNumber'] = $parcel['parcelNumber'];
 
-                // Only override jurisdiction if provided
                 if (!empty($parcel['jurisdiction'])) {
                     $result['jurisdiction'] = $parcel['jurisdiction'];
                 }
 
             } else {
 
-                // Fallback: ensure parcel is not blank
+                // Parcel fallback
                 if (empty($result['parcelNumber'])) {
                     $result['parcelNumber'] = 'Pending';
                 }
 
-                // Fallback jurisdiction
+                // Jurisdiction fallback
                 if (empty($result['jurisdiction'])) {
-                    $result['jurisdiction'] = $result['city'] ?? 'Maricopa County';
+                    $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
                 }
             }
 
         } else {
 
-            // Missing address data fallback
+            // Missing Google data fallback
             if (empty($result['parcelNumber'])) {
                 $result['parcelNumber'] = 'Pending';
             }
@@ -116,7 +116,7 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 3 — Results
+    #region STEP 4 — Results
 
     return $result;
 
