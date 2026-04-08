@@ -1,4 +1,4 @@
-<?php
+<?php 
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
@@ -27,16 +27,21 @@ echo "</pre>";
 
 
 // ==========================
-// TEST 2 — MARICOPA ONLY
+// TEST 2 — MARICOPA ONLY (UPDATED)
 // ==========================
 echo "<h2>Maricopa Test</h2>";
 
-if ($google && !empty($google['address'])) {
-    $parcel = getMaricopaParcelFromAddress($google['address']);
+if ($google && !empty($google['lat']) && !empty($google['lng'])) {
+
+    $parcel = getMaricopaParcelFromCoordinates(
+        $google['lat'],
+        $google['lng']
+    );
 
     echo "<pre>";
     print_r($parcel);
     echo "</pre>";
+
 } else {
     echo "Google failed — skipping Maricopa test<br>";
 }
