@@ -197,9 +197,11 @@ function getMaricopaParcelFromAddress(string $address): ?array {
             ]
         ]);
 
-        $response = @file_get_contents($url, false, $context);
+        $response = file_get_contents($url, false, $context);
 
-        if (!$response) return null;
+        if ($response === false) {
+            throw new RuntimeException("MCA request failed: " . $url);
+        }
 
         $data = json_decode($response, true);
 
