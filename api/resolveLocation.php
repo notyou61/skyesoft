@@ -136,17 +136,10 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
     if (!$apiKey || !$address || !$city) return null;
 
-    // Normalize inputs
-    $street = strtoupper(trim($address));
-    $city   = strtoupper(trim($city));
+    // Build search query (same as curl test)
+    $query = urlencode($address . ' ' . $city);
 
-    // ✅ Correct endpoint + parameters
-    $query = http_build_query([
-        'street' => $street,
-        'city'   => $city
-    ]);
-
-    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcel/search?$query";
+    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
     $ch = curl_init();
 
@@ -154,27 +147,19 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
-
         CURLOPT_HTTPHEADER => [
-            "Ocp-Apim-Subscription-Key: $apiKey",
-            "Accept: application/json"
-        ],
-
-        // Keep for GoDaddy compatibility
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            "AUTHORIZATION: $apiKey",
+            "User-Agent: Skyesoft"
+        ]
     ]);
 
     $response = curl_exec($ch);
-
     $error  = curl_error($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     curl_close($ch);
 
-    // Debug logging (keep this — it's valuable)
+    // Debug logging
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
@@ -185,25 +170,36 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     $data = json_decode($response, true);
 
-    // ✅ Correct response parsing (root array)
-    if (!is_array($data) || empty($data[0]['apn'])) return null;
+    if (empty($data['Results'])) return null;
 
-    $apn = $data[0]['apn'];
+    $targetAddress = strtoupper(trim($address));
 
-    // Normalize APN format (###-##-###)
-    $digits = preg_replace('/\D+/', '', $apn);
+    foreach ($data['Results'] as $r) {
 
-    if (strlen($digits) < 7) return null;
+        $apiAddress = strtoupper(trim($r['SitusAddress'] ?? ''));
 
-    $formatted =
-        substr($digits, 0, 3) . '-' .
-        substr($digits, 3, 2) . '-' .
-        substr($digits, 5);
+        // Exact match
+        if ($apiAddress === $targetAddress) {
 
-    return [
-        'parcelNumber' => $formatted,
-        'jurisdiction' => ucwords(strtolower($city))
-    ];
+            $apn = preg_replace('/\D+/', '', $r['APN']);
+
+            if (strlen($apn) === 8) {
+                $formatted =
+                    substr($apn, 0, 3) . '-' .
+                    substr($apn, 3, 2) . '-' .
+                    substr($apn, 5, 3);
+            } else {
+                $formatted = $r['APN'];
+            }
+
+            return [
+                'parcelNumber' => $formatted,
+                'jurisdiction' => ucwords(strtolower($city))
+            ];
+        }
+    }
+
+    return null;
 }
 
 #endregion
