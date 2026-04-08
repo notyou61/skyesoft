@@ -66,24 +66,51 @@ function resolveLocation(array $input): array {
                 $result['city']
             );
 
-            if ($parcel) {
+            // Validate parcel response (structure + value)
+            if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
+
+                // Set parcel
                 $result['parcelNumber'] = $parcel['parcelNumber'];
-                $result['jurisdiction'] = $parcel['jurisdiction'];
+
+                // Only override jurisdiction if provided
+                if (!empty($parcel['jurisdiction'])) {
+                    $result['jurisdiction'] = $parcel['jurisdiction'];
+                }
+
             } else {
-                $result['jurisdiction'] = $result['city'] ?? 'Maricopa County';
+
+                // Fallback: ensure parcel is not blank
+                if (empty($result['parcelNumber'])) {
+                    $result['parcelNumber'] = 'Pending';
+                }
+
+                // Fallback jurisdiction
+                if (empty($result['jurisdiction'])) {
+                    $result['jurisdiction'] = $result['city'] ?? 'Maricopa County';
+                }
             }
 
         } else {
+
+            // Missing address data fallback
+            if (empty($result['parcelNumber'])) {
+                $result['parcelNumber'] = 'Pending';
+            }
+
             $result['jurisdiction'] = 'Maricopa County';
         }
 
     } else {
 
+        // Non-Maricopa fallback
+        if (empty($result['parcelNumber'])) {
+            $result['parcelNumber'] = 'Pending';
+        }
+
         $result['jurisdiction'] =
             $result['city']
             ?? $result['county']
             ?? 'Unknown';
-
     }
 
     #endregion
