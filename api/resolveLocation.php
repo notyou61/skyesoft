@@ -136,40 +136,50 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
     if (!$apiKey || !$address || !$city) return null;
 
-    $address = strtoupper(trim($address));
-    $city    = strtoupper(trim($city));
-
     $query = http_build_query([
-        'address' => $address,
-        'city'    => $city
+        'address' => strtoupper(trim($address)),
+        'city'    => strtoupper(trim($city))
     ]);
 
     $url = "https://api.mcassessor.maricopa.gov/api/v1/parcels/search?$query";
 
-    // 🔥 STREAM CONTEXT (NO CURL)
-    $opts = [
-        "http" => [
-            "method" => "GET",
-            "header" => "Ocp-Apim-Subscription-Key: $apiKey\r\n"
+    $ch = curl_init();
+
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 15,
+
+        // 🔥 CRITICAL (fix routing)
+        CURLOPT_HTTPHEADER => [
+            "Ocp-Apim-Subscription-Key: $apiKey",
+            "Accept: application/json",
+            "Content-Type: application/json"
         ],
-        "ssl" => [
-            "verify_peer" => false,
-            "verify_peer_name" => false
-        ]
-    ];
 
-    $context = stream_context_create($opts);
+        // 🔥 TLS FIX (GoDaddy compatibility)
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
 
-    $response = file_get_contents($url, false, $context);
+        // 🔥 FORCE HTTP/1.1 (important for some gateways)
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    ]);
+
+    $response = curl_exec($ch);
+
+    $error  = curl_error($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    curl_close($ch);
 
     // 🔍 TEMP DEBUG
     file_put_contents(
         __DIR__ . '/mca_debug.log',
-        "URL: $url\nRESPONSE:\n$response\n\n",
+        "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
 
-    if (!$response) return null;
+    if ($error || $status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
 
