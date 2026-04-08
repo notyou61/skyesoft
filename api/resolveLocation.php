@@ -137,7 +137,7 @@ function getMaricopaParcelFromAddress(string $street, string $city): ?array {
         'city'   => strtoupper(trim($city))
     ]);
 
-    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcel/search?$query";
+    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcels/search?$query";
 
     $ch = curl_init();
 
@@ -174,11 +174,12 @@ function getMaricopaParcelFromAddress(string $street, string $city): ?array {
 
     $data = json_decode($response, true);
 
-    if (!is_array($data) || empty($data)) return null;
+    if (
+        empty($data['parcels']) ||
+        !is_array($data['parcels'])
+    ) return null;
 
-    // ✔ TAKE FIRST MATCH (IMPORTANT FIX)
-    $parcel = $data[0]['apn'] ?? null;
-    if (!$parcel) return null;
+    $parcel = $data['parcels'][0]['apn'] ?? null;
 
     $digits = preg_replace('/\D+/', '', $parcel);
 
