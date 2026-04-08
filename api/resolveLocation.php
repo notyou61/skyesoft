@@ -58,60 +58,35 @@ function resolveLocation(array $input): array {
         strtoupper($result['county'] ?? '') === 'MARICOPA'
     ) {
 
-        // 🔥 Use GOOGLE as canonical source (not $result)
-        if (!empty($google['address']) && !empty($google['city'])) {
+        // Use the already-extracted clean street from Google (most reliable)
+        $street = extractStreetAddress($google['address'] ?? '');
 
-            // Extract street EXACTLY like working test
-            $street = extractStreetAddress($google['address']);
+        if (!empty($street) && !empty($google['city'])) {
 
-            $parcel = getMaricopaParcelFromAddress(
-                $street,
-                $google['city']
-            );
+            $parcel = getMaricopaParcelFromAddress($street, $google['city']);
 
-            // Validate parcel response
+            // Debug log (remove or comment out later)
+            error_log("resolveLocation DEBUG - Street: '{$street}', City: '{$google['city']}', Parcel result: " . json_encode($parcel));
+
             if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
-
                 $result['parcelNumber'] = $parcel['parcelNumber'];
-
                 if (!empty($parcel['jurisdiction'])) {
                     $result['jurisdiction'] = $parcel['jurisdiction'];
                 }
-
             } else {
-
-                // Parcel fallback
-                if (empty($result['parcelNumber'])) {
-                    $result['parcelNumber'] = 'Pending';
-                }
-
-                // Jurisdiction fallback
-                if (empty($result['jurisdiction'])) {
-                    $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
-                }
+                $result['parcelNumber'] = 'Pending';
+                $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
             }
 
         } else {
-
-            // Missing Google data fallback
-            if (empty($result['parcelNumber'])) {
-                $result['parcelNumber'] = 'Pending';
-            }
-
+            $result['parcelNumber'] = 'Pending';
             $result['jurisdiction'] = 'Maricopa County';
         }
 
     } else {
-
         // Non-Maricopa fallback
-        if (empty($result['parcelNumber'])) {
-            $result['parcelNumber'] = 'Pending';
-        }
-
-        $result['jurisdiction'] =
-            $result['city']
-            ?? $result['county']
-            ?? 'Unknown';
+        $result['parcelNumber'] = 'Pending';
+        $result['jurisdiction'] = $result['city'] ?? $result['county'] ?? 'Unknown';
     }
 
     #endregion
@@ -199,7 +174,10 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     // Normalize helper
     $normalize = function($str) {
-        return preg_replace('/[^A-Z0-9]/', '', strtoupper($str));
+        $str = strtoupper(trim($str));
+        $str = preg_replace('/[^A-Z0-9]/', '', $str);   // remove punctuation & spaces
+        $str = preg_replace('/(NORTH|SOUTH|EAST|WEST|N|S|E|W)/', '', $str); // optional: expand later
+        return $str;
     };
 
     // ✅ CRITICAL FIX: compare street only
