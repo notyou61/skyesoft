@@ -129,19 +129,24 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API
+#region SECTION 3 — Maricopa API (CORRECTED)
 
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
     if (!$apiKey || !$address || !$city) return null;
 
+    // Normalize inputs
+    $street = strtoupper(trim($address));
+    $city   = strtoupper(trim($city));
+
+    // ✅ Correct endpoint + parameters
     $query = http_build_query([
-        'address' => strtoupper(trim($address)),
-        'city'    => strtoupper(trim($city))
+        'street' => $street,
+        'city'   => $city
     ]);
 
-    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcels/search?$query";
+    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcel/search?$query";
 
     $ch = curl_init();
 
@@ -150,18 +155,15 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 15,
 
-        // 🔥 CRITICAL (fix routing)
         CURLOPT_HTTPHEADER => [
             "Ocp-Apim-Subscription-Key: $apiKey",
-            "Accept: application/json",
-            "Content-Type: application/json"
+            "Accept: application/json"
         ],
 
-        // 🔥 TLS FIX (GoDaddy compatibility)
+        // Keep for GoDaddy compatibility
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
 
-        // 🔥 FORCE HTTP/1.1 (important for some gateways)
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
     ]);
 
@@ -172,7 +174,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     curl_close($ch);
 
-    // 🔍 TEMP DEBUG
+    // Debug logging (keep this — it's valuable)
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
@@ -183,22 +185,24 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     $data = json_decode($response, true);
 
-    if (
-        empty($data['parcels']) ||
-        !is_array($data['parcels'])
-    ) return null;
+    // ✅ Correct response parsing (root array)
+    if (!is_array($data) || empty($data[0]['apn'])) return null;
 
-    $parcel = $data['parcels'][0]['apn'] ?? null;
-    if (!$parcel) return null;
+    $apn = $data[0]['apn'];
 
-    $digits = preg_replace('/\D+/', '', $parcel);
+    // Normalize APN format (###-##-###)
+    $digits = preg_replace('/\D+/', '', $apn);
+
+    if (strlen($digits) < 7) return null;
+
+    $formatted =
+        substr($digits, 0, 3) . '-' .
+        substr($digits, 3, 2) . '-' .
+        substr($digits, 5);
 
     return [
-        'parcelNumber' =>
-            substr($digits, 0, 3) . '-' .
-            substr($digits, 3, 2) . '-' .
-            substr($digits, 5),
-        'jurisdiction' => $city
+        'parcelNumber' => $formatted,
+        'jurisdiction' => ucwords(strtolower($city))
     ];
 }
 
