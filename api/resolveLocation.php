@@ -103,7 +103,9 @@ function resolveLocation(array $input): array {
 #region SECTION 1 — Helpers
 
 function extractStreetAddress(string $fullAddress): string {
-    return trim(explode(',', $fullAddress)[0]);
+    // Handle cases with "USA" or extra parts
+    $parts = array_map('trim', explode(',', $fullAddress));
+    return $parts[0] ?? '';
 }
 
 #endregion
@@ -132,7 +134,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (CORRECTED)
+#region SECTION 3 — Maricopa API (ROBUST MATCHING)
 
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
@@ -144,7 +146,6 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
     $ch = curl_init();
-
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
@@ -158,9 +159,9 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $response = curl_exec($ch);
     $error  = curl_error($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
     curl_close($ch);
 
+    // Always log for debugging
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
@@ -170,33 +171,31 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     if ($error || $status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
-    if (empty($data['Results'])) return null;
+    if (empty($data['Results']) || !is_array($data['Results'])) return null;
 
-    // Normalize helper
-    $normalize = function($str) {
+    // Improved normalization: remove everything except letters & numbers, force upper
+    $normalize = function(string $str): string {
         $str = strtoupper(trim($str));
-        $str = preg_replace('/[^A-Z0-9]/', '', $str);   // remove punctuation & spaces
-        $str = preg_replace('/(NORTH|SOUTH|EAST|WEST|N|S|E|W)/', '', $str); // optional: expand later
+        // Remove all non-alphanumeric characters
+        $str = preg_replace('/[^A-Z0-9]/', '', $str);
+        // Optional: remove common suffixes if needed later
         return $str;
     };
 
-    // ✅ CRITICAL FIX: compare street only
     $targetStreet = trim(explode(',', $address)[0]);
     $targetNorm   = $normalize($targetStreet);
 
     foreach ($data['Results'] as $r) {
-
         $apiAddress = $r['SitusAddress'] ?? '';
         $apiNorm    = $normalize($apiAddress);
 
-        if ($apiNorm === $targetNorm) {
+        // More lenient match: contains instead of exact equality
+        if (strpos($apiNorm, $targetNorm) !== false || $apiNorm === $targetNorm) {
 
-            $apn = preg_replace('/\D+/', '', $r['APN']);
+            $apn = preg_replace('/\D+/', '', $r['APN'] ?? '');
 
             $formatted = (strlen($apn) === 8)
-                ? substr($apn, 0, 3) . '-' .
-                  substr($apn, 3, 2) . '-' .
-                  substr($apn, 5, 3)
+                ? substr($apn, 0, 3) . '-' . substr($apn, 3, 2) . '-' . substr($apn, 5, 3)
                 : $r['APN'];
 
             return [
@@ -205,6 +204,9 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
             ];
         }
     }
+
+    // If no match found, still log what was received (helpful for future tuning)
+    error_log("No parcel match for street: '{$targetStreet}' (norm: {$targetNorm})");
 
     return null;
 }
