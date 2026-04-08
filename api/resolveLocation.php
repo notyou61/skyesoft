@@ -133,11 +133,8 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
-    if (!$address || !$city) return null;
-
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-
-    if (!$apiKey) return null;
+    if (!$apiKey || !$address || !$city) return null;
 
     $address = strtoupper(trim($address));
     $city    = strtoupper(trim($city));
@@ -149,35 +146,42 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     $url = "https://api.mcassessor.maricopa.gov/api/v1/parcels/search?$query";
 
-    $ch = curl_init($url);
-
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_HTTPHEADER     => [
-            "Ocp-Apim-Subscription-Key: $apiKey"
+    // 🔥 STREAM CONTEXT (NO CURL)
+    $opts = [
+        "http" => [
+            "method" => "GET",
+            "header" => "Ocp-Apim-Subscription-Key: $apiKey\r\n"
+        ],
+        "ssl" => [
+            "verify_peer" => false,
+            "verify_peer_name" => false
         ]
-    ]);
+    ];
 
-    $response = curl_exec($ch);
-    $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $context = stream_context_create($opts);
 
-    curl_close($ch);
+    $response = file_get_contents($url, false, $context);
 
-    // 🔍 Debug (keep temporarily)
+    // 🔍 TEMP DEBUG
     file_put_contents(
         __DIR__ . '/mca_debug.log',
-        "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
+        "URL: $url\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
 
-    $parcel = $data['parcels'][0]['apn'] ?? null;
+    if (!$response) return null;
 
+    $data = json_decode($response, true);
+
+    if (
+        empty($data['parcels']) ||
+        !is_array($data['parcels'])
+    ) return null;
+
+    $parcel = $data['parcels'][0]['apn'] ?? null;
     if (!$parcel) return null;
 
     $digits = preg_replace('/\D+/', '', $parcel);
-
-    if (strlen($digits) < 8) return null;
 
     return [
         'parcelNumber' =>
