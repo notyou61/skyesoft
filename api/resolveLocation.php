@@ -103,9 +103,8 @@ function resolveLocation(array $input): array {
 #region SECTION 1 — Helpers
 
 function extractStreetAddress(string $fullAddress): string {
-    // Handle cases with "USA" or extra parts
     $parts = array_map('trim', explode(',', $fullAddress));
-    return $parts[0] ?? '';
+    return $parts[0] ?? $fullAddress;
 }
 
 #endregion
@@ -134,7 +133,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (ROBUST MATCHING)
+#region SECTION 3 — Maricopa API (FINAL ROBUST VERSION)
 
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
@@ -142,14 +141,13 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     if (!$apiKey || !$address || !$city) return null;
 
     $query = urlencode($address);
-
     $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
+        CURLOPT_TIMEOUT => 20,
         CURLOPT_HTTPHEADER => [
             "AUTHORIZATION: $apiKey",
             "User-Agent: Skyesoft"
@@ -161,10 +159,10 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // Always log for debugging
+    // Always log the raw response
     file_put_contents(
         __DIR__ . '/mca_debug.log',
-        "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
+        date('Y-m-d H:i:s') . " | URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
 
@@ -173,41 +171,52 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $data = json_decode($response, true);
     if (empty($data['Results']) || !is_array($data['Results'])) return null;
 
-    // Improved normalization: remove everything except letters & numbers, force upper
+    // Super aggressive normalization (removes everything except alphanum)
     $normalize = function(string $str): string {
         $str = strtoupper(trim($str));
-        // Remove all non-alphanumeric characters
-        $str = preg_replace('/[^A-Z0-9]/', '', $str);
-        // Optional: remove common suffixes if needed later
+        $str = preg_replace('/[^A-Z0-9]/', '', $str);   // keep only letters + numbers
         return $str;
     };
 
     $targetStreet = trim(explode(',', $address)[0]);
     $targetNorm   = $normalize($targetStreet);
 
+    $bestParcel = null;
+    $bestScore  = 0;
+
     foreach ($data['Results'] as $r) {
         $apiAddress = $r['SitusAddress'] ?? '';
         $apiNorm    = $normalize($apiAddress);
 
-        // More lenient match: contains instead of exact equality
+        // Match if target is fully contained in API address (very forgiving)
         if (strpos($apiNorm, $targetNorm) !== false || $apiNorm === $targetNorm) {
 
-            $apn = preg_replace('/\D+/', '', $r['APN'] ?? '');
+            $apnRaw = preg_replace('/\D+/', '', $r['APN'] ?? '');
+            if (strlen($apnRaw) < 8) continue;   // skip invalid APNs
 
-            $formatted = (strlen($apn) === 8)
-                ? substr($apn, 0, 3) . '-' . substr($apn, 3, 2) . '-' . substr($apn, 5, 3)
+            $formatted = (strlen($apnRaw) === 8)
+                ? substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5, 3)
                 : $r['APN'];
 
-            return [
-                'parcelNumber' => $formatted,
-                'jurisdiction' => ucwords(strtolower($city))
-            ];
+            // Simple scoring: prefer exact match and shorter APN (avoids "10803009E")
+            $score = ($apiNorm === $targetNorm ? 100 : 50) + (strlen($apnRaw) === 8 ? 20 : 0);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestParcel = [
+                    'parcelNumber' => $formatted,
+                    'jurisdiction' => ucwords(strtolower($city))
+                ];
+            }
         }
     }
 
-    // If no match found, still log what was received (helpful for future tuning)
-    error_log("No parcel match for street: '{$targetStreet}' (norm: {$targetNorm})");
+    if ($bestParcel) {
+        return $bestParcel;
+    }
 
+    // No match found
+    error_log("No parcel match found for street: '{$targetStreet}' (norm: {$targetNorm}). Found " . count($data['Results']) . " results.");
     return null;
 }
 
