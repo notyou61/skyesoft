@@ -3,31 +3,12 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — resolveLocation.php
-//  Version: 1.1.0
-//  Last Updated: 2026-04-07
-//  Codex Tier: 2 — Location Intelligence Engine
-//
-//  Role:
-//  Resolves and enriches location data using:
-//   • Google Places (identity)
-//   • Census API (county)
-//   • Maricopa API (parcel + jurisdiction)
-//
-//  Responsibilities:
-//   • Validate locationPlaceId
-//   • Resolve geospatial data
-//   • Apply jurisdiction logic
-//
-//  Forbidden:
-//   • No database writes
-//   • No contact/entity logic
+//  Version: 1.2.0
 // ======================================================================
 
 #region SECTION 0 — Core Function
 
 function resolveLocation(array $input): array {
-
-    #region Default Structure
 
     $result = [
         'placeId' => null,
@@ -36,20 +17,17 @@ function resolveLocation(array $input): array {
         'city' => null,
         'state' => null,
         'zip' => null,
-        'address' => null, // 🔥 NEW
+        'address' => null,
         'county' => null,
         'countyFips' => null,
         'jurisdiction' => null,
         'parcelNumber' => null
     ];
 
-    #endregion
-
-    #region STEP 1 — Google Geocode (REAL)
+    #region STEP 1 — Google
 
     $google = getGoogleGeocode($input);
 
-    // 🛡️ Strong validation
     if (
         !$google ||
         empty($google['placeId']) ||
@@ -59,17 +37,11 @@ function resolveLocation(array $input): array {
         return $result;
     }
 
-    $result['placeId'] = $google['placeId'];
-    $result['lat'] = $google['lat'];
-    $result['lng'] = $google['lng'];
-    $result['city'] = $google['city'];
-    $result['state'] = $google['state'];
-    $result['zip'] = $google['zip'];
-    $result['address'] = $google['address'] ?? null; // 🔥 NEW
+    $result = array_merge($result, $google);
 
     #endregion
 
-    #region STEP 2 — Census Geography
+    #region STEP 2 — Census
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
@@ -78,29 +50,24 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 3 — Conditional Parcel Logic
+    #region STEP 3 — Maricopa Parcel
 
     if (
         $result['state'] === 'AZ' &&
         $result['county'] === 'Maricopa County'
     ) {
 
-        $address = $result['address'];
+        if (!empty($result['address']) && !empty($result['city'])) {
 
-        if ($address) {
+            $street = extractStreetAddress($result['address']);
 
-            $parcel = getMaricopaParcelFromAddress($result['address']);
-
-            // TEMP DEBUG OUTPUT
-            if (isset($parcel['debug'])) {
-                $result['mcaDebug'] = $parcel['debug'];
-            }
+            $parcel = getMaricopaParcelFromAddress($street, $result['city']);
 
             if ($parcel) {
                 $result['parcelNumber'] = $parcel['parcelNumber'];
                 $result['jurisdiction'] = $parcel['jurisdiction'];
             } else {
-                $result['jurisdiction'] = 'Maricopa County';
+                $result['jurisdiction'] = $result['city'];
             }
 
         } else {
@@ -108,9 +75,7 @@ function resolveLocation(array $input): array {
         }
 
     } else {
-
         $result['jurisdiction'] = $result['county'] ?? 'Unknown';
-
     }
 
     #endregion
@@ -120,187 +85,129 @@ function resolveLocation(array $input): array {
 
 #endregion
 
-#region SECTION 1 — Census API Integration
+#region SECTION 1 — Helpers
+
+function extractStreetAddress(string $fullAddress): string {
+    return trim(explode(',', $fullAddress)[0]);
+}
+
+#endregion
+
+#region SECTION 2 — Census
 
 function getCensusGeography(?float $lat, ?float $lng): array {
 
-    if (!$lat || !$lng) {
-        return [
-            'state' => null,
-            'county' => null,
-            'countyFips' => null
-        ];
-    }
+    if (!$lat || !$lng) return [];
 
     $url = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates"
         . "?x={$lng}&y={$lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json";
 
-    try {
+    $response = @file_get_contents($url);
+    if (!$response) return [];
 
-        $response = file_get_contents($url);
+    $data = json_decode($response, true);
 
-        if (!$response) {
-            throw new RuntimeException("Census API request failed.");
-        }
+    $geo = $data['result']['geographies']['Counties'][0] ?? null;
 
-        $data = json_decode($response, true);
-
-        $geo = $data['result']['geographies']['Counties'][0] ?? null;
-
-        if (!$geo) {
-            return [
-                'state' => null,
-                'county' => null,
-                'countyFips' => null
-            ];
-        }
-
-        return [
-            'state' => $geo['STATE'] ?? null,
-            'county' => $geo['NAME'] ?? null,
-            'countyFips' => $geo['COUNTY'] ?? null
-        ];
-
-    } catch (Throwable $e) {
-
-        // Fail silently (non-blocking per Codex)
-        return [
-            'state' => null,
-            'county' => null,
-            'countyFips' => null
-        ];
-    }
+    return [
+        'county' => $geo['NAME'] ?? null,
+        'countyFips' => $geo['COUNTY'] ?? null
+    ];
 }
 
 #endregion
 
-#region SECTION 2 — Maricopa Parcel API (Coordinate-Based)
+#region SECTION 3 — Maricopa API
 
-function getMaricopaParcelFromAddress(string $address): ?array {
-
-    if (!$address) return null;
+function getMaricopaParcelFromAddress(string $street, string $city): ?array {
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
+    if (!$apiKey) return null;
 
-    $url = "https://mcassessor.maricopa.gov/api/property/search"
-        . "?q=" . urlencode($address)
-        . "&limit=1";
+    $query = http_build_query([
+        'street' => strtoupper(trim($street)),
+        'city'   => strtoupper(trim($city))
+    ]);
 
-    $headers = [
-        "x-api-key: {$apiKey}",
-        "Accept: application/json"
+    $url = "https://api.mcassessor.maricopa.gov/api/v1/parcel/search?$query";
+
+    $ch = curl_init($url);
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => [
+            "Ocp-Apim-Subscription-Key: {$apiKey}"
+        ]
+    ]);
+
+    $response = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($status !== 200 || !$response) return null;
+
+    $data = json_decode($response, true);
+
+    if (!is_array($data) || count($data) !== 1) return null;
+
+    $parcel = $data[0]['apn'] ?? null;
+    if (!$parcel) return null;
+
+    $digits = preg_replace('/\D+/', '', $parcel);
+
+    return [
+        'parcelNumber' =>
+            substr($digits, 0, 3) . '-' .
+            substr($digits, 3, 2) . '-' .
+            substr($digits, 5),
+        'jurisdiction' => $city
     ];
-
-    try {
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'header' => implode("\r\n", $headers),
-                'timeout' => 5
-            ]
-        ]);
-
-        $response = file_get_contents($url, false, $context);
-        if (!$response) return null;
-
-        $data = json_decode($response, true);
-
-        if (empty($data) || !isset($data[0])) return null;
-
-        $item = $data[0];
-
-        return [
-            'parcelNumber' => $item['apn'] ?? null,
-            'jurisdiction' => $item['situsCity'] ?? 'Maricopa County'
-        ];
-
-    } catch (Throwable $e) {
-        return null;
-    }
 }
 
 #endregion
 
-#region SECTION 3 — Google Geocoding API
+#region SECTION 4 — Google
 
 function getGoogleGeocode(array $input): ?array {
 
-    // Build address input
-    $address = $input['address']
-        ?? trim(
-            ($input['city'] ?? '') . ' ' .
-            ($input['state'] ?? '') . ' ' .
-            ($input['zip'] ?? '')
-        );
-
+    $address = $input['address'] ?? null;
     if (!$address) return null;
 
     $apiKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
-
     if (!$apiKey) return null;
 
     $url = "https://maps.googleapis.com/maps/api/geocode/json?address="
-        . urlencode($address)
-        . "&key={$apiKey}";
+        . urlencode($address) . "&key={$apiKey}";
 
-    try {
+    $response = @file_get_contents($url);
+    if (!$response) return null;
 
-        $response = @file_get_contents($url);
+    $data = json_decode($response, true);
 
-        if (!$response) return null;
+    if (($data['status'] ?? '') !== 'OK') return null;
 
-        $data = json_decode($response, true);
+    $r = $data['results'][0];
 
-        // 🛡️ NEW — Google status validation (MTCO fix)
-        if (($data['status'] ?? null) !== 'OK') {
-            return null;
-        }
+    $location = $r['geometry']['location'];
 
-        if (
-            empty($data['results']) ||
-            !isset($data['results'][0])
-        ) {
-            return null;
-        }
+    $city = $state = $zip = null;
 
-        $result = $data['results'][0];
-
-        $location = $result['geometry']['location'] ?? null;
-        $components = $result['address_components'] ?? [];
-
-        if (!$location) return null;
-
-        // Extract components
-        $city = null;
-        $state = null;
-        $zip = null;
-
-        foreach ($components as $comp) {
-            if (in_array('locality', $comp['types'])) {
-                $city = $comp['long_name'];
-            }
-            if (in_array('administrative_area_level_1', $comp['types'])) {
-                $state = $comp['short_name'];
-            }
-            if (in_array('postal_code', $comp['types'])) {
-                $zip = $comp['long_name'];
-            }
-        }
-
-        return [
-            'placeId' => $result['place_id'] ?? null,
-            'lat' => $location['lat'],
-            'lng' => $location['lng'],
-            'city' => $city,
-            'state' => $state,
-            'zip' => $zip,
-            'address' => $result['formatted_address'] ?? $address
-        ];
-
-    } catch (Throwable $e) {
-        return null;
+    foreach ($r['address_components'] as $c) {
+        if (in_array('locality', $c['types'])) $city = $c['long_name'];
+        if (in_array('administrative_area_level_1', $c['types'])) $state = $c['short_name'];
+        if (in_array('postal_code', $c['types'])) $zip = $c['long_name'];
     }
+
+    return [
+        'placeId' => $r['place_id'],
+        'lat' => $location['lat'],
+        'lng' => $location['lng'],
+        'city' => $city,
+        'state' => $state,
+        'zip' => $zip,
+        'address' => $r['formatted_address']
+    ];
 }
 
 #endregion
