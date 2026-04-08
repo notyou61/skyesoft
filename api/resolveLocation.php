@@ -41,7 +41,7 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 2 — Census
+    #region STEP 1 — Census
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
@@ -50,7 +50,7 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 3 — Maricopa Parcel
+    #region STEP 2 — Maricopa Parcel
 
     if (
         $result['state'] === 'AZ' &&
@@ -88,7 +88,11 @@ function resolveLocation(array $input): array {
 
     #endregion
 
+    #region STEP 3 — Results
+
     return $result;
+
+    #endregion
 }
 
 #endregion
@@ -127,50 +131,47 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #region SECTION 3 — Maricopa API
 
-function getMaricopaParcelFromAddress(string $street, string $city): ?array {
+function getMaricopaParcelFromAddress(string $address, string $city): ?array {
+
+    if (!$address || !$city) return null;
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
+
     if (!$apiKey) return null;
 
+    $address = strtoupper(trim($address));
+    $city    = strtoupper(trim($city));
+
     $query = http_build_query([
-        'street' => strtoupper(trim($street)),
-        'city'   => strtoupper(trim($city))
+        'address' => $address,
+        'city'    => $city
     ]);
 
     $url = "https://api.mcassessor.maricopa.gov/api/v1/parcels/search?$query";
 
-    $ch = curl_init();
+    $ch = curl_init($url);
 
     curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
-
-        // 🔥 CRITICAL FIXES
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false,
-
-        CURLOPT_HTTPHEADER => [
-            "Ocp-Apim-Subscription-Key: {$apiKey}",
-            "Accept: application/json"
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_HTTPHEADER     => [
+            "Ocp-Apim-Subscription-Key: $apiKey"
         ]
     ]);
 
     $response = curl_exec($ch);
-
-    $error  = curl_error($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $status   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     curl_close($ch);
 
-    // 🔥 DEBUG (keep temporarily)
+    // 🔍 Debug (keep temporarily)
     file_put_contents(
-        __DIR__ . '/mca_debug.log',
-        "URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
+        __DIR__ . "/../logs/mca_debug.log",
+        "URL: $url\nSTATUS: $status\nRESPONSE:\n$response\n\n",
         FILE_APPEND
     );
 
-    if ($error || $status !== 200 || !$response) return null;
+    if ($status !== 200 || !$response) return null;
 
     $data = json_decode($response, true);
 
@@ -181,7 +182,11 @@ function getMaricopaParcelFromAddress(string $street, string $city): ?array {
 
     $parcel = $data['parcels'][0]['apn'] ?? null;
 
+    if (!$parcel) return null;
+
     $digits = preg_replace('/\D+/', '', $parcel);
+
+    if (strlen($digits) < 8) return null;
 
     return [
         'parcelNumber' =>
