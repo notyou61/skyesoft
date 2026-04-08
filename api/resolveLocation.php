@@ -183,14 +183,14 @@ function getMaricopaParcelFromCoordinates(float $lat, float $lng): ?array {
 
     if (!$lat || !$lng) return null;
 
-    $url = "https://gis.maricopa.gov/arcgis/rest/services/MCASS/MCASS_Parcels/MapServer/0/query"
-        . "?geometry=" . urlencode(json_encode(["x"=>$lng,"y"=>$lat]))
+    $url = "https://gis.maricopa.gov/arcgis/rest/services/Parcels/TaxParcel/MapServer/0/query"
+        . "?geometry=" . urlencode("{$lng},{$lat}")
         . "&geometryType=esriGeometryPoint"
         . "&inSR=4326"
         . "&spatialRel=esriSpatialRelIntersects"
-        . "&distance=3"
+        . "&distance=10"
         . "&units=esriSRUnit_Meter"
-        . "&outFields=APN,PROPERTY_CITY,SITE_ADDR"
+        . "&outFields=*"
         . "&returnGeometry=false"
         . "&f=json";
 
@@ -206,8 +206,14 @@ function getMaricopaParcelFromCoordinates(float $lat, float $lng): ?array {
         $attr = $data['features'][0]['attributes'];
 
         return [
-            'parcelNumber' => $attr['APN'] ?? null,
-            'jurisdiction' => $attr['PROPERTY_CITY'] ?? 'Maricopa County'
+            'parcelNumber' => $attr['APN'] 
+                ?? $attr['PARCEL_NUM'] 
+                ?? $attr['PARCELNUMBER'] 
+                ?? null,
+
+            'jurisdiction' => $attr['SITUS_CITY'] 
+                ?? $attr['PROPERTY_CITY'] 
+                ?? 'Maricopa County'
         ];
 
     } catch (Throwable $e) {
