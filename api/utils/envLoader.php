@@ -97,3 +97,6 @@ function skyesoftLoadEnv(): void {
         error_log("[env-loader] Loaded: $envPath");
     }
 }
+function skyesoftGetEnv(string $key): ?string {
+    return $_ENV[$key] ?? getenv($key) ?? null;
+}
