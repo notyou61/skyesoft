@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
-require_once __DIR__ . '/parseContact.php';
+require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 
@@ -38,11 +38,15 @@ const ACTION_ORIGIN_AUTOMATION = 3;
 
 #endregion
 
-#region SECTION 1 — Input Handling
+#region SECTION 1 — Input Handling (JSON First)
 
-$input = $_POST['input'] ?? '';
+$rawRequest = file_get_contents('php://input');
+$jsonInput  = json_decode($rawRequest, true);
 
-if (!$input) {
+// Prefer JSON input
+$input = $jsonInput['input'] ?? $_POST['input'] ?? '';
+
+if (!$input || trim($input) === '') {
     echo json_encode([
         'status' => 'reject',
         'reason' => 'No input provided'
@@ -302,7 +306,7 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 #endregion
 
-#region SECTION 10 — Transaction + Insert Engine
+#region SECTION 10 — Transaction + Insert Engine (Phase 4: ELC Execution)
 
 function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord): array {
 
@@ -310,24 +314,35 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         $db->beginTransaction();
 
-        // =========================================================
-        // 1. ENTITY INSERT (IF NEW)
-        // =========================================================
+        #region Normalize Inputs
+
+        $varEntityName = trim((string)($parsed['entity']['name'] ?? ''));
+        $varEntityType = $parsed['entity']['type'] ?? 'company';
+
+        $contact = $parsed['contact'] ?? [];
+
+        $varFirstName = trim((string)($contact['firstName'] ?? ''));
+        $varLastName  = trim((string)($contact['lastName'] ?? ''));
+        $varEmail     = strtolower(trim((string)($contact['email'] ?? '')));
+
+        if ($varEntityName === '') {
+            throw new RuntimeException('ELC FAIL: Entity name required.');
+        }
+
+        if ($varFirstName === '' || $varLastName === '') {
+            throw new RuntimeException('ELC FAIL: Contact first and last name required.');
+        }
+
+        if (empty($location['placeId'])) {
+            throw new RuntimeException('ELC FAIL: locationPlaceId required.');
+        }
+
+        #endregion
+
+        #region ENTITY — Insert or Reuse
+
         if ($entity['status'] === 'new') {
 
-            // ─────────────────────────────────────────
-            // 🛡️ Safe Entity Extraction
-            // ─────────────────────────────────────────
-            $entityName = trim($parsed['entity']['name'] ?? '');
-            $entityType = $parsed['entity']['type'] ?? 'company';
-
-            if ($entityName === '') {
-                throw new RuntimeException('Entity name is required for insert.');
-            }
-
-            // ─────────────────────────────────────────
-            // 🗄️ Insert / Reuse Entity
-            // ─────────────────────────────────────────
             $stmt = $db->prepare("
                 INSERT INTO tblEntities (
                     entityName,
@@ -338,28 +353,28 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                     :type,
                     UNIX_TIMESTAMP()
                 )
-                ON DUPLICATE KEY UPDATE entityId = LAST_INSERT_ID(entityId)
             ");
 
             $stmt->execute([
-                'name' => $entityName,
-                'type' => $entityType
+                'name' => $varEntityName,
+                'type' => $varEntityType
             ]);
 
             $entityId = (int)$db->lastInsertId();
+
+            if ($entityId <= 0) {
+                throw new RuntimeException('ELC FAIL: Entity insert failed.');
+            }
 
         } else {
             $entityId = (int)$entity['entityId'];
         }
 
-        // =========================================================
-        // 2. LOCATION INSERT (IF NEW)
-        // =========================================================
-        if ($locationRecord['status'] === 'new') {
+        #endregion
 
-            if (empty($location['placeId'])) {
-                throw new RuntimeException('locationPlaceId is required.');
-            }
+        #region LOCATION — Insert or Reuse
+
+        if ($locationRecord['status'] === 'new') {
 
             $stmt = $db->prepare("
                 INSERT INTO tblLocations (
@@ -397,7 +412,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
             $stmt->execute([
                 'entityId' => $entityId,
-                'name' => $location['name'] ?? (trim($parsed['entity']['name']) . ' - Primary'),
+                'name' => $location['name'] ?? ($varEntityName . ' - Primary'),
                 'placeId' => $location['placeId'],
                 'lat' => $location['lat'] ?? null,
                 'lng' => $location['lng'] ?? null,
@@ -413,18 +428,64 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
             $locationId = (int)$db->lastInsertId();
 
+            if ($locationId <= 0) {
+                throw new RuntimeException('ELC FAIL: Location insert failed.');
+            }
+
         } else {
             $locationId = (int)$locationRecord['locationId'];
         }
 
-        // =========================================================
-        // 3. CONTACT INSERT
-        // =========================================================
-        $contact = $parsed['contact'];
+        #endregion
 
-        if (empty($contact['firstName']) || empty($contact['lastName'])) {
-            throw new RuntimeException('Contact name is required.');
+        #region CONTACT — Defensive Duplicate Enforcement
+
+        // 🔍 ELC Identity Check
+        $stmt = $db->prepare("
+            SELECT contactId
+            FROM tblContacts
+            WHERE contactEntityId = :entityId
+            AND contactLocationId = :locationId
+            AND contactFirstName = :firstName
+            AND contactLastName = :lastName
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'entityId' => $entityId,
+            'locationId' => $locationId,
+            'firstName' => $varFirstName,
+            'lastName' => $varLastName
+        ]);
+
+        if ($stmt->fetch()) {
+            throw new RuntimeException('ELC FAIL: Duplicate contact exists.');
         }
+
+        // 🔍 Email Uniqueness (Per Entity)
+        if ($varEmail !== '') {
+
+            $stmt = $db->prepare("
+                SELECT contactId
+                FROM tblContacts
+                WHERE contactEntityId = :entityId
+                AND contactEmail = :email
+                LIMIT 1
+            ");
+
+            $stmt->execute([
+                'entityId' => $entityId,
+                'email' => $varEmail
+            ]);
+
+            if ($stmt->fetch()) {
+                throw new RuntimeException('ELC FAIL: Email already exists for entity.');
+            }
+        }
+
+        #endregion
+
+        #region CONTACT — Insert
 
         $stmt = $db->prepare("
             INSERT INTO tblContacts (
@@ -454,18 +515,33 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             'entityId' => $entityId,
             'locationId' => $locationId,
             'salutation' => $contact['salutation'] ?? null,
-            'firstName' => trim((string)$contact['firstName']),
-            'lastName' => trim((string)$contact['lastName']),
+            'firstName' => $varFirstName,
+            'lastName' => $varLastName,
             'title' => $contact['title'] ?? null,
             'phone' => $contact['phone'] ?? null,
-            'email' => $contact['email'] ?? null
+            'email' => $varEmail !== '' ? $varEmail : null
         ]);
 
         $contactId = (int)$db->lastInsertId();
 
-        // =========================================================
-        // 4. ACTION LOG
-        // =========================================================
+        if ($contactId <= 0) {
+            throw new RuntimeException('ELC FAIL: Contact insert failed.');
+        }
+
+        #endregion
+
+        #region ACTION LOG (Enhanced Payload)
+
+        $payload = json_encode([
+            'input' => $_POST['input'] ?? '',
+            'entityId' => $entityId,
+            'locationId' => $locationId,
+            'contactId' => $contactId,
+            'placeId' => $location['placeId'],
+            'jurisdiction' => $location['jurisdiction'] ?? null,
+            'parcelNumber' => $location['parcelNumber'] ?? null
+        ], JSON_UNESCAPED_UNICODE);
+
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId,
@@ -481,12 +557,12 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 longitude,
                 userAgent
             ) VALUES (
-                :actionTypeId,
+                :type,
                 :contactId,
                 :origin,
                 UNIX_TIMESTAMP(),
                 :prompt,
-                'Contact created',
+                :response,
                 'create_contact',
                 1.00,
                 :ip,
@@ -497,15 +573,20 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
         ");
 
         $stmt->execute([
-            'actionTypeId' => ACTION_TYPE_CREATE_CONTACT,
+            'type' => ACTION_TYPE_CREATE_CONTACT,
             'contactId' => $contactId,
             'origin' => ACTION_ORIGIN_USER,
             'prompt' => $_POST['input'] ?? '',
+            'response' => $payload,
             'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
             'lat' => $location['lat'] ?? null,
             'lng' => $location['lng'] ?? null,
             'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
         ]);
+
+        #endregion
+
+        #region COMMIT
 
         $db->commit();
 
@@ -515,6 +596,8 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             'locationId' => $locationId,
             'contactId' => $contactId
         ];
+
+        #endregion
 
     } catch (Throwable $e) {
 
