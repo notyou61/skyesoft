@@ -55,7 +55,7 @@ function resolveLocation(array $input): array {
 
     if (
         $result['state'] === 'AZ' &&
-        strtoupper($result['county'] ?? '') === 'MARICOPA'
+        strpos(strtoupper($result['county'] ?? ''), 'MARICOPA') !== false
     ) {
 
         // Use the already-extracted clean street from Google (most reliable)
