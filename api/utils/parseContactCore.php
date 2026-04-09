@@ -1,17 +1,56 @@
 <?php
 declare(strict_types=1);
 
+// ======================================================================
+//  Skyesoft — parseContactCore.php
+//  Version: 1.1.0
+//  Last Updated: 2026-04-09
+//  Codex Tier: 3 — AI Augmentation / Structured Data Extraction
+//
+//  Role:
+//  Core parsing engine (function-based).
+//  Converts raw input into structured ELC-ready data.
+//
+//  Notes:
+//   • No direct output
+//   • No DB interaction
+//   • Safe for reuse across system
+// ======================================================================
+
+#region SECTION 0 — Environment Bootstrap
+
+require_once __DIR__ . '/../sessionBootstrap.php';
+
+// Ensure environment functions exist (fail fast)
+if (!function_exists('skyesoftGetEnv') || !function_exists('skyesoftLoadEnv')) {
+    throw new RuntimeException('Environment bootstrap failed: required functions missing.');
+}
+
+// Load environment once per call
+skyesoftLoadEnv();
+
+#endregion
+
+#region SECTION 1 — Core Function
+
 function parseContact(string $rawInput): array
 {
-    #region ENV
+    #region VALIDATION
 
-    require_once __DIR__ . '/../sessionBootstrap.php';
-    skyesoftLoadEnv();
+    $rawInput = trim($rawInput);
+
+    if ($rawInput === '') {
+        throw new RuntimeException('parseContact: rawInput is empty.');
+    }
+
+    #endregion
+
+    #region ENV ACCESS
 
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
     if (!$apiKey) {
-        throw new RuntimeException('API key missing');
+        throw new RuntimeException('API key missing.');
     }
 
     #endregion
@@ -41,7 +80,7 @@ EOT;
 
     #endregion
 
-    #region OPENAI
+    #region OPENAI REQUEST
 
     $payload = json_encode([
         "model" => "gpt-4o-mini",
@@ -68,29 +107,33 @@ EOT;
     );
 
     if ($response === false) {
-        throw new RuntimeException('OpenAI request failed');
+        throw new RuntimeException('OpenAI request failed.');
     }
 
     #endregion
 
-    #region PARSE
+    #region RESPONSE PARSE
 
     $result = json_decode($response, true);
+
     $content = $result['choices'][0]['message']['content'] ?? null;
 
     if (!$content) {
-        throw new RuntimeException('Invalid OpenAI response');
+        throw new RuntimeException('Invalid OpenAI response.');
     }
 
+    // Clean markdown wrapping
     $content = preg_replace('/```json|```/', '', $content);
 
     $parsed = json_decode($content, true);
 
-    if (!$parsed) {
-        throw new RuntimeException('JSON parse failed');
+    if (!is_array($parsed)) {
+        throw new RuntimeException('JSON parse failed.');
     }
 
     return $parsed;
 
     #endregion
 }
+
+#endregion
