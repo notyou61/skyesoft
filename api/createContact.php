@@ -36,7 +36,7 @@ if (!$db instanceof PDO) {
     throw new RuntimeException('Database connection failed: invalid PDO instance.');
 }
 
-const ACTION_TYPE_CREATE_CONTACT = 1;
+const ACTION_TYPE_CREATE_CONTACT = 9;
 
 const ACTION_ORIGIN_USER       = 1;
 const ACTION_ORIGIN_SYSTEM     = 2;
@@ -382,6 +382,30 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         if ($locationRecord['status'] === 'new') {
 
+            #region LOCATION NORMALIZATION
+
+            // --- Name (standard: entity name unless explicitly provided)
+            $locationName = trim((string)($location['name'] ?? ''));
+            if ($locationName === '') {
+                $locationName = trim((string)$varEntityName);
+            }
+
+            // --- Address (standard: street only, strip city/state)
+            $locationAddress = trim((string)($location['address'] ?? ''));
+
+            if ($locationAddress !== '' && strpos($locationAddress, ',') !== false) {
+                $locationAddress = trim(substr($locationAddress, 0, strpos($locationAddress, ',')));
+            }
+
+            // --- County (standard: remove "County")
+            $locationCounty = trim((string)($location['county'] ?? ''));
+            $locationCounty = preg_replace('/\s+County$/i', '', $locationCounty);
+
+            // --- FIPS (keep as-is for now, consistent going forward)
+            $locationFips = $location['countyFips'] ?? null;
+
+            #endregion
+
             $stmt = $db->prepare("
                 INSERT INTO tblLocations (
                     locationEntityId,
@@ -416,20 +440,21 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 )
             ");
 
+            // Statement
             $stmt->execute([
                 'entityId' => $entityId,
-                'name' => $location['name'] ?? ($varEntityName . ' - Primary'),
+                'name' => $locationName,
                 'placeId' => $location['placeId'],
                 'lat' => $location['lat'] ?? null,
                 'lng' => $location['lng'] ?? null,
-                'address' => $location['address'] ?? null,
+                'address' => $locationAddress !== '' ? $locationAddress : null,
                 'city' => $location['city'] ?? null,
                 'state' => $location['state'] ?? null,
                 'zip' => $location['zip'] ?? null,
                 'parcel' => $location['parcelNumber'] ?? null,
                 'jurisdiction' => $location['jurisdiction'] ?? null,
-                'county' => $location['county'] ?? null,
-                'fips' => $location['countyFips'] ?? null
+                'county' => $locationCounty !== '' ? $locationCounty : null,
+                'fips' => $locationFips
             ]);
 
             $locationId = (int)$db->lastInsertId();
