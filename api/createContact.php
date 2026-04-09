@@ -30,6 +30,12 @@ require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 
+$db = getPDO();
+
+if (!$db instanceof PDO) {
+    throw new RuntimeException('Database connection failed: invalid PDO instance.');
+}
+
 const ACTION_TYPE_CREATE_CONTACT = 1;
 
 const ACTION_ORIGIN_USER       = 1;
