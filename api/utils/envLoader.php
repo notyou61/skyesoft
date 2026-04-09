@@ -98,5 +98,15 @@ function skyesoftLoadEnv(): void {
     }
 }
 function skyesoftGetEnv(string $key): ?string {
-    return $_ENV[$key] ?? getenv($key) ?? null;
+    if (isset($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+
+    $value = getenv($key);
+
+    if ($value === false) {
+        return null;
+    }
+
+    return $value;
 }
