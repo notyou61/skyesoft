@@ -133,7 +133,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (FINAL ROBUST VERSION)
+#region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
 
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
@@ -159,7 +159,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    // Always log the raw response
+    // Debug log
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         date('Y-m-d H:i:s') . " | URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
@@ -171,35 +171,40 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     $data = json_decode($response, true);
     if (empty($data['Results']) || !is_array($data['Results'])) return null;
 
-    // Super aggressive normalization (removes everything except alphanum)
+    // Normalize helper
     $normalize = function(string $str): string {
-        $str = strtoupper(trim($str));
-        $str = preg_replace('/[^A-Z0-9]/', '', $str);   // keep only letters + numbers
-        return $str;
+        return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    $targetStreet = trim(explode(',', $address)[0]);
+    // 🔥 IMPORTANT FIX — address is already street-only
+    $targetStreet = trim($address);
     $targetNorm   = $normalize($targetStreet);
 
     $bestParcel = null;
     $bestScore  = 0;
 
     foreach ($data['Results'] as $r) {
+
         $apiAddress = $r['SitusAddress'] ?? '';
         $apiNorm    = $normalize($apiAddress);
 
-        // Match if target is fully contained in API address (very forgiving)
-        if (strpos($apiNorm, $targetNorm) !== false || $apiNorm === $targetNorm) {
+        // 🔥 IMPROVED MATCH (bidirectional)
+        if (
+            strpos($apiNorm, $targetNorm) !== false ||
+            strpos($targetNorm, $apiNorm) !== false
+        ) {
 
             $apnRaw = preg_replace('/\D+/', '', $r['APN'] ?? '');
-            if (strlen($apnRaw) < 8) continue;   // skip invalid APNs
+            if (strlen($apnRaw) < 8) continue;
 
             $formatted = (strlen($apnRaw) === 8)
                 ? substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5, 3)
                 : $r['APN'];
 
-            // Simple scoring: prefer exact match and shorter APN (avoids "10803009E")
-            $score = ($apiNorm === $targetNorm ? 100 : 50) + (strlen($apnRaw) === 8 ? 20 : 0);
+            // Scoring logic
+            $score =
+                ($apiNorm === $targetNorm ? 100 : 50) +
+                (strlen($apnRaw) === 8 ? 20 : 0);
 
             if ($score > $bestScore) {
                 $bestScore = $score;
@@ -215,8 +220,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         return $bestParcel;
     }
 
-    // No match found
-    error_log("No parcel match found for street: '{$targetStreet}' (norm: {$targetNorm}). Found " . count($data['Results']) . " results.");
+    error_log("No parcel match found for street: '{$targetStreet}' (norm: {$targetNorm}). Results: " . count($data['Results']));
     return null;
 }
 
