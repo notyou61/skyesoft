@@ -84,18 +84,18 @@ function resolveLocation(array $input): array {
                     $result['jurisdiction'] = $parcel['jurisdiction'];
                 }
             } else {
-                $result['parcelNumber'] = 'Pending1';
+                $result['parcelNumber'] = 'Pending';
                 $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
             }
 
         } else {
-            $result['parcelNumber'] = 'Pending2';
+            $result['parcelNumber'] = 'Pending';
             $result['jurisdiction'] = 'Maricopa County';
         }
 
     } else {
         // Non-Maricopa fallback
-        $result['parcelNumber'] = 'Pending3';
+        $result['parcelNumber'] = 'Pending';
         $result['jurisdiction'] = $result['city'] ?? $result['county'] ?? 'Unknown';
     }
 
