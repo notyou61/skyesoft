@@ -19,7 +19,7 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap
 
-require_once __DIR__ . '/../../sessionBootstrap.php';
+require_once __DIR__ . '/../sessionBootstrap.php';
 
 // Ensure environment functions exist (fail fast)
 if (!function_exists('skyesoftGetEnv') || !function_exists('skyesoftLoadEnv')) {
