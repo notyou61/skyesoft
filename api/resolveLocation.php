@@ -59,7 +59,17 @@ function resolveLocation(array $input): array {
     ) {
 
         // Use the already-extracted clean street from Google (most reliable)
-        $street = extractStreetAddress($google['address'] ?? '');
+        $street = trim($google['address'] ?? '');
+
+        // Strip everything after first comma (guaranteed clean street)
+        if (strpos($street, ',') !== false) {
+            $street = substr($street, 0, strpos($street, ','));
+        }
+
+        // Normalize spacing
+        $street = preg_replace('/\s+/', ' ', $street);
+
+        $street = trim($street);
 
         if (!empty($street) && !empty($google['city'])) {
 
