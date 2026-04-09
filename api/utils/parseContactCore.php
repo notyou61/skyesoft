@@ -119,7 +119,7 @@ EOT;
     ]);
 
     $response = file_get_contents(
-        'https://api.openai.com/v1/responses',
+        'https://api.openai.com/v1/chat/completions',
         false,
         $context
     );
