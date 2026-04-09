@@ -1,4 +1,50 @@
 <?php
+declare(strict_types=1);
+
+// ======================================================================
+//  Skyesoft — envLoader.php
+//  Version: 1.0.0
+//  Last Updated: 2026-04-09
+//  Codex Tier: 2 — Environment Initialization Layer
+//
+//  Role:
+//  Provides centralized environment configuration loading for Skyesoft.
+//
+//  Responsibilities:
+//   • Load environment variables from secure .env files
+//   • Normalize variables into $_ENV / getenv() scope
+//   • Support multiple env sources (.env, db.env)
+//   • Ensure idempotent loading (safe for repeated calls)
+//
+//  Behavior:
+//   • Loads once per request (static guard)
+//   • Skips missing or unreadable env files (non-fatal)
+//   • Logs load activity for debugging visibility
+//
+//  Dependencies:
+//   • /secure/.env
+//   • /secure/db.env
+//
+//  Outputs:
+//   • $_ENV populated with key/value pairs
+//   • getenv() access available system-wide
+//
+//  Notes:
+//   • This file defines skyesoftLoadEnv()
+//   • Must be explicitly required by any module needing env access
+//   • Does NOT start sessions or perform authentication
+//   • Does NOT interact with database or external APIs
+//
+//  Constraints:
+//   • No side effects beyond environment loading
+//   • No output (silent operation except logging)
+//   • Must remain lightweight and deterministic
+//
+//  Usage:
+//   require_once __DIR__ . '/envLoader.php';
+//   skyesoftLoadEnv();
+//
+// ======================================================================
 
 function skyesoftLoadEnv(): void {
 

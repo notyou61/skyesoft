@@ -19,20 +19,14 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap
 
-require_once __DIR__ . '/../sessionBootstrap.php';
 require_once __DIR__ . '/envLoader.php';
 
-// Ensure environment loader functions exist (fail fast)
-if (
-    !function_exists('skyesoftLoadEnv') ||
-    !function_exists('skyesoftGetEnv')
-) {
-    throw new RuntimeException(
-        'Environment bootstrap failed: required functions missing.'
-    );
+// Verify environment functions exist
+if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
+    throw new RuntimeException('Environment bootstrap failed: required functions missing.');
 }
 
-// Load environment
+// Initialize env (idempotent)
 skyesoftLoadEnv();
 
 #endregion
@@ -125,13 +119,14 @@ EOT;
     ]);
 
     $response = file_get_contents(
-        'https://api.openai.com/v1/chat/completions',
+        'https://api.openai.com/v1/responses',
         false,
         $context
     );
 
     if ($response === false) {
-        throw new RuntimeException('OpenAI request failed.');
+        $error = error_get_last();
+        throw new RuntimeException('OpenAI request failed: ' . ($error['message'] ?? 'unknown'));
     }
 
     #endregion
@@ -156,6 +151,10 @@ EOT;
 
     $parsed = json_decode($content, true);
 
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new RuntimeException('JSON parse failed: ' . json_last_error_msg());
+    }
+
     if (!is_array($parsed)) {
         throw new RuntimeException('JSON parse failed.');
     }
@@ -163,6 +162,9 @@ EOT;
     #endregion
 
     #region NORMALIZE OUTPUT
+
+    $email = trim((string)($parsed['contact']['email'] ?? ''));
+    $email = $email !== '' ? strtolower($email) : '';
 
     return [
         'entity' => [
@@ -176,7 +178,7 @@ EOT;
             'lastName'  => trim((string)($parsed['contact']['lastName'] ?? '')),
             'title'     => trim((string)($parsed['contact']['title'] ?? '')),
             'phone'     => trim((string)($parsed['contact']['phone'] ?? '')),
-            'email'     => strtolower(trim((string)($parsed['contact']['email'] ?? '')))
+            'email'     => $email
         ]
     ];
 
