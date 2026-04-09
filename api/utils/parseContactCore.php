@@ -20,7 +20,7 @@ declare(strict_types=1);
 #region SECTION 0 — Environment Bootstrap
 
 require_once __DIR__ . '/../sessionBootstrap.php';
-require_once __DIR__ . '/utils/envLoader.php';
+require_once __DIR__ . '/envLoader.php';
 
 // Ensure environment loader functions exist (fail fast)
 if (
