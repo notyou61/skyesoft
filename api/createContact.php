@@ -498,8 +498,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         if ($locationRecord['status'] === 'new') {
 
-            #region LOCATION NORMALIZATION
-
             // --- Name (standard: entity name unless explicitly provided)
             $locationName = trim((string)($location['name'] ?? ''));
             if ($locationName === '') {
@@ -519,8 +517,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
             // --- FIPS (keep as-is for now, consistent going forward)
             $locationFips = $location['countyFips'] ?? null;
-
-            #endregion
 
             $stmt = $db->prepare("
                 INSERT INTO tblLocations (
@@ -757,6 +753,63 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             'error' => $e->getMessage()
         ];
     }
+}
+
+#endregion
+
+#region SECTION 10A — Action Log (Duplicate Attempt)
+
+if ($outcome['outcome'] === 'resolved_duplicate') {
+
+    $payload = json_encode([
+        'input' => $input,
+        'entityId' => $entity['entityId'] ?? null,
+        'locationId' => $locationRecord['locationId'] ?? null,
+        'contactId' => $contactRecord['contactId'] ?? null,
+        'reason' => 'Duplicate contact submission blocked'
+    ], JSON_UNESCAPED_UNICODE);
+
+    $stmt = $db->prepare("
+        INSERT INTO tblActions (
+            actionTypeId,
+            contactId,
+            actionOrigin,
+            actionUnix,
+            promptText,
+            responseText,
+            intent,
+            intentConfidence,
+            ipAddress,
+            latitude,
+            longitude,
+            userAgent
+        ) VALUES (
+            :type,
+            :contactId,
+            :origin,
+            UNIX_TIMESTAMP(),
+            :prompt,
+            :response,
+            'duplicate_attempt',
+            1.00,
+            :ip,
+            :lat,
+            :lng,
+            :ua
+        )
+    ");
+
+    $stmt->execute([
+        'type' => 7, // Duplicate Attempt
+        'contactId' => $contactRecord['contactId'] ?? null,
+        'origin' => ACTION_ORIGIN_USER,
+        'prompt' => $input,
+        'response' => $payload,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+        'lat' => $location['lat'] ?? null,
+        'lng' => $location['lng'] ?? null,
+        'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
+    ]);
 }
 
 #endregion
