@@ -268,36 +268,10 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
 
     $firstName = trim((string)($contact['firstName'] ?? ''));
     $lastName  = trim((string)($contact['lastName'] ?? ''));
+    $email     = strtolower(trim((string)($contact['email'] ?? '')));
 
-    // 🔍 Primary Match (ELC Identity)
-    $stmt = $db->prepare("
-        SELECT contactId
-        FROM tblContacts
-        WHERE contactEntityId = :entityId
-        AND contactLocationId = :locationId
-        AND contactFirstName = :firstName
-        AND contactLastName = :lastName
-        LIMIT 1
-    ");
-
-    $stmt->execute([
-        'entityId' => $entityId,
-        'locationId' => $locationId,
-        'firstName' => $firstName,
-        'lastName' => $lastName
-    ]);
-
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($row) {
-        return [
-            'status' => 'exact_match',
-            'contactId' => (int)$row['contactId']
-        ];
-    }
-
-    // ⚠️ Secondary Match (Email)
-    if (!empty($contact['email'])) {
+    // 🔥 PRIMARY MATCH — EMAIL (Authoritative Identity)
+    if ($email !== '') {
 
         $stmt = $db->prepare("
             SELECT contactId
@@ -309,7 +283,37 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
 
         $stmt->execute([
             'entityId' => $entityId,
-            'email' => $contact['email']
+            'email' => $email
+        ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return [
+                'status' => 'exact_match',
+                'contactId' => (int)$row['contactId']
+            ];
+        }
+    }
+
+    // ⚠️ SECONDARY MATCH — NAME + LOCATION (Human Duplicate Detection)
+    if ($firstName !== '' && $lastName !== '') {
+
+        $stmt = $db->prepare("
+            SELECT contactId
+            FROM tblContacts
+            WHERE contactEntityId = :entityId
+            AND contactLocationId = :locationId
+            AND contactFirstName = :firstName
+            AND contactLastName = :lastName
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            'entityId' => $entityId,
+            'locationId' => $locationId,
+            'firstName' => $firstName,
+            'lastName' => $lastName
         ]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
