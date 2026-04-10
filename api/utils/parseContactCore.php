@@ -70,13 +70,14 @@ Schema:
     "name": ""
   },
   "location": {},
-  "contact": {
+    "contact": {
+    "salutation": "",
     "firstName": "",
     "lastName": "",
     "title": "",
     "phone": "",
     "email": ""
-  }
+    }
 }
 
 Rules:
@@ -84,6 +85,9 @@ Rules:
 - If unknown, return empty string
 - Split first/last name correctly
 - Normalize phone number format if possible
+- Extract salutation (Mr or Ms) if present at the beginning of the name
+- Only allow "Mr" or "Ms"
+- If not present, return empty string
 EOT;
 
     #endregion
@@ -173,13 +177,14 @@ EOT;
         'location' => is_array($parsed['location'] ?? null)
             ? $parsed['location']
             : [],
-        'contact' => [
-            'firstName' => trim((string)($parsed['contact']['firstName'] ?? '')),
-            'lastName'  => trim((string)($parsed['contact']['lastName'] ?? '')),
-            'title'     => trim((string)($parsed['contact']['title'] ?? '')),
-            'phone'     => trim((string)($parsed['contact']['phone'] ?? '')),
-            'email'     => $email
-        ]
+            'contact' => [
+                'salutation' => trim((string)($parsed['contact']['salutation'] ?? '')),
+                'firstName'  => trim((string)($parsed['contact']['firstName'] ?? '')),
+                'lastName'   => trim((string)($parsed['contact']['lastName'] ?? '')),
+                'title'      => trim((string)($parsed['contact']['title'] ?? '')),
+                'phone'      => trim((string)($parsed['contact']['phone'] ?? '')),
+                'email'      => $email
+            ]
     ];
 
     #endregion
