@@ -69,15 +69,20 @@ Schema:
   "entity": {
     "name": ""
   },
-  "location": {},
-    "contact": {
+  "location": {
+    "address": "",
+    "city": "",
+    "state": "",
+    "zip": ""
+  },
+  "contact": {
     "salutation": "",
     "firstName": "",
     "lastName": "",
     "title": "",
     "phone": "",
     "email": ""
-    }
+  }
 }
 
 Rules:
