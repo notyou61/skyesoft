@@ -107,7 +107,7 @@ $location = resolveLocation($parsed['location'] ?? []);
 // 🔥 REQUIRED CONTACT FIELDS
 $contact = $parsed['contact'] ?? [];
 
-if (empty($contact['salutation'])) {
+if (!isset($contact['salutation']) || trim($contact['salutation']) === '') {
     echo json_encode([
         'status' => 'reject',
         'reason' => 'Salutation (Mr/Ms) required'
@@ -558,9 +558,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $stmt->execute([
                 'entityId'      => $entityId,
                 'name'          => $locationName,
-                'salutation'    => $varSalutation,
-                'title'         => $varTitle,
-                'phone'         => $varPhone,
                 'placeId'       => $location['placeId'],
                 'lat'           => $location['lat'] ?? null,
                 'lng'           => $location['lng'] ?? null,
@@ -660,14 +657,14 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
         ");
 
         $stmt->execute([
-            'entityId' => $entityId,
+            'entityId'   => $entityId,
             'locationId' => $locationId,
-            'salutation' => $contact['salutation'] ?? null,
-            'firstName' => $varFirstName,
-            'lastName' => $varLastName,
-            'title' => $contact['title'] ?? null,
-            'phone' => $contact['phone'] ?? null,
-            'email' => $varEmail !== '' ? $varEmail : null
+            'salutation' => $varSalutation,
+            'firstName' => trim($varFirstName),
+            'lastName'  => trim($varLastName),
+            'title'      => $varTitle,
+            'phone'      => $varPhone,
+            'email'      => $varEmail
         ]);
 
         $contactId = (int)$db->lastInsertId();
