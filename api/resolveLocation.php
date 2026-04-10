@@ -58,24 +58,19 @@ function resolveLocation(array $input): array {
         strpos(strtoupper($result['county'] ?? ''), 'MARICOPA') !== false
     ) {
 
-        // Use the already-extracted clean street from Google (most reliable)
         $street = trim($google['address'] ?? '');
 
-        // Strip everything after first comma (guaranteed clean street)
         if (strpos($street, ',') !== false) {
             $street = substr($street, 0, strpos($street, ','));
         }
 
-        // Normalize spacing
         $street = preg_replace('/\s+/', ' ', $street);
-
         $street = trim($street);
 
         if (!empty($street) && !empty($google['city'])) {
 
             $parcel = getMaricopaParcelFromAddress($street, $google['city']);
 
-            // Debug log (remove or comment out later)
             error_log("resolveLocation DEBUG - Street: '{$street}', City: '{$google['city']}', Parcel result: " . json_encode($parcel));
 
             if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
@@ -84,18 +79,17 @@ function resolveLocation(array $input): array {
                     $result['jurisdiction'] = $parcel['jurisdiction'];
                 }
             } else {
-                $result['parcelNumber'] = 'Pending';
+                $result['parcelNumber'] = null; // 🔥 FIXED
                 $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
             }
 
         } else {
-            $result['parcelNumber'] = 'Pending';
+            $result['parcelNumber'] = null; // 🔥 FIXED
             $result['jurisdiction'] = 'Maricopa County';
         }
 
     } else {
-        // Non-Maricopa fallback
-        $result['parcelNumber'] = 'Pending';
+        $result['parcelNumber'] = null; // 🔥 FIXED
         $result['jurisdiction'] = $result['city'] ?? $result['county'] ?? 'Unknown';
     }
 
@@ -276,6 +270,92 @@ function getGoogleGeocode(array $input): ?array {
         'state' => $state,
         'zip' => $zip,
         'address' => $r['formatted_address']
+    ];
+}
+
+#endregion
+
+#region SECTION 5 — Location Decision Engine
+function evaluateLocation(array $resolved, PDO $pdo): array {
+
+    // ----------------------------------------
+    // A — Invalid (no placeId = hard fail)
+    // ----------------------------------------
+    if (empty($resolved['placeId'])) {
+        return [
+            "status" => "error",
+            "type" => "invalid",
+            "stage" => "google_geocode",
+            "message" => "Unable to resolve location (missing placeId)"
+        ];
+    }
+
+    // ----------------------------------------
+    // H — Parcel Enforcement (Maricopa)
+    // ----------------------------------------
+    if (
+        $resolved['state'] === 'AZ' &&
+        strpos(strtoupper($resolved['county'] ?? ''), 'MARICOPA') !== false &&
+        empty($resolved['parcelNumber'])
+    ) {
+        return [
+            "status" => "error",
+            "type" => "parcel_failure",
+            "stage" => "parcel_enforcement",
+            "message" => "Parcel number required for Maricopa County"
+        ];
+    }
+
+    // ----------------------------------------
+    // C — Duplicate (placeId match)
+    // ----------------------------------------
+    $stmt = $pdo->prepare("SELECT locationId FROM locations WHERE placeId = ?");
+    $stmt->execute([$resolved['placeId']]);
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        return [
+            "status" => "resolved_existing",
+            "type" => "duplicate",
+            "data" => [
+                "locationId" => $existing['locationId']
+            ]
+        ];
+    }
+
+    // ----------------------------------------
+    // D — Possible Match (simple version)
+    // ----------------------------------------
+    $stmt = $pdo->prepare("
+        SELECT locationId, address, city
+        FROM locations
+        WHERE city = ?
+        AND address LIKE ?
+        LIMIT 3
+    ");
+    $stmt->execute([
+        $resolved['city'],
+        '%' . substr($resolved['address'], 0, 10) . '%'
+    ]);
+
+    $possible = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($possible)) {
+        return [
+            "status" => "decision",
+            "type" => "possible_match",
+            "message" => "Similar locations found",
+            "data" => $possible
+        ];
+    }
+
+    // ----------------------------------------
+    // A — Valid New
+    // ----------------------------------------
+    return [
+        "status" => "resolved_new",
+        "type" => "valid",
+        "data" => []
     ];
 }
 
