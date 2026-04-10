@@ -6,6 +6,8 @@ declare(strict_types=1);
 //  Version: 1.2.0
 // ======================================================================
 
+error_log("RUNNING NEW VERSION — NO PENDING");
+
 #region SECTION 0 — Core Function
 
 function resolveLocation(array $input): array {
