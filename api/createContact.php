@@ -413,7 +413,9 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         $contact = $parsed['contact'] ?? [];
 
-        $varSalutation = $contact['salutation'] ?? null;
+        $varSalutation = isset($contact['salutation'])
+            ? trim($contact['salutation'])
+            : null;
         $varTitle      = trim((string)($contact['title'] ?? ''));
         $varPhone      = preg_replace('/\D/', '', (string)($contact['phone'] ?? ''));
 
