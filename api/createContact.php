@@ -104,6 +104,41 @@ $location = resolveLocation($parsed['location'] ?? []);
 
 #region SECTION 3 — Validation Gates
 
+// 🔥 REQUIRED CONTACT FIELDS
+$contact = $parsed['contact'] ?? [];
+
+if (empty($contact['salutation'])) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Salutation (Mr/Ms) required'
+    ]);
+    exit;
+}
+
+if (empty($contact['title'])) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Contact title required'
+    ]);
+    exit;
+}
+
+if (empty($contact['email'])) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Email required'
+    ]);
+    exit;
+}
+
+if (empty($contact['phone'])) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Primary phone required'
+    ]);
+    exit;
+}
+
 // 🚫 Missing Entity / Contact
 if (empty($parsed['entity']) || empty($parsed['contact'])) {
     echo json_encode([
@@ -378,9 +413,37 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         $contact = $parsed['contact'] ?? [];
 
+        $varSalutation = $contact['salutation'] ?? null;
+        $varTitle      = trim((string)($contact['title'] ?? ''));
+        $varPhone      = preg_replace('/\D/', '', (string)($contact['phone'] ?? ''));
+
+        // Format phone
+        if (strlen($varPhone) === 10) {
+            $varPhone =
+                substr($varPhone, 0, 3) . '-' .
+                substr($varPhone, 3, 3) . '-' .
+                substr($varPhone, 6);
+        }
+
         $varFirstName = trim((string)($contact['firstName'] ?? ''));
         $varLastName  = trim((string)($contact['lastName'] ?? ''));
         $varEmail     = strtolower(trim((string)($contact['email'] ?? '')));
+
+        if ($varSalutation === null) {
+            throw new RuntimeException('ELC FAIL: Salutation required.');
+        }
+
+        if ($varTitle === '') {
+            throw new RuntimeException('ELC FAIL: Title required.');
+        }
+
+        if ($varPhone === '' || strlen($varPhone) < 10) {
+            throw new RuntimeException('ELC FAIL: Valid phone required.');
+        }
+
+        if ($varEmail === '') {
+            throw new RuntimeException('ELC FAIL: Email required.');
+        }
 
         if ($varEntityName === '') {
             throw new RuntimeException('ELC FAIL: Entity name required.');
@@ -493,19 +556,22 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
             // Statement
             $stmt->execute([
-                'entityId' => $entityId,
-                'name' => $locationName,
-                'placeId' => $location['placeId'],
-                'lat' => $location['lat'] ?? null,
-                'lng' => $location['lng'] ?? null,
-                'address' => $locationAddress !== '' ? $locationAddress : null,
-                'city' => $location['city'] ?? null,
-                'state' => $location['state'] ?? null,
-                'zip' => $location['zip'] ?? null,
-                'parcel' => $location['parcelNumber'] ?? null,
-                'jurisdiction' => $location['jurisdiction'] ?? null,
-                'county' => $locationCounty !== '' ? $locationCounty : null,
-                'fips' => $locationFips
+                'entityId'      => $entityId,
+                'name'          => $locationName,
+                'salutation'    => $varSalutation,
+                'title'         => $varTitle,
+                'phone'         => $varPhone,
+                'placeId'       => $location['placeId'],
+                'lat'           => $location['lat'] ?? null,
+                'lng'           => $location['lng'] ?? null,
+                'address'       => $locationAddress !== '' ? $locationAddress : null,
+                'city'          => $location['city'] ?? null,
+                'state'         => $location['state'] ?? null,
+                'zip'           => $location['zip'] ?? null,
+                'parcel'        => $location['parcelNumber'] ?? null,
+                'jurisdiction'  => $location['jurisdiction'] ?? null,
+                'county'        => $locationCounty !== '' ? $locationCounty : null,
+                'fips'          => $locationFips
             ]);
 
             $locationId = (int)$db->lastInsertId();
