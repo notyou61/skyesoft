@@ -29,6 +29,7 @@ header("Content-Type: application/json; charset=UTF-8");
 require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
+require_once __DIR__ . '/utils/validateAddressCensus.php';
 
 $db = getPDO();
 
@@ -65,6 +66,38 @@ if (!$input || trim($input) === '') {
 #region SECTION 2 — Core Processing
 
 $parsed = parseContact($input);
+
+#endregion
+
+#region SECTION 2A — Address Validation (CENSUS REQUIRED)
+
+// Build full address string
+$fullAddress = trim(
+    ($parsed['location']['address'] ?? '') . ' ' .
+    ($parsed['location']['city'] ?? '') . ' ' .
+    ($parsed['location']['state'] ?? '')
+);
+
+// Execute Census validation
+$validation = validateAddressCensus($fullAddress);
+
+// 🚫 HARD FAIL if invalid
+if (!$validation['valid']) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => $validation['reason'],
+        'location' => $parsed['location']
+    ]);
+    exit;
+}
+
+// Normalize BEFORE resolution
+$parsed['location']['address'] = $validation['normalized']['address'];
+
+#endregion
+
+#region SECTION 2B — Location Resolution
+
 $location = resolveLocation($parsed['location'] ?? []);
 
 #endregion
@@ -85,6 +118,20 @@ if (empty($location['placeId'])) {
     echo json_encode([
         'status' => 'partial',
         'reason' => 'Location not validated',
+        'location' => $location
+    ]);
+    exit;
+}
+
+// 🔥 Maricopa Parcel Enforcement
+if (
+    $location['state'] === 'AZ' &&
+    strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
+    empty($location['parcelNumber'])
+) {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Parcel required for Maricopa County',
         'location' => $location
     ]);
     exit;
