@@ -51,7 +51,7 @@ if (!defined('ACTION_TYPE_CREATE_CONTACT')) {
     define('ACTION_TYPE_CREATE_CONTACT', 9);
 }
 if (!defined('ACTION_TYPE_DUPLICATE_ATTEMPT')) {
-    define('ACTION_TYPE_DUPLICATE_ATTEMPT', 10);
+    define('ACTION_TYPE_DUPLICATE_ATTEMPT', 7);
 }
 
 #endregion
