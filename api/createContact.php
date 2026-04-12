@@ -975,35 +975,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
 #endregion
 
-#region SECTION 13 — Action Log (Duplicate Attempt)
-
-if ($outcome['outcome'] === 'resolved_duplicate') {
-
-    $payload = json_encode([
-        'input' => $input,
-        'entityId' => $entity['entityId'] ?? null,
-        'locationId' => $locationRecord['locationId'] ?? null,
-        'contactId' => $contactRecord['contactId'] ?? null,
-        'placeId' => $location['placeId'] ?? null,
-        'jurisdiction' => $location['jurisdiction'] ?? null,
-        'parcelNumber' => $location['parcelNumber'] ?? null,
-        'reason' => 'Duplicate contact submission blocked'
-    ], JSON_UNESCAPED_UNICODE);
-
-    logAction($db, [
-        'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => $contactRecord['contactId'] ?? null,
-        'prompt'    => $input,
-        'response'  => $payload,
-        'intent'    => 'duplicate_attempt',
-        'lat'       => $location['lat'] ?? null,
-        'lng'       => $location['lng'] ?? null,
-        'origin'    => ACTION_ORIGIN_USER   // 🔥 REQUIRED
-    ]);
-}
-
-#endregion
-
 #region SECTION 14 — Execute Insert (Only if NEW)
 
 $insertResult = null;
@@ -1048,6 +1019,34 @@ if ($outcome['outcome'] === 'resolved_new') {
             $insertResult = null; // prevent misleading response
         }
     }
+}
+
+#endregion
+
+#region SECTION 14A — Final Action Logging
+
+if ($outcome['outcome'] === 'resolved_duplicate') {
+
+    $payload = json_encode([
+        'input' => $input,
+        'entityId' => $entity['entityId'] ?? null,
+        'locationId' => $locationRecord['locationId'] ?? null,
+        'contactId' => $contactRecord['contactId'] ?? null,
+        'placeId' => $location['placeId'] ?? null,
+        'reason' => 'Duplicate contact submission (finalized)'
+    ], JSON_UNESCAPED_UNICODE);
+
+    logAction($db, [
+        'type'      => ACTION_TYPE_PROPOSE,
+        'contactId' => $contactRecord['contactId']
+            ?? ($insertResult['contactId'] ?? null),
+        'prompt'    => $input,
+        'response'  => $payload,
+        'intent'    => 'duplicate_attempt',
+        'lat'       => $location['lat'] ?? null,
+        'lng'       => $location['lng'] ?? null,
+        'origin'    => ACTION_ORIGIN_USER
+    ]);
 }
 
 #endregion
