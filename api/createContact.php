@@ -471,6 +471,34 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 #endregion
 
+#region SECTION 12.5 — Duplicate Logging (PRIMARY FIX)
+
+if (
+    ($outcome['outcome'] ?? '') === 'resolved_duplicate' &&
+    !empty($contactRecord['contactId'])
+) {
+
+    try {
+        logAction($db, [
+            'type'      => ACTION_TYPE_PROPOSE,
+            'contactId' => (int)$contactRecord['contactId'],   // target contact
+            'prompt'    => $input,
+            'response'  => json_encode([
+                'reason'          => 'duplicate_detected',
+                'targetContactId' => $contactRecord['contactId']
+            ], JSON_UNESCAPED_UNICODE),
+            'intent'    => 'duplicate_detected',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+    } catch (Throwable $e) {
+        error_log('DUPLICATE LOG FAILURE: ' . $e->getMessage());
+    }
+}
+
+#endregion
+
 #region SECTION 13 — Scenario Engine — Step 1
 
 function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
@@ -1016,26 +1044,31 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #endregion
 
-#region SECTION 17 — Final Action Logging
+#region SECTION 17 — Final Action Logging (Safe)
 
-// 🔒 USER performing the action (NOT the parsed contact)
-$currentUserId = $_SESSION['contactId'] ?? 1; // 🔥 TEMP fallback
+$currentUserId = $_SESSION['contactId'] ?? 1;   // Steve Skye (contactId 1) exists
 
-if (!empty($currentUserId) && ($outcome['outcome'] ?? '') === 'resolved_duplicate') {
+if (($outcome['outcome'] ?? '') === 'resolved_duplicate') {
 
-    logAction($db, [
-        'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => (int)$currentUserId,   // ✅ USER ID
-        'prompt'    => $input,
-        'response'  => json_encode([
-            'reason' => 'duplicate_attempt',
-            'targetContactId' => $outcome['contact']['contactId'] ?? null
-        ]),
-        'intent'    => 'duplicate_attempt',
-        'lat'       => $location['lat'] ?? null,
-        'lng'       => $location['lng'] ?? null,
-        'origin'    => ACTION_ORIGIN_USER
-    ]);
+    try {
+        logAction($db, [
+            'type'      => ACTION_TYPE_PROPOSE,
+            'contactId' => (int)$currentUserId,     // ← log as the USER performing the action
+            'prompt'    => $input,
+            'response'  => json_encode([
+                'reason'          => 'duplicate_attempt',
+                'targetContactId' => $contactRecord['contactId'] ?? null   // safe fallback
+            ], JSON_UNESCAPED_UNICODE),
+            'intent'    => 'duplicate_attempt',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+    } catch (Throwable $e) {
+        error_log('ACTION LOG FAILURE (duplicate_attempt): ' . $e->getMessage() .
+                  ' | currentUserId=' . $currentUserId .
+                  ' | contactRecordId=' . ($contactRecord['contactId'] ?? 'null'));
+    }
 }
 
 #endregion
