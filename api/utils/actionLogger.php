@@ -6,10 +6,6 @@ declare(strict_types=1);
 // Centralized action logging (ELC-compliant, consistent)
 // ============================================================
 
-if (!defined('ACTION_ORIGIN_USER')) {
-    define('ACTION_ORIGIN_USER', 'user');
-}
-
 function logAction(PDO $db, array $p): void
 {
     // --- Required
@@ -18,13 +14,21 @@ function logAction(PDO $db, array $p): void
     $prompt = (string)($p['prompt'] ?? '');
 
     if ($type <= 0 || $intent === '' || $prompt === '') {
-        throw new InvalidArgumentException('logAction: missing required fields (type, intent, prompt).');
+        throw new InvalidArgumentException('logAction: missing required fields.');
     }
 
-    // --- Optional
-    $contactId  = $p['contactId'] ?? null;
-    $origin     = $p['origin'] ?? ACTION_ORIGIN_USER;
-    $response   = $p['response'] ?? null;
+    // --- Optional (normalized)
+    $contactId = isset($p['contactId']) ? (int)$p['contactId'] : null;
+
+    $allowedOrigins = [1, 2, 3];
+    $origin = in_array(($p['origin'] ?? 1), $allowedOrigins)
+        ? (int)$p['origin']
+        : 1;
+
+    $response = isset($p['response'])
+        ? (is_string($p['response']) ? $p['response'] : json_encode($p['response'], JSON_UNESCAPED_UNICODE))
+        : null;
+
     $confidence = isset($p['confidence']) ? (float)$p['confidence'] : 1.00;
     $lat        = $p['lat'] ?? null;
     $lng        = $p['lng'] ?? null;
@@ -62,17 +66,19 @@ function logAction(PDO $db, array $p): void
         )
     ");
 
-    $stmt->execute([
+    if (!$stmt->execute([
         'type'       => $type,
         'contactId'  => $contactId,
         'origin'     => $origin,
-        'prompt'     => $prompt,      // 🔥 always stored
-        'response'   => $response,    // JSON or text
+        'prompt'     => $prompt,
+        'response'   => $response,
         'intent'     => $intent,
         'confidence' => $confidence,
         'ip'         => $ip,
         'lat'        => $lat,
         'lng'        => $lng,
         'ua'         => $ua
-    ]);
+    ])) {
+        throw new RuntimeException('logAction: insert failed.');
+    }
 }
