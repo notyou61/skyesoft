@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.2.0
-//  Last Updated: 2026-04-07
+//  Version: 1.3.0
+//  Last Updated: 2026-04-12
 //  Codex Tier: 2 — ELC Execution Layer
 //
 //  Role:
@@ -30,6 +30,7 @@ require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
+require_once __DIR__ . '/utils/actionLogger.php';
 
 $db = getPDO();
 
@@ -37,11 +38,11 @@ if (!$db instanceof PDO) {
     throw new RuntimeException('Database connection failed: invalid PDO instance.');
 }
 
-const ACTION_TYPE_CREATE_CONTACT = 9;
-
 const ACTION_ORIGIN_USER       = 1;
 const ACTION_ORIGIN_SYSTEM     = 2;
 const ACTION_ORIGIN_AUTOMATION = 3;
+const ACTION_TYPE_DUPLICATE_ATTEMPT = 10;
+const ACTION_TYPE_CREATE_CONTACT = 9;
 
 #endregion
 
@@ -174,9 +175,36 @@ if (
 
 #endregion
 
-#region SECTION 4 — Entity + Location + Contact Resolution
+#region SECTION 4 — Entity Resolution
 
 $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
+
+#endregion
+
+#region SECTION 5 — Scenario Engine (Decision Layer)
+
+$decision = evaluateScenario(
+    $db,
+    $entity,
+    $location,
+    $parsed['contact'] ?? []
+);
+
+// 🚫 HARD STOP
+if ($decision['status'] === 'reject') {
+    echo json_encode($decision);
+    exit;
+}
+
+// ⚠️ CONFLICT (UI / next step later)
+if ($decision['status'] === 'conflict') {
+    echo json_encode($decision);
+    exit;
+}
+
+#endregion
+
+#region SECTION 6 — Location + Contact Record Resolution
 
 // ─────────────────────────────────────────
 // Location DB Resolution
@@ -225,10 +253,11 @@ $outcome = buildResolutionOutcome(
 
 #endregion
 
-#region SECTION 5 — Entity Resolution
+#region SECTION 7 — Entity Resolution Function
 
 function resolveEntity(PDO $db, string $entityName): array {
 
+    // #region Normalize Input
     $entityName = trim($entityName);
 
     if ($entityName === '') {
@@ -238,14 +267,19 @@ function resolveEntity(PDO $db, string $entityName): array {
         ];
     }
 
+    // Normalize for comparison (Phase 2 foundation)
+    $normalizedName = strtolower($entityName);
+    // #endregion
+
+    // #region Exact Match (Case-Insensitive)
     $stmt = $db->prepare("
-        SELECT entityId
+        SELECT entityId, entityName
         FROM tblEntities
-        WHERE entityName = :name
+        WHERE LOWER(entityName) = :name
         LIMIT 1
     ");
 
-    $stmt->execute(['name' => $entityName]);
+    $stmt->execute(['name' => $normalizedName]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($row) {
@@ -254,16 +288,30 @@ function resolveEntity(PDO $db, string $entityName): array {
             'entityId' => (int)$row['entityId']
         ];
     }
+    // #endregion
 
+    // #region Future Hook — Possible Match (Phase 2)
+    /*
+    Example (NOT ACTIVE YET):
+
+    SELECT entityId, entityName
+    FROM tblEntities
+    WHERE LOWER(entityName) LIKE :partial
+    */
+
+    // #endregion
+
+    // #region New Entity
     return [
         'status' => 'new',
         'entityId' => null
     ];
+    // #endregion
 }
 
 #endregion
 
-#region SECTION 6 — Location Resolution (DB Layer)
+#region SECTION 8 — Location Resolution (DB Layer)
 
 function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
 
@@ -297,7 +345,7 @@ function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
 
 #endregion
 
-#region SECTION 7 — Contact Duplicate Detection
+#region SECTION 9 — Contact Duplicate Detection
 
 function resolveContact(PDO $db, int $entityId, int $locationId, array $contact): array {
 
@@ -369,7 +417,7 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
 
 #endregion
 
-#region SECTION 8 — Resolution Fork Engine
+#region SECTION 10 — Resolution Fork Engine
 
 function buildResolutionOutcome(array $entity, array $locationRecord, array $contact): array {
 
@@ -398,9 +446,70 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 #endregion
 
-#region SECTION 10 — Transaction + Insert Engine (Phase 4: ELC Execution)
+#region SECTION 11 — Scenario Engine — Step 1
 
-function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord): array {
+function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
+
+    // Default OK
+    $decision = [
+        "status" => "ok",
+        "scenario" => "safe",
+        "message" => "",
+        "requiresAction" => false,
+        "options" => [],
+        "data" => []
+    ];
+
+    // -------------------------------
+    // Scenario 3 — Invalid Entity
+    // -------------------------------
+    if (!empty($entity['isInvalid']) && $entity['isInvalid'] == 1) {
+        return [
+            "status" => "reject",
+            "scenario" => "invalid_entity",
+            "message" => "Entity is marked invalid.",
+            "requiresAction" => false,
+            "options" => [],
+            "data" => []
+        ];
+    }
+
+    // -------------------------------
+    // Scenario 2 — Ownership Conflict
+    // -------------------------------
+    if (!empty($location['placeId'])) {
+
+        $stmt = $db->prepare("
+            SELECT locationEntityId
+            FROM tblLocations
+            WHERE locationPlaceId = :placeId
+            LIMIT 1
+        ");
+
+        $stmt->execute(['placeId' => $location['placeId']]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && $row['locationEntityId'] != ($entity['entityId'] ?? null)) {
+
+            return [
+                "status" => "conflict",
+                "scenario" => "ownership_change",
+                "message" => "Location belongs to another entity.",
+                "requiresAction" => true,
+                "options" => ["reassign", "cancel"],
+                "data" => $row
+            ];
+        }
+    }
+
+    return $decision;
+}
+
+#endregion
+
+#region SECTION 12 — Transaction + Insert Engine (Phase 4: ELC Execution)
+
+function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord, string $input): array {
 
     try {
 
@@ -673,58 +782,26 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         #endregion
 
-        #region ACTION LOG (Enhanced Payload)
+        #region ACTION LOG — Create Contact (Centralized)
 
         $payload = json_encode([
-            'input' => $_POST['input'] ?? '',
+            'input' => $input,
             'entityId' => $entityId,
             'locationId' => $locationId,
             'contactId' => $contactId,
-            'placeId' => $location['placeId'],
+            'placeId' => $location['placeId'] ?? null,
             'jurisdiction' => $location['jurisdiction'] ?? null,
             'parcelNumber' => $location['parcelNumber'] ?? null
         ], JSON_UNESCAPED_UNICODE);
 
-        $stmt = $db->prepare("
-            INSERT INTO tblActions (
-                actionTypeId,
-                contactId,
-                actionOrigin,
-                actionUnix,
-                promptText,
-                responseText,
-                intent,
-                intentConfidence,
-                ipAddress,
-                latitude,
-                longitude,
-                userAgent
-            ) VALUES (
-                :type,
-                :contactId,
-                :origin,
-                UNIX_TIMESTAMP(),
-                :prompt,
-                :response,
-                'create_contact',
-                1.00,
-                :ip,
-                :lat,
-                :lng,
-                :ua
-            )
-        ");
-
-        $stmt->execute([
-            'type' => ACTION_TYPE_CREATE_CONTACT,
+        logAction($db, [
+            'type'      => ACTION_TYPE_CREATE_CONTACT,
             'contactId' => $contactId,
-            'origin' => ACTION_ORIGIN_USER,
-            'prompt' => $_POST['input'] ?? '',
-            'response' => $payload,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-            'lat' => $location['lat'] ?? null,
-            'lng' => $location['lng'] ?? null,
-            'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
+            'prompt'    => $input,              // 🔥 ALWAYS use normalized $input
+            'response'  => $payload,
+            'intent'    => 'create_contact',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null
         ]);
 
         #endregion
@@ -757,7 +834,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
 #endregion
 
-#region SECTION 10A — Action Log (Duplicate Attempt)
+#region SECTION 13 — Action Log (Duplicate Attempt)
 
 if ($outcome['outcome'] === 'resolved_duplicate') {
 
@@ -766,55 +843,26 @@ if ($outcome['outcome'] === 'resolved_duplicate') {
         'entityId' => $entity['entityId'] ?? null,
         'locationId' => $locationRecord['locationId'] ?? null,
         'contactId' => $contactRecord['contactId'] ?? null,
+        'placeId' => $location['placeId'] ?? null,
+        'jurisdiction' => $location['jurisdiction'] ?? null,
+        'parcelNumber' => $location['parcelNumber'] ?? null,
         'reason' => 'Duplicate contact submission blocked'
     ], JSON_UNESCAPED_UNICODE);
 
-    $stmt = $db->prepare("
-        INSERT INTO tblActions (
-            actionTypeId,
-            contactId,
-            actionOrigin,
-            actionUnix,
-            promptText,
-            responseText,
-            intent,
-            intentConfidence,
-            ipAddress,
-            latitude,
-            longitude,
-            userAgent
-        ) VALUES (
-            :type,
-            :contactId,
-            :origin,
-            UNIX_TIMESTAMP(),
-            :prompt,
-            :response,
-            'duplicate_attempt',
-            1.00,
-            :ip,
-            :lat,
-            :lng,
-            :ua
-        )
-    ");
-
-    $stmt->execute([
-        'type' => 7, // Duplicate Attempt
+    logAction($db, [
+        'type'      => ACTION_TYPE_DUPLICATE_ATTEMPT,
         'contactId' => $contactRecord['contactId'] ?? null,
-        'origin' => ACTION_ORIGIN_USER,
-        'prompt' => $input,
-        'response' => $payload,
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
-        'lat' => $location['lat'] ?? null,
-        'lng' => $location['lng'] ?? null,
-        'ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
+        'prompt'    => $input,
+        'response'  => $payload,
+        'intent'    => 'duplicate_attempt',
+        'lat'       => $location['lat'] ?? null,
+        'lng'       => $location['lng'] ?? null
     ]);
 }
 
 #endregion
 
-#region SECTION 11 — Execute Insert (Only if NEW)
+#region SECTION 14 — Execute Insert (Only if NEW)
 
 $insertResult = null;
 
@@ -824,13 +872,14 @@ if ($outcome['outcome'] === 'resolved_new') {
         $parsed,
         $location,
         $entity,
-        $locationRecord
+        $locationRecord,
+        $input
     );
 }
 
 #endregion
 
-#region SECTION 12 — Output / Response
+#region SECTION 15 — Output / Response
 
 echo json_encode([
     'status' => $outcome['outcome'],
@@ -838,7 +887,8 @@ echo json_encode([
     'location' => $locationRecord,
     'contact' => $contactRecord,
     'insert' => $insertResult,
-    'resolvedLocation' => $location
+    'resolvedLocation' => $location,
+    'scenario' => $decision ?? null
 ]);
 
 #endregion
