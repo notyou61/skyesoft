@@ -80,7 +80,7 @@ $parsed = parseContact($input);
 
 #endregion
 
-#region SECTION 2A — Address Validation (CENSUS REQUIRED)
+#region SECTION 2A — Address Enrichment (CENSUS OPTIONAL)
 
 // Build full address string
 $fullAddress = trim(
@@ -92,19 +92,18 @@ $fullAddress = trim(
 // Execute Census validation
 $validation = validateAddressCensus($fullAddress);
 
-// 🚫 HARD FAIL if invalid
-if (!$validation['valid']) {
-    // ⚠️ Do NOT block — allow pipeline to continue
-    $parsed['location']['censusValid'] = false;
+// 🔍 Enrichment only — never block execution
+if (!empty($validation['valid']) && !empty($validation['normalized'])) {
 
-} else {
-    // Normalize only if valid
+    // Normalize address ONLY if valid
     $parsed['location']['address'] = $validation['normalized']['address'];
     $parsed['location']['censusValid'] = true;
-}
 
-// Normalize BEFORE resolution
-$parsed['location']['address'] = $validation['normalized']['address'];
+} else {
+
+    // Keep original parsed address
+    $parsed['location']['censusValid'] = false;
+}
 
 #endregion
 
