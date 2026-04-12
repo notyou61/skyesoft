@@ -1002,35 +1002,41 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #endregion
 
-#region SECTION 17 — Final Action Logging (Safe)
+#region SECTION 17 — Final Action Logging
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$currentUserId = $_SESSION['contactId'] ?? 1;
+// TEMP: use known-valid actor/contact until auth/session is fully wired
+$currentUserId = 1;
+
+// Resolve duplicate target safely from either path:
+// 1) exact duplicate found in Section 8 -> $contactRecord
+// 2) duplicate email found in Section 16 -> $outcome['contact']
+$targetContactId =
+    $outcome['contact']['contactId']
+    ?? $contactRecord['contactId']
+    ?? null;
 
 if (
     ($outcome['outcome'] ?? '') === 'resolved_duplicate' &&
-    ($outcome['contact']['status'] ?? '') === 'duplicate_email'
+    !empty($currentUserId) &&
+    !empty($targetContactId)
 ) {
-    try {
-        logAction($db, [
-            'type'      => ACTION_TYPE_PROPOSE,
-            'contactId' => (int)$currentUserId,
-            'prompt'    => $input,
-            'response'  => json_encode([
-                'reason' => 'duplicate_attempt',
-                'targetContactId' => $outcome['contact']['contactId'] ?? null
-            ], JSON_UNESCAPED_UNICODE),
-            'intent'    => 'duplicate_attempt',
-            'lat'       => $location['lat'] ?? null,
-            'lng'       => $location['lng'] ?? null,
-            'origin'    => ACTION_ORIGIN_USER
-        ]);
-    } catch (Throwable $e) {
-        error_log('ACTION LOG FAILURE: ' . $e->getMessage());
-    }
+    logAction($db, [
+        'type'      => ACTION_TYPE_PROPOSE,
+        'contactId' => (int)$currentUserId,   // actor/user
+        'prompt'    => $input,
+        'response'  => json_encode([
+            'reason'          => 'duplicate_attempt',
+            'targetContactId' => (int)$targetContactId
+        ], JSON_UNESCAPED_UNICODE),
+        'intent'    => 'duplicate_attempt',
+        'lat'       => $location['lat'] ?? null,
+        'lng'       => $location['lng'] ?? null,
+        'origin'    => ACTION_ORIGIN_USER
+    ]);
 }
 
 #endregion
