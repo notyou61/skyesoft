@@ -1019,6 +1019,8 @@ if ($outcome['outcome'] === 'resolved_new') {
     );
 
     if ($insertResult['success'] === false) {
+
+        // 🔥 Log failure
         logAction($db, [
             'type'      => ACTION_TYPE_PROPOSE,
             'contactId' => $insertResult['contactId'] ?? null,
@@ -1029,6 +1031,22 @@ if ($outcome['outcome'] === 'resolved_new') {
             'lng'       => $location['lng'] ?? null,
             'origin'    => ACTION_ORIGIN_USER
         ]);
+
+        // 🔥 CRITICAL — Correct the outcome
+        if (!empty($insertResult['contactId'])) {
+
+            $outcome = [
+                'outcome' => 'resolved_duplicate',
+                'entity' => $entity,
+                'location' => $locationRecord,
+                'contact' => [
+                    'status' => 'duplicate_email',
+                    'contactId' => (int)$insertResult['contactId']
+                ]
+            ];
+
+            $insertResult = null; // prevent misleading response
+        }
     }
 }
 
