@@ -212,6 +212,13 @@ if ($decision['status'] === 'conflict') {
     exit;
 }
 
+// 🔥 APPLY DECISIONS HERE (CORRECT LOCATION)
+if (!empty($decision['data']['entityType'])) {
+    $parsed['entity']['entityType'] = $decision['data']['entityType'];
+    $entity['entityType'] = $decision['data']['entityType'];
+}
+
+
 #endregion
 
 #region SECTION 6 — Location + Contact Record Resolution
@@ -273,7 +280,8 @@ function resolveEntity(PDO $db, string $entityName): array {
     if ($entityName === '') {
         return [
             'status' => 'new',
-            'entityId' => null
+            'entityId' => null,
+            'entityName' => $entityName
         ];
     }
 
@@ -295,7 +303,8 @@ function resolveEntity(PDO $db, string $entityName): array {
     if ($row) {
         return [
             'status' => 'existing',
-            'entityId' => (int)$row['entityId']
+            'entityId' => (int)$row['entityId'],
+            'entityName' => $row['entityName']
         ];
     }
     // #endregion
@@ -314,7 +323,8 @@ function resolveEntity(PDO $db, string $entityName): array {
     // #region New Entity
     return [
         'status' => 'new',
-        'entityId' => null
+        'entityId' => null,
+        'entityName' => $entityName
     ];
     // #endregion
 }
@@ -501,7 +511,7 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
         $stmt->execute(['placeId' => $location['placeId']]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($row && $row['locationEntityId'] != ($entity['entityId'] ?? null)) {
+        if ($row && (string)$row['locationEntityId'] !== (string)($entity['entityId'] ?? null)) {
 
             return [
                 "status" => "conflict",
@@ -525,7 +535,7 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
 
     if (
         ($entity['status'] ?? null) === 'new' &&
-        empty($entity['type']) &&
+        empty($entity['entityType']) &&
         !empty($entityName)
     ) {
         $inferredType = inferEntityTypeAI($entityName);
@@ -534,12 +544,17 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
             $decision['scenario'] = "entity_type_inferred";
         }
 
-        $decision['message'] = "Entity type inferred by AI.";
+        if ($decision['message'] === "") {
+            $decision['message'] = "Entity type inferred by AI.";
+        }
 
-        $decision['data'] = [
-            "entityType"       => $inferredType,
-            "entityTypeSource" => "ai"
-        ];
+        $decision['data'] = array_merge(
+            $decision['data'],
+            [
+                "entityType" => $inferredType,
+                "entityTypeSource" => "ai"
+            ]
+        );
     }
     // #endregion
 
@@ -564,7 +579,7 @@ function inferEntityTypeAI(string $entityName): string {
     }
 
     $payload = [
-        "prompt" => "Return ONLY one word: company, client, vendor, or jurisdiction.\nEntity: " . $entityName
+        "prompt" => "Return ONLY one word: company, customer, vendor, or jurisdiction.\nEntity: " . $entityName
     ];
 
     $ch = curl_init('https://skyelighting.com/skyesoft/api/askOpenAI.php');
@@ -581,22 +596,22 @@ function inferEntityTypeAI(string $entityName): string {
     curl_close($ch);
 
     if ($response === false) {
-        $cache[$key] = 'client';
-        return 'client';
+        $cache[$key] = 'customer';
+        return 'customer';
     }
 
     $result = json_decode($response, true);
 
     if (!is_array($result)) {
-        $cache[$key] = 'client';
-        return 'client';
+        $cache[$key] = 'customer';
+        return 'customer';
     }
 
     $type = strtolower(trim($result['response'] ?? 'customer'));
 
     $allowed = ['company', 'customer', 'vendor', 'jurisdiction'];
 
-    $finalType = in_array($type, $allowed) ? $type : 'client';
+    $finalType = in_array($type, $allowed) ? $type : 'customer';
 
     $cache[$key] = $finalType;
     return $finalType;
@@ -615,7 +630,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
         #region Normalize Inputs
 
         $varEntityName = trim((string)($parsed['entity']['name'] ?? ''));
-        $varEntityType = $parsed['entity']['type'] ?? 'company';
+        $varEntityType = $parsed['entity']['entityType'] ?? 'customer';
 
         $contact = $parsed['contact'] ?? [];
 
