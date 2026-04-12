@@ -852,8 +852,14 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 'email' => $varEmail
             ]);
 
-            if ($stmt->fetch()) {
-                throw new RuntimeException('ELC FAIL: Email already exists for entity.');
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                return [
+                    'success' => false,
+                    'error' => 'ELC FAIL: Email already exists for entity.',
+                    'contactId' => (int)$row['contactId']
+                ];
             }
         }
 
@@ -1011,6 +1017,19 @@ if ($outcome['outcome'] === 'resolved_new') {
         $locationRecord,
         $input
     );
+
+    if ($insertResult['success'] === false) {
+        logAction($db, [
+            'type'      => ACTION_TYPE_PROPOSE,
+            'contactId' => $insertResult['contactId'] ?? null,
+            'prompt'    => $input,
+            'response'  => json_encode($insertResult, JSON_UNESCAPED_UNICODE),
+            'intent'    => 'contact_insert_failed',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+    }
 }
 
 #endregion
