@@ -85,7 +85,7 @@ $parsed = parseContact($input);
 
 #endregion
 
-#region SECTION 2A — Address Enrichment (CENSUS OPTIONAL)
+#region SECTION 3 — Address Enrichment (CENSUS OPTIONAL)
 
 // Build full address string
 $fullAddress = trim(
@@ -112,13 +112,13 @@ if (!empty($validation['valid']) && !empty($validation['normalized'])) {
 
 #endregion
 
-#region SECTION 2B — Location Resolution
+#region SECTION 4 — Location Resolution
 
 $location = resolveLocation($parsed['location'] ?? []);
 
 #endregion
 
-#region SECTION 3 — Validation Gates
+#region SECTION 5 — Validation Gates
 
 // 🔥 REQUIRED CONTACT FIELDS
 $contact = $parsed['contact'] ?? [];
@@ -190,13 +190,13 @@ if (
 
 #endregion
 
-#region SECTION 4 — Entity Resolution
+#region SECTION 6 — Entity Resolution
 
 $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
 #endregion
 
-#region SECTION 5 — Scenario Engine (Decision Layer)
+#region SECTION 7 — Scenario Engine (Decision Layer)
 
 $decision = evaluateScenario(
     $db,
@@ -226,7 +226,7 @@ if (!empty($decision['data']['entityType'])) {
 
 #endregion
 
-#region SECTION 6 — Location + Contact Record Resolution
+#region SECTION 8 — Location + Contact Record Resolution
 
 // ─────────────────────────────────────────
 // Location DB Resolution
@@ -275,7 +275,7 @@ $outcome = buildResolutionOutcome(
 
 #endregion
 
-#region SECTION 7 — Entity Resolution Function
+#region SECTION 9 — Entity Resolution Function
 
 function resolveEntity(PDO $db, string $entityName): array {
 
@@ -336,7 +336,7 @@ function resolveEntity(PDO $db, string $entityName): array {
 
 #endregion
 
-#region SECTION 8 — Location Resolution (DB Layer)
+#region SECTION 10 — Location Resolution (DB Layer)
 
 function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
 
@@ -370,7 +370,7 @@ function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
 
 #endregion
 
-#region SECTION 9 — Contact Duplicate Detection
+#region SECTION 11 — Contact Duplicate Detection
 
 function resolveContact(PDO $db, int $entityId, int $locationId, array $contact): array {
 
@@ -442,7 +442,7 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
 
 #endregion
 
-#region SECTION 10 — Resolution Fork Engine
+#region SECTION 12 — Resolution Fork Engine
 
 function buildResolutionOutcome(array $entity, array $locationRecord, array $contact): array {
 
@@ -471,7 +471,7 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 #endregion
 
-#region SECTION 11 — Scenario Engine — Step 1
+#region SECTION 13 — Scenario Engine — Step 1
 
 function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
 
@@ -571,7 +571,7 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
 
 #endregion
 
-#region SECTION 11A — AI Entity Type Inference (Production Hardened)
+#region SECTION 14 — AI Entity Type Inference (Production Hardened)
 
 function inferEntityTypeAI(string $entityName): string {
 
@@ -624,7 +624,7 @@ function inferEntityTypeAI(string $entityName): string {
 
 #endregion
 
-#region SECTION 12 — Transaction + Insert Engine (Phase 4: ELC Execution)
+#region SECTION 15 — Transaction + Insert Engine (Phase 4: ELC Execution)
 
 function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord, string $input): array {
 
@@ -963,7 +963,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
 #endregion
 
-#region SECTION 14 — Execute Insert (Only if NEW)
+#region SECTION 16 — Execute Insert (Only if NEW)
 
 $insertResult = null;
 
@@ -979,20 +979,25 @@ if ($outcome['outcome'] === 'resolved_new') {
 
     if ($insertResult['success'] === false) {
 
-        // 🔥 Log failure
-        logAction($db, [
-            'type'      => ACTION_TYPE_PROPOSE,
-            'contactId' => $insertResult['contactId'] ?? null,
-            'prompt'    => $input,
-            'response'  => json_encode($insertResult, JSON_UNESCAPED_UNICODE),
-            'intent'    => 'contact_insert_failed',
-            'lat'       => $location['lat'] ?? null,
-            'lng'       => $location['lng'] ?? null,
-            'origin'    => ACTION_ORIGIN_USER
-        ]);
+        // 🔒 Capture contactId EARLY (before anything mutates)
+        $failureContactId = $insertResult['contactId'] ?? null;
 
-        // 🔥 CRITICAL — Correct the outcome
-        if (!empty($insertResult['contactId'])) {
+        // 🔥 Log ONLY if we have a valid contactId (FK-safe)
+        if (!empty($failureContactId)) {
+            logAction($db, [
+                'type'      => ACTION_TYPE_PROPOSE,
+                'contactId' => (int)$failureContactId,
+                'prompt'    => $input,
+                'response'  => json_encode($insertResult, JSON_UNESCAPED_UNICODE),
+                'intent'    => 'contact_insert_failed',
+                'lat'       => $location['lat'] ?? null,
+                'lng'       => $location['lng'] ?? null,
+                'origin'    => ACTION_ORIGIN_USER
+            ]);
+        }
+
+        // 🔥 CRITICAL — Correct the outcome (only if contact exists)
+        if (!empty($failureContactId)) {
 
             $outcome = [
                 'outcome' => 'resolved_duplicate',
@@ -1000,7 +1005,7 @@ if ($outcome['outcome'] === 'resolved_new') {
                 'location' => $locationRecord,
                 'contact' => [
                     'status' => 'duplicate_email',
-                    'contactId' => (int)$insertResult['contactId']
+                    'contactId' => (int)$failureContactId
                 ]
             ];
 
@@ -1011,28 +1016,29 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #endregion
 
-#region SECTION 14A — Final Action Logging
+#region SECTION 17 — Final Action Logging
 
-// 🔒 Determine final contactId (guaranteed non-null for logging)
+// 🔒 Determine final contactId from outcome (authoritative)
 $finalContactId =
-    $contactRecord['contactId']
-    ?? ($insertResult['contactId'] ?? null);
+    $outcome['contact']['contactId']
+    ?? $contactRecord['contactId']
+    ?? null;
 
-// 🚫 Safety guard — do NOT log if still null (pre-contact scenarios)
-if ($finalContactId !== null && $outcome['outcome'] === 'resolved_duplicate') {
+// 🚫 Only log when we have a valid contactId
+if (!empty($finalContactId) && $outcome['outcome'] === 'resolved_duplicate') {
 
     $payload = json_encode([
         'input'      => $input,
         'entityId'   => $entity['entityId'] ?? null,
         'locationId' => $locationRecord['locationId'] ?? null,
-        'contactId'  => $finalContactId,
+        'contactId'  => (int)$finalContactId,
         'placeId'    => $location['placeId'] ?? null,
         'reason'     => 'Duplicate contact submission (finalized)'
     ], JSON_UNESCAPED_UNICODE);
 
     logAction($db, [
         'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => (int)$finalContactId,   // 🔥 FORCE INT (extra safety)
+        'contactId' => (int)$finalContactId,
         'prompt'    => $input,
         'response'  => $payload,
         'intent'    => 'duplicate_attempt',
@@ -1044,13 +1050,13 @@ if ($finalContactId !== null && $outcome['outcome'] === 'resolved_duplicate') {
 
 #endregion
 
-#region SECTION 15 — Output / Response
+#region SECTION 18 — Output / Response
 
 echo json_encode([
     'status' => $outcome['outcome'],
     'entity' => $entity,
     'location' => $locationRecord,
-    'contact' => $contactRecord,
+    'contact' => $outcome['contact'] ?? $contactRecord,
     'insert' => $insertResult,
     'resolvedLocation' => $location,
     'scenario' => $decision ?? null
