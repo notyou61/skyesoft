@@ -592,9 +592,9 @@ function inferEntityTypeAI(string $entityName): string {
         return 'client';
     }
 
-    $type = strtolower(trim($result['response'] ?? 'client'));
+    $type = strtolower(trim($result['response'] ?? 'customer'));
 
-    $allowed = ['company', 'client', 'vendor', 'jurisdiction'];
+    $allowed = ['company', 'customer', 'vendor', 'jurisdiction'];
 
     $finalType = in_array($type, $allowed) ? $type : 'client';
 
