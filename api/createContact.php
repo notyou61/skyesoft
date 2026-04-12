@@ -38,6 +38,7 @@ if (!$db instanceof PDO) {
     throw new RuntimeException('Database connection failed: invalid PDO instance.');
 }
 
+
 if (!defined('ACTION_ORIGIN_USER')) {
     define('ACTION_ORIGIN_USER', 1);
 }
@@ -47,11 +48,15 @@ if (!defined('ACTION_ORIGIN_SYSTEM')) {
 if (!defined('ACTION_ORIGIN_AUTOMATION')) {
     define('ACTION_ORIGIN_AUTOMATION', 3);
 }
-if (!defined('ACTION_TYPE_CREATE_CONTACT')) {
-    define('ACTION_TYPE_CREATE_CONTACT', 9);
+
+if (!defined('ACTION_TYPE_PROPOSE')) {
+    define('ACTION_TYPE_PROPOSE', 7);
 }
-if (!defined('ACTION_TYPE_DUPLICATE_ATTEMPT')) {
-    define('ACTION_TYPE_DUPLICATE_ATTEMPT', 7);
+if (!defined('ACTION_TYPE_ACKNOWLEDGE')) {
+    define('ACTION_TYPE_ACKNOWLEDGE', 8);
+}
+if (!defined('ACTION_TYPE_ACCEPT')) {
+    define('ACTION_TYPE_ACCEPT', 9);
 }
 
 #endregion
@@ -912,7 +917,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
         ], JSON_UNESCAPED_UNICODE);
 
         logAction($db, [
-            'type'      => ACTION_TYPE_CREATE_CONTACT,
+            'type'      => ACTION_TYPE_ACCEPT,
             'contactId' => $contactId,
             'prompt'    => $input,
             'response'  => $payload,
@@ -943,6 +948,18 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $db->rollBack();
         }
 
+        // 🔥 LOG FAILURE BEFORE RETURN
+        logAction($db, [
+            'type'      => ACTION_TYPE_PROPOSE,
+            'contactId' => null,
+            'prompt'    => $input,
+            'response'  => json_encode(['error' => $e->getMessage()]),
+            'intent'    => 'contact_insert_failed',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+
         return [
             'success' => false,
             'error' => $e->getMessage()
@@ -968,7 +985,7 @@ if ($outcome['outcome'] === 'resolved_duplicate') {
     ], JSON_UNESCAPED_UNICODE);
 
     logAction($db, [
-        'type'      => ACTION_TYPE_DUPLICATE_ATTEMPT,
+        'type'      => ACTION_TYPE_PROPOSE,
         'contactId' => $contactRecord['contactId'] ?? null,
         'prompt'    => $input,
         'response'  => $payload,
