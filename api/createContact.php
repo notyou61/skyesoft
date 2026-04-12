@@ -38,11 +38,21 @@ if (!$db instanceof PDO) {
     throw new RuntimeException('Database connection failed: invalid PDO instance.');
 }
 
-const ACTION_ORIGIN_USER       = 1;
-const ACTION_ORIGIN_SYSTEM     = 2;
-const ACTION_ORIGIN_AUTOMATION = 3;
-const ACTION_TYPE_DUPLICATE_ATTEMPT = 10;
-const ACTION_TYPE_CREATE_CONTACT = 9;
+if (!defined('ACTION_ORIGIN_USER')) {
+    define('ACTION_ORIGIN_USER', 1);
+}
+if (!defined('ACTION_ORIGIN_SYSTEM')) {
+    define('ACTION_ORIGIN_SYSTEM', 2);
+}
+if (!defined('ACTION_ORIGIN_AUTOMATION')) {
+    define('ACTION_ORIGIN_AUTOMATION', 3);
+}
+if (!defined('ACTION_TYPE_CREATE_CONTACT')) {
+    define('ACTION_TYPE_CREATE_CONTACT', 9);
+}
+if (!defined('ACTION_TYPE_DUPLICATE_ATTEMPT')) {
+    define('ACTION_TYPE_DUPLICATE_ATTEMPT', 10);
+}
 
 #endregion
 
