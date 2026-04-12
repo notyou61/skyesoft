@@ -954,18 +954,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $db->rollBack();
         }
 
-        // 🔥 LOG FAILURE BEFORE RETURN
-        logAction($db, [
-            'type'      => ACTION_TYPE_PROPOSE,
-            'contactId' => null,
-            'prompt'    => $input,
-            'response'  => json_encode(['error' => $e->getMessage()]),
-            'intent'    => 'contact_insert_failed',
-            'lat'       => $location['lat'] ?? null,
-            'lng'       => $location['lng'] ?? null,
-            'origin'    => ACTION_ORIGIN_USER
-        ]);
-
         return [
             'success' => false,
             'error' => $e->getMessage()
@@ -1025,21 +1013,26 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #region SECTION 14A — Final Action Logging
 
-if ($outcome['outcome'] === 'resolved_duplicate') {
+// 🔒 Determine final contactId (guaranteed non-null for logging)
+$finalContactId =
+    $contactRecord['contactId']
+    ?? ($insertResult['contactId'] ?? null);
+
+// 🚫 Safety guard — do NOT log if still null (pre-contact scenarios)
+if ($finalContactId !== null && $outcome['outcome'] === 'resolved_duplicate') {
 
     $payload = json_encode([
-        'input' => $input,
-        'entityId' => $entity['entityId'] ?? null,
+        'input'      => $input,
+        'entityId'   => $entity['entityId'] ?? null,
         'locationId' => $locationRecord['locationId'] ?? null,
-        'contactId' => $contactRecord['contactId'] ?? null,
-        'placeId' => $location['placeId'] ?? null,
-        'reason' => 'Duplicate contact submission (finalized)'
+        'contactId'  => $finalContactId,
+        'placeId'    => $location['placeId'] ?? null,
+        'reason'     => 'Duplicate contact submission (finalized)'
     ], JSON_UNESCAPED_UNICODE);
 
     logAction($db, [
         'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => $contactRecord['contactId']
-            ?? ($insertResult['contactId'] ?? null),
+        'contactId' => (int)$finalContactId,   // 🔥 FORCE INT (extra safety)
         'prompt'    => $input,
         'response'  => $payload,
         'intent'    => 'duplicate_attempt',
