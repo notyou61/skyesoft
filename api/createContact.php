@@ -686,21 +686,26 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         if ($entity['status'] === 'new') {
 
+            $varEntityState = $location['state'] ?? null;
+
             $stmt = $db->prepare("
                 INSERT INTO tblEntities (
                     entityName,
                     entityType,
+                    entityState,
                     entityDate
                 ) VALUES (
                     :name,
                     :type,
+                    :state,
                     UNIX_TIMESTAMP()
                 )
             ");
 
             $stmt->execute([
-                'name' => $varEntityName,
-                'type' => $varEntityType
+                'name'  => $varEntityName,
+                'type'  => $varEntityType,
+                'state' => $varEntityState
             ]);
 
             $entityId = (int)$db->lastInsertId();
