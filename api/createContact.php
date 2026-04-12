@@ -471,6 +471,29 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 #endregion
 
+#region SECTION 12A — Log Duplicate (CRITICAL)
+
+if (($outcome['outcome'] ?? '') === 'resolved_duplicate') {
+
+    $currentUserId = $_SESSION['contactId'] ?? 1;
+
+    logAction($db, [
+        'type'      => ACTION_TYPE_PROPOSE,   // 7
+        'contactId' => (int)$currentUserId,   // actor
+        'prompt'    => $input,
+        'response'  => json_encode([
+            'reason'          => 'duplicate_attempt',
+            'targetContactId' => $contactRecord['contactId'] ?? null
+        ], JSON_UNESCAPED_UNICODE),
+        'intent'    => 'duplicate_attempt',
+        'lat'       => $location['lat'] ?? null,
+        'lng'       => $location['lng'] ?? null,
+        'origin'    => ACTION_ORIGIN_USER
+    ]);
+}
+
+#endregion
+
 #region SECTION 13 — Scenario Engine — Step 1
 
 function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
@@ -1002,41 +1025,39 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #endregion
 
-#region SECTION 17 — Final Action Logging
+#region SECTION 17 — Final Action Logging (Fallback Only)
 
+// Ensure session exists
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// TEMP: use known-valid actor/contact until auth/session is fully wired
-$currentUserId = 1;
+// Resolve actor (user)
+$currentUserId = $_SESSION['contactId'] ?? 1;
 
-// Resolve duplicate target safely from either path:
-// 1) exact duplicate found in Section 8 -> $contactRecord
-// 2) duplicate email found in Section 16 -> $outcome['contact']
-$targetContactId =
-    $outcome['contact']['contactId']
-    ?? $contactRecord['contactId']
-    ?? null;
-
+// 🔒 Only log if NOTHING else logged (safety net)
 if (
-    ($outcome['outcome'] ?? '') === 'resolved_duplicate' &&
     !empty($currentUserId) &&
-    !empty($targetContactId)
+    ($outcome['outcome'] ?? '') !== 'resolved_new' &&
+    ($outcome['outcome'] ?? '') !== 'resolved_duplicate'
 ) {
-    logAction($db, [
-        'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => (int)$currentUserId,   // actor/user
-        'prompt'    => $input,
-        'response'  => json_encode([
-            'reason'          => 'duplicate_attempt',
-            'targetContactId' => (int)$targetContactId
-        ], JSON_UNESCAPED_UNICODE),
-        'intent'    => 'duplicate_attempt',
-        'lat'       => $location['lat'] ?? null,
-        'lng'       => $location['lng'] ?? null,
-        'origin'    => ACTION_ORIGIN_USER
-    ]);
+    try {
+        logAction($db, [
+            'type'      => ACTION_TYPE_PROPOSE,
+            'contactId' => (int)$currentUserId,
+            'prompt'    => $input,
+            'response'  => json_encode([
+                'reason'  => 'fallback_log',
+                'outcome' => $outcome['outcome'] ?? 'unknown'
+            ], JSON_UNESCAPED_UNICODE),
+            'intent'    => 'system_fallback',
+            'lat'       => $location['lat'] ?? null,
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+    } catch (Throwable $e) {
+        error_log('FINAL LOG FAILURE: ' . $e->getMessage());
+    }
 }
 
 #endregion
