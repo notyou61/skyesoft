@@ -894,11 +894,12 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
         logAction($db, [
             'type'      => ACTION_TYPE_CREATE_CONTACT,
             'contactId' => $contactId,
-            'prompt'    => $input,              // 🔥 ALWAYS use normalized $input
+            'prompt'    => $input,
             'response'  => $payload,
             'intent'    => 'create_contact',
             'lat'       => $location['lat'] ?? null,
-            'lng'       => $location['lng'] ?? null
+            'lng'       => $location['lng'] ?? null,
+            'origin'    => ACTION_ORIGIN_USER   // 🔥 THIS IS THE FIX
         ]);
 
         #endregion
@@ -953,7 +954,8 @@ if ($outcome['outcome'] === 'resolved_duplicate') {
         'response'  => $payload,
         'intent'    => 'duplicate_attempt',
         'lat'       => $location['lat'] ?? null,
-        'lng'       => $location['lng'] ?? null
+        'lng'       => $location['lng'] ?? null,
+        'origin'    => ACTION_ORIGIN_USER   // 🔥 REQUIRED
     ]);
 }
 
