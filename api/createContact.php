@@ -1018,29 +1018,19 @@ if ($outcome['outcome'] === 'resolved_new') {
 
 #region SECTION 17 — Final Action Logging
 
-// 🔒 Determine final contactId from outcome (authoritative)
-$finalContactId =
-    $outcome['contact']['contactId']
-    ?? $contactRecord['contactId']
-    ?? null;
+// 🔒 USER performing the action (NOT the parsed contact)
+$currentUserId = $_SESSION['contactId'] ?? 1; // 🔥 TEMP fallback
 
-// 🚫 Only log when we have a valid contactId
-if (!empty($finalContactId) && $outcome['outcome'] === 'resolved_duplicate') {
-
-    $payload = json_encode([
-        'input'      => $input,
-        'entityId'   => $entity['entityId'] ?? null,
-        'locationId' => $locationRecord['locationId'] ?? null,
-        'contactId'  => (int)$finalContactId,
-        'placeId'    => $location['placeId'] ?? null,
-        'reason'     => 'Duplicate contact submission (finalized)'
-    ], JSON_UNESCAPED_UNICODE);
+if (!empty($currentUserId) && ($outcome['outcome'] ?? '') === 'resolved_duplicate') {
 
     logAction($db, [
         'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => (int)$finalContactId,
+        'contactId' => (int)$currentUserId,   // ✅ USER ID
         'prompt'    => $input,
-        'response'  => $payload,
+        'response'  => json_encode([
+            'reason' => 'duplicate_attempt',
+            'targetContactId' => $outcome['contact']['contactId'] ?? null
+        ]),
         'intent'    => 'duplicate_attempt',
         'lat'       => $location['lat'] ?? null,
         'lng'       => $location['lng'] ?? null,
