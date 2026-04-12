@@ -460,7 +460,7 @@ function buildResolutionOutcome(array $entity, array $locationRecord, array $con
 
 function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
 
-    // Default OK
+    // #region Default Decision (Safe)
     $decision = [
         "status" => "ok",
         "scenario" => "safe",
@@ -469,10 +469,10 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
         "options" => [],
         "data" => []
     ];
+    // #endregion
 
-    // -------------------------------
-    // Scenario 3 — Invalid Entity
-    // -------------------------------
+
+    // #region Scenario 1 — Invalid Entity (Hard Stop)
     if (!empty($entity['isInvalid']) && $entity['isInvalid'] == 1) {
         return [
             "status" => "reject",
@@ -480,13 +480,15 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
             "message" => "Entity is marked invalid.",
             "requiresAction" => false,
             "options" => [],
-            "data" => []
+            "data" => [
+                "entityId" => $entity['entityId'] ?? null
+            ]
         ];
     }
+    // #endregion
 
-    // -------------------------------
-    // Scenario 2 — Ownership Conflict
-    // -------------------------------
+
+    // #region Scenario 2 — Location Ownership Conflict
     if (!empty($location['placeId'])) {
 
         $stmt = $db->prepare("
@@ -507,12 +509,97 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
                 "message" => "Location belongs to another entity.",
                 "requiresAction" => true,
                 "options" => ["reassign", "cancel"],
-                "data" => $row
+                "data" => [
+                    "existingEntityId" => $row['locationEntityId'],
+                    "incomingEntityId" => $entity['entityId'] ?? null,
+                    "placeId" => $location['placeId']
+                ]
             ];
         }
     }
+    // #endregion
 
+
+    // #region Scenario 3 — Entity Type Inference (AI) — Only for New Entities
+    $entityName = $entity['entityName'] ?? null;
+
+    if (
+        ($entity['status'] ?? null) === 'new' &&
+        empty($entity['type']) &&
+        !empty($entityName)
+    ) {
+        $inferredType = inferEntityTypeAI($entityName);
+
+        if ($decision['scenario'] === 'safe') {
+            $decision['scenario'] = "entity_type_inferred";
+        }
+
+        $decision['message'] = "Entity type inferred by AI.";
+
+        $decision['data'] = [
+            "entityType"       => $inferredType,
+            "entityTypeSource" => "ai"
+        ];
+    }
+    // #endregion
+
+
+    // #region Default Return (Safe)
     return $decision;
+    // #endregion
+}
+
+#endregion
+
+#region SECTION 11A — AI Entity Type Inference (Production Hardened)
+
+function inferEntityTypeAI(string $entityName): string {
+
+    static $cache = [];
+
+    $key = strtolower(trim($entityName));
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $payload = [
+        "prompt" => "Return ONLY one word: company, client, vendor, or jurisdiction.\nEntity: " . $entityName
+    ];
+
+    $ch = curl_init('https://skyelighting.com/skyesoft/api/askOpenAI.php');
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_TIMEOUT        => 3
+    ]);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        $cache[$key] = 'client';
+        return 'client';
+    }
+
+    $result = json_decode($response, true);
+
+    if (!is_array($result)) {
+        $cache[$key] = 'client';
+        return 'client';
+    }
+
+    $type = strtolower(trim($result['response'] ?? 'client'));
+
+    $allowed = ['company', 'client', 'vendor', 'jurisdiction'];
+
+    $finalType = in_array($type, $allowed) ? $type : 'client';
+
+    $cache[$key] = $finalType;
+    return $finalType;
 }
 
 #endregion
