@@ -94,12 +94,13 @@ $validation = validateAddressCensus($fullAddress);
 
 // 🚫 HARD FAIL if invalid
 if (!$validation['valid']) {
-    echo json_encode([
-        'status' => 'reject',
-        'reason' => $validation['reason'],
-        'location' => $parsed['location']
-    ]);
-    exit;
+    // ⚠️ Do NOT block — allow pipeline to continue
+    $parsed['location']['censusValid'] = false;
+
+} else {
+    // Normalize only if valid
+    $parsed['location']['address'] = $validation['normalized']['address'];
+    $parsed['location']['censusValid'] = true;
 }
 
 // Normalize BEFORE resolution
