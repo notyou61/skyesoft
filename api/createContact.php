@@ -38,7 +38,16 @@ $varRequestId       = uniqid('req_', true);
 
 #endregion
 
-#region SECTION 1 — Input Validation (ELC Gate: Reject + Log)
+#region SECTION 1 — Input Handling (Assignment)
+
+$rawRequest = file_get_contents('php://input');
+$jsonInput  = json_decode($rawRequest, true);
+
+$input = $jsonInput['input'] ?? $_POST['input'] ?? '';
+
+#endregion
+
+#region SECTION 1A — Input Validation (ELC Gate: Reject + Log)
 
 // 🔒 Hard validation: input must exist
 // 📌 Behavior:
@@ -51,9 +60,9 @@ if (!$input || trim($input) === '') {
 
     try {
         logAction($db, [
-            'type'      => 4, // query (non-CRUD user action)
-            'contactId' => 1, // fallback actor (no session yet)
-            'prompt'    => $input,
+            'type'      => 4,
+            'contactId' => 1,
+            'prompt'    => '',
             'response'  => json_encode([
                 'reason' => 'No input provided',
                 'stage'  => 'validation'
