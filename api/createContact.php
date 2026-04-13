@@ -38,15 +38,37 @@ $varRequestId       = uniqid('req_', true);
 
 #endregion
 
-#region SECTION 1 — Input Handling
+#region SECTION 1 — Input Validation (ELC Gate: Reject + Log)
 
-$rawRequest = file_get_contents('php://input');
-$jsonInput  = json_decode($rawRequest, true);
-
-$input = $jsonInput['input'] ?? $_POST['input'] ?? '';
+// 🔒 Hard validation: input must exist
+// 📌 Behavior:
+//   - Logs ALL rejected user attempts (audit trail)
+//   - Uses lightweight logging (type: query)
+//   - Does NOT enter resolution pipeline
+//   - Exits immediately after response
 
 if (!$input || trim($input) === '') {
-    echo json_encode(['status' => 'reject', 'reason' => 'No input provided']);
+
+    try {
+        logAction($db, [
+            'type'      => 4, // query (non-CRUD user action)
+            'contactId' => 1, // fallback actor (no session yet)
+            'prompt'    => $input,
+            'response'  => json_encode([
+                'reason' => 'No input provided',
+                'stage'  => 'validation'
+            ], JSON_UNESCAPED_UNICODE),
+            'intent'    => 'reject',
+            'origin'    => ACTION_ORIGIN_USER
+        ]);
+    } catch (Throwable $e) {
+        error_log('REJECT LOG FAILURE: ' . $e->getMessage());
+    }
+
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'No input provided'
+    ]);
     exit;
 }
 
