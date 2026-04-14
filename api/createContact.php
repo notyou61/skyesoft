@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.4.4
-//  Last Updated: 2026-04-13
+//  Version: 1.4.5
+//  Last Updated: 2026-04-14
 //  Codex Tier: 2 — ELC Execution Layer
 // ======================================================================
 
@@ -129,7 +129,7 @@ try {
 
     #endregion
 
-    #region HELPER FUNCTIONS
+    #region HELPER FUNCTIONS (unchanged)
 
     function resolveEntity(PDO $db, string $entityName): array {
         $entityName = trim($entityName);
@@ -168,7 +168,6 @@ try {
         $lastName  = trim((string)($contact['lastName'] ?? ''));
         $email     = strtolower(trim((string)($contact['email'] ?? '')));
 
-        // Primary: Email match
         if ($email !== '') {
             $stmt = $db->prepare("
                 SELECT contactId FROM tblContacts 
@@ -180,7 +179,6 @@ try {
             }
         }
 
-        // Secondary: Name + Location
         if ($firstName !== '' && $lastName !== '') {
             $stmt = $db->prepare("
                 SELECT contactId FROM tblContacts 
@@ -232,7 +230,6 @@ try {
             "data" => []
         ];
 
-        // Invalid Entity
         if (!empty($entity['isInvalid']) && $entity['isInvalid'] == 1) {
             return [
                 "status" => "reject",
@@ -242,7 +239,6 @@ try {
             ];
         }
 
-        // Location Ownership Conflict
         if (!empty($location['placeId'])) {
             $stmt = $db->prepare("SELECT locationEntityId FROM tblLocations WHERE locationPlaceId = :placeId LIMIT 1");
             $stmt->execute(['placeId' => $location['placeId']]);
@@ -264,7 +260,6 @@ try {
             }
         }
 
-        // Entity Type Inference (for new entities)
         if (($entity['status'] ?? null) === 'new' && empty($entity['entityType']) && !empty($entity['entityName'])) {
             $inferredType = inferEntityTypeAI($entity['entityName']);
             $decision['scenario'] = "entity_type_inferred";
@@ -293,7 +288,6 @@ try {
         ]);
 
         $response = curl_exec($ch);
-        // curl_close removed - deprecated and unnecessary
 
         if ($response === false) {
             $cache[$key] = 'customer';
@@ -313,7 +307,6 @@ try {
         try {
             $db->beginTransaction();
 
-            // ENTITY INSERT
             if ($entity['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblEntities (entityName, entityType, createdAt)
@@ -328,7 +321,6 @@ try {
                 $entityId = (int)$entity['entityId'];
             }
 
-            // LOCATION INSERT
             if ($locationRecord['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblLocations (
@@ -354,7 +346,6 @@ try {
                 $locationId = (int)$locationRecord['locationId'];
             }
 
-            // CONTACT INSERT
             $stmt = $db->prepare("
                 INSERT INTO tblContacts (
                     contactEntityId, contactLocationId, contactSalutation, contactTitle,
@@ -394,69 +385,74 @@ try {
 
     #endregion
 
-    #region MAIN FLOW — Resolution & Insert
+    #region MAIN FLOW — Resolution & Insert (Hardened)
 
-    // ─────────────────────────────────────────
     // Resolve Entity
-    // ─────────────────────────────────────────
     $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
-    // ─────────────────────────────────────────
-    // Scenario Evaluation (EARLY EXIT ONLY FOR HARD STOP)
-    // ─────────────────────────────────────────
+    // Scenario Evaluation
     $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
 
     if ($decision['status'] === 'reject' || $decision['status'] === 'conflict') {
-
         $outcome = [
             'outcome' => $decision['status'],
             'reason'  => $decision['message'] ?? 'conflict',
             'data'    => $decision
         ];
-
-        goto FINAL_LOG; // ✅ correct early exit
+        goto FINAL_LOG;
     }
 
-    // ─────────────────────────────────────────
-    // Apply Scenario Data (NON-BLOCKING)
-    // ─────────────────────────────────────────
+    // Apply non-blocking decisions
     if (!empty($decision['data']['entityType'])) {
         $parsed['entity']['entityType'] = $decision['data']['entityType'];
         $entity['entityType'] = $decision['data']['entityType'];
     }
 
-    // ─────────────────────────────────────────
-    // Resolve Location
-    // ─────────────────────────────────────────
-    if ($entity['status'] === 'existing') {
+    // Resolve Location Record
+    if ($entity['status'] === 'existing' && !empty($location['placeId'])) {
         $locationRecord = resolveLocationRecord($db, $entity['entityId'], $location['placeId']);
     } else {
         $locationRecord = ['status' => 'new', 'locationId' => null];
     }
 
-    // ─────────────────────────────────────────
-    // Resolve Contact
-    // ─────────────────────────────────────────
+    // Resolve Contact Record
     if ($entity['status'] === 'existing' && $locationRecord['status'] === 'existing') {
-        $contactRecord = resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact']);
+        $contactRecord = resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'] ?? []);
     } else {
         $contactRecord = ['status' => 'new', 'contactId' => null];
     }
 
-    // ─────────────────────────────────────────
-    // Build Outcome (DETERMINES INSERT)
-    // ─────────────────────────────────────────
+    // Build Preliminary Outcome
     $outcome = buildResolutionOutcome($entity, $locationRecord, $contactRecord);
 
-    // ─────────────────────────────────────────
-    // INSERT (ONLY AFTER OUTCOME IS CONFIRMED)
-    // ─────────────────────────────────────────
+    // CRITICAL HARD GUARD — Prevent False "resolved_new"
+    if (($outcome['outcome'] ?? null) === 'resolved_new') {
+        $missing = [];
+
+        if (empty($parsed['entity']['name'] ?? ''))          $missing[] = 'entityName';
+        if (empty($parsed['contact']['email'] ?? ''))        $missing[] = 'contactEmail';
+        if (empty($location['placeId'] ?? ''))               $missing[] = 'placeId';
+        if ($entity['status'] === 'new' && empty($entity['entityName'] ?? '')) $missing[] = 'newEntityName';
+        if ($entity['status'] === 'existing' && empty($entity['entityId'] ?? 0)) $missing[] = 'existingEntityId';
+
+        if (!empty($missing)) {
+            error_log("CRITICAL: resolved_new with missing data | requestId={$varRequestId} | missing=" . implode(',', $missing));
+
+            $outcome = [
+                'outcome' => 'reject',
+                'reason'  => 'invalid_resolved_new_state',
+                'missing' => $missing
+            ];
+            goto FINAL_LOG;
+        }
+    }
+
+    // INSERT — ONLY if truly resolved_new
     $insertResult = null;
 
     if (($outcome['outcome'] ?? null) === 'resolved_new') {
 
-        // 🔥 DEBUG (optional — remove later)
-        error_log('INSERT BLOCK HIT');
+        error_log("INSERT BLOCK HIT | requestId={$varRequestId}");
 
         $insertResult = executeInsert(
             $db,
@@ -467,9 +463,7 @@ try {
             $input
         );
 
-        // ─────────────────────────────────────
-        // Handle race condition (duplicate on insert)
-        // ─────────────────────────────────────
+        // Handle race-condition duplicate
         if (
             $insertResult['success'] === false &&
             !empty($insertResult['contactId'] ?? null)
@@ -483,19 +477,13 @@ try {
                     'contactId' => (int)$insertResult['contactId']
                 ]
             ];
-
-            $insertResult = null; // prevent misleading success
+            $insertResult = null;
         }
     }
-
-    // ─────────────────────────────────────────
-    // Continue to unified logging
-    // ─────────────────────────────────────────
 
     #endregion
 
 } catch (Throwable $e) {
-    // Catch any unexpected error and still ensure logging happens
     $outcome = [
         'outcome' => 'reject',
         'reason'  => 'Internal processing error',
@@ -507,7 +495,7 @@ try {
 
 #endregion
 
-#region SECTION 2 — Unified Action Logging (Single Source of Truth + Hardened Fallback)
+#region SECTION 2 — Unified Action Logging (Single Source of Truth + Hardened)
 
 FINAL_LOG:
 
@@ -527,18 +515,31 @@ if (!empty($currentUserId)) {
     $outcomeType = $outcome['outcome'] ?? null;
 
     // ─────────────────────────────────────────
-    // Outcome Mapping
+    // Outcome Mapping — HARDENED
     // ─────────────────────────────────────────
-
     if ($outcomeType === 'resolved_new') {
 
-        $actionType = ACTION_TYPE_ACCEPT;
-        $intent     = 'create_contact';
-        $reason     = 'new_contact_created';
-
-        $targetContactId =
-            $insertResult['contactId']
-            ?? ($outcome['contact']['contactId'] ?? null);
+        if (empty($insertResult)) {
+            // Insert block never ran
+            $actionType = ACTION_TYPE_PROPOSE;
+            $intent     = 'insert_not_attempted';
+            $reason     = 'insert_block_not_executed';
+            error_log("CRITICAL: resolved_new but insert block not executed | requestId={$varRequestId}");
+        } 
+        elseif (($insertResult['success'] ?? false) === true) {
+            // Genuine success
+            $actionType = ACTION_TYPE_ACCEPT;
+            $intent     = 'create_contact';
+            $reason     = 'new_contact_created';
+            $targetContactId = $insertResult['contactId'] ?? null;
+        } 
+        else {
+            // Insert attempted but failed
+            $actionType = ACTION_TYPE_PROPOSE;
+            $intent     = 'contact_insert_failed';
+            $reason     = $insertResult['error'] ?? 'insert_failed';
+            error_log("INSERT FAILED | requestId={$varRequestId} | error=" . ($insertResult['error'] ?? 'unknown'));
+        }
 
     } elseif (
         $outcomeType === 'resolved_duplicate' ||
@@ -549,16 +550,15 @@ if (!empty($currentUserId)) {
         $intent     = 'duplicate_attempt';
         $reason     = 'duplicate_detected';
 
-        $targetContactId =
-            $outcome['contact']['contactId']
-            ?? $contactRecord['contactId']
-            ?? ($insertResult['contactId'] ?? null);
+        $targetContactId = $outcome['contact']['contactId']
+                        ?? $contactRecord['contactId']
+                        ?? ($insertResult['contactId'] ?? null);
 
     } elseif (!empty($insertResult) && ($insertResult['success'] === false)) {
 
         $actionType = ACTION_TYPE_PROPOSE;
         $intent     = 'contact_insert_failed';
-        $reason     = 'insert_failed';
+        $reason     = $insertResult['error'] ?? 'insert_failed';
 
     } elseif ($outcomeType === 'reject') {
 
@@ -579,30 +579,24 @@ if (!empty($currentUserId)) {
         $reason     = $outcome['reason'] ?? 'conflict';
     }
 
-    // ─────────────────────────────────────────
     // Safe Payload Encoding
-    // ─────────────────────────────────────────
-
     $responsePayload = [
-        'requestId'   => $varRequestId,
-        'input'       => $input,
-        'outcome'     => $outcomeType,
-        'entityId'    => $entity['entityId'] ?? null,
-        'locationId'  => $locationRecord['locationId'] ?? null,
-        'contactId'   => $targetContactId,
-        'reason'      => $reason
+        'requestId'     => $varRequestId,
+        'input'         => $input,
+        'outcome'       => $outcomeType,
+        'entityId'      => $entity['entityId'] ?? null,
+        'locationId'    => $locationRecord['locationId'] ?? null,
+        'contactId'     => $targetContactId,
+        'reason'        => $reason,
+        'insertSuccess' => $insertResult['success'] ?? null
     ];
 
     $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE);
-
     if ($responseJson === false) {
         $responseJson = '{"error":"json_encode_failed"}';
     }
 
-    // ─────────────────────────────────────────
-    // Primary Logging Attempt
-    // ─────────────────────────────────────────
-
+    // Primary Logging
     $logged = false;
 
     try {
@@ -616,52 +610,23 @@ if (!empty($currentUserId)) {
             'lng'       => $location['lng'] ?? null,
             'origin'    => ACTION_ORIGIN_USER
         ]);
-
         $logged = true;
-
     } catch (Throwable $e) {
         error_log('UNIFIED LOG FAILURE: ' . $e->getMessage());
     }
 
-    // ─────────────────────────────────────────
-    // HARDENED FALLBACK (Guaranteed Insert)
-    // ─────────────────────────────────────────
-
+    // Hardened Fallback
     if (!$logged) {
         try {
             $stmt = $db->prepare("
                 INSERT INTO tblActions 
-                (
-                    actionTypeId,
-                    contactId,
-                    actionOrigin,
-                    actionUnix,
-                    promptText,
-                    responseText,
-                    intent,
-                    intentConfidence,
-                    ipAddress,
-                    latitude,
-                    longitude,
-                    userAgent
-                )
+                (actionTypeId, contactId, actionOrigin, actionUnix, promptText, responseText, 
+                 intent, intentConfidence, ipAddress, latitude, longitude, userAgent)
                 VALUES 
-                (
-                    :type,
-                    :contactId,
-                    :origin,
-                    UNIX_TIMESTAMP(),
-                    :prompt,
-                    :response,
-                    :intent,
-                    :confidence,
-                    :ip,
-                    :lat,
-                    :lng,
-                    :ua
-                )
+                (:type, :contactId, :origin, UNIX_TIMESTAMP(), :prompt, :response, 
+                 :intent, :confidence, :ip, :lat, :lng, :ua)
             ");
-            // Statements
+
             $stmt->execute([
                 'type'       => $actionType,
                 'contactId'  => (int)$currentUserId,
@@ -670,12 +635,11 @@ if (!empty($currentUserId)) {
                 'response'   => substr($responseJson, 0, 1000),
                 'intent'     => $intent,
                 'confidence' => 1.00,
-                'ip'         => $_SERVER['REMOTE_ADDR']     ?? null,
+                'ip'         => $_SERVER['REMOTE_ADDR'] ?? null,
                 'lat'        => $location['lat'] ?? null,
                 'lng'        => $location['lng'] ?? null,
                 'ua'         => $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
-
         } catch (Throwable $e2) {
             error_log('FALLBACK LOG FAILURE: ' . $e2->getMessage());
         }
