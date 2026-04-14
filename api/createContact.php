@@ -93,6 +93,24 @@ try {
 
     $location = resolveLocation($parsed['location'] ?? []);
 
+    // ─────────────────────────────────────────
+    // LOCATION NORMALIZATION (Guarantees structure)
+    // ─────────────────────────────────────────
+    $location = [
+        'placeId'      => $location['placeId'] ?? null,
+        'address'      => $location['address'] ?? '',
+        'suite'        => $location['suite'] ?? null,
+        'city'         => $location['city'] ?? '',
+        'state'        => $location['state'] ?? '',
+        'zip'          => $location['zip'] ?? null,
+        'county'       => $location['county'] ?? '',
+        'countyFips'   => $location['countyFips'] ?? null,
+        'jurisdiction' => $location['jurisdiction'] ?? null,
+        'parcelNumber' => $location['parcelNumber'] ?? null,
+        'lat'          => $location['lat'] ?? null,
+        'lng'          => $location['lng'] ?? null
+    ];
+
     $contact = $parsed['contact'] ?? [];
 
     // Validation Gates
@@ -117,8 +135,15 @@ try {
         goto FINAL_LOG;
     }
     if (empty($location['placeId'])) {
-        $outcome = ['outcome' => 'partial', 'reason' => 'Location not validated', 'location' => $location];
-        goto FINAL_LOG;
+        // 🔒 COORDINATE GUARD (No silent NULL lat/lng inserts)
+        if (empty($location['lat']) || empty($location['lng'])) {
+            $outcome = [
+                'outcome' => 'reject',
+                'reason'  => 'Missing coordinates from location resolution',
+                'location'=> $location
+            ];
+            goto FINAL_LOG;
+        }
     }
     if ($location['state'] === 'AZ' &&
         strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
@@ -689,7 +714,10 @@ if (!empty($currentUserId)) {
         'locationId'    => $locationRecord['locationId'] ?? null,
         'contactId'     => $targetContactId,
         'reason'        => $reason,
-        'insertSuccess' => $insertResult['success'] ?? null
+        'insertSuccess' => $insertResult['success'] ?? null,
+        'lat'           => $location['lat'] ?? null,
+        'lng'           => $location['lng'] ?? null,
+        'placeId'       => $location['placeId'] ?? null
     ];
 
     $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE);
