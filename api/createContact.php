@@ -661,7 +661,7 @@ if (!empty($currentUserId)) {
                     :ua
                 )
             ");
-
+            // Statements
             $stmt->execute([
                 'type'       => $actionType,
                 'contactId'  => (int)$currentUserId,
