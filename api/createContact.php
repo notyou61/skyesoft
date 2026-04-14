@@ -49,7 +49,7 @@ $input          = '';
 
 #endregion
 
-#region MAIN EXECUTION WRAPPER (Guarantees logging on every request)
+#region SECTION 1 — MAIN EXECUTION WRAPPER (Guarantees logging on every request)
 
 try {
 
@@ -507,7 +507,7 @@ try {
 
 #endregion
 
-#region SECTION 17 — Unified Action Logging (Single Source of Truth + Hardened Fallback)
+#region SECTION 2 — Unified Action Logging (Single Source of Truth + Hardened Fallback)
 
 FINAL_LOG:
 
@@ -684,7 +684,7 @@ if (!empty($currentUserId)) {
 
 #endregion
 
-#region SECTION 18 — Final Response
+#region SECTION 3 — Final Response
 
 if (($outcome['outcome'] ?? '') === 'reject') {
     echo json_encode([
