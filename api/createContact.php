@@ -646,7 +646,15 @@ if (!empty($currentUserId)) {
             ]);
 
         } catch (Throwable $e2) {
+
             error_log('FALLBACK LOG FAILURE: ' . $e2->getMessage());
+
+            echo json_encode([
+                'debug' => 'FALLBACK FAILED',
+                'error' => $e2->getMessage()
+            ]);
+
+            exit;
         }
     }
 }
