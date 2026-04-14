@@ -631,30 +631,53 @@ if (!empty($currentUserId)) {
         try {
             $stmt = $db->prepare("
                 INSERT INTO tblActions 
-                (actionTypeId, contactId, prompt, response, intent, actionOrigin, actionUnix)
+                (
+                    actionTypeId,
+                    contactId,
+                    actionOrigin,
+                    actionUnix,
+                    promptText,
+                    responseText,
+                    intent,
+                    intentConfidence,
+                    ipAddress,
+                    latitude,
+                    longitude,
+                    userAgent
+                )
                 VALUES 
-                (:type, :contactId, :prompt, :response, :intent, :origin, UNIX_TIMESTAMP())
+                (
+                    :type,
+                    :contactId,
+                    :origin,
+                    UNIX_TIMESTAMP(),
+                    :prompt,
+                    :response,
+                    :intent,
+                    :confidence,
+                    :ip,
+                    :lat,
+                    :lng,
+                    :ua
+                )
             ");
 
             $stmt->execute([
-                'type'      => $actionType,
-                'contactId' => (int)$currentUserId,
-                'prompt'    => substr($input, 0, 500),
-                'response'  => substr($responseJson, 0, 1000),
-                'intent'    => $intent,
-                'origin'    => ACTION_ORIGIN_USER
+                'type'       => $actionType,
+                'contactId'  => (int)$currentUserId,
+                'origin'     => ACTION_ORIGIN_USER,
+                'prompt'     => substr($input, 0, 500),
+                'response'   => substr($responseJson, 0, 1000),
+                'intent'     => $intent,
+                'confidence' => 1.00,
+                'ip'         => $_SERVER['REMOTE_ADDR']     ?? null,
+                'lat'        => $location['lat'] ?? null,
+                'lng'        => $location['lng'] ?? null,
+                'ua'         => $_SERVER['HTTP_USER_AGENT'] ?? null
             ]);
 
         } catch (Throwable $e2) {
-
             error_log('FALLBACK LOG FAILURE: ' . $e2->getMessage());
-
-            echo json_encode([
-                'debug' => 'FALLBACK FAILED',
-                'error' => $e2->getMessage()
-            ]);
-
-            exit;
         }
     }
 }
