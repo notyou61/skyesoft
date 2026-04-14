@@ -316,13 +316,18 @@ try {
             // ENTITY INSERT
             if ($entity['status'] === 'new') {
                 $stmt = $db->prepare("
-                    INSERT INTO tblEntities (entityName, entityType, entityDate)
-                    VALUES (:name, :type, UNIX_TIMESTAMP())
+                    INSERT INTO tblEntities (
+                        entityName,
+                        entityType,
+                        entityState,
+                        entityDate
+                    ) VALUES (
+                        :name,
+                        :type,
+                        :state,
+                        UNIX_TIMESTAMP()
+                    )
                 ");
-                $stmt->execute([
-                    'name' => $entity['entityName'],
-                    'type' => $entity['entityType'] ?? 'customer'
-                ]);
                 $entityId = (int)$db->lastInsertId();
             } else {
                 $entityId = (int)$entity['entityId'];
