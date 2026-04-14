@@ -307,6 +307,7 @@ try {
         try {
             $db->beginTransaction();
 
+            // ENTITY INSERT
             if ($entity['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblEntities (entityName, entityType, createdAt)
@@ -321,6 +322,7 @@ try {
                 $entityId = (int)$entity['entityId'];
             }
 
+            // LOCATION INSERT — FIXED column names + date handling
             if ($locationRecord['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblLocations (
@@ -349,29 +351,50 @@ try {
                 ");
 
                 $stmt->execute([
-                    'entityId'  => $entityId,
-                    'placeId'   => $location['placeId'],
-                    'address'   => $location['address'] ?? '',
-                    'city'      => $location['city'] ?? '',
-                    'state'     => $location['state'] ?? '',
-                    'county'    => $location['county'] ?? '',
-                    'parcel'    => $location['parcelNumber'] ?? null,
-                    'latitude'  => $location['lat'] ?? null,
-                    'longitude' => $location['lng'] ?? null
+                    'entityId'   => $entityId,
+                    'placeId'    => $location['placeId'],
+                    'address'    => $location['address'] ?? '',
+                    'city'       => $location['city'] ?? '',
+                    'state'      => $location['state'] ?? '',
+                    'county'     => $location['county'] ?? '',
+                    'parcel'     => $location['parcelNumber'] ?? null,
+                    'latitude'   => $location['lat'] ?? null,
+                    'longitude'  => $location['lng'] ?? null
                 ]);
                 $locationId = (int)$db->lastInsertId();
             } else {
                 $locationId = (int)$locationRecord['locationId'];
             }
 
+            // CONTACT INSERT — Added safety guards
+            if (empty($parsed['contact']['email'] ?? '')) {
+                throw new RuntimeException('Missing contact email during insert');
+            }
+
             $stmt = $db->prepare("
                 INSERT INTO tblContacts (
-                    contactEntityId, contactLocationId, contactSalutation, contactTitle,
-                    contactFirstName, contactLastName, contactEmail, contactPhone, createdAt
+                    contactEntityId, 
+                    contactLocationId, 
+                    contactSalutation, 
+                    contactTitle,
+                    contactFirstName, 
+                    contactLastName, 
+                    contactEmail, 
+                    contactPhone, 
+                    createdAt
                 ) VALUES (
-                    :entityId, :locationId, :salutation, :title, :firstName, :lastName, :email, :phone, NOW()
+                    :entityId, 
+                    :locationId, 
+                    :salutation, 
+                    :title, 
+                    :firstName, 
+                    :lastName, 
+                    :email, 
+                    :phone, 
+                    NOW()
                 )
             ");
+
             $stmt->execute([
                 'entityId'    => $entityId,
                 'locationId'  => $locationId,
@@ -379,8 +402,8 @@ try {
                 'title'       => $parsed['contact']['title'],
                 'firstName'   => $parsed['contact']['firstName'] ?? '',
                 'lastName'    => $parsed['contact']['lastName'] ?? '',
-                'email'       => strtolower($parsed['contact']['email']),
-                'phone'       => $parsed['contact']['phone']
+                'email'       => strtolower(trim($parsed['contact']['email'])),
+                'phone'       => $parsed['contact']['phone'] ?? null
             ]);
 
             $contactId = (int)$db->lastInsertId();
@@ -395,8 +418,10 @@ try {
             ];
 
         } catch (Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
-            error_log('Insert failed: ' . $e->getMessage());
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('executeInsert failed: ' . $e->getMessage() . ' | requestId=' . ($GLOBALS['varRequestId'] ?? 'unknown'));
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
