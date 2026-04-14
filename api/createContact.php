@@ -307,11 +307,11 @@ try {
         try {
             $db->beginTransaction();
 
-            // ENTITY INSERT
+            // ENTITY INSERT — Fixed to use entityDate + UNIX_TIMESTAMP()
             if ($entity['status'] === 'new') {
                 $stmt = $db->prepare("
-                    INSERT INTO tblEntities (entityName, entityType, createdAt)
-                    VALUES (:name, :type, NOW())
+                    INSERT INTO tblEntities (entityName, entityType, entityDate)
+                    VALUES (:name, :type, UNIX_TIMESTAMP())
                 ");
                 $stmt->execute([
                     'name' => $entity['entityName'],
@@ -322,7 +322,7 @@ try {
                 $entityId = (int)$entity['entityId'];
             }
 
-            // LOCATION INSERT — FIXED column names + date handling
+            // LOCATION INSERT — Already corrected in previous step
             if ($locationRecord['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblLocations (
@@ -366,7 +366,7 @@ try {
                 $locationId = (int)$locationRecord['locationId'];
             }
 
-            // CONTACT INSERT — Added safety guards
+            // CONTACT INSERT — Fixed to use contactDate + UNIX_TIMESTAMP()
             if (empty($parsed['contact']['email'] ?? '')) {
                 throw new RuntimeException('Missing contact email during insert');
             }
@@ -381,7 +381,7 @@ try {
                     contactLastName, 
                     contactEmail, 
                     contactPhone, 
-                    createdAt
+                    contactDate
                 ) VALUES (
                     :entityId, 
                     :locationId, 
@@ -391,7 +391,7 @@ try {
                     :lastName, 
                     :email, 
                     :phone, 
-                    NOW()
+                    UNIX_TIMESTAMP()
                 )
             ");
 
