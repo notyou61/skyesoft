@@ -373,24 +373,24 @@ try {
 
             $stmt = $db->prepare("
                 INSERT INTO tblContacts (
-                    contactEntityId, 
-                    contactLocationId, 
-                    contactSalutation, 
+                    contactEntityId,
+                    contactLocationId,
+                    contactSalutation,
                     contactTitle,
-                    contactFirstName, 
-                    contactLastName, 
-                    contactEmail, 
-                    contactPhone, 
+                    contactFirstName,
+                    contactLastName,
+                    contactPrimaryPhone,
+                    contactEmail,
                     contactDate
                 ) VALUES (
-                    :entityId, 
-                    :locationId, 
-                    :salutation, 
-                    :title, 
-                    :firstName, 
-                    :lastName, 
-                    :email, 
-                    :phone, 
+                    :entityId,
+                    :locationId,
+                    :salutation,
+                    :title,
+                    :firstName,
+                    :lastName,
+                    :phone,
+                    :email,
                     UNIX_TIMESTAMP()
                 )
             ");
