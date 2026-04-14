@@ -304,10 +304,16 @@ try {
     }
 
     function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord, string $input): array {
+
         try {
             $db->beginTransaction();
 
-            // ENTITY INSERT — Fixed to use entityDate + UNIX_TIMESTAMP()
+            // 🔒 ENTITY GUARD
+            if (empty($entity['entityName'])) {
+                throw new RuntimeException('Missing entity name');
+            }
+
+            // ENTITY INSERT
             if ($entity['status'] === 'new') {
                 $stmt = $db->prepare("
                     INSERT INTO tblEntities (entityName, entityType, entityDate)
@@ -322,8 +328,13 @@ try {
                 $entityId = (int)$entity['entityId'];
             }
 
-            // LOCATION INSERT — Already corrected in previous step
+            // LOCATION INSERT
             if ($locationRecord['status'] === 'new') {
+
+                if (empty($location['placeId'])) {
+                    throw new RuntimeException('Missing placeId for location');
+                }
+
                 $stmt = $db->prepare("
                     INSERT INTO tblLocations (
                         locationEntityId,
@@ -351,26 +362,33 @@ try {
                 ");
 
                 $stmt->execute([
-                    'entityId'   => $entityId,
-                    'placeId'    => $location['placeId'],
-                    'address'    => $location['address'] ?? '',
-                    'city'       => $location['city'] ?? '',
-                    'state'      => $location['state'] ?? '',
-                    'county'     => $location['county'] ?? '',
-                    'parcel'     => $location['parcelNumber'] ?? null,
-                    'latitude'   => $location['lat'] ?? null,
-                    'longitude'  => $location['lng'] ?? null
+                    'entityId'  => $entityId,
+                    'placeId'   => $location['placeId'],
+                    'address'   => $location['address'] ?? '',
+                    'city'      => $location['city'] ?? '',
+                    'state'     => $location['state'] ?? '',
+                    'county'    => $location['county'] ?? '',
+                    'parcel'    => $location['parcelNumber'] ?? null,
+                    'latitude'  => $location['lat'] ?? null,
+                    'longitude' => $location['lng'] ?? null
                 ]);
+
                 $locationId = (int)$db->lastInsertId();
+
             } else {
                 $locationId = (int)$locationRecord['locationId'];
             }
 
-            // CONTACT INSERT — Fixed to use contactDate + UNIX_TIMESTAMP()
+            // 🔒 CONTACT GUARDS
             if (empty($parsed['contact']['email'] ?? '')) {
-                throw new RuntimeException('Missing contact email during insert');
+                throw new RuntimeException('Missing contact email');
             }
 
+            if (empty($parsed['contact']['phone'] ?? '')) {
+                throw new RuntimeException('Missing contact phone');
+            }
+
+            // CONTACT INSERT
             $stmt = $db->prepare("
                 INSERT INTO tblContacts (
                     contactEntityId,
@@ -396,14 +414,14 @@ try {
             ");
 
             $stmt->execute([
-                'entityId'    => $entityId,
-                'locationId'  => $locationId,
-                'salutation'  => $parsed['contact']['salutation'],
-                'title'       => $parsed['contact']['title'],
-                'firstName'   => $parsed['contact']['firstName'] ?? '',
-                'lastName'    => $parsed['contact']['lastName'] ?? '',
-                'email'       => strtolower(trim($parsed['contact']['email'])),
-                'phone'       => $parsed['contact']['phone'] ?? null
+                'entityId'   => $entityId,
+                'locationId' => $locationId,
+                'salutation' => $parsed['contact']['salutation'] ?? null,
+                'title'      => $parsed['contact']['title'] ?? null,
+                'firstName'  => $parsed['contact']['firstName'] ?? '',
+                'lastName'   => $parsed['contact']['lastName'] ?? '',
+                'email'      => strtolower(trim($parsed['contact']['email'])),
+                'phone'      => $parsed['contact']['phone']
             ]);
 
             $contactId = (int)$db->lastInsertId();
@@ -411,18 +429,24 @@ try {
             $db->commit();
 
             return [
-                'success'   => true,
-                'entityId'  => $entityId,
-                'locationId'=> $locationId,
-                'contactId' => $contactId
+                'success'    => true,
+                'entityId'   => $entityId,
+                'locationId' => $locationId,
+                'contactId'  => $contactId
             ];
 
         } catch (Throwable $e) {
+
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
+
             error_log('executeInsert failed: ' . $e->getMessage() . ' | requestId=' . ($GLOBALS['varRequestId'] ?? 'unknown'));
-            return ['success' => false, 'error' => $e->getMessage()];
+
+            return [
+                'success' => false,
+                'error'   => $e->getMessage()
+            ];
         }
     }
 
