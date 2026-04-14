@@ -4734,6 +4734,80 @@
                         "tblContacts.contactLocationId → tblLocations.locationId"
                     ]
                 },
+                "inputVariabilityModel": {
+                "description": "Defines all real-world input variations for proposed contacts and how the system must interpret them prior to ELC resolution.",
+                "categories": {
+                    "structured": {
+                    "description": "Fully structured input with clearly defined fields.",
+                    "examples": [
+                        "John Smith, Project Manager, Christy Signs, john@christysigns.com, 602-555-1234"
+                    ],
+                    "behavior": "Direct parsing and ELC resolution."
+                    },
+                    "signature": {
+                    "description": "Email signature or semi-structured input.",
+                    "examples": [
+                        "John Smith\nProject Manager\nChristy Signs\n602.555.1234\njohn@christysigns.com"
+                    ],
+                    "behavior": "Requires parsing and normalization before resolution."
+                    },
+                    "partial": {
+                    "description": "Missing one or more required ELC components.",
+                    "examples": [
+                        "John Smith, Christy Signs",
+                        "john@christysigns.com"
+                    ],
+                    "behavior": "Must result in partial status and request additional input."
+                    },
+                    "duplicate": {
+                    "description": "Input matches an existing contact within the same entity-location context.",
+                    "behavior": "Must not create a new record. Must resolve as resolved_duplicate."
+                    },
+                    "ambiguous": {
+                    "description": "Entity or location cannot be uniquely determined.",
+                    "examples": [
+                        "City of Phoenix",
+                        "Starbucks, Tempe"
+                    ],
+                    "behavior": "Must trigger conflict or partial state and require clarification."
+                    },
+                    "multiContact": {
+                    "description": "Multiple contacts provided in a single input.",
+                    "examples": [
+                        "John Smith\njohn@a.com\n\nSarah Lee\nsarah@b.com"
+                    ],
+                    "behavior": "System must split and process each contact independently."
+                    },
+                    "roleBased": {
+                    "description": "Non-person contacts such as departments or roles.",
+                    "examples": [
+                        "Permits Department, City of Phoenix, permits@phoenix.gov"
+                    ],
+                    "behavior": "Must be classified as non-individual contact type."
+                    },
+                    "conflicting": {
+                    "description": "Conflicting identity signals within the same input.",
+                    "examples": [
+                        "John Smith, Company A, john@companyB.com"
+                    ],
+                    "behavior": "Must be flagged for review and not auto-resolved."
+                    },
+                    "noiseHeavy": {
+                    "description": "Input includes signatures, disclaimers, or irrelevant content.",
+                    "examples": [
+                        "Sent from my iPhone\nCONFIDENTIAL...\nJohn Smith\n..."
+                    ],
+                    "behavior": "System must strip noise prior to parsing."
+                    }
+                },
+                "rules": [
+                    "All input must be classified into one of the defined categories before processing.",
+                    "Parsing must normalize input into structured ELC components prior to resolution.",
+                    "Ambiguous or conflicting inputs must not proceed to commitPhase.",
+                    "Multi-contact inputs must be decomposed into individual proposals.",
+                    "Noise must be removed before any parsing or validation occurs."
+                ]
+                },
                 "duplicateDetection": {
                     "location": {
                         "matchCriteria": [
