@@ -315,6 +315,7 @@ try {
 
             // ENTITY INSERT
             if ($entity['status'] === 'new') {
+
                 $stmt = $db->prepare("
                     INSERT INTO tblEntities (
                         entityName,
@@ -328,7 +329,20 @@ try {
                         UNIX_TIMESTAMP()
                     )
                 ");
+
+                // 🔥 THIS WAS MISSING
+                $stmt->execute([
+                    'name'  => $entity['entityName'],
+                    'type'  => $entity['entityType'] ?? 'customer',
+                    'state' => $location['state'] ?? null
+                ]);
+
                 $entityId = (int)$db->lastInsertId();
+
+                if (empty($entityId)) {
+                    throw new RuntimeException('Entity insert failed — no ID returned');
+                }
+
             } else {
                 $entityId = (int)$entity['entityId'];
             }
