@@ -338,22 +338,32 @@ try {
                 $stmt = $db->prepare("
                     INSERT INTO tblLocations (
                         locationEntityId,
+                        locationName,
                         locationPlaceId,
                         locationAddress,
+                        locationAddressSuite,
                         locationCity,
                         locationState,
+                        locationZip,
                         locationCounty,
+                        locationCountyFips,
+                        locationJurisdiction,
                         locationParcelNumber,
                         locationLatitude,
                         locationLongitude,
                         locationDate
                     ) VALUES (
                         :entityId,
+                        :name,
                         :placeId,
                         :address,
+                        :suite,
                         :city,
                         :state,
+                        :zip,
                         :county,
+                        :countyFips,
+                        :jurisdiction,
                         :parcel,
                         :latitude,
                         :longitude,
@@ -362,15 +372,20 @@ try {
                 ");
 
                 $stmt->execute([
-                    'entityId'  => $entityId,
-                    'placeId'   => $location['placeId'],
-                    'address'   => $location['address'] ?? '',
-                    'city'      => $location['city'] ?? '',
-                    'state'     => $location['state'] ?? '',
-                    'county'    => $location['county'] ?? '',
-                    'parcel'    => $location['parcelNumber'] ?? null,
-                    'latitude'  => $location['lat'] ?? null,
-                    'longitude' => $location['lng'] ?? null
+                    'entityId'     => $entityId,
+                    'name'         => $entity['entityName'], // or smarter name below
+                    'placeId'      => $location['placeId'],
+                    'address'      => $location['address'] ?? '',
+                    'suite'        => $location['suite'] ?? null,
+                    'city'         => $location['city'] ?? '',
+                    'state'        => $location['state'] ?? '',
+                    'zip'          => $location['zip'] ?? null,
+                    'county'       => $location['county'] ?? '',
+                    'countyFips'   => $location['countyFips'] ?? null,
+                    'jurisdiction' => $location['jurisdiction'] ?? null,
+                    'parcel'       => $location['parcelNumber'] ?? null,
+                    'latitude'     => $location['lat'] ?? null,
+                    'longitude'    => $location['lng'] ?? null
                 ]);
 
                 $locationId = (int)$db->lastInsertId();
