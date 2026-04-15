@@ -1255,6 +1255,67 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 📇 Contact Result Renderer
+    renderContactResult(data) {
+
+        console.log('[CONTACT RESULT]', data);
+
+        if (!data || typeof data !== 'object') {
+            this.appendSystemLine('⚠ Invalid contact response.');
+            return;
+        }
+
+        switch (data.status) {
+
+            case 'resolved_new':
+
+                this.appendSystemLine('✔ Contact Created');
+
+                if (data.contact?.name && data.entity?.name) {
+                    this.appendSystemLine(
+                        `${data.contact.name} · ${data.entity.name}`
+                    );
+                }
+
+                if (data.location?.city && data.location?.state) {
+                    this.appendSystemLine(
+                        `${data.location.city}, ${data.location.state}`
+                    );
+                }
+
+                break;
+
+            case 'resolved_duplicate':
+
+                this.appendSystemLine('⚠ Duplicate Detected');
+
+                if (data.contact?.name && data.entity?.name) {
+                    this.appendSystemLine(
+                        `${data.contact.name} · ${data.entity.name}`
+                    );
+                }
+
+                break;
+
+            case 'reject':
+
+                this.appendSystemLine(`❌ ${data.reason || 'Contact rejected.'}`);
+                break;
+
+            case 'conflict':
+
+                this.appendSystemLine('⚠ Conflict Detected');
+                this.appendSystemLine('Multiple possible matches.');
+                break;
+
+            default:
+
+                this.appendSystemLine('⚠ Unknown contact response.');
+                console.warn('[CONTACT] Unknown status:', data.status);
+        }
+    },
+    // #endregion
+
     // #region 🤖 AI Command Execution
     async executeAICommand(prompt) {
         this.setThinking(true);
