@@ -1187,6 +1187,34 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
+        // 📇 Contact Command (NEW — THIS IS THE KEY)
+        // ───────────────────────────────────────────────
+        if (normalized.startsWith('add ')) {
+
+            this.appendSystemLine('📇 Processing contact...');
+
+            try {
+
+                const res = await fetch('/skyesoft/api/createContact.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ input: text })
+                });
+
+                const data = await res.json();
+
+                this.renderContactResult(data);
+
+            } catch (err) {
+                console.error('[CONTACT ERROR]', err);
+                this.appendSystemLine('❌ Contact creation failed.');
+            }
+
+            return; // 🔥 CRITICAL — stops AI fallback
+        }
+
+        // ───────────────────────────────────────────────
         // 🎯 Canonical Action Resolver
         // ───────────────────────────────────────────────
         let canonicalAction = null;
