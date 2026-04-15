@@ -1352,7 +1352,7 @@ window.SkyIndex = {
             }
 
             // ───────────────────────────────────────────────
-            // Text Response (fallback)
+            // Text / HTML Response (fallback)
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
 
@@ -1369,6 +1369,9 @@ window.SkyIndex = {
                         this.appendSystemHtml(data.response);
                     }
 
+                } else {
+                    // ✅ THIS FIXES YOUR ISSUE
+                    this.appendSystemLine(data.response);
                 }
 
                 return;
