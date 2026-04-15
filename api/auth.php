@@ -82,7 +82,6 @@ if ($action === "check") {
         "authenticated" => $_SESSION["authenticated"] ?? false,
         "contactId"     => $_SESSION["contactId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
-        "role"          => $_SESSION["role"] ?? null,
         "sessionId"     => session_id()
     ], JSON_UNESCAPED_SLASHES);
 
@@ -126,7 +125,7 @@ if ($action === "login") {
     // 👤 Fetch User
     // ─────────────────────────────────────────
     $stmt = $pdo->prepare("
-        SELECT contactId, contactEmail, passwordHash, role, isActive
+        SELECT contactId, contactEmail, passwordHash, isActive
         FROM tblContacts
         WHERE contactEmail = :email
         LIMIT 1
@@ -187,7 +186,6 @@ if ($action === "login") {
     $_SESSION["authenticated"] = true;
     $_SESSION["contactId"]     = $contactId;
     $_SESSION["username"]      = (string)$user["contactEmail"];
-    $_SESSION["role"]          = (string)($user["role"] ?? "user");
     $_SESSION["lastActivity"]  = time();
     $_SESSION["latitude"]      = $latitude;
     $_SESSION["longitude"]     = $longitude;
@@ -195,7 +193,6 @@ if ($action === "login") {
     session_regenerate_id(true);
 
     $email     = (string)$user["contactEmail"];
-    $role      = (string)($user["role"] ?? "user");
     $sessionId = session_id();
 
     // ─────────────────────────────────────────
@@ -203,7 +200,6 @@ if ($action === "login") {
     // ─────────────────────────────────────────
     logAuthAction($pdo, "auth.login", $contactId, [
         "username"     => $email,
-        "role"         => $role,
         "ip"           => safeIp(),
         "ua"           => safeUserAgent(),
         "latitude"     => $latitude,
@@ -232,7 +228,6 @@ if ($action === "logout") {
 
     $contactId = $_SESSION["contactId"] ?? null;
     $username  = $_SESSION["username"] ?? null;
-    $role      = $_SESSION["role"] ?? null;
     $sessionId = session_id();
 
     $latitude  = $_SESSION["latitude"]  ?? null;
@@ -263,7 +258,6 @@ if ($action === "logout") {
     if ($pdo instanceof PDO && $contactId !== null) {
         logAuthAction($pdo, "auth.logout", (int)$contactId, [
             "username"     => $username,
-            "role"         => $role,
             "ip"           => safeIp(),
             "ua"           => safeUserAgent(),
             "latitude"     => $latitude,
