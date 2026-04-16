@@ -76,6 +76,43 @@ try {
 
     $parsed = parseContact($input);
 
+    #region 🧠 Resolve Salutation (AI + fallback)
+
+    $contact =& $parsed['contact'];
+
+    // Normalize existing input
+    $salutation = ucfirst(strtolower(
+        rtrim(trim((string)($contact['salutation'] ?? '')), '.')
+    ));
+
+    if (!in_array($salutation, ['Mr', 'Ms'], true)) {
+
+        if (function_exists('inferSalutation')) {
+
+            $ai = inferSalutation(
+                $contact['firstName'] ?? '',
+                $contact['lastName'] ?? ''
+            );
+
+            if ($ai) {
+                $ai = ucfirst(strtolower(rtrim(trim($ai), '.')));
+
+                if (in_array($ai, ['Mr', 'Ms'], true)) {
+                    $salutation = $ai;
+                }
+            }
+        }
+    }
+
+    // Final fallback
+    if (!$salutation) {
+        $salutation = 'Mr';
+    }
+
+    $contact['salutation'] = $salutation;
+
+    #endregion
+
     // Address Enrichment
     $fullAddress = trim(
         ($parsed['location']['address'] ?? '') . ' ' .

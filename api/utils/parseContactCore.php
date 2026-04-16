@@ -60,28 +60,27 @@ function normalizeSalutation(?string $value): ?string {
 // ─────────────────────────────────────────────
 // 🧠 Resolve Salutation (AI + fallback)
 // ─────────────────────────────────────────────
-function resolveSalutation(?string $salutation, string $firstName, string $lastName): string {
+function resolveSalutation(?string $input, string $firstName, string $lastName): string {
 
-    // 1. Normalize user input
-    $salutation = normalizeSalutation($salutation);
+    // Normalize existing input
+    if ($input) {
+        $clean = rtrim(trim($input), '.');
 
-    if (!empty($salutation)) {
-        return $salutation;
-    }
-
-    // 2. Try AI
-    try {
-        $aiSalutation = inferSalutation($firstName, $lastName);
-
-        if (!empty($aiSalutation)) {
-            return normalizeSalutation($aiSalutation);
+        if (in_array($clean, ['Mr', 'Ms'], true)) {
+            return $clean;
         }
-
-    } catch (Throwable $e) {
-        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
     }
 
-    // 3. Final fallback
+    // Try AI inference (ONLY if safe)
+    if (function_exists('inferSalutation')) {
+        $ai = inferSalutation($firstName, $lastName);
+
+        if ($ai) {
+            return $ai;
+        }
+    }
+
+    // Final fallback
     return 'Mr';
 }
 
@@ -230,13 +229,6 @@ EOT;
     $email = trim((string)($parsed['contact']['email'] ?? ''));
     $email = $email !== '' ? strtolower($email) : '';
 
-    // Resolve salutation (AI + normalize + fallback)
-    $salutation = resolveSalutation(
-        $parsed['contact']['salutation'] ?? '',
-        $parsed['contact']['firstName'] ?? '',
-        $parsed['contact']['lastName'] ?? ''
-    );
-
     return [
         'entity' => [
             'name' => trim((string)($parsed['entity']['name'] ?? ''))
@@ -245,7 +237,8 @@ EOT;
             ? $parsed['location']
             : [],
         'contact' => [
-            'salutation' => $salutation,
+            // ⚠️ PURE — no resolver, no AI, no fallback
+            'salutation' => trim((string)($parsed['contact']['salutation'] ?? '')),
             'firstName'  => trim((string)($parsed['contact']['firstName'] ?? '')),
             'lastName'   => trim((string)($parsed['contact']['lastName'] ?? '')),
             'title'      => trim((string)($parsed['contact']['title'] ?? '')),
