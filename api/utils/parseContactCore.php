@@ -19,7 +19,7 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap
 
-require_once __DIR__ . '/envLoader.php';
+//require_once __DIR__ . '/envLoader.php';
 require_once __DIR__ . '/../api/askOpenAI.php';
 
 // Verify environment functions exist
@@ -28,7 +28,7 @@ if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
 }
 
 // Initialize env (idempotent)
-skyesoftLoadEnv();
+//skyesoftLoadEnv();
 
 #endregion
 
@@ -231,6 +231,13 @@ EOT;
     $email = trim((string)($parsed['contact']['email'] ?? ''));
     $email = $email !== '' ? strtolower($email) : '';
 
+    // Resolve salutation (AI + normalize + fallback)
+    $salutation = resolveSalutation(
+        $parsed['contact']['salutation'] ?? '',
+        $parsed['contact']['firstName'] ?? '',
+        $parsed['contact']['lastName'] ?? ''
+    );
+
     return [
         'entity' => [
             'name' => trim((string)($parsed['entity']['name'] ?? ''))
@@ -238,14 +245,14 @@ EOT;
         'location' => is_array($parsed['location'] ?? null)
             ? $parsed['location']
             : [],
-            'contact' => [
-                'salutation' => trim((string)($parsed['contact']['salutation'] ?? '')),
-                'firstName'  => trim((string)($parsed['contact']['firstName'] ?? '')),
-                'lastName'   => trim((string)($parsed['contact']['lastName'] ?? '')),
-                'title'      => trim((string)($parsed['contact']['title'] ?? '')),
-                'phone'      => trim((string)($parsed['contact']['phone'] ?? '')),
-                'email'      => $email
-            ]
+        'contact' => [
+            'salutation' => $salutation,
+            'firstName'  => trim((string)($parsed['contact']['firstName'] ?? '')),
+            'lastName'   => trim((string)($parsed['contact']['lastName'] ?? '')),
+            'title'      => trim((string)($parsed['contact']['title'] ?? '')),
+            'phone'      => trim((string)($parsed['contact']['phone'] ?? '')),
+            'email'      => $email
+        ]
     ];
 
     #endregion
