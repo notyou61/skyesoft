@@ -20,6 +20,7 @@ declare(strict_types=1);
 #region SECTION 0 — Environment Bootstrap
 
 require_once __DIR__ . '/envLoader.php';
+require_once __DIR__ . '/../api/askOpenAI.php';
 
 // Verify environment functions exist
 if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
@@ -33,6 +34,61 @@ skyesoftLoadEnv();
 
 #region SECTION 1 — Core Function
 
+// ─────────────────────────────────────────────
+// 🔤 Normalize Salutation
+// ─────────────────────────────────────────────
+function normalizeSalutation(?string $value): ?string {
+
+    if (empty($value)) {
+        return null;
+    }
+
+    $value = trim($value);
+
+    // Remove trailing period (Mr. → Mr)
+    $value = rtrim($value, '.');
+
+    // Normalize case
+    $value = ucfirst(strtolower($value));
+
+    if (in_array($value, ['Mr', 'Ms'], true)) {
+        return $value;
+    }
+
+    return null;
+}
+
+// ─────────────────────────────────────────────
+// 🧠 Resolve Salutation (AI + fallback)
+// ─────────────────────────────────────────────
+function resolveSalutation(?string $salutation, string $firstName, string $lastName): string {
+
+    // 1. Normalize user input
+    $salutation = normalizeSalutation($salutation);
+
+    if (!empty($salutation)) {
+        return $salutation;
+    }
+
+    // 2. Try AI
+    try {
+        $aiSalutation = inferSalutation($firstName, $lastName);
+
+        if (!empty($aiSalutation)) {
+            return normalizeSalutation($aiSalutation);
+        }
+
+    } catch (Throwable $e) {
+        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
+    }
+
+    // 3. Final fallback
+    return 'Mr';
+}
+
+// ─────────────────────────────────────────────
+// 🔤 Parse Contact
+// ─────────────────────────────────────────────
 function parseContact(string $rawInput): array
 {
     #region VALIDATION

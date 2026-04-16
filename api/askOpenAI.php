@@ -313,30 +313,34 @@ function loadUnresolvedStructuralViolations(): ?array {
 function inferSalutation(string $firstName, string $lastName): ?string {
 
     $basePrompt = <<<PROMPT
-Given the name "{$firstName} {$lastName}", infer the most likely professional salutation for business correspondence.
+Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
 
-Respond with ONLY "Mr." or "Ms." — nothing else.
+Respond with ONLY "Mr" or "Ms".
 PROMPT;
 
     $fullPrompt = injectStandingOrders($basePrompt);
 
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
-    // Validate API key
     if ($apiKey === null) {
-        aiFail("OPENAI_API_KEY not available in PHP environment.");
+        error_log('[SALUTATION] Missing API key');
+        return null;
     }
 
-    $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+    try {
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+    } catch (Throwable $e) {
+        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
+        return null;
+    }
 
     if (!$response) {
         return null;
     }
 
-    $response = trim($response);
+    $response = rtrim(trim($response), '.');
 
-    // Strict response validation
-    if (in_array($response, ['Mr.', 'Ms.'], true)) {
+    if (in_array($response, ['Mr', 'Ms'], true)) {
         return $response;
     }
 
