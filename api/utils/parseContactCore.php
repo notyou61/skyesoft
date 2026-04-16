@@ -20,7 +20,7 @@ declare(strict_types=1);
 #region SECTION 0 — Environment Bootstrap
 
 require_once __DIR__ . '/envLoader.php';
-//require_once __DIR__ . '/../api/askOpenAI.php';
+require_once __DIR__ . '/../api/askOpenAI.php';
 
 // Verify environment functions exist
 if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
