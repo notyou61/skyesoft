@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
+
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 
@@ -32,6 +33,30 @@ require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
+
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/createContact_debug.log');
+
+error_log('=== HIT createContact ===');
+
+$raw = file_get_contents('php://input');
+error_log('[RAW] ' . $raw);
+
+$data = json_decode($raw, true);
+error_log('[DECODED] ' . json_encode($data));
+
+$input = $data['input'] ?? null;
+error_log('[INPUT FIELD] ' . var_export($input, true));
+
+if (!is_string($input) || trim($input) === '') {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Invalid input'
+    ]);
+    exit;
+}
+
+$input = trim($input);
 
 // Resolve Salutation (MASTER - DRY - Single Source of Truth)
 function resolveSalutation($input, $firstName, $lastName): string {
