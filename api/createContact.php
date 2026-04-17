@@ -3,26 +3,30 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.4.6
+//  Version: 1.4.7
 //  Last Updated: 2026-04-17
-//  Codex Tier: 2 — ELC Execution Layer
 // ======================================================================
 
-#region SECTION 0 — Environment Bootstrap
+#region SECTION 0 — Header
 
 header("Content-Type: application/json; charset=UTF-8");
 
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 
-echo json_encode([
-    'DEBUG' => true,
-    'raw' => $raw,
-    'decoded' => $data,
-    'input_field' => $data['input'] ?? null
-], JSON_PRETTY_PRINT);
-exit;
+$input = $data['input'] ?? null;
 
+if (!is_string($input) || trim($input) === '') {
+    echo json_encode([
+        'status' => 'reject',
+        'reason' => 'Invalid input'
+    ]);
+    exit;
+}
+
+$input = trim($input);
+
+// Now proceed with the rest of your original code
 require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
@@ -121,6 +125,8 @@ try {
     #region SECTION 2–5 — Core Processing & Validation Gates
 
     $parsed = parseContact($input);
+    
+    error_log('[STAGE] PARSE');
 
     #region 🧠 Resolve Contact Fields (Salutation + Title)
 
@@ -170,6 +176,8 @@ try {
 
     $contact['title'] = $title;
 
+    error_log('[STAGE] CONTACT');
+
     #endregion
 
     // Address Enrichment
@@ -203,6 +211,8 @@ try {
     }
 
     $location = resolveLocation($parsed['location'] ?? []);
+
+    error_log('[STAGE] OUTCOME');
 
     // ─────────────────────────────────────────
     // LOCATION NORMALIZATION (Guarantees structure)
@@ -655,6 +665,8 @@ try {
     // Resolve Entity
     $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
+    error_log('[STAGE] ENTITY');
+
     // Scenario Evaluation
     $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
 
@@ -690,6 +702,8 @@ try {
     // Build Preliminary Outcome
     $outcome = buildResolutionOutcome($entity, $locationRecord, $contactRecord);
 
+    error_log('[STAGE] OUTCOME');
+
     // CRITICAL HARD GUARD — Prevent False "resolved_new"
     if (($outcome['outcome'] ?? null) === 'resolved_new') {
         $missing = [];
@@ -718,6 +732,7 @@ try {
     if (($outcome['outcome'] ?? null) === 'resolved_new') {
 
         error_log("INSERT BLOCK HIT | requestId={$varRequestId}");
+        error_log('[STAGE] COMPLETE');
 
         $insertResult = executeInsert(
             $db,
