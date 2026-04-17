@@ -18,6 +18,41 @@ require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
 
+// Resolve Salutation (MASTER - DRY - Single Source of Truth)
+function resolveSalutation($input, $firstName, $lastName): string {
+
+    // Normalize incoming value
+    $salutation = rtrim(trim((string)$input), '.');
+
+    // If valid, return immediately
+    if (in_array($salutation, ['Mr', 'Ms'], true)) {
+        return $salutation;
+    }
+
+    // Attempt AI inference (only if function exists)
+    if (function_exists('inferSalutation')) {
+
+        try {
+            $ai = inferSalutation((string)$firstName, (string)$lastName);
+
+            if ($ai) {
+                $ai = rtrim(trim($ai), '.');
+                $ai = ucfirst(strtolower($ai));
+
+                if (in_array($ai, ['Mr', 'Ms'], true)) {
+                    return $ai;
+                }
+            }
+
+        } catch (Throwable $e) {
+            error_log('[SALUTATION RESOLVER ERROR] ' . $e->getMessage());
+        }
+    }
+
+    // Final fallback (guaranteed value)
+    return 'Mr';
+}
+
 $db = getPDO();
 
 if (!$db instanceof PDO) {
@@ -233,39 +268,6 @@ try {
         }
 
         return ['status' => 'new', 'contactId' => null];
-    }
-
-    // Resolve Salutation (MASTER - DRY - Single Source of Truth)
-    function resolveSalutation($input, $firstName, $lastName): string {
-
-        // Normalize incoming value
-        $salutation = rtrim(trim((string)$input), '.');
-
-        // If valid, return immediately
-        if (in_array($salutation, ['Mr', 'Ms'], true)) {
-            return $salutation;
-        }
-
-        // Attempt AI inference (only if function exists)
-        if (function_exists('inferSalutation')) {
-
-            try {
-                $ai = inferSalutation(
-                    (string)$firstName,
-                    (string)$lastName
-                );
-
-                if ($ai && in_array($ai, ['Mr', 'Ms'], true)) {
-                    return $ai;
-                }
-
-            } catch (Throwable $e) {
-                error_log('[SALUTATION RESOLVER ERROR] ' . $e->getMessage());
-            }
-        }
-
-        // Final fallback (guaranteed value)
-        return 'Mr';
     }
 
     function buildResolutionOutcome(array $entity, array $locationRecord, array $contact): array {
