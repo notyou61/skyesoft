@@ -309,13 +309,24 @@ function loadUnresolvedStructuralViolations(): ?array {
     return $summary;
 }
 
-// Infer Salutation
 function inferSalutation(string $firstName, string $lastName): ?string {
+
+    // 🔒 Guard — do not call AI with empty names
+    $firstName = trim($firstName);
+    $lastName  = trim($lastName);
+
+    if ($firstName === '' && $lastName === '') {
+        return null;
+    }
 
     $basePrompt = <<<PROMPT
 Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
 
-Respond with ONLY "Mr" or "Ms".
+Respond with ONLY one of these values:
+Mr
+Ms
+
+Do not include punctuation or any other words.
 PROMPT;
 
     $fullPrompt = injectStandingOrders($basePrompt);
@@ -338,11 +349,12 @@ PROMPT;
         return null;
     }
 
-    $response = rtrim(trim($response), '.');
+    // 🔧 HARD NORMALIZATION
+    $response = strtolower(trim($response));
+    $response = str_replace(['.', '"', "'"], '', $response);
 
-    if (in_array($response, ['Mr', 'Ms'], true)) {
-        return $response;
-    }
+    if ($response === 'mr') return 'Mr';
+    if ($response === 'ms') return 'Ms';
 
     return null;
 }
