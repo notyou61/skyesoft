@@ -650,13 +650,15 @@ try {
     #endregion
 
 } catch (Throwable $e) {
-    $outcome = [
-        'outcome' => 'reject',
-        'reason'  => 'Internal processing error',
-        'error'   => $e->getMessage()
-    ];
-    error_log('createContact.php exception: ' . $e->getMessage());
-    // Fall through to FINAL_LOG
+
+    echo json_encode([
+        'status' => 'error',
+        'message' => $e->getMessage(),
+        'line' => $e->getLine(),
+        'file' => basename($e->getFile())
+    ]);
+
+    exit;
 }
 
 #endregion
