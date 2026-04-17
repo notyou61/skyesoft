@@ -729,13 +729,16 @@ try {
 
 } catch (Throwable $e) {
 
+    // Echo JSON Encode
     echo json_encode([
-        'status' => 'error',
-        'message' => $e->getMessage(),
-        'line' => $e->getLine(),
-        'file' => basename($e->getFile())
-    ]);
-
+        'DEBUG' => true,
+        'entity' => $entity ?? null,
+        'location' => $location ?? null,
+        'contact' => $contact ?? null,
+        'parsed' => $parsed ?? null
+    ], JSON_PRETTY_PRINT);
+    
+    // Exit
     exit;
 }
 
