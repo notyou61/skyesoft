@@ -12,20 +12,22 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
+$raw = file_get_contents('php://input');
+$data = json_decode($raw, true);
+
+echo json_encode([
+    'DEBUG' => true,
+    'raw' => $raw,
+    'decoded' => $data,
+    'input_field' => $data['input'] ?? null
+], JSON_PRETTY_PRINT);
+exit;
+
 require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
-
-$raw = file_get_contents('php://input');
-error_log('[RAW INPUT] ' . $raw);
-
-$data = json_decode($raw, true);
-error_log('[DECODED] ' . json_encode($data));
-
-$input = $data['input'] ?? null;
-error_log('[INPUT FIELD] ' . var_export($input, true));
 
 // Resolve Salutation (MASTER - DRY - Single Source of Truth)
 function resolveSalutation($input, $firstName, $lastName): string {
