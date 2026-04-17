@@ -28,7 +28,20 @@ function resolveLocation(array $input): array {
 
     #region STEP 1 — Google
 
+    error_log('[GEOCODE INPUT] ' . json_encode($input));
+
+    $addressString = trim(
+        ($input['address'] ?? '') . ', ' .
+        ($input['city'] ?? '') . ', ' .
+        ($input['state'] ?? '') . ' ' .
+        ($input['zip'] ?? '')
+    );
+
+    $input['address'] = $addressString;
+
     $google = getGoogleGeocode($input);
+
+    error_log('[GOOGLE RESULT] ' . json_encode($google));
 
     if (
         !$google ||
@@ -236,8 +249,20 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
 function getGoogleGeocode(array $input): ?array {
 
-    $address = $input['address'] ?? null;
-    if (!$address) return null;
+    $addressParts = [
+        trim((string)($input['address'] ?? '')),
+        trim((string)($input['city'] ?? '')),
+        trim((string)($input['state'] ?? '')),
+        trim((string)($input['zip'] ?? ''))
+    ];
+
+    $addressParts = array_filter($addressParts, function ($part) {
+        return $part !== '';
+    });
+
+    $address = implode(', ', $addressParts);
+
+    if ($address === '') return null;
 
     $apiKey = getenv("GOOGLE_MAPS_BACKEND_API_KEY");
     if (!$apiKey) return null;
@@ -250,28 +275,31 @@ function getGoogleGeocode(array $input): ?array {
 
     $data = json_decode($response, true);
 
-    if (($data['status'] ?? '') !== 'OK') return null;
+    if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) return null;
 
     $r = $data['results'][0];
+    $location = $r['geometry']['location'] ?? null;
 
-    $location = $r['geometry']['location'];
+    if (!is_array($location) || !isset($location['lat'], $location['lng'])) {
+        return null;
+    }
 
     $city = $state = $zip = null;
 
-    foreach ($r['address_components'] as $c) {
-        if (in_array('locality', $c['types'])) $city = $c['long_name'];
-        if (in_array('administrative_area_level_1', $c['types'])) $state = $c['short_name'];
-        if (in_array('postal_code', $c['types'])) $zip = $c['long_name'];
+    foreach (($r['address_components'] ?? []) as $c) {
+        if (in_array('locality', $c['types'] ?? [], true)) $city = $c['long_name'];
+        if (in_array('administrative_area_level_1', $c['types'] ?? [], true)) $state = $c['short_name'];
+        if (in_array('postal_code', $c['types'] ?? [], true)) $zip = $c['long_name'];
     }
 
     return [
-        'placeId' => $r['place_id'],
+        'placeId' => $r['place_id'] ?? null,
         'lat' => $location['lat'],
         'lng' => $location['lng'],
         'city' => $city,
         'state' => $state,
         'zip' => $zip,
-        'address' => $r['formatted_address']
+        'address' => $r['formatted_address'] ?? $address
     ];
 }
 
