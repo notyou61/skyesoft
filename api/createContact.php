@@ -18,6 +18,15 @@ require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
 
+$raw = file_get_contents('php://input');
+error_log('[RAW INPUT] ' . $raw);
+
+$data = json_decode($raw, true);
+error_log('[DECODED] ' . json_encode($data));
+
+$input = $data['input'] ?? null;
+error_log('[INPUT FIELD] ' . var_export($input, true));
+
 // Resolve Salutation (MASTER - DRY - Single Source of Truth)
 function resolveSalutation($input, $firstName, $lastName): string {
 
