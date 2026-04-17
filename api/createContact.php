@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.4.5
-//  Last Updated: 2026-04-14
+//  Version: 1.4.6
+//  Last Updated: 2026-04-17
 //  Codex Tier: 2 — ELC Execution Layer
 // ======================================================================
 
@@ -76,40 +76,15 @@ try {
 
     $parsed = parseContact($input);
 
-    #region 🧠 Resolve Salutation (AI + fallback)
+    #region 🧠 Resolve Salutation (Single Source of Truth)
 
     $contact =& $parsed['contact'];
 
-    // Normalize existing input
-    $salutation = ucfirst(strtolower(
-        rtrim(trim((string)($contact['salutation'] ?? '')), '.')
-    ));
-
-    if (!in_array($salutation, ['Mr', 'Ms'], true)) {
-
-        if (function_exists('inferSalutation')) {
-
-            $ai = inferSalutation(
-                $contact['firstName'] ?? '',
-                $contact['lastName'] ?? ''
-            );
-
-            if ($ai) {
-                $ai = ucfirst(strtolower(rtrim(trim($ai), '.')));
-
-                if (in_array($ai, ['Mr', 'Ms'], true)) {
-                    $salutation = $ai;
-                }
-            }
-        }
-    }
-
-    // Final fallback
-    if (!$salutation) {
-        $salutation = 'Mr';
-    }
-
-    $contact['salutation'] = $salutation;
+    $contact['salutation'] = resolveSalutation(
+        $contact['salutation'] ?? '',
+        $contact['firstName'] ?? '',
+        $contact['lastName'] ?? ''
+    );
 
     #endregion
 
@@ -151,10 +126,6 @@ try {
     $contact = $parsed['contact'] ?? [];
 
     // Validation Gates
-    if (!isset($contact['salutation']) || trim($contact['salutation']) === '') {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Salutation (Mr/Ms) required'];
-        goto FINAL_LOG;
-    }
     if (empty($contact['title'])) {
         $outcome = ['outcome' => 'reject', 'reason' => 'Contact title required'];
         goto FINAL_LOG;
@@ -262,6 +233,39 @@ try {
         }
 
         return ['status' => 'new', 'contactId' => null];
+    }
+
+    // Resolve Salutation (MASTER - DRY - Single Source of Truth)
+    function resolveSalutation($input, $firstName, $lastName): string {
+
+        // Normalize incoming value
+        $salutation = rtrim(trim((string)$input), '.');
+
+        // If valid, return immediately
+        if (in_array($salutation, ['Mr', 'Ms'], true)) {
+            return $salutation;
+        }
+
+        // Attempt AI inference (only if function exists)
+        if (function_exists('inferSalutation')) {
+
+            try {
+                $ai = inferSalutation(
+                    (string)$firstName,
+                    (string)$lastName
+                );
+
+                if ($ai && in_array($ai, ['Mr', 'Ms'], true)) {
+                    return $ai;
+                }
+
+            } catch (Throwable $e) {
+                error_log('[SALUTATION RESOLVER ERROR] ' . $e->getMessage());
+            }
+        }
+
+        // Final fallback (guaranteed value)
+        return 'Mr';
     }
 
     function buildResolutionOutcome(array $entity, array $locationRecord, array $contact): array {
@@ -392,7 +396,6 @@ try {
                     )
                 ");
 
-                // 🔥 THIS WAS MISSING
                 $stmt->execute([
                     'name'  => $entity['entityName'],
                     'type'  => $entity['entityType'] ?? 'customer',
@@ -454,7 +457,7 @@ try {
 
                 $stmt->execute([
                     'entityId'     => $entityId,
-                    'name'         => $entity['entityName'], // or smarter name below
+                    'name'         => $entity['entityName'],
                     'placeId'      => $location['placeId'],
                     'address'      => $location['address'] ?? '',
                     'suite'        => $location['suite'] ?? null,

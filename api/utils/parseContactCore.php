@@ -3,251 +3,93 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — parseContactCore.php
-//  Version: 1.1.1
-//  Last Updated: 2026-04-09
-//  Codex Tier: 3 — AI Augmentation / Structured Data Extraction
+//  Version: 1.4.0
+//  Last Updated: 2026-04-17
+//  Codex Tier: 3 — Structured Data Extraction
 //
 //  Role:
-//  Core parsing engine (function-based).
-//  Converts raw input into structured ELC-ready data.
+//  PURE LIGHT EXTRACTOR / NORMALIZER ONLY
+//  • Trims input
+//  • Extracts obvious raw candidates (email, phone)
+//  • No decisions, no inference, no heuristics, no fallbacks
+//  • Returns clean structured array contract
 //
-//  Notes:
-//   • No direct output
-//   • No DB interaction
-//   • Safe for reuse across system
+//  All business logic, name splitting, salutation resolution,
+//  title/company/address inference moved to createContact.php
 // ======================================================================
 
-#region SECTION 0 — Environment Bootstrap
+#region SECTION 0 — Environment Bootstrap (Optional)
 
 require_once __DIR__ . '/envLoader.php';
-
-// Verify environment functions exist
-if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
-    throw new RuntimeException('Environment bootstrap failed: required functions missing.');
-}
-
-// Initialize env (idempotent)
-skyesoftLoadEnv();
+skyesoftLoadEnv();  // idempotent — safe to keep for now
 
 #endregion
 
 #region SECTION 1 — Core Function
 
 // ─────────────────────────────────────────────
-// 🔤 Normalize Salutation
-// ─────────────────────────────────────────────
-function normalizeSalutation(?string $value): ?string {
-
-    if (empty($value)) {
-        return null;
-    }
-
-    $value = trim($value);
-
-    // Remove trailing period (Mr. → Mr)
-    $value = rtrim($value, '.');
-
-    // Normalize case
-    $value = ucfirst(strtolower($value));
-
-    if (in_array($value, ['Mr', 'Ms'], true)) {
-        return $value;
-    }
-
-    return null;
-}
-
-// ─────────────────────────────────────────────
-// 🧠 Resolve Salutation (AI + fallback)
-// ─────────────────────────────────────────────
-function resolveSalutation(?string $input, string $firstName, string $lastName): string {
-
-    // Normalize existing input
-    if ($input) {
-        $clean = rtrim(trim($input), '.');
-
-        if (in_array($clean, ['Mr', 'Ms'], true)) {
-            return $clean;
-        }
-    }
-
-    // Try AI inference (ONLY if safe)
-    if (function_exists('inferSalutation')) {
-        $ai = inferSalutation($firstName, $lastName);
-
-        if ($ai) {
-            return $ai;
-        }
-    }
-
-    // Final fallback
-    return 'Mr';
-}
-
-// ─────────────────────────────────────────────
-// 🔤 Parse Contact
+// 🔤 Parse Contact — Minimal Extraction Only
 // ─────────────────────────────────────────────
 function parseContact(string $rawInput): array
 {
-    #region VALIDATION
-
     $rawInput = trim($rawInput);
 
     if ($rawInput === '') {
         throw new RuntimeException('parseContact: rawInput is empty.');
     }
 
-    #endregion
+    // Split into lines (preserves structure for downstream processing)
+    $lines = preg_split('/\r\n|\r|\n/', $rawInput);
+    $lines = array_map('trim', array_filter($lines));
 
-    #region ENV ACCESS
-
-    $apiKey = skyesoftGetEnv('OPENAI_API_KEY');
-
-    if (!$apiKey) {
-        throw new RuntimeException('API key missing.');
-    }
-
-    #endregion
-
-    #region PROMPT
-
-    $systemPrompt = <<<EOT
-You are a structured data extraction engine.
-
-Extract contact information from raw input such as email signatures.
-
-Return ONLY valid JSON. No explanation.
-
-Schema:
-{
-  "entity": {
-    "name": ""
-  },
-  "location": {
-    "address": "",
-    "city": "",
-    "state": "",
-    "zip": ""
-  },
-  "contact": {
-    "salutation": "",
-    "firstName": "",
-    "lastName": "",
-    "title": "",
-    "phone": "",
-    "email": ""
-  }
-}
-
-Rules:
-- Do not invent data
-- If unknown, return empty string
-- Split first/last name correctly
-- Normalize phone number format if possible
-- Extract salutation (Mr or Ms) if present at the beginning of the name
-- Only allow "Mr" or "Ms"
-- If not present, return empty string
-EOT;
-
-    #endregion
-
-    #region OPENAI REQUEST
-
-    $payload = json_encode([
-        'model' => 'gpt-4o-mini',
-        'messages' => [
-            [
-                'role' => 'system',
-                'content' => $systemPrompt
-            ],
-            [
-                'role' => 'user',
-                'content' => $rawInput
-            ]
-        ],
-        'temperature' => 0
-    ]);
-
-    if ($payload === false) {
-        throw new RuntimeException('Failed to encode OpenAI payload.');
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'method'  => 'POST',
-            'header'  => "Content-type: application/json\r\nAuthorization: Bearer {$apiKey}\r\n",
-            'content' => $payload,
-            'timeout' => 15
-        ]
-    ]);
-
-    $response = file_get_contents(
-        'https://api.openai.com/v1/chat/completions',
-        false,
-        $context
-    );
-
-    if ($response === false) {
-        $error = error_get_last();
-        throw new RuntimeException('OpenAI request failed: ' . ($error['message'] ?? 'unknown'));
-    }
-
-    #endregion
-
-    #region RESPONSE PARSE
-
-    $result = json_decode($response, true);
-
-    if (!is_array($result)) {
-        throw new RuntimeException('Invalid OpenAI response payload.');
-    }
-
-    $content = $result['choices'][0]['message']['content'] ?? null;
-
-    if (!$content || !is_string($content)) {
-        throw new RuntimeException('Invalid OpenAI response content.');
-    }
-
-    // Clean markdown wrapping
-    $content = preg_replace('/```json|```/', '', $content);
-    $content = trim((string)$content);
-
-    $parsed = json_decode($content, true);
-
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException('JSON parse failed: ' . json_last_error_msg());
-    }
-
-    if (!is_array($parsed)) {
-        throw new RuntimeException('JSON parse failed.');
-    }
-
-    #endregion
-
-    #region NORMALIZE OUTPUT
-
-    $email = trim((string)($parsed['contact']['email'] ?? ''));
-    $email = $email !== '' ? strtolower($email) : '';
-
-    return [
+    $data = [
         'entity' => [
-            'name' => trim((string)($parsed['entity']['name'] ?? ''))
+            'name' => ''
         ],
-        'location' => is_array($parsed['location'] ?? null)
-            ? $parsed['location']
-            : [],
+        'location' => [
+            'address' => '',
+            'city'    => '',
+            'state'   => '',
+            'zip'     => ''
+        ],
         'contact' => [
-            // ⚠️ PURE — no resolver, no AI, no fallback
-            'salutation' => trim((string)($parsed['contact']['salutation'] ?? '')),
-            'firstName'  => trim((string)($parsed['contact']['firstName'] ?? '')),
-            'lastName'   => trim((string)($parsed['contact']['lastName'] ?? '')),
-            'title'      => trim((string)($parsed['contact']['title'] ?? '')),
-            'phone'      => trim((string)($parsed['contact']['phone'] ?? '')),
-            'email'      => $email
+            'salutation' => '',
+            'firstName'  => '',
+            'lastName'   => '',
+            'title'      => '',
+            'phone'      => '',
+            'email'      => ''
         ]
     ];
 
-    #endregion
+    // Minimal reliable extractions only (no heuristics or assumptions)
+    foreach ($lines as $line) {
+        // Email — very reliable pattern
+        if (empty($data['contact']['email']) && 
+            preg_match('/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/', $line, $matches)) {
+            $data['contact']['email'] = strtolower(trim($matches[0]));
+        }
+
+        // Phone — basic common formats (no complex normalization here)
+        if (empty($data['contact']['phone']) && 
+            preg_match('/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/', $line, $matches)) {
+            $data['contact']['phone'] = trim($matches[0]);
+        }
+    }
+
+    // Final minimal normalization (only what was explicitly allowed)
+    $data['contact']['email'] = strtolower(trim($data['contact']['email'] ?? ''));
+
+    // Everything else remains untouched / empty for orchestration layer
+    foreach (['salutation', 'firstName', 'lastName', 'title', 'phone'] as $key) {
+        $data['contact'][$key] = trim($data['contact'][$key] ?? '');
+    }
+
+    $data['entity']['name'] = trim($data['entity']['name'] ?? '');
+
+    // Location remains fully empty — let createContact.php decide how to handle
+
+    return $data;
 }
 
 #endregion
