@@ -176,6 +176,21 @@ try {
         $parsed['location']['censusValid'] = false;
     }
 
+    // 🧠 Light Address Normalization (pre-geocode)
+    $rawAddress = trim(($parsed['location']['address'] ?? ''));
+
+    // If empty, try to extract from full input (fallback)
+    if ($rawAddress === '' && isset($input)) {
+
+        // Remove labels like "Cirrus HQ"
+        $clean = preg_replace('/^[A-Z\s]+HQ\s+/i', '', $input);
+
+        // Extract address-like pattern
+        if (preg_match('/\d{1,5}.*?,?\s+[A-Za-z\s]+,\s*[A-Z]{2}\.?\s*\d{5}/', $clean, $matches)) {
+            $parsed['location']['address'] = $matches[0];
+        }
+    }
+
     $location = resolveLocation($parsed['location'] ?? []);
 
     // ─────────────────────────────────────────
