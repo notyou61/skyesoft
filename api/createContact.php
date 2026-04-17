@@ -253,20 +253,43 @@ try {
     #region HELPER FUNCTIONS (unchanged)
 
     function resolveEntity(PDO $db, string $entityName): array {
+
         $entityName = trim($entityName);
+
         if ($entityName === '') {
-            return ['status' => 'new', 'entityId' => null, 'entityName' => $entityName];
+            return [
+                'status' => 'new',
+                'entityId' => null,
+                'entityName' => $entityName,
+                'entityType' => 'customer' // fallback
+            ];
         }
 
-        $stmt = $db->prepare("SELECT entityId, entityName FROM tblEntities WHERE LOWER(entityName) = :name LIMIT 1");
+        $stmt = $db->prepare("
+            SELECT entityId, entityName, entityType 
+            FROM tblEntities 
+            WHERE LOWER(entityName) = :name 
+            LIMIT 1
+        ");
+
         $stmt->execute(['name' => strtolower($entityName)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            return ['status' => 'existing', 'entityId' => (int)$row['entityId'], 'entityName' => $row['entityName']];
+            return [
+                'status' => 'existing',
+                'entityId' => (int)$row['entityId'],
+                'entityName' => $row['entityName'],
+                'entityType' => $row['entityType'] ?? 'customer'
+            ];
         }
 
-        return ['status' => 'new', 'entityId' => null, 'entityName' => $entityName];
+        return [
+            'status' => 'new',
+            'entityId' => null,
+            'entityName' => $entityName,
+            'entityType' => 'customer' // 👈 REQUIRED
+        ];
     }
 
     function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
