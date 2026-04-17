@@ -347,16 +347,26 @@ try {
     }
 
     function buildResolutionOutcome(array $entity, array $locationRecord, array $contact): array {
-        if (empty($entity['status'])) {
+
+        // Validate entity
+        if (empty($entity['entityName'])) {
             return ['outcome' => 'reject'];
         }
-        if (empty($locationRecord['status'])) {
+
+        // Validate location (must have geocode data)
+        $hasValidLocation =
+            !empty($locationRecord['placeId']) ||
+            (!empty($locationRecord['lat']) && !empty($locationRecord['lng']));
+
+        if (!$hasValidLocation) {
             return ['outcome' => 'partial'];
         }
 
+        // Contact status handling
         if (($contact['status'] ?? null) === 'exact_match') {
             return ['outcome' => 'resolved_duplicate'];
         }
+
         if (($contact['status'] ?? null) === 'possible_match') {
             return ['outcome' => 'resolved_conflict'];
         }
