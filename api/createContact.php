@@ -17,6 +17,7 @@ require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
+require_once __DIR__ . '/askOpenAI.php';
 
 // Resolve Salutation (MASTER - DRY - Single Source of Truth)
 function resolveSalutation($input, $firstName, $lastName): string {
@@ -111,15 +112,53 @@ try {
 
     $parsed = parseContact($input);
 
-    #region 🧠 Resolve Salutation (Single Source of Truth)
+    #region 🧠 Resolve Contact Fields (Salutation + Title)
 
+    // Reference
     $contact =& $parsed['contact'];
 
+    // ─────────────────────────────
+    // Resolve Salutation (existing)
+    // ─────────────────────────────
     $contact['salutation'] = resolveSalutation(
         $contact['salutation'] ?? '',
         $contact['firstName'] ?? '',
         $contact['lastName'] ?? ''
     );
+
+    // ─────────────────────────────
+    // Resolve Title (AI + fallback)
+    // ─────────────────────────────
+    $title = trim((string)($contact['title'] ?? ''));
+
+    if ($title === '') {
+
+        if (function_exists('inferTitle')) {
+
+            try {
+                $aiTitle = inferTitle($input);
+
+                if ($aiTitle) {
+                    $aiTitle = trim($aiTitle);
+
+                    // Normalize simple edge cases
+                    if ($aiTitle !== '') {
+                        $title = $aiTitle;
+                    }
+                }
+
+            } catch (Throwable $e) {
+                error_log('[TITLE RESOLVER ERROR] ' . $e->getMessage());
+            }
+        }
+    }
+
+    // Final fallback (guaranteed value)
+    if ($title === '') {
+        $title = 'Unknown';
+    }
+
+    $contact['title'] = $title;
 
     #endregion
 

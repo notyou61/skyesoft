@@ -359,6 +359,42 @@ PROMPT;
     return null;
 }
 
+// Infer Title
+function inferTitle(string $input): ?string {
+
+    $basePrompt = <<<PROMPT
+Extract the professional job title from the following contact information.
+
+Input:
+{$input}
+
+Respond with ONLY the job title (e.g., "Project Manager", "Account Manager").
+
+If no clear title is present, respond with "Unknown".
+PROMPT;
+
+    $fullPrompt = injectStandingOrders($basePrompt);
+    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
+
+    if ($apiKey === null) {
+        error_log('[TITLE] Missing API key');
+        return null;
+    }
+
+    try {
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+    } catch (Throwable $e) {
+        error_log('[TITLE AI ERROR] ' . $e->getMessage());
+        return null;
+    }
+
+    if (!$response) {
+        return null;
+    }
+
+    return trim($response);
+}
+
 // Load SSE Snapshot
 function loadSseSnapshot(): ?array {
 
