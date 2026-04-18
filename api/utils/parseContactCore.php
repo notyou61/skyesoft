@@ -20,8 +20,11 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap (Optional)
 
-require_once __DIR__ . '/envLoader.php';
-skyesoftLoadEnv();  // idempotent — safe to keep for now
+if (!function_exists('skyesoftLoadEnv')) {
+    require_once __DIR__ . '/envLoader.php';
+}
+
+skyesoftLoadEnv();
 
 #endregion
 

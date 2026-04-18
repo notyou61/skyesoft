@@ -39,6 +39,10 @@ require_once __DIR__ . '/sessionBootstrap.php';
 // ─────────────────────────────────────────
 // 🌍 Load environment
 // ─────────────────────────────────────────
+if (!function_exists('skyesoftLoadEnv')) {
+    require_once __DIR__ . '/envLoader.php';
+}
+
 skyesoftLoadEnv();
 
 // ─────────────────────────────────────────
@@ -101,59 +105,6 @@ require_once __DIR__ . '/utils/actions.php';
 #endregion
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
-
-// Loads .env from secure location (3 levels up) → putenv, $_ENV, $_SERVER
-function skyesoftLoadEnv(): void {
-
-    // #region Resolve paths
-
-    $basePath = dirname(__DIR__, 3) . '/secure';
-
-    $envFiles = [
-        $basePath . '/.env',    // general / OpenAI
-        $basePath . '/db.env'   // database
-    ];
-
-    // #endregion
-
-    // #region Load each env file
-
-    foreach ($envFiles as $envPath) {
-
-        if (!file_exists($envPath) || !is_readable($envPath)) {
-            error_log("[env-loader] Skipped missing: $envPath");
-            continue;
-        }
-
-        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-
-            $line = trim($line);
-
-            // Skip comments / invalid lines
-            if (
-                $line === '' ||
-                str_starts_with($line, '#') ||
-                !str_contains($line, '=')
-            ) {
-                continue;
-            }
-
-            [$key, $value] = explode('=', $line, 2);
-
-            $key   = trim($key);
-            $value = trim($value, " \t\n\r\0\x0B\"'");
-
-            // Set into environment
-            putenv("$key=$value");
-            $_ENV[$key]    = $value;
-            $_SERVER[$key] = $value;
-        }
-
-        error_log("[env-loader] Loaded: $envPath");
-    }
-
-    // #endregion
-}
 
 // Safe env var reader — checks getenv → $_ENV → $_SERVER
 function skyesoftGetEnv(string $key): ?string {
