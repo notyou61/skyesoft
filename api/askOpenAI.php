@@ -106,15 +106,6 @@ require_once __DIR__ . '/utils/actions.php';
 
 #region SECTION 1 — Codex Loaders (Standing Orders + Version)
 
-// Safe env var reader — checks getenv → $_ENV → $_SERVER
-function skyesoftGetEnv(string $key): ?string {
-    $val = getenv($key);
-    if ($val !== false && trim($val) !== '') return trim($val);
-    if (!empty($_ENV[$key])) return trim($_ENV[$key]);
-    if (!empty($_SERVER[$key])) return trim($_SERVER[$key]);
-    return null;
-}
-
 // Load Standing Orders from codex.json (injected into all prompts) — fallback to empty JSON object
 function loadStandingOrders(): string {
 
