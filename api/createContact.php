@@ -165,6 +165,8 @@ try {
     error_log('[STAGE] LOCATION');
     $location = resolveLocation($parsed['location'] ?? []);
 
+    error_log('[LOCATION DEBUG] ' . json_encode($location));
+
     // Normalize location structure
     $location = [
         'placeId'      => $location['placeId'] ?? null,
