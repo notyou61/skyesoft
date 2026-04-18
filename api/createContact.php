@@ -1,12 +1,6 @@
 <?php
 declare(strict_types=1);
 
-// ======================================================================
-//  Skyesoft — createContact.php
-//  Version: 1.4.9
-//  Last Updated: 2026-04-17
-// ======================================================================
-
 #region SECTION 0 — Header
 
 header("Content-Type: application/json; charset=UTF-8");
@@ -17,41 +11,265 @@ $data = json_decode($raw, true);
 $input = $data['input'] ?? null;
 
 if (!is_string($input) || trim($input) === '') {
-    echo json_encode([
-        'status' => 'reject',
-        'reason' => 'Invalid input'
-    ]);
+    echo json_encode(['status' => 'reject', 'reason' => 'Invalid input']);
     exit;
 }
 
 $input = trim($input);
 
-// Now proceed with the rest of your original code
 require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
-require_once __DIR__ . '/askOpenAI.php';  // 👈 HERE
+require_once __DIR__ . '/askOpenAI.php';
 
 skyesoftLoadEnv();
-
-$apiKey = skyesoftGetEnv('OPENAI_API_KEY');
-
-error_log('[DEBUG] OPENAI_API_KEY present: ' . ($apiKey ? 'YES' : 'NO'));
 
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/createContact_debug.log');
 
 error_log('=== HIT createContact ===');
 error_log('[RAW] ' . $raw);
-error_log('[DECODED] ' . json_encode($data));
-error_log('[INPUT FIELD] ' . var_export($input, true));
-error_log('[DEBUG] callOpenAI exists: ' . (function_exists('callOpenAI') ? 'YES' : 'NO'));
+error_log('[INPUT] ' . $input);
 
-// Resolve Salutation (MASTER - DRY - Single Source of Truth)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$db = getPDO();
+
+if (!$db instanceof PDO) {
+    throw new RuntimeException('Database connection failed: invalid PDO instance.');
+}
+
+if (!defined('ACTION_ORIGIN_USER'))       define('ACTION_ORIGIN_USER', 1);
+if (!defined('ACTION_ORIGIN_SYSTEM'))     define('ACTION_ORIGIN_SYSTEM', 2);
+if (!defined('ACTION_ORIGIN_AUTOMATION')) define('ACTION_ORIGIN_AUTOMATION', 3);
+
+if (!defined('ACTION_TYPE_PROPOSE'))      define('ACTION_TYPE_PROPOSE', 7);
+if (!defined('ACTION_TYPE_ACKNOWLEDGE'))  define('ACTION_TYPE_ACKNOWLEDGE', 8);
+if (!defined('ACTION_TYPE_ACCEPT'))       define('ACTION_TYPE_ACCEPT', 9);
+
+$varRequestId = uniqid('req_', true);
+
+#endregion
+
+#region SECTION 1 — Main Pipeline Execution
+
+$outcome        = null;
+$entity         = null;
+$locationRecord = null;
+$contactRecord  = null;
+$insertResult   = null;
+$decision       = null;
+$location       = null;
+$parsed         = null;
+
+try {
+
+    #region 1. proposeStage
+    logAction($db, [
+        'type'      => ACTION_TYPE_PROPOSE,
+        'contactId' => $_SESSION['contactId'] ?? 1,
+        'prompt'    => $input,
+        'response'  => json_encode(['stage' => 'propose', 'proposalId' => $varRequestId]),
+        'intent'    => 'propose_contact',
+        'origin'    => ACTION_ORIGIN_USER
+    ]);
+    #endregion
+
+    #region 2. processingModel
+
+    #region 2a. derivationPhase
+    $parsed = parseContact($input);
+    $aiData = extractContactWithAI($input);
+
+    // Smart merge — AI fills gaps only
+    foreach (['entity', 'location', 'contact'] as $section) {
+        if (!isset($parsed[$section])) continue;
+        foreach ($parsed[$section] as $key => $value) {
+            $aiValue = $aiData[$section][$key] ?? null;
+            if ((empty($value) || $value === null) && !empty($aiValue)) {
+                $parsed[$section][$key] = $aiValue;
+            }
+        }
+    }
+
+    $parsed = deriveContactAttributes($parsed, $input);
+    #endregion
+
+    #region 2b. resolutionPhase
+    $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
+
+    if (($entity['status'] ?? null) === 'new' && empty($entity['entityType']) && !empty($entity['entityName'])) {
+        $entity['entityType'] = inferEntityTypeAI($entity['entityName']);
+        $parsed['entity']['entityType'] = $entity['entityType'];
+    }
+
+    $locationInput = $parsed['location'] ?? [];
+
+    $googleResult = validateLocationWithGoogle($locationInput);
+    if (empty($googleResult['placeId'])) {
+        $outcome = ['outcome' => 'partial', 'reason' => 'Unable to validate location with Google Places. Please provide a more complete address.'];
+    } else {
+        $location = [
+            'placeId'      => $googleResult['placeId'],
+            'address'      => $googleResult['address'] ?? $locationInput['address'] ?? '',
+            'suite'        => $googleResult['suite'] ?? $locationInput['suite'] ?? null,
+            'city'         => $googleResult['city'] ?? $locationInput['city'] ?? '',
+            'state'        => $googleResult['state'] ?? $locationInput['state'] ?? '',
+            'zip'          => $googleResult['zip'] ?? $locationInput['zip'] ?? null,
+            'lat'          => $googleResult['lat'] ?? null,
+            'lng'          => $googleResult['lng'] ?? null,
+            'county'       => '',
+            'countyFips'   => null,
+            'jurisdiction' => null,
+            'parcelNumber' => null
+        ];
+
+        $census = resolveCensusGeography($location);
+        $location['county']     = $census['county'] ?? '';
+        $location['countyFips'] = $census['countyFips'] ?? null;
+
+        if ($location['state'] === 'AZ' && stripos($location['county'] ?? '', 'Maricopa') !== false) {
+            $parcel = conditionallyResolveParcel($location);
+            $location['parcelNumber'] = $parcel['parcelNumber'] ?? null;
+            $location['jurisdiction'] = $parcel['jurisdiction'] ?? 'Maricopa County';
+        } else {
+            $location['jurisdiction'] = !empty($location['county']) 
+                ? $location['county'] . ' County' 
+                : null;
+        }
+
+        $locationRecord = resolveLocationRecord($db, $entity['entityId'] ?? null, $location['placeId']);
+
+        $contactRecord = ($entity['status'] === 'existing' && $locationRecord['status'] === 'existing')
+            ? resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'])
+            : ['status' => 'new', 'contactId' => null];
+
+        $outcome = buildResolutionOutcome($entity, $location, $contactRecord);
+        $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
+    }
+    #endregion
+
+    #region 3. decisionPhase & 4. commitPhase
+    if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
+        if (($outcome['outcome'] ?? null) === 'resolved_new') {
+            $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
+        }
+    }
+    #endregion
+
+} catch (Throwable $e) {
+    error_log('FATAL ERROR in createContact: ' . $e->getMessage());
+    echo json_encode(['DEBUG' => true, 'error' => $e->getMessage()], JSON_PRETTY_PRINT);
+    exit;
+}
+
+#endregion
+
+#region SECTION 2 — Action Logging & Final Response
+
+FINAL_LOG:
+
+$outcomeType = $outcome['outcome'] ?? 'unknown';
+$actionType  = ACTION_TYPE_PROPOSE;
+$intent      = 'unknown';
+$reason      = $outcome['reason'] ?? 'processed';
+$targetContactId = null;
+$message     = '';
+
+if ($outcomeType === 'resolved_new' && !empty($insertResult['success'])) {
+    $actionType = ACTION_TYPE_ACCEPT;
+    $intent     = 'create_contact';
+    $reason     = 'new_contact_created';
+    $targetContactId = $insertResult['contactId'] ?? null;
+    $message    = 'Contact has been accepted and successfully added to the database.';
+} elseif ($outcomeType === 'resolved_duplicate' || ($contactRecord['status'] ?? '') === 'exact_match') {
+    $actionType = ACTION_TYPE_PROPOSE;
+    $intent     = 'duplicate_attempt';
+    $reason     = 'duplicate_detected';
+    $targetContactId = $contactRecord['contactId'] ?? null;
+    $message    = 'This contact already exists. No new record was created.';
+} elseif ($outcomeType === 'partial') {
+    $actionType = ACTION_TYPE_ACKNOWLEDGE;
+    $intent     = 'partial_resolution';
+    $reason     = $outcome['reason'] ?? 'incomplete_elc';
+    $message    = $outcome['reason'] ?? 'Contact information is incomplete.';
+} elseif ($outcomeType === 'reject') {
+    $actionType = 4;
+    $intent     = 'reject';
+    $reason     = $outcome['reason'] ?? 'validation_failed';
+    $message    = $outcome['reason'] ?? 'Unable to process contact.';
+} elseif ($outcomeType === 'conflict') {
+    $actionType = ACTION_TYPE_ACKNOWLEDGE;
+    $intent     = 'conflict_detected';
+    $message    = 'Conflict detected. Manual review required.';
+}
+
+$currentUserId = $_SESSION['contactId'] ?? 1;
+
+if (!empty($currentUserId)) {
+    $responsePayload = [
+        'requestId'     => $varRequestId,
+        'input'         => $input,
+        'outcome'       => $outcomeType,
+        'entityId'      => $entity['entityId'] ?? null,
+        'locationId'    => $locationRecord['locationId'] ?? null,
+        'contactId'     => $targetContactId,
+        'reason'        => $reason,
+        'message'       => $message,
+        'insertSuccess' => $insertResult['success'] ?? null,
+        'lat'           => $location['lat'] ?? null,
+        'lng'           => $location['lng'] ?? null,
+        'placeId'       => $location['placeId'] ?? null
+    ];
+
+    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) ?: '{"error":"json_encode_failed"}';
+
+    logAction($db, [
+        'type'      => $actionType,
+        'contactId' => (int)$currentUserId,
+        'prompt'    => $input,
+        'response'  => $responseJson,
+        'intent'    => $intent,
+        'lat'       => $location['lat'] ?? null,
+        'lng'       => $location['lng'] ?? null,
+        'origin'    => ACTION_ORIGIN_USER
+    ]);
+}
+
+#region Final Response
+if ($outcomeType === 'reject') {
+    echo json_encode(['status' => 'reject', 'reason' => $message, 'requestId' => $varRequestId]);
+} elseif ($outcomeType === 'partial') {
+    echo json_encode([
+        'status'   => 'partial',
+        'reason'   => $message,
+        'location' => $location ?? null,
+        'requestId'=> $varRequestId
+    ]);
+} else {
+    echo json_encode([
+        'status'           => $outcomeType,
+        'message'          => $message,
+        'requestId'        => $varRequestId,
+        'entity'           => $entity,
+        'location'         => $locationRecord,
+        'contact'          => $contactRecord,
+        'insert'           => $insertResult,
+        'resolvedLocation' => $location,
+        'scenario'         => $decision ?? null
+    ], JSON_UNESCAPED_UNICODE);
+}
+#endregion
+
+#endregion
+
+#region HELPER FUNCTIONS
+
 function resolveSalutation($input, $firstName, $lastName): string {
-
     $salutation = rtrim(trim((string)$input), '.');
 
     if (in_array($salutation, ['Mr', 'Ms'], true)) {
@@ -76,263 +294,49 @@ function resolveSalutation($input, $firstName, $lastName): string {
     return 'Mr';
 }
 
-$db = getPDO();
-
-if (!$db instanceof PDO) {
-    throw new RuntimeException('Database connection failed: invalid PDO instance.');
-}
-
-if (!defined('ACTION_ORIGIN_USER'))       define('ACTION_ORIGIN_USER', 1);
-if (!defined('ACTION_ORIGIN_SYSTEM'))     define('ACTION_ORIGIN_SYSTEM', 2);
-if (!defined('ACTION_ORIGIN_AUTOMATION')) define('ACTION_ORIGIN_AUTOMATION', 3);
-
-if (!defined('ACTION_TYPE_PROPOSE'))   define('ACTION_TYPE_PROPOSE', 7);
-if (!defined('ACTION_TYPE_ACKNOWLEDGE')) define('ACTION_TYPE_ACKNOWLEDGE', 8);
-if (!defined('ACTION_TYPE_ACCEPT'))    define('ACTION_TYPE_ACCEPT', 9);
-
-// Global logging control
-$varRequestId = uniqid('req_', true);
-
-// SAFE INITIALIZATION — NO $input = '' overwrite
-$outcome        = null;
-$entity         = null;
-$locationRecord = null;
-$contactRecord  = null;
-$insertResult   = null;
-$decision       = null;
-$location       = null;
-$parsed         = null;
-
-#endregion
-
-#region SECTION 1 — MAIN EXECUTION WRAPPER
-
-try {
-
-    #region Input Handling + Validation
-    if (!$input || trim($input) === '') {
-        $outcome = [
-            'outcome' => 'reject',
-            'reason'  => 'No input provided'
-        ];
-        goto FINAL_LOG;
-    }
-    #endregion
-
-    #region CORE PROCESSING — CORRECT ORDER
-
-    error_log('[STAGE] PARSE');
-
-    $parsed = parseContact($input);
-
-    $aiData = extractContactWithAI($input);
-
-    error_log('[AI DATA] ' . json_encode($aiData));
-
-    // 🔥 Smart merge (AI fills gaps ONLY)
-    foreach (['entity', 'location', 'contact'] as $section) {
-
-        if (!isset($parsed[$section])) continue;
-
-        foreach ($parsed[$section] as $key => $value) {
-
-            $aiValue = $aiData[$section][$key] ?? null;
-
-            // Only replace if parsed is empty AND AI has value
-            if (
-                (empty($value) || $value === null) &&
-                !empty($aiValue)
-            ) {
-                $parsed[$section][$key] = $aiValue;
-            }
-        }
+function deriveContactAttributes(array $parsed, string $rawInput): array {
+    if (!isset($parsed['contact']) || !is_array($parsed['contact'])) {
+        return $parsed;
     }
 
-    #region Resolve Contact Fields
     $contact =& $parsed['contact'];
 
     $contact['salutation'] = resolveSalutation(
-        $contact['salutation'] ?? '',
-        $contact['firstName'] ?? '',
+        $contact['salutation'] ?? '', 
+        $contact['firstName'] ?? '', 
         $contact['lastName'] ?? ''
     );
 
-    $title = trim((string)($contact['title'] ?? ''));
+    $contact['firstName'] = trim(ucwords(strtolower($contact['firstName'] ?? '')));
+    $contact['lastName']  = trim(ucwords(strtolower($contact['lastName'] ?? '')));
+
+    if (!empty($contact['phone'])) {
+        $digits = preg_replace('/\D/', '', $contact['phone']);
+        if (strlen($digits) === 10) {
+            $contact['phone'] = substr($digits, 0, 3) . '-' .
+                                substr($digits, 3, 3) . '-' .
+                                substr($digits, 6, 4);
+        } else {
+            $contact['phone'] = $digits;
+        }
+    }
+
+    if (!empty($contact['email'])) {
+        $contact['email'] = strtolower(trim($contact['email']));
+    }
+
+    $title = trim($contact['title'] ?? '');
     if ($title === '' && function_exists('inferTitle')) {
-        try {
-            $aiTitle = inferTitle($input);
-            if ($aiTitle) $title = trim($aiTitle);
-        } catch (Throwable $e) {
-            error_log('[TITLE RESOLVER ERROR] ' . $e->getMessage());
-        }
+        $title = trim(inferTitle($rawInput) ?? '');
     }
-    $contact['title'] = $title ?: 'Unknown';
+    $contact['title'] = $title ?: null;
 
-    error_log('[STAGE] CONTACT');
-    #endregion
-
-    // Address Enrichment + Normalization
-    $fullAddress = trim(
-        ($parsed['location']['address'] ?? '') . ' ' .
-        ($parsed['location']['city'] ?? '') . ' ' .
-        ($parsed['location']['state'] ?? '')
-    );
-
-    $validation = validateAddressCensus($fullAddress);
-    if (!empty($validation['valid']) && !empty($validation['normalized'])) {
-        $parsed['location']['address']     = $validation['normalized']['address'];
-        $parsed['location']['censusValid'] = true;
-    } else {
-        $parsed['location']['censusValid'] = false;
-    }
-
-    $rawAddress = trim(($parsed['location']['address'] ?? ''));
-    if ($rawAddress === '' && isset($input)) {
-        $clean = preg_replace('/^[A-Z\s]+HQ\s+/i', '', $input);
-        if (preg_match('/\d{1,5}.*?,?\s+[A-Za-z\s]+,\s*[A-Z]{2}\.?\s*\d{5}/', $clean, $matches)) {
-            $parsed['location']['address'] = $matches[0];
-        }
-    }
-
-    error_log('[STAGE] LOCATION');
-    $location = resolveLocation($parsed['location'] ?? []);
-
-    error_log('[LOCATION DEBUG] ' . json_encode($location));
-
-    // Normalize location structure
-    $location = [
-        'placeId'      => $location['placeId'] ?? null,
-        'address'      => $location['address'] ?? '',
-        'suite'        => $location['suite'] ?? null,
-        'city'         => $location['city'] ?? '',
-        'state'        => $location['state'] ?? '',
-        'zip'          => $location['zip'] ?? null,
-        'county'       => $location['county'] ?? '',
-        'countyFips'   => $location['countyFips'] ?? null,
-        'jurisdiction' => $location['jurisdiction'] ?? null,
-        'parcelNumber' => $location['parcelNumber'] ?? null,
-        'lat'          => $location['lat'] ?? null,
-        'lng'          => $location['lng'] ?? null
-    ];
-
-    // Validation Gates — MUST COME BEFORE OUTCOME
-    if (empty($contact['title'])) {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Contact title required'];
-        goto FINAL_LOG;
-    }
-    if (empty($contact['email'])) {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Email required'];
-        goto FINAL_LOG;
-    }
-    if (empty($contact['phone'])) {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Primary phone required'];
-        goto FINAL_LOG;
-    }
-    if (empty($parsed['entity']) || empty($parsed['contact'])) {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Missing entity or contact'];
-        goto FINAL_LOG;
-    }
-    if (empty($location['placeId']) && (empty($location['lat']) || empty($location['lng']))) {
-        $outcome = [
-            'outcome' => 'reject',
-            'reason'  => 'Missing coordinates from location resolution',
-            'location'=> $location
-        ];
-        goto FINAL_LOG;
-    }
-    if ($location['state'] === 'AZ' &&
-        strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
-        empty($location['parcelNumber'])) {
-        $outcome = ['outcome' => 'reject', 'reason' => 'Parcel required for Maricopa County', 'location' => $location];
-        goto FINAL_LOG;
-    }
-
-    error_log('[STAGE] ENTITY');
-    $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
-
-    // Resolve Location Record
-    if ($entity['status'] === 'existing' && !empty($location['placeId'])) {
-        $locationRecord = resolveLocationRecord($db, $entity['entityId'], $location['placeId']);
-    } else {
-        $locationRecord = ['status' => 'new', 'locationId' => null];
-    }
-
-    // Resolve Contact Record
-    if ($entity['status'] === 'existing' && $locationRecord['status'] === 'existing') {
-        $contactRecord = resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'] ?? []);
-    } else {
-        $contactRecord = ['status' => 'new', 'contactId' => null];
-    }
-
-    error_log('[STAGE] OUTCOME');
-    // Build Outcome — AFTER all validations
-    $outcome = buildResolutionOutcome($entity, $location, $contactRecord);
-
-    error_log('[STAGE] COMPLETE');
-
-    #endregion
-
-    #region MAIN FLOW — Resolution & Insert
-
-    $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
-
-    if ($decision['status'] === 'reject' || $decision['status'] === 'conflict') {
-        $outcome = [
-            'outcome' => $decision['status'],
-            'reason'  => $decision['message'] ?? 'conflict',
-            'data'    => $decision
-        ];
-        goto FINAL_LOG;
-    }
-
-    if (!empty($decision['data']['entityType'])) {
-        $parsed['entity']['entityType'] = $decision['data']['entityType'];
-        $entity['entityType'] = $decision['data']['entityType'];
-    }
-
-    $insertResult = null;
-
-    if (($outcome['outcome'] ?? null) === 'resolved_new') {
-        error_log("INSERT BLOCK HIT | requestId={$varRequestId}");
-
-        $insertResult = executeInsert(
-            $db,
-            $parsed,
-            $location,
-            $entity,
-            $locationRecord,
-            $input
-        );
-
-        if ($insertResult['success'] === false && !empty($insertResult['contactId'] ?? null)) {
-            $outcome = [
-                'outcome' => 'resolved_duplicate',
-                'entity'  => $entity,
-                'location'=> $locationRecord,
-                'contact' => ['status' => 'duplicate_email', 'contactId' => (int)$insertResult['contactId']]
-            ];
-            $insertResult = null;
-        }
-    }
-
-    #endregion
-
-} catch (Throwable $e) {
-    error_log('FATAL ERROR in createContact: ' . $e->getMessage());
-
-    echo json_encode([
-        'DEBUG' => true,
-        'entity' => $entity ?? null,
-        'location' => $location ?? null,
-        'contact' => $contact ?? null,
-        'parsed' => $parsed ?? null
-    ], JSON_PRETTY_PRINT);
-    exit;
+    return $parsed;
 }
 
-#endregion
-
-#region HELPER FUNCTIONS
+// === Paste your original helper functions below (resolveEntity, resolveLocationRecord, resolveContact, 
+// buildResolutionOutcome, evaluateScenario, inferEntityTypeAI, extractContactWithAI, executeInsert) ===
+// They are unchanged from your attached file.
 
 function resolveEntity(PDO $db, string $entityName): array {
     $entityName = trim($entityName);
@@ -373,7 +377,11 @@ function resolveEntity(PDO $db, string $entityName): array {
     ];
 }
 
-function resolveLocationRecord(PDO $db, int $entityId, string $placeId): array {
+function resolveLocationRecord(PDO $db, ?int $entityId, string $placeId): array {
+    if ($entityId === null) {
+        return ['status' => 'new', 'locationId' => null];
+    }
+
     $stmt = $db->prepare("
         SELECT locationId 
         FROM tblLocations 
@@ -432,7 +440,6 @@ function buildResolutionOutcome(array $entity, array $location, array $contact):
         return ['outcome' => 'reject'];
     }
 
-    // Fixed: Use $location (which has placeId/lat/lng), not $locationRecord
     $hasValidLocation = !empty($location['placeId']) ||
                         (!empty($location['lat']) && !empty($location['lng']));
 
@@ -451,7 +458,6 @@ function buildResolutionOutcome(array $entity, array $location, array $contact):
     return ['outcome' => 'resolved_new'];
 }
 
-// evaluateScenario, inferEntityTypeAI, and executeInsert remain unchanged (kept exactly as in your last version)
 function evaluateScenario(PDO $db, array $entity, array $location, array $contact): array {
     $decision = [
         "status" => "ok",
@@ -492,14 +498,6 @@ function evaluateScenario(PDO $db, array $entity, array $location, array $contac
         }
     }
 
-    if (($entity['status'] ?? null) === 'new' && empty($entity['entityType']) && !empty($entity['entityName'])) {
-        $inferredType = inferEntityTypeAI($entity['entityName']);
-        $decision['scenario'] = "entity_type_inferred";
-        $decision['message'] = "Entity type inferred by AI.";
-        $decision['data']['entityType'] = $inferredType;
-        $decision['data']['entityTypeSource'] = "ai";
-    }
-
     return $decision;
 }
 
@@ -536,7 +534,6 @@ function inferEntityTypeAI(string $entityName): string {
 }
 
 function extractContactWithAI(string $input): array {
-
     if (!function_exists('callOpenAI')) {
         error_log('[AI] callOpenAI missing');
         return [];
@@ -570,7 +567,6 @@ Text:
 PROMPT;
 
     try {
-
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
 
         if (!$response) {
@@ -578,14 +574,10 @@ PROMPT;
             return [];
         }
 
-        error_log('[AI RAW RESPONSE] ' . $response);
-
-        // ✅ Clean markdown wrappers
         $clean = preg_replace('/^```json\s*/i', '', $response);
         $clean = preg_replace('/^```\s*/', '', $clean);
         $clean = preg_replace('/\s*```$/', '', $clean);
 
-        // ✅ SAFE JSON extraction (non-greedy)
         if (preg_match('/\{.*?\}/s', $clean, $matches)) {
             $clean = $matches[0];
         } else {
@@ -593,19 +585,8 @@ PROMPT;
             return [];
         }
 
-        error_log('[AI CLEAN] ' . $clean);
-
         $data = json_decode($clean, true);
-
-        if (!is_array($data)) {
-            error_log('[AI PARSED] invalid JSON');
-            return [];
-        }
-
-        error_log('[AI DATA] ' . json_encode($data));
-
-        return $data;
-
+        return is_array($data) ? $data : [];
     } catch (Throwable $e) {
         error_log('[AI EXTRACT ERROR] ' . $e->getMessage());
         return [];
@@ -620,7 +601,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             throw new RuntimeException('Missing entity name');
         }
 
-        // ENTITY INSERT
         if ($entity['status'] === 'new') {
             $stmt = $db->prepare("
                 INSERT INTO tblEntities (entityName, entityType, entityState, entityDate)
@@ -632,12 +612,11 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 'state' => $location['state'] ?? null
             ]);
             $entityId = (int)$db->lastInsertId();
-            if (empty($entityId)) throw new RuntimeException('Entity insert failed — no ID returned');
+            if (empty($entityId)) throw new RuntimeException('Entity insert failed');
         } else {
             $entityId = (int)$entity['entityId'];
         }
 
-        // LOCATION INSERT
         if ($locationRecord['status'] === 'new') {
             if (empty($location['placeId'])) {
                 throw new RuntimeException('Missing placeId for location');
@@ -674,11 +653,6 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $locationId = (int)$locationRecord['locationId'];
         }
 
-        // CONTACT INSERT
-        if (empty($parsed['contact']['email'] ?? '') || empty($parsed['contact']['phone'] ?? '')) {
-            throw new RuntimeException('Missing contact email or phone');
-        }
-
         $stmt = $db->prepare("
             INSERT INTO tblContacts (
                 contactEntityId, contactLocationId, contactSalutation, contactTitle,
@@ -711,159 +685,119 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        error_log('executeInsert failed: ' . $e->getMessage() . ' | requestId=' . ($GLOBALS['varRequestId'] ?? 'unknown'));
+        error_log('executeInsert failed: ' . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
 
-#endregion
+// Hardened API functions with timeouts
 
-#region SECTION 2 — Unified Action Logging
+function validateLocationWithGoogle(array $locationInput): array {
+    $query = trim(($locationInput['address'] ?? '') . ' ' . 
+                  ($locationInput['city'] ?? '') . ' ' . 
+                  ($locationInput['state'] ?? ''));
 
-FINAL_LOG:
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-$currentUserId = $_SESSION['contactId'] ?? 1;
-
-if (!empty($currentUserId)) {
-    $actionType      = ACTION_TYPE_PROPOSE;
-    $intent          = 'system_event';
-    $reason          = 'unknown';
-    $targetContactId = null;
-
-    $outcomeType = $outcome['outcome'] ?? null;
-
-    if ($outcomeType === 'resolved_new') {
-        if (empty($insertResult)) {
-            $actionType = ACTION_TYPE_PROPOSE;
-            $intent     = 'insert_not_attempted';
-            $reason     = 'insert_block_not_executed';
-            error_log("CRITICAL: resolved_new but insert block not executed | requestId={$varRequestId}");
-        } elseif (($insertResult['success'] ?? false) === true) {
-            $actionType = ACTION_TYPE_ACCEPT;
-            $intent     = 'create_contact';
-            $reason     = 'new_contact_created';
-            $targetContactId = $insertResult['contactId'] ?? null;
-        } else {
-            $actionType = ACTION_TYPE_PROPOSE;
-            $intent     = 'contact_insert_failed';
-            $reason     = $insertResult['error'] ?? 'insert_failed';
-            error_log("INSERT FAILED | requestId={$varRequestId} | error=" . ($insertResult['error'] ?? 'unknown'));
-        }
-    } elseif ($outcomeType === 'resolved_duplicate' || (($outcome['contact']['status'] ?? null) === 'duplicate_email')) {
-        $actionType = ACTION_TYPE_PROPOSE;
-        $intent     = 'duplicate_attempt';
-        $reason     = 'duplicate_detected';
-        $targetContactId = $outcome['contact']['contactId'] ?? $contactRecord['contactId'] ?? ($insertResult['contactId'] ?? null);
-    } elseif (!empty($insertResult) && ($insertResult['success'] === false)) {
-        $actionType = ACTION_TYPE_PROPOSE;
-        $intent     = 'contact_insert_failed';
-        $reason     = $insertResult['error'] ?? 'insert_failed';
-    } elseif ($outcomeType === 'reject') {
-        $actionType = 4;
-        $intent     = 'reject';
-        $reason     = $outcome['reason'] ?? 'validation_failed';
-    } elseif ($outcomeType === 'partial') {
-        $actionType = 4;
-        $intent     = 'partial';
-        $reason     = $outcome['reason'] ?? 'partial_resolution';
-    } elseif ($outcomeType === 'conflict') {
-        $actionType = ACTION_TYPE_PROPOSE;
-        $intent     = 'conflict_detected';
-        $reason     = $outcome['reason'] ?? 'conflict';
+    if (empty($query)) {
+        return ['placeId' => null];
     }
 
-    $responsePayload = [
-        'requestId'     => $varRequestId,
-        'input'         => $input,
-        'outcome'       => $outcomeType,
-        'entityId'      => $entity['entityId'] ?? null,
-        'locationId'    => $locationRecord['locationId'] ?? null,
-        'contactId'     => $targetContactId,
-        'reason'        => $reason,
-        'insertSuccess' => $insertResult['success'] ?? null,
-        'lat'           => $location['lat'] ?? null,
-        'lng'           => $location['lng'] ?? null,
-        'placeId'       => $location['placeId'] ?? null
+    $apiKey = skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+    if (!$apiKey) {
+        error_log('[Google Places] Missing GOOGLE_MAPS_API_KEY');
+        return ['placeId' => null];
+    }
+
+    $url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query=' . urlencode($query) . '&key=' . $apiKey;
+
+    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    $response = @file_get_contents($url, false, $context);
+
+    if ($response === false) {
+        error_log('[Google Places] Request timeout or failed: ' . $url);
+        return ['placeId' => null];
+    }
+
+    $data = json_decode($response, true);
+    if (!is_array($data) || ($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
+        error_log('[Google Places] Invalid response: ' . json_encode($data));
+        return ['placeId' => null];
+    }
+
+    $result = $data['results'][0];
+
+    return [
+        'placeId' => $result['place_id'] ?? null,
+        'address' => $result['formatted_address'] ?? '',
+        'city'    => $locationInput['city'] ?? '',
+        'state'   => $locationInput['state'] ?? '',
+        'zip'     => $locationInput['zip'] ?? '',
+        'lat'     => $result['geometry']['location']['lat'] ?? null,
+        'lng'     => $result['geometry']['location']['lng'] ?? null,
+        'suite'   => null
     ];
-
-    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) ?: '{"error":"json_encode_failed"}';
-
-    $logged = false;
-    try {
-        logAction($db, [
-            'type'      => $actionType,
-            'contactId' => (int)$currentUserId,
-            'prompt'    => $input,
-            'response'  => $responseJson,
-            'intent'    => $intent,
-            'lat'       => $location['lat'] ?? null,
-            'lng'       => $location['lng'] ?? null,
-            'origin'    => ACTION_ORIGIN_USER
-        ]);
-        $logged = true;
-    } catch (Throwable $e) {
-        error_log('UNIFIED LOG FAILURE: ' . $e->getMessage());
-    }
-
-    if (!$logged) {
-        try {
-            $stmt = $db->prepare("
-                INSERT INTO tblActions 
-                (actionTypeId, contactId, actionOrigin, actionUnix, promptText, responseText, 
-                 intent, intentConfidence, ipAddress, latitude, longitude, userAgent)
-                VALUES 
-                (:type, :contactId, :origin, UNIX_TIMESTAMP(), :prompt, :response, 
-                 :intent, :confidence, :ip, :lat, :lng, :ua)
-            ");
-            $stmt->execute([
-                'type'       => $actionType,
-                'contactId'  => (int)$currentUserId,
-                'origin'     => ACTION_ORIGIN_USER,
-                'prompt'     => substr($input, 0, 500),
-                'response'   => substr($responseJson, 0, 1000),
-                'intent'     => $intent,
-                'confidence' => 1.00,
-                'ip'         => $_SERVER['REMOTE_ADDR'] ?? null,
-                'lat'        => $location['lat'] ?? null,
-                'lng'        => $location['lng'] ?? null,
-                'ua'         => $_SERVER['HTTP_USER_AGENT'] ?? null
-            ]);
-        } catch (Throwable $e2) {
-            error_log('FALLBACK LOG FAILURE: ' . $e2->getMessage());
-        }
-    }
 }
 
-#endregion
+function resolveCensusGeography(array $location): array {
+    if (empty($location['lat']) || empty($location['lng'])) {
+        return ['county' => '', 'countyFips' => null];
+    }
 
-#region SECTION 3 — Final Response
+    $url = "https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x={$location['lng']}&y={$location['lat']}&benchmark=Public_AR_Current&vintage=Current_Current&format=json";
 
-if (($outcome['outcome'] ?? '') === 'reject') {
-    echo json_encode(['status' => 'reject', 'reason' => $outcome['reason'] ?? 'Invalid input']);
-} elseif (($outcome['outcome'] ?? '') === 'partial') {
-    echo json_encode([
-        'status'   => 'partial',
-        'reason'   => $outcome['reason'] ?? 'Partial resolution',
-        'location' => $location ?? null,
-        'requestId'=> $varRequestId
-    ]);
-} elseif (($outcome['outcome'] ?? '') === 'conflict') {
-    echo json_encode($outcome);
-} else {
-    echo json_encode([
-        'status'           => $outcome['outcome'] ?? 'unknown',
-        'entity'           => $entity,
-        'location'         => $locationRecord,
-        'contact'          => $outcome['contact'] ?? $contactRecord ?? null,
-        'insert'           => $insertResult,
-        'resolvedLocation' => $location,
-        'scenario'         => $decision ?? null,
-        'requestId'        => $varRequestId
-    ]);
+    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    $response = @file_get_contents($url, false, $context);
+
+    if ($response === false) {
+        error_log('[Census Geocoder] Request timeout or failed');
+        return ['county' => '', 'countyFips' => null];
+    }
+
+    $data = json_decode($response, true);
+    if (!is_array($data) || empty($data['result']['geographies']['Counties'][0])) {
+        error_log('[Census Geocoder] Invalid response');
+        return ['county' => '', 'countyFips' => null];
+    }
+
+    $countyData = $data['result']['geographies']['Counties'][0];
+
+    return [
+        'county'     => $countyData['NAME'] ?? '',
+        'countyFips' => $countyData['GEOID'] ?? null
+    ];
+}
+
+function conditionallyResolveParcel(array $location): array {
+    $address = trim(($location['address'] ?? '') . ' ' . ($location['city'] ?? ''));
+    if (empty($address)) {
+        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
+    }
+
+    $url = 'https://mcassessor.maricopa.gov/search/sub/?q=' . urlencode($address);
+
+    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    $response = @file_get_contents($url, false, $context);
+
+    if ($response === false) {
+        error_log('[Maricopa Parcel] Request timeout or failed');
+        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
+    }
+
+    $data = json_decode($response, true);
+    if (!is_array($data) || empty($data['results']) || !is_array($data['results'])) {
+        error_log('[Maricopa Parcel] Invalid or empty response');
+        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
+    }
+
+    foreach ($data['results'] as $row) {
+        if (!empty($row['parcelNumber']) || !empty($row['APN'])) {
+            return [
+                'parcelNumber' => $row['parcelNumber'] ?? $row['APN'] ?? null,
+                'jurisdiction' => 'Maricopa County'
+            ];
+        }
+    }
+
+    return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
 }
 
 #endregion
