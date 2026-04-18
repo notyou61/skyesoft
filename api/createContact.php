@@ -693,33 +693,68 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 // Hardened API functions with timeouts
 
 function validateLocationWithGoogle(array $locationInput): array {
-    $query = trim(($locationInput['address'] ?? '') . ' ' . 
-                  ($locationInput['city'] ?? '') . ' ' . 
-                  ($locationInput['state'] ?? ''));
 
-    if (empty($query)) {
+    // Build stronger query (include zip if available)
+    $queryParts = [
+        $locationInput['address'] ?? '',
+        $locationInput['city'] ?? '',
+        $locationInput['state'] ?? '',
+        $locationInput['zip'] ?? ''
+    ];
+
+    $query = trim(implode(' ', array_filter($queryParts)));
+
+    if ($query === '') {
+        error_log('[Google Places] Empty query');
         return ['placeId' => null];
     }
 
     $apiKey = skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+
     if (!$apiKey) {
         error_log('[Google Places] Missing GOOGLE_MAPS_API_KEY');
         return ['placeId' => null];
     }
 
-    $url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query=' . urlencode($query) . '&key=' . $apiKey;
+    $url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query='
+        . urlencode($query)
+        . '&key=' . $apiKey;
 
-    $context = stream_context_create(['http' => ['timeout' => 5]]);
+    // Add timeout + headers (more stable)
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 5,
+            'header'  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ]);
+
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
-        error_log('[Google Places] Request timeout or failed: ' . $url);
+        error_log('[Google Places] Request failed: ' . $url);
         return ['placeId' => null];
     }
 
+    // 🔥 DEBUG LOG (CRITICAL FOR YOU RIGHT NOW)
+    error_log('[Google RAW RESPONSE] ' . $response);
+
     $data = json_decode($response, true);
-    if (!is_array($data) || ($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
-        error_log('[Google Places] Invalid response: ' . json_encode($data));
+
+    if (!is_array($data)) {
+        error_log('[Google Places] Invalid JSON response');
+        return ['placeId' => null];
+    }
+
+    // 🔥 CHECK STATUS EXPLICITLY
+    $status = $data['status'] ?? 'UNKNOWN';
+
+    if ($status !== 'OK') {
+        error_log('[Google Places STATUS ERROR] ' . $status . ' | ' . json_encode($data));
+        return ['placeId' => null];
+    }
+
+    if (empty($data['results'][0])) {
+        error_log('[Google Places] No results found for query: ' . $query);
         return ['placeId' => null];
     }
 
