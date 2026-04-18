@@ -4920,22 +4920,27 @@
                     "phases": {
                         "derivationPhase": {
                         "description": "Normalizes and infers missing contact attributes prior to resolution.",
-                            "rules": [
-                                "Derived attributes must be computed after parsing and before resolutionPhase.",
-                                "Explicit user-provided values must never be overridden.",
-                                "Derived values must be normalized before use in duplicate detection.",
-                                "AI may be used only when deterministic logic is insufficient."
-                            ],
-                            "steps": [
-                                "normalizeContactName",
-                                "normalizeContactPhone",
-                                "normalizeContactEmail",
-                                "normalizeContactTitle",
-                                "inferSalutation"
-                            ]
+                        "rules": [
+                            "Derived attributes must be computed after parsing and before resolutionPhase.",
+                            "Explicit user-provided values must never be overridden.",
+                            "Derivation phase must fully complete before resolutionPhase begins.",
+                            "AI may be used only when deterministic logic is insufficient."
+                        ],
+                        "steps": [
+                            "normalizeContactName",
+                            "normalizeContactPhone",
+                            "normalizeContactEmail",
+                            "normalizeContactTitle",
+                            "inferSalutation"
+                        ]
                         },
                         "resolutionPhase": {
                         "description": "Resolves entity, location, and contact existence without branching.",
+                        "rules": [
+                            "EntityType must be determined during resolveEntity and prior to downstream resolution steps.",
+                            "EntityType must not be used as a primary or secondary duplicate matching criterion.",
+                            "Resolution steps must operate on normalized data produced by derivationPhase."
+                        ],
                         "steps": [
                             "resolveEntity",
                             "inferEntityType",
