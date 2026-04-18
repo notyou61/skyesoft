@@ -114,9 +114,12 @@ try {
     #region CORE PROCESSING — CORRECT ORDER
 
     error_log('[STAGE] PARSE');
+
     $parsed = parseContact($input);
 
     $aiData = extractContactWithAI($input);
+
+    error_log('[AI DATA] ' . json_encode($aiData));
 
     $parsed = [
         'entity' => array_merge($parsed['entity'], $aiData['entity'] ?? []),
@@ -543,6 +546,10 @@ PROMPT;
 
     try {
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
+        error_log('[AI RAW RESPONSE] ' . $response);
+
+        $data = json_decode($response, true);
+        error_log('[AI PARSED] ' . json_encode($data));
 
         $data = json_decode($response, true);
 
