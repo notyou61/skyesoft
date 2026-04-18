@@ -34,6 +34,10 @@ require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
 require_once __DIR__ . '/askOpenAI.php';
 
+if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
+    require_once __DIR__ . '/utils/envLoader.php';
+}
+
 skyesoftLoadEnv();
 
 ini_set('log_errors', 1);
@@ -43,6 +47,7 @@ error_log('=== HIT createContact ===');
 error_log('[RAW] ' . $raw);
 error_log('[DECODED] ' . json_encode($data));
 error_log('[INPUT FIELD] ' . var_export($input, true));
+error_log('[DEBUG] callOpenAI exists: ' . (function_exists('callOpenAI') ? 'YES' : 'NO'));
 
 // Resolve Salutation (MASTER - DRY - Single Source of Truth)
 function resolveSalutation($input, $firstName, $lastName): string {
