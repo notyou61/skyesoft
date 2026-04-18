@@ -36,6 +36,10 @@ require_once __DIR__ . '/askOpenAI.php';  // 👈 HERE
 
 skyesoftLoadEnv();
 
+$apiKey = skyesoftGetEnv('OPENAI_API_KEY');
+
+error_log('[DEBUG] OPENAI_API_KEY present: ' . ($apiKey ? 'YES' : 'NO'));
+
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/createContact_debug.log');
 
@@ -125,11 +129,24 @@ try {
 
     error_log('[AI DATA] ' . json_encode($aiData));
 
-    $parsed = [
-        'entity' => array_merge($parsed['entity'], $aiData['entity'] ?? []),
-        'location' => array_merge($parsed['location'], $aiData['location'] ?? []),
-        'contact' => array_merge($parsed['contact'], $aiData['contact'] ?? [])
-    ];
+    // 🔥 Smart merge (AI fills gaps ONLY)
+    foreach (['entity', 'location', 'contact'] as $section) {
+
+        if (!isset($parsed[$section])) continue;
+
+        foreach ($parsed[$section] as $key => $value) {
+
+            $aiValue = $aiData[$section][$key] ?? null;
+
+            // Only replace if parsed is empty AND AI has value
+            if (
+                (empty($value) || $value === null) &&
+                !empty($aiValue)
+            ) {
+                $parsed[$section][$key] = $aiValue;
+            }
+        }
+    }
 
     #region Resolve Contact Fields
     $contact =& $parsed['contact'];
@@ -521,11 +538,15 @@ function inferEntityTypeAI(string $entityName): string {
 function extractContactWithAI(string $input): array {
 
     if (!function_exists('callOpenAI')) {
+        error_log('[AI] callOpenAI missing');
         return [];
     }
 
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
-    if (!$apiKey) return [];
+    if (!$apiKey) {
+        error_log('[AI] Missing API key');
+        return [];
+    }
 
     $prompt = <<<PROMPT
 Extract structured contact data from the following text.
@@ -552,18 +573,38 @@ PROMPT;
 
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
 
-        error_log('[AI RAW RESPONSE] ' . $response);
-
-        // 🔥 Force extract JSON only
-        if (preg_match('/\{.*\}/s', $response, $matches)) {
-            $response = $matches[0];
+        if (!$response) {
+            error_log('[AI RAW RESPONSE] null');
+            return [];
         }
 
-        $data = json_decode($response, true);
+        error_log('[AI RAW RESPONSE] ' . $response);
 
-        error_log('[AI PARSED] ' . json_encode($data));
+        // ✅ Clean markdown wrappers
+        $clean = preg_replace('/^```json\s*/i', '', $response);
+        $clean = preg_replace('/^```\s*/', '', $clean);
+        $clean = preg_replace('/\s*```$/', '', $clean);
 
-        return is_array($data) ? $data : [];
+        // ✅ SAFE JSON extraction (non-greedy)
+        if (preg_match('/\{.*?\}/s', $clean, $matches)) {
+            $clean = $matches[0];
+        } else {
+            error_log('[AI JSON EXTRACTION FAILED]');
+            return [];
+        }
+
+        error_log('[AI CLEAN] ' . $clean);
+
+        $data = json_decode($clean, true);
+
+        if (!is_array($data)) {
+            error_log('[AI PARSED] invalid JSON');
+            return [];
+        }
+
+        error_log('[AI DATA] ' . json_encode($data));
+
+        return $data;
 
     } catch (Throwable $e) {
         error_log('[AI EXTRACT ERROR] ' . $e->getMessage());

@@ -39,10 +39,9 @@ require_once __DIR__ . '/sessionBootstrap.php';
 // ─────────────────────────────────────────
 // 🌍 Load environment
 // ─────────────────────────────────────────
-if (!function_exists('skyesoftLoadEnv') || !function_exists('skyesoftGetEnv')) {
+if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
 }
-
 skyesoftLoadEnv();
 
 // ─────────────────────────────────────────
