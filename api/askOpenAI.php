@@ -116,7 +116,6 @@ function skyesoftLoadEnv(): void {
 
     // #endregion
 
-
     // #region Load each env file
 
     foreach ($envFiles as $envPath) {

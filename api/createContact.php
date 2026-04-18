@@ -32,6 +32,7 @@ require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
+require_once __DIR__ . '/askOpenAI.php';
 
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/createContact_debug.log');
@@ -545,7 +546,7 @@ Text:
 PROMPT;
 
     try {
-    
+
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
 
         error_log('[AI RAW RESPONSE] ' . $response);
