@@ -918,23 +918,10 @@ function buildAuditFacts(array $report): array {
 }
 #endregion
 
-#region SECTION 4.5 — Library Mode Guard
+#region SECTION 4.5 — Execution Guard (Auto)
 
-// Prevent controller execution when included internally (test harness, CLI, etc.)
-if (
-    (defined('SKYESOFT_INTERNAL') && SKYESOFT_INTERNAL) ||
-    (defined('SKYESOFT_LIB_MODE') && SKYESOFT_LIB_MODE)
-) {
-    return;
-}
-
-// 🌍 JSON Input Intake (POST body support)
-
-$rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput, true);
-
-if (!is_array($input)) {
-    $input = [];
+if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'])) {
+    return; // File is being included → STOP execution
 }
 
 #endregion
