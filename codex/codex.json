@@ -4916,19 +4916,47 @@
                 },
                 "processingModel": {
                     "order": 2,
-                    "description": "Parses and resolves entity, location, and contact data.",
+                    "description": "Parses, derives, and resolves entity, location, and contact data.",
                     "phases": {
-                        "resolutionPhase": {
-                            "description": "Resolves entity, location, and contact existence without branching.",
+                        "derivationPhase": {
+                        "description": "Normalizes and infers missing contact attributes prior to resolution.",
+                            "rules": [
+                                "Derived attributes must be computed after parsing and before resolutionPhase.",
+                                "Explicit user-provided values must never be overridden.",
+                                "Derived values must be normalized before use in duplicate detection.",
+                                "AI may be used only when deterministic logic is insufficient."
+                            ],
                             "steps": [
-                                "resolveEntity",
-                                "validateLocationWithGoogle",
-                                "resolveCensusGeography",
-                                "conditionallyResolveParcel",
-                                "resolveLocationRecord",
-                                "checkLocationDuplicate",
-                                "checkContactDuplicate"
+                                "normalizeContactName",
+                                "normalizeContactPhone",
+                                "normalizeContactEmail",
+                                "normalizeContactTitle",
+                                "inferSalutation"
                             ]
+                        },
+                        "resolutionPhase": {
+                        "description": "Resolves entity, location, and contact existence without branching.",
+                        "steps": [
+                            "resolveEntity",
+                            "inferEntityType",
+                            "validateLocationWithGoogle",
+                            "resolveCensusGeography",
+                            "conditionallyResolveParcel",
+                            "resolveLocationRecord",
+                            "checkLocationDuplicate",
+                            "checkContactDuplicate"
+                        ],
+                        "entityTypeInference": {
+                            "description": "Determines entity classification during resolveEntity phase.",
+                            "types": ["Company", "Customer", "Vendor", "Jurisdiction"],
+                            "rules": [
+                            "EntityType must be determined during resolveEntity, not post-resolution.",
+                            "AI may suggest entityType based on name patterns.",
+                            "Application must validate or override AI suggestions.",
+                            "Jurisdiction must be derived from parcel/census logic when applicable.",
+                            "EntityType must be stored at entity creation and remain stable thereafter."
+                            ]
+                        }
                         }
                     }
                 },
