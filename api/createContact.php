@@ -116,6 +116,14 @@ try {
     error_log('[STAGE] PARSE');
     $parsed = parseContact($input);
 
+    $aiData = extractContactWithAI($input);
+
+    $parsed = [
+        'entity' => array_merge($parsed['entity'], $aiData['entity'] ?? []),
+        'location' => array_merge($parsed['location'], $aiData['location'] ?? []),
+        'contact' => array_merge($parsed['contact'], $aiData['contact'] ?? [])
+    ];
+
     #region Resolve Contact Fields
     $contact =& $parsed['contact'];
 
@@ -501,6 +509,49 @@ function inferEntityTypeAI(string $entityName): string {
 
     $cache[$key] = $finalType;
     return $finalType;
+}
+
+function extractContactWithAI(string $input): array {
+
+    if (!function_exists('callOpenAI')) {
+        return [];
+    }
+
+    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
+    if (!$apiKey) return [];
+
+    $prompt = <<<PROMPT
+Extract structured contact data from the following text.
+
+Return ONLY valid JSON with this exact structure:
+
+{
+  "entity": {"name": ""},
+  "location": {"address": "", "city": "", "state": "", "zip": ""},
+  "contact": {"firstName": "", "lastName": "", "title": "", "salutation": ""}
+}
+
+Rules:
+- No extra text
+- No explanation
+- Leave unknown fields empty
+- State must be 2-letter abbreviation
+
+Text:
+"""{$input}"""
+PROMPT;
+
+    try {
+        $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
+
+        $data = json_decode($response, true);
+
+        return is_array($data) ? $data : [];
+
+    } catch (Throwable $e) {
+        error_log('[AI EXTRACT ERROR] ' . $e->getMessage());
+        return [];
+    }
 }
 
 function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord, string $input): array {
