@@ -545,13 +545,19 @@ Text:
 PROMPT;
 
     try {
+    
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
+
         error_log('[AI RAW RESPONSE] ' . $response);
 
-        $data = json_decode($response, true);
-        error_log('[AI PARSED] ' . json_encode($data));
+        // 🔥 Force extract JSON only
+        if (preg_match('/\{.*\}/s', $response, $matches)) {
+            $response = $matches[0];
+        }
 
         $data = json_decode($response, true);
+
+        error_log('[AI PARSED] ' . json_encode($data));
 
         return is_array($data) ? $data : [];
 
