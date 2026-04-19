@@ -181,18 +181,28 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    #region STEP 2 — Normalize + Clean
+    #region STEP 2 — Normalize + Clean (FINAL FIX)
 
+    // Normalize helper
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // Remove suite/unit
-    $cleanAddress = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $address);
-    $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
+    // 🔥 CRITICAL: Cut everything after first comma (street only)
+    $streetOnly = explode(',', $address)[0];
 
-    $targetStreet = trim($cleanAddress);
+    // Remove suite/unit
+    $streetOnly = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $streetOnly);
+
+    // Normalize spacing
+    $streetOnly = preg_replace('/\s+/', ' ', $streetOnly);
+
+    // Final values
+    $targetStreet = trim($streetOnly);
     $targetNorm   = $normalize($targetStreet);
+
+    // Debug (KEEP THIS FOR NOW)
+    error_log('[MCA CLEAN ADDRESS] ' . $targetStreet);
 
     #endregion
 
