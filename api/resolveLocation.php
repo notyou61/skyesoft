@@ -170,36 +170,38 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
 
-// Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
-    #region STEP 1 — Init & Guards
+    #region STEP 1 — Init
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-    if (empty($apiKey) || empty(trim($address)) || empty(trim($city))) {
+    if (empty($apiKey) || empty(trim($address))) {
         return null;
     }
 
     #endregion
 
-    #region STEP 2 — Helpers (normalize + clean street)
+    #region STEP 2 — Normalize + Clean
 
-    // Normalize for matching (A-Z0-9 only)
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // Strip suite/unit from input
+    // Remove suite/unit
     $cleanAddress = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $address);
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
+
     $targetStreet = trim($cleanAddress);
     $targetNorm   = $normalize($targetStreet);
 
     #endregion
 
-    #region STEP 3 — Build Query
+    #region STEP 3 — Query (CRITICAL FIX)
 
-    $query = urlencode(trim($targetStreet . ' ' . $city . ' AZ'));
+    // 🔥 STREET ONLY — DO NOT ADD CITY
+    $query = urlencode($targetStreet);
+
+    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
     $context = stream_context_create([
         'http' => [
@@ -208,16 +210,9 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         ]
     ]);
 
-    #endregion
-
-    #region STEP 4 — Request (MCA Parcel Lookup)
-
-    // Use proven endpoint (LEGACY WORKING)
-    $url = "https://mcassessor.maricopa.gov/search/sub/?q={$query}";
-
     $response = @file_get_contents($url, false, $context);
 
-    // Always log (even failures)
+    // Debug
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         date('Y-m-d H:i:s') .
@@ -227,95 +222,60 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         FILE_APPEND
     );
 
-    // Validate response (single check — DRY)
     if (
         $response === false ||
         $response === '' ||
         stripos($response, '<html') !== false ||
-        strlen($response) < 100 // catches invalid short responses
+        strlen($response) < 100
     ) {
-        error_log('[MCA] Invalid or non-JSON response from /search/sub/');
+        error_log('[MCA] Invalid response');
         return null;
     }
 
     #endregion
 
-    #region STEP 5 — Decode + Detect Structure
+    #region STEP 4 — Decode
 
     $data = json_decode($response, true);
-    if (!is_array($data)) {
-        error_log('[MCA] Invalid JSON');
+
+    if (!is_array($data) || empty($data['Results'])) {
         return null;
     }
-
-    $isProperty = isset($data['Results']);
-    $isSub      = isset($data['results']);
-
-    if (!$isProperty && !$isSub) {
-        error_log('[MCA] Unknown response structure');
-        return null;
-    }
-
-    $rows = $isProperty ? $data['Results'] : $data['results'];
 
     #endregion
 
-    #region STEP 6 — Match + Extract
+    #region STEP 5 — Match + Filter (CRITICAL)
 
-    foreach ($rows as $r) {
+    foreach ($data['Results'] as $r) {
 
-        // Map address field by endpoint
-        $apiAddress = trim(
-            $isProperty
-                ? ($r['SitusAddress'] ?? '')
-                : ($r['address'] ?? '')
-        );
-
+        $apiAddress = trim($r['SitusAddress'] ?? '');
         if ($apiAddress === '') continue;
 
-        // Clean + normalize API address
-        $apiAddressClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $apiAddress);
-        $apiAddressClean = preg_replace('/\s+/', ' ', $apiAddressClean);
-        $apiNorm = $normalize($apiAddressClean);
+        $apiNorm = $normalize($apiAddress);
 
-        // Match
         if (
             strpos($apiNorm, $targetNorm) !== false ||
             strpos($targetNorm, $apiNorm) !== false
         ) {
 
-            // Map APN field
-            $apnRaw = preg_replace(
-                '/[^A-Z0-9]/',
-                '',
-                strtoupper(
-                    $isProperty
-                        ? ($r['APN'] ?? '')
-                        : ($r['apn'] ?? '')
-                )
-            );
+            // 🚫 Skip junk parcels
+            $type = strtoupper($r['PropertyType'] ?? '');
+            if (strpos($type, 'MINERAL') !== false) continue;
 
+            $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
             if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
-            // Format APN (preserve suffix if present)
+            // Format APN
             if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
-                $formatted = $m[1] . '-' . $m[2] . '-' . $m[3] . $m[4];
+                $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
             } else {
                 $formatted = $apnRaw;
             }
 
-            // Map jurisdiction field
-            $jurRaw = strtoupper(trim(
-                $isProperty
-                    ? ($r['TaxAreaDescription'] ?? '')
-                    : ($r['jurisdiction'] ?? '')
-            ));
+            // Jurisdiction (from MCA only)
+            $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
 
-            if (
-                $jurRaw === '' ||
-                strpos($jurRaw, 'UNINCORPORATED') !== false ||
-                strpos($jurRaw, 'NO CITY') !== false
-            ) {
+            if ($jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false) {
                 $jurisdiction = 'Maricopa County';
             } else {
                 $jurisdiction = ucwords(strtolower($jurRaw));
@@ -330,7 +290,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    error_log("No parcel match for: {$address}, {$city}");
+    error_log("No parcel match for: {$address}");
     return null;
 }
 
