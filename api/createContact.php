@@ -738,14 +738,14 @@ function validateLocationWithGoogle(array $locationInput): array {
         return ['placeId' => null];
     }
 
-    $apiKey = skyesoftGetEnv('GOOGLE_MAPS_API_KEY');
+    $apiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY');
 
     if (!$apiKey) {
-        error_log('[Google Places] Missing GOOGLE_MAPS_API_KEY');
+        error_log('[Google Places] Missing GOOGLE_MAPS_BACKEND_API_KEY');
         return ['placeId' => null];
     }
 
-    $url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query='
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($query) . '&key=' . $apiKey
         . urlencode($query)
         . '&key=' . $apiKey;
 
