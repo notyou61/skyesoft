@@ -107,20 +107,28 @@ try {
     $parsed = deriveContactAttributes($parsed, $input);
     #endregion
 
-    #region 2b. resolutionPhase
+    #region 2b. resolutionPhase — Entity + Location + Contact Resolution
 
+    // Resolve entity
     $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
-    if (($entity['status'] ?? null) === 'new' && empty($entity['entityType']) && !empty($entity['entityName'])) {
+    // Infer entity type if new
+    if (
+        ($entity['status'] ?? null) === 'new' &&
+        empty($entity['entityType']) &&
+        !empty($entity['entityName'])
+    ) {
         $entity['entityType'] = inferEntityTypeAI($entity['entityName']);
         $parsed['entity']['entityType'] = $entity['entityType'];
     }
 
+    // Prepare location input
     $locationInput = $parsed['location'] ?? [];
 
-    // 🔥 Single source of truth
+    // 🔥 Single source of truth — ALL location logic handled inside resolveLocation()
     $location = resolveLocation($locationInput) ?? [];
 
+    // Validate location
     if (empty($location['placeId'])) {
 
         $outcome = [
@@ -130,23 +138,43 @@ try {
 
     } else {
 
+        // Resolve location record (DB lookup)
         $locationRecord = resolveLocationRecord(
             $db,
             $entity['entityId'] ?? null,
             $location['placeId']
         );
 
-        $contactRecord = ($entity['status'] === 'existing' && $locationRecord['status'] === 'existing')
+        // Resolve contact (only if entity + location already exist)
+        $contactRecord = (
+            ($entity['status'] === 'existing') &&
+            ($locationRecord['status'] === 'existing')
+        )
             ? resolveContact(
                 $db,
                 $entity['entityId'],
                 $locationRecord['locationId'],
                 $parsed['contact'] ?? []
             )
-            : ['status' => 'new', 'contactId' => null];
+            : [
+                'status'    => 'new',
+                'contactId' => null
+            ];
 
-        $outcome = buildResolutionOutcome($entity, $location, $contactRecord);
-        $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
+        // Build outcome
+        $outcome = buildResolutionOutcome(
+            $entity,
+            $location,
+            $contactRecord
+        );
+
+        // Scenario evaluation (business logic layer)
+        $decision = evaluateScenario(
+            $db,
+            $entity,
+            $location,
+            $parsed['contact'] ?? []
+        );
     }
 
     #endregion
