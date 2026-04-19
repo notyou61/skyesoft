@@ -719,11 +719,10 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
     }
 }
 
-// Hardened API functions with timeouts
-
+// Validate and enrich location using Google Geocoding API
 function validateLocationWithGoogle(array $locationInput): array {
 
-    // Build stronger query (include zip if available)
+    // Build query
     $queryParts = [
         $locationInput['address'] ?? '',
         $locationInput['city'] ?? '',
@@ -734,24 +733,24 @@ function validateLocationWithGoogle(array $locationInput): array {
     $query = trim(implode(' ', array_filter($queryParts)));
 
     if ($query === '') {
-        error_log('[Google Places] Empty query');
+        error_log('[Google] Empty query');
         return ['placeId' => null];
     }
 
     $apiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY');
 
-    error_log('[GOOGLE KEY USED] ' . substr($apiKey, 0, 10));
-
     if (!$apiKey) {
-        error_log('[Google Places] Missing GOOGLE_MAPS_BACKEND_API_KEY');
+        error_log('[Google] Missing GOOGLE_MAPS_BACKEND_API_KEY');
         return ['placeId' => null];
     }
 
-    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($query) . '&key=' . $apiKey
-        . urlencode($query)
+    error_log('[GOOGLE KEY USED] ' . substr($apiKey, 0, 10));
+
+    // ✅ Correct URL
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' 
+        . urlencode($query) 
         . '&key=' . $apiKey;
 
-    // Add timeout + headers (more stable)
     $context = stream_context_create([
         'http' => [
             'timeout' => 5,
@@ -762,48 +761,45 @@ function validateLocationWithGoogle(array $locationInput): array {
     $response = @file_get_contents($url, false, $context);
 
     if ($response === false) {
-        error_log('[Google Places] Request failed: ' . $url);
+        error_log('[Google] Request failed: ' . $url);
         return ['placeId' => null];
     }
 
-    // 🔥 DEBUG LOG (CRITICAL FOR YOU RIGHT NOW)
     error_log('[Google RAW RESPONSE] ' . $response);
 
     $data = json_decode($response, true);
 
     if (!is_array($data)) {
-        error_log('[Google Places] Invalid JSON response');
+        error_log('[Google] Invalid JSON response');
         return ['placeId' => null];
     }
 
-    // 🔥 CHECK STATUS EXPLICITLY
     $status = $data['status'] ?? 'UNKNOWN';
 
     if ($status !== 'OK') {
-        error_log('[Google Places STATUS ERROR] ' . $status . ' | ' . json_encode($data));
+        error_log('[Google STATUS ERROR] ' . $status . ' | ' . json_encode($data));
         return ['placeId' => null];
     }
 
-    if (empty($data['results'][0])) {
-        error_log('[Google Places] No results found for query: ' . $query);
+    if (empty($data['results'])) {
+        error_log('[Google] No results for query: ' . $query);
         return ['placeId' => null];
     }
 
+    // 🔥 Smart result selection
     $result = null;
 
     foreach ($data['results'] as $r) {
-
         $types = $r['types'] ?? [];
 
-        // Prefer rooftop / precise address
-        if (in_array('street_address', $types) ||
-            in_array('premise', $types) ||
-            in_array('establishment', $types)) {
+        if (
+            in_array('street_address', $types) ||
+            in_array('premise', $types)
+        ) {
             $result = $r;
             break;
         }
 
-        // fallback
         if (!$result) {
             $result = $r;
         }
