@@ -108,6 +108,7 @@ try {
     #endregion
 
     #region 2b. resolutionPhase
+
     $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
     if (($entity['status'] ?? null) === 'new' && empty($entity['entityType']) && !empty($entity['entityName'])) {
@@ -117,63 +118,52 @@ try {
 
     $locationInput = $parsed['location'] ?? [];
 
-    $googleResult = validateLocationWithGoogle($locationInput);
-    if (empty($googleResult['placeId'])) {
-        $outcome = ['outcome' => 'partial', 'reason' => 'Unable to validate location with Google Places. Please provide a more complete address.'];
-    } else {
-        $location = [
-            'placeId'      => $googleResult['placeId'],
-            'address'      => $googleResult['address'] ?? $locationInput['address'] ?? '',
-            'suite'        => $googleResult['suite'] ?? $locationInput['suite'] ?? null,
-            'city'         => $googleResult['city'] ?? $locationInput['city'] ?? '',
-            'state'        => $googleResult['state'] ?? $locationInput['state'] ?? '',
-            'zip'          => $googleResult['zip'] ?? $locationInput['zip'] ?? null,
-            'lat'          => $googleResult['lat'] ?? null,
-            'lng'          => $googleResult['lng'] ?? null,
-            'county'       => '',
-            'countyFips'   => null,
-            'jurisdiction' => null,
-            'parcelNumber' => null
+    // 🔥 Single source of truth
+    $location = resolveLocation($locationInput) ?? [];
+
+    if (empty($location['placeId'])) {
+
+        $outcome = [
+            'outcome' => 'partial',
+            'reason'  => 'Unable to validate location with Google Places. Please provide a more complete address.'
         ];
 
-        $census = resolveCensusGeography($location);
-        $location['county']     = $census['county'] ?? '';
-        $location['countyFips'] = $census['countyFips'] ?? null;
+    } else {
 
-        if ($location['state'] === 'AZ' && stripos($location['county'] ?? '', 'Maricopa') !== false) {
-            $parcel = conditionallyResolveParcel($location);
-            $location['parcelNumber'] = $parcel['parcelNumber'] ?? null;
-            $location['jurisdiction'] = $parcel['jurisdiction'] ?? 'Maricopa County';
-        } else {
-            $location['jurisdiction'] = !empty($location['county']) 
-                ? $location['county'] . ' County' 
-                : null;
-        }
-
-        $locationRecord = resolveLocationRecord($db, $entity['entityId'] ?? null, $location['placeId']);
+        $locationRecord = resolveLocationRecord(
+            $db,
+            $entity['entityId'] ?? null,
+            $location['placeId']
+        );
 
         $contactRecord = ($entity['status'] === 'existing' && $locationRecord['status'] === 'existing')
-            ? resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'])
+            ? resolveContact(
+                $db,
+                $entity['entityId'],
+                $locationRecord['locationId'],
+                $parsed['contact'] ?? []
+            )
             : ['status' => 'new', 'contactId' => null];
 
         $outcome = buildResolutionOutcome($entity, $location, $contactRecord);
         $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
     }
+
     #endregion
 
-    #region 3. decisionPhase & 4. commitPhase
-    if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
-        if (($outcome['outcome'] ?? null) === 'resolved_new') {
-            $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
+        #region 3. decisionPhase & 4. commitPhase
+        if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
+            if (($outcome['outcome'] ?? null) === 'resolved_new') {
+                $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
+            }
         }
-    }
-    #endregion
+        #endregion
 
-} catch (Throwable $e) {
-    error_log('FATAL ERROR in createContact: ' . $e->getMessage());
-    echo json_encode(['DEBUG' => true, 'error' => $e->getMessage()], JSON_PRETTY_PRINT);
-    exit;
-}
+    } catch (Throwable $e) {
+        error_log('FATAL ERROR in createContact: ' . $e->getMessage());
+        echo json_encode(['DEBUG' => true, 'error' => $e->getMessage()], JSON_PRETTY_PRINT);
+        exit;
+    }
 
 #endregion
 
@@ -844,40 +834,6 @@ function resolveCensusGeography(array $location): array {
         'county'     => $countyData['NAME'] ?? '',
         'countyFips' => $countyData['GEOID'] ?? null
     ];
-}
-
-function conditionallyResolveParcel(array $location): array {
-    $address = trim(($location['address'] ?? '') . ' ' . ($location['city'] ?? ''));
-    if (empty($address)) {
-        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
-    }
-
-    $url = 'https://mcassessor.maricopa.gov/search/sub/?q=' . urlencode($address);
-
-    $context = stream_context_create(['http' => ['timeout' => 5]]);
-    $response = @file_get_contents($url, false, $context);
-
-    if ($response === false) {
-        error_log('[Maricopa Parcel] Request timeout or failed');
-        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
-    }
-
-    $data = json_decode($response, true);
-    if (!is_array($data) || empty($data['results']) || !is_array($data['results'])) {
-        error_log('[Maricopa Parcel] Invalid or empty response');
-        return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
-    }
-
-    foreach ($data['results'] as $row) {
-        if (!empty($row['parcelNumber']) || !empty($row['APN'])) {
-            return [
-                'parcelNumber' => $row['parcelNumber'] ?? $row['APN'] ?? null,
-                'jurisdiction' => 'Maricopa County'
-            ];
-        }
-    }
-
-    return ['parcelNumber' => null, 'jurisdiction' => 'Maricopa County'];
 }
 
 #endregion

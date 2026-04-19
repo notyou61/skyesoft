@@ -10,7 +10,10 @@ error_log("RUNNING NEW VERSION — NO PENDING");
 
 #region SECTION 0 — Core Function
 
+// Resolve Location Function — main entry point for geocoding and enrichment
 function resolveLocation(array $input): array {
+
+    #region STEP 1 — Initialization Results
 
     $result = [
         'placeId' => null,
@@ -26,7 +29,9 @@ function resolveLocation(array $input): array {
         'parcelNumber' => null
     ];
 
-    #region STEP 1 — Google
+    #endregion
+
+    #region STEP 2 — Google (Geocoding Source of Truth)
 
     error_log('[GEOCODE INPUT] ' . json_encode($input));
 
@@ -52,12 +57,12 @@ function resolveLocation(array $input): array {
         return $result;
     }
 
-    // Canonical merge (Google is source of truth)
+    // Canonical merge (Google is authoritative)
     $result = array_merge($result, $google);
 
     #endregion
 
-    #region STEP 2 — Census
+    #region STEP 3 — Census (Geography Enrichment)
 
     $census = getCensusGeography($result['lat'], $result['lng']);
 
@@ -66,51 +71,66 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 3 — Maricopa Parcel
+    #region STEP 4 — Maricopa Parcel (Conditional Lookup)
 
     if (
         $result['state'] === 'AZ' &&
         strpos(strtoupper($result['county'] ?? ''), 'MARICOPA') !== false
     ) {
 
-        $street = trim($google['address'] ?? '');
-
-        if (strpos($street, ',') !== false) {
-            $street = substr($street, 0, strpos($street, ','));
-        }
-
+        // DRY: use helper for clean street extraction
+        $street = extractStreetAddress($google['address'] ?? '');
         $street = preg_replace('/\s+/', ' ', $street);
         $street = trim($street);
 
         if (!empty($street) && !empty($google['city'])) {
 
+            error_log('[PARCEL INPUT] ' . json_encode([
+                'street' => $street,
+                'city'   => $google['city']
+            ]));
+
             $parcel = getMaricopaParcelFromAddress($street, $google['city']);
 
-            error_log("resolveLocation DEBUG - Street: '{$street}', City: '{$google['city']}', Parcel result: " . json_encode($parcel));
+            error_log('[PARCEL RESULT] ' . json_encode($parcel));
 
             if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
+
                 $result['parcelNumber'] = $parcel['parcelNumber'];
+
                 if (!empty($parcel['jurisdiction'])) {
                     $result['jurisdiction'] = $parcel['jurisdiction'];
+                } else {
+                    $result['jurisdiction'] = $google['city'];
                 }
+
             } else {
-                $result['parcelNumber'] = null; // 🔥 FIXED
+
+                // Parcel lookup failed but location is valid
+                $result['parcelNumber'] = null;
                 $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
+
             }
 
         } else {
-            $result['parcelNumber'] = null; // 🔥 FIXED
+
+            // Missing usable address components
+            $result['parcelNumber'] = null;
             $result['jurisdiction'] = 'Maricopa County';
+
         }
 
     } else {
-        $result['parcelNumber'] = null; // 🔥 FIXED
+
+        // Non-Maricopa fallback
+        $result['parcelNumber'] = null;
         $result['jurisdiction'] = $result['city'] ?? $result['county'] ?? 'Unknown';
+
     }
 
     #endregion
 
-    #region STEP 4 — Results
+    #region STEP 5 — Results
 
     return $result;
 
