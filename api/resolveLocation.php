@@ -170,6 +170,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
 
+// Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #region STEP 1 — Init
@@ -181,14 +182,13 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    #region STEP 2 — Normalize + Clean (FINAL FIX)
+    #region STEP 2 — Normalize + Clean (Street Only)
 
-    // Normalize helper
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // 🔥 CRITICAL: Cut everything after first comma (street only)
+    // 🔥 HARD CUT: street only
     $streetOnly = explode(',', $address)[0];
 
     // Remove suite/unit
@@ -197,21 +197,20 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     // Normalize spacing
     $streetOnly = preg_replace('/\s+/', ' ', $streetOnly);
 
-    // Final values
     $targetStreet = trim($streetOnly);
     $targetNorm   = $normalize($targetStreet);
 
-    // Debug (KEEP THIS FOR NOW)
     error_log('[MCA CLEAN ADDRESS] ' . $targetStreet);
 
     #endregion
 
-    #region STEP 3 — Query (CRITICAL FIX)
+    #region STEP 3 — Progressive Query Attempts (CRITICAL)
 
-    // 🔥 STREET ONLY — DO NOT ADD CITY
-    $query = urlencode($targetStreet);
-
-    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+    $attempts = [
+        $targetStreet,                                      // full
+        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet), // remove suffix
+        preg_replace('/^\d+\s+/', '', $targetStreet)        // remove number
+    ];
 
     $context = stream_context_create([
         'http' => [
@@ -220,56 +219,54 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         ]
     ]);
 
-    $response = @file_get_contents($url, false, $context);
+    $data = null;
 
-    // Debug
-    file_put_contents(
-        __DIR__ . '/mca_debug.log',
-        date('Y-m-d H:i:s') .
-        " | URL: {$url}\n" .
-        "TARGET: {$targetStreet}\n" .
-        "LEN: " . ($response !== false ? strlen($response) : 0) . "\n\n",
-        FILE_APPEND
-    );
+    foreach ($attempts as $attempt) {
 
-    if (
-        $response === false ||
-        $response === '' ||
-        stripos($response, '<html') !== false
-    ) {
-        error_log('[MCA] Transport or HTML failure');
-        return null;
+        if (empty(trim($attempt))) continue;
+
+        $query = urlencode(trim($attempt));
+        $url   = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+
+        $response = @file_get_contents($url, false, $context);
+
+        file_put_contents(
+            __DIR__ . '/mca_debug.log',
+            date('Y-m-d H:i:s') .
+            " | URL: {$url}\n" .
+            "ATTEMPT: {$attempt}\n" .
+            "LEN: " . ($response !== false ? strlen($response) : 0) . "\n\n",
+            FILE_APPEND
+        );
+
+        if (
+            $response === false ||
+            $response === '' ||
+            stripos($response, '<html') !== false
+        ) {
+            continue;
+        }
+
+        $decoded = json_decode($response, true);
+
+        if (is_array($decoded) && !empty($decoded['Results'])) {
+            error_log('[MCA SUCCESS QUERY] ' . $attempt);
+            $data = $decoded;
+            break;
+        }
     }
 
-    // Decode first
-    $data = json_decode($response, true);
-
-    if (!is_array($data)) {
-        error_log('[MCA] Invalid JSON');
-        return null;
-    }
-
-    // 🔥 VALID but empty is OK
-    if (!isset($data['Results']) || !is_array($data['Results'])) {
-        error_log('[MCA] Unexpected structure');
-        return null;
-    }
-
-    error_log('[MCA RESULTS COUNT] ' . count($data['Results']));
-
-    #endregion
-
-    #region STEP 4 — Decode
-
-    $data = json_decode($response, true);
-
-    if (!is_array($data) || empty($data['Results'])) {
+    if (!$data || empty($data['Results'])) {
+        error_log('[MCA] No results from any attempt');
         return null;
     }
 
     #endregion
 
-    #region STEP 5 — Match + Filter (FINAL FIXED)
+    #region STEP 4 — Match + Extract (Strong Match)
+
+    preg_match('/^\d+/', $targetStreet, $numMatch);
+    $targetNumber = $numMatch[0] ?? '';
 
     foreach ($data['Results'] as $r) {
 
@@ -278,19 +275,16 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
         $apiNorm = $normalize($apiAddress);
 
-        // 🔥 Extract house number from target
-        preg_match('/^\d+/', $targetStreet, $numMatch);
-        $targetNumber = $numMatch[0] ?? '';
-
-        // 🔥 Strong match: number + partial street
+        // 🔥 Strong match: same number + partial street match
         if (
+            $targetNumber !== '' &&
             strpos($apiNorm, $targetNumber) === 0 &&
             strpos($apiNorm, substr($targetNorm, 0, 8)) !== false
         ) {
 
             error_log('[MCA MATCH FOUND] ' . $apiAddress);
 
-            // 🚫 Skip junk parcels
+            // Skip mineral junk
             $type = strtoupper($r['PropertyType'] ?? '');
             if (strpos($type, 'MINERAL') !== false) continue;
 
@@ -305,7 +299,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
                 $formatted = $apnRaw;
             }
 
-            // Jurisdiction (authoritative from MCA)
+            // Jurisdiction (ONLY from MCA)
             $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
 
             if ($jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false) {
