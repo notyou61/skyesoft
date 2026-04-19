@@ -57,8 +57,24 @@ function resolveLocation(array $input): array {
         return $result;
     }
 
-    // Canonical merge (Google is authoritative)
-    $result = array_merge($result, $google);
+        // Canonical mapping (Google is authoritative, but controlled)
+
+        // Raw formatted address from Google
+        $rawAddress = trim($google['address'] ?? '');
+
+        // Extract clean street only
+        $street = extractStreetAddress($rawAddress);
+
+        // Assign ONLY schema-compliant fields
+        $result['address'] = $street;
+        $result['city']    = $google['city']  ?? null;
+        $result['state']   = $google['state'] ?? null;
+        $result['zip']     = $google['zip']   ?? null;
+
+        // Preserve useful metadata
+        $result['placeId'] = $google['placeId'] ?? null;
+        $result['lat']     = $google['lat'] ?? null;
+        $result['lng']     = $google['lng'] ?? null;
 
     #endregion
 
