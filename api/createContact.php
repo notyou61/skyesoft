@@ -575,26 +575,47 @@ Text:
 PROMPT;
 
     try {
-        $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
+        $response = callOpenAI(
+            $prompt,
+            $apiKey,
+            'gpt-4.1',
+            ["type" => "json_object"]
+        );
 
         if (!$response) {
             error_log('[AI RAW RESPONSE] null');
             return [];
         }
 
-        $clean = preg_replace('/^```json\s*/i', '', $response);
-        $clean = preg_replace('/^```\s*/', '', $clean);
-        $clean = preg_replace('/\s*```$/', '', $clean);
+        error_log('[AI RAW RESPONSE] ' . $response);
 
-        if (preg_match('/\{.*?\}/s', $clean, $matches)) {
-            $clean = $matches[0];
+        // Clean markdown fences
+        $clean = trim($response);
+        $clean = preg_replace('/^```[a-z]*\s*/i', '', $clean);
+        $clean = preg_replace('/```$/', '', $clean);
+
+        // Extract full JSON
+        $start = strpos($clean, '{');
+        $end   = strrpos($clean, '}');
+
+        if ($start !== false && $end !== false && $end > $start) {
+            $clean = substr($clean, $start, $end - $start + 1);
         } else {
             error_log('[AI JSON EXTRACTION FAILED]');
             return [];
         }
 
         $data = json_decode($clean, true);
-        return is_array($data) ? $data : [];
+
+        if (!is_array($data)) {
+            error_log('[AI JSON DECODE FAILED] ' . $clean);
+            return [];
+        }
+
+        error_log('[AI PARSED] ' . json_encode($data));
+
+        return $data;
+
     } catch (Throwable $e) {
         error_log('[AI EXTRACT ERROR] ' . $e->getMessage());
         return [];
