@@ -740,6 +740,8 @@ function validateLocationWithGoogle(array $locationInput): array {
 
     $apiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY');
 
+    error_log('[GOOGLE KEY USED] ' . substr($apiKey, 0, 10));
+
     if (!$apiKey) {
         error_log('[Google Places] Missing GOOGLE_MAPS_BACKEND_API_KEY');
         return ['placeId' => null];
@@ -787,7 +789,25 @@ function validateLocationWithGoogle(array $locationInput): array {
         return ['placeId' => null];
     }
 
-    $result = $data['results'][0];
+    $result = null;
+
+    foreach ($data['results'] as $r) {
+
+        $types = $r['types'] ?? [];
+
+        // Prefer rooftop / precise address
+        if (in_array('street_address', $types) ||
+            in_array('premise', $types) ||
+            in_array('establishment', $types)) {
+            $result = $r;
+            break;
+        }
+
+        // fallback
+        if (!$result) {
+            $result = $r;
+        }
+    }
 
     return [
         'placeId' => $result['place_id'] ?? null,
