@@ -71,14 +71,14 @@ function resolveLocation(array $input): array {
 
     #endregion
 
-    #region STEP 4 — Maricopa Parcel (Conditional Lookup)
+    #region STEP 4 — Maricopa Parcel (Authoritative Jurisdiction Source)
 
     if (
         $result['state'] === 'AZ' &&
         strpos(strtoupper($result['county'] ?? ''), 'MARICOPA') !== false
     ) {
 
-        // DRY: use helper for clean street extraction
+        // Extract clean street
         $street = extractStreetAddress($google['address'] ?? '');
         $street = preg_replace('/\s+/', ' ', $street);
         $street = trim($street);
@@ -96,35 +96,31 @@ function resolveLocation(array $input): array {
 
             if (is_array($parcel) && !empty($parcel['parcelNumber'])) {
 
+                // ✅ Parcel success → full enrichment
                 $result['parcelNumber'] = $parcel['parcelNumber'];
-
-                if (!empty($parcel['jurisdiction'])) {
-                    $result['jurisdiction'] = $parcel['jurisdiction'];
-                } else {
-                    $result['jurisdiction'] = $google['city'];
-                }
+                $result['jurisdiction'] = $parcel['jurisdiction'] ?? 'Maricopa County';
 
             } else {
 
-                // Parcel lookup failed but location is valid
+                // ❌ Parcel failed → jurisdiction UNKNOWN (by design)
                 $result['parcelNumber'] = null;
-                $result['jurisdiction'] = $google['city'] ?? 'Maricopa County';
+                $result['jurisdiction'] = 'Unknown';
 
             }
 
         } else {
 
-            // Missing usable address components
+            // ❌ No usable address → unknown
             $result['parcelNumber'] = null;
-            $result['jurisdiction'] = 'Maricopa County';
+            $result['jurisdiction'] = 'Unknown';
 
         }
 
     } else {
 
-        // Non-Maricopa fallback
+        // ❌ Outside Maricopa → unknown
         $result['parcelNumber'] = null;
-        $result['jurisdiction'] = $result['city'] ?? $result['county'] ?? 'Unknown';
+        $result['jurisdiction'] = 'Unknown';
 
     }
 
@@ -174,30 +170,37 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
 
+// Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
-    // Init
+    #region STEP 1 — Init & Guards
+
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
     if (empty($apiKey) || empty(trim($address)) || empty(trim($city))) {
         return null;
     }
 
-    // Normalize helper
+    #endregion
+
+    #region STEP 2 — Helpers (normalize + clean street)
+
+    // Normalize for matching (A-Z0-9 only)
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // Strip suite/unit identifiers from input before matching
+    // Strip suite/unit from input
     $cleanAddress = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $address);
     $cleanAddress = preg_replace('/\s+/', ' ', $cleanAddress);
     $targetStreet = trim($cleanAddress);
     $targetNorm   = $normalize($targetStreet);
 
-    // Build URL
-    $query = urlencode(trim($targetStreet . ' ' . $city . ' AZ'));
-    $url   = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+    #endregion
 
-    // Request
+    #region STEP 3 — Build Query
+
+    $query = urlencode(trim($targetStreet . ' ' . $city . ' AZ'));
+
     $context = stream_context_create([
         'http' => [
             'timeout' => 10,
@@ -205,73 +208,120 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         ]
     ]);
 
+    #endregion
+
+    #region STEP 4 — Request (primary + fallback)
+
+    // Attempt 1 — property endpoint
+    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
     $response = @file_get_contents($url, false, $context);
+
+    // Fallback to /search/sub/ when needed
+    if (
+        $response === false ||
+        $response === '' ||
+        stripos($response, '<html') !== false
+    ) {
+        error_log('[MCA] Fallback → /search/sub/');
+        $url = "https://mcassessor.maricopa.gov/search/sub/?q={$query}";
+        $response = @file_get_contents($url, false, $context);
+    }
 
     // Debug
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         date('Y-m-d H:i:s') .
         " | URL: {$url}\n" .
-        "TARGET STREET: {$targetStreet}\n" .
-        "RESPONSE LENGTH: " . ($response !== false ? strlen($response) : 0) . "\n\n",
+        "TARGET: {$targetStreet}\n" .
+        "LEN: " . ($response !== false ? strlen($response) : 0) . "\n\n",
         FILE_APPEND
     );
 
-    if ($response === false || $response === '') {
+    if ($response === false || $response === '' || stripos($response, '<html') !== false) {
         return null;
     }
 
-    if (stripos($response, '<html') !== false) {
-        error_log('[MCA] HTML response received instead of JSON.');
-        return null;
-    }
+    #endregion
+
+    #region STEP 5 — Decode + Detect Structure
 
     $data = json_decode($response, true);
-
-    if (!is_array($data) || empty($data['Results']) || !is_array($data['Results'])) {
-        error_log('[MCA] Invalid JSON structure or empty Results.');
+    if (!is_array($data)) {
+        error_log('[MCA] Invalid JSON');
         return null;
     }
 
-    foreach ($data['Results'] as $r) {
+    $isProperty = isset($data['Results']);
+    $isSub      = isset($data['results']);
 
-        $apiAddress = trim($r['SitusAddress'] ?? '');
-        if ($apiAddress === '') {
-            continue;
-        }
+    if (!$isProperty && !$isSub) {
+        error_log('[MCA] Unknown response structure');
+        return null;
+    }
 
-        // Strip suite/unit from API side too, just in case
+    $rows = $isProperty ? $data['Results'] : $data['results'];
+
+    #endregion
+
+    #region STEP 6 — Match + Extract
+
+    foreach ($rows as $r) {
+
+        // Map address field by endpoint
+        $apiAddress = trim(
+            $isProperty
+                ? ($r['SitusAddress'] ?? '')
+                : ($r['address'] ?? '')
+        );
+
+        if ($apiAddress === '') continue;
+
+        // Clean + normalize API address
         $apiAddressClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $apiAddress);
         $apiAddressClean = preg_replace('/\s+/', ' ', $apiAddressClean);
         $apiNorm = $normalize($apiAddressClean);
 
+        // Match
         if (
             strpos($apiNorm, $targetNorm) !== false ||
             strpos($targetNorm, $apiNorm) !== false
         ) {
-            $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
 
-            if ($apnRaw === '' || strlen($apnRaw) < 8) {
-                continue;
-            }
+            // Map APN field
+            $apnRaw = preg_replace(
+                '/[^A-Z0-9]/',
+                '',
+                strtoupper(
+                    $isProperty
+                        ? ($r['APN'] ?? '')
+                        : ($r['apn'] ?? '')
+                )
+            );
 
-            // Preserve letter suffixes like 501-18-508A
+            if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
+
+            // Format APN (preserve suffix if present)
             if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
                 $formatted = $m[1] . '-' . $m[2] . '-' . $m[3] . $m[4];
             } else {
-                $formatted = $r['APN'];
+                $formatted = $apnRaw;
             }
 
-            $jurisdictionRaw = strtoupper(trim($r['TaxAreaDescription'] ?? ''));
+            // Map jurisdiction field
+            $jurRaw = strtoupper(trim(
+                $isProperty
+                    ? ($r['TaxAreaDescription'] ?? '')
+                    : ($r['jurisdiction'] ?? '')
+            ));
 
             if (
-                $jurisdictionRaw === '' ||
-                strpos($jurisdictionRaw, 'UNINCORPORATED') !== false ||
-                strpos($jurisdictionRaw, 'NO TOWN OR CITY') !== false
+                $jurRaw === '' ||
+                strpos($jurRaw, 'UNINCORPORATED') !== false ||
+                strpos($jurRaw, 'NO CITY') !== false
             ) {
                 $jurisdiction = 'Maricopa County';
             } else {
-                $jurisdiction = ucwords(strtolower($jurisdictionRaw));
+                $jurisdiction = ucwords(strtolower($jurRaw));
             }
 
             return [
@@ -280,6 +330,8 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
             ];
         }
     }
+
+    #endregion
 
     error_log("No parcel match for: {$address}, {$city}");
     return null;
