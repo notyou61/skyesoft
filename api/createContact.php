@@ -83,7 +83,15 @@ try {
 
     #region 2a. derivationPhase
     $parsed = parseContact($input);
+
+    // 🔥 ADD THIS
     $aiData = extractContactWithAI($input);
+
+    // Merge AI → parsed (AI fills missing values ONLY)
+    $parsed = array_replace_recursive($parsed, $aiData);
+
+    // Debug
+    error_log('[PARSED AFTER AI MERGE] ' . json_encode($parsed));
 
     // Smart merge — AI fills gaps only
     foreach (['entity', 'location', 'contact'] as $section) {
