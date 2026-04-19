@@ -210,24 +210,14 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    #region STEP 4 — Request (primary + fallback)
+    #region STEP 4 — Request (MCA Parcel Lookup)
 
-    // Attempt 1 — property endpoint
-    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+    // Use proven endpoint (LEGACY WORKING)
+    $url = "https://mcassessor.maricopa.gov/search/sub/?q={$query}";
+
     $response = @file_get_contents($url, false, $context);
 
-    // Fallback to /search/sub/ when needed
-    if (
-        $response === false ||
-        $response === '' ||
-        stripos($response, '<html') !== false
-    ) {
-        error_log('[MCA] Fallback → /search/sub/');
-        $url = "https://mcassessor.maricopa.gov/search/sub/?q={$query}";
-        $response = @file_get_contents($url, false, $context);
-    }
-
-    // Debug
+    // Always log (even failures)
     file_put_contents(
         __DIR__ . '/mca_debug.log',
         date('Y-m-d H:i:s') .
@@ -237,7 +227,14 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         FILE_APPEND
     );
 
-    if ($response === false || $response === '' || stripos($response, '<html') !== false) {
+    // Validate response (single check — DRY)
+    if (
+        $response === false ||
+        $response === '' ||
+        stripos($response, '<html') !== false ||
+        strlen($response) < 100 // catches invalid short responses
+    ) {
+        error_log('[MCA] Invalid or non-JSON response from /search/sub/');
         return null;
     }
 
