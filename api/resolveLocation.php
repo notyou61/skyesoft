@@ -248,6 +248,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     foreach ($data['Results'] as $r) {
 
+        // API Address
         $apiAddress = trim($r['SitusAddress'] ?? '');
         if ($apiAddress === '') continue;
 
