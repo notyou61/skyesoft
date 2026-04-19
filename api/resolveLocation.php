@@ -225,12 +225,27 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
     if (
         $response === false ||
         $response === '' ||
-        stripos($response, '<html') !== false ||
-        strlen($response) < 100
+        stripos($response, '<html') !== false
     ) {
-        error_log('[MCA] Invalid response');
+        error_log('[MCA] Transport or HTML failure');
         return null;
     }
+
+    // Decode first
+    $data = json_decode($response, true);
+
+    if (!is_array($data)) {
+        error_log('[MCA] Invalid JSON');
+        return null;
+    }
+
+    // 🔥 VALID but empty is OK
+    if (!isset($data['Results']) || !is_array($data['Results'])) {
+        error_log('[MCA] Unexpected structure');
+        return null;
+    }
+
+    error_log('[MCA RESULTS COUNT] ' . count($data['Results']));
 
     #endregion
 
@@ -244,25 +259,32 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    #region STEP 5 — Match + Filter (CRITICAL)
+    #region STEP 5 — Match + Filter (FINAL FIXED)
 
     foreach ($data['Results'] as $r) {
 
-        // API Address
         $apiAddress = trim($r['SitusAddress'] ?? '');
         if ($apiAddress === '') continue;
 
         $apiNorm = $normalize($apiAddress);
 
+        // 🔥 Extract house number from target
+        preg_match('/^\d+/', $targetStreet, $numMatch);
+        $targetNumber = $numMatch[0] ?? '';
+
+        // 🔥 Strong match: number + partial street
         if (
-            strpos($apiNorm, $targetNorm) !== false ||
-            strpos($targetNorm, $apiNorm) !== false
+            strpos($apiNorm, $targetNumber) === 0 &&
+            strpos($apiNorm, substr($targetNorm, 0, 8)) !== false
         ) {
+
+            error_log('[MCA MATCH FOUND] ' . $apiAddress);
 
             // 🚫 Skip junk parcels
             $type = strtoupper($r['PropertyType'] ?? '');
             if (strpos($type, 'MINERAL') !== false) continue;
 
+            // Extract APN
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
             if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
@@ -273,7 +295,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
                 $formatted = $apnRaw;
             }
 
-            // Jurisdiction (from MCA only)
+            // Jurisdiction (authoritative from MCA)
             $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
 
             if ($jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false) {
