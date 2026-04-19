@@ -177,81 +177,157 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-    if (!$apiKey || !$address || !$city) return null;
+    if (!$apiKey || empty(trim($address)) || empty(trim($city))) {
+        return null;
+    }
 
-    $query = urlencode($address);
-    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 20,
-        CURLOPT_HTTPHEADER => [
-            "AUTHORIZATION: $apiKey",
-            "User-Agent: Skyesoft"
-        ]
-    ]);
-
-    $response = curl_exec($ch);
-    $error  = curl_error($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    // Debug log
-    file_put_contents(
-        __DIR__ . '/mca_debug.log',
-        date('Y-m-d H:i:s') . " | URL: $url\nSTATUS: $status\nERROR: $error\nRESPONSE:\n$response\n\n",
-        FILE_APPEND
-    );
-
-    if ($error || $status !== 200 || !$response) return null;
-
-    $data = json_decode($response, true);
-    if (empty($data['Results']) || !is_array($data['Results'])) return null;
+    // 🔥 Improved query (include city + state)
+    $fullQuery = trim($address . ' ' . $city . ' AZ');
+    $query = urlencode($fullQuery);
 
     // Normalize helper
     $normalize = function(string $str): string {
-        return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
+        $str = strtoupper(trim($str));
+        $str = preg_replace('/\s+/', ' ', $str);
+
+        // Standardize street types
+        $str = str_replace([' AVENUE ', ' AVE '], ' AVE ', $str);
+        $str = str_replace([' STREET ', ' ST '], ' ST ', $str);
+        $str = str_replace([' ROAD ', ' RD '], ' RD ', $str);
+        $str = str_replace([' DRIVE ', ' DR '], ' DR ', $str);
+        $str = str_replace([' BOULEVARD ', ' BLVD '], ' BLVD ', $str);
+
+        return preg_replace('/[^A-Z0-9 ]/', '', $str);
     };
 
-    // 🔥 IMPORTANT FIX — address is already street-only
-    $targetStreet = trim($address);
-    $targetNorm   = $normalize($targetStreet);
+    // 🔥 Normalize using address + city (more consistent matching)
+    $targetNorm = $normalize($address . ' ' . $city);
+
+    preg_match('/^(\d+)/', $targetNorm, $targetNumMatch);
+    $targetStreetNum = $targetNumMatch[1] ?? '';
 
     $bestParcel = null;
-    $bestScore  = 0;
+    $bestScore = -1;
 
-    foreach ($data['Results'] as $r) {
+    for ($page = 1; $page <= 2; $page++) {
 
-        $apiAddress = $r['SitusAddress'] ?? '';
-        $apiNorm    = $normalize($apiAddress);
+        $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+        if ($page > 1) {
+            $url .= "&page={$page}";
+        }
 
-        // 🔥 IMPROVED MATCH (bidirectional)
-        if (
-            strpos($apiNorm, $targetNorm) !== false ||
-            strpos($targetNorm, $apiNorm) !== false
-        ) {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 25,
+            CURLOPT_HTTPHEADER => [
+                "AUTHORIZATION: {$apiKey}",
+                "User-Agent: Skyesoft"
+            ]
+        ]);
 
-            $apnRaw = preg_replace('/\D+/', '', $r['APN'] ?? '');
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        file_put_contents(
+            __DIR__ . '/mca_debug.log',
+            date('Y-m-d H:i:s') . " | PAGE: {$page} | URL: {$url}\nSTATUS: {$status}\nERROR: {$error}\nRESPONSE LENGTH: " . strlen($response) . "\n\n",
+            FILE_APPEND
+        );
+
+        if ($error || $status !== 200 || empty($response)) {
+            continue;
+        }
+
+        // 🔥 HTML guard
+        if (strpos($response, '<html') !== false) {
+            error_log('[PARCEL ERROR] HTML response received');
+            continue;
+        }
+
+        $data = json_decode($response, true);
+        if (!is_array($data) || empty($data['Results'])) {
+            continue;
+        }
+
+        foreach ($data['Results'] as $r) {
+
+            $apiAddress = $r['SitusAddress'] ?? '';
+            if (empty($apiAddress)) continue;
+
+            $apiNorm = $normalize($apiAddress);
+
+            preg_match('/^(\d+)/', $apiNorm, $apiNumMatch);
+            $apiStreetNum = $apiNumMatch[1] ?? '';
+
+            $score = 0;
+
+            // Strong: street number match
+            if (!empty($targetStreetNum) && $targetStreetNum === $apiStreetNum) {
+                $score += 50;
+            }
+
+            // Name overlap
+            if (strpos($apiNorm, $targetNorm) !== false || strpos($targetNorm, $apiNorm) !== false) {
+                $score += 40;
+            } else {
+                // Partial word overlap fallback
+                $targetWords = array_filter(explode(' ', $targetNorm));
+                $apiWords = array_filter(explode(' ', $apiNorm));
+                $common = count(array_intersect($targetWords, $apiWords));
+                if ($common >= 2) {
+                    $score += 25;
+                }
+            }
+
+            // Length similarity
+            $lenDiff = abs(strlen($apiNorm) - strlen($targetNorm));
+            if ($lenDiff < 8) {
+                $score += 15;
+            } elseif ($lenDiff < 15) {
+                $score += 5;
+            }
+
+            // 🔥 Slightly stricter threshold
+            if ($score < 50) continue;
+
+            // Extract APN
+            $apnRaw = preg_replace('/\D/', '', $r['APN'] ?? '');
             if (strlen($apnRaw) < 8) continue;
 
-            $formatted = (strlen($apnRaw) === 8)
+            $formattedAPN = (strlen($apnRaw) === 8)
                 ? substr($apnRaw, 0, 3) . '-' . substr($apnRaw, 3, 2) . '-' . substr($apnRaw, 5, 3)
                 : $r['APN'];
 
-            // Scoring logic
-            $score =
-                ($apiNorm === $targetNorm ? 100 : 50) +
-                (strlen($apnRaw) === 8 ? 20 : 0);
+            // Jurisdiction from API
+            $rawJur = strtoupper(trim($r['TaxAreaDescription'] ?? ''));
+
+            if (in_array($rawJur, ['UNINCORPORATED', 'NO TOWN OR CITY', ''], true)) {
+                $jurisdiction = 'Maricopa County';
+            } else {
+                $jurisdiction = ucwords(strtolower($rawJur));
+            }
 
             if ($score > $bestScore) {
                 $bestScore = $score;
+
                 $bestParcel = [
-                    'parcelNumber' => $formatted,
-                    'jurisdiction' => ucwords(strtolower($city))
+                    'parcelNumber' => $formattedAPN,
+                    'jurisdiction' => $jurisdiction,
+
+                    // 🔧 Debug fields (optional — remove in production)
+                    'matchedAddress' => $apiAddress,
+                    'score' => $score
                 ];
             }
+        }
+
+        // Early exit on strong match
+        if ($bestScore >= 80) {
+            break;
         }
     }
 
@@ -259,7 +335,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         return $bestParcel;
     }
 
-    error_log("No parcel match found for street: '{$targetStreet}' (norm: {$targetNorm}). Results: " . count($data['Results']));
+    error_log("No strong parcel match found for '{$address}, {$city}' (norm: {$targetNorm})");
     return null;
 }
 
