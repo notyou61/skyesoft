@@ -21,6 +21,7 @@ function resolveLocation(array $input): array {
         'state' => null,
         'zip' => null,
         'address' => null,
+        'suite' => null, // 🔥 ADD THIS
         'county' => null,
         'countyFips' => null,
         'jurisdiction' => null,
@@ -61,10 +62,12 @@ function resolveLocation(array $input): array {
         $rawAddress = trim($google['address'] ?? '');
 
         // Extract clean street only
-        $street = extractStreetAddress($rawAddress);
+        // 🔥 Split street + suite (canonical normalization)
+        $split = splitAddressSuite($rawAddress);
 
         // Assign ONLY schema-compliant fields
-        $result['address'] = $street;
+        $result['address'] = $split['street'];   // street ONLY
+        $result['suite']   = $split['suite'];    // extracted suite
         $result['city']    = $google['city']  ?? null;
         $result['state']   = $google['state'] ?? null;
         $result['zip']     = $google['zip']   ?? null;
@@ -92,23 +95,29 @@ function resolveLocation(array $input): array {
         strpos(strtoupper($result['county'] ?? ''), 'MARICOPA') !== false
     ) {
 
-        // Extract clean street
-        $street = extractStreetAddress($google['address'] ?? '');
-        $street = preg_replace('/\s+/', ' ', $street);
-        $street = trim($street);
+        // Canonical location parts
+        $street = $result['address'] ?? '';
+        $suite  = $result['suite'] ?? '';
+        $city   = $result['city'] ?? '';
+        $state  = $result['state'] ?? 'AZ';
+        $zip    = $result['zip'] ?? '';
 
-        if (!empty($street) && !empty($google['city'])) {
+        if (!empty($street) && !empty($city)) {
 
             error_log('[PARCEL INPUT] ' . json_encode([
                 'street' => $street,
-                'city'   => $google['city']
+                'suite'  => $suite,
+                'city'   => $city,
+                'state'  => $state,
+                'zip'    => $zip
             ]));
 
             $parcel = getMaricopaParcelFromAddress(
                 $street,
-                $google['city'] ?? '',
-                $google['state'] ?? 'AZ',
-                $google['zip'] ?? ''
+                $suite,
+                $city,
+                $state,
+                $zip
             );
 
             error_log('[PARCEL RESULT] ' . json_encode($parcel));
@@ -124,7 +133,6 @@ function resolveLocation(array $input): array {
                 // ❌ Parcel failed → jurisdiction UNKNOWN (by design)
                 $result['parcelNumber'] = null;
                 $result['jurisdiction'] = 'Unknown';
-
             }
 
         } else {
@@ -132,7 +140,6 @@ function resolveLocation(array $input): array {
             // ❌ No usable address → unknown
             $result['parcelNumber'] = null;
             $result['jurisdiction'] = 'Unknown';
-
         }
 
     } else {
@@ -140,7 +147,6 @@ function resolveLocation(array $input): array {
         // ❌ Outside Maricopa → unknown
         $result['parcelNumber'] = null;
         $result['jurisdiction'] = 'Unknown';
-
     }
 
     #endregion
@@ -156,9 +162,36 @@ function resolveLocation(array $input): array {
 
 #region SECTION 1 — Helpers
 
+// Extract street address (remove suite/unit and extra commas)
 function extractStreetAddress(string $fullAddress): string {
     $parts = array_map('trim', explode(',', $fullAddress));
     return $parts[0] ?? $fullAddress;
+}
+// Split address into street + suite
+function splitAddressSuite(string $fullAddress): array {
+
+    // Normalize
+    $fullAddress = trim($fullAddress);
+
+    // Capture suite patterns
+    if (preg_match('/\b(STE|SUITE|UNIT|#)\s*([\w\-]+)/i', $fullAddress, $m)) {
+
+        $suite = strtoupper($m[1]) . ' ' . $m[2];
+
+        // Remove suite from address
+        $street = trim(str_replace($m[0], '', $fullAddress));
+        $street = preg_replace('/\s+/', ' ', $street);
+
+        return [
+            'street' => $street,
+            'suite'  => $suite
+        ];
+    }
+
+    return [
+        'street' => $fullAddress,
+        'suite'  => null
+    ];
 }
 
 #endregion
@@ -192,6 +225,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 // Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(
     string $street,
+    string $suite = '',
     string $city,
     string $state = 'AZ',
     string $zip = ''
@@ -214,7 +248,13 @@ function getMaricopaParcelFromAddress(
     #region STEP 2 — Build FULL Query (Critical Fix)
 
     // 🔥 Build full address string for MCA search
-    $fullQuery = trim("{$street}, {$city}, {$state} {$zip}");
+    $fullQuery = trim(
+        $street .
+        (!empty($suite) ? ' ' . $suite : '') .
+        ', ' . $city .
+        ', ' . $state .
+        ' ' . $zip
+    );
 
     error_log('[MCA FULL QUERY] ' . $fullQuery);
 
