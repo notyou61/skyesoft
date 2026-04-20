@@ -248,17 +248,34 @@ function getMaricopaParcelFromAddress(
 
     #endregion
 
-    #region STEP 2 — Build FULL Query (Critical Fix)
+    #region STEP 2 — Build FULL Query (Canonical + Clean)
 
-    // 🔥 Build full address string for MCA search
+    // Use canonical parts ONLY (never raw Google string)
+    $street = trim($street ?? '');
+    $suite  = trim($suite ?? '');
+    $city   = trim($city ?? '');
+    $state  = strtoupper(trim($state ?? 'AZ'));
+    $zip    = trim($zip ?? '');
+
+    // 🔥 Ensure street is truly street-only (defensive)
+    $street = explode(',', $street)[0];
+    $street = preg_replace('/\s+/', ' ', $street);
+
+    // 🔥 Normalize suite (optional but recommended)
+    if (!empty($suite)) {
+        $suite = preg_replace('/\s+/', ' ', strtoupper($suite));
+    }
+
+    // 🔥 Build FULL query (for MCA search ONLY)
     $fullQuery = trim(
         $street .
-        (!empty($suite) ? ' ' . $suite : '') .
+        ($suite !== '' ? ' ' . $suite : '') .
         ', ' . $city .
         ', ' . $state .
-        ' ' . $zip
+        ($zip !== '' ? ' ' . $zip : '')
     );
 
+    // Debug
     error_log('[MCA FULL QUERY] ' . $fullQuery);
 
     #endregion
