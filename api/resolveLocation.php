@@ -240,9 +240,8 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
+#region SECTION 3 — Maricopa API (RELIABLE VERSION 1.4.1)
 
-// Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(
     string $street,
     string $city,
@@ -252,7 +251,6 @@ function getMaricopaParcelFromAddress(
 ): ?array {
 
     #region STEP 1 — Init
-
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
 
     if (
@@ -260,26 +258,22 @@ function getMaricopaParcelFromAddress(
         empty(trim($street)) ||
         empty(trim($city))
     ) {
+        error_log('[MCA] Missing API key or required inputs');
         return null;
     }
-
     #endregion
 
-    #region STEP 2 — Build FULL Query (Canonical Only)
-
-    // Assume $street is already clean (from resolveLocation)
+    #region STEP 2 — Build FULL Query
     $street = trim($street ?? '');
     $suite  = trim($suite ?? '');
     $city   = trim($city ?? '');
     $state  = strtoupper(trim($state ?? 'AZ'));
     $zip    = trim($zip ?? '');
 
-    // Normalize suite
     if ($suite !== '') {
         $suite = preg_replace('/\s+/', ' ', strtoupper($suite));
     }
 
-    // Build FULL query (search only)
     $fullQuery = trim(
         $street .
         ($suite !== '' ? ' ' . $suite : '') .
@@ -289,42 +283,30 @@ function getMaricopaParcelFromAddress(
     );
 
     error_log('[MCA FULL QUERY] ' . $fullQuery);
+    #endregion
 
-#endregion
-
-    #region STEP 3 — Normalize + Clean (Street Only for Matching)
-
+    #region STEP 3 — Normalize + Clean
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // 🔥 FIXED (1.3.0): Extra-defensive cleaning
-    //   1. Take only first comma-separated part (removes any residual business/city leakage)
-    //   2. Remove suite/unit (identical regex to splitAddressSuite)
-    //   3. Normalize spacing
     $streetClean = explode(',', $street)[0] ?? $street;
     $streetClean = trim($streetClean);
-
-    // Remove suite/unit ALWAYS
     $streetClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $streetClean);
-
-    // Normalize spacing
     $streetClean = preg_replace('/\s+/', ' ', $streetClean);
 
     $targetStreet = trim($streetClean);
     $targetNorm   = $normalize($targetStreet);
 
     error_log('[MCA CLEAN STREET] ' . $targetStreet);
-
     #endregion
 
     #region STEP 4 — Progressive Query Attempts
-
     $attempts = array_unique(array_filter([
-        $fullQuery,        // 🔥 Primary (with suite + city)
-        $targetStreet,     // Clean street only
-        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet), // remove suffix
-        preg_replace('/^\d+\s+/', '', $targetStreet) // remove number
+        $fullQuery,
+        $targetStreet,
+        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet),
+        preg_replace('/^\d+\s+/', '', $targetStreet)
     ]));
 
     $context = stream_context_create([
@@ -337,7 +319,6 @@ function getMaricopaParcelFromAddress(
     $data = null;
 
     foreach ($attempts as $attempt) {
-
         $attempt = trim($attempt);
         if ($attempt === '') continue;
 
@@ -354,7 +335,6 @@ function getMaricopaParcelFromAddress(
             FILE_APPEND
         );
 
-        // Skip bad responses
         if (
             $response === false ||
             $response === '' ||
@@ -365,7 +345,6 @@ function getMaricopaParcelFromAddress(
 
         $decoded = json_decode($response, true);
 
-        // 🔥 Accept ANY valid result set
         if (is_array($decoded) && !empty($decoded['Results'])) {
             error_log('[MCA SUCCESS QUERY] ' . $attempt);
             $data = $decoded;
@@ -374,20 +353,19 @@ function getMaricopaParcelFromAddress(
     }
 
     if (!$data || empty($data['Results'])) {
-        error_log('[MCA] No results from any attempt');
+        error_log('[MCA] No results from any attempt for query: ' . $fullQuery);
         return null;
     }
-
     #endregion
 
-    #region STEP 5 — Match + Extract (Robust)
-
-    // Extract number from target
+    #region STEP 5 — Match + Extract (RELIABLE NUMBER-BASED)
     preg_match('/^\d+/', $targetStreet, $tNum);
     $targetNumber = $tNum[0] ?? '';
 
-    // Normalize target street name (remove number)
-    $targetStreetName = preg_replace('/^\d+\s+/', '', $targetNorm);
+    if ($targetNumber === '') {
+        error_log('[MCA] No street number found in target street: ' . $targetStreet);
+        return null;
+    }
 
     foreach ($data['Results'] as $r) {
 
@@ -396,31 +374,18 @@ function getMaricopaParcelFromAddress(
 
         $apiNorm = $normalize($apiAddress);
 
-        // Extract number from API
-        preg_match('/^\d+/', $apiAddress, $aNum);
-        $apiNumber = $aNum[0] ?? '';
-
-        // Normalize API street name
-        $apiStreetName = preg_replace('/^\d+\s+/', '', $apiNorm);
-
-        // 🔥 FLEXIBLE MATCH
-        if (
-            $targetNumber !== '' &&
-            $targetNumber === $apiNumber &&
-            strpos($apiStreetName, substr($targetStreetName, 0, 6)) !== false
-        ) {
+        // Reliable match: street number at the beginning
+        if (strpos($apiNorm, $targetNumber) === 0) {
 
             error_log('[MCA MATCH FOUND] ' . $apiAddress);
 
             // Skip mineral parcels
-            $type = strtoupper($r['PropertyType'] ?? '');
-            if (strpos($type, 'MINERAL') !== false) continue;
+            if (stripos($r['PropertyType'] ?? '', 'MINERAL') !== false) continue;
 
-            // Extract APN
+            // Extract and format APN
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
             if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
-            // Format APN
             if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
                 $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
             } else {
@@ -429,7 +394,6 @@ function getMaricopaParcelFromAddress(
 
             // Jurisdiction
             $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
-
             $jurisdiction = (
                 $jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false
             )
@@ -442,10 +406,9 @@ function getMaricopaParcelFromAddress(
             ];
         }
     }
-
     #endregion
 
-    error_log("No parcel match for: {$fullQuery}");
+    error_log("No parcel match for: {$fullQuery} (target number: {$targetNumber})");
     return null;
 }
 
