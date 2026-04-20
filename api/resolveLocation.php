@@ -248,25 +248,21 @@ function getMaricopaParcelFromAddress(
 
     #endregion
 
-    #region STEP 2 — Build FULL Query (Canonical + Clean)
+    #region STEP 2 — Build FULL Query (Canonical Only)
 
-    // Use canonical parts ONLY (never raw Google string)
+    // Assume $street is already clean (from resolveLocation)
     $street = trim($street ?? '');
     $suite  = trim($suite ?? '');
     $city   = trim($city ?? '');
     $state  = strtoupper(trim($state ?? 'AZ'));
     $zip    = trim($zip ?? '');
 
-    // 🔥 Ensure street is truly street-only (defensive)
-    $street = explode(',', $street)[0];
-    $street = preg_replace('/\s+/', ' ', $street);
-
-    // 🔥 Normalize suite (optional but recommended)
-    if (!empty($suite)) {
+    // Normalize suite
+    if ($suite !== '') {
         $suite = preg_replace('/\s+/', ' ', strtoupper($suite));
     }
 
-    // 🔥 Build FULL query (for MCA search ONLY)
+    // Build FULL query (search only)
     $fullQuery = trim(
         $street .
         ($suite !== '' ? ' ' . $suite : '') .
@@ -275,10 +271,9 @@ function getMaricopaParcelFromAddress(
         ($zip !== '' ? ' ' . $zip : '')
     );
 
-    // Debug
     error_log('[MCA FULL QUERY] ' . $fullQuery);
 
-    #endregion
+#endregion
 
     #region STEP 3 — Normalize + Clean (Street Only for Matching)
 
