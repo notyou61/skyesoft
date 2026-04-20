@@ -187,21 +187,29 @@ function extractStreetAddress(string $fullAddress): string {
 function splitAddressSuite(string $address): array {
 
     $address = trim($address);
-
     $suite = null;
 
-    // 🔥 Handles: Suite 300, Suite: 300, STE 300, #300
-    if (preg_match('/\b(SUITE|STE|#)\s*:?\s*([\w\-]+)/i', $address, $m)) {
-        $suite = strtoupper($m[1]) === '#' 
-            ? 'SUITE ' . $m[2]
-            : strtoupper($m[1] . ' ' . $m[2]);
+    // 🔥 Normalize first (important)
+    $address = strtoupper($address);
 
-        // Remove suite from street
-        $address = preg_replace('/\b(SUITE|STE|#)\s*:?\s*[\w\-]+/i', '', $address);
+    // 🔥 Handle "#900" FIRST (this is your failing case)
+    if (preg_match('/#\s*([\w\-]+)/', $address, $m)) {
+
+        $suite = 'SUITE ' . $m[1];
+
+        $address = preg_replace('/#\s*[\w\-]+/', '', $address);
     }
 
-    // Clean commas + spacing
-    $address = preg_replace('/,.*$/', '', $address); // remove city/state if present
+    // 🔥 Handle SUITE / STE formats
+    elseif (preg_match('/\b(SUITE|STE)\s*:?\s*([\w\-]+)/', $address, $m)) {
+
+        $suite = $m[1] . ' ' . $m[2];
+
+        $address = preg_replace('/\b(SUITE|STE)\s*:?\s*[\w\-]+/', '', $address);
+    }
+
+    // Cleanup
+    $address = preg_replace('/,.*$/', '', $address);
     $address = preg_replace('/\s+/', ' ', $address);
     $address = trim($address);
 
