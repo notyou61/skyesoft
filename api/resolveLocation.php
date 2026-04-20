@@ -114,10 +114,10 @@ function resolveLocation(array $input): array {
 
             $parcel = getMaricopaParcelFromAddress(
                 $street,
-                $suite,
                 $city,
                 $state,
-                $zip
+                $zip,
+                $suite
             );
 
             error_log('[PARCEL RESULT] ' . json_encode($parcel));
@@ -170,17 +170,30 @@ function extractStreetAddress(string $fullAddress): string {
 // Split address into street + suite
 function splitAddressSuite(string $fullAddress): array {
 
-    // Normalize
+    // Init
     $fullAddress = trim($fullAddress);
 
-    // Capture suite patterns
-    if (preg_match('/\b(STE|SUITE|UNIT|#)\s*([\w\-]+)/i', $fullAddress, $m)) {
+    if ($fullAddress === '') {
+        return [
+            'street' => null,
+            'suite'  => null
+        ];
+    }
 
-        $suite = strtoupper($m[1]) . ' ' . $m[2];
+    // Keep ONLY the first comma section for street parsing
+    $streetPart = trim(explode(',', $fullAddress)[0]);
 
-        // Remove suite from address
-        $street = trim(str_replace($m[0], '', $fullAddress));
-        $street = preg_replace('/\s+/', ' ', $street);
+    // Normalize spacing
+    $streetPart = preg_replace('/\s+/', ' ', $streetPart);
+
+    // Extract suite/unit
+    if (preg_match('/\b(STE|SUITE|UNIT|#)\s*([A-Z0-9\-]+)/i', $streetPart, $m)) {
+
+        $suite = strtoupper($m[1]) . ' ' . strtoupper($m[2]);
+
+        // Remove suite from street
+        $street = str_replace($m[0], '', $streetPart);
+        $street = preg_replace('/\s+/', ' ', trim($street));
 
         return [
             'street' => $street,
@@ -189,7 +202,7 @@ function splitAddressSuite(string $fullAddress): array {
     }
 
     return [
-        'street' => $fullAddress,
+        'street' => $streetPart,
         'suite'  => null
     ];
 }
@@ -225,10 +238,10 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 // Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
 function getMaricopaParcelFromAddress(
     string $street,
-    string $suite = '',
     string $city,
     string $state = 'AZ',
-    string $zip = ''
+    string $zip = '',
+    string $suite = ''
 ): ?array {
 
     #region STEP 1 — Init
