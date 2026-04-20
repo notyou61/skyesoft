@@ -4706,6 +4706,47 @@
                         }
                     }
                 },
+                "evaluationModel": {
+                    "description": "Defines the core evaluation framework used prior to decisionPhase. All proposed contacts are evaluated across two primary dimensions: completeness and properness. This model governs how resolutionOutcome is determined and clarifies the relationship between input variability and final system decisions.",
+                    "dimensions": {
+                        "completeness": {
+                        "description": "Determines whether all required ELC components can be resolved.",
+                        "requirements": [
+                            "Entity must be resolved or resolvable",
+                            "Location must be validated with a valid locationPlaceId",
+                            "Contact identity (name) must be present"
+                        ],
+                        "rule": "If any required ELC component cannot be resolved, the proposal is incomplete and must result in partial status."
+                        },
+                        "properness": {
+                        "description": "Determines whether the proposed contact can be validly and uniquely resolved within the system.",
+                        "requirements": [
+                            "Location must pass Google validation (valid locationPlaceId)",
+                            "Data must be internally consistent (no conflicting identity signals)",
+                            "Identity must be uniquely resolvable within entity-location context",
+                            "Duplicate detection must be evaluated as part of proper resolution"
+                        ],
+                        "rule": "Properness includes both validation and duplication resolution. A duplicate is considered properly resolved, not an error condition."
+                        }
+                    },
+                    "outcomeMapping": {
+                        "description": "Defines how completeness and properness determine resolutionOutcome.",
+                        "rules": [
+                        "Complete + Proper (no existing match) → resolved_new",
+                        "Complete + Proper (existing match) → resolved_duplicate",
+                        "Complete + Not Proper → resolved_conflict",
+                        "Incomplete → partial",
+                        "Unresolvable input → reject"
+                        ]
+                    },
+                    "notes": [
+                        "Input variability categories (structured, signature, noise, etc.) must be normalized prior to evaluation.",
+                        "EvaluationModel governs decisionPhase logic but does not replace acceptanceCriteria or decisionLogic.",
+                        "Duplicate detection is considered part of properness, not a separate evaluation axis.",
+                        "Completeness gates entry into properness evaluation.",
+                        "Only proposals that are both complete and proper may proceed to commitPhase."
+                    ]
+                },
                 "schema": {
                     "identityModel": {
                         "type": "object",

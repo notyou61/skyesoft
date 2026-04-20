@@ -1,6 +1,65 @@
 <?php
 declare(strict_types=1);
 
+// ======================================================================
+//  Skyesoft — createContact.php
+//  Version: 1.0.0
+// ======================================================================
+//
+//  PURPOSE:
+//  Entry point for contact creation using the ELC (Entity–Location–Contact)
+//  resolution pipeline. Accepts raw input, orchestrates parsing, validation,
+//  and resolution logic, and determines final outcome before any database
+//  commit occurs.
+//
+//  RESPONSIBILITIES:
+//  • Receive and validate incoming request payload
+//  • Initiate proposeStage logging (raw input capture)
+//  • Execute processingModel pipeline:
+//      - parse input (AI / structured)
+//      - resolveEntity()
+//      - resolveLocation() (Google → Census → Parcel)
+//      - resolveLocationRecord()
+//  • Evaluate using EvaluationModel:
+//      - completeness (ELC presence)
+//      - properness (validation, consistency, duplication)
+//  • Execute decisionPhase:
+//      - resolved_new
+//      - resolved_duplicate
+//      - resolved_conflict
+//      - partial
+//      - reject
+//  • Perform commitPhase ONLY if resolved_new
+//  • Log all actions to actionLog
+//
+//  INPUT:
+//  JSON payload (raw or structured contact data)
+//
+//  OUTPUT:
+//  JSON response:
+//  {
+//      status: string,
+//      entity: object|null,
+//      location: object|null,
+//      contact: object|null,
+//      scenario: object,
+//      requestId: string
+//  }
+//
+//  RULES:
+//  • No database writes occur before full location validation (placeId required)
+//  • locationPlaceId is the authoritative location identity
+//  • Duplicate detection is part of properness evaluation
+//  • resolveLocation() is the single source of truth for location structure
+//  • Address must be schema-compliant (street only, no formatted string)
+//
+//  NOTES:
+//  • This file orchestrates — it does NOT contain core parsing or resolution logic
+//  • All heavy logic is delegated to modular functions
+//  • Designed to align with Codex ELC + EvaluationModel standards
+//
+// ======================================================================
+
 #region SECTION 0 — Header
 
 header("Content-Type: application/json; charset=UTF-8");
@@ -69,6 +128,7 @@ $parsed         = null;
 try {
 
     #region 1. proposeStage
+
     logAction($db, [
         'type'      => ACTION_TYPE_PROPOSE,
         'contactId' => $_SESSION['contactId'] ?? 1,
@@ -77,121 +137,131 @@ try {
         'intent'    => 'propose_contact',
         'origin'    => ACTION_ORIGIN_USER
     ]);
+
     #endregion
 
     #region 2. processingModel
 
-    #region 2a. derivationPhase
-    $parsed = parseContact($input);
+        #region 2a. derivationPhase
 
-    // 🔥 ADD THIS
-    $aiData = extractContactWithAI($input);
+        $parsed = parseContact($input);
 
-    // Merge AI → parsed (AI fills missing values ONLY)
-    $parsed = array_replace_recursive($parsed, $aiData);
+        $aiData = extractContactWithAI($input);
 
-    // Debug
-    error_log('[PARSED AFTER AI MERGE] ' . json_encode($parsed));
+        // Merge AI → parsed (AI fills missing values ONLY)
+        $parsed = array_replace_recursive($parsed, $aiData);
 
-    // Smart merge — AI fills gaps only
-    foreach (['entity', 'location', 'contact'] as $section) {
-        if (!isset($parsed[$section])) continue;
-        foreach ($parsed[$section] as $key => $value) {
-            $aiValue = $aiData[$section][$key] ?? null;
-            if ((empty($value) || $value === null) && !empty($aiValue)) {
-                $parsed[$section][$key] = $aiValue;
+        error_log('[PARSED AFTER AI MERGE] ' . json_encode($parsed));
+
+        foreach (['entity', 'location', 'contact'] as $section) {
+            if (!isset($parsed[$section])) continue;
+            foreach ($parsed[$section] as $key => $value) {
+                $aiValue = $aiData[$section][$key] ?? null;
+                if ((empty($value) || $value === null) && !empty($aiValue)) {
+                    $parsed[$section][$key] = $aiValue;
+                }
             }
         }
-    }
 
-    $parsed = deriveContactAttributes($parsed, $input);
-    #endregion
+        $parsed = deriveContactAttributes($parsed, $input);
 
-    #region 2b. resolutionPhase — Entity + Location + Contact Resolution
-
-    // Resolve entity
-    $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
-
-    // Infer entity type if new
-    if (
-        ($entity['status'] ?? null) === 'new' &&
-        empty($entity['entityType']) &&
-        !empty($entity['entityName'])
-    ) {
-        $entity['entityType'] = inferEntityTypeAI($entity['entityName']);
-        $parsed['entity']['entityType'] = $entity['entityType'];
-    }
-
-    // Prepare location input
-    $locationInput = $parsed['location'] ?? [];
-
-    // 🔥 Single source of truth — ALL location logic handled inside resolveLocation()
-    $location = resolveLocation($locationInput) ?? [];
-
-    // Validate location
-    if (empty($location['placeId'])) {
-
-        $outcome = [
-            'outcome' => 'partial',
-            'reason'  => 'Unable to validate location with Google Places. Please provide a more complete address.'
-        ];
-
-    } else {
-
-        // Resolve location record (DB lookup)
-        $locationRecord = resolveLocationRecord(
-            $db,
-            $entity['entityId'] ?? null,
-            $location['placeId']
-        );
-
-        // Resolve contact (only if entity + location already exist)
-        $contactRecord = (
-            ($entity['status'] === 'existing') &&
-            ($locationRecord['status'] === 'existing')
-        )
-            ? resolveContact(
-                $db,
-                $entity['entityId'],
-                $locationRecord['locationId'],
-                $parsed['contact'] ?? []
-            )
-            : [
-                'status'    => 'new',
-                'contactId' => null
-            ];
-
-        // Build outcome
-        $outcome = buildResolutionOutcome(
-            $entity,
-            $location,
-            $contactRecord
-        );
-
-        // Scenario evaluation (business logic layer)
-        $decision = evaluateScenario(
-            $db,
-            $entity,
-            $location,
-            $parsed['contact'] ?? []
-        );
-    }
-
-    #endregion
-
-        #region 3. decisionPhase & 4. commitPhase
-        if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
-            if (($outcome['outcome'] ?? null) === 'resolved_new') {
-                $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
-            }
-        }
         #endregion
 
-    } catch (Throwable $e) {
-        error_log('FATAL ERROR in createContact: ' . $e->getMessage());
-        echo json_encode(['DEBUG' => true, 'error' => $e->getMessage()], JSON_PRETTY_PRINT);
-        exit;
+        #region 2b. resolutionPhase — Entity + Location + Contact
+
+        // Resolve entity
+        $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
+
+        // Infer entity type if new
+        if (
+            ($entity['status'] ?? null) === 'new' &&
+            empty($entity['entityType']) &&
+            !empty($entity['entityName'])
+        ) {
+            $entity['entityType'] = inferEntityTypeAI($entity['entityName']);
+            $parsed['entity']['entityType'] = $entity['entityType'];
+        }
+
+        // Resolve location
+        $locationInput = $parsed['location'] ?? [];
+        $location = resolveLocation($locationInput) ?? [];
+
+        if (empty($location['placeId'])) {
+
+            $outcome = [
+                'outcome' => 'partial',
+                'reason'  => 'Unable to validate location with Google Places.'
+            ];
+
+        } else {
+
+            $locationRecord = resolveLocationRecord(
+                $db,
+                $entity['entityId'] ?? null,
+                $location['placeId']
+            );
+
+            $contactRecord = (
+                ($entity['status'] === 'existing') &&
+                ($locationRecord['status'] === 'existing')
+            )
+                ? resolveContact(
+                    $db,
+                    $entity['entityId'],
+                    $locationRecord['locationId'],
+                    $parsed['contact'] ?? []
+                )
+                : [
+                    'status'    => 'new',
+                    'contactId' => null
+                ];
+
+            $outcome = buildResolutionOutcome(
+                $entity,
+                $location,
+                $contactRecord
+            );
+
+            $decision = evaluateScenario(
+                $db,
+                $entity,
+                $location,
+                $parsed['contact'] ?? []
+            );
+        }
+
+        #endregion
+
+    #endregion
+
+    #region 3. decisionPhase & 4. commitPhase
+
+    if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
+        if (($outcome['outcome'] ?? null) === 'resolved_new') {
+            $insertResult = executeInsert(
+                $db,
+                $parsed,
+                $location,
+                $entity,
+                $locationRecord,
+                $input
+            );
+        }
     }
+
+    #endregion
+
+} catch (Throwable $e) {
+
+    error_log('FATAL ERROR in createContact: ' . $e->getMessage());
+
+    echo json_encode([
+        'DEBUG' => true,
+        'error' => $e->getMessage()
+    ], JSON_PRETTY_PRINT);
+
+    exit;
+}
 
 #endregion
 
