@@ -1190,6 +1190,10 @@ window.SkyIndex = {
         // 📇 Contact Command (NEW — THIS IS THE KEY)
         // ───────────────────────────────────────────────
         if (normalized.startsWith('add ')) {
+            
+            // 🔥 CLEAR PREVIOUS OUTPUT (Fix #1)
+            const output = this.cardHost?.querySelector('.commandOutput');
+            if (output) output.innerHTML = '';
 
             this.appendSystemLine('📇 Processing contact...');
 
@@ -1203,6 +1207,15 @@ window.SkyIndex = {
                 });
 
                 const data = await res.json();
+
+                // 🔥 FIX #2 — HARD VALIDATION BEFORE RENDER
+                if (!data || data.success === false) {
+
+                    const msg = data?.error || 'Contact creation failed.';
+                    this.appendSystemLine(`❌ ${msg}`);
+
+                    return; // 🚫 STOP — do NOT render result
+                }
 
                 this.renderContactResult(data);
 

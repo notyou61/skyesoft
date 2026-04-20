@@ -1,5 +1,7 @@
 <?php
 declare(strict_types=1);
+// 🔥 FIX #3 — Clear debug log per request (DEV ONLY)
+file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 // ======================================================================
 //  Skyesoft — createContact.php
