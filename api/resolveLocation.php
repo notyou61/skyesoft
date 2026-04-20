@@ -188,29 +188,26 @@ function splitAddressSuite(string $address): array {
 
     $address = trim($address);
 
-    // 🔥 Catch ALL suite formats including "#600"
-    if (preg_match('/(?:\b(STE|SUITE|UNIT)\s*|\#\s*)([A-Z0-9\-]+)/i', $address, $matches)) {
+    $suite = null;
 
-        $suiteNumber = $matches[2] ?? null;
+    // 🔥 Handles: Suite 300, Suite: 300, STE 300, #300
+    if (preg_match('/\b(SUITE|STE|#)\s*:?\s*([\w\-]+)/i', $address, $m)) {
+        $suite = strtoupper($m[1]) === '#' 
+            ? 'SUITE ' . $m[2]
+            : strtoupper($m[1] . ' ' . $m[2]);
 
-        $suite = $suiteNumber
-            ? 'SUITE ' . strtoupper($suiteNumber)
-            : null;
-
-        // Remove suite portion from address
-        $street = preg_replace('/(?:\b(STE|SUITE|UNIT)\s*[A-Z0-9\-]+|\#\s*[A-Z0-9\-]+)/i', '', $address);
-
-        $street = preg_replace('/\s+/', ' ', $street);
-
-        return [
-            'street' => trim($street),
-            'suite'  => $suite
-        ];
+        // Remove suite from street
+        $address = preg_replace('/\b(SUITE|STE|#)\s*:?\s*[\w\-]+/i', '', $address);
     }
+
+    // Clean commas + spacing
+    $address = preg_replace('/,.*$/', '', $address); // remove city/state if present
+    $address = preg_replace('/\s+/', ' ', $address);
+    $address = trim($address);
 
     return [
         'street' => $address,
-        'suite'  => null
+        'suite'  => $suite
     ];
 }
 
