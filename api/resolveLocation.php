@@ -6,8 +6,6 @@ declare(strict_types=1);
 //  Version: 1.2.0
 // ======================================================================
 
-error_log("RUNNING NEW VERSION — NO PENDING");
-
 #region SECTION 0 — Core Function
 
 // Resolve Location Function — main entry point for geocoding and enrichment
@@ -106,7 +104,12 @@ function resolveLocation(array $input): array {
                 'city'   => $google['city']
             ]));
 
-            $parcel = getMaricopaParcelFromAddress($street, $google['city']);
+            $parcel = getMaricopaParcelFromAddress(
+                $street,
+                $google['city'] ?? '',
+                $google['state'] ?? 'AZ',
+                $google['zip'] ?? ''
+            );
 
             error_log('[PARCEL RESULT] ' . json_encode($parcel));
 
@@ -187,45 +190,62 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 #region SECTION 3 — Maricopa API (FINAL FIXED VERSION)
 
 // Maricopa Parcel Resolver — authoritative parcel + jurisdiction from MCA
-function getMaricopaParcelFromAddress(string $address, string $city): ?array {
+function getMaricopaParcelFromAddress(
+    string $street,
+    string $city,
+    string $state = 'AZ',
+    string $zip = ''
+): ?array {
 
     #region STEP 1 — Init
 
     $apiKey = getenv("MARICOPA_COUNTY_API_KEY");
-    if (empty($apiKey) || empty(trim($address))) {
+
+    if (
+        empty($apiKey) ||
+        empty(trim($street)) ||
+        empty(trim($city))
+    ) {
         return null;
     }
 
     #endregion
 
-    #region STEP 2 — Normalize + Clean (Street Only)
+    #region STEP 2 — Build FULL Query (Critical Fix)
+
+    // 🔥 Build full address string for MCA search
+    $fullQuery = trim("{$street}, {$city}, {$state} {$zip}");
+
+    error_log('[MCA FULL QUERY] ' . $fullQuery);
+
+    #endregion
+
+    #region STEP 3 — Normalize + Clean (Street Only for Matching)
 
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // 🔥 HARD CUT: street only
-    $streetOnly = explode(',', $address)[0];
-
     // Remove suite/unit
-    $streetOnly = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $streetOnly);
+    $streetClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $street);
 
     // Normalize spacing
-    $streetOnly = preg_replace('/\s+/', ' ', $streetOnly);
+    $streetClean = preg_replace('/\s+/', ' ', $streetClean);
 
-    $targetStreet = trim($streetOnly);
+    $targetStreet = trim($streetClean);
     $targetNorm   = $normalize($targetStreet);
 
-    error_log('[MCA CLEAN ADDRESS] ' . $targetStreet);
+    error_log('[MCA CLEAN STREET] ' . $targetStreet);
 
     #endregion
 
-    #region STEP 3 — Progressive Query Attempts (CRITICAL)
+    #region STEP 4 — Progressive Query Attempts
 
     $attempts = [
-        $targetStreet,                                      // full
-        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet), // remove suffix
-        preg_replace('/^\d+\s+/', '', $targetStreet)        // remove number
+        $fullQuery,       // 🔥 PRIMARY (full context)
+        $targetStreet,    // fallback
+        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet),
+        preg_replace('/^\d+\s+/', '', $targetStreet)
     ];
 
     $context = stream_context_create([
@@ -249,9 +269,8 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
         file_put_contents(
             __DIR__ . '/mca_debug.log',
             date('Y-m-d H:i:s') .
-            " | URL: {$url}\n" .
-            "ATTEMPT: {$attempt}\n" .
-            "LEN: " . ($response !== false ? strlen($response) : 0) . "\n\n",
+            " | URL: {$url}\nATTEMPT: {$attempt}\nLEN: " .
+            ($response !== false ? strlen($response) : 0) . "\n\n",
             FILE_APPEND
         );
 
@@ -279,7 +298,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    #region STEP 4 — Match + Extract (Strong Match)
+    #region STEP 5 — Match + Extract
 
     preg_match('/^\d+/', $targetStreet, $numMatch);
     $targetNumber = $numMatch[0] ?? '';
@@ -291,7 +310,6 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
         $apiNorm = $normalize($apiAddress);
 
-        // 🔥 Strong match: same number + partial street match
         if (
             $targetNumber !== '' &&
             strpos($apiNorm, $targetNumber) === 0 &&
@@ -300,29 +318,25 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
             error_log('[MCA MATCH FOUND] ' . $apiAddress);
 
-            // Skip mineral junk
             $type = strtoupper($r['PropertyType'] ?? '');
             if (strpos($type, 'MINERAL') !== false) continue;
 
-            // Extract APN
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
             if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
-            // Format APN
             if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
                 $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
             } else {
                 $formatted = $apnRaw;
             }
 
-            // Jurisdiction (ONLY from MCA)
             $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
 
-            if ($jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false) {
-                $jurisdiction = 'Maricopa County';
-            } else {
-                $jurisdiction = ucwords(strtolower($jurRaw));
-            }
+            $jurisdiction = (
+                $jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false
+            )
+                ? 'Maricopa County'
+                : ucwords(strtolower($jurRaw));
 
             return [
                 'parcelNumber' => $formatted,
@@ -333,7 +347,7 @@ function getMaricopaParcelFromAddress(string $address, string $city): ?array {
 
     #endregion
 
-    error_log("No parcel match for: {$address}");
+    error_log("No parcel match for: {$fullQuery}");
     return null;
 }
 
