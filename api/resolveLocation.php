@@ -168,25 +168,15 @@ function extractStreetAddress(string $fullAddress): string {
     return $parts[0] ?? $fullAddress;
 }
 // Split address into street + suite
-function splitAddressSuite(string $fullAddress): array {
+function splitAddressSuite(string $streetPart): array {
 
-    // Init
-    $fullAddress = trim($fullAddress);
+    $streetPart = trim($streetPart);
 
-    if ($fullAddress === '') {
-        return [
-            'street' => null,
-            'suite'  => null
-        ];
+    if ($streetPart === '') {
+        return ['street' => null, 'suite' => null];
     }
 
-    // Keep ONLY the first comma section for street parsing
-    $streetPart = trim(explode(',', $fullAddress)[0]);
-
-    // Normalize spacing
-    $streetPart = preg_replace('/\s+/', ' ', $streetPart);
-
-    // Extract suite/unit
+    // Extract suite
     if (preg_match('/\b(STE|SUITE|UNIT|#)\s*([A-Z0-9\-]+)/i', $streetPart, $m)) {
 
         $suite = strtoupper($m[1]) . ' ' . strtoupper($m[2]);
@@ -294,12 +284,12 @@ function getMaricopaParcelFromAddress(
 
     #region STEP 4 — Progressive Query Attempts
 
-    $attempts = [
-        $fullQuery,       // 🔥 PRIMARY (full context)
-        $targetStreet,    // fallback
-        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet),
-        preg_replace('/^\d+\s+/', '', $targetStreet)
-    ];
+    $attempts = array_unique(array_filter([
+        $fullQuery,        // 🔥 Primary (with suite + city)
+        $targetStreet,     // Clean street only
+        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet), // remove suffix
+        preg_replace('/^\d+\s+/', '', $targetStreet) // remove number
+    ]));
 
     $context = stream_context_create([
         'http' => [
@@ -312,9 +302,10 @@ function getMaricopaParcelFromAddress(
 
     foreach ($attempts as $attempt) {
 
-        if (empty(trim($attempt))) continue;
+        $attempt = trim($attempt);
+        if ($attempt === '') continue;
 
-        $query = urlencode(trim($attempt));
+        $query = urlencode($attempt);
         $url   = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
 
         $response = @file_get_contents($url, false, $context);
@@ -327,6 +318,7 @@ function getMaricopaParcelFromAddress(
             FILE_APPEND
         );
 
+        // Skip bad responses
         if (
             $response === false ||
             $response === '' ||
@@ -337,6 +329,7 @@ function getMaricopaParcelFromAddress(
 
         $decoded = json_decode($response, true);
 
+        // 🔥 Accept ANY valid result set
         if (is_array($decoded) && !empty($decoded['Results'])) {
             error_log('[MCA SUCCESS QUERY] ' . $attempt);
             $data = $decoded;
@@ -351,10 +344,14 @@ function getMaricopaParcelFromAddress(
 
     #endregion
 
-    #region STEP 5 — Match + Extract
+    #region STEP 5 — Match + Extract (Robust)
 
-    preg_match('/^\d+/', $targetStreet, $numMatch);
-    $targetNumber = $numMatch[0] ?? '';
+    // Extract number from target
+    preg_match('/^\d+/', $targetStreet, $tNum);
+    $targetNumber = $tNum[0] ?? '';
+
+    // Normalize target street name (remove number)
+    $targetStreetName = preg_replace('/^\d+\s+/', '', $targetNorm);
 
     foreach ($data['Results'] as $r) {
 
@@ -363,26 +360,38 @@ function getMaricopaParcelFromAddress(
 
         $apiNorm = $normalize($apiAddress);
 
+        // Extract number from API
+        preg_match('/^\d+/', $apiAddress, $aNum);
+        $apiNumber = $aNum[0] ?? '';
+
+        // Normalize API street name
+        $apiStreetName = preg_replace('/^\d+\s+/', '', $apiNorm);
+
+        // 🔥 FLEXIBLE MATCH
         if (
             $targetNumber !== '' &&
-            strpos($apiNorm, $targetNumber) === 0 &&
-            strpos($apiNorm, substr($targetNorm, 0, 8)) !== false
+            $targetNumber === $apiNumber &&
+            strpos($apiStreetName, substr($targetStreetName, 0, 6)) !== false
         ) {
 
             error_log('[MCA MATCH FOUND] ' . $apiAddress);
 
+            // Skip mineral parcels
             $type = strtoupper($r['PropertyType'] ?? '');
             if (strpos($type, 'MINERAL') !== false) continue;
 
+            // Extract APN
             $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
             if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
+            // Format APN
             if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
                 $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
             } else {
                 $formatted = $apnRaw;
             }
 
+            // Jurisdiction
             $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
 
             $jurisdiction = (
