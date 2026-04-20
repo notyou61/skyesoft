@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — resolveLocation.php
-//  Version: 1.2.0
+//  Version: 1.3.0
+//  MTCO Update: Fixed Google street extraction (business name removal)
+//               + hardened MCA street cleaning. All changes are
+//               minimal, obvious, and governed.
 // ======================================================================
 
 #region SECTION 0 — Core Function
@@ -56,14 +59,27 @@ function resolveLocation(array $input): array {
         return $result;
     }
 
-        // Canonical mapping (Google is authoritative, but controlled)
+        // 🔥 FIXED (1.3.0): Canonical mapping with business-name removal
+        // Google formatted_address often returns:
+        // "Mesa Executive Park, 1255 W Baseline Rd #210, Mesa, AZ 85202, USA"
+        // We now strip the leading place/business name (if present)
+        // so $result['address'] is ALWAYS clean street only.
 
-        // Raw formatted address from Google
         $rawAddress = trim($google['address'] ?? '');
 
-        // Extract clean street only
-        // 🔥 Split street + suite (canonical normalization)
-        $split = splitAddressSuite($rawAddress);
+        // Remove business name if present (first part starts with letter)
+        $parts = explode(',', $rawAddress);
+        if (count($parts) > 1 && preg_match('/^\D/', trim($parts[0]))) {
+            $streetPart = trim($parts[1]);   // use street portion
+        } else {
+            $streetPart = trim($parts[0]);   // pure address
+        }
+
+        // Normalize spacing before suite extraction
+        $streetPart = preg_replace('/\s+/', ' ', $streetPart);
+
+        // Extract clean street only + suite (canonical normalization)
+        $split = splitAddressSuite($streetPart);
 
         // Assign ONLY schema-compliant fields
         $result['address'] = $split['street'];   // street ONLY
@@ -281,8 +297,15 @@ function getMaricopaParcelFromAddress(
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
 
-    // Remove suite/unit
-    $streetClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $street);
+    // 🔥 FIXED (1.3.0): Extra-defensive cleaning
+    //   1. Take only first comma-separated part (removes any residual business/city leakage)
+    //   2. Remove suite/unit (identical regex to splitAddressSuite)
+    //   3. Normalize spacing
+    $streetClean = explode(',', $street)[0] ?? $street;
+    $streetClean = trim($streetClean);
+
+    // Remove suite/unit ALWAYS
+    $streetClean = preg_replace('/\b(UNIT|STE|SUITE|#)\s*[\w-]+\b/i', '', $streetClean);
 
     // Normalize spacing
     $streetClean = preg_replace('/\s+/', ' ', $streetClean);

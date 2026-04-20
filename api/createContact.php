@@ -267,7 +267,7 @@ try {
 
 #region SECTION 2 — Action Logging & Final Response
 
-FINAL_LOG:
+//FINAL_LOG:
 
 $outcomeType = $outcome['outcome'] ?? 'unknown';
 $actionType  = ACTION_TYPE_PROPOSE;
@@ -738,6 +738,16 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             if (empty($location['placeId'])) {
                 throw new RuntimeException('Missing placeId for location');
             }
+
+            // 🔥 HARD VALIDATION — Maricopa County REQUIRES a parcel number
+            if (
+                ($location['state'] ?? null) === 'AZ' &&
+                strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
+                empty($location['parcelNumber'])
+            ) {
+                throw new RuntimeException('Parcel number required for Maricopa County at insert stage');
+            }
+
             $stmt = $db->prepare("
                 INSERT INTO tblLocations (
                     locationEntityId, locationName, locationPlaceId, locationAddress, locationAddressSuite,
@@ -749,22 +759,33 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                     :jurisdiction, :parcel, :latitude, :longitude, UNIX_TIMESTAMP()
                 )
             ");
+
             $stmt->execute([
                 'entityId'     => $entityId,
                 'name'         => $entity['entityName'],
                 'placeId'      => $location['placeId'],
-                'address'      => $location['address'] ?? '',
-                'suite'        => $location['suite'] ?? null,
+
+                // 🔥 DEFENSIVE CLEANING
+                'address'      => preg_replace('/,.*$/', '', trim($location['address'] ?? '')),
+
+                // 🔥 NORMALIZED SUITE (STE 210, SUITE 210, #210 → consistent format)
+                'suite'        => isset($location['suite']) && $location['suite'] !== ''
+                    ? preg_replace('/\s+/', ' ', strtoupper(trim($location['suite'])))
+                    : null,
+
                 'city'         => $location['city'] ?? '',
                 'state'        => $location['state'] ?? '',
                 'zip'          => $location['zip'] ?? null,
                 'county'       => $location['county'] ?? '',
                 'countyFips'   => $location['countyFips'] ?? null,
+
                 'jurisdiction' => $location['jurisdiction'] ?? null,
                 'parcel'       => $location['parcelNumber'] ?? null,
+
                 'latitude'     => $location['lat'] ?? null,
                 'longitude'    => $location['lng'] ?? null
             ]);
+
             $locationId = (int)$db->lastInsertId();
         } else {
             $locationId = (int)$locationRecord['locationId'];
@@ -786,8 +807,8 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             'title'      => $parsed['contact']['title'] ?? null,
             'firstName'  => $parsed['contact']['firstName'] ?? '',
             'lastName'   => $parsed['contact']['lastName'] ?? '',
-            'email'      => strtolower(trim($parsed['contact']['email'])),
-            'phone'      => $parsed['contact']['phone']
+            'email'      => strtolower(trim($parsed['contact']['email'] ?? '')),
+            'phone'      => $parsed['contact']['phone'] ?? null
         ]);
 
         $contactId = (int)$db->lastInsertId();
@@ -802,7 +823,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        error_log('executeInsert failed: ' . $e->getMessage());
+        error_log('executeInsert failed: ' . $e->getMessage() . ' | Input: ' . substr($input, 0, 500));
         return ['success' => false, 'error' => $e->getMessage()];
     }
 }
