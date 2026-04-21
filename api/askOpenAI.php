@@ -927,18 +927,27 @@ if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'])) {
 #endregion
 
 #region SECTION 5 — Input Resolution
+
+// Init
 $intent     = null;
 $confidence = null;
 $query      = null;
 
-$root   = dirname(__DIR__);
+$root = dirname(__DIR__);
 
+// 🔧 Parse incoming JSON (CRITICAL FIX)
+$rawInput = file_get_contents("php://input");
+$input    = json_decode($rawInput, true) ?? [];
+
+// 🔐 API Key
 $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 if ($apiKey === null) {
     aiFail("OPENAI_API_KEY not available.");
 }
 
-$type   = $_GET["type"] ?? ($argv[1] ?? "narrative");
+// 🔎 Mode / Flags
+$type = $_GET["type"] ?? ($argv[1] ?? "narrative");
+
 $aiFlag =
     ($_GET["ai"] ?? "false") === "true"
     || (($argv[2] ?? "") === "ai=true");
@@ -947,6 +956,29 @@ if (!$aiFlag) {
     error_log('[askOpenAI] AI flag missing — defaulting to enabled');
     $aiFlag = true;
 }
+
+// 🧠 Resolve Query (JSON → POST → GET → CLI)
+$query =
+    $input["userQuery"]
+    ?? $_POST["userQuery"]
+    ?? $_GET["userQuery"]
+    ?? ($argv[3] ?? null);
+
+// ❌ Validate
+if (!$query || !is_string($query)) {
+    aiFail("❌ userQuery required for skyebot mode.");
+}
+
+// ✂️ Normalize
+$query = trim($query);
+
+// 📍 Optional Context (for future use)
+$latitude  = $input["latitude"]  ?? null;
+$longitude = $input["longitude"] ?? null;
+
+// 🧪 Debug (safe logging, remove later)
+error_log('[askOpenAI] Query: ' . $query);
+
 #endregion
 
 #region SECTION 6 — Narrative Generation
