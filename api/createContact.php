@@ -712,6 +712,34 @@ PROMPT;
     }
 }
 
+// Format text to clean Title Case (safe for addresses)
+function formatTitleCase(?string $value): ?string {
+
+    if ($value === null) return null;
+
+    $value = trim($value);
+
+    if ($value === '') return null;
+
+    // Base normalization
+    $value = ucwords(strtolower($value));
+
+    // 🔥 Fix common edge cases (pattern-based, not hardcoded words)
+
+    // Preserve compass directions when standalone
+    $value = preg_replace('/\b(N|S|E|W)\b/i', strtoupper('$1'), $value);
+
+    // Preserve numbered highways / interstates
+    $value = preg_replace('/\b(Us|I)\b/i', strtoupper('$1'), $value);
+
+    // Fix Mc/Mac names (McDowell, McQueen, etc.)
+    $value = preg_replace_callback('/\bMc([a-z])/', function ($m) {
+        return 'Mc' . strtoupper($m[1]);
+    }, $value);
+
+    return $value;
+}
+
 function executeInsert(PDO $db, array $parsed, array $location, array $entity, array $locationRecord, string $input): array {
     try {
         $db->beginTransaction();
@@ -762,26 +790,31 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 )
             ");
 
+            // Execute Statement
             $stmt->execute([
                 'entityId'     => $entityId,
-                'name'         => $entity['entityName'],
+                'name'         => formatTitleCase($entity['entityName']),
+
                 'placeId'      => $location['placeId'],
 
-                // 🔥 DEFENSIVE CLEANING
-                'address'      => preg_replace('/,.*$/', '', trim($location['address'] ?? '')),
+                // 🔥 CLEAN + FORMAT
+                'address'      => formatTitleCase(
+                    preg_replace('/,.*$/', '', trim($location['address'] ?? ''))
+                ),
 
-                // 🔥 NORMALIZED SUITE (STE 210, SUITE 210, #210 → consistent format)
+                // 🔥 SUITE — preserve "Suite 210" format (NO uppercase forcing)
                 'suite'        => isset($location['suite']) && $location['suite'] !== ''
-                    ? preg_replace('/\s+/', ' ', strtoupper(trim($location['suite'])))
+                    ? formatTitleCase(preg_replace('/\s+/', ' ', trim($location['suite'])))
                     : null,
 
-                'city'         => $location['city'] ?? '',
-                'state'        => $location['state'] ?? '',
+                'city'         => formatTitleCase($location['city'] ?? ''),
+                'state'        => strtoupper($location['state'] ?? ''), // keep uppercase
                 'zip'          => $location['zip'] ?? null,
-                'county'       => $location['county'] ?? '',
+
+                'county'       => formatTitleCase($location['county'] ?? ''),
                 'countyFips'   => $location['countyFips'] ?? null,
 
-                'jurisdiction' => $location['jurisdiction'] ?? null,
+                'jurisdiction' => formatTitleCase($location['jurisdiction'] ?? null),
                 'parcel'       => $location['parcelNumber'] ?? null,
 
                 'latitude'     => $location['lat'] ?? null,
