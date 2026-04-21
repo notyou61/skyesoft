@@ -202,6 +202,11 @@ try {
         $locationInput = $parsed['location'] ?? [];
         $location = resolveLocation($locationInput) ?? [];
 
+        // 🔥 Preserve suite from parsed data (resolveLocation loses it)
+        if (!empty($parsed['location']['suite'])) {
+            $location['suite'] = $parsed['location']['suite'];
+        }
+
         if (empty($location['placeId'])) {
 
             $outcome = [
