@@ -363,7 +363,9 @@ function getMaricopaParcelFromAddress(
     }
     #endregion
 
-    #region STEP 5 — Match + Extract (RELIABLE NUMBER-BASED)
+    #region STEP 5 — Match + Extract (STRICT VALIDATION)
+
+    // Extract target street number
     preg_match('/^\d+/', $targetStreet, $tNum);
     $targetNumber = $tNum[0] ?? '';
 
@@ -372,45 +374,94 @@ function getMaricopaParcelFromAddress(
         return null;
     }
 
+    // Normalize target
+    $targetStreetUpper = strtoupper($targetStreet);
+    $targetCityUpper   = strtoupper(trim($city));
+
     foreach ($data['Results'] as $r) {
 
         $apiAddress = trim($r['SitusAddress'] ?? '');
         if ($apiAddress === '') continue;
 
-        $apiNorm = $normalize($apiAddress);
+        $apiUpper = strtoupper($apiAddress);
 
-        // Reliable match: street number at the beginning
-        if (strpos($apiNorm, $targetNumber) === 0) {
+        error_log('[MCA CANDIDATE] ' . $apiAddress);
 
-            error_log('[MCA MATCH FOUND] ' . $apiAddress);
+        // 🔥 Extract API street number
+        preg_match('/^\d+/', $apiUpper, $aNum);
+        $apiNumber = $aNum[0] ?? '';
 
-            // Skip mineral parcels
-            if (stripos($r['PropertyType'] ?? '', 'MINERAL') !== false) continue;
-
-            // Extract and format APN
-            $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
-            if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
-
-            if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
-                $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
-            } else {
-                $formatted = $apnRaw;
-            }
-
-            // Jurisdiction
-            $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
-            $jurisdiction = (
-                $jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false
-            )
-                ? 'Maricopa County'
-                : ucwords(strtolower($jurRaw));
-
-            return [
-                'parcelNumber' => $formatted,
-                'jurisdiction' => $jurisdiction
-            ];
+        // ❌ Reject if number is not EXACT match
+        if ($apiNumber !== $targetNumber) {
+            error_log('[PARCEL REJECT] number mismatch: ' . $apiAddress);
+            continue;
         }
+
+        // 🔥 Extract street name (simple but reliable)
+        $targetParts = explode(' ', $targetStreetUpper);
+        $apiParts    = explode(' ', $apiUpper);
+
+        // Remove number
+        array_shift($targetParts);
+        array_shift($apiParts);
+
+        // Remove direction (E/W/N/S)
+        if (in_array($targetParts[0] ?? '', ['N','S','E','W'])) array_shift($targetParts);
+        if (in_array($apiParts[0] ?? '', ['N','S','E','W'])) array_shift($apiParts);
+
+        $targetName = $targetParts[0] ?? '';
+        $apiName    = $apiParts[0] ?? '';
+
+        // ❌ Reject if street name mismatch
+        if ($targetName && $apiName && $targetName !== $apiName) {
+            error_log('[PARCEL REJECT] street mismatch: ' . $apiAddress);
+            continue;
+        }
+
+        // 🔥 City validation (CRITICAL)
+        $apiCity = strtoupper(trim($r['SitusCity'] ?? ''));
+
+        if ($targetCityUpper && $apiCity && strpos($apiCity, 'NO CITY') === false && $apiCity !== $targetCityUpper) {
+            error_log('[PARCEL REJECT] city mismatch: ' . $apiAddress);
+            continue;
+        }
+
+        // Skip mineral parcels
+        if (stripos($r['PropertyType'] ?? '', 'MINERAL') !== false) {
+            error_log('[PARCEL REJECT] mineral parcel');
+            continue;
+        }
+
+        // 🔥 Extract and format APN (KEEP YOUR ORIGINAL LOGIC)
+        $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
+        if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
+
+        if (preg_match('/^(\d{3})(\d{2})(\d{3})([A-Z]?)$/', $apnRaw, $m)) {
+            $formatted = "{$m[1]}-{$m[2]}-{$m[3]}{$m[4]}";
+        } else {
+            $formatted = $apnRaw;
+        }
+
+        // Jurisdiction
+        $jurRaw = strtoupper(trim($r['SitusCity'] ?? ''));
+        $jurisdiction = (
+            $jurRaw === '' || strpos($jurRaw, 'NO CITY') !== false
+        )
+            ? 'Maricopa County'
+            : ucwords(strtolower($jurRaw));
+
+        error_log('[PARCEL ACCEPTED] ' . $apiAddress);
+
+        return [
+            'parcelNumber' => $formatted,
+            'jurisdiction' => $jurisdiction
+        ];
     }
+
+    // ❌ No valid match
+    error_log('[PARCEL RESULT] No valid match after filtering');
+    return null;
+
     #endregion
 
     error_log("No parcel match for: {$fullQuery} (target number: {$targetNumber})");
