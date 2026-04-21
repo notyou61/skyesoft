@@ -167,6 +167,20 @@ try {
 
         $parsed = deriveContactAttributes($parsed, $input);
 
+        // 🔥 Extract suite from address (critical normalization step)
+        if (!empty($parsed['location']['address'])) {
+
+            $split = splitAddressSuite($parsed['location']['address']);
+
+            // Always clean the street address
+            $parsed['location']['address'] = $split['street'];
+
+            // Only set suite if it exists and hasn't already been set
+            if (empty($parsed['location']['suite']) && !empty($split['suite'])) {
+                $parsed['location']['suite'] = $split['suite'];
+            }
+        }
+
         #endregion
 
         #region 2b. resolutionPhase — Entity + Location + Contact
@@ -200,8 +214,11 @@ try {
             $locationRecord = resolveLocationRecord(
                 $db,
                 $entity['entityId'] ?? null,
-                $location['placeId']
+                $location['placeId'],
+                $location['suite'] ?? null
             );
+
+            error_log('[LOCATION AFTER RESOLVE] ' . json_encode($location));
 
             $contactRecord = (
                 ($entity['status'] === 'existing') &&
@@ -475,21 +492,38 @@ function resolveEntity(PDO $db, string $entityName): array {
     ];
 }
 
-function resolveLocationRecord(PDO $db, ?int $entityId, string $placeId): array {
+function resolveLocationRecord(PDO $db, ?int $entityId, string $placeId, ?string $suite): array {
+
     if ($entityId === null) {
         return ['status' => 'new', 'locationId' => null];
     }
 
+    // 🔥 Normalize suite BEFORE comparison
+    $suite = ($suite !== null && trim($suite) !== '')
+        ? formatTitleCase(trim($suite))
+        : null;
+
     $stmt = $db->prepare("
         SELECT locationId 
         FROM tblLocations 
-        WHERE locationEntityId = :entityId AND locationPlaceId = :placeId 
+        WHERE locationEntityId = :entityId
+          AND locationPlaceId = :placeId
+          AND (
+                (locationAddressSuite IS NULL AND :suite IS NULL)
+                OR locationAddressSuite = :suite
+          )
         LIMIT 1
     ");
-    $stmt->execute(['entityId' => $entityId, 'placeId' => $placeId]);
+
+    $stmt->execute([
+        'entityId' => $entityId,
+        'placeId' => $placeId,
+        'suite'   => $suite
+    ]);
+
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    return $row 
+    return $row
         ? ['status' => 'existing', 'locationId' => (int)$row['locationId']]
         : ['status' => 'new', 'locationId' => null];
 }
