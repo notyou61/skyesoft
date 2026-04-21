@@ -245,7 +245,7 @@ function getCensusGeography(?float $lat, ?float $lng): array {
 
 #endregion
 
-#region SECTION 3 — Maricopa API (RELIABLE VERSION 1.4.1)
+#region SECTION 3 — Maricopa API (RELIABLE VERSION 1.5)
 
 function getMaricopaParcelFromAddress(
     string $street,
@@ -290,7 +290,7 @@ function getMaricopaParcelFromAddress(
     error_log('[MCA FULL QUERY] ' . $fullQuery);
     #endregion
 
-    #region STEP 3 — Normalize + Clean
+    #region STEP 3 — Normalize + Clean Target Street
     $normalize = function(string $str): string {
         return preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($str)));
     };
@@ -306,13 +306,38 @@ function getMaricopaParcelFromAddress(
     error_log('[MCA CLEAN STREET] ' . $targetStreet);
     #endregion
 
-    #region STEP 4 — Progressive Query Attempts
-    $attempts = array_unique(array_filter([
-        $fullQuery,
-        $targetStreet,
-        preg_replace('/\s+(RD|ST|AVE|BLVD|DR|LN)$/i', '', $targetStreet),
-        preg_replace('/^\d+\s+/', '', $targetStreet)
-    ]));
+    #region STEP 4 — Progressive Query Attempts (Flexible Search)
+    $attempts = [];
+
+    // 1. Primary: Full formatted query
+    $attempts[] = $fullQuery;
+
+    // 2. Simplified: Street + City (no commas, state, or zip) — often more reliable
+    $simplified = $targetStreet . ($city !== '' ? ' ' . $city : '');
+    $attempts[] = $simplified;
+
+    // 3. Minimal: Street number + name only (drop city, suite, type, etc.)
+    $minimal = preg_replace('/\s*,\s*.*/', '', $targetStreet); // safety in case commas slipped in
+    $minimal = trim($minimal);
+    $attempts[] = $minimal;
+
+    // 4. MCA official tip: Drop street type (RD, ST, AVE, etc.)
+    $noType = preg_replace('/\s+(RD|ST|AVE|AV|BLVD|DR|LN|PL|WAY|CT|HWY|PKWY|TER|CIR)$/i', '', $targetStreet);
+    if ($noType !== $minimal) {
+        $attempts[] = $noType;
+    }
+
+    // 5. Ultra-minimal: Number + direction + first street word (very aggressive fallback)
+    $ultraMinimal = preg_replace('/^\d+\s+([NSEW]\s+)?(\S+).*$/i', '$1$2', $targetStreet);
+    $ultraMinimal = trim($ultraMinimal);
+    if ($ultraMinimal !== $noType && $ultraMinimal !== $minimal) {
+        $attempts[] = $ultraMinimal;
+    }
+
+    // Remove duplicates and empty strings while preserving order
+    $attempts = array_unique(array_filter($attempts, fn($a) => trim($a) !== ''));
+
+    error_log('[MCA ATTEMPTS] ' . implode(' | ', $attempts));
 
     $context = stream_context_create([
         'http' => [
@@ -332,6 +357,7 @@ function getMaricopaParcelFromAddress(
 
         $response = @file_get_contents($url, false, $context);
 
+        // Debug logging
         file_put_contents(
             __DIR__ . '/mca_debug.log',
             date('Y-m-d H:i:s') .
@@ -345,26 +371,26 @@ function getMaricopaParcelFromAddress(
             $response === '' ||
             stripos($response, '<html') !== false
         ) {
+            error_log('[MCA ATTEMPT FAILED] ' . $attempt);
             continue;
         }
 
         $decoded = json_decode($response, true);
 
-        if (is_array($decoded) && !empty($decoded['Results'])) {
-            error_log('[MCA SUCCESS QUERY] ' . $attempt);
+        if (is_array($decoded) && !empty($decoded['Results']) && is_array($decoded['Results'])) {
+            error_log('[MCA SUCCESS WITH QUERY] ' . $attempt . ' (' . count($decoded['Results']) . ' results)');
             $data = $decoded;
             break;
         }
     }
 
     if (!$data || empty($data['Results'])) {
-        error_log('[MCA] No results from any attempt for query: ' . $fullQuery);
+        error_log('[MCA] No results from ANY attempt for original query: ' . $fullQuery);
         return null;
     }
     #endregion
 
-    #region STEP 5 — Match + Extract (STRICT VALIDATION)
-
+    #region STEP 5 — Match + Extract (STRICT VALIDATION — UNCHANGED)
     // Extract target street number
     preg_match('/^\d+/', $targetStreet, $tNum);
     $targetNumber = $tNum[0] ?? '';
@@ -377,6 +403,11 @@ function getMaricopaParcelFromAddress(
     // Normalize target
     $targetStreetUpper = strtoupper($targetStreet);
     $targetCityUpper   = strtoupper(trim($city));
+
+    if (empty($data['Results']) || !is_array($data['Results'])) {
+        error_log('[PARCEL RESULT] No results from MCA');
+        return null;
+    }
 
     foreach ($data['Results'] as $r) {
 
@@ -397,7 +428,7 @@ function getMaricopaParcelFromAddress(
             continue;
         }
 
-        // 🔥 Extract street name (simple but reliable)
+        // 🔥 Extract street name
         $targetParts = explode(' ', $targetStreetUpper);
         $apiParts    = explode(' ', $apiUpper);
 
@@ -405,7 +436,7 @@ function getMaricopaParcelFromAddress(
         array_shift($targetParts);
         array_shift($apiParts);
 
-        // Remove direction (E/W/N/S)
+        // Remove direction (N/S/E/W)
         if (in_array($targetParts[0] ?? '', ['N','S','E','W'])) array_shift($targetParts);
         if (in_array($apiParts[0] ?? '', ['N','S','E','W'])) array_shift($apiParts);
 
@@ -421,18 +452,23 @@ function getMaricopaParcelFromAddress(
         // 🔥 City validation (CRITICAL)
         $apiCity = strtoupper(trim($r['SitusCity'] ?? ''));
 
-        if ($targetCityUpper && $apiCity && strpos($apiCity, 'NO CITY') === false && $apiCity !== $targetCityUpper) {
+        if (
+            $targetCityUpper &&
+            $apiCity &&
+            strpos($apiCity, 'NO CITY') === false &&
+            $apiCity !== $targetCityUpper
+        ) {
             error_log('[PARCEL REJECT] city mismatch: ' . $apiAddress);
             continue;
         }
 
-        // Skip mineral parcels
+        // ❌ Skip mineral parcels
         if (stripos($r['PropertyType'] ?? '', 'MINERAL') !== false) {
             error_log('[PARCEL REJECT] mineral parcel');
             continue;
         }
 
-        // 🔥 Extract and format APN (KEEP YOUR ORIGINAL LOGIC)
+        // 🔥 Extract + format APN
         $apnRaw = preg_replace('/[^A-Z0-9]/', '', strtoupper($r['APN'] ?? ''));
         if ($apnRaw === '' || strlen($apnRaw) < 8) continue;
 
@@ -459,13 +495,9 @@ function getMaricopaParcelFromAddress(
     }
 
     // ❌ No valid match
-    error_log('[PARCEL RESULT] No valid match after filtering');
+    error_log('[PARCEL RESULT] No valid match after filtering for: ' . $fullQuery);
     return null;
-
     #endregion
-
-    error_log("No parcel match for: {$fullQuery} (target number: {$targetNumber})");
-    return null;
 }
 
 #endregion
