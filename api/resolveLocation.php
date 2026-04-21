@@ -189,23 +189,23 @@ function splitAddressSuite(string $address): array {
     $address = trim($address);
     $suite = null;
 
-    // 🔥 Normalize first (important)
-    $address = strtoupper($address);
+    // 🔥 Work on uppercase copy for detection only
+    $upper = strtoupper($address);
 
-    // 🔥 Handle "#900" FIRST (this is your failing case)
-    if (preg_match('/#\s*([\w\-]+)/', $address, $m)) {
+    // 🔥 Handle "#900"
+    if (preg_match('/#\s*([\w\-]+)/', $upper, $m)) {
 
-        $suite = 'SUITE ' . $m[1];
+        $suite = 'Suite ' . $m[1];
 
-        $address = preg_replace('/#\s*[\w\-]+/', '', $address);
+        $address = preg_replace('/#\s*[\w\-]+/i', '', $address);
     }
 
-    // 🔥 Handle SUITE / STE formats
-    elseif (preg_match('/\b(SUITE|STE)\s*:?\s*([\w\-]+)/', $address, $m)) {
+    // 🔥 Handle SUITE / STE
+    elseif (preg_match('/\b(SUITE|STE)\s*:?\s*([\w\-]+)/i', $address, $m)) {
 
-        $suite = $m[1] . ' ' . $m[2];
+        $suite = 'Suite ' . $m[2]; // 🔥 normalize to "Suite"
 
-        $address = preg_replace('/\b(SUITE|STE)\s*:?\s*[\w\-]+/', '', $address);
+        $address = preg_replace('/\b(SUITE|STE)\s*:?\s*[\w\-]+/i', '', $address);
     }
 
     // Cleanup
