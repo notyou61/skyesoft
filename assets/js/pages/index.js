@@ -215,91 +215,91 @@ window.SkyIndex = {
 
     // #region 🛠️ Command Output Helpers
 
-    // Appends a command line to the output thread
-    appendSystemLine(text, role = 'system') {
+        getOutputHost() {
+            return this.dom?.commandOutput || null;
+        },
 
-        // Init output host
-        if (!this.cardHost) return;
-        const output = this.cardHost.querySelector('.commandOutput');
-        if (!output) return;
+        scrollOutputToBottom(output) {
+            if (output) output.scrollTop = output.scrollHeight;
+        },
 
-        const safeText = (text === null || text === undefined)
-            ? ''
-            : String(text);
+        // Appends a command line
+        appendSystemLine(text, role = 'system') {
 
-        const line = document.createElement('div');
-        line.className = `commandLine ${role}`;
+            const output = this.getOutputHost();
+            if (!output) return;
 
-        // Icon
-        const icon = document.createElement('img');
-        icon.className = 'commandIcon';
+            const safeText = (text === null || text === undefined)
+                ? ''
+                : String(text);
 
-        icon.src = role === 'user'
-            ? '/skyesoft/assets/images/icons/user.png'
-            : '/skyesoft/assets/images/icons/robot.png';
+            const line = document.createElement('div');
+            line.className = `commandLine ${role}`;
 
-        icon.alt = role;
+            const icon = document.createElement('img');
+            icon.className = 'commandIcon';
 
-        // Message text
-        const msg = document.createElement('span');
-        msg.className = 'commandText';
-        msg.textContent = safeText;
+            icon.src = role === 'user'
+                ? '/skyesoft/assets/images/icons/user.png'
+                : '/skyesoft/assets/images/icons/robot.png';
 
-        line.appendChild(icon);
-        line.appendChild(msg);
+            icon.alt = role;
 
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
-    },
+            const msg = document.createElement('span');
+            msg.className = 'commandText';
+            msg.textContent = safeText;
 
-    // Appends trusted HTML (governance surface only)
-    appendSystemHtml(html) {
+            line.appendChild(icon);
+            line.appendChild(msg);
 
-        // Init output host
-        if (!this.cardHost) return;
-        const output = this.cardHost.querySelector('.commandOutput');
-        if (!output) return;
+            output.appendChild(line);
+            this.scrollOutputToBottom(output);
+        },
 
-        const safeHtml = (html === null || html === undefined)
-            ? ''
-            : String(html);
+        // Appends trusted HTML
+        appendSystemHtml(html) {
 
-        // Optional safety guard (render only known governance wrapper)
-        const isGovernanceHtml =
-            safeHtml.includes('gov-box') ||
-            safeHtml.includes('gov-action') ||
-            safeHtml.includes('gov-panel');
-        // Is Governance HTML Conditional
-        if (!isGovernanceHtml) {
-            this.appendSystemLine(safeHtml);
-            return;
-        }
+            const output = this.getOutputHost();
+            if (!output) return;
 
-        const wrap = document.createElement('div');
-        wrap.className = 'commandLine system html';
-        wrap.innerHTML = safeHtml; // Trusted server-generated HTML only
+            const safeHtml = (html === null || html === undefined)
+                ? ''
+                : String(html);
 
-        output.appendChild(wrap);
-        output.scrollTop = output.scrollHeight;
-    },
+            const isGovernanceHtml =
+                safeHtml.includes('gov-box') ||
+                safeHtml.includes('gov-action') ||
+                safeHtml.includes('gov-panel');
 
-    appendCodeBlock(html) {
+            if (!isGovernanceHtml) {
+                this.appendSystemLine('[Unsupported HTML content]');
+                return;
+            }
 
-        const output = this.cardHost?.querySelector('.commandOutput');
-        if (!output) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'commandLine system html';
+            wrap.innerHTML = safeHtml;
 
-        const wrapper = document.createElement('div');
+            output.appendChild(wrap);
+            this.scrollOutputToBottom(output);
+        },
 
-        // 🔥 IMPORTANT — remove "system"
-        wrapper.className = 'commandLine code';
+        // Appends code block
+        appendCodeBlock(html) {
 
-        wrapper.innerHTML = html;
+            const output = this.getOutputHost();
+            if (!output) return;
 
-        output.appendChild(wrapper);
-        output.scrollTop = output.scrollHeight;
-    },
+            const wrapper = document.createElement('div');
+            wrapper.className = 'commandLine code';
 
-    // #endregion
+            wrapper.innerHTML = html;
+
+            output.appendChild(wrapper);
+            this.scrollOutputToBottom(output);
+        },
+
+        // #endregion
 
     // #region 📦 Registry Loaders
     async loadRuntimeDomainRegistry() {
@@ -876,19 +876,40 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🧱 Card Rendering & Clearing
+
+    // 🔥 Full UI reset (cards + output)
     clearCards() {
-        if (this.cardHost) this.cardHost.innerHTML = '';
+
+        if (!this.cardHost) return;
+
+        this.cardHost.innerHTML = '';
+
+        console.log('[SkyIndex] All cards cleared');
     },
 
-    clearSessionSurface() {
+    // 🔥 Output-only reset (used by commands like contacts)
+    clearOutput() {
+
         if (!this.cardHost) return;
 
         const output = this.cardHost.querySelector('.commandOutput');
         if (output) output.innerHTML = '';
 
+        console.log('[SkyIndex] Output cleared');
+    },
+
+    // 🔥 Session reset (user-visible reset)
+    clearSessionSurface() {
+
+        if (!this.cardHost) return;
+
+        this.clearOutput();
+
         this.appendSystemLine('🟢 Skyesoft ready.');
+
         console.log('[SkyIndex] Session surface cleared');
     },
+
     // #endregion
 
     // #region 🔐 Login Card
@@ -1190,11 +1211,8 @@ window.SkyIndex = {
         // 📇 Contact Command (NEW — THIS IS THE KEY)
         // ───────────────────────────────────────────────
         if (normalized.startsWith('add ')) {
-            
-            // 🔥 CLEAR PREVIOUS OUTPUT (Fix #1)
-            const output = this.cardHost?.querySelector('.commandOutput');
-            if (output) output.innerHTML = '';
 
+            this.clearOutput();
             this.appendSystemLine('📇 Processing contact...');
 
             try {
@@ -1208,13 +1226,12 @@ window.SkyIndex = {
 
                 const data = await res.json();
 
-                // 🔥 FIX #2 — HARD VALIDATION BEFORE RENDER
-                if (!data || data.success === false) {
+                console.log('[CONTACT CREATE RESPONSE]', data);
 
+                if (!data || data.success === false) {
                     const msg = data?.error || 'Contact creation failed.';
                     this.appendSystemLine(`❌ ${msg}`);
-
-                    return; // 🚫 STOP — do NOT render result
+                    return;
                 }
 
                 this.renderContactResult(data);
@@ -1224,7 +1241,72 @@ window.SkyIndex = {
                 this.appendSystemLine('❌ Contact creation failed.');
             }
 
-            return; // 🔥 CRITICAL — stops AI fallback
+            return;
+        }
+
+        // ───────────────────────────────────────────────
+        // 📇 Contact Display Command
+        // ───────────────────────────────────────────────
+        if (
+            normalized.startsWith('show ') ||
+            normalized.startsWith('list ')
+        ) {
+
+            // 🧠 Smarter Guard
+            const words = normalized.split(/\s+/);
+
+            const looksLikeContactQuery =
+                normalized.includes('contact') ||
+                normalized.includes(' of ') ||
+                words.length <= 4;
+
+            if (!looksLikeContactQuery) {
+                return await this.executeAICommand(text);
+            }
+
+            this.clearOutput();
+            this.appendSystemLine('📇 Loading contacts...');
+
+            console.log('[CONTACT QUERY]', text);
+
+            try {
+
+                const res = await fetch('/skyesoft/api/getContacts.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ query: text })
+                });
+
+                const data = await res.json();
+
+                console.log('[CONTACT RESPONSE]', data);
+
+                // 🔒 Strong validation
+                if (!data || data.success === false || !Array.isArray(data.contacts)) {
+                    this.appendSystemLine('❌ Failed to load contacts.');
+                    return;
+                }
+
+                // 🧾 No results (correct placement)
+                if (data.contacts.length === 0) {
+                    this.appendSystemLine(`No contacts found for "${text}".`);
+                    return;
+                }
+
+                // 🎯 Mode-based rendering
+                if (data.mode === 'single') {
+                    this.renderContactDetail(data.contacts[0]);
+                } else {
+                    this.renderContactsList(data.contacts);
+                }
+
+            } catch (err) {
+                console.error('[CONTACT FETCH ERROR]', err);
+                this.appendSystemLine('❌ Contact fetch failed.');
+            }
+
+            return;
         }
 
         // ───────────────────────────────────────────────
@@ -1326,6 +1408,61 @@ window.SkyIndex = {
                 this.appendSystemLine('⚠ Unknown contact response.');
                 console.warn('[CONTACT] Unknown status:', data.status);
         }
+    },
+    // #endregion
+
+    // #region 📇 Contact List Renderer
+    renderContactsList(contacts) {
+
+        if (!Array.isArray(contacts) || contacts.length === 0) {
+            this.appendSystemLine('No contacts found.');
+            return;
+        }
+
+        this.appendSystemLine(`✔ ${contacts.length} contact(s) found`);
+
+        contacts.forEach(c => {
+
+            const name =
+                `${c.contactFirstName || ''} ${c.contactLastName || ''}`.trim()
+                || 'Unnamed Contact';
+
+            const company = c.entityName || 'Unknown Entity';
+
+            const phone = c.contactPrimaryPhone || '';
+            const email = c.contactEmail || '';
+
+            this.appendSystemLine(`${name} · ${company}`);
+
+            if (phone) this.appendSystemLine(`📞 ${phone}`);
+            if (email) this.appendSystemLine(`✉️ ${email}`);
+
+        });
+    },
+    // #endregion
+
+    // #region 📇 Contact Detail Renderer
+    renderContactDetail(contact) {
+
+        if (!contact) {
+            this.appendSystemLine('Contact not found.');
+            return;
+        }
+
+        const name =
+            `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim();
+
+        this.appendSystemLine(`👤 ${name}`);
+        this.appendSystemLine(`🏢 ${contact.entityName}`);
+
+        if (contact.contactTitle)
+            this.appendSystemLine(`💼 ${contact.contactTitle}`);
+
+        if (contact.contactPrimaryPhone)
+            this.appendSystemLine(`📞 ${contact.contactPrimaryPhone}`);
+
+        if (contact.contactEmail)
+            this.appendSystemLine(`✉️ ${contact.contactEmail}`);
     },
     // #endregion
 
