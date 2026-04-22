@@ -22,7 +22,6 @@ $db = getPDO();
 
 // #endregion
 
-
 // #region 🧠 Parse Query
 
 $mode = str_starts_with($query, 'show') ? 'single' : 'list';
@@ -48,7 +47,6 @@ if (!empty($query)) {
 }
 
 // #endregion
-
 
 // #region 🔍 Build SQL (ELC-Aware)
 
@@ -90,7 +88,6 @@ if ($mode === 'single') {
 
 // #endregion
 
-
 // #region 🚀 Execute
 
 $stmt = $db->prepare($sql);
@@ -104,7 +101,6 @@ if ($mode === 'single' && count($results) > 1) {
 }
 
 // #endregion
-
 
 // #region 📦 Response
 

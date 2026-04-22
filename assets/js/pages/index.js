@@ -1252,18 +1252,6 @@ window.SkyIndex = {
             normalized.startsWith('list ')
         ) {
 
-            // 🧠 Smarter Guard
-            const words = normalized.split(/\s+/);
-
-            const looksLikeContactQuery =
-                normalized.includes('contact') ||
-                normalized.includes(' of ') ||
-                words.length <= 4;
-
-            if (!looksLikeContactQuery) {
-                return await this.executeAICommand(text);
-            }
-
             this.clearOutput();
             this.appendSystemLine('📇 Loading contacts...');
 
@@ -1284,14 +1272,14 @@ window.SkyIndex = {
 
                 // 🔒 Strong validation
                 if (!data || data.success === false || !Array.isArray(data.contacts)) {
-                    this.appendSystemLine('❌ Failed to load contacts.');
-                    return;
+                    // ⛔ If backend fails → fallback to AI
+                    return await this.executeAICommand(text);
                 }
 
-                // 🧾 No results (correct placement)
+                // 🧾 No results → fallback to AI instead of dead-end
                 if (data.contacts.length === 0) {
-                    this.appendSystemLine(`No contacts found for "${text}".`);
-                    return;
+                    console.log('[CONTACT] No matches → AI fallback');
+                    return await this.executeAICommand(text);
                 }
 
                 // 🎯 Mode-based rendering
@@ -1303,7 +1291,9 @@ window.SkyIndex = {
 
             } catch (err) {
                 console.error('[CONTACT FETCH ERROR]', err);
-                this.appendSystemLine('❌ Contact fetch failed.');
+
+                // ⛔ Network / server error → fallback to AI
+                return await this.executeAICommand(text);
             }
 
             return;
