@@ -1493,15 +1493,32 @@ window.SkyIndex = {
         let nameLine = `${fullName}`;
         if (title) nameLine += `, ${title}`;
 
-        const lines = [
-            `📇 Loading contact details for ${firstName} ${lastName}`,
-            nameLine,
-            company,
-            phone,
-            email
-        ].filter(Boolean); // removes empty values
+        // 🧠 1. System message (robot icon stays)
+        this.appendSystemLine(`Loading contact details for ${firstName} ${lastName}`);
 
-        this.appendSystemBlock(lines);
+        // 🧱 2. Contact card (no robot icon)
+        const html = `
+            <div class="contact-card">
+
+                <div class="contact-name">
+                    <strong>${nameLine}</strong>
+                </div>
+
+                ${company ? `<div class="contact-company"><strong>${company}</strong></div>` : ''}
+
+                ${phone ? `<div class="contact-line">${phone}</div>` : ''}
+                ${email ? `<div class="contact-line">${email}</div>` : ''}
+
+                <div class="contact-actions">
+                    <span class="contact-link" data-id="${contact.contactId}">
+                        Show full record →
+                    </span>
+                </div>
+
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
     },
     // #endregion
 
