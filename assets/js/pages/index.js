@@ -1503,9 +1503,7 @@ window.SkyIndex = {
 
                 <div class="contact-header">
                     <span class="contact-icon">👤</span>
-                    <span class="contact-name">
-                        <strong>${nameLine}</strong>
-                    </span>
+                    <div class="contact-name">${nameLine}</div>
                 </div>
 
                 ${company ? `<div class="contact-company">${company}</div>` : ''}

@@ -458,7 +458,8 @@ body[data-page="index"] .authText {
 
 /* Skyesoft messages */
 .commandLine.system .commandText {
-    color: #555;
+    color: #888;
+    font-size: 0.9rem;
 }
 
 /* User messages */
@@ -622,56 +623,72 @@ body[data-page="index"] .authText {
 
 /* #region 📇 Contact Card */
 .contact-card {
-    font-family: inherit;   /* ensures it matches command interface */
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: #f9fafb;
-    border: 1px solid #ddd;
-    margin-top: 4px;
-    font-size: 13px;
     width: 100%;
-    max-width: 720px;   /* prevents it from getting too wide */
+    max-width: 760px;
+
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+
+    padding: 14px 16px;
+    margin-top: 6px;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.06),
+        0 8px 18px rgba(0,0,0,0.04);
+
+    transition: box-shadow 0.15s ease, transform 0.08s ease;
 }
 
 .contact-name {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
 }
 
 .contact-company {
-    color: #444;
-    margin-bottom: 6px;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
 }
 
 .contact-line {
-    margin: 2px 0;
+    font-size: 13px;
+    color: #222;
+    margin: 3px 0;
 }
 
 .contact-actions {
-    margin-top: 6px;
+    margin-top: 10px;
 }
 
 .contact-link {
-    color: #2a6df4;
-    cursor: pointer;
     font-size: 12px;
+    font-weight: 600;
+    color: #1a73e8;
+    cursor: pointer;
 }
 
 .contact-link:hover {
     text-decoration: underline;
 }
 
+.contact-card:hover {
+    box-shadow:
+        0 4px 10px rgba(0,0,0,0.08),
+        0 12px 24px rgba(0,0,0,0.06);
+}
+
 .contact-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 2px;
+    gap: 8px;
+    margin-bottom: 6px;
 }
 
 .contact-icon {
-    font-size: 14px;
-    opacity: 0.75;
+    font-size: 16px;
+    opacity: 0.8;
 }
 
 /* #endregion */
