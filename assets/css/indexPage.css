@@ -619,3 +619,43 @@ body[data-page="index"] .authText {
     margin: 6px 0;
 }
 /* #endregion */
+
+/* #region 📇 Contact Card */
+.contact-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #ddd;
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.contact-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.contact-company {
+    color: #444;
+    margin-bottom: 6px;
+}
+
+.contact-line {
+    margin: 2px 0;
+}
+
+.contact-actions {
+    margin-top: 6px;
+}
+
+.contact-link {
+    color: #2a6df4;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.contact-link:hover {
+    text-decoration: underline;
+}
+/* #endregion */

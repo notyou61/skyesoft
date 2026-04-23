@@ -269,7 +269,8 @@ window.SkyIndex = {
             const isGovernanceHtml =
                 safeHtml.includes('gov-box') ||
                 safeHtml.includes('gov-action') ||
-                safeHtml.includes('gov-panel');
+                safeHtml.includes('gov-panel') ||
+                safeHtml.includes('contact-card'); // ✅ ADD THIS
 
             if (!isGovernanceHtml) {
                 this.appendSystemLine('[Unsupported HTML content]');
