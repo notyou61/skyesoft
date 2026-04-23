@@ -634,23 +634,22 @@ body[data-page="index"] .authText {
 }
 /* #endregion */
 
-/* #region 📇 Contact Card — Upgraded (Skyesoft 2026) */
+/* #region 📇 Contact Card — Compact Black Style */
 .contact-card {
     width: 100%;
     max-width: 820px;
-    margin: 12px 0 24px 32px;           /* aligns under system message */
+    margin: 12px 0 24px 32px;
 
     background: #ffffff;
     border: 1px solid rgba(0,0,0,0.09);
     border-radius: 12px;
+    padding: 18px 24px;
 
-    padding: 20px 24px;
     box-shadow: 
         0 2px 8px rgba(0,0,0,0.06),
         0 8px 24px rgba(0,0,0,0.08);
 
-    transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
-    cursor: default;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .contact-card:hover {
@@ -660,75 +659,61 @@ body[data-page="index"] .authText {
         0 12px 32px rgba(0,0,0,0.12);
 }
 
-/* ==================== HEADER ==================== */
+/* Header */
 .contact-header {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    margin-bottom: 16px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .contact-icon {
-    font-size: 32px;
-    line-height: 1;
-    margin-top: 2px;
+    font-size: 26px;
     flex-shrink: 0;
-    opacity: 0.95;
+    opacity: 0.9;
 }
 
 .contact-name {
-    font-size: 1.35rem;
+    font-size: 1.32rem;
     font-weight: 700;
     color: #111;
-    line-height: 1.15;
-}
-
-.contact-title {
-    font-size: 0.97rem;
-    color: #555;
-    font-weight: 500;
-    margin-top: 3px;
+    line-height: 1.2;
 }
 
 /* Company */
 .contact-company {
-    font-size: 1.08rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
     font-weight: 600;
-    color: #1a73e8;
-    margin-bottom: 16px;
+    color: #111;           /* changed to black */
+    margin-bottom: 14px;
 }
 
-/* Divider */
-.contact-divider {
-    height: 1px;
-    background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
-    margin: 16px 0 14px;
-}
-
-/* Contact Lines */
+/* Lines */
 .contact-line {
     display: flex;
     align-items: center;
     gap: 10px;
     font-size: 0.98rem;
-    color: #222;
-    margin: 9px 0;
-    line-height: 1.4;
+    color: #111;           /* all black */
+    margin: 7px 0;
+    line-height: 1.35;
 }
 
 .contact-line::before {
     content: attr(data-icon);
     width: 22px;
-    color: #666;
+    color: #555;
     font-size: 1.15rem;
-    flex-shrink: 0;
 }
 
 /* Actions */
 .contact-actions {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(0,0,0,0.08);
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(0,0,0,0.09);
 }
 
 .contact-link {
@@ -738,33 +723,13 @@ body[data-page="index"] .authText {
     font-size: 0.96rem;
     font-weight: 600;
     color: #1a73e8;
-    text-decoration: none;
-    padding: 8px 14px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
     transition: all 0.18s ease;
 }
 
 .contact-link:hover {
-    background: rgba(26, 115, 232, 0.09);
-    color: #1557b0;
-}
-
-.contact-link::after {
-    content: "→";
-    transition: transform 0.2s ease;
-}
-
-.contact-link:hover::after {
-    transform: translateX(5px);
-}
-
-/* Optional: Scrollbar polish */
-.cardContent--command::-webkit-scrollbar {
-    width: 6px;
-}
-.cardContent--command::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.18);
-    border-radius: 20px;
+    background: rgba(26, 115, 232, 0.08);
 }
 
 /* #endregion */

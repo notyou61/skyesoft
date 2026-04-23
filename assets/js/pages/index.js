@@ -1480,7 +1480,6 @@ window.SkyIndex = {
             return;
         }
 
-        // ── Extract & clean data ─────────────────────────────────────
         const salutation = (contact.contactSalutation || '').trim();
         const firstName  = (contact.contactFirstName || '').trim();
         const lastName   = (contact.contactLastName || '').trim();
@@ -1490,32 +1489,27 @@ window.SkyIndex = {
         const phone = (contact.contactPrimaryPhone || '').trim();
         const email = (contact.contactEmail || '').trim();
 
-        // Build full name
-        let fullName = [salutation, firstName, lastName]
-            .filter(Boolean)
-            .join(' ')
-            .trim();
-
+        let fullName = [salutation, firstName, lastName].filter(Boolean).join(' ').trim();
         if (!fullName) fullName = 'Unnamed Contact';
 
-        // ── System message (robot icon) ─────────────────────────────
+        const nameLine = title ? `${fullName}, ${title}` : fullName;
+
+        // System message
         this.appendSystemLine(`Loading contact details for ${firstName} ${lastName}`);
 
-        // ── Enhanced Contact Card HTML ──────────────────────────────
+        // Compact Contact Card
         const html = `
             <div class="contact-card">
 
                 <div class="contact-header">
                     <span class="contact-icon">👤</span>
-                    <div>
-                        <div class="contact-name">${fullName}</div>
-                        ${title ? `<div class="contact-title">${title}</div>` : ''}
-                    </div>
+                    <div class="contact-name">${nameLine}</div>
                 </div>
 
-                ${company ? `<div class="contact-company">${company}</div>` : ''}
-
-                <div class="contact-divider"></div>
+                ${company ? `
+                <div class="contact-company">
+                    <span class="contact-icon">🏢</span> ${company}
+                </div>` : ''}
 
                 ${phone ? `
                 <div class="contact-line" data-icon="📞">
@@ -1529,7 +1523,7 @@ window.SkyIndex = {
 
                 <div class="contact-actions">
                     <span class="contact-link" data-id="${contact.contactId}">
-                        View full profile
+                        View full profile →
                     </span>
                 </div>
 
