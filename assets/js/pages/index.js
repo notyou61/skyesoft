@@ -1480,40 +1480,56 @@ window.SkyIndex = {
             return;
         }
 
-        const salutation = contact.contactSalutation || '';
-        const firstName  = contact.contactFirstName || '';
-        const lastName   = contact.contactLastName || '';
-        const title      = contact.contactTitle || '';
-        const company    = contact.entityName || '';
+        // ── Extract & clean data ─────────────────────────────────────
+        const salutation = (contact.contactSalutation || '').trim();
+        const firstName  = (contact.contactFirstName || '').trim();
+        const lastName   = (contact.contactLastName || '').trim();
+        const title      = (contact.contactTitle || '').trim();
+        const company    = (contact.entityName || '').trim();
 
-        const phone = contact.contactPrimaryPhone || '';
-        const email = contact.contactEmail || '';
+        const phone = (contact.contactPrimaryPhone || '').trim();
+        const email = (contact.contactEmail || '').trim();
 
-        const fullName = `${salutation} ${firstName} ${lastName}`.trim();
+        // Build full name
+        let fullName = [salutation, firstName, lastName]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
 
-        let nameLine = `${fullName}`;
-        if (title) nameLine += `, ${title}`;
+        if (!fullName) fullName = 'Unnamed Contact';
 
-        // 🧠 1. System message (robot icon stays)
+        // ── System message (robot icon) ─────────────────────────────
         this.appendSystemLine(`Loading contact details for ${firstName} ${lastName}`);
 
-        // 🧱 2. Contact card (no robot icon)
+        // ── Enhanced Contact Card HTML ──────────────────────────────
         const html = `
             <div class="contact-card">
 
                 <div class="contact-header">
                     <span class="contact-icon">👤</span>
-                    <div class="contact-name">${nameLine}</div>
+                    <div>
+                        <div class="contact-name">${fullName}</div>
+                        ${title ? `<div class="contact-title">${title}</div>` : ''}
+                    </div>
                 </div>
 
                 ${company ? `<div class="contact-company">${company}</div>` : ''}
 
-                ${phone ? `<div class="contact-line">${phone}</div>` : ''}
-                ${email ? `<div class="contact-line">${email}</div>` : ''}
+                <div class="contact-divider"></div>
+
+                ${phone ? `
+                <div class="contact-line" data-icon="📞">
+                    ${phone}
+                </div>` : ''}
+
+                ${email ? `
+                <div class="contact-line" data-icon="✉️">
+                    ${email}
+                </div>` : ''}
 
                 <div class="contact-actions">
                     <span class="contact-link" data-id="${contact.contactId}">
-                        Show full record →
+                        View full profile
                     </span>
                 </div>
 
