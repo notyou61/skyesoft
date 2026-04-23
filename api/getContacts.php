@@ -87,10 +87,13 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
+session_start();                                           // Required for $_SESSION['user_id']
+
 require_once __DIR__ . '/dbConnect.php';
 
 $input = json_decode(file_get_contents("php://input"), true);
-$query = strtolower(trim($input['query'] ?? ''));
+$originalQuery = trim($input['query'] ?? '');             // Keep original query for logging
+$query = strtolower($originalQuery);
 
 if (!$query) {
     echo json_encode([
@@ -140,10 +143,8 @@ SELECT
     c.contactEmail,
     c.contactPrimaryPhone,
     c.contactTitle,
-
     e.entityId,
     e.entityName
-
 FROM tblContacts c
 LEFT JOIN tblEntities e ON c.contactEntityId = e.entityId
 WHERE 1=1
@@ -174,8 +175,7 @@ if ($mode === 'single') {
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
-
-$results = $stmt->fetchAll();
+$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Adjust mode if ambiguous
 if ($mode === 'single' && count($results) > 1) {
@@ -184,52 +184,67 @@ if ($mode === 'single' && count($results) > 1) {
 
 #endregion
 
+#region 🧾 Log Action Helper
+
+function logAction($db, string $actionType, array $data = []): void
+{
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO tblActions (
+                actionType, 
+                contactId, 
+                entityId, 
+                userId, 
+                actionNote, 
+                createdAt
+            ) VALUES (
+                :actionType, 
+                :contactId, 
+                :entityId, 
+                :userId,
+                :actionNote, 
+                NOW()
+            )
+        ");
+
+        $stmt->execute([
+            ':actionType' => $actionType,
+            ':contactId'  => $data['contactId'] ?? null,
+            ':entityId'   => $data['entityId']   ?? null,
+            ':userId'     => $data['userId']     ?? ($_SESSION['user_id'] ?? null),
+            ':actionNote' => $data['actionNote'] ?? null
+        ]);
+    } catch (Exception $e) {
+        error_log('[ACTION LOG ERROR] ' . $e->getMessage());
+    }
+}
+
+#endregion
+
 #region 🧾 Log Contact View Action
 
-try {
-    $userId = $_SESSION['user_id'] ?? null;
-    $queryText = $input['query'] ?? $query; // original raw query
+$resultsCount = count($results);
 
-    // Single contact view
-    if ($mode === 'single' && count($results) === 1) {
-        $contact = $results[0];
-        
-        $stmt = $db->prepare("
-            INSERT INTO tblActions (
-                actionType, contactId, entityId, userId, 
-                actionNote, createdAt
-            ) VALUES (
-                :actionType, :contactId, :entityId, :userId,
-                :actionNote, NOW()
-            )
-        ");
-
-        $stmt->execute([
-            ':actionType' => 'contact_view',
-            ':contactId'  => $contact['contactId'] ?? null,
-            ':entityId'   => $contact['entityId'] ?? null,
-            ':userId'     => $userId,
-            ':actionNote' => 'Viewed contact via command interface | Query: ' . $queryText
-        ]);
-    }
-    // List mode (multiple contacts shown)
-    elseif ($mode === 'list' || count($results) > 1) {
-        $stmt = $db->prepare("
-            INSERT INTO tblActions (
-                actionType, userId, actionNote, createdAt
-            ) VALUES (
-                :actionType, :userId, :actionNote, NOW()
-            )
-        ");
-
-        $stmt->execute([
-            ':actionType' => 'contact_list_view',
-            ':userId'     => $userId,
-            ':actionNote' => 'Viewed contact list (' . count($results) . ' results) | Query: ' . $queryText
-        ]);
-    }
-} catch (Exception $e) {
-    error_log('[ACTION LOG ERROR] ' . $e->getMessage());
+if ($mode === 'single' && $resultsCount === 1) {
+    // Single contact viewed
+    $c = $results[0];
+    logAction($db, 'contact_view', [
+        'contactId'  => $c['contactId'] ?? null,
+        'entityId'   => $c['entityId'] ?? null,
+        'actionNote' => "Viewed contact via command interface | Query: {$originalQuery}"
+    ]);
+}
+elseif ($resultsCount > 0) {
+    // List / multiple results
+    logAction($db, 'contact_list_view', [
+        'actionNote' => "Viewed contact list ({$resultsCount} results) | Query: {$originalQuery}"
+    ]);
+}
+else {
+    // No results found
+    logAction($db, 'contact_search_no_results', [
+        'actionNote' => "No contacts found | Query: {$originalQuery}"
+    ]);
 }
 
 #endregion
