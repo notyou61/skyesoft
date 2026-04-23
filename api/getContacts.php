@@ -130,22 +130,22 @@ if (!empty($query)) {
 
 #endregion
 
-#region 🔍 Build SQL (ELC-Aware)
+#region 🔍 Build SQL (ELC-Aware — FIXED)
 
 $sql = "
 SELECT 
-    c.id,
+    c.contactId,
     c.contactFirstName,
     c.contactLastName,
     c.contactEmail,
     c.contactPrimaryPhone,
     c.contactTitle,
 
-    e.id   AS entityId,
-    e.name AS entityName
+    e.entityId,
+    e.entityName
 
-FROM contacts c
-LEFT JOIN entities e ON c.entityId = e.id
+FROM tblContacts c
+LEFT JOIN tblEntities e ON c.contactEntityId = e.entityId
 WHERE 1=1
 ";
 
@@ -159,7 +159,7 @@ if ($nameFilter) {
 
 // Entity filter
 if ($entityFilter) {
-    $sql .= " AND LOWER(e.name) LIKE :entity";
+    $sql .= " AND LOWER(e.entityName) LIKE :entity";
     $params[':entity'] = "%$entityFilter%";
 }
 
@@ -168,9 +168,9 @@ if ($mode === 'single') {
     $sql .= " LIMIT 5";
 }
 
-// #endregion
+#endregion
 
-// #region 🚀 Execute
+#region 🚀 Execute
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);

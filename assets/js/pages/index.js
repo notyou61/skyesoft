@@ -1409,9 +1409,9 @@ window.SkyIndex = {
             return;
         }
 
-        this.appendSystemLine(`✔ ${contacts.length} contact(s) found`);
+        this.appendSystemLine(`📇 ${contacts.length} contact(s) found`);
 
-        contacts.forEach(c => {
+        contacts.forEach((c, index) => {
 
             const name =
                 `${c.contactFirstName || ''} ${c.contactLastName || ''}`.trim()
@@ -1422,10 +1422,18 @@ window.SkyIndex = {
             const phone = c.contactPrimaryPhone || '';
             const email = c.contactEmail || '';
 
-            this.appendSystemLine(`${name} · ${company}`);
+            // 🔹 Main line (identity)
+            this.appendSystemLine(`${index + 1}. ${name} · ${company}`);
 
-            if (phone) this.appendSystemLine(`📞 ${phone}`);
-            if (email) this.appendSystemLine(`✉️ ${email}`);
+            // 🔹 Inline actionable info (only if exists)
+            let detailLine = [];
+
+            if (phone) detailLine.push(`📞 ${phone}`);
+            if (email) detailLine.push(`✉️ ${email}`);
+
+            if (detailLine.length) {
+                this.appendSystemLine(`   ${detailLine.join('  ')}`);
+            }
 
         });
     },
