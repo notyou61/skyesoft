@@ -1472,7 +1472,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 Contact Detail Renderer
+// #region 📇 Contact Detail Renderer
     renderContactDetail(contact) {
 
         if (!contact) {
@@ -1494,10 +1494,8 @@ window.SkyIndex = {
 
         const nameLine = title ? `${fullName}, ${title}` : fullName;
 
-        // System message
         this.appendSystemLine(`Loading contact details for ${firstName} ${lastName}`);
 
-        // Compact Contact Card
         const html = `
             <div class="contact-card">
 
@@ -1508,7 +1506,7 @@ window.SkyIndex = {
 
                 ${company ? `
                 <div class="contact-company">
-                    <span class="contact-icon">🏢</span> ${company}
+                    <span class="contact-icon">🏢</span>${company}
                 </div>` : ''}
 
                 ${phone ? `
@@ -1523,7 +1521,7 @@ window.SkyIndex = {
 
                 <div class="contact-actions">
                     <span class="contact-link" data-id="${contact.contactId}">
-                        View full profile →
+                        View full profile
                     </span>
                 </div>
 
