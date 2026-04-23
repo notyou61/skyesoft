@@ -353,7 +353,7 @@ body[data-page="index"] .bodyContent {
     min-height: 0;
     padding: 20px;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;   /* ✅ CHANGE THIS */
     align-items: flex-start;
 }
 /* #endregion */
@@ -622,12 +622,15 @@ body[data-page="index"] .authText {
 
 /* #region 📇 Contact Card */
 .contact-card {
+    font-family: inherit;   /* ensures it matches command interface */
     padding: 10px 12px;
     border-radius: 8px;
     background: #f9fafb;
     border: 1px solid #ddd;
     margin-top: 4px;
     font-size: 13px;
+    width: 100%;
+    max-width: 720px;   /* prevents it from getting too wide */
 }
 
 .contact-name {
@@ -658,4 +661,17 @@ body[data-page="index"] .authText {
 .contact-link:hover {
     text-decoration: underline;
 }
+
+.contact-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.contact-icon {
+    font-size: 14px;
+    opacity: 0.75;
+}
+
 /* #endregion */

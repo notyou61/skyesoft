@@ -1501,11 +1501,14 @@ window.SkyIndex = {
         const html = `
             <div class="contact-card">
 
-                <div class="contact-name">
-                    <strong>${nameLine}</strong>
+                <div class="contact-header">
+                    <span class="contact-icon">👤</span>
+                    <span class="contact-name">
+                        <strong>${nameLine}</strong>
+                    </span>
                 </div>
 
-                ${company ? `<div class="contact-company"><strong>${company}</strong></div>` : ''}
+                ${company ? `<div class="contact-company">${company}</div>` : ''}
 
                 ${phone ? `<div class="contact-line">${phone}</div>` : ''}
                 ${email ? `<div class="contact-line">${email}</div>` : ''}
