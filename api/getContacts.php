@@ -184,6 +184,56 @@ if ($mode === 'single' && count($results) > 1) {
 
 #endregion
 
+#region 🧾 Log Contact View Action
+
+try {
+    $userId = $_SESSION['user_id'] ?? null;
+    $queryText = $input['query'] ?? $query; // original raw query
+
+    // Single contact view
+    if ($mode === 'single' && count($results) === 1) {
+        $contact = $results[0];
+        
+        $stmt = $db->prepare("
+            INSERT INTO tblActions (
+                actionType, contactId, entityId, userId, 
+                actionNote, createdAt
+            ) VALUES (
+                :actionType, :contactId, :entityId, :userId,
+                :actionNote, NOW()
+            )
+        ");
+
+        $stmt->execute([
+            ':actionType' => 'contact_view',
+            ':contactId'  => $contact['contactId'] ?? null,
+            ':entityId'   => $contact['entityId'] ?? null,
+            ':userId'     => $userId,
+            ':actionNote' => 'Viewed contact via command interface | Query: ' . $queryText
+        ]);
+    }
+    // List mode (multiple contacts shown)
+    elseif ($mode === 'list' || count($results) > 1) {
+        $stmt = $db->prepare("
+            INSERT INTO tblActions (
+                actionType, userId, actionNote, createdAt
+            ) VALUES (
+                :actionType, :userId, :actionNote, NOW()
+            )
+        ");
+
+        $stmt->execute([
+            ':actionType' => 'contact_list_view',
+            ':userId'     => $userId,
+            ':actionNote' => 'Viewed contact list (' . count($results) . ' results) | Query: ' . $queryText
+        ]);
+    }
+} catch (Exception $e) {
+    error_log('[ACTION LOG ERROR] ' . $e->getMessage());
+}
+
+#endregion
+
 #region 📦 Response
 
 echo json_encode([
