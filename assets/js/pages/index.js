@@ -1472,7 +1472,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-// #region 📇 Contact Detail Renderer
+    // #region 📇 Contact Detail Renderer
     renderContactDetail(contact) {
 
         if (!contact) {
