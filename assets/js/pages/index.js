@@ -1447,20 +1447,40 @@ window.SkyIndex = {
             return;
         }
 
-        const name =
-            `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim();
+        const salutation = contact.contactSalutation || '';
+        const firstName  = contact.contactFirstName || '';
+        const lastName   = contact.contactLastName || '';
+        const title      = contact.contactTitle || '';
+        const company    = contact.entityName || '';
 
-        this.appendSystemLine(`👤 ${name}`);
-        this.appendSystemLine(`🏢 ${contact.entityName}`);
+        const phone = contact.contactPrimaryPhone || '';
+        const email = contact.contactEmail || '';
 
-        if (contact.contactTitle)
-            this.appendSystemLine(`💼 ${contact.contactTitle}`);
+        const fullName = `${salutation} ${firstName} ${lastName}`.trim();
 
-        if (contact.contactPrimaryPhone)
-            this.appendSystemLine(`📞 ${contact.contactPrimaryPhone}`);
+        // 🔹 Header
+        this.appendSystemLine(`📇 Loading contact details for ${firstName} ${lastName}`);
 
-        if (contact.contactEmail)
-            this.appendSystemLine(`✉️ ${contact.contactEmail}`);
+        // 🔹 Name + Title
+        let nameLine = `👤 ${fullName}`;
+        if (title) nameLine += `, ${title}`;
+        this.appendSystemLine(nameLine);
+
+        // 🔹 Company
+        if (company) {
+            this.appendSystemLine(company);
+        }
+
+        // 🔹 Phone
+        if (phone) {
+            this.appendSystemLine(phone);
+        }
+
+        // 🔹 Email
+        if (email) {
+            this.appendSystemLine(email);
+        }
+
     },
     // #endregion
 
