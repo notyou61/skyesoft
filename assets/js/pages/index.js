@@ -299,6 +299,35 @@ window.SkyIndex = {
             this.scrollOutputToBottom(output);
         },
 
+        // Appends multiple lines as a block (e.g. for multi-line system messages)
+        appendSystemBlock(lines = []) {
+
+            const output = this.dom?.commandOutput;
+            if (!output) return;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'commandLine system';
+
+            const icon = document.createElement('img');
+            icon.className = 'commandIcon';
+            icon.src = '/skyesoft/assets/images/icons/robot.png';
+
+            const content = document.createElement('div');
+            content.className = 'commandText';
+
+            lines.forEach((line, index) => {
+                const row = document.createElement('div');
+                row.textContent = line;
+                content.appendChild(row);
+            });
+
+            wrapper.appendChild(icon);
+            wrapper.appendChild(content);
+
+            output.appendChild(wrapper);
+            output.scrollTop = output.scrollHeight;
+        },
+
         // #endregion
 
     // #region 📦 Registry Loaders
@@ -1458,29 +1487,18 @@ window.SkyIndex = {
 
         const fullName = `${salutation} ${firstName} ${lastName}`.trim();
 
-        // 🔹 Header
-        this.appendSystemLine(`📇 Loading contact details for ${firstName} ${lastName}`);
-
-        // 🔹 Name + Title
-        let nameLine = `👤 ${fullName}`;
+        let nameLine = `${fullName}`;
         if (title) nameLine += `, ${title}`;
-        this.appendSystemLine(nameLine);
 
-        // 🔹 Company
-        if (company) {
-            this.appendSystemLine(company);
-        }
+        const lines = [
+            `📇 Loading contact details for ${firstName} ${lastName}`,
+            nameLine,
+            company,
+            phone,
+            email
+        ].filter(Boolean); // removes empty values
 
-        // 🔹 Phone
-        if (phone) {
-            this.appendSystemLine(phone);
-        }
-
-        // 🔹 Email
-        if (email) {
-            this.appendSystemLine(email);
-        }
-
+        this.appendSystemBlock(lines);
     },
     // #endregion
 

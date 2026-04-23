@@ -451,6 +451,10 @@ body[data-page="index"] .authText {
     white-space: pre-wrap;
     word-break: break-word;
 }
+/* Message text div */
+.commandText div {
+    margin: 2px 0;
+}
 
 /* Skyesoft messages */
 .commandLine.system .commandText {
