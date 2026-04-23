@@ -1282,7 +1282,6 @@ window.SkyIndex = {
         ) {
 
             this.clearOutput();
-            this.appendSystemLine('📇 Loading contacts...');
 
             console.log('[CONTACT QUERY]', text);
 
@@ -1299,23 +1298,27 @@ window.SkyIndex = {
 
                 console.log('[CONTACT RESPONSE]', data);
 
-                // 🔒 Strong validation
+                // 🔒 Validation
                 if (!data || data.success === false || !Array.isArray(data.contacts)) {
-                    // ⛔ If backend fails → fallback to AI
                     return await this.executeAICommand(text);
                 }
 
-                // 🧾 No results → fallback to AI instead of dead-end
+                // 🧾 No results → fallback
                 if (data.contacts.length === 0) {
-                    console.log('[CONTACT] No matches → AI fallback');
                     return await this.executeAICommand(text);
                 }
 
                 // 🎯 Mode-based rendering
                 if (data.mode === 'single') {
+
                     this.renderContactDetail(data.contacts[0]);
+
                 } else {
+
+                    // 👇 ONLY show loading for list
+                    this.appendSystemLine('📇 Loading contacts...');
                     this.renderContactsList(data.contacts);
+
                 }
 
             } catch (err) {
