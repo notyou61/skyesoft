@@ -367,7 +367,7 @@ if (!empty($currentUserId)) {
 
 #endregion
 
-#region SECTION 3 —  Final Response (Standardized for Frontend)
+#region SECTION 3 — Final Response (Standardized for Frontend)
 
 $baseResponse = [
     'status'     => $outcomeType,
@@ -399,7 +399,7 @@ if ($outcomeType === 'reject') {
 
 #endregion
 
-#region SECTION 4 —  Helper Functions
+#region SECTION 4 — Helper Functions
 
 function resolveSalutation($input, $firstName, $lastName): string {
     $salutation = rtrim(trim((string)$input), '.');
