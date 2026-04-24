@@ -184,10 +184,14 @@ window.SkyIndex.lastSSE = {};
 
 // #region 🧩 SkyeApp Page Object
 window.SkyIndex = {
-
+    
     // #region 🧠 Cached DOM State
     dom: null,
     cardHost: null,
+    // #endregion
+
+    // 🌍 Location cache (used by getContacts.php + AI commands)
+    lastLocation: { latitude: null, longitude: null },
     // #endregion
 
     // #region 📘 Domain Surface Control
@@ -1287,16 +1291,16 @@ window.SkyIndex = {
             console.log('[CONTACT QUERY]', text);
 
             try {
-
-                // 🌍 Get location (reuse cached or fetch fresh)
+                // 🌍 Resolve location (cached preferred)
                 let location = this.lastLocation || { latitude: null, longitude: null };
 
                 if (location.latitude === null || location.longitude === null) {
-                    location = await this.getLocationSafe();   // You already have this excellent function
-                    this.lastLocation = location;              // Cache for next commands
+                    console.log('[CONTACT] Fetching fresh location...');
+                    location = await this.getLocationSafe();
+                    this.lastLocation = location;        // Cache for future commands
                 }
 
-                console.log('[CONTACT GEO]', location);   // ← Helpful debug
+                console.log('[CONTACT GEO]', location);
 
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
@@ -1304,7 +1308,7 @@ window.SkyIndex = {
                     credentials: 'include',
                     body: JSON.stringify({
                         query: text,
-                        latitude: location.latitude,
+                        latitude:  location.latitude,
                         longitude: location.longitude
                     })
                 });
@@ -1313,21 +1317,21 @@ window.SkyIndex = {
 
                 console.log('[CONTACT RESPONSE]', data);
 
-                // 🔒 Validation
-                if (!data || data.success === false || !Array.isArray(data.contacts)) {
+                // Validation + AI fallback
+                if (!data?.success || !Array.isArray(data.contacts)) {
+                    console.warn('[CONTACT] Invalid response → falling back to AI');
                     return await this.executeAICommand(text);
                 }
 
-                // 🧾 No results → fallback
                 if (data.contacts.length === 0) {
                     return await this.executeAICommand(text);
                 }
 
-                // 🎯 Mode-based rendering
-                if (data.mode === 'single') {
+                // Render based on mode
+                if (data.mode === 'single' && data.contacts.length > 0) {
                     this.renderContactDetail(data.contacts[0]);
                 } else {
-                    this.appendSystemLine('📇 Loading contacts...');
+                    this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
                     this.renderContactsList(data.contacts);
                 }
 
@@ -1336,7 +1340,7 @@ window.SkyIndex = {
                 return await this.executeAICommand(text);
             }
 
-            return;
+            return;   // Important: prevent falling through to AI
         }
 
         // ───────────────────────────────────────────────
