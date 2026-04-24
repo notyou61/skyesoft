@@ -373,8 +373,9 @@ $baseResponse = [
     'status'      => $outcomeType,
     'message'     => $message,
     'requestId'   => $varRequestId,
-    'contactId'   => $targetContactId,                    // ← Critical for frontend
-    'success'     => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true)
+    'contactId'   => $targetContactId,           // ← Critical for frontend re-fetch
+    'success'     => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true),
+    'verified'    => true                        // ← Signals DB-backed response
 ];
 
 if ($outcomeType === 'reject') {

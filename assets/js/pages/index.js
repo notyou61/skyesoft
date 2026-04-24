@@ -1259,7 +1259,10 @@ window.SkyIndex = {
                 });
 
                 const createData = await createRes.json();
-                console.log('[CREATE RESPONSE]', createData);
+                // Debug Conditional
+                if (window.DEBUG) {
+                    console.log('[CREATE RESPONSE]', createData);
+                }
 
                 // Extract contactId (works with your updated backend)
                 const contactId = createData.contactId || 
@@ -1271,7 +1274,7 @@ window.SkyIndex = {
                     return;
                 }
 
-                this.appendSystemLine('✅ Contact created successfully. Loading details...');
+                this.appendSystemLine('🔄 Verifying contact from database...');
 
                 // 2. Re-fetch verified data from database
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
@@ -1279,12 +1282,16 @@ window.SkyIndex = {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
-                        query: `show ${contactId}`     // getContacts.php understands this
+                        query: `id ${contactId}`,     // getContacts.php understands this
+                        suppressLog: true   // 🔥 No duplicate action
                     })
                 });
 
                 const fetchData = await fetchRes.json();
-                console.log('[CONTACT VERIFY]', fetchData);
+                                // Debug Conditional
+                if (window.DEBUG) {
+                    console.log('[CONTACT VERIFY]', fetchData);
+                }
 
                 if (!fetchData?.success || !fetchData.contacts?.[0]) {
                     this.appendSystemLine('⚠ Contact created but could not load full details.');
@@ -1293,9 +1300,11 @@ window.SkyIndex = {
                 }
 
                 const contact = fetchData.contacts[0];
-                const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim() || 'New Contact';
+                const fullName =
+                    `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim()
+                    || `Contact #${contact.contactId}`;
 
-                this.appendSystemLine(`📇 ${fullName}`);
+                this.appendSystemLine(`✔ Contact ready: ${fullName}`)
                 this.renderContactDetail(contact);
 
                 // Cache for future "last contact" command
