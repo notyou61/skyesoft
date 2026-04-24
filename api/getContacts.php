@@ -11,13 +11,15 @@ declare(strict_types=1);
  * Accepts natural language queries and returns structured contact data.
  *
  * -----------------------------------------------------------------------------
- * KEY ARCHITECTURAL DECISIONS (Current)
+ * KEY ARCHITECTURAL DECISIONS (Latest MTCO)
  * -----------------------------------------------------------------------------
  * • ONE logging block only
  * • Original query always preserved
  * • Full session tracing via requestId
- * • Full Latitude & Longitude support (from input + session)
- * • Logs every command (success/failure, single/list)
+ * • Rich, clean responseText (contact summary or status)
+ * • Reliable Latitude & Longitude (input → session → safe default)
+ * • contactId = NULL when no match (correct semantics)
+ * • Logs every command with high-quality audit data
  *
  * =============================================================================
  */
@@ -122,11 +124,10 @@ if ($mode === 'single' && count($results) > 1) {
 
 #region 🌍 Geo Location Handling
 
-// 🌍 Geo — Pull from available sources
 $latitude  = null;
 $longitude = null;
 
-// Priority 1: From current request payload (frontend can send real-time location)
+// Priority 1: From frontend request (recommended)
 if (isset($input['latitude']) && is_numeric($input['latitude'])) {
     $latitude = (float)$input['latitude'];
 }
@@ -134,9 +135,9 @@ if (isset($input['longitude']) && is_numeric($input['longitude'])) {
     $longitude = (float)$input['longitude'];
 }
 
-// Priority 2: From session / user entry (your standard pattern)
+// Priority 2: Session fallback
 if ($latitude === null || $longitude === null) {
-    $entry = $_SESSION['userEntry'] ?? [];        // Change key if your session uses different name
+    $entry = $_SESSION['userEntry'] ?? [];
     $latitude = is_numeric($entry['latitude'] ?? null)
         ? (float)$entry['latitude']
         : $latitude;
@@ -146,12 +147,52 @@ if ($latitude === null || $longitude === null) {
         : $longitude;
 }
 
+// Debug geo (improved)
+if ($latitude === null || $longitude === null) {
+    error_log("[geo] missing coordinates | requestId=" . session_id() .
+              " | lat=" . json_encode($latitude) .
+              " | lon=" . json_encode($longitude) .
+              " | ip=" . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+}
+
+// Final safety net
+$latitude  = $latitude  ?? 0.0;
+$longitude = $longitude ?? 0.0;
+
+#endregion
+
+#region 📝 Build Response Text for Logging
+
+if (count($results) === 1) {
+    $c = $results[0];
+
+    $name    = trim(($c['contactFirstName'] ?? '') . ' ' . ($c['contactLastName'] ?? ''));
+    $title   = $c['contactTitle'] ?? '';
+    $company = $c['entityName'] ?? '';
+    $phone   = $c['contactPrimaryPhone'] ?? '';
+    $email   = $c['contactEmail'] ?? '';
+
+    $responseParts = [];
+    $responseParts[] = trim($name . ($title ? ", {$title}" : ""));
+    if ($company) $responseParts[] = $company;
+    if ($phone)   $responseParts[] = $phone;
+    if ($email)   $responseParts[] = $email;
+
+    $response = implode("\n", $responseParts);
+
+} elseif (count($results) > 1) {
+    $response = "Multiple contacts returned (" . count($results) . ")";
+} else {
+    $response = "No contacts found";
+}
+
 #endregion
 
 #region 🧾 Log Contact Query Action (SINGLE BLOCK)
 
 try {
-    $contactId = $results[0]['contactId'] ?? 0;
+    // ✅ MTCO fix: NULL when no contact matched
+    $contactId = $results[0]['contactId'] ?? null;
     $requestId = session_id();
 
     $actionTypeId = 4;                    // query
@@ -168,7 +209,6 @@ try {
     };
 
     $confidence = 1.00;
-    $response   = null;
     $ipAddress  = $_SERVER['REMOTE_ADDR'] ?? null;
     $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
@@ -192,22 +232,22 @@ try {
 
     $logStmt->execute([
         $actionTypeId,
-        $contactId,
+        $contactId,          // ← Now correctly NULL when no match
         $origin,
         $unixTime,
         $requestId,
         $promptText,
-        $response,
+        $response,           // Clean multi-line summary
         $intent,
         $confidence,
         $ipAddress,
-        $latitude,      // ← Now properly populated
-        $longitude,     // ← Now properly populated
+        $latitude,
+        $longitude,
         $userAgent
     ]);
 
     error_log("[actions] contact query logged | requestId={$requestId} | actionId=" . $db->lastInsertId() .
-              " | geo=({$latitude},{$longitude})");
+              " | geo=({$latitude},{$longitude}) | contactId=" . ($contactId ?? 'NULL'));
 
 } catch (Throwable $e) {
     error_log('[actions] insert failed: ' . $e->getMessage());
