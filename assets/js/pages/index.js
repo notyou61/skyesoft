@@ -190,7 +190,7 @@ window.SkyIndex = {
     cardHost: null,
     // #endregion
 
-    // 🌍 Location cache (used by getContacts.php + AI commands)
+    // #region 🌍 Location cache (used by getContacts.php + AI commands)
     lastLocation: { latitude: null, longitude: null },
     // #endregion
 
