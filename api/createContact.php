@@ -370,10 +370,11 @@ if (!empty($currentUserId)) {
 #region SECTION 3 — Final Response (Standardized for Frontend)
 
 $baseResponse = [
-    'status'     => $outcomeType,
-    'message'    => $message,
-    'requestId'  => $varRequestId,
-    'contactId'  => $targetContactId,           // ← Always present at top level
+    'status'      => $outcomeType,
+    'message'     => $message,
+    'requestId'   => $varRequestId,
+    'contactId'   => $targetContactId,                    // ← Critical for frontend
+    'success'     => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true)
 ];
 
 if ($outcomeType === 'reject') {

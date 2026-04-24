@@ -1250,6 +1250,7 @@ window.SkyIndex = {
             this.appendSystemLine('📇 Creating contact...');
 
             try {
+                // 1. Create the contact
                 const createRes = await fetch('/skyesoft/api/createContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1260,10 +1261,9 @@ window.SkyIndex = {
                 const createData = await createRes.json();
                 console.log('[CREATE RESPONSE]', createData);
 
-                // Extract contactId from standardized backend response
+                // Extract contactId (works with your updated backend)
                 const contactId = createData.contactId || 
-                                 createData.insert?.contactId || 
-                                 null;
+                                 createData.insert?.contactId;
 
                 if (!contactId) {
                     const msg = createData.message || createData.reason || 'Creation failed';
@@ -1273,9 +1273,14 @@ window.SkyIndex = {
 
                 this.appendSystemLine('✅ Contact created successfully. Loading details...');
 
-                // 2. Re-fetch from database (Source of Truth)
-                const fetchRes = await fetch(`/skyesoft/api/getContacts.php?id=${contactId}`, {
-                    credentials: 'include'
+                // 2. Re-fetch verified data from database
+                const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        query: `show ${contactId}`     // getContacts.php understands this
+                    })
                 });
 
                 const fetchData = await fetchRes.json();
@@ -1283,6 +1288,7 @@ window.SkyIndex = {
 
                 if (!fetchData?.success || !fetchData.contacts?.[0]) {
                     this.appendSystemLine('⚠ Contact created but could not load full details.');
+                    console.error('Fetch failed:', fetchData);
                     return;
                 }
 
@@ -1292,7 +1298,7 @@ window.SkyIndex = {
                 this.appendSystemLine(`📇 ${fullName}`);
                 this.renderContactDetail(contact);
 
-                // Cache for "last contact" / future commands
+                // Cache for future "last contact" command
                 this.lastContactId = contact.contactId;
 
             } catch (err) {
