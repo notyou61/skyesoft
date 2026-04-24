@@ -8,77 +8,16 @@ declare(strict_types=1);
  * PURPOSE
  * -----------------------------------------------------------------------------
  * Handles contact retrieval requests for the Skyesoft Command Interface.
- * Accepts natural language queries (e.g., "show bill smith of legacy homes")
- * and returns structured contact data from the database.
+ * Accepts natural language queries and returns structured contact data.
  *
  * -----------------------------------------------------------------------------
- * INPUT (JSON via POST)
+ * KEY ARCHITECTURAL DECISIONS (Current)
  * -----------------------------------------------------------------------------
- * {
- *   "query": "show contacts mesa"
- * }
- *
- * -----------------------------------------------------------------------------
- * OUTPUT (JSON)
- * -----------------------------------------------------------------------------
- * {
- *   "success": true,
- *   "mode": "single" | "list",
- *   "contacts": [ ... ]
- * }
- *
- * -----------------------------------------------------------------------------
- * QUERY BEHAVIOR
- * -----------------------------------------------------------------------------
- * - "show ..." → attempts single contact lookup
- * - "list ..." → returns multiple contacts
- * - Supports:
- *     • Name filtering (e.g., "bill smith")
- *     • Entity filtering (e.g., "of legacy homes")
- *
- * - If multiple matches are found in "single" mode:
- *     → automatically downgraded to "list"
- *
- * -----------------------------------------------------------------------------
- * DATABASE STRUCTURE (ELC MODEL)
- * -----------------------------------------------------------------------------
- * contacts → entities (via entityId)
- *
- * Tables:
- *   • contacts (c)
- *   • entities (e)
- *
- * -----------------------------------------------------------------------------
- * MATCHING LOGIC
- * -----------------------------------------------------------------------------
- * - Case-insensitive partial matching using SQL LIKE
- * - Name: CONCAT(firstName + lastName)
- * - Entity: entity name
- *
- * -----------------------------------------------------------------------------
- * FRONTEND CONTRACT
- * -----------------------------------------------------------------------------
- * - Frontend always attempts this endpoint first for "show/list" commands
- * - If:
- *     • success = false
- *     • contacts = []
- *   → frontend falls back to AI (askOpenAI.php)
- *
- * -----------------------------------------------------------------------------
- * CONSTRAINTS
- * -----------------------------------------------------------------------------
- * - No AI parsing occurs here (deterministic only)
- * - No fuzzy scoring (simple LIKE matching)
- * - No pagination (future enhancement)
- *
- * -----------------------------------------------------------------------------
- * FUTURE ENHANCEMENTS
- * -----------------------------------------------------------------------------
- * - Fuzzy matching / ranking (Levenshtein or scoring)
- * - Search by email / phone
- * - Location joins (ELC expansion)
- * - Pagination / limits
- * - AI-assisted parsing (hybrid mode)
+ * • ONE logging block only
+ * • Original query always preserved
+ * • Full session tracing via requestId
+ * • Full Latitude & Longitude support (from input + session)
+ * • Logs every command (success/failure, single/list)
  *
  * =============================================================================
  */
@@ -87,18 +26,20 @@ declare(strict_types=1);
 
 header("Content-Type: application/json; charset=UTF-8");
 
-session_start();                                           // Required for $_SESSION['user_id']
+session_start();
 
 require_once __DIR__ . '/dbConnect.php';
 
 $input = json_decode(file_get_contents("php://input"), true);
-$originalQuery = trim($input['query'] ?? '');             // Keep original query for logging
-$query = strtolower($originalQuery);
+
+// === CRITICAL: Capture ORIGINAL query BEFORE any mutation ===
+$originalQuery = trim($input['query'] ?? '');
+$query         = strtolower($originalQuery);
 
 if (!$query) {
     echo json_encode([
         "success" => false,
-        "error" => "Missing query."
+        "error"   => "Missing query."
     ]);
     exit;
 }
@@ -121,19 +62,18 @@ if (strpos($query, ' of ') !== false) {
     $query = trim($before);
 }
 
-// Clean command words
+// Clean command words (mutate only working copy)
 $query = preg_replace('/^(show|list)\s+/', '', $query);
 $query = str_replace(['contacts', 'for'], '', $query);
 $query = trim($query);
 
-// Remaining text = name
 if (!empty($query)) {
     $nameFilter = $query;
 }
 
 #endregion
 
-#region 🔍 Build SQL (ELC-Aware — FIXED)
+#region 🔍 Build & Execute SQL
 
 $sql = "
 SELECT 
@@ -164,135 +104,116 @@ if ($entityFilter) {
     $params[':entity'] = "%$entityFilter%";
 }
 
-// Limit for single queries
+// Limit for single mode
 if ($mode === 'single') {
     $sql .= " LIMIT 5";
 }
-
-#endregion
-
-#region 🚀 Execute
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Adjust mode if ambiguous
+// Downgrade to list if multiple matches
 if ($mode === 'single' && count($results) > 1) {
     $mode = 'list';
 }
 
 #endregion
 
-#region 🧾 Log Contact View Action
+#region 🌍 Geo Location Handling
 
-if (count($results) === 1) {
+// 🌍 Geo — Pull from available sources
+$latitude  = null;
+$longitude = null;
 
-    try {
+// Priority 1: From current request payload (frontend can send real-time location)
+if (isset($input['latitude']) && is_numeric($input['latitude'])) {
+    $latitude = (float)$input['latitude'];
+}
+if (isset($input['longitude']) && is_numeric($input['longitude'])) {
+    $longitude = (float)$input['longitude'];
+}
 
-        $contactId = $results[0]['contactId'];
+// Priority 2: From session / user entry (your standard pattern)
+if ($latitude === null || $longitude === null) {
+    $entry = $_SESSION['userEntry'] ?? [];        // Change key if your session uses different name
+    $latitude = is_numeric($entry['latitude'] ?? null)
+        ? (float)$entry['latitude']
+        : $latitude;
 
-        // 🔍 Get actionTypeId
-        $typeStmt = $db->prepare("
-            SELECT actionTypeId 
-            FROM tblActionTypes 
-            WHERE actionTypeName = 'VIEW_CONTACT' 
-            LIMIT 1
-        ");
-        $typeStmt->execute();
-        $type = $typeStmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($type && isset($type['actionTypeId'])) {
-
-            $actionTypeId = $type['actionTypeId'];
-
-            // 📝 Insert action
-            $insertStmt = $db->prepare("
-                INSERT INTO tblActions (
-                    actionTypeId,
-                    contactId,
-                    actionTimestamp
-                ) VALUES (
-                    :type,
-                    :contact,
-                    UNIX_TIMESTAMP()
-                )
-            ");
-
-            $insertStmt->execute([
-                ':type'    => $actionTypeId,
-                ':contact' => $contactId
-            ]);
-        }
-
-    } catch (Exception $e) {
-        error_log('[ACTION INSERT ERROR] ' . $e->getMessage());
-    }
+    $longitude = is_numeric($entry['longitude'] ?? null)
+        ? (float)$entry['longitude']
+        : $longitude;
 }
 
 #endregion
 
-#region 🧾 Log Action Helper
+#region 🧾 Log Contact Query Action (SINGLE BLOCK)
 
-function logAction($db, string $actionType, array $data = []): void
-{
-    try {
-        $stmt = $db->prepare("
-            INSERT INTO tblActions (
-                actionType, 
-                contactId, 
-                entityId, 
-                userId, 
-                actionNote, 
-                createdAt
-            ) VALUES (
-                :actionType, 
-                :contactId, 
-                :entityId, 
-                :userId,
-                :actionNote, 
-                NOW()
-            )
-        ");
+try {
+    $contactId = $results[0]['contactId'] ?? 0;
+    $requestId = session_id();
 
-        $stmt->execute([
-            ':actionType' => $actionType,
-            ':contactId'  => $data['contactId'] ?? null,
-            ':entityId'   => $data['entityId']   ?? null,
-            ':userId'     => $data['userId']     ?? ($_SESSION['user_id'] ?? null),
-            ':actionNote' => $data['actionNote'] ?? null
-        ]);
-    } catch (Exception $e) {
-        error_log('[ACTION LOG ERROR] ' . $e->getMessage());
+    $actionTypeId = 4;                    // query
+    $origin       = 2;                    // command interface
+    $unixTime     = time();
+    $promptText   = $originalQuery;
+
+    // Smart intent
+    $lowerQuery = strtolower($originalQuery);
+    $intent = match (true) {
+        str_contains($lowerQuery, 'list') => 'contact_list',
+        str_contains($lowerQuery, 'show') => 'contact_view',
+        default => 'contact_query'
+    };
+
+    $confidence = 1.00;
+    $response   = null;
+    $ipAddress  = $_SERVER['REMOTE_ADDR'] ?? null;
+    $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+    $logStmt = $db->prepare("
+        INSERT INTO tblActions (
+            actionTypeId,
+            contactId,
+            actionOrigin,
+            actionUnix,
+            requestId,
+            promptText,
+            responseText,
+            intent,
+            intentConfidence,
+            ipAddress,
+            latitude,
+            longitude,
+            userAgent
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    $logStmt->execute([
+        $actionTypeId,
+        $contactId,
+        $origin,
+        $unixTime,
+        $requestId,
+        $promptText,
+        $response,
+        $intent,
+        $confidence,
+        $ipAddress,
+        $latitude,      // ← Now properly populated
+        $longitude,     // ← Now properly populated
+        $userAgent
+    ]);
+
+    error_log("[actions] contact query logged | requestId={$requestId} | actionId=" . $db->lastInsertId() .
+              " | geo=({$latitude},{$longitude})");
+
+} catch (Throwable $e) {
+    error_log('[actions] insert failed: ' . $e->getMessage());
+    if (isset($logStmt)) {
+        error_log('[actions] SQL ERROR: ' . json_encode($logStmt->errorInfo()));
     }
-}
-
-#endregion
-
-#region 🧾 Log Contact View Action
-
-$resultsCount = count($results);
-
-if ($mode === 'single' && $resultsCount === 1) {
-    // Single contact viewed
-    $c = $results[0];
-    logAction($db, 'contact_view', [
-        'contactId'  => $c['contactId'] ?? null,
-        'entityId'   => $c['entityId'] ?? null,
-        'actionNote' => "Viewed contact via command interface | Query: {$originalQuery}"
-    ]);
-}
-elseif ($resultsCount > 0) {
-    // List / multiple results
-    logAction($db, 'contact_list_view', [
-        'actionNote' => "Viewed contact list ({$resultsCount} results) | Query: {$originalQuery}"
-    ]);
-}
-else {
-    // No results found
-    logAction($db, 'contact_search_no_results', [
-        'actionNote' => "No contacts found | Query: {$originalQuery}"
-    ]);
 }
 
 #endregion
