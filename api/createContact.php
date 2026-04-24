@@ -291,43 +291,47 @@ try {
 
 #region SECTION 2 — Action Logging & Final Response
 
-//FINAL_LOG:
-
-$outcomeType = $outcome['outcome'] ?? 'unknown';
-$actionType  = ACTION_TYPE_PROPOSE;
-$intent      = 'unknown';
-$reason      = $outcome['reason'] ?? 'processed';
+// Determine final outcome and key values
+$outcomeType     = $outcome['outcome'] ?? 'unknown';
+$actionType      = ACTION_TYPE_PROPOSE;
+$intent          = 'unknown';
+$reason          = $outcome['reason'] ?? 'processed';
 $targetContactId = null;
-$message     = '';
+$message         = '';
 
 if ($outcomeType === 'resolved_new' && !empty($insertResult['success'])) {
-    $actionType = ACTION_TYPE_ACCEPT;
-    $intent     = 'create_contact';
-    $reason     = 'new_contact_created';
+    $actionType      = ACTION_TYPE_ACCEPT;
+    $intent          = 'create_contact';
+    $reason          = 'new_contact_created';
     $targetContactId = $insertResult['contactId'] ?? null;
-    $message    = 'Contact has been accepted and successfully added to the database.';
+    $message         = 'Contact has been accepted and successfully added to the database.';
+
 } elseif ($outcomeType === 'resolved_duplicate' || ($contactRecord['status'] ?? '') === 'exact_match') {
-    $actionType = ACTION_TYPE_PROPOSE;
-    $intent     = 'duplicate_attempt';
-    $reason     = 'duplicate_detected';
+    $actionType      = ACTION_TYPE_PROPOSE;
+    $intent          = 'duplicate_attempt';
+    $reason          = 'duplicate_detected';
     $targetContactId = $contactRecord['contactId'] ?? null;
-    $message    = 'This contact already exists. No new record was created.';
+    $message         = 'This contact already exists. No new record was created.';
+
 } elseif ($outcomeType === 'partial') {
     $actionType = ACTION_TYPE_ACKNOWLEDGE;
     $intent     = 'partial_resolution';
     $reason     = $outcome['reason'] ?? 'incomplete_elc';
     $message    = $outcome['reason'] ?? 'Contact information is incomplete.';
+
 } elseif ($outcomeType === 'reject') {
     $actionType = 4;
     $intent     = 'reject';
     $reason     = $outcome['reason'] ?? 'validation_failed';
     $message    = $outcome['reason'] ?? 'Unable to process contact.';
+
 } elseif ($outcomeType === 'conflict') {
     $actionType = ACTION_TYPE_ACKNOWLEDGE;
     $intent     = 'conflict_detected';
     $message    = 'Conflict detected. Manual review required.';
 }
 
+// === ACTION LOGGING ===
 $currentUserId = $_SESSION['contactId'] ?? 1;
 
 if (!empty($currentUserId)) {
@@ -335,9 +339,9 @@ if (!empty($currentUserId)) {
         'requestId'     => $varRequestId,
         'input'         => $input,
         'outcome'       => $outcomeType,
+        'contactId'     => $targetContactId,                    // ← Guaranteed top-level
         'entityId'      => $entity['entityId'] ?? null,
         'locationId'    => $locationRecord['locationId'] ?? null,
-        'contactId'     => $targetContactId,
         'reason'        => $reason,
         'message'       => $message,
         'insertSuccess' => $insertResult['success'] ?? null,
@@ -346,7 +350,8 @@ if (!empty($currentUserId)) {
         'placeId'       => $location['placeId'] ?? null
     ];
 
-    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) ?: '{"error":"json_encode_failed"}';
+    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) 
+                    ?: '{"error":"json_encode_failed"}';
 
     logAction($db, [
         'type'      => $actionType,
@@ -360,34 +365,41 @@ if (!empty($currentUserId)) {
     ]);
 }
 
-#region Final Response
+#endregion
+
+#region SECTION 3 —  Final Response (Standardized for Frontend)
+
+$baseResponse = [
+    'status'     => $outcomeType,
+    'message'    => $message,
+    'requestId'  => $varRequestId,
+    'contactId'  => $targetContactId,           // ← Always present at top level
+];
+
 if ($outcomeType === 'reject') {
-    echo json_encode(['status' => 'reject', 'reason' => $message, 'requestId' => $varRequestId]);
+    echo json_encode(array_merge($baseResponse, [
+        'reason' => $message
+    ]));
+
 } elseif ($outcomeType === 'partial') {
-    echo json_encode([
-        'status'   => 'partial',
-        'reason'   => $message,
-        'location' => $location ?? null,
-        'requestId'=> $varRequestId
-    ]);
+    echo json_encode(array_merge($baseResponse, [
+        'location' => $location ?? null
+    ]));
+
 } else {
-    echo json_encode([
-        'status'           => $outcomeType,
-        'message'          => $message,
-        'requestId'        => $varRequestId,
+    echo json_encode(array_merge($baseResponse, [
         'entity'           => $entity,
         'location'         => $locationRecord,
         'contact'          => $contactRecord,
         'insert'           => $insertResult,
         'resolvedLocation' => $location,
         'scenario'         => $decision ?? null
-    ], JSON_UNESCAPED_UNICODE);
+    ]), JSON_UNESCAPED_UNICODE);
 }
-#endregion
 
 #endregion
 
-#region HELPER FUNCTIONS
+#region SECTION 4 —  Helper Functions
 
 function resolveSalutation($input, $firstName, $lastName): string {
     $salutation = rtrim(trim((string)$input), '.');

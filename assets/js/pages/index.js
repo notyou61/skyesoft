@@ -1242,52 +1242,61 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Contact Command (NEW — THIS IS THE KEY)
+        // 📇 Add Contact Command (DB-First + Verified Card)
         // ───────────────────────────────────────────────
         if (normalized.startsWith('add ')) {
 
             this.clearOutput();
+            this.appendSystemLine('📇 Creating contact...');
 
             try {
-
-                const res = await fetch('/skyesoft/api/createContact.php', {
+                const createRes = await fetch('/skyesoft/api/createContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ input: text })
                 });
 
-                const data = await res.json();
+                const createData = await createRes.json();
+                console.log('[CREATE RESPONSE]', createData);
 
-                console.log('[CONTACT CREATE RESPONSE]', data);
+                // Extract contactId from standardized backend response
+                const contactId = createData.contactId || 
+                                 createData.insert?.contactId || 
+                                 null;
 
-                if (!data || data.success === false) {
-                    const msg = data?.error || 'Contact creation failed.';
+                if (!contactId) {
+                    const msg = createData.message || createData.reason || 'Creation failed';
                     this.appendSystemLine(`❌ ${msg}`);
                     return;
                 }
 
-                const contact = data.contact || {};
-                const entity  = data.entity || {};
+                this.appendSystemLine('✅ Contact created successfully. Loading details...');
 
-                const fullName =
-                    `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim()
-                    || 'Unnamed Contact';
+                // 2. Re-fetch from database (Source of Truth)
+                const fetchRes = await fetch(`/skyesoft/api/getContacts.php?id=${contactId}`, {
+                    credentials: 'include'
+                });
 
-                this.appendSystemLine(`✔ Contact created: ${fullName}`);
+                const fetchData = await fetchRes.json();
+                console.log('[CONTACT VERIFY]', fetchData);
 
-                const normalizedContact = {
-                    ...contact,
-                    entityName: entity.entityName || ''
-                };
+                if (!fetchData?.success || !fetchData.contacts?.[0]) {
+                    this.appendSystemLine('⚠ Contact created but could not load full details.');
+                    return;
+                }
 
-                this.renderContactDetail(normalizedContact);
+                const contact = fetchData.contacts[0];
+                const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim() || 'New Contact';
 
-                // Optional future hook
+                this.appendSystemLine(`📇 ${fullName}`);
+                this.renderContactDetail(contact);
+
+                // Cache for "last contact" / future commands
                 this.lastContactId = contact.contactId;
 
             } catch (err) {
-                console.error('[CONTACT ERROR]', err);
+                console.error('[ADD CONTACT ERROR]', err);
                 this.appendSystemLine('❌ Contact creation failed.');
             }
 
