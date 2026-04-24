@@ -1275,7 +1275,7 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Contact Display Command
+        // 📇 Contact Display Command (with Geo)
         // ───────────────────────────────────────────────
         if (
             normalized.startsWith('show ') ||
@@ -1288,11 +1288,25 @@ window.SkyIndex = {
 
             try {
 
+                // 🌍 Get location (reuse cached or fetch fresh)
+                let location = this.lastLocation || { latitude: null, longitude: null };
+
+                if (location.latitude === null || location.longitude === null) {
+                    location = await this.getLocationSafe();   // You already have this excellent function
+                    this.lastLocation = location;              // Cache for next commands
+                }
+
+                console.log('[CONTACT GEO]', location);   // ← Helpful debug
+
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ query: text })
+                    body: JSON.stringify({
+                        query: text,
+                        latitude: location.latitude,
+                        longitude: location.longitude
+                    })
                 });
 
                 const data = await res.json();
@@ -1311,21 +1325,14 @@ window.SkyIndex = {
 
                 // 🎯 Mode-based rendering
                 if (data.mode === 'single') {
-
                     this.renderContactDetail(data.contacts[0]);
-
                 } else {
-
-                    // 👇 ONLY show loading for list
                     this.appendSystemLine('📇 Loading contacts...');
                     this.renderContactsList(data.contacts);
-
                 }
 
             } catch (err) {
                 console.error('[CONTACT FETCH ERROR]', err);
-
-                // ⛔ Network / server error → fallback to AI
                 return await this.executeAICommand(text);
             }
 
