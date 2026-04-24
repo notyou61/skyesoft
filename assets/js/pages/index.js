@@ -1247,7 +1247,6 @@ window.SkyIndex = {
         if (normalized.startsWith('add ')) {
 
             this.clearOutput();
-            this.appendSystemLine('📇 Processing contact...');
 
             try {
 
@@ -1268,7 +1267,24 @@ window.SkyIndex = {
                     return;
                 }
 
-                this.renderContactResult(data);
+                const contact = data.contact || {};
+                const entity  = data.entity || {};
+
+                const fullName =
+                    `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim()
+                    || 'Unnamed Contact';
+
+                this.appendSystemLine(`✔ Contact created: ${fullName}`);
+
+                const normalizedContact = {
+                    ...contact,
+                    entityName: entity.entityName || ''
+                };
+
+                this.renderContactDetail(normalizedContact);
+
+                // Optional future hook
+                this.lastContactId = contact.contactId;
 
             } catch (err) {
                 console.error('[CONTACT ERROR]', err);
