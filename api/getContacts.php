@@ -184,6 +184,54 @@ if ($mode === 'single' && count($results) > 1) {
 
 #endregion
 
+#region 🧾 Log Contact View Action
+
+if (count($results) === 1) {
+
+    try {
+
+        $contactId = $results[0]['contactId'];
+
+        // 🔍 Get actionTypeId
+        $typeStmt = $db->prepare("
+            SELECT actionTypeId 
+            FROM tblActionTypes 
+            WHERE actionTypeName = 'VIEW_CONTACT' 
+            LIMIT 1
+        ");
+        $typeStmt->execute();
+        $type = $typeStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($type && isset($type['actionTypeId'])) {
+
+            $actionTypeId = $type['actionTypeId'];
+
+            // 📝 Insert action
+            $insertStmt = $db->prepare("
+                INSERT INTO tblActions (
+                    actionTypeId,
+                    contactId,
+                    actionTimestamp
+                ) VALUES (
+                    :type,
+                    :contact,
+                    UNIX_TIMESTAMP()
+                )
+            ");
+
+            $insertStmt->execute([
+                ':type'    => $actionTypeId,
+                ':contact' => $contactId
+            ]);
+        }
+
+    } catch (Exception $e) {
+        error_log('[ACTION INSERT ERROR] ' . $e->getMessage());
+    }
+}
+
+#endregion
+
 #region 🧾 Log Action Helper
 
 function logAction($db, string $actionType, array $data = []): void
