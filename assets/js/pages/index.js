@@ -335,12 +335,17 @@ window.SkyIndex = {
 
         // Helper: Get real PHP session ID from cookie
         getSessionId() {
-            try {
-                const match = document.cookie.match(/(?:^|;\s*)PHPSESSID=([^;]+)/);
-                return match ? decodeURIComponent(match[1]) : null;
-            } catch (e) {
-                return null;
+            // Force read latest cookie
+            const cookies = document.cookie.split(';');
+            for (let c of cookies) {
+                const [name, value] = c.trim().split('=');
+                if (name === 'PHPSESSID') {
+                    console.log('✅ Found PHPSESSID:', value);
+                    return value;
+                }
             }
+            console.warn('⚠️ No PHPSESSID cookie found');
+            return 'no_session';
         },
 
         // #endregion
