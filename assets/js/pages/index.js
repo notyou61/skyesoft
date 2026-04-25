@@ -1549,15 +1549,18 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🤖 AI Command Execution (Session-Controlled)
-    async executeAICommand(prompt) {
+    // #region 🤖 AI Command Execution
+    async executeAICommand(prompt, incomingRequestId = null) {
 
         this.setThinking(true);
 
         try {
-            // ───────────────────────────────────────────────
+            // Use passed requestId (from handleCommand) or fall back to cookie
+            const requestId = incomingRequestId || this.getSessionId();
+
+            console.log('🤖 AI using Session ID:', requestId);
+
             // 🌍 Resolve Location (cached + non-blocking)
-            // ───────────────────────────────────────────────
             let location = this.lastLocation;
 
             if (!location || location.latitude === null || location.longitude === null) {
@@ -1573,9 +1576,7 @@ window.SkyIndex = {
 
             console.log('[AI GEO]', location);
 
-            // ───────────────────────────────────────────────
-            // 🔐 Fetch (NO requestId — server owns session)
-            // ───────────────────────────────────────────────
+            // Fetch
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
                 credentials: 'include',
@@ -1583,7 +1584,8 @@ window.SkyIndex = {
                 body: JSON.stringify({
                     userQuery: prompt,
                     latitude: location.latitude,
-                    longitude: location.longitude
+                    longitude: location.longitude,
+                    requestId: requestId
                 })
             });
 
@@ -1623,18 +1625,17 @@ window.SkyIndex = {
             }
 
             // ───────────────────────────────────────────────
-            // Domain Intent (authoritative)
+            // Domain Intent
             // ───────────────────────────────────────────────
             if (data?.type === 'domain_intent') {
 
                 let parsed = null;
-
                 try {
                     parsed = typeof data.response === 'string'
                         ? JSON.parse(data.response)
                         : data.response;
                 } catch (e) {
-                    console.warn('[SkyIndex] Failed to parse domain intent response');
+                    console.warn('[SkyIndex] Failed to parse domain intent');
                 }
 
                 if (!parsed || typeof parsed.domain !== 'string') {
@@ -1644,11 +1645,9 @@ window.SkyIndex = {
 
                 const domainKey = parsed.domain;
                 const mode      = parsed.mode;
-
                 const domainConfig = this.getDomainConfig(domainKey);
 
                 if (!domainConfig) {
-                    console.warn('[SkyIndex] Unknown domain:', domainKey);
                     this.appendSystemLine('⚠ Unknown domain.');
                     return;
                 }
@@ -1667,33 +1666,27 @@ window.SkyIndex = {
                     this.executeDomainAction?.(domainKey);
                     return;
                 }
-
-                console.warn('[SkyIndex] Unhandled domain mode:', mode);
                 return;
             }
 
             // ───────────────────────────────────────────────
-            // Text / HTML Response (fallback)
+            // Text / HTML Response
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
 
-                const looksLikeHtml =
-                    data.response.includes('<div') ||
-                    data.response.includes('<a ') ||
-                    data.response.includes('<button');
+                const looksLikeHtml = data.response.includes('<div') ||
+                                    data.response.includes('<a ') ||
+                                    data.response.includes('<button');
 
                 if (looksLikeHtml) {
-
                     if (data.response.includes('codeBlock')) {
                         this.appendCodeBlock(data.response);
                     } else {
                         this.appendSystemHtml(data.response);
                     }
-
                 } else {
                     this.appendSystemLine(data.response);
                 }
-
                 return;
             }
 
@@ -1708,7 +1701,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth — Session Controlled)
+    // #region 🔑 Login Logic (Server Auth) - FIXED with real session ID
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
@@ -1726,9 +1719,6 @@ window.SkyIndex = {
             return page.handleLoginSubmit(form);
         }
 
-        // ───────────────────────────────────────────────
-        // 📥 Input
-        // ───────────────────────────────────────────────
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
@@ -1740,11 +1730,12 @@ window.SkyIndex = {
         }
 
         try {
+            const requestId = this.getSessionId();   // ← Real PHP session ID
+            console.log('[AUTH] Using Session ID:', requestId);
+
             console.log('[AUTH 2] Resolving location...');
 
-            // ───────────────────────────────────────────────
-            // 🌍 Location (cached + timeout safe)
-            // ───────────────────────────────────────────────
+            // 🌍 Get location
             let location = this.lastLocation || { latitude: null, longitude: null };
 
             if (location.latitude === null || location.longitude === null) {
@@ -1759,18 +1750,11 @@ window.SkyIndex = {
                     if (location.latitude !== null && location.longitude !== null) {
                         this.lastLocation = location;
                     }
-
-                    console.log('[AUTH GEO]', location);
-
                 } catch (geoErr) {
                     console.warn('[AUTH GEO] failed or timed out', geoErr);
-                    location = { latitude: null, longitude: null };
                 }
             }
 
-            // ───────────────────────────────────────────────
-            // 🔐 Send Login Request (NO requestId — server owns session)
-            // ───────────────────────────────────────────────
             console.log('[AUTH 3] Sending login request');
 
             const res = await fetch('/skyesoft/api/auth.php', {
@@ -1782,7 +1766,8 @@ window.SkyIndex = {
                     username: email,
                     password: pass,
                     latitude:  location.latitude,
-                    longitude: location.longitude
+                    longitude: location.longitude,
+                    requestId: requestId                    // ← Pass real session ID
                 })
             });
 
@@ -1793,9 +1778,6 @@ window.SkyIndex = {
             const data = await res.json();
             console.log('[AUTH 5] auth.php payload', data);
 
-            // ───────────────────────────────────────────────
-            // ❌ Login Failed
-            // ───────────────────────────────────────────────
             if (!data.success) {
                 error.textContent = data.message || 'Login failed.';
                 error.hidden = false;
@@ -1803,11 +1785,10 @@ window.SkyIndex = {
             }
 
             console.log('[AUTH 7] Authentication accepted');
+
             error.hidden = true;
 
-            // ───────────────────────────────────────────────
-            // 🔍 Verify Session
-            // ───────────────────────────────────────────────
+            // Verify session
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
@@ -1831,15 +1812,10 @@ window.SkyIndex = {
                 page.startActivityPing?.();
             }
 
-            // ───────────────────────────────────────────────
-            // 🔄 Restart SSE
-            // ───────────────────────────────────────────────
+            // Restart SSE
             window.SkySSE?.stop?.();
             setTimeout(() => window.SkySSE?.start?.(), 300);
 
-            // ───────────────────────────────────────────────
-            // 📊 Footer Refresh
-            // ───────────────────────────────────────────────
             setTimeout(() => {
                 page?.renderFooterStatus?.();
             }, 400);
@@ -2062,13 +2038,18 @@ window.SkyIndex = {
         if (this._loggingOut) return;
         this._loggingOut = true;
 
-        console.log('[SkyIndex] Sending logout request');
+        const requestId = this.getSessionId();   // ← Real PHP session ID from cookie
+
+        console.log('[LOGOUT] Using Session ID:', requestId, '| Source:', source);
 
         fetch('/skyesoft/api/auth.php', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'logout' })
+            body: JSON.stringify({ 
+                action: 'logout',
+                requestId: requestId
+            })
         })
         .then(res => {
 
@@ -2076,9 +2057,9 @@ window.SkyIndex = {
                 throw new Error(`HTTP ${res.status}`);
             }
 
-            console.log('[SkyIndex] Logout request accepted', { source });
+            console.log('[SkyIndex] Logout request accepted', { source, requestId });
 
-            // 🔌 Stop SSE (manual logout only)
+            // 🔌 Stop SSE
             window.SkySSE?.stop?.();
 
             const app  = window.SkyeApp;
@@ -2087,8 +2068,8 @@ window.SkyIndex = {
             // 🔥 Stop activity tracking
             page?.stopActivityPing?.();
 
-            // 🧠 Reset SSE memory (FIXED)
-            window.SkyeApp.lastSSE = null;
+            // 🧠 Reset SSE memory
+            if (window.SkyeApp) window.SkyeApp.lastSSE = null;
 
             // 🎨 Force UI logout state
             if (page) {
@@ -2102,7 +2083,6 @@ window.SkyIndex = {
                 page.commandSurfaceActive = false;
                 page.idleState = null;
 
-                // 🔒 Prevent SSE re-processing logout
                 page._logoutHandled = true;
 
                 document.body.removeAttribute('data-auth');
@@ -2111,7 +2091,7 @@ window.SkyIndex = {
                 page.renderFooterStatus?.call(page);
             }
 
-            // 🔁 Restart SSE cleanly (FIXED)
+            // 🔁 Restart SSE cleanly
             setTimeout(() => {
                 window.SkySSE?.start?.();
             }, 100);
@@ -2120,7 +2100,7 @@ window.SkyIndex = {
         .catch(err => {
 
             console.error('[SkyIndex] Logout error:', err);
-            this.appendSystemLine('❌ Logout failed.');
+            this.appendSystemLine?.('❌ Logout failed.');
 
         })
         .finally(() => {
