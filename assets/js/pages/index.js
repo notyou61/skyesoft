@@ -1218,7 +1218,7 @@ window.SkyIndex = {
     // #region 🧠 Command Router 
     async handleCommand(text) {
 
-        // 🔥 Generate ONE requestId per user command (this is the key)
+        // 🔥 ONE requestId per user command — consistent tracing across all actions
         const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
 
         this.appendSystemLine(text, 'user');
@@ -1259,7 +1259,7 @@ window.SkyIndex = {
                     credentials: 'include',
                     body: JSON.stringify({ 
                         input: text,
-                        requestId: requestId          // ← Consistent tracing
+                        requestId: requestId
                     })
                 });
 
@@ -1276,14 +1276,14 @@ window.SkyIndex = {
 
                 this.appendSystemLine('✅ Contact created successfully. Loading details...');
 
-                // Re-fetch verified data
+                // Re-fetch verified data from database
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         query: `show ${contactId}`,
-                        requestId: requestId          // ← Same requestId
+                        requestId: requestId
                     })
                 });
 
@@ -1323,10 +1323,11 @@ window.SkyIndex = {
             console.log('[CONTACT QUERY]', text);
 
             try {
-                // 🌍 Resolve location
+                // 🌍 Resolve location (cached preferred)
                 let location = this.lastLocation || { latitude: null, longitude: null };
 
                 if (location.latitude === null || location.longitude === null) {
+                    console.log('[CONTACT] Fetching fresh location...');
                     location = await this.getLocationSafe();
                     this.lastLocation = location;
                 }
@@ -1339,9 +1340,9 @@ window.SkyIndex = {
                     credentials: 'include',
                     body: JSON.stringify({
                         query: text,
-                        latitude: location.latitude,
+                        latitude:  location.latitude,
                         longitude: location.longitude,
-                        requestId: requestId                    // ← Same requestId
+                        requestId: requestId
                     })
                 });
 
@@ -1351,7 +1352,7 @@ window.SkyIndex = {
                 // Validation + AI fallback
                 if (!data?.success || !Array.isArray(data.contacts)) {
                     console.warn('[CONTACT] Invalid response → falling back to AI');
-                    return await this.executeAICommand(text, requestId);   // pass requestId
+                    return await this.executeAICommand(text, requestId);
                 }
 
                 if (data.contacts.length === 0) {
@@ -1389,8 +1390,13 @@ window.SkyIndex = {
             canonicalAction = 'clear_screen';
         }
 
+        // ───────────────────────────────────────────────
+        // ⚙️ Execute Native Action
+        // ───────────────────────────────────────────────
         if (canonicalAction) {
+
             const handler = this.uiActionRegistry?.[canonicalAction];
+
             if (typeof handler === 'function') {
                 await handler.call(this);
                 return;
@@ -1400,7 +1406,7 @@ window.SkyIndex = {
         // ───────────────────────────────────────────────
         // 🤖 AI fallback
         // ───────────────────────────────────────────────
-        await this.executeAICommand(text, requestId);   // pass requestId
+        await this.executeAICommand(text, requestId);
 
     },
     // #endregion
