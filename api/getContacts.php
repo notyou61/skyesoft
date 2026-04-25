@@ -29,8 +29,14 @@ declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
 session_start();
-
+// ─────────────────────────────────────────
+// ⚙️ Database Layer
+// ─────────────────────────────────────────
 require_once __DIR__ . '/dbConnect.php';
+// ─────────────────────────────────────────
+// ⚙️ Actions Layer (Execution + Logging)
+// ─────────────────────────────────────────
+require_once __DIR__ . '/utils/actions.php';
 
 $input = json_decode(file_get_contents("php://input"), true);
 
@@ -188,17 +194,11 @@ if (count($results) === 1) {
 
 #endregion
 
-#region 🧾 Log Contact Query Action (SINGLE BLOCK)
+#region 🧾 Log Contact Query Action (Unified via insertActionPrompt)
 
 try {
-    // ✅ MTCO fix: NULL when no contact matched
+    // Get contactId (NULL when no match)
     $contactId = $results[0]['contactId'] ?? null;
-    $requestId = session_id();
-
-    $actionTypeId = 4;                    // query
-    $origin       = 2;                    // command interface
-    $unixTime     = time();
-    $promptText   = $originalQuery;
 
     // Smart intent
     $lowerQuery = strtolower($originalQuery);
@@ -208,52 +208,23 @@ try {
         default => 'contact_query'
     };
 
-    $confidence = 1.00;
-    $ipAddress  = $_SERVER['REMOTE_ADDR'] ?? null;
-    $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    // Use the same centralized helper as askOpenAI.php
+    insertActionPrompt([
+        'contactId'        => $contactId,
+        'promptText'       => $originalQuery,
+        'responseText'     => $response ?? null,           // rich summary you already build
+        'intent'           => $intent,
+        'intentConfidence' => 1.00,
+        'latitude'         => $latitude,
+        'longitude'        => $longitude,
+        'actionTypeId'     => 4,                           // query
+        'origin'           => 2                            // command interface
+    ], $db);
 
-    $logStmt = $db->prepare("
-        INSERT INTO tblActions (
-            actionTypeId,
-            contactId,
-            actionOrigin,
-            actionUnix,
-            requestId,
-            promptText,
-            responseText,
-            intent,
-            intentConfidence,
-            ipAddress,
-            latitude,
-            longitude,
-            userAgent
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-
-    $logStmt->execute([
-        $actionTypeId,
-        $contactId,          // ← Now correctly NULL when no match
-        $origin,
-        $unixTime,
-        $requestId,
-        $promptText,
-        $response,           // Clean multi-line summary
-        $intent,
-        $confidence,
-        $ipAddress,
-        $latitude,
-        $longitude,
-        $userAgent
-    ]);
-
-    error_log("[actions] contact query logged | requestId={$requestId} | actionId=" . $db->lastInsertId() .
-              " | geo=({$latitude},{$longitude}) | contactId=" . ($contactId ?? 'NULL'));
+    error_log("[actions] contact query logged via insertActionPrompt | contactId=" . ($contactId ?? 'NULL'));
 
 } catch (Throwable $e) {
-    error_log('[actions] insert failed: ' . $e->getMessage());
-    if (isset($logStmt)) {
-        error_log('[actions] SQL ERROR: ' . json_encode($logStmt->errorInfo()));
-    }
+    error_log('[actions] insertActionPrompt failed in getContacts.php: ' . $e->getMessage());
 }
 
 #endregion
