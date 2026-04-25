@@ -1218,8 +1218,7 @@ window.SkyIndex = {
     // #region 🧠 Command Router 
     async handleCommand(text) {
 
-        // 🔥 ONE requestId per user command — consistent tracing across all actions
-        const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+        const requestId = this.getSessionId();   // ← Real PHP session ID from cookie
 
         this.appendSystemLine(text, 'user');
 
@@ -1232,20 +1231,16 @@ window.SkyIndex = {
         // 📄 Code Reader Command
         // ───────────────────────────────────────────────
         if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
-
             const file = normalized
                 .replace(/^read\s+/, '')
                 .replace(/^open\s+/, '')
                 .trim();
-
-            console.log('[CODE READ]', file);
-
             await this.readCodeFile(file);
             return;
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Add Contact Command (DB-First + Verified Card)
+        // 📇 Add Contact Command
         // ───────────────────────────────────────────────
         if (normalized.startsWith('add ')) {
 
@@ -1264,19 +1259,15 @@ window.SkyIndex = {
                 });
 
                 const createData = await createRes.json();
-                console.log('[CREATE RESPONSE]', createData);
-
                 const contactId = createData.contactId || createData.insert?.contactId;
 
                 if (!contactId) {
-                    const msg = createData.message || createData.reason || 'Creation failed';
-                    this.appendSystemLine(`❌ ${msg}`);
+                    this.appendSystemLine(`❌ ${createData.message || 'Creation failed'}`);
                     return;
                 }
 
-                this.appendSystemLine('✅ Contact created successfully. Loading details...');
+                this.appendSystemLine('✅ Contact created. Loading details...');
 
-                // Re-fetch verified data from database
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1288,51 +1279,34 @@ window.SkyIndex = {
                 });
 
                 const fetchData = await fetchRes.json();
-                console.log('[CONTACT VERIFY]', fetchData);
 
-                if (!fetchData?.success || !fetchData.contacts?.[0]) {
-                    this.appendSystemLine('⚠ Contact created but could not load full details.');
-                    return;
+                if (fetchData?.success && fetchData.contacts?.[0]) {
+                    const contact = fetchData.contacts[0];
+                    const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim();
+                    this.appendSystemLine(`📇 ${fullName}`);
+                    this.renderContactDetail(contact);
+                    this.lastContactId = contact.contactId;
                 }
-
-                const contact = fetchData.contacts[0];
-                const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim() || 'New Contact';
-
-                this.appendSystemLine(`📇 ${fullName}`);
-                this.renderContactDetail(contact);
-
-                this.lastContactId = contact.contactId;
-
             } catch (err) {
-                console.error('[ADD CONTACT ERROR]', err);
+                console.error('[ADD ERROR]', err);
                 this.appendSystemLine('❌ Contact creation failed.');
             }
-
             return;
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Contact Display Command (with Geo + requestId)
+        // 📇 Show / List Contact
         // ───────────────────────────────────────────────
-        if (
-            normalized.startsWith('show ') ||
-            normalized.startsWith('list ')
-        ) {
+        if (normalized.startsWith('show ') || normalized.startsWith('list ')) {
 
             this.clearOutput();
-            console.log('[CONTACT QUERY]', text);
 
             try {
-                // 🌍 Resolve location (cached preferred)
                 let location = this.lastLocation || { latitude: null, longitude: null };
-
                 if (location.latitude === null || location.longitude === null) {
-                    console.log('[CONTACT] Fetching fresh location...');
                     location = await this.getLocationSafe();
                     this.lastLocation = location;
                 }
-
-                console.log('[CONTACT GEO]', location);
 
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
@@ -1340,74 +1314,33 @@ window.SkyIndex = {
                     credentials: 'include',
                     body: JSON.stringify({
                         query: text,
-                        latitude:  location.latitude,
+                        latitude: location.latitude,
                         longitude: location.longitude,
                         requestId: requestId
                     })
                 });
 
                 const data = await res.json();
-                console.log('[CONTACT RESPONSE]', data);
 
-                // Validation + AI fallback
-                if (!data?.success || !Array.isArray(data.contacts)) {
-                    console.warn('[CONTACT] Invalid response → falling back to AI');
+                if (!data?.success || !Array.isArray(data.contacts) || data.contacts.length === 0) {
                     return await this.executeAICommand(text, requestId);
                 }
 
-                if (data.contacts.length === 0) {
-                    return await this.executeAICommand(text, requestId);
-                }
-
-                // Render based on mode
                 if (data.mode === 'single' && data.contacts.length > 0) {
                     this.renderContactDetail(data.contacts[0]);
                 } else {
                     this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
                     this.renderContactsList(data.contacts);
                 }
-
             } catch (err) {
-                console.error('[CONTACT FETCH ERROR]', err);
+                console.error(err);
                 return await this.executeAICommand(text, requestId);
             }
-
             return;
         }
 
-        // ───────────────────────────────────────────────
-        // 🎯 Canonical Action Resolver
-        // ───────────────────────────────────────────────
-        let canonicalAction = null;
-
-        if (normalized === 'cls' || normalized === 'clear' || normalized === 'reset') {
-            canonicalAction = 'clear_screen';
-        }
-        else if (normalized === 'logout' || normalized === 'exit') {
-            canonicalAction = 'logout';
-        }
-        else if (normalized.includes('clear')) {
-            canonicalAction = 'clear_screen';
-        }
-
-        // ───────────────────────────────────────────────
-        // ⚙️ Execute Native Action
-        // ───────────────────────────────────────────────
-        if (canonicalAction) {
-
-            const handler = this.uiActionRegistry?.[canonicalAction];
-
-            if (typeof handler === 'function') {
-                await handler.call(this);
-                return;
-            }
-        }
-
-        // ───────────────────────────────────────────────
-        // 🤖 AI fallback
-        // ───────────────────────────────────────────────
+        // AI fallback (and other actions)
         await this.executeAICommand(text, requestId);
-
     },
     // #endregion
 
