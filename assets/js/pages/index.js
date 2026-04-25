@@ -1218,6 +1218,9 @@ window.SkyIndex = {
     // #region 🧠 Command Router 
     async handleCommand(text) {
 
+        // 🔥 Generate ONE requestId per user command (this is the key)
+        const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+
         this.appendSystemLine(text, 'user');
 
         const normalized = (text || '')
@@ -1250,9 +1253,6 @@ window.SkyIndex = {
             this.appendSystemLine('📇 Creating contact...');
 
             try {
-                // 🔥 Generate ONE requestId per user command
-                const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
-
                 const createRes = await fetch('/skyesoft/api/createContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1276,7 +1276,7 @@ window.SkyIndex = {
 
                 this.appendSystemLine('✅ Contact created successfully. Loading details...');
 
-                // 2. Re-fetch verified data
+                // Re-fetch verified data
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1323,15 +1323,15 @@ window.SkyIndex = {
             console.log('[CONTACT QUERY]', text);
 
             try {
-                // 🔥 One requestId per command
-                const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
-
-                // 🌍 Location
+                // 🌍 Resolve location
                 let location = this.lastLocation || { latitude: null, longitude: null };
+
                 if (location.latitude === null || location.longitude === null) {
                     location = await this.getLocationSafe();
                     this.lastLocation = location;
                 }
+
+                console.log('[CONTACT GEO]', location);
 
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
@@ -1341,15 +1341,34 @@ window.SkyIndex = {
                         query: text,
                         latitude: location.latitude,
                         longitude: location.longitude,
-                        requestId: requestId
+                        requestId: requestId                    // ← Same requestId
                     })
                 });
 
-                // ... rest of your existing code (validation, rendering, etc.) ...
+                const data = await res.json();
+                console.log('[CONTACT RESPONSE]', data);
+
+                // Validation + AI fallback
+                if (!data?.success || !Array.isArray(data.contacts)) {
+                    console.warn('[CONTACT] Invalid response → falling back to AI');
+                    return await this.executeAICommand(text, requestId);   // pass requestId
+                }
+
+                if (data.contacts.length === 0) {
+                    return await this.executeAICommand(text, requestId);
+                }
+
+                // Render based on mode
+                if (data.mode === 'single' && data.contacts.length > 0) {
+                    this.renderContactDetail(data.contacts[0]);
+                } else {
+                    this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
+                    this.renderContactsList(data.contacts);
+                }
 
             } catch (err) {
                 console.error('[CONTACT FETCH ERROR]', err);
-                return await this.executeAICommand(text);
+                return await this.executeAICommand(text, requestId);
             }
 
             return;
@@ -1370,28 +1389,18 @@ window.SkyIndex = {
             canonicalAction = 'clear_screen';
         }
 
-        // ───────────────────────────────────────────────
-        // ⚙️ Execute Native Action
-        // ───────────────────────────────────────────────
         if (canonicalAction) {
-
             const handler = this.uiActionRegistry?.[canonicalAction];
-
-            console.log('[CMD]', normalized, canonicalAction);
-            console.log('[HANDLER]', handler);
-
             if (typeof handler === 'function') {
                 await handler.call(this);
                 return;
             }
-
-            console.warn('[CMD] No handler found for:', canonicalAction);
         }
 
         // ───────────────────────────────────────────────
         // 🤖 AI fallback
         // ───────────────────────────────────────────────
-        await this.executeAICommand(text);
+        await this.executeAICommand(text, requestId);   // pass requestId
 
     },
     // #endregion
@@ -1556,12 +1565,13 @@ window.SkyIndex = {
     // #endregion
 
     // #region 🤖 AI Command Execution
-    async executeAICommand(prompt) {
+    async executeAICommand(prompt, incomingRequestId = null) {
         this.setThinking(true);
 
         try {
-            // 🔥 Generate ONE requestId per user command (for full traceability)
-            const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+            // 🔥 Use incoming requestId if provided (from handleCommand), otherwise generate new
+            const requestId = incomingRequestId || 
+                             ('req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8));
 
             // 🌍 Resolve Location (cached + non-blocking)
             let location = this.lastLocation;
@@ -1590,7 +1600,7 @@ window.SkyIndex = {
                     userQuery: prompt,
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    requestId: requestId                    // ← Added for consistency
+                    requestId: requestId                    // ← Consistent tracing
                 })
             });
 
