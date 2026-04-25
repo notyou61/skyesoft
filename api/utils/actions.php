@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.0.0
+//  Version: 1.1.0
 //  Codex Tier: 2 — Action Layer / System Execution + Logging
 //
 //  Role:
@@ -11,7 +11,7 @@ declare(strict_types=1);
 //  Responsibilities:
 //   • Persist all system/user actions to tblActions (authoritative log)
 //   • Execute UI-level intents (clear, logout, etc.)
-//   • Normalize action metadata (intent, geo, device)
+//   • Normalize action metadata (intent, geo, device, requestId)
 //
 //  Guarantees:
 //   • No business logic mutation
@@ -19,8 +19,8 @@ declare(strict_types=1);
 //   • No Codex mutation
 //
 //  Notes:
-//   • This file is shared by askOpenAI.php and auth.php
-//   • Acts as the "DO" layer (execution + logging)
+//   • Shared by askOpenAI.php, getContacts.php, auth.php, etc.
+//   • Now supports requestId for session tracing
 //
 // ======================================================================
 
@@ -29,17 +29,18 @@ declare(strict_types=1);
 // Append Prompt Ledger Entry (non-blocking, best-effort)
 function insertActionPrompt(array $entry, ?PDO $db): void {
 
+    // Debug entry (optional, safe)
     file_put_contents(
         __DIR__ . '/auth_debug.log',
         json_encode([
             'time'  => date('Y-m-d H:i:s'),
-            'stage' => 'insert_function_entered'
+            'stage' => 'insert_function_entered',
+            'hasRequestId' => isset($entry['requestId'])
         ]) . PHP_EOL,
         FILE_APPEND
     );
 
     // #region 🧾 Validate Input
-
     if (!$db) {
         error_log('[actions] DB not available');
         return;
@@ -49,28 +50,24 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         error_log('[actions] Missing promptText');
         return;
     }
-
     // #endregion
 
-    // #region 👤 Resolve Contact (SSE-SAFE)
-
+    // #region 👤 Resolve Contact
     $contactId = $entry['contactId'] ?? null;
 
-    if (!$contactId) {
-        error_log('[ACTIONS] ERROR - missing contactId (cannot insert)');
-        return; // 🔥 DO NOT fallback silently anymore
+    if ($contactId === null) {
+        error_log('[ACTIONS] WARNING - missing contactId (will still attempt insert)');
+        // Do NOT return — allow logging of system/system queries
     }
-
     // #endregion
 
     // #region 🧠 Normalize Fields
-
     $response   = $entry['responseText'] ?? null;
     $intent     = $entry['intent'] ?? 'unknown';
 
     $confidence = isset($entry['intentConfidence'])
         ? (float)$entry['intentConfidence']
-        : 0.0;
+        : 1.00;
 
     $unixTime = isset($entry['createdUnixTime'])
         ? (int)$entry['createdUnixTime']
@@ -85,31 +82,28 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ? (float)$entry['longitude']
         : null;
 
-    // 🌐 Network
+    // 🌐 Network + Session
     $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    $requestId = $entry['requestId'] ?? session_id();   // ← NEW: requestId support
 
     // #endregion
 
-    // #region 🧭 Action Origin (SSE SAFE — NO SESSION DEPENDENCY)
-
+    // #region 🧭 Action Origin & Type
     $origin = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
 
-    // #endregion
-
-    // #region 🧠 Action Type Mapping
-
-    $actionTypeId = match ($intent) {
+    $actionTypeId = $entry['actionTypeId'] ?? match ($intent) {
         'ui_login'    => 1,
         'ui_logout'   => 2,
-        'idle_logout' => 2, // 🔥 treat same as logout (or change if needed)
+        'idle_logout' => 2,
+        'contact_query',
+        'contact_view',
+        'contact_list' => 4,           // query
         default       => 3
     };
-
     // #endregion
 
     // #region ✂️ Truncate Payloads
-
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
         : substr((string)$entry['promptText'], 0, 5000);
@@ -119,19 +113,17 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             ? mb_substr((string)$response, 0, 10000)
             : substr((string)$response, 0, 10000))
         : null;
-
     // #endregion
 
     // #region 📥 Insert → tblActions
-
     try {
-
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId,
                 contactId,
                 actionOrigin,
                 actionUnix,
+                requestId,                    -- ← Added
                 promptText,
                 responseText,
                 intent,
@@ -140,17 +132,15 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
                 latitude,
                 longitude,
                 userAgent
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-
-        error_log('[actions] INSERT ATTEMPT');
-        error_log('[actions] executing insert...');
 
         $stmt->execute([
             $actionTypeId,
             $contactId,
             $origin,
             $unixTime,
+            $requestId,                       // ← Added
             $promptText,
             $response,
             $intent,
@@ -161,23 +151,15 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $userAgent
         ]);
 
-        $rows = $stmt->rowCount();
         $actionId = $db->lastInsertId();
-
-        error_log('[actions] rows affected: ' . $rows);
-        error_log('[actions] INSERT SUCCESS: actionId=' . $actionId);
+        error_log("[actions] INSERT SUCCESS | actionId=$actionId | requestId=$requestId | contactId=" . ($contactId ?? 'NULL'));
 
     } catch (Throwable $e) {
-
         error_log('[actions] insert failed: ' . $e->getMessage());
-
         if (isset($stmt)) {
-            error_log('[actions] SQL ERROR INFO: ' . json_encode($stmt->errorInfo()));
+            error_log('[actions] SQL ERROR: ' . json_encode($stmt->errorInfo()));
         }
-
-        return; // 🔥 DO NOT throw inside SSE
     }
-
     // #endregion
 }
 
@@ -188,19 +170,12 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 // Execute Intent → returns UI action payload or null
 function executeIntent(string $intent, float $confidence): ?array {
 
-    // #region 🧹 UI Clear Screen
-
     if ($intent === "ui_clear" && $confidence >= 0.80) {
         return [
             "type"     => "ui_action",
             "response" => "clear_screen"
         ];
     }
-
-    // #endregion
-
-
-    // #region 🚪 UI Logout (frontend-handled)
 
     if ($intent === "ui_logout" && $confidence >= 0.90) {
         return [
@@ -209,14 +184,7 @@ function executeIntent(string $intent, float $confidence): ?array {
         ];
     }
 
-    // #endregion
-
-
-    // #region 🧭 Default (No Execution)
-
     return null;
-
-    // #endregion
 }
 
 #endregion

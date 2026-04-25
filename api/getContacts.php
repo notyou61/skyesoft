@@ -13,13 +13,13 @@ declare(strict_types=1);
  * -----------------------------------------------------------------------------
  * KEY ARCHITECTURAL DECISIONS (Latest MTCO)
  * -----------------------------------------------------------------------------
- * • ONE logging block only
+ * • ONE logging block only (uses centralized insertActionPrompt)
  * • Original query always preserved
  * • Full session tracing via requestId
  * • Rich, clean responseText (contact summary or status)
  * • Reliable Latitude & Longitude (input → session → safe default)
- * • contactId = NULL when no match (correct semantics)
- * • Logs every command with high-quality audit data
+ * • contactId = NULL when no match
+ * • Consistent logging with askOpenAI.php
  *
  * =============================================================================
  */
@@ -29,14 +29,9 @@ declare(strict_types=1);
 header("Content-Type: application/json; charset=UTF-8");
 
 session_start();
-// ─────────────────────────────────────────
-// ⚙️ Database Layer
-// ─────────────────────────────────────────
+
 require_once __DIR__ . '/dbConnect.php';
-// ─────────────────────────────────────────
-// ⚙️ Actions Layer (Execution + Logging)
-// ─────────────────────────────────────────
-require_once __DIR__ . '/utils/actions.php';
+require_once __DIR__ . '/utils/actions.php';   // ← Centralized logging
 
 $input = json_decode(file_get_contents("php://input"), true);
 
@@ -133,7 +128,7 @@ if ($mode === 'single' && count($results) > 1) {
 $latitude  = null;
 $longitude = null;
 
-// Priority 1: From frontend request (recommended)
+// Priority 1: From frontend request
 if (isset($input['latitude']) && is_numeric($input['latitude'])) {
     $latitude = (float)$input['latitude'];
 }
@@ -151,14 +146,6 @@ if ($latitude === null || $longitude === null) {
     $longitude = is_numeric($entry['longitude'] ?? null)
         ? (float)$entry['longitude']
         : $longitude;
-}
-
-// Debug geo (improved)
-if ($latitude === null || $longitude === null) {
-    error_log("[geo] missing coordinates | requestId=" . session_id() .
-              " | lat=" . json_encode($latitude) .
-              " | lon=" . json_encode($longitude) .
-              " | ip=" . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
 }
 
 // Final safety net
@@ -194,10 +181,9 @@ if (count($results) === 1) {
 
 #endregion
 
-#region 🧾 Log Contact Query Action (Unified via insertActionPrompt)
+#region 🧾 Log Contact Query Action (Unified)
 
 try {
-    // Get contactId (NULL when no match)
     $contactId = $results[0]['contactId'] ?? null;
 
     // Smart intent
@@ -208,20 +194,20 @@ try {
         default => 'contact_query'
     };
 
-    // Use the same centralized helper as askOpenAI.php
     insertActionPrompt([
         'contactId'        => $contactId,
         'promptText'       => $originalQuery,
-        'responseText'     => $response ?? null,           // rich summary you already build
+        'responseText'     => $response ?? null,
         'intent'           => $intent,
         'intentConfidence' => 1.00,
         'latitude'         => $latitude,
         'longitude'        => $longitude,
-        'actionTypeId'     => 4,                           // query
-        'origin'           => 2                            // command interface
+        'requestId'        => session_id(),           // ← Full session tracing
+        'actionTypeId'     => 4,                      // query
+        'origin'           => 2                       // command interface
     ], $db);
 
-    error_log("[actions] contact query logged via insertActionPrompt | contactId=" . ($contactId ?? 'NULL'));
+    error_log("[actions] contact query logged | contactId=" . ($contactId ?? 'NULL') . " | requestId=" . session_id());
 
 } catch (Throwable $e) {
     error_log('[actions] insertActionPrompt failed in getContacts.php: ' . $e->getMessage());
