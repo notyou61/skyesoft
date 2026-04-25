@@ -333,21 +333,6 @@ window.SkyIndex = {
             output.scrollTop = output.scrollHeight;
         },
 
-        // Helper: Get real PHP session ID from cookie
-        getSessionId() {
-            // Force read latest cookie
-            const cookies = document.cookie.split(';');
-            for (let c of cookies) {
-                const [name, value] = c.trim().split('=');
-                if (name === 'PHPSESSID') {
-                    console.log('✅ Found PHPSESSID:', value);
-                    return value;
-                }
-            }
-            console.warn('⚠️ No PHPSESSID cookie found');
-            return 'no_session';
-        },
-
         // #endregion
 
     // #region 📦 Registry Loaders
@@ -1233,7 +1218,6 @@ window.SkyIndex = {
     // #region 🧠 Command Router 
     async handleCommand(text) {
 
-        const requestId = this.getSessionId();   // Real PHPSESSID from cookie
 
         console.log('🔑 Using Session ID:', requestId);
 
@@ -1270,8 +1254,7 @@ window.SkyIndex = {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ 
-                        input: text,
-                        requestId: requestId
+                        input: text
                     })
                 });
 
@@ -1293,8 +1276,7 @@ window.SkyIndex = {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
-                        query: `show ${contactId}`,
-                        requestId: requestId
+                        query: `show ${contactId}`
                     })
                 });
 
@@ -1348,8 +1330,7 @@ window.SkyIndex = {
                     body: JSON.stringify({
                         query: text,
                         latitude: location.latitude,
-                        longitude: location.longitude,
-                        requestId: requestId
+                        longitude: location.longitude
                     })
                 });
 
@@ -1560,7 +1541,7 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
-            // Use passed requestId (from handleCommand) or fall back to cookie
+            // Use passed requestId from handleCommand, otherwise get from cookie
             const requestId = incomingRequestId || this.getSessionId();
 
             console.log('🤖 AI using Session ID:', requestId);
@@ -1581,7 +1562,7 @@ window.SkyIndex = {
 
             console.log('[AI GEO]', location);
 
-            // Fetch
+            // Fetch - with requestId
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
                 credentials: 'include',
@@ -1590,7 +1571,7 @@ window.SkyIndex = {
                     userQuery: prompt,
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    requestId: requestId
+                    requestId: requestId                    // ← This was missing
                 })
             });
 
@@ -1735,7 +1716,7 @@ window.SkyIndex = {
         }
 
         try {
-            const requestId = this.getSessionId();   // ← Real PHP session ID
+            const requestId = this.getSessionId();   // ← Real PHP session ID from cookie
             console.log('[AUTH] Using Session ID:', requestId);
 
             console.log('[AUTH 2] Resolving location...');
@@ -1772,7 +1753,7 @@ window.SkyIndex = {
                     password: pass,
                     latitude:  location.latitude,
                     longitude: location.longitude,
-                    requestId: requestId                    // ← Pass real session ID
+                    requestId: requestId                    // ← Fixed: Now passing real session ID
                 })
             });
 
@@ -2053,7 +2034,7 @@ window.SkyIndex = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 action: 'logout',
-                requestId: requestId
+                requestId: requestId                    // ← Fixed
             })
         })
         .then(res => {

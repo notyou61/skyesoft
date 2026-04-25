@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — auth.php
-// Version: 1.2.2
-// Codex Tier: 4 — Session Mutation Endpoint (with Geo + requestId)
+// Version: 1.3.0
+// Session-Authoritative Identity (PHPSESSID = requestId)
 // ======================================================================
 
 #region SECTION 0 — Environment Bootstrap
@@ -12,7 +12,7 @@ declare(strict_types=1);
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-require_once __DIR__ . '/sessionBootstrap.php';
+require_once __DIR__ . '/sessionBootstrap.php';   // MUST call session_start()
 
 header("Content-Type: application/json; charset=UTF-8");
 
@@ -38,10 +38,12 @@ function jsonOut(bool $success, string $message = ""): void
 #region SECTION 2 — Parse Input
 
 $rawInput = file_get_contents("php://input");
-$input = $rawInput ? json_decode($rawInput, true) : [];
+$input    = $rawInput ? json_decode($rawInput, true) : [];
+
 $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
-$requestId = $input['requestId'] ?? session_id();   // ← Use passed or current session
+// 🔥 CRITICAL FIX — Server owns requestId
+$requestId = session_id();
 
 #endregion
 
@@ -59,6 +61,7 @@ if ($action === "touch") {
 #region SECTION 4 — SESSION CHECK
 
 if ($action === "check") {
+
     if (!empty($_SESSION["authenticated"])) {
         $_SESSION["lastActivity"] = time();
     }
@@ -68,7 +71,7 @@ if ($action === "check") {
         "contactId"     => $_SESSION["contactId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
         "sessionId"     => session_id(),
-        "requestId"     => $requestId
+        "requestId"     => $requestId   // 🔥 same as session_id()
     ], JSON_UNESCAPED_SLASHES);
 
     session_write_close();
@@ -81,8 +84,8 @@ if ($action === "check") {
 
 if ($action === "login") {
 
-    $username  = trim((string)($input["username"] ?? ""));
-    $password  = trim((string)($input["password"] ?? ""));
+    $username = trim((string)($input["username"] ?? ""));
+    $password = trim((string)($input["password"] ?? ""));
 
     $latitude  = is_numeric($input["latitude"] ?? null) ? (float)$input["latitude"] : null;
     $longitude = is_numeric($input["longitude"] ?? null) ? (float)$input["longitude"] : null;
@@ -93,21 +96,38 @@ if ($action === "login") {
 
     $pdo = getPDO();
 
-    // Fetch user...
-    $stmt = $pdo->prepare("SELECT contactId, contactEmail, passwordHash, isActive FROM tblContacts WHERE contactEmail = :email LIMIT 1");
+    // --- Fetch user
+    $stmt = $pdo->prepare("
+        SELECT contactId, contactEmail, passwordHash, isActive
+        FROM tblContacts
+        WHERE contactEmail = :email
+        LIMIT 1
+    ");
     $stmt->execute(["email" => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user || (int)($user["isActive"] ?? 0) !== 1 || !password_verify($password, (string)($user["passwordHash"] ?? ""))) {
+    if (
+        !$user ||
+        (int)($user["isActive"] ?? 0) !== 1 ||
+        !password_verify($password, (string)($user["passwordHash"] ?? ""))
+    ) {
         logAuthAction($pdo, "auth.login.fail", $user['contactId'] ?? null, [
-            "username" => $username, "ip" => safeIp(), "ua" => safeUserAgent(), "requestId" => $requestId
+            "username"  => $username,
+            "ip"        => safeIp(),
+            "ua"        => safeUserAgent(),
+            "requestId" => $requestId
         ]);
+
         jsonOut(false, $user ? "Invalid password." : "User not found.");
     }
 
+    // 🔥 SECURITY: Regenerate session on login
+    session_regenerate_id(true);
+    $requestId = session_id();
+
     $contactId = (int)$user["contactId"];
 
-    // Success
+    // --- Store session
     $_SESSION["authenticated"] = true;
     $_SESSION["contactId"]     = $contactId;
     $_SESSION["username"]      = $user["contactEmail"];
@@ -137,6 +157,7 @@ if ($action === "logout") {
 
     $contactId = $_SESSION["contactId"] ?? null;
     $username  = $_SESSION["username"] ?? null;
+
     $pdo = getPDO();
 
     if ($pdo && $contactId) {
@@ -159,5 +180,10 @@ if ($action === "logout") {
     jsonOut(true);
 }
 
+#endregion
+
+#region SECTION 7 — INVALID
+
 jsonOut(false, "Invalid action.");
+
 #endregion
