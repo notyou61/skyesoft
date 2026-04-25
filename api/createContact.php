@@ -163,13 +163,13 @@ try {
         // 👤 User context (NO fake fallback)
         'contactId' => $_SESSION['contactId'] ?? null,
         // 🔗 Session / request tracking (CRITICAL)
-        'requestId' => $varRequestId ?? session_id(),
+        'requestId' => $varRequestId,
         // 🧠 Input
         'prompt'    => $input,
         // 🧾 Stage metadata (clean + accurate)
         'response'  => [
             'stage'     => 'propose',
-            'requestId' => $varRequestId ?? session_id()
+            'requestId' => $varRequestId
         ],
         // 🎯 Intent
         'intent'    => 'propose_contact',
@@ -396,7 +396,7 @@ if (!empty($currentUserId)) {
         // 👤 User context (clean)
         'contactId' => $currentUserId ?? null,
         // 🔗 Session linkage (CRITICAL)
-        'requestId' => $varRequestId ?? session_id(),
+        'requestId' => $varRequestId,
         // 🧠 Input
         'prompt'    => $input,
         // 🧾 Outcome payload

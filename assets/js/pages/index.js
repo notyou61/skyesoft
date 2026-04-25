@@ -1273,8 +1273,7 @@ window.SkyIndex = {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
-                        input: text,
-                        requestId: requestId
+                        input: text
                     })
                 });
 
@@ -1298,17 +1297,18 @@ window.SkyIndex = {
                     return;
                 }
 
+                // ───────────────────────────────────────────────
+                // 🔎 Verify Contact (NO logging, server session-controlled)
+                // ───────────────────────────────────────────────
                 this.appendSystemLine('✅ Contact created. Verifying from database...');
 
-                // 2️⃣ VERIFY (NO LOGGING)
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
                         query: `show ${contactId}`,
-                        requestId: requestId,
-                        suppressLog: true // 🔥 prevents duplicate tblActions entry
+                        suppressLog: true // 🔥 prevent duplicate tblActions entry
                     })
                 });
 
@@ -1371,6 +1371,9 @@ window.SkyIndex = {
                     this.lastLocation = location;
                 }
 
+                // ───────────────────────────────────────────────
+                // 📇 Contact Query (Server-controlled session)
+                // ───────────────────────────────────────────────
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1378,10 +1381,9 @@ window.SkyIndex = {
                     body: JSON.stringify({
                         query: text,
                         latitude: location.latitude,
-                        longitude: location.longitude,
-                        requestId: requestId
+                        longitude: location.longitude
                     })
-                });
+                })
 
                 const data = await res.json();
                 console.log('[CONTACT RESPONSE]', data);
