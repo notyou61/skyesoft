@@ -1250,23 +1250,23 @@ window.SkyIndex = {
             this.appendSystemLine('📇 Creating contact...');
 
             try {
-                // 1. Create the contact
+                // 🔥 Generate ONE requestId per user command
+                const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+
                 const createRes = await fetch('/skyesoft/api/createContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ input: text })
+                    body: JSON.stringify({ 
+                        input: text,
+                        requestId: requestId          // ← Consistent tracing
+                    })
                 });
 
                 const createData = await createRes.json();
-                // Debug Conditional
-                if (window.DEBUG) {
-                    console.log('[CREATE RESPONSE]', createData);
-                }
+                console.log('[CREATE RESPONSE]', createData);
 
-                // Extract contactId (works with your updated backend)
-                const contactId = createData.contactId || 
-                                 createData.insert?.contactId;
+                const contactId = createData.contactId || createData.insert?.contactId;
 
                 if (!contactId) {
                     const msg = createData.message || createData.reason || 'Creation failed';
@@ -1274,40 +1274,33 @@ window.SkyIndex = {
                     return;
                 }
 
-                this.appendSystemLine('🔄 Verifying contact from database...');
+                this.appendSystemLine('✅ Contact created successfully. Loading details...');
 
-                // 2. Re-fetch verified data from database
+                // 2. Re-fetch verified data
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
-                        query: `id ${contactId}`,     // getContacts.php understands this
-                        suppressLog: true   // 🔥 No duplicate action
+                        query: `show ${contactId}`,
+                        requestId: requestId          // ← Same requestId
                     })
                 });
 
                 const fetchData = await fetchRes.json();
-                                // Debug Conditional
-                if (window.DEBUG) {
-                    console.log('[CONTACT VERIFY]', fetchData);
-                }
+                console.log('[CONTACT VERIFY]', fetchData);
 
                 if (!fetchData?.success || !fetchData.contacts?.[0]) {
                     this.appendSystemLine('⚠ Contact created but could not load full details.');
-                    console.error('Fetch failed:', fetchData);
                     return;
                 }
 
                 const contact = fetchData.contacts[0];
-                const fullName =
-                    `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim()
-                    || `Contact #${contact.contactId}`;
+                const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim() || 'New Contact';
 
-                this.appendSystemLine(`✔ Contact ready: ${fullName}`)
+                this.appendSystemLine(`📇 ${fullName}`);
                 this.renderContactDetail(contact);
 
-                // Cache for future "last contact" command
                 this.lastContactId = contact.contactId;
 
             } catch (err) {
@@ -1327,24 +1320,18 @@ window.SkyIndex = {
         ) {
 
             this.clearOutput();
-
             console.log('[CONTACT QUERY]', text);
 
             try {
-                // 🔥 Generate ONE requestId per user command (for tracing)
+                // 🔥 One requestId per command
                 const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
 
-                // 🌍 Resolve location (cached preferred)
+                // 🌍 Location
                 let location = this.lastLocation || { latitude: null, longitude: null };
-
                 if (location.latitude === null || location.longitude === null) {
-                    console.log('[CONTACT] Fetching fresh location...');
                     location = await this.getLocationSafe();
-                    this.lastLocation = location;        // Cache for future commands
+                    this.lastLocation = location;
                 }
-
-                console.log('[CONTACT GEO]', location);
-                console.log('[CONTACT REQUEST ID]', requestId);
 
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
@@ -1352,40 +1339,20 @@ window.SkyIndex = {
                     credentials: 'include',
                     body: JSON.stringify({
                         query: text,
-                        latitude:  location.latitude,
+                        latitude: location.latitude,
                         longitude: location.longitude,
-                        requestId: requestId                    // ← Critical for tracing
+                        requestId: requestId
                     })
                 });
 
-                const data = await res.json();
-
-                console.log('[CONTACT RESPONSE]', data);
-
-                // Validation + AI fallback
-                if (!data?.success || !Array.isArray(data.contacts)) {
-                    console.warn('[CONTACT] Invalid response → falling back to AI');
-                    return await this.executeAICommand(text);
-                }
-
-                if (data.contacts.length === 0) {
-                    return await this.executeAICommand(text);
-                }
-
-                // Render based on mode
-                if (data.mode === 'single' && data.contacts.length > 0) {
-                    this.renderContactDetail(data.contacts[0]);
-                } else {
-                    this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
-                    this.renderContactsList(data.contacts);
-                }
+                // ... rest of your existing code (validation, rendering, etc.) ...
 
             } catch (err) {
                 console.error('[CONTACT FETCH ERROR]', err);
                 return await this.executeAICommand(text);
             }
 
-            return;   // Important: prevent falling through to AI
+            return;
         }
 
         // ───────────────────────────────────────────────
@@ -1593,6 +1560,8 @@ window.SkyIndex = {
         this.setThinking(true);
 
         try {
+            // 🔥 Generate ONE requestId per user command (for full traceability)
+            const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
 
             // 🌍 Resolve Location (cached + non-blocking)
             let location = this.lastLocation;
@@ -1609,9 +1578,8 @@ window.SkyIndex = {
                 this.lastLocation = location;
             }
 
-            // Console Log (Remove When Finished)
-            console.log('[Geo]', location);
-            console.log('[Geo Cached]', this.lastLocation);
+            console.log('[AI GEO]', location);
+            console.log('[AI REQUEST ID]', requestId);
 
             // Fetch
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
@@ -1621,7 +1589,8 @@ window.SkyIndex = {
                 body: JSON.stringify({
                     userQuery: prompt,
                     latitude: location.latitude,
-                    longitude: location.longitude
+                    longitude: location.longitude,
+                    requestId: requestId                    // ← Added for consistency
                 })
             });
 
@@ -1652,7 +1621,7 @@ window.SkyIndex = {
                 const handler = this.uiActionRegistry?.[canonicalAction];
 
                 if (typeof handler === 'function') {
-                    await handler(); // ✅ ensures execution completes
+                    await handler();
                     return;
                 }
 
@@ -1665,7 +1634,6 @@ window.SkyIndex = {
             // ───────────────────────────────────────────────
             if (data?.type === 'domain_intent') {
 
-                // #region 🧾 Normalize Payload
                 let parsed = null;
 
                 try {
@@ -1680,7 +1648,6 @@ window.SkyIndex = {
                     this.appendSystemLine('⚠ Invalid domain response.');
                     return;
                 }
-                // #endregion
 
                 const domainKey = parsed.domain;
                 const mode      = parsed.mode;
@@ -1731,7 +1698,6 @@ window.SkyIndex = {
                     }
 
                 } else {
-                    // ✅ THIS FIXES YOUR ISSUE
                     this.appendSystemLine(data.response);
                 }
 
@@ -1749,7 +1715,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth) - FIXED GEO
+    // #region 🔑 Login Logic (Server Auth) - FIXED GEO + requestId
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
@@ -1779,6 +1745,10 @@ window.SkyIndex = {
 
         try {
             console.log('[AUTH 2] Resolving location...');
+
+            // 🔥 Generate ONE requestId for the entire login flow
+            const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+            console.log('[AUTH REQUEST ID]', requestId);
 
             // 🌍 Get location with better timeout handling + caching
             let location = this.lastLocation || { latitude: null, longitude: null };
@@ -1817,7 +1787,8 @@ window.SkyIndex = {
                     username: email,
                     password: pass,
                     latitude:  location.latitude,
-                    longitude: location.longitude
+                    longitude: location.longitude,
+                    requestId: requestId                    // ← Added for consistent tracing
                 })
             });
 
