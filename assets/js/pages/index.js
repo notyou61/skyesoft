@@ -1319,7 +1319,7 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Contact Display Command (with Geo)
+        // 📇 Contact Display Command (with Geo + requestId)
         // ───────────────────────────────────────────────
         if (
             normalized.startsWith('show ') ||
@@ -1331,6 +1331,9 @@ window.SkyIndex = {
             console.log('[CONTACT QUERY]', text);
 
             try {
+                // 🔥 Generate ONE requestId per user command (for tracing)
+                const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
+
                 // 🌍 Resolve location (cached preferred)
                 let location = this.lastLocation || { latitude: null, longitude: null };
 
@@ -1341,6 +1344,7 @@ window.SkyIndex = {
                 }
 
                 console.log('[CONTACT GEO]', location);
+                console.log('[CONTACT REQUEST ID]', requestId);
 
                 const res = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
@@ -1349,7 +1353,8 @@ window.SkyIndex = {
                     body: JSON.stringify({
                         query: text,
                         latitude:  location.latitude,
-                        longitude: location.longitude
+                        longitude: location.longitude,
+                        requestId: requestId                    // ← Critical for tracing
                     })
                 });
 
