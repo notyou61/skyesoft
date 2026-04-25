@@ -132,11 +132,22 @@ try {
     #region 1. proposeStage
 
     logAction($db, [
+        // 🧾 Action type
         'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => $_SESSION['contactId'] ?? 1,
+        // 👤 User context (NO fake fallback)
+        'contactId' => $_SESSION['contactId'] ?? null,
+        // 🔗 Session / request tracking (CRITICAL)
+        'requestId' => $varRequestId ?? session_id(),
+        // 🧠 Input
         'prompt'    => $input,
-        'response'  => json_encode(['stage' => 'propose', 'proposalId' => $varRequestId]),
+        // 🧾 Stage metadata (clean + accurate)
+        'response'  => [
+            'stage'     => 'propose',
+            'requestId' => $varRequestId ?? session_id()
+        ],
+        // 🎯 Intent
         'intent'    => 'propose_contact',
+        // 🧭 Origin
         'origin'    => ACTION_ORIGIN_USER
     ]);
 
@@ -354,14 +365,23 @@ if (!empty($currentUserId)) {
                     ?: '{"error":"json_encode_failed"}';
 
     logAction($db, [
+        // 🧾 Action type (result)
         'type'      => $actionType,
-        'contactId' => (int)$currentUserId,
+        // 👤 User context (clean)
+        'contactId' => $currentUserId ?? null,
+        // 🔗 Session linkage (CRITICAL)
+        'requestId' => $varRequestId ?? session_id(),
+        // 🧠 Input
         'prompt'    => $input,
+        // 🧾 Outcome payload
         'response'  => $responseJson,
+        // 🎯 Final intent (resolved_new / reject / etc.)
         'intent'    => $intent,
+        // 📍 Location context
         'lat'       => $location['lat'] ?? null,
         'lng'       => $location['lng'] ?? null,
-        'origin'    => ACTION_ORIGIN_USER
+        // 🧭 Origin (SYSTEM — important distinction)
+        'origin'    => ACTION_ORIGIN_SYSTEM
     ]);
 }
 
