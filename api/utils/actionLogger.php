@@ -10,6 +10,11 @@ function logAction(PDO $db, array $p): void
 {
     try {
 
+        // 🔐 Ensure session exists
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         // 🔕 Skip logging when requested
         if (!empty($p['suppressLog'])) {
             return;
@@ -22,11 +27,11 @@ function logAction(PDO $db, array $p): void
 
         if ($type <= 0 || $intent === '' || $prompt === '') {
             error_log('logAction: missing required fields.');
-            return; // 🔥 DO NOT throw
+            return;
         }
 
-        // --- Optional (normalized)
-        $contactId = isset($p['contactId']) ? (int)$p['contactId'] : null;
+        // --- Optional (safe normalization)
+        $contactId = !empty($p['contactId']) ? (int)$p['contactId'] : null;
 
         $allowedOrigins = [1, 2, 3];
         $origin = in_array(($p['origin'] ?? 1), $allowedOrigins)
@@ -39,6 +44,13 @@ function logAction(PDO $db, array $p): void
                 : json_encode($p['response'], JSON_UNESCAPED_UNICODE))
             : null;
 
+        // 🔒 truncate response
+        $response = $response
+            ? (function_exists('mb_substr')
+                ? mb_substr($response, 0, 10000)
+                : substr($response, 0, 10000))
+            : null;
+
         $confidence = isset($p['confidence']) ? (float)$p['confidence'] : 1.00;
         $lat        = $p['lat'] ?? null;
         $lng        = $p['lng'] ?? null;
@@ -46,8 +58,8 @@ function logAction(PDO $db, array $p): void
         $ip = $_SERVER['REMOTE_ADDR']     ?? null;
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        // 🔥 NEW: requestId (session tracking)
-        $requestId = $p['requestId'] ?? session_id();
+        // 🔥 Authoritative requestId
+        $requestId = session_id();
 
         $stmt = $db->prepare("
             INSERT INTO tblActions (
@@ -98,6 +110,6 @@ function logAction(PDO $db, array $p): void
 
     } catch (Throwable $e) {
         error_log('[logAction ERROR] ' . $e->getMessage());
-        return; // 🔥 never break execution
+        return;
     }
 }

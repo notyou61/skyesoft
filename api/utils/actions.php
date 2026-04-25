@@ -16,14 +16,21 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
+    // 🔐 Ensure session exists
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
     if (empty($entry['promptText'])) {
         error_log('[actions] Missing promptText');
         return;
     }
 
-    // Normalize fields
+    // ─────────────────────────────
+    // Normalize
+    // ─────────────────────────────
     $contactId  = $entry['contactId'] ?? null;
-    $requestId  = $entry['requestId'] ?? session_id();           // ← Consistent with others
+    $requestId  = session_id(); // 🔥 authoritative
     $response   = $entry['responseText'] ?? null;
     $intent     = $entry['intent'] ?? 'unknown';
     $confidence = (float)($entry['intentConfidence'] ?? 1.00);
@@ -34,20 +41,15 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
 
     $ipAddress  = $_SERVER['REMOTE_ADDR'] ?? null;
     $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
     $origin     = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
 
-    // Action Type Mapping
-    $actionTypeId = $entry['actionTypeId'] ?? match ($intent) {
-        'ui_login'     => 1,
-        'ui_logout',
-        'idle_logout'  => 2,
-        'contact_query',
-        'contact_view',
-        'contact_list' => 4,
-        default        => 3
-    };
+    // 🔥 Deterministic action type (caller decides)
+    $actionTypeId = $entry['actionTypeId'] ?? 3;
 
+    // ─────────────────────────────
     // Truncate
+    // ─────────────────────────────
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
         : substr((string)$entry['promptText'], 0, 5000);
@@ -58,7 +60,9 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             : substr((string)$response, 0, 10000))
         : null;
 
+    // ─────────────────────────────
     // Insert
+    // ─────────────────────────────
     try {
         $stmt = $db->prepare("
             INSERT INTO tblActions (

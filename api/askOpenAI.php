@@ -1250,17 +1250,18 @@ PROMPT;
 }
 #endregion
 
-#region SECTION 8 — Output
+#region SECTION 8 — Output (EOP)
 
-// Ensure response exists
+// ───────────────────────────────────────────────
+// 🧾 Ensure Response Exists
+// ───────────────────────────────────────────────
 if (!isset($response) || trim((string)$response) === '') {
-    
-    error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
 
+    error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
     $response = "I'm here and ready — try asking that again.";
 }
 
-// Safe logging only (mbstring-safe)
+// Safe preview logging
 $preview = function_exists('mb_substr')
     ? mb_substr((string)$response, 0, 300)
     : substr((string)$response, 0, 300);
@@ -1269,43 +1270,40 @@ error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode([
     'preview' => $preview
 ]));
 
-// ------------------------------------------------
-// Session Activity Heartbeat
-// ------------------------------------------------
-
+// ───────────────────────────────────────────────
+// 🔐 Session Context
+// ───────────────────────────────────────────────
 $sessionContactId = $_SESSION["contactId"] ?? null;
 
 if (!empty($_SESSION['authenticated'])) {
     $_SESSION['lastActivity'] = time();
 }
 
-session_write_close();
+// 🔥 Unified requestId (SERVER AUTHORITY)
+$requestId = session_id();
 
-// ------------------------------------------------
-// Action Logging (Authoritative - tblActions)
-// ------------------------------------------------
-
+// ───────────────────────────────────────────────
+// 📍 Location
+// ───────────────────────────────────────────────
 $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] : null;
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
 
-// 🔥 NEW: Consistent requestId per command
-$requestId = $input['requestId'] ?? session_id();
-
-$sessionContactId = $_SESSION["contactId"] ?? null;
-
+// ───────────────────────────────────────────────
+// 🧾 Action Logging (Prompt Layer)
+// ───────────────────────────────────────────────
 if ($sessionContactId && isset($response)) {
 
     try {
         insertActionPrompt([
             'contactId'        => $sessionContactId,
-            'promptText'       => $query ?? '[system:narrative]',
+            'promptText'       => $query ?? $input['input'] ?? '[unknown]',
             'responseText'     => trim($response),
             'intent'           => $intent ?? 'unknown',
             'intentConfidence' => $confidence ?? null,
             'latitude'         => $latitude,
             'longitude'        => $longitude,
-            'requestId'        => $requestId,                    // ← Added
-            'actionTypeId'     => 3,                             // prompt / AI response
+            'requestId'        => $requestId,
+            'actionTypeId'     => 3,
             'origin'           => ACTION_ORIGIN_USER
         ], $db);
 
@@ -1314,10 +1312,12 @@ if ($sessionContactId && isset($response)) {
     }
 }
 
-// ------------------------------------------------
-// Final JSON Output
-// ------------------------------------------------
+// 🔥 Close session AFTER logging
+session_write_close();
 
+// ───────────────────────────────────────────────
+// 📤 Final Output
+// ───────────────────────────────────────────────
 echo json_encode([
     "success"            => true,
     "role"               => $role ?? "askOpenAI",
@@ -1325,7 +1325,7 @@ echo json_encode([
     "narrativeGenerated" => $narrativeGenerated ?? false,
     "response"           => trim((string)$response),
     "reportUpdated"      => $reportPath ?? null,
-    "requestId"          => $requestId   // optional: return it to frontend
+    "requestId"          => $requestId
 ], JSON_UNESCAPED_SLASHES);
 
 exit;

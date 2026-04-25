@@ -336,16 +336,11 @@ window.SkyIndex = {
         // Helper: Get real PHP session ID from cookie
         getSessionId() {
             try {
-                const cookies = document.cookie.split(';');
-                for (let cookie of cookies) {
-                    const [name, value] = cookie.trim().split('=');
-                    if (name === 'PHPSESSID' && value) {
-                        return value;
-                    }
-                }
-            } catch (e) {}
-
-            return null; // 🔥 important — not "unknown_session"
+                const match = document.cookie.match(/(?:^|;\s*)PHPSESSID=([^;]+)/);
+                return match ? decodeURIComponent(match[1]) : null;
+            } catch (e) {
+                return null;
+            }
         },
 
         // #endregion
@@ -1596,16 +1591,15 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🤖 AI Command Execution
-    async executeAICommand(prompt, incomingRequestId = null) {
+    // #region 🤖 AI Command Execution (Session-Controlled)
+    async executeAICommand(prompt) {
+
         this.setThinking(true);
 
         try {
-            // 🔥 Use incoming requestId if provided (from handleCommand), otherwise generate new
-            const requestId = incomingRequestId || 
-                             ('req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8));
-
+            // ───────────────────────────────────────────────
             // 🌍 Resolve Location (cached + non-blocking)
+            // ───────────────────────────────────────────────
             let location = this.lastLocation;
 
             if (!location || location.latitude === null || location.longitude === null) {
@@ -1616,14 +1610,14 @@ window.SkyIndex = {
                     )
                 ]);
 
-                // Cache for reuse
                 this.lastLocation = location;
             }
 
             console.log('[AI GEO]', location);
-            console.log('[AI REQUEST ID]', requestId);
 
-            // Fetch
+            // ───────────────────────────────────────────────
+            // 🔐 Fetch (NO requestId — server owns session)
+            // ───────────────────────────────────────────────
             const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
                 method: 'POST',
                 credentials: 'include',
@@ -1631,8 +1625,7 @@ window.SkyIndex = {
                 body: JSON.stringify({
                     userQuery: prompt,
                     latitude: location.latitude,
-                    longitude: location.longitude,
-                    requestId: requestId                    // ← Consistent tracing
+                    longitude: location.longitude
                 })
             });
 
@@ -1672,7 +1665,7 @@ window.SkyIndex = {
             }
 
             // ───────────────────────────────────────────────
-            // Domain Intent (authoritative short-circuit)
+            // Domain Intent (authoritative)
             // ───────────────────────────────────────────────
             if (data?.type === 'domain_intent') {
 
@@ -1757,7 +1750,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth) - FIXED GEO + requestId
+    // #region 🔑 Login Logic (Server Auth — Session Controlled)
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
@@ -1775,6 +1768,9 @@ window.SkyIndex = {
             return page.handleLoginSubmit(form);
         }
 
+        // ───────────────────────────────────────────────
+        // 📥 Input
+        // ───────────────────────────────────────────────
         const email = form.querySelector('input[type="email"]')?.value.trim();
         const pass  = form.querySelector('input[type="password"]')?.value.trim();
         const error = form.querySelector('.loginError');
@@ -1788,16 +1784,13 @@ window.SkyIndex = {
         try {
             console.log('[AUTH 2] Resolving location...');
 
-            // 🔥 Generate ONE requestId for the entire login flow
-            const requestId = 'req_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
-            console.log('[AUTH REQUEST ID]', requestId);
-
-            // 🌍 Get location with better timeout handling + caching
+            // ───────────────────────────────────────────────
+            // 🌍 Location (cached + timeout safe)
+            // ───────────────────────────────────────────────
             let location = this.lastLocation || { latitude: null, longitude: null };
 
             if (location.latitude === null || location.longitude === null) {
                 try {
-                    // Give location up to 4 seconds (geolocation prompt can be slow)
                     location = await Promise.race([
                         this.getLocationSafe(),
                         new Promise(resolve =>
@@ -1805,7 +1798,6 @@ window.SkyIndex = {
                         )
                     ]);
 
-                    // Cache it for future AI commands / actions
                     if (location.latitude !== null && location.longitude !== null) {
                         this.lastLocation = location;
                     }
@@ -1818,7 +1810,10 @@ window.SkyIndex = {
                 }
             }
 
-            console.log('[AUTH 3] Sending login request with geo');
+            // ───────────────────────────────────────────────
+            // 🔐 Send Login Request (NO requestId — server owns session)
+            // ───────────────────────────────────────────────
+            console.log('[AUTH 3] Sending login request');
 
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
@@ -1829,8 +1824,7 @@ window.SkyIndex = {
                     username: email,
                     password: pass,
                     latitude:  location.latitude,
-                    longitude: location.longitude,
-                    requestId: requestId                    // ← Added for consistent tracing
+                    longitude: location.longitude
                 })
             });
 
@@ -1841,6 +1835,9 @@ window.SkyIndex = {
             const data = await res.json();
             console.log('[AUTH 5] auth.php payload', data);
 
+            // ───────────────────────────────────────────────
+            // ❌ Login Failed
+            // ───────────────────────────────────────────────
             if (!data.success) {
                 error.textContent = data.message || 'Login failed.';
                 error.hidden = false;
@@ -1848,10 +1845,11 @@ window.SkyIndex = {
             }
 
             console.log('[AUTH 7] Authentication accepted');
-
             error.hidden = true;
 
-            // Verify session
+            // ───────────────────────────────────────────────
+            // 🔍 Verify Session
+            // ───────────────────────────────────────────────
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
@@ -1875,11 +1873,15 @@ window.SkyIndex = {
                 page.startActivityPing?.();
             }
 
-            // Restart SSE
+            // ───────────────────────────────────────────────
+            // 🔄 Restart SSE
+            // ───────────────────────────────────────────────
             window.SkySSE?.stop?.();
             setTimeout(() => window.SkySSE?.start?.(), 300);
 
-            // Final footer refresh
+            // ───────────────────────────────────────────────
+            // 📊 Footer Refresh
+            // ───────────────────────────────────────────────
             setTimeout(() => {
                 page?.renderFooterStatus?.();
             }, 400);
