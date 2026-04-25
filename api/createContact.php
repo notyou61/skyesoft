@@ -95,7 +95,7 @@ require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
-//require_once __DIR__ . '/askOpenAI.php';
+require_once __DIR__ . '/askOpenAI.php';
 
 // ───────────────────────────────────────────────
 // ⚙ Environment + Logging
