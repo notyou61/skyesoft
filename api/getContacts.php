@@ -11,15 +11,15 @@ declare(strict_types=1);
  * Accepts natural language queries and returns structured contact data.
  *
  * -----------------------------------------------------------------------------
- * KEY ARCHITECTURAL DECISIONS (Latest MTCO)
+ * KEY ARCHITECTURAL DECISIONS (Latest)
  * -----------------------------------------------------------------------------
- * • ONE logging block only (uses centralized insertActionPrompt)
+ * • ONE logging block using centralized insertActionPrompt()
  * • Original query always preserved
  * • Full session tracing via requestId
- * • Rich, clean responseText (contact summary or status)
- * • Reliable Latitude & Longitude (input → session → safe default)
+ * • Rich, clean responseText for logging
+ * • Reliable Latitude & Longitude support
  * • contactId = NULL when no match
- * • Consistent logging with askOpenAI.php
+ * • Consistent with askOpenAI.php logging
  *
  * =============================================================================
  */
@@ -31,7 +31,7 @@ header("Content-Type: application/json; charset=UTF-8");
 session_start();
 
 require_once __DIR__ . '/dbConnect.php';
-require_once __DIR__ . '/utils/actions.php';   // ← Centralized logging
+require_once __DIR__ . '/utils/actions.php';   // Centralized logging
 
 $input = json_decode(file_get_contents("php://input"), true);
 
@@ -194,6 +194,7 @@ try {
         default => 'contact_query'
     };
 
+    // Use centralized logger
     insertActionPrompt([
         'contactId'        => $contactId,
         'promptText'       => $originalQuery,
@@ -202,12 +203,10 @@ try {
         'intentConfidence' => 1.00,
         'latitude'         => $latitude,
         'longitude'        => $longitude,
-        'requestId'        => session_id(),           // ← Full session tracing
+        'requestId'        => session_id(),           // Current session tracing
         'actionTypeId'     => 4,                      // query
         'origin'           => 2                       // command interface
     ], $db);
-
-    error_log("[actions] contact query logged | contactId=" . ($contactId ?? 'NULL') . " | requestId=" . session_id());
 
 } catch (Throwable $e) {
     error_log('[actions] insertActionPrompt failed in getContacts.php: ' . $e->getMessage());

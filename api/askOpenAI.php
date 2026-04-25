@@ -1285,37 +1285,37 @@ session_write_close();
 // Action Logging (Authoritative - tblActions)
 // ------------------------------------------------
 
-// 🌍 Geo Context
 $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] : null;
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
-// Session Contact ID
+
+// 🔥 NEW: Consistent requestId per command
+$requestId = $input['requestId'] ?? session_id();
+
 $sessionContactId = $_SESSION["contactId"] ?? null;
-//
-error_log('[SESSION DEBUG] ' . json_encode($_SESSION));
-// Session Contact ID Conditional
+
 if ($sessionContactId && isset($response)) {
 
     try {
-        // Insert Action Prompt
         insertActionPrompt([
-            "contactId" => $sessionContactId,
-            "promptText" => $query ?? '[system:narrative]',
-            "responseText" => trim($response),
-            "intent" => $intent ?? "unknown",
-            "intentConfidence" => $confidence ?? null,
-            "createdUnixTime" => time(),
-            "latitude" => $latitude,
-            "longitude" => $longitude
-
+            'contactId'        => $sessionContactId,
+            'promptText'       => $query ?? '[system:narrative]',
+            'responseText'     => trim($response),
+            'intent'           => $intent ?? 'unknown',
+            'intentConfidence' => $confidence ?? null,
+            'latitude'         => $latitude,
+            'longitude'        => $longitude,
+            'requestId'        => $requestId,                    // ← Added
+            'actionTypeId'     => 3,                             // prompt / AI response
+            'origin'           => ACTION_ORIGIN_USER
         ], $db);
 
     } catch (Throwable $e) {
-        error_log("[actions] insert failed: " . $e->getMessage());
+        error_log("[actions] insert failed in askOpenAI.php: " . $e->getMessage());
     }
 }
 
 // ------------------------------------------------
-// Final JSON Output (Single Authority)
+// Final JSON Output
 // ------------------------------------------------
 
 echo json_encode([
@@ -1324,7 +1324,8 @@ echo json_encode([
     "type"               => $type ?? "skyebot",
     "narrativeGenerated" => $narrativeGenerated ?? false,
     "response"           => trim((string)$response),
-    "reportUpdated"      => $reportPath ?? null
+    "reportUpdated"      => $reportPath ?? null,
+    "requestId"          => $requestId   // optional: return it to frontend
 ], JSON_UNESCAPED_SLASHES);
 
 exit;
