@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — actions.php
-//  Version: 1.1.0
-//  Centralized Action Logging Layer
+//  Version: 1.2.0
+//  Centralized Action Logging Layer (activitySessionId)
 // ======================================================================
 
 #region SECTION 1 — Action Logging (tblActions)
@@ -16,7 +16,6 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         return;
     }
 
-    // 🔐 Ensure session exists
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
@@ -29,27 +28,23 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     // ─────────────────────────────
     // Normalize
     // ─────────────────────────────
-    $contactId  = $entry['contactId'] ?? null;
-    $requestId  = session_id(); // 🔥 authoritative
-    $response   = $entry['responseText'] ?? null;
-    $intent     = $entry['intent'] ?? 'unknown';
-    $confidence = (float)($entry['intentConfidence'] ?? 1.00);
-    $unixTime   = (int)($entry['createdUnixTime'] ?? time());
+    $contactId         = $entry['contactId'] ?? null;
+    $activitySessionId = session_id();                    // ← CANONICAL
+    $response          = $entry['responseText'] ?? null;
+    $intent            = $entry['intent'] ?? 'unknown';
+    $confidence        = (float)($entry['intentConfidence'] ?? 1.00);
+    $unixTime          = (int)($entry['createdUnixTime'] ?? time());
 
-    $latitude   = is_numeric($entry['latitude'] ?? null) ? (float)$entry['latitude'] : null;
-    $longitude  = is_numeric($entry['longitude'] ?? null) ? (float)$entry['longitude'] : null;
+    $latitude   = is_numeric($entry['latitude'] ?? null)   ? (float)$entry['latitude']   : null;
+    $longitude  = is_numeric($entry['longitude'] ?? null)  ? (float)$entry['longitude']  : null;
 
-    $ipAddress  = $_SERVER['REMOTE_ADDR'] ?? null;
+    $ipAddress  = $_SERVER['REMOTE_ADDR']     ?? null;
     $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
     $origin     = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
-
-    // 🔥 Deterministic action type (caller decides)
     $actionTypeId = $entry['actionTypeId'] ?? 3;
 
-    // ─────────────────────────────
     // Truncate
-    // ─────────────────────────────
     $promptText = function_exists('mb_substr')
         ? mb_substr((string)$entry['promptText'], 0, 5000)
         : substr((string)$entry['promptText'], 0, 5000);
@@ -61,12 +56,12 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         : null;
 
     // ─────────────────────────────
-    // Insert
+    // Insert — NEW COLUMN
     // ─────────────────────────────
     try {
         $stmt = $db->prepare("
             INSERT INTO tblActions (
-                actionTypeId, contactId, actionOrigin, actionUnix, requestId,
+                actionTypeId, contactId, actionOrigin, actionUnix, activitySessionId,
                 promptText, responseText, intent, intentConfidence,
                 ipAddress, latitude, longitude, userAgent
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -77,7 +72,7 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
             $contactId,
             $origin,
             $unixTime,
-            $requestId,
+            $activitySessionId,           // ← New column
             $promptText,
             $response,
             $intent,
@@ -89,13 +84,10 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
         ]);
 
         $actionId = $db->lastInsertId();
-        error_log("[actions] SUCCESS | actionId=$actionId | requestId=$requestId | intent=$intent");
+        error_log("[actions] SUCCESS | actionId=$actionId | activitySessionId=$activitySessionId");
 
     } catch (Throwable $e) {
         error_log('[actions] insert failed: ' . $e->getMessage());
-        if (isset($stmt)) {
-            error_log('[actions] SQL ERROR: ' . json_encode($stmt->errorInfo()));
-        }
     }
 }
 

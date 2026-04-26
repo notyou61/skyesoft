@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — auth.php
-// Version: 1.3.0
-// Session-Authoritative Identity (PHPSESSID = requestId)
+// Version: 1.3.1
+// Session-Authoritative Identity (activitySessionId)
 // ======================================================================
 
 #region SECTION 0 — Environment Bootstrap
@@ -44,8 +44,8 @@ $input    = $rawInput ? json_decode($rawInput, true) : [];
 
 $action = trim((string)($input["action"] ?? ($_GET["action"] ?? "")));
 
-// 🔥 CRITICAL FIX — Server owns requestId
-$requestId = session_id();
+// 🔥 CRITICAL — Server owns the canonical session ID
+$activitySessionId = session_id();
 
 #endregion
 
@@ -72,8 +72,7 @@ if ($action === "check") {
         "authenticated" => $_SESSION["authenticated"] ?? false,
         "contactId"     => $_SESSION["contactId"] ?? null,
         "username"      => $_SESSION["username"] ?? null,
-        "sessionId"     => session_id(),
-        "requestId"     => $requestId   // 🔥 same as session_id()
+        "activitySessionId" => $activitySessionId  // Canonical variable
     ], JSON_UNESCAPED_SLASHES);
 
     session_write_close();
@@ -117,21 +116,21 @@ if ($action === "login") {
             "username"  => $username,
             "ip"        => safeIp(),
             "ua"        => safeUserAgent(),
-            "requestId" => session_id() // still DB column for now
+            "activitySessionId" => session_id()   // still using current session for failed login
         ]);
 
         jsonOut(false, $user ? "Invalid password." : "User not found.");
     }
 
-    // 🔥 SECURITY: Regenerate session on login
+    // 🔥 SECURITY: Regenerate session on successful login
     session_regenerate_id(true);
 
     // 🔗 Authoritative Session Identity
-    $activitySessionId = session_id();
+    $activitySessionId = session_id();   // ← Update after regeneration
 
     $contactId = (int)$user["contactId"];
 
-    // --- Store session
+    // --- Store session data
     $_SESSION["authenticated"] = true;
     $_SESSION["contactId"]     = $contactId;
     $_SESSION["username"]      = $user["contactEmail"];
@@ -146,16 +145,15 @@ if ($action === "login") {
         "ua"             => safeUserAgent(),
         "latitude"       => $latitude,
         "longitude"      => $longitude,
-        "requestId"      => $activitySessionId, // DB still uses requestId column
+        "activitySessionId" => $activitySessionId,
         "actionOrigin"   => 1
     ]);
 
     session_write_close();
 
-    // Optional: return session for debugging
     echo json_encode([
-        "success"   => true,
-        "sessionId" => $activitySessionId
+        "success"          => true,
+        "activitySessionId" => $activitySessionId
     ], JSON_UNESCAPED_SLASHES);
 
     exit;
@@ -174,11 +172,11 @@ if ($action === "logout") {
 
     if ($pdo && $contactId) {
         logAuthAction($pdo, "auth.logout", (int)$contactId, [
-            "username"  => $username,
-            "ip"        => safeIp(),
-            "ua"        => safeUserAgent(),
-            "requestId" => $requestId,
-            "actionOrigin" => 1
+            "username"       => $username,
+            "ip"             => safeIp(),
+            "ua"             => safeUserAgent(),
+            "activitySessionId" => $activitySessionId,
+            "actionOrigin"   => 1
         ]);
     }
 

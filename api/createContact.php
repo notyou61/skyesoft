@@ -5,7 +5,8 @@ file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.0.0
+//  Version: 1.0.1
+//  Last Updated: 2026-04-26
 // ======================================================================
 //
 //  PURPOSE:
@@ -45,7 +46,7 @@ file_put_contents(__DIR__ . '/createContact_debug.log', '');
 //      location: object|null,
 //      contact: object|null,
 //      scenario: object,
-//      requestId: string
+//      activitySessionId: string
 //  }
 //
 //  RULES:
@@ -64,7 +65,6 @@ file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 #region SECTION 0 — Header (EOP)
 
-// 🧾 Response Setup
 header("Content-Type: application/json; charset=UTF-8");
 
 // 🔐 SESSION (SINGLE SOURCE OF TRUTH)
@@ -104,8 +104,8 @@ error_log('=== HIT createContact ===');
 error_log('[RAW] ' . $raw);
 error_log('[INPUT] ' . $input);
 
-// 🔗 Unified Session Request ID (temporary naming)
-$varRequestId = session_id();
+// 🔥 CANONICAL SESSION ID — Single Source of Truth
+$activitySessionId = session_id();
 
 // 🗄 Database
 $db = getPDO();
@@ -145,14 +145,14 @@ try {
         'type'      => ACTION_TYPE_PROPOSE,
         // 👤 User context (NO fake fallback)
         'contactId' => $_SESSION['contactId'] ?? null,
-        // 🔗 Session / request tracking (CRITICAL)
-        'requestId' => $varRequestId,
+        // 🔗 Canonical Session Tracking
+        'activitySessionId' => $activitySessionId,
         // 🧠 Input
         'prompt'    => $input,
         // 🧾 Stage metadata (clean + accurate)
         'response'  => [
-            'stage'     => 'propose',
-            'requestId' => $varRequestId
+            'stage'             => 'propose',
+            'activitySessionId' => $activitySessionId
         ],
         // 🎯 Intent
         'intent'    => 'propose_contact',
@@ -356,41 +356,33 @@ $currentUserId = $_SESSION['contactId'] ?? 1;
 
 if (!empty($currentUserId)) {
     $responsePayload = [
-        'requestId'     => $varRequestId,
-        'input'         => $input,
-        'outcome'       => $outcomeType,
-        'contactId'     => $targetContactId,                    // ← Guaranteed top-level
-        'entityId'      => $entity['entityId'] ?? null,
-        'locationId'    => $locationRecord['locationId'] ?? null,
-        'reason'        => $reason,
-        'message'       => $message,
-        'insertSuccess' => $insertResult['success'] ?? null,
-        'lat'           => $location['lat'] ?? null,
-        'lng'           => $location['lng'] ?? null,
-        'placeId'       => $location['placeId'] ?? null
+        'activitySessionId' => $activitySessionId,   // ← updated
+        'input'             => $input,
+        'outcome'           => $outcomeType,
+        'contactId'         => $targetContactId,
+        'entityId'          => $entity['entityId'] ?? null,
+        'locationId'        => $locationRecord['locationId'] ?? null,
+        'reason'            => $reason,
+        'message'           => $message,
+        'insertSuccess'     => $insertResult['success'] ?? null,
+        'lat'               => $location['lat'] ?? null,
+        'lng'               => $location['lng'] ?? null,
+        'placeId'           => $location['placeId'] ?? null
     ];
 
     $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) 
                     ?: '{"error":"json_encode_failed"}';
 
     logAction($db, [
-        // 🧾 Action type (result)
-        'type'      => $actionType,
-        // 👤 User context (clean)
-        'contactId' => $currentUserId ?? null,
-        // 🔗 Session linkage (CRITICAL)
-        'requestId' => $varRequestId,
-        // 🧠 Input
-        'prompt'    => $input,
-        // 🧾 Outcome payload
-        'response'  => $responseJson,
-        // 🎯 Final intent (resolved_new / reject / etc.)
-        'intent'    => $intent,
-        // 📍 Location context
-        'lat'       => $location['lat'] ?? null,
-        'lng'       => $location['lng'] ?? null,
-        // 🧭 Origin (SYSTEM — important distinction)
-        'origin'    => ACTION_ORIGIN_SYSTEM
+        'type'          => $actionType,
+        'contactId'     => $currentUserId ?? null,
+        'activitySessionId' => $activitySessionId,   // ← updated
+        'prompt'        => $input,
+        'response'      => $responseJson,
+        'intent'        => $intent,
+        'lat'           => $location['lat'] ?? null,
+        'lng'           => $location['lng'] ?? null,
+        'origin'        => ACTION_ORIGIN_SYSTEM
     ]);
 }
 
@@ -399,12 +391,12 @@ if (!empty($currentUserId)) {
 #region SECTION 3 — Final Response (Standardized for Frontend)
 
 $baseResponse = [
-    'status'      => $outcomeType,
-    'message'     => $message,
-    'requestId'   => $varRequestId,
-    'contactId'   => $targetContactId,           // ← Critical for frontend re-fetch
-    'success'     => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true),
-    'verified'    => true                        // ← Signals DB-backed response
+    'status'            => $outcomeType,
+    'message'           => $message,
+    'activitySessionId' => $activitySessionId,      // ← updated
+    'contactId'         => $targetContactId,
+    'success'           => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true),
+    'verified'          => true
 ];
 
 if ($outcomeType === 'reject') {

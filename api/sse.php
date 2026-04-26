@@ -26,12 +26,17 @@ require_once __DIR__ . '/dbConnect.php';
 // ─────────────────────────────────────────
 // 🧠 Snapshot current session state
 // ─────────────────────────────────────────
+$activitySessionId = session_id();   // ← CANONICAL VARIABLE
+
+// ─────────────────────────────────────────
+// 🧠 Snapshot current session state
+// ─────────────────────────────────────────
 $initialSession = [
     'authenticated' => !empty($_SESSION['authenticated']),
     'contactId'     => $_SESSION['contactId'] ?? null,
     'username'      => $_SESSION['username'] ?? null,
     'role'          => $_SESSION['role'] ?? 'user',
-    'sessionId'     => session_id()
+    'activitySessionId' => $activitySessionId
 ];
 
 $contactIdForLog = $initialSession['contactId'] ?? null;
@@ -68,7 +73,7 @@ if ($isSnapshot) {
 
     $payload["auth"]      = $auth;
     $payload["streamId"]  = "snapshot";
-    $payload["sessionId"] = session_id();
+    $payload["activitySessionId"] = session_id();   // ← updated
 
     session_write_close();
 
@@ -176,7 +181,7 @@ while (true) {
             session_start();
         }
 
-        $sessionId = session_id();
+        $activitySessionId = session_id();   // ← refresh after possible regenerate
 
         // 🔒 HARD STOP — Session already logged out
         if (!empty($_SESSION['idleLogoutComplete']) && $_SESSION['idleLogoutComplete'] === true) {
@@ -201,7 +206,7 @@ while (true) {
             $payload["idle"]        = $idle;
             $payload["forceLogout"] = true;
             $payload["streamId"]    = $streamId;
-            $payload["sessionId"]   = $sessionId;
+            $payload["activitySessionId"] = session_id();   // ← updated
 
             echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
@@ -379,7 +384,7 @@ while (true) {
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
-        $payload["sessionId"] = $sessionId;
+        $payload["activitySessionId"] = $activitySessionId;   // ← CANONICAL
 
         // 🔔 Apply force logout signal (if triggered earlier)
         if (!empty($forceLogout)) {

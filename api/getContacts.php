@@ -13,7 +13,7 @@ declare(strict_types=1);
  * KEY ARCHITECTURAL DECISIONS (Final Robust)
  * -----------------------------------------------------------------------------
  * • Always returns valid JSON (even on error)
- * • Uses real PHP session_id()
+ * • Uses canonical activitySessionId from sessionBootstrap
  * • ONE logging block
  * • Graceful error handling
  *
@@ -159,7 +159,8 @@ try {
         default => 'contact_query'
     };
 
-    $requestId = session_id();
+    // 🔥 CANONICAL SESSION ID
+    $activitySessionId = session_id();
 
     insertActionPrompt([
         'contactId'        => $contactId,
@@ -169,7 +170,7 @@ try {
         'intentConfidence' => 1.00,
         'latitude'         => $latitude,
         'longitude'        => $longitude,
-        'requestId'        => $requestId,
+        'activitySessionId'=> $activitySessionId,     // ← updated
         'actionTypeId'     => 4,
         'origin'           => 2
     ], $db);
@@ -183,9 +184,10 @@ try {
 #region 📦 Response
 
 echo json_encode([
-    "success"  => true,
-    "mode"     => $mode,
-    "contacts" => $results ?? []
+    "success"           => true,
+    "mode"              => $mode,
+    "contacts"          => $results ?? [],
+    "activitySessionId" => $activitySessionId ?? session_id()   // ← added for frontend consistency
 ]);
 
 #endregion

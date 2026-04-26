@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.1
-//  Last Updated: 2025-12-12
+//  Version: 1.3.2
+//  Last Updated: 2026-04-26
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -593,7 +593,13 @@ function buildGovernanceResponse(): string {
 function discoverDomains(array $payload): array {
 
     // exclude system/meta fields
-    $exclude = ["auth", "idle", "streamId", "sessionId", "forceLogout"];
+    $exclude = [
+        "auth", 
+        "idle", 
+        "streamId", 
+        "activitySessionId",   // ← updated
+        "forceLogout"
+    ];
 
     return array_values(array_filter(
         array_keys($payload),
@@ -679,9 +685,15 @@ function buildSystemContext(?array $sse): string {
     }
 
     // ─────────────────────────────────────────
-    // 🔍 Discover Domains
+    // 🔍 Discover Domains — exclude system fields
     // ─────────────────────────────────────────
-    $exclude = ["auth", "idle", "streamId", "sessionId", "forceLogout"];
+    $exclude = [
+        "auth", 
+        "idle", 
+        "streamId", 
+        "activitySessionId",   // ← updated
+        "forceLogout"
+    ];
 
     $domains = array_values(array_filter(
         array_keys($sse),
@@ -699,7 +711,7 @@ function buildSystemContext(?array $sse): string {
     // ─────────────────────────────────────────
     // 📊 Use SINGLE SOURCE OF TRUTH (IMPORTANT)
     // ─────────────────────────────────────────
-    $activityData = loadRecentActions(30); // ✅ use your function
+    $activityData = loadRecentActions(30);
 
     // Flatten for AI clarity
     $recentActions = $activityData["rows"] ?? [];
@@ -1256,7 +1268,6 @@ PROMPT;
 // 🧾 Ensure Response Exists
 // ───────────────────────────────────────────────
 if (!isset($response) || trim((string)$response) === '') {
-
     error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
     $response = "I'm here and ready — try asking that again.";
 }
@@ -1271,7 +1282,7 @@ error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode([
 ]));
 
 // ───────────────────────────────────────────────
-// 🔐 Session Context
+// 🔐 Session Context — Canonical Variable
 // ───────────────────────────────────────────────
 $sessionContactId = $_SESSION["contactId"] ?? null;
 
@@ -1279,8 +1290,8 @@ if (!empty($_SESSION['authenticated'])) {
     $_SESSION['lastActivity'] = time();
 }
 
-// 🔥 Unified requestId (SERVER AUTHORITY)
-$requestId = session_id();
+// 🔥 CANONICAL SESSION ID — Single Source of Truth
+$activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
 
 // ───────────────────────────────────────────────
 // 📍 Location
@@ -1302,7 +1313,7 @@ if ($sessionContactId && isset($response)) {
             'intentConfidence' => $confidence ?? null,
             'latitude'         => $latitude,
             'longitude'        => $longitude,
-            'requestId'        => $requestId,
+            'activitySessionId'=> $activitySessionId,
             'actionTypeId'     => 3,
             'origin'           => ACTION_ORIGIN_USER
         ], $db);
@@ -1325,7 +1336,7 @@ echo json_encode([
     "narrativeGenerated" => $narrativeGenerated ?? false,
     "response"           => trim((string)$response),
     "reportUpdated"      => $reportPath ?? null,
-    "requestId"          => $requestId
+    "activitySessionId"  => $activitySessionId     // canonical
 ], JSON_UNESCAPED_SLASHES);
 
 exit;

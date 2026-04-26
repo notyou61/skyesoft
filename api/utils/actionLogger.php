@@ -58,8 +58,8 @@ function logAction(PDO $db, array $p): void
         $ip = $_SERVER['REMOTE_ADDR']     ?? null;
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        // 🔥 Authoritative requestId
-        $requestId = session_id();
+        // 🔥 CANONICAL ACTIVITY SESSION ID — Single Source of Truth
+        $activitySessionId = session_id();
 
         $stmt = $db->prepare("
             INSERT INTO tblActions (
@@ -67,7 +67,7 @@ function logAction(PDO $db, array $p): void
                 contactId,
                 actionOrigin,
                 actionUnix,
-                requestId,
+                activitySessionId,           /* New canonical column */
                 promptText,
                 responseText,
                 intent,
@@ -81,7 +81,7 @@ function logAction(PDO $db, array $p): void
                 :contactId,
                 :origin,
                 UNIX_TIMESTAMP(),
-                :requestId,
+                :activitySessionId,
                 :prompt,
                 :response,
                 :intent,
@@ -94,18 +94,18 @@ function logAction(PDO $db, array $p): void
         ");
 
         $stmt->execute([
-            'type'       => $type,
-            'contactId'  => $contactId,
-            'origin'     => $origin,
-            'requestId'  => $requestId,
-            'prompt'     => $prompt,
-            'response'   => $response,
-            'intent'     => $intent,
-            'confidence' => $confidence,
-            'ip'         => $ip,
-            'lat'        => $lat,
-            'lng'        => $lng,
-            'ua'         => $ua
+            'type'              => $type,
+            'contactId'         => $contactId,
+            'origin'            => $origin,
+            'activitySessionId' => $activitySessionId,
+            'prompt'            => $prompt,
+            'response'          => $response,
+            'intent'            => $intent,
+            'confidence'        => $confidence,
+            'ip'                => $ip,
+            'lat'               => $lat,
+            'lng'               => $lng,
+            'ua'                => $ua
         ]);
 
     } catch (Throwable $e) {
