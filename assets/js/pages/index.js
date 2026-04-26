@@ -391,6 +391,7 @@ window.SkyIndex = {
             );
         });
     },
+    // #endregion
 
     // #region 🔑 Get canonical activitySessionId from cookie
     getActivitySessionId() {
@@ -1259,18 +1260,12 @@ window.SkyIndex = {
                 if (createData.success && createData.contact) {
 
                     this.appendSystemLine('✅ Contact successfully added to the database.');
-                    
-                    // Render the exact same way getContacts.php does
+
+                    // Render the full contact card (same as "show" command)
                     this.renderContactDetail(createData.contact);
-                    
+
                     // Store for "last contact" command
                     this.lastContactId = createData.contact.contactId || createData.contactId;
-
-                    // Optional: nice confirmation line
-                    const fullName = `${createData.contact.contactFirstName || ''} ${createData.contact.contactLastName || ''}`.trim();
-                    if (fullName) {
-                        this.appendSystemLine(`📇 ${fullName} — ${createData.contact.entityName || '—'}`);
-                    }
 
                 } 
                 // ────── NEEDS PARCEL ──────
@@ -1280,7 +1275,7 @@ window.SkyIndex = {
                         this.appendSystemLine(`📍 ${createData.location.address}, ${createData.location.city} ${createData.location.state}`);
                     }
                 } 
-                // ────── OTHER STATES ──────
+                // ────── ERROR STATES ──────
                 else if (createData.status === 'reject' || createData.status === 'partial') {
                     this.appendSystemLine(`❌ ${createData.reason || createData.message || 'Creation failed'}`, 'warning');
                 } 
