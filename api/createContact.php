@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.0.2
+//  Version: 1.0.3
 //  Last Updated: 2026-04-26
 // ======================================================================
 
@@ -87,16 +87,16 @@ try {
     #region 1. proposeStage
 
     logAction($db, [
-        'type'      => ACTION_TYPE_PROPOSE,
-        'contactId' => $_SESSION['contactId'] ?? null,
+        'type'              => ACTION_TYPE_PROPOSE,
+        'contactId'         => $_SESSION['contactId'] ?? null,
         'activitySessionId' => $activitySessionId,
-        'prompt'    => $input,
-        'response'  => [
+        'prompt'            => $input,
+        'response'          => [
             'stage'             => 'propose',
             'activitySessionId' => $activitySessionId
         ],
-        'intent'    => 'propose_contact',
-        'origin'    => ACTION_ORIGIN_USER
+        'intent'            => 'propose_contact',
+        'origin'            => ACTION_ORIGIN_USER
     ]);
 
     #endregion
@@ -105,18 +105,14 @@ try {
 
         #region 2a. derivationPhase
 
-        // ───────────────────────────────────────────────
-        // 🧱 Initialize parsed structure
-        // ───────────────────────────────────────────────
+        // Initialize structure
         $parsed = [
             'entity'   => [],
             'location' => [],
             'contact'  => []
         ];
 
-        // ───────────────────────────────────────────────
-        // 🧠 Base Parser (deterministic)
-        // ───────────────────────────────────────────────
+        // Base parser
         if (function_exists('parseContact')) {
             $baseParsed = parseContact($input);
             if (is_array($baseParsed)) {
@@ -124,81 +120,39 @@ try {
             }
         }
 
-        // ───────────────────────────────────────────────
-        // 🤖 AI Enhancement (optional, safe)
-        // ───────────────────────────────────────────────
-        $aiData = [];
-
+        // AI Enhancement
         if (function_exists('extractContactWithAI')) {
-
             $aiData = extractContactWithAI($input);
-
             if (is_array($aiData) && !empty($aiData)) {
                 error_log('[AI PARSED] ' . json_encode($aiData));
-
-                // Simple, safe merge (AI overrides base where present)
                 $parsed = array_replace_recursive($parsed, $aiData);
-            } else {
-                error_log('[AI PARSED] empty or invalid');
             }
-
         } else {
             error_log('[AI] extractContactWithAI not available');
         }
 
-        // ───────────────────────────────────────────────
-        // 🧠 Derive additional attributes
-        // ───────────────────────────────────────────────
         $parsed = deriveContactAttributes($parsed, $input);
 
-        // ───────────────────────────────────────────────
-        // 🔥 Fallback Address Parsing (CRITICAL FIX)
-        // ───────────────────────────────────────────────
+        // Fallback address parsing (CRITICAL)
         if (empty($parsed['location']['address'])) {
-
-            if (preg_match('/(\d{2,}[^,]+),?\s*([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})/', $input, $m)) {
-
+            if (preg_match('/(\d{2,}[^,]+?),?\s*([A-Za-z\s]+?)\s+([A-Z]{2})\s+(\d{5})/i', $input, $m)) {
                 $parsed['location']['address'] = trim($m[1]);
                 $parsed['location']['city']    = trim($m[2]);
                 $parsed['location']['state']   = strtoupper(trim($m[3]));
                 $parsed['location']['zip']     = trim($m[4]);
-
-                error_log('[FALLBACK ADDRESS PARSE SUCCESS] ' . json_encode($parsed['location']));
-
-            } else {
-                error_log('[FALLBACK ADDRESS PARSE FAILED]');
+                error_log('[FALLBACK ADDRESS PARSE SUCCESS]');
             }
         }
 
-        // ───────────────────────────────────────────────
-        // 🏢 Extract suite (if present)
-        // ───────────────────────────────────────────────
+        // Suite extraction
         if (!empty($parsed['location']['address'])) {
-
             $split = splitAddressSuite($parsed['location']['address']);
-
             $parsed['location']['address'] = $split['street'];
-
             if (empty($parsed['location']['suite']) && !empty($split['suite'])) {
                 $parsed['location']['suite'] = $split['suite'];
             }
         }
 
-        // ───────────────────────────────────────────────
-        // 🌍 Build FINAL Google query (guaranteed format)
-        // ───────────────────────────────────────────────
-        $addr  = $parsed['location']['address'] ?? '';
-        $city  = $parsed['location']['city'] ?? '';
-        $state = $parsed['location']['state'] ?? '';
-        $zip   = $parsed['location']['zip'] ?? '';
-
-        $googleQuery = trim("$addr, $city, $state $zip");
-
-        error_log('[GEOCODE INPUT FINAL] ' . $googleQuery);
-
-        // ───────────────────────────────────────────────
-        // 🧾 Final debug output
-        // ───────────────────────────────────────────────
         error_log('[FINAL PARSED] ' . json_encode($parsed));
 
         #endregion
@@ -245,14 +199,14 @@ try {
 
         #endregion
 
+    #endregion
+
     #region 3. decisionPhase & 4. commitPhase
 
     if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
         if (($outcome['outcome'] ?? null) === 'resolved_new') {
             $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
         }
-        
-        #endregion
     }
 
     #endregion
@@ -554,14 +508,16 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
 
 function buildResolutionOutcome(array $entity, array $location, array $contact): array {
     if (empty($entity['entityName'])) {
-        return ['outcome' => 'reject'];
+        return ['outcome' => 'reject', 'reason' => 'Missing entity name'];
     }
 
-    $hasValidLocation = !empty($location['placeId']) ||
-                        (!empty($location['lat']) && !empty($location['lng']));
+    if (empty($location['placeId'])) {
+        return ['outcome' => 'partial', 'reason' => 'Unable to validate location with Google Places.'];
+    }
 
-    if (!$hasValidLocation) {
-        return ['outcome' => 'partial'];
+    // Parcel is optional — proceed even without it
+    if (empty($location['parcelNumber'])) {
+        error_log('[RESOLUTION] Proceeding without parcel number (soft step)');
     }
 
     if (($contact['status'] ?? null) === 'exact_match') {
