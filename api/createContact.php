@@ -1,69 +1,15 @@
 <?php
 declare(strict_types=1);
-// 🔥 FIX #3 — Clear debug log per request (DEV ONLY)
-file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.0.1
+//  Version: 1.0.2
 //  Last Updated: 2026-04-26
-// ======================================================================
-//
-//  PURPOSE:
-//  Entry point for contact creation using the ELC (Entity–Location–Contact)
-//  resolution pipeline. Accepts raw input, orchestrates parsing, validation,
-//  and resolution logic, and determines final outcome before any database
-//  commit occurs.
-//
-//  RESPONSIBILITIES:
-//  • Receive and validate incoming request payload
-//  • Initiate proposeStage logging (raw input capture)
-//  • Execute processingModel pipeline:
-//      - parse input (AI / structured)
-//      - resolveEntity()
-//      - resolveLocation() (Google → Census → Parcel)
-//      - resolveLocationRecord()
-//  • Evaluate using EvaluationModel:
-//      - completeness (ELC presence)
-//      - properness (validation, consistency, duplication)
-//  • Execute decisionPhase:
-//      - resolved_new
-//      - resolved_duplicate
-//      - resolved_conflict
-//      - partial
-//      - reject
-//  • Perform commitPhase ONLY if resolved_new
-//  • Log all actions to actionLog
-//
-//  INPUT:
-//  JSON payload (raw or structured contact data)
-//
-//  OUTPUT:
-//  JSON response:
-//  {
-//      status: string,
-//      entity: object|null,
-//      location: object|null,
-//      contact: object|null,
-//      scenario: object,
-//      activitySessionId: string
-//  }
-//
-//  RULES:
-//  • No database writes occur before full location validation (placeId required)
-//  • locationPlaceId is the authoritative location identity
-//  • Duplicate detection is part of properness evaluation
-//  • resolveLocation() is the single source of truth for location structure
-//  • Address must be schema-compliant (street only, no formatted string)
-//
-//  NOTES:
-//  • This file orchestrates — it does NOT contain core parsing or resolution logic
-//  • All heavy logic is delegated to modular functions
-//  • Designed to align with Codex ELC + EvaluationModel standards
-//
 // ======================================================================
 
 #region SECTION 0 — Header (EOP)
+// 🔥 FIX #3 — Clear debug log per request (DEV ONLY)
+file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 header("Content-Type: application/json; charset=UTF-8");
 
@@ -141,22 +87,15 @@ try {
     #region 1. proposeStage
 
     logAction($db, [
-        // 🧾 Action type
         'type'      => ACTION_TYPE_PROPOSE,
-        // 👤 User context (NO fake fallback)
         'contactId' => $_SESSION['contactId'] ?? null,
-        // 🔗 Canonical Session Tracking
         'activitySessionId' => $activitySessionId,
-        // 🧠 Input
         'prompt'    => $input,
-        // 🧾 Stage metadata (clean + accurate)
         'response'  => [
             'stage'             => 'propose',
             'activitySessionId' => $activitySessionId
         ],
-        // 🎯 Intent
         'intent'    => 'propose_contact',
-        // 🧭 Origin
         'origin'    => ACTION_ORIGIN_USER
     ]);
 
@@ -168,12 +107,14 @@ try {
 
         $parsed = parseContact($input);
 
+        // AI Enhancement
         $aiData = extractContactWithAI($input);
 
-        // Merge AI → parsed (AI fills missing values ONLY)
-        $parsed = array_replace_recursive($parsed, $aiData);
-
-        error_log('[PARSED AFTER AI MERGE] ' . json_encode($parsed));
+        if ($aiData) {
+            error_log('[AI PARSED] ' . json_encode($aiData));
+            // Merge AI data into parsed (only fill missing values)
+            $parsed = array_replace_recursive($parsed, $aiData);
+        }
 
         foreach (['entity', 'location', 'contact'] as $section) {
             if (!isset($parsed[$section])) continue;
@@ -187,15 +128,10 @@ try {
 
         $parsed = deriveContactAttributes($parsed, $input);
 
-        // 🔥 Extract suite from address (critical normalization step)
+        // 🔥 Extract suite from address
         if (!empty($parsed['location']['address'])) {
-
             $split = splitAddressSuite($parsed['location']['address']);
-
-            // Always clean the street address
             $parsed['location']['address'] = $split['street'];
-
-            // Only set suite if it exists and hasn't already been set
             if (empty($parsed['location']['suite']) && !empty($split['suite'])) {
                 $parsed['location']['suite'] = $split['suite'];
             }
@@ -203,39 +139,28 @@ try {
 
         #endregion
 
-        #region 2b. resolutionPhase — Entity + Location + Contact
+        #region 2b. resolutionPhase
 
-        // Resolve entity
         $entity = resolveEntity($db, $parsed['entity']['name'] ?? '');
 
-        // Infer entity type if new
-        if (
-            ($entity['status'] ?? null) === 'new' &&
-            empty($entity['entityType']) &&
-            !empty($entity['entityName'])
-        ) {
-            $entity['entityType'] = inferEntityTypeAI($entity['entityName']);
+        if (($entity['status'] ?? null) === 'new' && empty($entity['entityType'])) {
+            $entity['entityType'] = inferEntityTypeAI($entity['entityName'] ?? '');
             $parsed['entity']['entityType'] = $entity['entityType'];
         }
 
-        // Resolve location
         $locationInput = $parsed['location'] ?? [];
         $location = resolveLocation($locationInput) ?? [];
 
-        // 🔥 Preserve suite from parsed data (resolveLocation loses it)
         if (!empty($parsed['location']['suite'])) {
             $location['suite'] = $parsed['location']['suite'];
         }
 
         if (empty($location['placeId'])) {
-
             $outcome = [
                 'outcome' => 'partial',
                 'reason'  => 'Unable to validate location with Google Places.'
             ];
-
         } else {
-
             $locationRecord = resolveLocationRecord(
                 $db,
                 $entity['entityId'] ?? null,
@@ -243,35 +168,15 @@ try {
                 $location['suite'] ?? null
             );
 
-            error_log('[LOCATION AFTER RESOLVE] ' . json_encode($location));
-
             $contactRecord = (
                 ($entity['status'] === 'existing') &&
                 ($locationRecord['status'] === 'existing')
             )
-                ? resolveContact(
-                    $db,
-                    $entity['entityId'],
-                    $locationRecord['locationId'],
-                    $parsed['contact'] ?? []
-                )
-                : [
-                    'status'    => 'new',
-                    'contactId' => null
-                ];
+                ? resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'] ?? [])
+                : ['status' => 'new', 'contactId' => null];
 
-            $outcome = buildResolutionOutcome(
-                $entity,
-                $location,
-                $contactRecord
-            );
-
-            $decision = evaluateScenario(
-                $db,
-                $entity,
-                $location,
-                $parsed['contact'] ?? []
-            );
+            $outcome = buildResolutionOutcome($entity, $location, $contactRecord);
+            $decision = evaluateScenario($db, $entity, $location, $parsed['contact'] ?? []);
         }
 
         #endregion
@@ -282,28 +187,15 @@ try {
 
     if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
         if (($outcome['outcome'] ?? null) === 'resolved_new') {
-            $insertResult = executeInsert(
-                $db,
-                $parsed,
-                $location,
-                $entity,
-                $locationRecord,
-                $input
-            );
+            $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
         }
     }
 
     #endregion
 
 } catch (Throwable $e) {
-
     error_log('FATAL ERROR in createContact: ' . $e->getMessage());
-
-    echo json_encode([
-        'DEBUG' => true,
-        'error' => $e->getMessage()
-    ], JSON_PRETTY_PRINT);
-
+    echo json_encode(['DEBUG' => true, 'error' => $e->getMessage()], JSON_PRETTY_PRINT);
     exit;
 }
 
@@ -311,7 +203,6 @@ try {
 
 #region SECTION 2 — Action Logging & Final Response
 
-// Determine final outcome and key values
 $outcomeType     = $outcome['outcome'] ?? 'unknown';
 $actionType      = ACTION_TYPE_PROPOSE;
 $intent          = 'unknown';
@@ -325,38 +216,34 @@ if ($outcomeType === 'resolved_new' && !empty($insertResult['success'])) {
     $reason          = 'new_contact_created';
     $targetContactId = $insertResult['contactId'] ?? null;
     $message         = 'Contact has been accepted and successfully added to the database.';
-
 } elseif ($outcomeType === 'resolved_duplicate' || ($contactRecord['status'] ?? '') === 'exact_match') {
     $actionType      = ACTION_TYPE_PROPOSE;
     $intent          = 'duplicate_attempt';
     $reason          = 'duplicate_detected';
     $targetContactId = $contactRecord['contactId'] ?? null;
     $message         = 'This contact already exists. No new record was created.';
-
 } elseif ($outcomeType === 'partial') {
     $actionType = ACTION_TYPE_ACKNOWLEDGE;
     $intent     = 'partial_resolution';
     $reason     = $outcome['reason'] ?? 'incomplete_elc';
     $message    = $outcome['reason'] ?? 'Contact information is incomplete.';
-
 } elseif ($outcomeType === 'reject') {
     $actionType = 4;
     $intent     = 'reject';
     $reason     = $outcome['reason'] ?? 'validation_failed';
     $message    = $outcome['reason'] ?? 'Unable to process contact.';
-
 } elseif ($outcomeType === 'conflict') {
     $actionType = ACTION_TYPE_ACKNOWLEDGE;
     $intent     = 'conflict_detected';
     $message    = 'Conflict detected. Manual review required.';
 }
 
-// === ACTION LOGGING ===
+// === FINAL ACTION LOGGING ===
 $currentUserId = $_SESSION['contactId'] ?? 1;
 
 if (!empty($currentUserId)) {
     $responsePayload = [
-        'activitySessionId' => $activitySessionId,   // ← updated
+        'activitySessionId' => $activitySessionId,
         'input'             => $input,
         'outcome'           => $outcomeType,
         'contactId'         => $targetContactId,
@@ -374,41 +261,35 @@ if (!empty($currentUserId)) {
                     ?: '{"error":"json_encode_failed"}';
 
     logAction($db, [
-        'type'          => $actionType,
-        'contactId'     => $currentUserId ?? null,
-        'activitySessionId' => $activitySessionId,   // ← updated
-        'prompt'        => $input,
-        'response'      => $responseJson,
-        'intent'        => $intent,
-        'lat'           => $location['lat'] ?? null,
-        'lng'           => $location['lng'] ?? null,
-        'origin'        => ACTION_ORIGIN_SYSTEM
+        'type'              => $actionType,
+        'contactId'         => $currentUserId,
+        'activitySessionId' => $activitySessionId,
+        'prompt'            => $input,
+        'response'          => $responseJson,
+        'intent'            => $intent,
+        'lat'               => $location['lat'] ?? null,
+        'lng'               => $location['lng'] ?? null,
+        'origin'            => ACTION_ORIGIN_SYSTEM
     ]);
 }
 
 #endregion
 
-#region SECTION 3 — Final Response (Standardized for Frontend)
+#region SECTION 3 — Final Response
 
 $baseResponse = [
     'status'            => $outcomeType,
     'message'           => $message,
-    'activitySessionId' => $activitySessionId,      // ← updated
+    'activitySessionId' => $activitySessionId,
     'contactId'         => $targetContactId,
     'success'           => in_array($outcomeType, ['resolved_new', 'resolved_duplicate'], true),
     'verified'          => true
 ];
 
 if ($outcomeType === 'reject') {
-    echo json_encode(array_merge($baseResponse, [
-        'reason' => $message
-    ]));
-
+    echo json_encode(array_merge($baseResponse, ['reason' => $message]));
 } elseif ($outcomeType === 'partial') {
-    echo json_encode(array_merge($baseResponse, [
-        'location' => $location ?? null
-    ]));
-
+    echo json_encode(array_merge($baseResponse, ['location' => $location ?? null]));
 } else {
     echo json_encode(array_merge($baseResponse, [
         'entity'           => $entity,
@@ -1062,6 +943,39 @@ function resolveCensusGeography(array $location): array {
         'county'     => $countyData['NAME'] ?? '',
         'countyFips' => $countyData['GEOID'] ?? null
     ];
+}
+
+function parseContactAI(string $input): ?array {
+
+    $payload = [
+        "type" => "contact_parse",
+        "input" => $input
+    ];
+
+    $ch = curl_init('https://skyelighting.com/skyesoft/api/askOpenAI.php');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_TIMEOUT => 5
+    ]);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        error_log('[AI] parseContactAI failed (curl)');
+        return null;
+    }
+
+    $result = json_decode($response, true);
+
+    if (!$result || empty($result['response'])) {
+        error_log('[AI] parseContactAI empty response');
+        return null;
+    }
+
+    return $result['response']; // must be structured JSON from AI
 }
 
 #endregion
