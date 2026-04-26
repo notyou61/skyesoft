@@ -727,13 +727,14 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 throw new RuntimeException('Missing placeId for location');
             }
 
-            // 🔥 HARD VALIDATION — Maricopa County REQUIRES a parcel number
+            // 🔥 SOFTENED VALIDATION — Log warning but do not fail
             if (
                 ($location['state'] ?? null) === 'AZ' &&
                 strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
                 empty($location['parcelNumber'])
             ) {
-                throw new RuntimeException('Parcel number required for Maricopa County at insert stage');
+                error_log('[WARNING] Maricopa County parcel number missing — proceeding anyway');
+                // Do NOT throw — allow creation with null parcel
             }
 
             $stmt = $db->prepare("
@@ -748,25 +749,19 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
                 )
             ");
 
-            // Execute Statement
             $stmt->execute([
                 'entityId'     => $entityId,
                 'name'         => formatTitleCase($entity['entityName']),
-
                 'placeId'      => $location['placeId'],
 
-                // 🔥 CLEAN + FORMAT
-                'address'      => formatTitleCase(
-                    preg_replace('/,.*$/', '', trim($location['address'] ?? ''))
-                ),
+                'address'      => formatTitleCase(preg_replace('/,.*$/', '', trim($location['address'] ?? ''))),
 
-                // 🔥 SUITE — preserve "Suite 210" format (NO uppercase forcing)
                 'suite'        => isset($location['suite']) && $location['suite'] !== ''
                     ? formatTitleCase(preg_replace('/\s+/', ' ', trim($location['suite'])))
                     : null,
 
                 'city'         => formatTitleCase($location['city'] ?? ''),
-                'state'        => strtoupper($location['state'] ?? ''), // keep uppercase
+                'state'        => strtoupper($location['state'] ?? ''),
                 'zip'          => $location['zip'] ?? null,
 
                 'county'       => formatTitleCase($location['county'] ?? ''),
@@ -784,6 +779,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $locationId = (int)$locationRecord['locationId'];
         }
 
+        // Insert Contact
         $stmt = $db->prepare("
             INSERT INTO tblContacts (
                 contactEntityId, contactLocationId, contactSalutation, contactTitle,
@@ -806,6 +802,8 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
         $contactId = (int)$db->lastInsertId();
         $db->commit();
+
+        error_log("[INSERT SUCCESS] contactId=$contactId | entityId=$entityId | locationId=$locationId");
 
         return [
             'success'    => true,
