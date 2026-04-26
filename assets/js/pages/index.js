@@ -1263,8 +1263,9 @@ window.SkyIndex = {
     // #region 🧠 Command Router 
     async handleCommand(text) {
 
+        const requestId = this.getSessionId();   // ← Real PHP session ID
 
-        console.log('🔑 Using Session ID:', requestId);
+        console.log('🔑 Command using Session ID:', requestId);
 
         this.appendSystemLine(text, 'user');
 
@@ -1277,10 +1278,14 @@ window.SkyIndex = {
         // 📄 Code Reader Command
         // ───────────────────────────────────────────────
         if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
+
             const file = normalized
                 .replace(/^read\s+/, '')
                 .replace(/^open\s+/, '')
                 .trim();
+
+            console.log('[CODE READ]', file);
+
             await this.readCodeFile(file);
             return;
         }
@@ -1299,7 +1304,8 @@ window.SkyIndex = {
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ 
-                        input: text
+                        input: text,
+                        requestId: requestId
                     })
                 });
 
@@ -1315,13 +1321,13 @@ window.SkyIndex = {
 
                 this.appendSystemLine('✅ Contact created. Loading verified details...');
 
-                // Re-fetch (same session)
                 const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({
-                        query: `show ${contactId}`
+                        query: `show ${contactId}`,
+                        requestId: requestId
                     })
                 });
 
@@ -1375,7 +1381,8 @@ window.SkyIndex = {
                     body: JSON.stringify({
                         query: text,
                         latitude: location.latitude,
-                        longitude: location.longitude
+                        longitude: location.longitude,
+                        requestId: requestId
                     })
                 });
 
