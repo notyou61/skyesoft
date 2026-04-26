@@ -10,13 +10,12 @@ declare(strict_types=1);
  * Handles contact retrieval requests for the Skyesoft Command Interface.
  *
  * -----------------------------------------------------------------------------
- * KEY ARCHITECTURAL DECISIONS (Final)
+ * KEY ARCHITECTURAL DECISIONS (Final Robust)
  * -----------------------------------------------------------------------------
- * • ONE logging block using centralized insertActionPrompt()
- * • Always uses real PHP session_id() (no frontend override)
- * • Original query always preserved
- * • Rich responseText for logging
- * • Reliable geo handling
+ * • Always returns valid JSON (even on error)
+ * • Uses real PHP session_id()
+ * • ONE logging block
+ * • Graceful error handling
  *
  * =============================================================================
  */
@@ -32,7 +31,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/actions.php';
 
-$input = json_decode(file_get_contents("php://input"), true);
+$input = json_decode(file_get_contents("php://input"), true) ?? [];
 
 // === CRITICAL: Capture ORIGINAL query BEFORE any mutation ===
 $originalQuery = trim($input['query'] ?? '');
@@ -47,19 +46,21 @@ $db = getPDO();
 
 #endregion
 
-#region 🧠 Parse Query + SQL (unchanged - kept clean)
+#region 🧠 Parse Query
 
 $mode = str_starts_with($query, 'show') ? 'single' : 'list';
 
 $nameFilter   = null;
 $entityFilter = null;
 
+// Extract "of entity"
 if (strpos($query, ' of ') !== false) {
     [$before, $after] = explode(' of ', $query, 2);
     $entityFilter = trim($after);
     $query = trim($before);
 }
 
+// Clean command words
 $query = preg_replace('/^(show|list)\s+/', '', $query);
 $query = str_replace(['contacts', 'for'], '', $query);
 $query = trim($query);
@@ -68,11 +69,46 @@ if (!empty($query)) {
     $nameFilter = $query;
 }
 
-// ... (SQL build and execution - unchanged) ...
+#endregion
+
+#region 🔍 Build & Execute SQL
+
+$sql = "
+SELECT 
+    c.contactId, c.contactFirstName, c.contactLastName,
+    c.contactEmail, c.contactPrimaryPhone, c.contactTitle,
+    e.entityId, e.entityName
+FROM tblContacts c
+LEFT JOIN tblEntities e ON c.contactEntityId = e.entityId
+WHERE 1=1
+";
+
+$params = [];
+
+if ($nameFilter) {
+    $sql .= " AND CONCAT(LOWER(c.contactFirstName), ' ', LOWER(c.contactLastName)) LIKE :name";
+    $params[':name'] = "%$nameFilter%";
+}
+if ($entityFilter) {
+    $sql .= " AND LOWER(e.entityName) LIKE :entity";
+    $params[':entity'] = "%$entityFilter%";
+}
+
+if ($mode === 'single') {
+    $sql .= " LIMIT 5";
+}
+
+$stmt = $db->prepare($sql);
+$stmt->execute($params);
+$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+if ($mode === 'single' && count($results) > 1) {
+    $mode = 'list';
+}
 
 #endregion
 
-#region 🌍 Geo (unchanged)
+#region 🌍 Geo Location Handling
 
 $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] : null;
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
@@ -89,7 +125,7 @@ $longitude = $longitude ?? 0.0;
 
 #endregion
 
-#region 📝 Build Response Text (unchanged)
+#region 📝 Build Response Text for Logging
 
 if (count($results) === 1) {
     $c = $results[0];
@@ -114,7 +150,7 @@ if (count($results) === 1) {
 
 #endregion
 
-#region 🧾 Log Contact Query Action (FINAL - Authoritative)
+#region 🧾 Log Contact Query Action (Unified)
 
 try {
     $contactId = $results[0]['contactId'] ?? null;
@@ -126,18 +162,17 @@ try {
         default => 'contact_query'
     };
 
-    // 🔥 Always use real current session ID
     $requestId = session_id();
 
     insertActionPrompt([
         'contactId'        => $contactId,
         'promptText'       => $originalQuery,
-        'responseText'     => $response ?? null,
+        'responseText'     => $response,
         'intent'           => $intent,
         'intentConfidence' => 1.00,
         'latitude'         => $latitude,
         'longitude'        => $longitude,
-        'requestId'        => $requestId,           // ← Authoritative
+        'requestId'        => $requestId,
         'actionTypeId'     => 4,
         'origin'           => 2
     ], $db);
@@ -145,7 +180,7 @@ try {
     error_log("[getContacts] Logged | requestId=$requestId | intent=$intent");
 
 } catch (Throwable $e) {
-    error_log('[actions] insertActionPrompt failed in getContacts.php: ' . $e->getMessage());
+    error_log('[getContacts] Logging failed: ' . $e->getMessage());
 }
 
 #endregion
@@ -155,7 +190,7 @@ try {
 echo json_encode([
     "success"  => true,
     "mode"     => $mode,
-    "contacts" => $results
+    "contacts" => $results ?? []
 ]);
 
 #endregion
