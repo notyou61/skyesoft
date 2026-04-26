@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — createContact.php
-//  Version: 1.0.3
+//  Version: 1.0.4
 //  Last Updated: 2026-04-26
 // ======================================================================
 
@@ -23,10 +23,7 @@ $data = json_decode($raw, true);
 $input = $data['input'] ?? null;
 
 if (!is_string($input) || trim($input) === '') {
-    echo json_encode([
-        'status' => 'reject',
-        'reason' => 'Invalid input'
-    ]);
+    echo json_encode(['status' => 'reject', 'reason' => 'Invalid input']);
     exit;
 }
 
@@ -50,17 +47,16 @@ error_log('=== HIT createContact ===');
 error_log('[RAW] ' . $raw);
 error_log('[INPUT] ' . $input);
 
-// 🔥 CANONICAL SESSION ID — Single Source of Truth
+// 🔥 CANONICAL SESSION ID
 $activitySessionId = session_id();
 
 // 🗄 Database
 $db = getPDO();
-
 if (!$db instanceof PDO) {
     throw new RuntimeException('Database connection failed.');
 }
 
-// 🧭 Constants
+// Constants
 if (!defined('ACTION_ORIGIN_USER'))       define('ACTION_ORIGIN_USER', 1);
 if (!defined('ACTION_ORIGIN_SYSTEM'))     define('ACTION_ORIGIN_SYSTEM', 2);
 if (!defined('ACTION_ORIGIN_AUTOMATION')) define('ACTION_ORIGIN_AUTOMATION', 3);
@@ -85,39 +81,27 @@ $parsed         = null;
 try {
 
     #region 1. proposeStage
-
     logAction($db, [
         'type'              => ACTION_TYPE_PROPOSE,
         'contactId'         => $_SESSION['contactId'] ?? null,
         'activitySessionId' => $activitySessionId,
         'prompt'            => $input,
-        'response'          => [
-            'stage'             => 'propose',
-            'activitySessionId' => $activitySessionId
-        ],
+        'response'          => ['stage' => 'propose', 'activitySessionId' => $activitySessionId],
         'intent'            => 'propose_contact',
         'origin'            => ACTION_ORIGIN_USER
     ]);
-
     #endregion
 
     #region 2. processingModel
 
         #region 2a. derivationPhase
 
-        // Initialize structure
-        $parsed = [
-            'entity'   => [],
-            'location' => [],
-            'contact'  => []
-        ];
+        $parsed = ['entity' => [], 'location' => [], 'contact' => []];
 
         // Base parser
         if (function_exists('parseContact')) {
             $baseParsed = parseContact($input);
-            if (is_array($baseParsed)) {
-                $parsed = array_replace_recursive($parsed, $baseParsed);
-            }
+            if (is_array($baseParsed)) $parsed = array_replace_recursive($parsed, $baseParsed);
         }
 
         // AI Enhancement
@@ -133,7 +117,15 @@ try {
 
         $parsed = deriveContactAttributes($parsed, $input);
 
-        // Fallback address parsing (CRITICAL)
+        // 🔥 Entity Fallback (CRITICAL)
+        if (empty($parsed['entity']['name'])) {
+            if (preg_match('/,\s*([^,]+?),\s*\d{2,}/', $input, $m)) {
+                $parsed['entity']['name'] = trim($m[1]);
+                error_log('[FALLBACK ENTITY PARSE SUCCESS] ' . $parsed['entity']['name']);
+            }
+        }
+
+        // 🔥 Address Fallback
         if (empty($parsed['location']['address'])) {
             if (preg_match('/(\d{2,}[^,]+?),?\s*([A-Za-z\s]+?)\s+([A-Z]{2})\s+(\d{5})/i', $input, $m)) {
                 $parsed['location']['address'] = trim($m[1]);
@@ -174,20 +166,17 @@ try {
         }
 
         if (empty($location['placeId'])) {
-            $outcome = [
-                'outcome' => 'partial',
-                'reason'  => 'Unable to validate location with Google Places.'
-            ];
+            $outcome = ['outcome' => 'partial', 'reason' => 'Unable to validate location with Google Places.'];
         } else {
             $locationRecord = resolveLocationRecord(
-                $db,
-                $entity['entityId'] ?? null,
-                $location['placeId'],
+                $db, 
+                $entity['entityId'] ?? null, 
+                $location['placeId'], 
                 $location['suite'] ?? null
             );
 
             $contactRecord = (
-                ($entity['status'] === 'existing') &&
+                ($entity['status'] === 'existing') && 
                 ($locationRecord['status'] === 'existing')
             )
                 ? resolveContact($db, $entity['entityId'], $locationRecord['locationId'], $parsed['contact'] ?? [])
@@ -256,9 +245,8 @@ if ($outcomeType === 'resolved_new' && !empty($insertResult['success'])) {
     $message    = 'Conflict detected. Manual review required.';
 }
 
-// === FINAL ACTION LOGGING ===
+// Final Logging
 $currentUserId = $_SESSION['contactId'] ?? 1;
-
 if (!empty($currentUserId)) {
     $responsePayload = [
         'activitySessionId' => $activitySessionId,
@@ -275,8 +263,7 @@ if (!empty($currentUserId)) {
         'placeId'           => $location['placeId'] ?? null
     ];
 
-    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) 
-                    ?: '{"error":"json_encode_failed"}';
+    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) ?: '{"error":"json_encode_failed"}';
 
     logAction($db, [
         'type'              => $actionType,
@@ -506,6 +493,7 @@ function resolveContact(PDO $db, int $entityId, int $locationId, array $contact)
     return ['status' => 'new', 'contactId' => null];
 }
 
+// Helper functions (buildResolutionOutcome updated)
 function buildResolutionOutcome(array $entity, array $location, array $contact): array {
     if (empty($entity['entityName'])) {
         return ['outcome' => 'reject', 'reason' => 'Missing entity name'];
@@ -515,18 +503,13 @@ function buildResolutionOutcome(array $entity, array $location, array $contact):
         return ['outcome' => 'partial', 'reason' => 'Unable to validate location with Google Places.'];
     }
 
-    // Parcel is optional — proceed even without it
+    // Parcel is optional
     if (empty($location['parcelNumber'])) {
         error_log('[RESOLUTION] Proceeding without parcel number (soft step)');
     }
 
-    if (($contact['status'] ?? null) === 'exact_match') {
-        return ['outcome' => 'resolved_duplicate'];
-    }
-
-    if (($contact['status'] ?? null) === 'possible_match') {
-        return ['outcome' => 'resolved_conflict'];
-    }
+    if (($contact['status'] ?? null) === 'exact_match') return ['outcome' => 'resolved_duplicate'];
+    if (($contact['status'] ?? null) === 'possible_match') return ['outcome' => 'resolved_conflict'];
 
     return ['outcome' => 'resolved_new'];
 }
