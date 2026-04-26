@@ -177,8 +177,6 @@ try {
         'origin'           => 2
     ], $db);
 
-    error_log("[getContacts] Logged | requestId=$requestId | intent=$intent");
-
 } catch (Throwable $e) {
     error_log('[getContacts] Logging failed: ' . $e->getMessage());
 }
