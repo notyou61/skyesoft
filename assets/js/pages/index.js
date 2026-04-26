@@ -418,6 +418,51 @@ window.SkyIndex = {
     },
     // #endregion
 
+    // #region 🌍 Location Resolver (non-blocking, permission-aware)
+    async getLocationSafe() {
+
+        return new Promise((resolve) => {
+
+            if (!navigator.geolocation) {
+                resolve({ latitude: null, longitude: null });
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+
+                (pos) => resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude
+                }),
+
+                () => resolve({
+                    latitude: null,
+                    longitude: null
+                }),
+
+                { timeout: 2500 }
+            );
+        });
+    },
+
+    // 🔑 Get real PHP session ID from cookie
+    getSessionId() {
+        try {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'PHPSESSID') {
+                    console.log('✅ PHPSESSID found:', value);
+                    return value;
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ Could not read PHPSESSID cookie');
+        }
+        return 'no_session_cookie';
+    },
+    // #endregion
+
     // #region ⏳ Thinking State
     setThinking(isThinking) {
         this.isThinking = isThinking;
