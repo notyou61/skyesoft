@@ -350,6 +350,111 @@ if (!empty($currentUserId)) {
 
 #region SECTION 3 — Final Response
 
+$outcomeType     = $outcome['outcome'] ?? 'unknown';
+$actionType      = ACTION_TYPE_PROPOSE;
+$intent          = 'unknown';
+$reason          = $outcome['reason'] ?? 'processed';
+$targetContactId = null;
+$message         = '';
+$dbContact       = null;   // ← NEW: Will hold authoritative DB record
+
+if ($outcomeType === 'resolved_new' && !empty($insertResult['success']) && !empty($insertResult['contactId'])) {
+
+    $actionType      = ACTION_TYPE_ACCEPT;
+    $intent          = 'create_contact';
+    $reason          = 'new_contact_created';
+    $targetContactId = (int)$insertResult['contactId'];
+    $message         = 'Contact has been accepted and successfully added to the database.';
+
+    // 🔥 FETCH FRESH RECORD FROM DATABASE (Authoritative)
+    $stmt = $db->prepare("
+        SELECT 
+            c.contactId,
+            c.contactFirstName,
+            c.contactLastName,
+            c.contactTitle,
+            c.contactSalutation,
+            c.contactPrimaryPhone,
+            c.contactEmail,
+            e.entityName,
+            l.locationAddress,
+            l.locationCity,
+            l.locationState,
+            l.locationZip,
+            l.locationParcelNumber
+        FROM tblContacts c
+        LEFT JOIN tblEntities e ON c.contactEntityId = e.entityId
+        LEFT JOIN tblLocations l ON c.contactLocationId = l.locationId
+        WHERE c.contactId = :contactId
+        LIMIT 1
+    ");
+
+    $stmt->execute(['contactId' => $targetContactId]);
+    $dbContact = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($dbContact) {
+        error_log('[POST-INSERT DB FETCH SUCCESS] contactId=' . $targetContactId);
+    }
+
+} elseif ($outcomeType === 'resolved_duplicate' || ($contactRecord['status'] ?? '') === 'exact_match') {
+    $actionType      = ACTION_TYPE_PROPOSE;
+    $intent          = 'duplicate_attempt';
+    $reason          = 'duplicate_detected';
+    $targetContactId = $contactRecord['contactId'] ?? null;
+    $message         = 'This contact already exists. No new record was created.';
+} elseif ($outcomeType === 'partial') {
+    $actionType = ACTION_TYPE_ACKNOWLEDGE;
+    $intent     = 'partial_resolution';
+    $reason     = $outcome['reason'] ?? 'incomplete_elc';
+    $message    = $outcome['reason'] ?? 'Contact information is incomplete.';
+} elseif ($outcomeType === 'reject') {
+    $actionType = 4;
+    $intent     = 'reject';
+    $reason     = $outcome['reason'] ?? 'validation_failed';
+    $message    = $outcome['reason'] ?? 'Unable to process contact.';
+} elseif ($outcomeType === 'conflict') {
+    $actionType = ACTION_TYPE_ACKNOWLEDGE;
+    $intent     = 'conflict_detected';
+    $message    = 'Conflict detected. Manual review required.';
+}
+
+// === FINAL ACTION LOGGING ===
+$currentUserId = $_SESSION['contactId'] ?? 1;
+if (!empty($currentUserId)) {
+    $responsePayload = [
+        'activitySessionId' => $activitySessionId,
+        'input'             => $input,
+        'outcome'           => $outcomeType,
+        'contactId'         => $targetContactId,
+        'entityId'          => $entity['entityId'] ?? null,
+        'locationId'        => $locationRecord['locationId'] ?? null,
+        'reason'            => $reason,
+        'message'           => $message,
+        'insertSuccess'     => $insertResult['success'] ?? null,
+        'lat'               => $location['lat'] ?? null,
+        'lng'               => $location['lng'] ?? null,
+        'placeId'           => $location['placeId'] ?? null
+    ];
+
+    $responseJson = json_encode($responsePayload, JSON_UNESCAPED_UNICODE) ?: '{"error":"json_encode_failed"}';
+
+    logAction($db, [
+        'type'              => $actionType,
+        'contactId'         => $currentUserId,
+        'activitySessionId' => $activitySessionId,
+        'prompt'            => $input,
+        'response'          => $responseJson,
+        'intent'            => $intent,
+        'lat'               => $location['lat'] ?? null,
+        'lng'               => $location['lng'] ?? null,
+        'origin'            => ACTION_ORIGIN_SYSTEM
+    ]);
+}
+
+#endregion
+
+#region SECTION 4 — Final JSON Response
+
 $baseResponse = [
     'status'            => $outcomeType,
     'message'           => $message,
@@ -359,10 +464,19 @@ $baseResponse = [
     'verified'          => true
 ];
 
-if ($outcomeType === 'reject') {
+if ($outcomeType === 'resolved_new' && $dbContact) {
+    // Return authoritative DB record
+    echo json_encode(array_merge($baseResponse, [
+        'contact'  => $dbContact,
+        'message'  => 'Contact successfully created and verified from database.'
+    ]), JSON_UNESCAPED_UNICODE);
+
+} elseif ($outcomeType === 'reject') {
     echo json_encode(array_merge($baseResponse, ['reason' => $message]));
-} elseif ($outcomeType === 'partial') {
+
+} elseif ($outcomeType === 'partial' || $outcomeType === 'needs_parcel') {
     echo json_encode(array_merge($baseResponse, ['location' => $location ?? null]));
+
 } else {
     echo json_encode(array_merge($baseResponse, [
         'entity'           => $entity,
@@ -373,6 +487,8 @@ if ($outcomeType === 'reject') {
         'scenario'         => $decision ?? null
     ]), JSON_UNESCAPED_UNICODE);
 }
+
+exit;   // ← Ensure clean end
 
 #endregion
 
