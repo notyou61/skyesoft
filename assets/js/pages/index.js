@@ -1687,7 +1687,7 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🔑 Login Logic (Server Auth) - FIXED with real session ID
+    // #region 🔑 Login Logic (Server Auth) - FIXED
     async handleLoginSubmit(form) {
 
         console.log('[AUTH 1] Login submit received');
@@ -1716,12 +1716,11 @@ window.SkyIndex = {
         }
 
         try {
-            const requestId = this.getSessionId();   // ← Real PHP session ID from cookie
+            const requestId = this.getSessionId();   // ← Now available
             console.log('[AUTH] Using Session ID:', requestId);
 
             console.log('[AUTH 2] Resolving location...');
 
-            // 🌍 Get location
             let location = this.lastLocation || { latitude: null, longitude: null };
 
             if (location.latitude === null || location.longitude === null) {
@@ -1741,8 +1740,6 @@ window.SkyIndex = {
                 }
             }
 
-            console.log('[AUTH 3] Sending login request');
-
             const res = await fetch('/skyesoft/api/auth.php', {
                 method: 'POST',
                 credentials: 'include',
@@ -1751,18 +1748,16 @@ window.SkyIndex = {
                     action: 'login',
                     username: email,
                     password: pass,
-                    latitude:  location.latitude,
+                    latitude: location.latitude,
                     longitude: location.longitude,
-                    requestId: requestId                    // ← Fixed: Now passing real session ID
+                    requestId: requestId
                 })
             });
-
-            console.log('[AUTH 4] auth.php response received', { status: res.status });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
-            console.log('[AUTH 5] auth.php payload', data);
+            console.log('[AUTH] Response:', data);
 
             if (!data.success) {
                 error.textContent = data.message || 'Login failed.';
@@ -1770,41 +1765,29 @@ window.SkyIndex = {
                 return;
             }
 
-            console.log('[AUTH 7] Authentication accepted');
-
+            // Success path...
             error.hidden = true;
 
-            // Verify session
             const check = await fetch('/skyesoft/api/auth.php?action=check', {
                 credentials: 'include'
             });
 
             const session = await check.json();
-            console.log('[AUTH 8] Session verified', session);
 
             if (session.authenticated === true) {
-
                 page.authState = true;
                 document.body.setAttribute("data-auth", "true");
-
                 page.authUser = session.username ?? null;
                 page.authRole = session.role ?? null;
 
                 page.renderCommandInterfaceCard?.();
                 page.commandSurfaceActive = true;
                 page.renderFooterStatus?.();
-
-                console.log('[AUTH 9] Command interface activated');
                 page.startActivityPing?.();
             }
 
-            // Restart SSE
             window.SkySSE?.stop?.();
             setTimeout(() => window.SkySSE?.start?.(), 300);
-
-            setTimeout(() => {
-                page?.renderFooterStatus?.();
-            }, 400);
 
         } catch (err) {
             console.error('[AUTH ERROR]', err);
