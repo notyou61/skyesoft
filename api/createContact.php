@@ -105,37 +105,101 @@ try {
 
         #region 2a. derivationPhase
 
-        $parsed = parseContact($input);
+        // ───────────────────────────────────────────────
+        // 🧱 Initialize parsed structure
+        // ───────────────────────────────────────────────
+        $parsed = [
+            'entity'   => [],
+            'location' => [],
+            'contact'  => []
+        ];
 
-        // AI Enhancement
-        $aiData = extractContactWithAI($input);
-
-        if ($aiData) {
-            error_log('[AI PARSED] ' . json_encode($aiData));
-            // Merge AI data into parsed (only fill missing values)
-            $parsed = array_replace_recursive($parsed, $aiData);
-        }
-
-        foreach (['entity', 'location', 'contact'] as $section) {
-            if (!isset($parsed[$section])) continue;
-            foreach ($parsed[$section] as $key => $value) {
-                $aiValue = $aiData[$section][$key] ?? null;
-                if ((empty($value) || $value === null) && !empty($aiValue)) {
-                    $parsed[$section][$key] = $aiValue;
-                }
+        // ───────────────────────────────────────────────
+        // 🧠 Base Parser (deterministic)
+        // ───────────────────────────────────────────────
+        if (function_exists('parseContact')) {
+            $baseParsed = parseContact($input);
+            if (is_array($baseParsed)) {
+                $parsed = array_replace_recursive($parsed, $baseParsed);
             }
         }
 
+        // ───────────────────────────────────────────────
+        // 🤖 AI Enhancement (optional, safe)
+        // ───────────────────────────────────────────────
+        $aiData = [];
+
+        if (function_exists('extractContactWithAI')) {
+
+            $aiData = extractContactWithAI($input);
+
+            if (is_array($aiData) && !empty($aiData)) {
+                error_log('[AI PARSED] ' . json_encode($aiData));
+
+                // Simple, safe merge (AI overrides base where present)
+                $parsed = array_replace_recursive($parsed, $aiData);
+            } else {
+                error_log('[AI PARSED] empty or invalid');
+            }
+
+        } else {
+            error_log('[AI] extractContactWithAI not available');
+        }
+
+        // ───────────────────────────────────────────────
+        // 🧠 Derive additional attributes
+        // ───────────────────────────────────────────────
         $parsed = deriveContactAttributes($parsed, $input);
 
-        // 🔥 Extract suite from address
+        // ───────────────────────────────────────────────
+        // 🔥 Fallback Address Parsing (CRITICAL FIX)
+        // ───────────────────────────────────────────────
+        if (empty($parsed['location']['address'])) {
+
+            if (preg_match('/(\d{2,}[^,]+),?\s*([A-Za-z\s]+)\s+([A-Z]{2})\s+(\d{5})/', $input, $m)) {
+
+                $parsed['location']['address'] = trim($m[1]);
+                $parsed['location']['city']    = trim($m[2]);
+                $parsed['location']['state']   = strtoupper(trim($m[3]));
+                $parsed['location']['zip']     = trim($m[4]);
+
+                error_log('[FALLBACK ADDRESS PARSE SUCCESS] ' . json_encode($parsed['location']));
+
+            } else {
+                error_log('[FALLBACK ADDRESS PARSE FAILED]');
+            }
+        }
+
+        // ───────────────────────────────────────────────
+        // 🏢 Extract suite (if present)
+        // ───────────────────────────────────────────────
         if (!empty($parsed['location']['address'])) {
+
             $split = splitAddressSuite($parsed['location']['address']);
+
             $parsed['location']['address'] = $split['street'];
+
             if (empty($parsed['location']['suite']) && !empty($split['suite'])) {
                 $parsed['location']['suite'] = $split['suite'];
             }
         }
+
+        // ───────────────────────────────────────────────
+        // 🌍 Build FINAL Google query (guaranteed format)
+        // ───────────────────────────────────────────────
+        $addr  = $parsed['location']['address'] ?? '';
+        $city  = $parsed['location']['city'] ?? '';
+        $state = $parsed['location']['state'] ?? '';
+        $zip   = $parsed['location']['zip'] ?? '';
+
+        $googleQuery = trim("$addr, $city, $state $zip");
+
+        error_log('[GEOCODE INPUT FINAL] ' . $googleQuery);
+
+        // ───────────────────────────────────────────────
+        // 🧾 Final debug output
+        // ───────────────────────────────────────────────
+        error_log('[FINAL PARSED] ' . json_encode($parsed));
 
         #endregion
 
@@ -181,14 +245,14 @@ try {
 
         #endregion
 
-    #endregion
-
     #region 3. decisionPhase & 4. commitPhase
 
     if (isset($outcome) && !in_array($outcome['outcome'] ?? '', ['reject', 'conflict'], true)) {
         if (($outcome['outcome'] ?? null) === 'resolved_new') {
             $insertResult = executeInsert($db, $parsed, $location, $entity, $locationRecord, $input);
         }
+        
+        #endregion
     }
 
     #endregion
