@@ -706,6 +706,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             throw new RuntimeException('Missing entity name');
         }
 
+        // === ENTITY INSERT ===
         if ($entity['status'] === 'new') {
             $stmt = $db->prepare("
                 INSERT INTO tblEntities (entityName, entityType, entityState, entityDate)
@@ -722,19 +723,18 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             $entityId = (int)$entity['entityId'];
         }
 
+        // === LOCATION INSERT ===
         if ($locationRecord['status'] === 'new') {
             if (empty($location['placeId'])) {
                 throw new RuntimeException('Missing placeId for location');
             }
 
-            // 🔥 SOFTENED VALIDATION — Log warning but do not fail
-            if (
-                ($location['state'] ?? null) === 'AZ' &&
-                strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false &&
-                empty($location['parcelNumber'])
-            ) {
-                error_log('[WARNING] Maricopa County parcel number missing — proceeding anyway');
-                // Do NOT throw — allow creation with null parcel
+            // 🔥 SOFT Maricopa Parcel Check — Warning only
+            $isMaricopa = ($location['state'] ?? null) === 'AZ' && 
+                         strpos(strtoupper($location['county'] ?? ''), 'MARICOPA') !== false;
+
+            if ($isMaricopa && empty($location['parcelNumber'])) {
+                error_log("[MCA SOFT WARNING] No parcel number found for Maricopa address — proceeding with NULL");
             }
 
             $stmt = $db->prepare("
@@ -756,7 +756,7 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
 
                 'address'      => formatTitleCase(preg_replace('/,.*$/', '', trim($location['address'] ?? ''))),
 
-                'suite'        => isset($location['suite']) && $location['suite'] !== ''
+                'suite'        => !empty($location['suite']) 
                     ? formatTitleCase(preg_replace('/\s+/', ' ', trim($location['suite'])))
                     : null,
 
@@ -775,11 +775,12 @@ function executeInsert(PDO $db, array $parsed, array $location, array $entity, a
             ]);
 
             $locationId = (int)$db->lastInsertId();
+            error_log("[LOCATION CREATED] locationId=$locationId | placeId=" . ($location['placeId'] ?? 'N/A') . " | parcel=" . ($location['parcelNumber'] ?? 'NULL'));
         } else {
             $locationId = (int)$locationRecord['locationId'];
         }
 
-        // Insert Contact
+        // === CONTACT INSERT ===
         $stmt = $db->prepare("
             INSERT INTO tblContacts (
                 contactEntityId, contactLocationId, contactSalutation, contactTitle,
