@@ -96,55 +96,123 @@ try {
 
         #region 2a. derivationPhase
 
-        $parsed = ['entity' => [], 'location' => [], 'contact' => []];
+        // --------------------------------------------------
+        // 🧱 Initialize Structure
+        // --------------------------------------------------
+        $parsed = [
+            'entity'   => [],
+            'location' => [],
+            'contact'  => []
+        ];
 
-        // Base parser
+        $aiData = []; // ensure defined
+
+        // --------------------------------------------------
+        // 🔹 Base Parser
+        // --------------------------------------------------
         if (function_exists('parseContact')) {
             $baseParsed = parseContact($input);
-            if (is_array($baseParsed)) $parsed = array_replace_recursive($parsed, $baseParsed);
+            if (is_array($baseParsed)) {
+                $parsed = array_replace_recursive($parsed, $baseParsed);
+            }
         }
 
-        // AI Enhancement
+        // --------------------------------------------------
+        // 🤖 AI Enhancement (Optional)
+        // --------------------------------------------------
         if (function_exists('extractContactWithAI')) {
             $aiData = extractContactWithAI($input);
+
             if (is_array($aiData) && !empty($aiData)) {
                 error_log('[AI PARSED] ' . json_encode($aiData));
                 $parsed = array_replace_recursive($parsed, $aiData);
+            } else {
+                error_log('[AI PARSED] empty or invalid');
             }
         } else {
             error_log('[AI] extractContactWithAI not available');
         }
 
+        // --------------------------------------------------
+        // 🔧 Derived Attributes
+        // --------------------------------------------------
         $parsed = deriveContactAttributes($parsed, $input);
 
-        // 🔥 Entity Fallback (CRITICAL)
+        // --------------------------------------------------
+        // 🔥 ENTITY FALLBACK (CRITICAL)
+        // --------------------------------------------------
         if (empty($parsed['entity']['name'])) {
+
             if (preg_match('/,\s*([^,]+?),\s*\d{2,}/', $input, $m)) {
+
                 $parsed['entity']['name'] = trim($m[1]);
+
                 error_log('[FALLBACK ENTITY PARSE SUCCESS] ' . $parsed['entity']['name']);
             }
         }
 
-        // 🔥 Address Fallback
+        // --------------------------------------------------
+        // 🔥 CONTACT NAME FALLBACK (CRITICAL)
+        // --------------------------------------------------
+        if (empty($parsed['contact']['firstName']) && empty($parsed['contact']['lastName'])) {
+
+            if (preg_match('/add\s+([A-Za-z]+)\s+([A-Za-z]+)/i', $input, $m)) {
+
+                $parsed['contact']['firstName'] = ucfirst(strtolower($m[1]));
+                $parsed['contact']['lastName']  = ucfirst(strtolower($m[2]));
+
+                error_log('[FALLBACK NAME PARSE SUCCESS] ' . $m[1] . ' ' . $m[2]);
+            }
+        }
+
+        // --------------------------------------------------
+        // 🔥 CONTACT TITLE FALLBACK
+        // --------------------------------------------------
+        if (empty($parsed['contact']['title'])) {
+
+            if (preg_match('/,\s*([^,]+?),\s*[^,]+,\s*\d{2,}/', $input, $m)) {
+
+                $parsed['contact']['title'] = trim($m[1]);
+
+                error_log('[FALLBACK TITLE PARSE SUCCESS] ' . $parsed['contact']['title']);
+            }
+        }
+
+        // --------------------------------------------------
+        // 🔥 ADDRESS FALLBACK
+        // --------------------------------------------------
         if (empty($parsed['location']['address'])) {
+
             if (preg_match('/(\d{2,}[^,]+?),?\s*([A-Za-z\s]+?)\s+([A-Z]{2})\s+(\d{5})/i', $input, $m)) {
+
                 $parsed['location']['address'] = trim($m[1]);
                 $parsed['location']['city']    = trim($m[2]);
                 $parsed['location']['state']   = strtoupper(trim($m[3]));
                 $parsed['location']['zip']     = trim($m[4]);
+
                 error_log('[FALLBACK ADDRESS PARSE SUCCESS]');
+            } else {
+                error_log('[FALLBACK ADDRESS PARSE FAILED]');
             }
         }
 
-        // Suite extraction
+        // --------------------------------------------------
+        // 🔧 SUITE EXTRACTION
+        // --------------------------------------------------
         if (!empty($parsed['location']['address'])) {
+
             $split = splitAddressSuite($parsed['location']['address']);
+
             $parsed['location']['address'] = $split['street'];
+
             if (empty($parsed['location']['suite']) && !empty($split['suite'])) {
                 $parsed['location']['suite'] = $split['suite'];
             }
         }
 
+        // --------------------------------------------------
+        // 🧾 FINAL LOG
+        // --------------------------------------------------
         error_log('[FINAL PARSED] ' . json_encode($parsed));
 
         #endregion
