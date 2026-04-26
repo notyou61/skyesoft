@@ -64,14 +64,13 @@ file_put_contents(__DIR__ . '/createContact_debug.log', '');
 
 #region SECTION 0 — Header (EOP)
 
-// ───────────────────────────────────────────────
 // 🧾 Response Setup
-// ───────────────────────────────────────────────
 header("Content-Type: application/json; charset=UTF-8");
 
-// ───────────────────────────────────────────────
+// 🔐 SESSION (SINGLE SOURCE OF TRUTH)
+require_once __DIR__ . '/sessionBootstrap.php';
+
 // 📥 Input Handling
-// ───────────────────────────────────────────────
 $raw  = file_get_contents('php://input');
 $data = json_decode($raw, true);
 
@@ -87,19 +86,14 @@ if (!is_string($input) || trim($input) === '') {
 
 $input = trim($input);
 
-// ───────────────────────────────────────────────
 // 📦 Dependencies
-// ───────────────────────────────────────────────
 require_once __DIR__ . '/utils/parseContactCore.php';
 require_once __DIR__ . '/resolveLocation.php';
 require_once __DIR__ . '/dbConnect.php';
 require_once __DIR__ . '/utils/validateAddressCensus.php';
 require_once __DIR__ . '/utils/actionLogger.php';
-require_once __DIR__ . '/askOpenAI.php';
 
-// ───────────────────────────────────────────────
 // ⚙ Environment + Logging
-// ───────────────────────────────────────────────
 skyesoftLoadEnv();
 
 ini_set('log_errors', 1);
@@ -110,28 +104,17 @@ error_log('=== HIT createContact ===');
 error_log('[RAW] ' . $raw);
 error_log('[INPUT] ' . $input);
 
-// ───────────────────────────────────────────────
-// 🔐 Session Initialization (CRITICAL)
-// ───────────────────────────────────────────────
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// 🔗 Unified Session Request ID
+// 🔗 Unified Session Request ID (temporary naming)
 $varRequestId = session_id();
 
-// ───────────────────────────────────────────────
-// 🗄 Database Connection
-// ───────────────────────────────────────────────
+// 🗄 Database
 $db = getPDO();
 
 if (!$db instanceof PDO) {
-    throw new RuntimeException('Database connection failed: invalid PDO instance.');
+    throw new RuntimeException('Database connection failed.');
 }
 
-// ───────────────────────────────────────────────
-// 🧭 Action Constants (Safe Define)
-// ───────────────────────────────────────────────
+// 🧭 Constants
 if (!defined('ACTION_ORIGIN_USER'))       define('ACTION_ORIGIN_USER', 1);
 if (!defined('ACTION_ORIGIN_SYSTEM'))     define('ACTION_ORIGIN_SYSTEM', 2);
 if (!defined('ACTION_ORIGIN_AUTOMATION')) define('ACTION_ORIGIN_AUTOMATION', 3);

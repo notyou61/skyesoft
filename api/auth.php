@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 #region SECTION 0 — Environment Bootstrap
 
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/logs/php-error.log');
 
 require_once __DIR__ . '/sessionBootstrap.php';   // MUST call session_start()
 
@@ -115,7 +117,7 @@ if ($action === "login") {
             "username"  => $username,
             "ip"        => safeIp(),
             "ua"        => safeUserAgent(),
-            "requestId" => $requestId
+            "requestId" => session_id() // still DB column for now
         ]);
 
         jsonOut(false, $user ? "Invalid password." : "User not found.");
@@ -123,7 +125,9 @@ if ($action === "login") {
 
     // 🔥 SECURITY: Regenerate session on login
     session_regenerate_id(true);
-    $requestId = session_id();
+
+    // 🔗 Authoritative Session Identity
+    $activitySessionId = session_id();
 
     $contactId = (int)$user["contactId"];
 
@@ -135,18 +139,26 @@ if ($action === "login") {
     $_SESSION["latitude"]      = $latitude;
     $_SESSION["longitude"]     = $longitude;
 
+    // --- Log success
     logAuthAction($pdo, "auth.login", $contactId, [
-        "username"  => $user["contactEmail"],
-        "ip"        => safeIp(),
-        "ua"        => safeUserAgent(),
-        "latitude"  => $latitude,
-        "longitude" => $longitude,
-        "requestId" => $requestId,
-        "actionOrigin" => 1
+        "username"       => $user["contactEmail"],
+        "ip"             => safeIp(),
+        "ua"             => safeUserAgent(),
+        "latitude"       => $latitude,
+        "longitude"      => $longitude,
+        "requestId"      => $activitySessionId, // DB still uses requestId column
+        "actionOrigin"   => 1
     ]);
 
     session_write_close();
-    jsonOut(true);
+
+    // Optional: return session for debugging
+    echo json_encode([
+        "success"   => true,
+        "sessionId" => $activitySessionId
+    ], JSON_UNESCAPED_SLASHES);
+
+    exit;
 }
 
 #endregion
