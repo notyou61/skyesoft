@@ -1240,6 +1240,8 @@ window.SkyIndex = {
             this.appendSystemLine('📇 Creating contact...');
 
             try {
+                const activitySessionId = this.getActivitySessionId();
+
                 const createRes = await fetch('/skyesoft/api/createContact.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1253,38 +1255,44 @@ window.SkyIndex = {
                 const createData = await createRes.json();
                 console.log('[CREATE RESPONSE]', createData);
 
-                const contactId = createData.contactId || createData.insert?.contactId;
+                // ────── SUCCESS PATH ──────
+                if (createData.success && createData.contact) {
 
-                if (!contactId) {
-                    this.appendSystemLine(`❌ ${createData.message || 'Creation failed'}`);
-                    return;
+                    this.appendSystemLine('✅ Contact successfully added to the database.');
+                    
+                    // Render the exact same way getContacts.php does
+                    this.renderContactDetail(createData.contact);
+                    
+                    // Store for "last contact" command
+                    this.lastContactId = createData.contact.contactId || createData.contactId;
+
+                    // Optional: nice confirmation line
+                    const fullName = `${createData.contact.contactFirstName || ''} ${createData.contact.contactLastName || ''}`.trim();
+                    if (fullName) {
+                        this.appendSystemLine(`📇 ${fullName} — ${createData.contact.entityName || '—'}`);
+                    }
+
+                } 
+                // ────── NEEDS PARCEL ──────
+                else if (createData.status === 'needs_parcel') {
+                    this.appendSystemLine(`⚠️ ${createData.message || 'Parcel number required for Maricopa County.'}`, 'warning');
+                    if (createData.location) {
+                        this.appendSystemLine(`📍 ${createData.location.address}, ${createData.location.city} ${createData.location.state}`);
+                    }
+                } 
+                // ────── OTHER STATES ──────
+                else if (createData.status === 'reject' || createData.status === 'partial') {
+                    this.appendSystemLine(`❌ ${createData.reason || createData.message || 'Creation failed'}`, 'warning');
+                } 
+                else {
+                    this.appendSystemLine('⚠️ Contact processed but no details returned.');
                 }
 
-                this.appendSystemLine('✅ Contact created. Loading verified details...');
-
-                const fetchRes = await fetch('/skyesoft/api/getContacts.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        query: `show ${contactId}`,
-                        activitySessionId: activitySessionId
-                    })
-                });
-
-                const fetchData = await fetchRes.json();
-
-                if (fetchData?.success && fetchData.contacts?.[0]) {
-                    const contact = fetchData.contacts[0];
-                    const fullName = `${contact.contactFirstName || ''} ${contact.contactLastName || ''}`.trim() || 'New Contact';
-                    this.appendSystemLine(`📇 ${fullName}`);
-                    this.renderContactDetail(contact);
-                    this.lastContactId = contact.contactId;
-                }
             } catch (err) {
                 console.error('[ADD CONTACT ERROR]', err);
-                this.appendSystemLine('❌ Contact creation failed.');
+                this.appendSystemLine('❌ Contact creation failed. Please try again.', 'error');
             }
+
             return;
         }
 
@@ -1470,57 +1478,45 @@ window.SkyIndex = {
 
     // #region 📇 Contact Detail Renderer
     renderContactDetail(contact) {
-
         if (!contact) {
             this.appendSystemLine('Contact not found.');
             return;
         }
 
-        const salutation = (contact.contactSalutation || '').trim();
-        const firstName  = (contact.contactFirstName || '').trim();
-        const lastName   = (contact.contactLastName || '').trim();
-        const title      = (contact.contactTitle || '').trim();
-        const company    = (contact.entityName || '').trim();
+        const fullName = [
+            contact.contactSalutation,
+            contact.contactFirstName,
+            contact.contactLastName
+        ].filter(Boolean).join(' ').trim() || 'Unnamed Contact';
 
-        const phone = (contact.contactPrimaryPhone || '').trim();
-        const email = (contact.contactEmail || '').trim();
-
-        let fullName = [salutation, firstName, lastName].filter(Boolean).join(' ').trim();
-        if (!fullName) fullName = 'Unnamed Contact';
-
-        const nameLine = title ? `${fullName}, ${title}` : fullName;
-
-        this.appendSystemLine(`Loading contact details for ${firstName} ${lastName}`);
+        const title = contact.contactTitle ? `, ${contact.contactTitle}` : '';
 
         const html = `
             <div class="contact-card">
-
                 <div class="contact-header">
                     <span class="contact-icon">👤</span>
-                    <div class="contact-name">${nameLine}</div>
+                    <div class="contact-name">${fullName}${title}</div>
                 </div>
 
-                ${company ? `
+                ${contact.entityName ? `
                 <div class="contact-company">
-                    <span class="contact-icon">🏢</span> ${company}
+                    <span class="contact-icon">🏢</span> ${contact.entityName}
                 </div>` : ''}
 
-                ${phone ? `
-                <div class="contact-line" data-icon="📞">
-                    ${phone}
-                </div>` : ''}
+                ${contact.contactPrimaryPhone ? `
+                <div class="contact-line">📞 ${contact.contactPrimaryPhone}</div>` : ''}
 
-                ${email ? `
-                <div class="contact-line" data-icon="✉️">
-                    ${email}
-                </div>` : ''}
+                ${contact.contactEmail ? `
+                <div class="contact-line">✉️ ${contact.contactEmail}</div>` : ''}
+
+                ${contact.locationAddress ? `
+                <div class="contact-line">📍 ${contact.locationAddress}, ${contact.locationCity || ''} ${contact.locationState || ''} ${contact.locationZip || ''}</div>` : ''}
 
                 <div class="contact-actions">
-                    <span class="contact-link" data-id="${contact.contactId}">
+                    <span class="contact-link" onclick="SkyIndex.showFullContact(${contact.contactId})">
                         View full profile →
                     </span>
                 </div>
-
             </div>
         `;
 
