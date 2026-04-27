@@ -33,23 +33,20 @@ $type = $_GET['type'] ?? 'balance';
 
 switch ($type) {
     case 'balance':
-        $path = "/trade-api/v2/portfolio/balance";
+        $path = "/portfolio/balance";
         break;
 
     case 'positions':
-        $path = "/trade-api/v2/portfolio/positions";
+        $path = "/portfolio/positions";
         break;
 
     case 'orders':
-        $path = "/trade-api/v2/portfolio/orders";
+        $path = "/portfolio/orders";
         break;
 
     case 'fills':
-        $path = "/trade-api/v2/portfolio/fills";
+        $path = "/portfolio/fills";
         break;
-
-    default:
-        die("❌ Invalid type");
 }
 
 // ─────────────────────────────────────────
@@ -77,7 +74,7 @@ $headers = [
 // ─────────────────────────────────────────
 // 🚀 Execute request
 // ─────────────────────────────────────────
-$url = "https://api.elections.kalshi.com" . $path;
+$url = "https://api.elections.kalshi.com/trade-api/v2" . $path;
 
 $ch = curl_init();
 curl_setopt_array($ch, [
