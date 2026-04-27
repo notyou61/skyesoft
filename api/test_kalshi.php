@@ -30,20 +30,29 @@ $path   = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// Signature
+// Signature - PSS with correct salt length (THIS IS THE FIX)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
 $signature = '';
-if (defined('OPENSSL_PSS_PADDING')) {
-    $algo = OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING;
-} else {
-    $algo = OPENSSL_ALGO_SHA256;
+$success = openssl_sign(
+    $message,
+    $signature,
+    $privateKey,
+    OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING
+);
+
+if (!$success || empty($signature)) {
+    die(json_encode(["success" => false, "error" => "Signing failed"]));
 }
 
-openssl_sign($message, $signature, $privateKey, $algo);
 $base64Signature = base64_encode($signature);
+
+// Debug info
+echo "Timestamp: $timestamp<br>";
+echo "Message signed: $message<br>";
+echo "Signature length: " . strlen($base64Signature) . "<br><hr>";
 
 // ─────────────────────────────────────────
 // Request
@@ -53,7 +62,8 @@ $headers = [
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json",
-    "Accept: application/json"
+    "Accept: application/json",
+    "User-Agent: Kalshi-PHP/1.0"
 ];
 
 $url = $baseUrl . $path;
