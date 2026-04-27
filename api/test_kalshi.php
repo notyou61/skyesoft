@@ -2,21 +2,31 @@
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
+// ─────────────────────────────────────────
+// 🔐 Load credentials
+// ─────────────────────────────────────────
 $apiKey   = getenv("KALSHI_API_KEY");
 $keyPath  = getenv("KALSHI_PRIVATE_KEY_PATH");
 
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
-if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path"]));
+if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
-$privateKeyContent = trim(file_get_contents($keyPath));
-$privateKey = openssl_pkey_get_private($privateKeyContent);
-if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key - check format"]));
+// Load phpseclib (adjust path if your folder is named differently)
+require_once __DIR__ . '/phpseclib/autoload.php';
 
-// Debug key
-$details = openssl_pkey_get_details($privateKey);
-echo "Key bits: " . ($details['bits'] ?? 'N/A') . "<br>";
+use phpseclib3\Crypt\PublicKeyLoader;
+use phpseclib3\Crypt\RSA;
 
-// Config
+// Load private key
+$privateKeyContent = file_get_contents($keyPath);
+$privateKey = PublicKeyLoader::load($privateKeyContent)
+    ->withPadding(RSA::SIGNATURE_PSS)
+    ->withHash('sha256')
+    ->withMGFHash('sha256');
+
+// ─────────────────────────────────────────
+// Config - PRODUCTION
+// ─────────────────────────────────────────
 $type = $_GET['type'] ?? 'balance';
 $baseUrl = 'https://api.elections.kalshi.com';
 
@@ -31,33 +41,23 @@ $path = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// PSS Signing (best effort)
+// Signature (Exact PSS + SHA256 as required by Kalshi)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
-$signature = '';
-if (defined('OPENSSL_PSS_PADDING')) {
-    $algo = OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING;
-    echo "Using native PSS padding<br>";
-} else {
-    $algo = OPENSSL_ALGO_SHA256;
-    echo "Using fallback (may fail)<br>";
-}
-
-$success = openssl_sign($message, $signature, $privateKey, $algo);
-if (!$success || empty($signature)) {
-    die(json_encode(["success" => false, "error" => "Signing failed"]));
-}
-
+$signature = $privateKey->sign($message);
 $base64Signature = base64_encode($signature);
 
+// ─────────────────────────────────────────
 // Request
+// ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json",
+    "Accept: application/json",
     "User-Agent: Kalshi-PHP/1.0"
 ];
 
