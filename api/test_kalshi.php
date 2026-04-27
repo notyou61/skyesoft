@@ -62,6 +62,15 @@ if (!$success || empty($signature)) {
 
 $base64Signature = base64_encode($signature);
 
+// Add this right before the cURL request for debugging
+echo "Debug Info:<br>";
+echo "Base URL: " . $baseUrl . "<br>";
+echo "Path: " . $path . "<br>";
+echo "Timestamp: " . $timestamp . "<br>";
+echo "Key ID length: " . strlen($apiKey) . "<br>";
+echo "Key starts with: " . substr($apiKey, 0, 8) . "..." . "<br>";
+// Then continue with the request
+
 // ─────────────────────────────────────────
 // 🚀 cURL Request
 // ─────────────────────────────────────────
