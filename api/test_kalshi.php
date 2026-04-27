@@ -14,10 +14,12 @@ if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "e
 // ─────────────────────────────────────────
 // 📦 Load phpseclib (EXACT PATH)
 // ─────────────────────────────────────────
-require_once __DIR__ . '/phpseclib/phpseclib/autoload.php';
+require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
 
-use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Crypt\RSA;
+// FORCE load core classes (GoDaddy fix)
+require_once __DIR__ . '/phpseclib/phpseclib/Crypt/PublicKeyLoader.php';
+require_once __DIR__ . '/phpseclib/phpseclib/Crypt/RSA.php';
+require_once __DIR__ . '/phpseclib/phpseclib/Crypt/Common/AsymmetricKey.php';
 
 // ─────────────────────────────────────────
 // 🔑 Load private key
