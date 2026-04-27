@@ -12,7 +12,7 @@ if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_AP
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
 // ─────────────────────────────────────────
-// 📦 Load phpseclib (Correct nested path)
+// 📦 Load phpseclib (EXACT PATH)
 // ─────────────────────────────────────────
 require_once __DIR__ . '/phpseclib/phpseclib/autoload.php';
 
@@ -20,7 +20,7 @@ use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
 
 // ─────────────────────────────────────────
-// 🔑 Load private key with Kalshi settings
+// 🔑 Load private key
 // ─────────────────────────────────────────
 $privateKeyContent = file_get_contents($keyPath);
 
@@ -83,9 +83,7 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err      = curl_error($ch);
 curl_close($ch);
 
-// ─────────────────────────────────────────
-// 📊 Output
-// ─────────────────────────────────────────
+// Output
 header('Content-Type: application/json');
 
 if ($err) {
