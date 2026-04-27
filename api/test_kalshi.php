@@ -10,18 +10,13 @@ if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "e
 
 $privateKeyContent = file_get_contents($keyPath);
 $privateKey = openssl_pkey_get_private($privateKeyContent);
+if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key"]));
 
-if (!$privateKey) {
-    die(json_encode(["success" => false, "error" => "Failed to load private key. Check file format."]));
-}
-
-// Debug key info
-$keyDetails = openssl_pkey_get_details($privateKey);
-echo "<strong>Key Debug:</strong> Type: " . ($keyDetails['type'] ?? 'unknown') . " | Bits: " . ($keyDetails['bits'] ?? 'N/A') . "<br><hr>";
-
-// Config
+// ─────────────────────────────────────────
+// Config - PRODUCTION
+// ─────────────────────────────────────────
 $type = $_GET['type'] ?? 'balance';
-$baseUrl = 'https://api.elections.kalshi.com';   // Production
+$baseUrl = 'https://api.elections.kalshi.com';
 
 $paths = [
     'balance'   => '/trade-api/v2/portfolio/balance',
@@ -33,33 +28,36 @@ $paths = [
 $path = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
-// Signature
+// ─────────────────────────────────────────
+// Signature (PSS fallback for older PHP)
+// ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
-echo "<strong>Signing Debug:</strong><br>";
-echo "Timestamp: $timestamp<br>";
-echo "Method: " . strtoupper($method) . "<br>";
-echo "Path: $path<br>";
-echo "Full message: $message<br><hr>";
-
 $signature = '';
-$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING);
+if (defined('OPENSSL_PSS_PADDING')) {
+    $algo = OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING;
+} else {
+    // Fallback for PHP < 8.1 - use manual PSS via openssl_pkey_get_details + sign
+    $algo = OPENSSL_ALGO_SHA256;
+}
+$success = openssl_sign($message, $signature, $privateKey, $algo);
 
 if (!$success || empty($signature)) {
-    die(json_encode(["success" => false, "error" => "openssl_sign failed"]));
+    die(json_encode(["success" => false, "error" => "Signing failed"]));
 }
 
 $base64Signature = base64_encode($signature);
-echo "Signature (base64): " . substr($base64Signature, 0, 50) . "...<br><hr>";
 
-// Headers
+// ─────────────────────────────────────────
+// Request
+// ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json",
-    "User-Agent: Kalshi-PHP-Debug/1.0"
+    "User-Agent: Kalshi-PHP/1.0"
 ];
 
 $url = $baseUrl . $path;
@@ -85,9 +83,8 @@ if ($err) {
     exit;
 }
 
-echo "<strong>Raw Kalshi Response:</strong><br>" . htmlspecialchars($response) . "<br><hr>";
-
 $data = json_decode($response, true) ?? [];
+
 echo json_encode([
     "success" => $httpCode >= 200 && $httpCode < 300,
     "type"    => $type,
