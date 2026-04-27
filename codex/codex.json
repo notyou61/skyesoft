@@ -5150,6 +5150,176 @@
                     "frequency": "on-insert-and-update",
                     "action": "Reject, normalize, or flag non-compliant records"
                 },
+                "proposedContactValidationModel": {
+                    "title": {
+                    "icon": 15,
+                    "text": "Proposed Contact Validation & Review Model (Type 7)"
+                    },
+                    "tier": 2,
+                    "type": "Pre-Commit Validation Standard",
+                    "hierarchyOrder": 4,
+                    "preamble": {
+                    "text": "Defines the structured validation and review process for all proposed contact inputs prior to database commit. This model ensures that all contact data meets required completeness, passes validation checks, and is reviewed by the user before insertion, preserving system-wide data integrity."
+                    },
+                    "purpose": {
+                    "icon": 6,
+                    "text": "Prevent incomplete, duplicate, or invalid contact data from entering the system by enforcing a multi-step propose–validate–review workflow prior to commitPhase."
+                    },
+                    "flow": {
+                    "description": "Defines the required step-by-step validation sequence for Type 7 propose actions.",
+                    "steps": [
+                        "validateRequiredFields",
+                        "parseAndNormalizeInput",
+                        "evaluateDuplicateWithinEntity",
+                        "validateAndEnrichLocation",
+                        "presentProposedContactForReview"
+                    ]
+                    },
+                    "validationSteps": {
+                    "validateRequiredFields": {
+                        "description": "Ensures all required contact identity fields are present before further processing.",
+                        "requiredFields": [
+                        "contactFirstName",
+                        "contactLastName",
+                        "contactTitle",
+                        "contactPrimaryPhone",
+                        "contactEmail"
+                        ],
+                        "rules": [
+                        "All required fields must be present and non-empty.",
+                        "Email must pass format validation.",
+                        "Phone must be normalized to a standard numeric format.",
+                        "Failure results in reject status."
+                        ],
+                        "failureOutcome": "reject"
+                    },
+                    "parseAndNormalizeInput": {
+                        "description": "Transforms raw or unstructured input into normalized ELC components.",
+                        "rules": [
+                        "Input must be normalized to remove noise, labels, and inconsistent formatting.",
+                        "Parsing must extract entity, location, and contact fields.",
+                        "Normalization must standardize casing, spacing, and formatting.",
+                        "Derived values must not overwrite explicitly provided values."
+                        ],
+                        "inputTypes": [
+                        "structured",
+                        "signature",
+                        "noiseHeavy"
+                        ]
+                    },
+                    "evaluateDuplicateWithinEntity": {
+                        "description": "Checks for duplicate contact identity within the same entity scope.",
+                        "rules": [
+                        "Primary match: entityId + firstName + lastName",
+                        "Secondary match: entityId + contactEmail",
+                        "Phone may be used as supplemental comparison",
+                        "Duplicate detection must occur prior to commitPhase"
+                        ],
+                        "outcomes": {
+                        "exactMatch": "resolved_duplicate",
+                        "possibleMatch": "resolved_conflict",
+                        "noMatch": "clear"
+                        }
+                    },
+                    "validateAndEnrichLocation": {
+                        "description": "Validates and enriches location data using external sources.",
+                        "tiers": {
+                        "tier1_required": {
+                            "fields": [
+                            "locationPlaceId",
+                            "locationLatitude",
+                            "locationLongitude",
+                            "locationCity",
+                            "locationState",
+                            "locationZip"
+                            ],
+                            "rule": "Google Places validation is required. Missing placeId results in partial status and blocks commit."
+                        },
+                        "tier2_conditional": {
+                            "fields": [
+                            "locationParcelNumber",
+                            "locationJurisdiction",
+                            "locationCounty",
+                            "locationCountyFips"
+                            ],
+                            "rules": [
+                            "Census must resolve state and county.",
+                            "Parcel lookup executes only when state = 'AZ' AND county = 'Maricopa'.",
+                            "Parcel lookup is non-blocking if unsuccessful."
+                            ]
+                        }
+                        }
+                    },
+                    "presentProposedContactForReview": {
+                        "description": "Returns a fully structured and validated contact object for user confirmation prior to commit.",
+                        "rules": [
+                        "No database writes may occur at this stage.",
+                        "All validation results must be included in the response.",
+                        "Entity and location must indicate whether they are existing or new.",
+                        "Duplicate status must be clearly indicated.",
+                        "User must be provided explicit action options."
+                        ],
+                        "actions": [
+                        "accept",
+                        "edit",
+                        "delete"
+                        ]
+                    }
+                    },
+                    "statusModel": {
+                    "description": "Defines possible outcomes of the propose validation process.",
+                    "statuses": [
+                        "reject",
+                        "partial",
+                        "proposed",
+                        "resolved_duplicate",
+                        "resolved_conflict"
+                    ],
+                    "rules": [
+                        "reject: missing required contact fields",
+                        "partial: missing required location validation (no placeId)",
+                        "proposed: complete and valid, ready for user decision",
+                        "resolved_duplicate: exact match found within entity",
+                        "resolved_conflict: conflicting or ambiguous identity detected"
+                    ]
+                    },
+                    "entityLocationHandling": {
+                    "description": "Defines behavior when entity or location already exists.",
+                    "rules": [
+                        "Existing entities must be reused and not recreated.",
+                        "Existing locations must be reused based on locationPlaceId.",
+                        "New entity or location creation must be clearly indicated in the proposal.",
+                        "No entity or location creation occurs during proposeStage."
+                    ]
+                    },
+                    "uiRequirements": {
+                    "description": "Defines required UI behavior for proposed contact review.",
+                    "elements": [
+                        "Display structured contact card",
+                        "Show validation indicators (valid, warning, duplicate)",
+                        "Clearly indicate entity and location status",
+                        "Provide Accept, Edit, and Delete actions",
+                        "Prevent Accept when status = partial or reject"
+                    ]
+                    },
+                    "commitRules": {
+                    "description": "Defines transition from proposeStage to commitPhase.",
+                    "rules": [
+                        "Commit may only occur after user selects Accept.",
+                        "Commit requires status = proposed or resolved_new.",
+                        "Commit is blocked when status = partial or reject.",
+                        "Duplicate contacts must not be inserted.",
+                        "All commit operations must follow ELC creation standards."
+                    ]
+                    },
+                    "notes": [
+                    "This model extends the pipelineModel by formalizing the proposeStage validation behavior.",
+                    "All proposed contacts must pass through this model before any database interaction occurs.",
+                    "This model enforces human-in-the-loop validation for all contact creation.",
+                    "Duplicate prevention and data validation are core enforcement mechanisms.",
+                    "This model ensures alignment between AI parsing and application-level enforcement."
+                    ]
+                },
                 "notes": [
                     "ELC enforcement guarantees that all contacts are fully qualified relational objects.",
                     "Duplicate prevention is enforced at both application and database levels.",
