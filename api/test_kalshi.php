@@ -12,7 +12,7 @@ if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_AP
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
 // Load phpseclib (adjust path if your folder is named differently)
-require_once __DIR__ . '/phpseclib/autoload.php';
+require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
 
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
