@@ -1,2 +1,0 @@
-# Force PHP 8.4
-AddHandler application/x-httpd-alt-php84 .php .php84
