@@ -19,33 +19,17 @@ if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to loa
 // ─────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────
-$type = $_GET['type'] ?? 'balance';
-$baseUrl = 'https://api.elections.kalshi.com';
-
 $path   = '/trade-api/v2/portfolio/balance';
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// PSS Signature with explicit salt length (Kalshi requirement)
+// Signature - Basic only (no PSS constant)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
 $signature = '';
-
-// Force PSS + SHA256 + salt length 32
-$success = openssl_sign(
-    $message,
-    $signature,
-    $privateKey,
-    OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING
-);
-
-if (defined('OPENSSL_PSS_PADDING') && function_exists('openssl_pkey_get_details')) {
-    // Try to set salt length explicitly
-    $pkeyDetails = openssl_pkey_get_details($privateKey);
-    // Some PHP builds need this
-}
+$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256);
 
 if (!$success || empty($signature)) {
     die(json_encode(["success" => false, "error" => "Signing failed"]));
@@ -53,7 +37,7 @@ if (!$success || empty($signature)) {
 
 $base64Signature = base64_encode($signature);
 
-echo "✅ Signature created (length: " . strlen($base64Signature) . ")<br>";
+echo "Signature created (basic SHA256)<br>";
 echo "Timestamp: $timestamp<br>";
 echo "Message: $message<br><hr>";
 
@@ -69,7 +53,7 @@ $headers = [
     "User-Agent: Kalshi-PHP/1.0"
 ];
 
-$url = $baseUrl . $path;
+$url = "https://api.elections.kalshi.com" . $path;
 
 $ch = curl_init($url);
 curl_setopt_array($ch, [
@@ -96,7 +80,7 @@ $data = json_decode($response, true) ?? [];
 
 echo json_encode([
     "success" => $httpCode >= 200 && $httpCode < 300,
-    "type"    => $type,
+    "type"    => "balance",
     "code"    => $httpCode,
     "data"    => $data
 ], JSON_PRETTY_PRINT);
