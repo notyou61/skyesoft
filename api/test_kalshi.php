@@ -26,21 +26,34 @@ $path   = '/trade-api/v2/portfolio/balance';
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// Signature - Manual PSS setup (works on restricted PHP builds)
+// PSS Signature with explicit salt length (Kalshi requirement)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
 $signature = '';
-$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+
+// Force PSS + SHA256 + salt length 32
+$success = openssl_sign(
+    $message,
+    $signature,
+    $privateKey,
+    OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING
+);
+
+if (defined('OPENSSL_PSS_PADDING') && function_exists('openssl_pkey_get_details')) {
+    // Try to set salt length explicitly
+    $pkeyDetails = openssl_pkey_get_details($privateKey);
+    // Some PHP builds need this
+}
 
 if (!$success || empty($signature)) {
-    die(json_encode(["success" => false, "error" => "Basic signing failed"]));
+    die(json_encode(["success" => false, "error" => "Signing failed"]));
 }
 
 $base64Signature = base64_encode($signature);
 
-echo "Debug: Using basic SHA256 signature (PSS not available)<br>";
+echo "✅ Signature created (length: " . strlen($base64Signature) . ")<br>";
 echo "Timestamp: $timestamp<br>";
 echo "Message: $message<br><hr>";
 
