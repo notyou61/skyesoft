@@ -13,6 +13,8 @@ if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "e
 
 // Load phpseclib (adjust path if your folder is named differently)
 require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
+require_once __DIR__ . '/phpseclib/phpseclib/Crypt/PublicKeyLoader.php';
+require_once __DIR__ . '/phpseclib/phpseclib/Crypt/RSA.php';
 
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
@@ -44,7 +46,15 @@ $method = 'GET';
 // Signature (Exact PSS + SHA256 as required by Kalshi)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
-$message   = $timestamp . strtoupper($method) . $path;
+$method    = "GET";
+
+$message = $timestamp . $method . $path;
+
+$privateKey = PublicKeyLoader::load($privateKeyContent)
+    ->withPadding(RSA::SIGNATURE_PSS)
+    ->withHash('sha256')
+    ->withMGFHash('sha256')
+    ->withSaltLength(32);
 
 $signature = $privateKey->sign($message);
 $base64Signature = base64_encode($signature);
