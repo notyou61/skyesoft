@@ -1212,7 +1212,6 @@ window.SkyIndex = {
     async handleCommand(text) {
 
         const activitySessionId = this.getActivitySessionId();
-
         console.log('🔑 Command using activitySessionId:', activitySessionId);
 
         this.appendSystemLine(text, 'user');
@@ -1233,61 +1232,11 @@ window.SkyIndex = {
         }
 
         // ───────────────────────────────────────────────
-        // 📇 Add Contact Command
+        // 📇 CONTACT CREATION - EOP (Ease of Paste) UPGRADE
         // ───────────────────────────────────────────────
-        if (normalized.startsWith('add ')) {
-
-            this.clearOutput();
-            this.appendSystemLine('📇 Creating contact...');
-
-            try {
-                const activitySessionId = this.getActivitySessionId();
-
-                const createRes = await fetch('/skyesoft/api/createContact.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ 
-                        input: text,
-                        activitySessionId: activitySessionId
-                    })
-                });
-
-                const createData = await createRes.json();
-                console.log('[CREATE RESPONSE]', createData);
-
-                // ────── SUCCESS PATH ──────
-                if (createData.success && createData.contact) {
-
-                    this.appendSystemLine('✅ Contact successfully added to the database.');
-
-                    // Render the full contact card (same as "show" command)
-                    this.renderContactDetail(createData.contact);
-
-                    // Store for "last contact" command
-                    this.lastContactId = createData.contact.contactId || createData.contactId;
-
-                } 
-                // ────── NEEDS PARCEL ──────
-                else if (createData.status === 'needs_parcel') {
-                    this.appendSystemLine(`⚠️ ${createData.message || 'Parcel number required for Maricopa County.'}`, 'warning');
-                    if (createData.location) {
-                        this.appendSystemLine(`📍 ${createData.location.address}, ${createData.location.city} ${createData.location.state}`);
-                    }
-                } 
-                // ────── ERROR STATES ──────
-                else if (createData.status === 'reject' || createData.status === 'partial') {
-                    this.appendSystemLine(`❌ ${createData.reason || createData.message || 'Creation failed'}`, 'warning');
-                } 
-                else {
-                    this.appendSystemLine('⚠️ Contact processed but no details returned.');
-                }
-
-            } catch (err) {
-                console.error('[ADD CONTACT ERROR]', err);
-                this.appendSystemLine('❌ Contact creation failed. Please try again.', 'error');
-            }
-
+        if (await this.isContactCreationIntent(text, normalized)) {
+            console.log('🔍 EOP Contact Intent Detected → Proposal Flow');
+            await this.handleContactProposal(text);
             return;
         }
 
@@ -1331,7 +1280,6 @@ window.SkyIndex = {
                 });
 
                 const data = await res.json();
-                console.log('[CONTACT RESPONSE]', data);
 
                 if (!data?.success || !Array.isArray(data.contacts) || data.contacts.length === 0) {
                     return await this.executeAICommand(text, activitySessionId);
@@ -1369,6 +1317,96 @@ window.SkyIndex = {
         // AI Fallback
         // ───────────────────────────────────────────────
         await this.executeAICommand(text, activitySessionId);
+    },
+    // #endregion
+
+    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
+    // ───────────────────────────────────────────────
+    // Hybrid Intent Detection (Rules + AI)
+    // ───────────────────────────────────────────────
+    async isContactCreationIntent(text, normalized) {
+        if (!text) return false;
+
+        // 1. Explicit commands (preserves all your current behavior)
+        if (
+            normalized.startsWith('add ') ||
+            normalized.startsWith('create ') ||
+            normalized.includes('new contact') ||
+            normalized.includes('add contact') ||
+            normalized.includes('here is a contact')
+        ) {
+            return true;
+        }
+
+        // 2. Signature / Paste detection (EOP core)
+        if (this.isLikelySignature(text)) {
+            return true;
+        }
+
+        // 3. AI fallback (only if needed — keeps it fast)
+        try {
+            const intent = await this.detectIntentAI(text);
+            return intent === 'contact_proposal';
+        } catch (e) {
+            console.warn('AI intent check failed, using rules only', e);
+            return false;
+        }
+    },
+
+    // Lightweight signature detector (very effective for business cards, emails, signatures)
+    isLikelySignature(text) {
+        if (!text || typeof text !== 'string') return false;
+
+        const hasPhone   = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        const hasEmail   = /\S+@\S+\.\S+/.test(text);
+        const hasWebsite = /\bwww\.\S+|\bhttps?:\/\//i.test(text);
+        const hasZip     = /\b\d{5}(?:-\d{4})?\b/.test(text);
+        const hasAddress = /\b(?:Ave|St|Rd|Blvd|Ln|Dr|Suite|Ste|Peoria|Phoenix|Glendale|Scottsdale|AZ)\b/i.test(text);
+
+        const lines = text.split('\n').filter(l => l.trim().length > 3);
+
+        return lines.length >= 2 && (hasPhone || hasEmail || hasWebsite || hasZip || hasAddress);
+    },
+
+    // ───────────────────────────────────────────────
+    // Proposal Flow Handler
+    // ───────────────────────────────────────────────
+    async handleContactProposal(rawText) {
+        this.clearOutput();
+        this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
+
+        try {
+            const activitySessionId = this.getActivitySessionId();
+
+            const res = await fetch('/skyesoft/api/detectAndProposeContact.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                    input: rawText,
+                    activitySessionId: activitySessionId,
+                    mode: 'propose'
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.status === 'proposed' && data.parsed) {
+                this.showProposalUI(data.parsed);
+            } 
+            else if (data.status === 'needs_parcel') {
+                this.appendSystemLine(`⚠️ ${data.message || 'Parcel number required'}`, 'warning');
+                if (data.location) {
+                    this.appendSystemLine(`📍 ${data.location.address}, ${data.location.city} ${data.location.state}`);
+                }
+            } 
+            else {
+                this.appendSystemLine(data.message || 'Could not process the contact information.', 'warning');
+            }
+        } catch (err) {
+            console.error('[EOP Proposal Error]', err);
+            this.appendSystemLine('❌ Failed to analyze contact. You can still use "add ..." command.', 'error');
+        }
     },
     // #endregion
 
