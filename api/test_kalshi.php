@@ -19,7 +19,7 @@ if (!$keyPath || !file_exists($keyPath)) {
 }
 
 // 🔑 Load private key
-$privateKey = file_get_contents($keyPath);
+$privateKey = trim(file_get_contents($keyPath));
 $key = openssl_pkey_get_private($privateKey);
 
 if (!$key) {
@@ -55,19 +55,20 @@ switch ($type) {
 // ─────────────────────────────────────────
 // ⚙️ Build request
 // ─────────────────────────────────────────
-$timestamp = (string) round(microtime(true) * 1000);
+$timestamp = (string) time(); // ✅ CORRECT
 $method    = "GET";
 $body      = "";
 
-$message = $timestamp . $method . $path . $body;
+// Exact string required
+$message = $timestamp . strtoupper($method) . $path . $body;
 
-// ✍️ Sign request
+// Sign
 openssl_sign($message, $sig, $key, OPENSSL_ALGO_SHA256);
 $signature = base64_encode($sig);
 
 // 🌐 Headers
 $headers = [
-    "KALSHI-ACCESS-KEY: $apiKey",
+    "KALSHI-ACCESS-KEY-ID: $apiKey",   // ✅ FIXED
     "KALSHI-ACCESS-SIGNATURE: $signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json"
