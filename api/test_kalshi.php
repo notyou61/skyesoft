@@ -12,20 +12,18 @@ if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_AP
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
 // ─────────────────────────────────────────
-// 📦 Load phpseclib
+// 📦 Load phpseclib (Correct nested path)
 // ─────────────────────────────────────────
-require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
+require_once __DIR__ . '/phpseclib/phpseclib/autoload.php';
 
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
 
 // ─────────────────────────────────────────
-// 🔑 Load private key (ONCE)
+// 🔑 Load private key with Kalshi settings
 // ─────────────────────────────────────────
 $privateKeyContent = file_get_contents($keyPath);
 
-
-/** @var \phpseclib3\Crypt\RSA\PrivateKey $privateKey */
 $privateKey = PublicKeyLoader::load($privateKeyContent)
     ->withPadding(RSA::SIGNATURE_PSS)
     ->withHash('sha256')
@@ -52,7 +50,7 @@ $method = 'GET';
 // ✍️ Signature
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
-$message   = $timestamp . $method . $path;
+$message   = $timestamp . strtoupper($method) . $path;
 
 $signature = $privateKey->sign($message);
 $base64Signature = base64_encode($signature);
