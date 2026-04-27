@@ -4,48 +4,40 @@ skyesoftLoadEnv();
 
 echo "PHP Version: " . phpversion() . "<br><hr>";
 
-// Load credentials
+// ─────────────────────────────────────────
+// Credentials
+// ─────────────────────────────────────────
 $apiKey  = getenv("KALSHI_API_KEY");
 $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
 
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path"]));
 
-// Load phpseclib bootstrap
-require_once __DIR__ . '/phpseclib/bootstrap.php';
+$privateKey = openssl_pkey_get_private(file_get_contents($keyPath));
+if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key - check .pem format"]));
 
-// Manually register the main class if autoloader fails
-if (!class_exists('phpseclib3\Crypt\PublicKeyLoader')) {
-    require_once __DIR__ . '/phpseclib/Crypt/PublicKeyLoader.php';
-    require_once __DIR__ . '/phpseclib/Crypt/RSA.php';
-    echo "Manually loaded classes<br>";
-}
+echo "✅ Private key loaded<br>";
 
-use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Crypt\RSA;
-
-echo "✅ Classes loaded!<br>";
-
-// Load private key
-$privateKeyContent = file_get_contents($keyPath);
-$privateKey = PublicKeyLoader::load($privateKeyContent)
-    ->withPadding(RSA::SIGNATURE_PSS)
-    ->withHash('sha256')
-    ->withMGFHash('sha256')
-    ->withSaltLength(32);
-
-echo "✅ Private key loaded with PSS<br>";
-
-// Sign
+// ─────────────────────────────────────────
+// Sign (basic - Kalshi may still reject)
+// ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . 'GET/trade-api/v2/portfolio/balance';
 
-$signature = $privateKey->sign($message);
+$signature = '';
+$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+
+if (!$success || empty($signature)) {
+    die(json_encode(["success" => false, "error" => "Signing failed"]));
+}
+
 $base64Signature = base64_encode($signature);
 
-echo "✅ Signature created!<br>";
+echo "Signature created (basic)<br>";
 
-// Make request
+// ─────────────────────────────────────────
+// Request
+// ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
