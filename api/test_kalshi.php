@@ -3,12 +3,11 @@
 require_once __DIR__ . '/utils/envLoader.php';
 skyesoftLoadEnv();
 
+// ─────────────────────────────────────────
 // 🔐 Load credentials
+// ─────────────────────────────────────────
 $apiKey  = getenv("KALSHI_API_KEY");
 $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
-
-echo "API KEY: " . ($apiKey ? "loaded\n" : "missing\n");
-echo "KEY PATH: " . ($keyPath ?: "missing\n");
 
 // ❌ Validate env
 if (!$apiKey) {
@@ -27,10 +26,37 @@ if (!$key) {
     die("❌ Key failed to load\n");
 }
 
+// ─────────────────────────────────────────
+// 🎯 Select endpoint dynamically
+// ─────────────────────────────────────────
+$type = $_GET['type'] ?? 'balance';
+
+switch ($type) {
+    case 'balance':
+        $path = "/trade-api/v2/portfolio/balance";
+        break;
+
+    case 'positions':
+        $path = "/trade-api/v2/portfolio/positions";
+        break;
+
+    case 'orders':
+        $path = "/trade-api/v2/portfolio/orders";
+        break;
+
+    case 'fills':
+        $path = "/trade-api/v2/portfolio/fills";
+        break;
+
+    default:
+        die("❌ Invalid type");
+}
+
+// ─────────────────────────────────────────
 // ⚙️ Build request
+// ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $method    = "GET";
-$path      = "/trade-api/v2/markets";
 $body      = "";
 
 $message = $timestamp . $method . $path . $body;
@@ -47,7 +73,9 @@ $headers = [
     "Content-Type: application/json"
 ];
 
+// ─────────────────────────────────────────
 // 🚀 Execute request
+// ─────────────────────────────────────────
 $url = "https://api.elections.kalshi.com" . $path;
 
 $ch = curl_init();
@@ -57,25 +85,37 @@ curl_setopt_array($ch, [
     CURLOPT_HTTPHEADER => $headers,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_TIMEOUT => 10,
-
-    // 🔥 FIXES FOR YOUR ERROR:
-    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4, // Force IPv4
-    CURLOPT_DNS_CACHE_TIMEOUT => 0,         // Avoid stale DNS
+    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+    CURLOPT_DNS_CACHE_TIMEOUT => 0,
 ]);
 
 $response = curl_exec($ch);
 
-// 📊 Debug info
+// 📊 Debug
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err      = curl_error($ch);
 
 curl_close($ch);
 
-// Output
-echo "HTTP CODE: $httpCode\n";
+// ─────────────────────────────────────────
+// 📊 Output (clean JSON)
+// ─────────────────────────────────────────
+header('Content-Type: application/json');
 
 if ($err) {
-    echo "❌ CURL ERROR: $err\n";
-} else {
-    echo "\nRESPONSE:\n$response\n";
+    echo json_encode([
+        "success" => false,
+        "error"   => $err,
+        "code"    => $httpCode
+    ]);
+    exit;
 }
+
+$data = json_decode($response, true);
+
+echo json_encode([
+    "success" => true,
+    "type"    => $type,
+    "code"    => $httpCode,
+    "data"    => $data
+]);
