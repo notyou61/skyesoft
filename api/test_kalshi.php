@@ -8,13 +8,15 @@ $keyPath  = getenv("KALSHI_PRIVATE_KEY_PATH");
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path"]));
 
-$privateKeyContent = file_get_contents($keyPath);
+$privateKeyContent = trim(file_get_contents($keyPath));
 $privateKey = openssl_pkey_get_private($privateKeyContent);
-if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key"]));
+if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key - check format"]));
 
-// ─────────────────────────────────────────
-// Config - PRODUCTION
-// ─────────────────────────────────────────
+// Debug key
+$details = openssl_pkey_get_details($privateKey);
+echo "Key bits: " . ($details['bits'] ?? 'N/A') . "<br>";
+
+// Config
 $type = $_GET['type'] ?? 'balance';
 $baseUrl = 'https://api.elections.kalshi.com';
 
@@ -29,7 +31,7 @@ $path = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// Signature (PSS fallback for older PHP)
+// PSS Signing (best effort)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
@@ -37,21 +39,20 @@ $message   = $timestamp . strtoupper($method) . $path;
 $signature = '';
 if (defined('OPENSSL_PSS_PADDING')) {
     $algo = OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING;
+    echo "Using native PSS padding<br>";
 } else {
-    // Fallback for PHP < 8.1 - use manual PSS via openssl_pkey_get_details + sign
     $algo = OPENSSL_ALGO_SHA256;
+    echo "Using fallback (may fail)<br>";
 }
-$success = openssl_sign($message, $signature, $privateKey, $algo);
 
+$success = openssl_sign($message, $signature, $privateKey, $algo);
 if (!$success || empty($signature)) {
     die(json_encode(["success" => false, "error" => "Signing failed"]));
 }
 
 $base64Signature = base64_encode($signature);
 
-// ─────────────────────────────────────────
 // Request
-// ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
