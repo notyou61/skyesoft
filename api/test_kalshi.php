@@ -5,7 +5,7 @@ skyesoftLoadEnv();
 echo "PHP Version: " . phpversion() . "<br><hr>";
 
 // ─────────────────────────────────────────
-// Credentials
+// Load credentials
 // ─────────────────────────────────────────
 $apiKey  = getenv("KALSHI_API_KEY");
 $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
@@ -13,36 +13,35 @@ $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path"]));
 
-$privateKey = openssl_pkey_get_private(file_get_contents($keyPath));
-if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key"]));
+// ─────────────────────────────────────────
+// Load phpseclib
+// ─────────────────────────────────────────
+require_once __DIR__ . '/phpseclib/autoload.php';
+
+use phpseclib3\Crypt\PublicKeyLoader;
+use phpseclib3\Crypt\RSA;
+
+// Load private key with Kalshi PSS settings
+$privateKeyContent = file_get_contents($keyPath);
+$privateKey = PublicKeyLoader::load($privateKeyContent)
+    ->withPadding(RSA::SIGNATURE_PSS)
+    ->withHash('sha256')
+    ->withMGFHash('sha256')
+    ->withSaltLength(32);
 
 // ─────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────
-$path   = '/trade-api/v2/portfolio/balance';
-$method = 'GET';
-
-// ─────────────────────────────────────────
-// Signature - Basic only (no PSS constant)
+// Sign the request
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
-$message   = $timestamp . strtoupper($method) . $path;
+$message   = $timestamp . 'GET/trade-api/v2/portfolio/balance';
 
-$signature = '';
-$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256);
-
-if (!$success || empty($signature)) {
-    die(json_encode(["success" => false, "error" => "Signing failed"]));
-}
-
+$signature = $privateKey->sign($message);
 $base64Signature = base64_encode($signature);
 
-echo "Signature created (basic SHA256)<br>";
-echo "Timestamp: $timestamp<br>";
-echo "Message: $message<br><hr>";
+echo "✅ phpseclib Signature created successfully<br>";
 
 // ─────────────────────────────────────────
-// Request
+// Make the API call
 // ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
@@ -53,15 +52,12 @@ $headers = [
     "User-Agent: Kalshi-PHP/1.0"
 ];
 
-$url = "https://api.elections.kalshi.com" . $path;
-
-$ch = curl_init($url);
+$ch = curl_init("https://api.elections.kalshi.com/trade-api/v2/portfolio/balance");
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => $headers,
     CURLOPT_SSL_VERIFYPEER => true,
     CURLOPT_TIMEOUT        => 15,
-    CURLOPT_CUSTOMREQUEST  => $method,
 ]);
 
 $response = curl_exec($ch);
@@ -80,7 +76,6 @@ $data = json_decode($response, true) ?? [];
 
 echo json_encode([
     "success" => $httpCode >= 200 && $httpCode < 300,
-    "type"    => "balance",
     "code"    => $httpCode,
     "data"    => $data
 ], JSON_PRETTY_PRINT);
