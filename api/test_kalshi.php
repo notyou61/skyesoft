@@ -52,14 +52,12 @@ switch ($type) {
 // ─────────────────────────────────────────
 // ⚙️ Build request
 // ─────────────────────────────────────────
-$timestamp = (string) round(microtime(true) * 1000); // ✅ KEEP THIS
+$timestamp = (string) round(microtime(true) * 1000);
 $method    = "GET";
-$body      = "";
 
-// Exact string required
-$message = $timestamp . strtoupper($method) . $path . $body;
+// ✅ EXACT format
+$message = $timestamp . strtoupper($method) . $path;
 
-// Sign
 openssl_sign($message, $sig, $key, OPENSSL_ALGO_SHA256);
 $signature = base64_encode($sig);
 
@@ -85,8 +83,7 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT => 10,
     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
     CURLOPT_DNS_CACHE_TIMEOUT => 0,
-    CURLOPT_CUSTOMREQUEST => "GET",
-    CURLOPT_POSTFIELDS    => ""
+    CURLOPT_CUSTOMREQUEST => "GET"
 ]);
 
 $response = curl_exec($ch);
