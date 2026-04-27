@@ -11,29 +11,12 @@ $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
-// ─────────────────────────────────────────
-// 📦 Load phpseclib (EXACT PATH)
-// ─────────────────────────────────────────
-require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
-
-// FORCE load core classes (GoDaddy fix)
-require_once __DIR__ . '/phpseclib/phpseclib/Crypt/PublicKeyLoader.php';
-require_once __DIR__ . '/phpseclib/phpseclib/Crypt/RSA.php';
-require_once __DIR__ . '/phpseclib/phpseclib/Crypt/Common/AsymmetricKey.php';
-
-// ─────────────────────────────────────────
-// 🔑 Load private key
-// ─────────────────────────────────────────
 $privateKeyContent = file_get_contents($keyPath);
-
-$privateKey = PublicKeyLoader::load($privateKeyContent)
-    ->withPadding(RSA::SIGNATURE_PSS)
-    ->withHash('sha256')
-    ->withMGFHash('sha256')
-    ->withSaltLength(32);
+$privateKey = openssl_pkey_get_private($privateKeyContent);
+if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to load private key"]));
 
 // ─────────────────────────────────────────
-// ⚙️ Config
+// Config
 // ─────────────────────────────────────────
 $type = $_GET['type'] ?? 'balance';
 $baseUrl = 'https://api.elections.kalshi.com';
@@ -49,16 +32,27 @@ $path   = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// ✍️ Signature
+// Signature - PSS for PHP 8.4
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
-$signature = $privateKey->sign($message);
+$signature = '';
+$success = openssl_sign(
+    $message, 
+    $signature, 
+    $privateKey, 
+    OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING
+);
+
+if (!$success || empty($signature)) {
+    die(json_encode(["success" => false, "error" => "Signing failed - check PHP version and key"]));
+}
+
 $base64Signature = base64_encode($signature);
 
 // ─────────────────────────────────────────
-// 🌐 Request
+// Request
 // ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
@@ -85,7 +79,6 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err      = curl_error($ch);
 curl_close($ch);
 
-// Output
 header('Content-Type: application/json');
 
 if ($err) {
