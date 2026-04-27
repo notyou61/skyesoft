@@ -4,28 +4,29 @@ skyesoftLoadEnv();
 
 echo "PHP Version: " . phpversion() . "<br><hr>";
 
-// ─────────────────────────────────────────
 // Load credentials
-// ─────────────────────────────────────────
 $apiKey  = getenv("KALSHI_API_KEY");
 $keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
 
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path"]));
 
-// ─────────────────────────────────────────
-// Load phpseclib (using bootstrap.php)
-// ─────────────────────────────────────────
+// Load phpseclib bootstrap
 require_once __DIR__ . '/phpseclib/bootstrap.php';
+
+// Manually register the main class if autoloader fails
+if (!class_exists('phpseclib3\Crypt\PublicKeyLoader')) {
+    require_once __DIR__ . '/phpseclib/Crypt/PublicKeyLoader.php';
+    require_once __DIR__ . '/phpseclib/Crypt/RSA.php';
+    echo "Manually loaded classes<br>";
+}
 
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
 
-echo "✅ phpseclib loaded successfully!<br>";
+echo "✅ Classes loaded!<br>";
 
-// ─────────────────────────────────────────
-// Load private key + PSS settings
-// ─────────────────────────────────────────
+// Load private key
 $privateKeyContent = file_get_contents($keyPath);
 $privateKey = PublicKeyLoader::load($privateKeyContent)
     ->withPadding(RSA::SIGNATURE_PSS)
@@ -35,9 +36,7 @@ $privateKey = PublicKeyLoader::load($privateKeyContent)
 
 echo "✅ Private key loaded with PSS<br>";
 
-// ─────────────────────────────────────────
-// Sign request
-// ─────────────────────────────────────────
+// Sign
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . 'GET/trade-api/v2/portfolio/balance';
 
@@ -46,16 +45,13 @@ $base64Signature = base64_encode($signature);
 
 echo "✅ Signature created!<br>";
 
-// ─────────────────────────────────────────
-// API Request
-// ─────────────────────────────────────────
+// Make request
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
     "KALSHI-ACCESS-SIGNATURE: $base64Signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json",
-    "Accept: application/json",
-    "User-Agent: Kalshi-PHP/1.0"
+    "Accept: application/json"
 ];
 
 $ch = curl_init("https://api.elections.kalshi.com/trade-api/v2/portfolio/balance");
