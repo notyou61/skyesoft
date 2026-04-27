@@ -48,7 +48,7 @@ $headers = [
 ];
 
 // 🚀 Execute request
-$url = "https://trading-api.kalshi.com" . $path;
+$url = "https://api.elections.kalshi.com" . $path;
 
 $ch = curl_init();
 curl_setopt_array($ch, [
