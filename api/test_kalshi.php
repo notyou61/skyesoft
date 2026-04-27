@@ -55,7 +55,7 @@ switch ($type) {
 // ─────────────────────────────────────────
 // ⚙️ Build request
 // ─────────────────────────────────────────
-$timestamp = (string) time(); // ✅ CORRECT
+$timestamp = (string) round(microtime(true) * 1000); // ✅ KEEP THIS
 $method    = "GET";
 $body      = "";
 
@@ -68,7 +68,7 @@ $signature = base64_encode($sig);
 
 // 🌐 Headers
 $headers = [
-    "KALSHI-ACCESS-KEY-ID: $apiKey",   // ✅ FIXED
+    "KALSHI-ACCESS-KEY: $apiKey",   // ✅ FIXED
     "KALSHI-ACCESS-SIGNATURE: $signature",
     "KALSHI-ACCESS-TIMESTAMP: $timestamp",
     "Content-Type: application/json"
@@ -88,6 +88,8 @@ curl_setopt_array($ch, [
     CURLOPT_TIMEOUT => 10,
     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
     CURLOPT_DNS_CACHE_TIMEOUT => 0,
+    CURLOPT_CUSTOMREQUEST => "GET",
+    CURLOPT_POSTFIELDS    => ""
 ]);
 
 $response = curl_exec($ch);
