@@ -5,29 +5,35 @@ skyesoftLoadEnv();
 // ─────────────────────────────────────────
 // 🔐 Load credentials
 // ─────────────────────────────────────────
-$apiKey   = getenv("KALSHI_API_KEY");
-$keyPath  = getenv("KALSHI_PRIVATE_KEY_PATH");
+$apiKey  = getenv("KALSHI_API_KEY");
+$keyPath = getenv("KALSHI_PRIVATE_KEY_PATH");
 
 if (!$apiKey) die(json_encode(["success" => false, "error" => "Missing KALSHI_API_KEY"]));
 if (!$keyPath || !file_exists($keyPath)) die(json_encode(["success" => false, "error" => "Invalid key path: " . $keyPath]));
 
-// Load phpseclib (adjust path if your folder is named differently)
+// ─────────────────────────────────────────
+// 📦 Load phpseclib
+// ─────────────────────────────────────────
 require_once __DIR__ . '/phpseclib/phpseclib/bootstrap.php';
-require_once __DIR__ . '/phpseclib/phpseclib/Crypt/PublicKeyLoader.php';
-require_once __DIR__ . '/phpseclib/phpseclib/Crypt/RSA.php';
 
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Crypt\RSA;
 
-// Load private key
+// ─────────────────────────────────────────
+// 🔑 Load private key (ONCE)
+// ─────────────────────────────────────────
 $privateKeyContent = file_get_contents($keyPath);
+
+
+/** @var \phpseclib3\Crypt\RSA\PrivateKey $privateKey */
 $privateKey = PublicKeyLoader::load($privateKeyContent)
     ->withPadding(RSA::SIGNATURE_PSS)
     ->withHash('sha256')
-    ->withMGFHash('sha256');
+    ->withMGFHash('sha256')
+    ->withSaltLength(32);
 
 // ─────────────────────────────────────────
-// Config - PRODUCTION
+// ⚙️ Config
 // ─────────────────────────────────────────
 $type = $_GET['type'] ?? 'balance';
 $baseUrl = 'https://api.elections.kalshi.com';
@@ -39,28 +45,20 @@ $paths = [
     'fills'     => '/trade-api/v2/portfolio/fills',
 ];
 
-$path = $paths[$type] ?? $paths['balance'];
+$path   = $paths[$type] ?? $paths['balance'];
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// Signature (Exact PSS + SHA256 as required by Kalshi)
+// ✍️ Signature
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
-$method    = "GET";
-
-$message = $timestamp . $method . $path;
-
-$privateKey = PublicKeyLoader::load($privateKeyContent)
-    ->withPadding(RSA::SIGNATURE_PSS)
-    ->withHash('sha256')
-    ->withMGFHash('sha256')
-    ->withSaltLength(32);
+$message   = $timestamp . $method . $path;
 
 $signature = $privateKey->sign($message);
 $base64Signature = base64_encode($signature);
 
 // ─────────────────────────────────────────
-// Request
+// 🌐 Request
 // ─────────────────────────────────────────
 $headers = [
     "KALSHI-ACCESS-KEY: $apiKey",
@@ -87,6 +85,9 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err      = curl_error($ch);
 curl_close($ch);
 
+// ─────────────────────────────────────────
+// 📊 Output
+// ─────────────────────────────────────────
 header('Content-Type: application/json');
 
 if ($err) {
