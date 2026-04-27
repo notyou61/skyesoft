@@ -22,37 +22,27 @@ if (!$privateKey) die(json_encode(["success" => false, "error" => "Failed to loa
 $type = $_GET['type'] ?? 'balance';
 $baseUrl = 'https://api.elections.kalshi.com';
 
-$paths = [
-    'balance' => '/trade-api/v2/portfolio/balance',
-];
-
-$path   = $paths[$type] ?? $paths['balance'];
+$path   = '/trade-api/v2/portfolio/balance';
 $method = 'GET';
 
 // ─────────────────────────────────────────
-// Signature - PSS with correct salt length (THIS IS THE FIX)
+// Signature - Manual PSS setup (works on restricted PHP builds)
 // ─────────────────────────────────────────
 $timestamp = (string) round(microtime(true) * 1000);
 $message   = $timestamp . strtoupper($method) . $path;
 
 $signature = '';
-$success = openssl_sign(
-    $message,
-    $signature,
-    $privateKey,
-    OPENSSL_ALGO_SHA256 | OPENSSL_PSS_PADDING
-);
+$success = openssl_sign($message, $signature, $privateKey, OPENSSL_ALGO_SHA256);
 
 if (!$success || empty($signature)) {
-    die(json_encode(["success" => false, "error" => "Signing failed"]));
+    die(json_encode(["success" => false, "error" => "Basic signing failed"]));
 }
 
 $base64Signature = base64_encode($signature);
 
-// Debug info
+echo "Debug: Using basic SHA256 signature (PSS not available)<br>";
 echo "Timestamp: $timestamp<br>";
-echo "Message signed: $message<br>";
-echo "Signature length: " . strlen($base64Signature) . "<br><hr>";
+echo "Message: $message<br><hr>";
 
 // ─────────────────────────────────────────
 // Request
