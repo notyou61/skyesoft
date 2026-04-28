@@ -1589,39 +1589,48 @@ window.SkyIndex = {
         try {
             const activitySessionId = this.getActivitySessionId();
 
-            const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
+            const res = await fetch('/skyesoft/api/askOpenAI.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     userQuery: text,
-                    systemPrompt: `You are a strict contact detector for a CRM.
-Return ONLY this exact JSON, nothing else:
+                    type: 'structured',
+                    systemPrompt: `You are a strict contact detector.
 
-{"isContact": true/false, "confidence": 85}
+    Return ONLY valid JSON.
 
-Return true if the text is an email signature, business card, or clear contact block (name + phone or email).`,
-                    activitySessionId: activitySessionId
+    {"isContact": true/false, "confidence": 85}
+
+    Rules:
+    - true if name + phone OR email exists
+    - true for email signatures or business cards
+    - false otherwise`,
+                    activitySessionId
                 })
             });
 
             const data = await res.json();
-            let raw = data.response || '';
 
-            // Extract JSON even if wrapped in text
-            const match = raw.match(/\{[\s\S]*?\}/);
-            if (match) {
-                try {
-                    const parsed = JSON.parse(match[0]);
-                    return parsed.isContact === true && (parsed.confidence ?? 60) >= 60;
-                } catch (e) {}
+            // ✅ EXPECTED: direct structured JSON
+            if (typeof data.isContact === 'boolean') {
+                return data.isContact === true && (data.confidence ?? 60) >= 60;
             }
 
-            // Keyword fallback
-            const lower = raw.toLowerCase();
-            return lower.includes('name:') || 
-                   (lower.includes('phone') && lower.includes('email')) ||
-                   lower.includes('general manager');
+            // ⚠️ TEMP fallback (remove once backend is fixed)
+            if (typeof data.response === 'string') {
+                const match = data.response.match(/\{[\s\S]*?\}/);
+                if (match) {
+                    try {
+                        const parsed = JSON.parse(match[0]);
+                        return parsed.isContact === true && (parsed.confidence ?? 60) >= 60;
+                    } catch {}
+                }
+            }
+
+            // 🚨 Hard fail (better than false positives)
+            console.warn('[EOP] Invalid structured AI response:', data);
+            return false;
 
         } catch (err) {
             console.warn('[EOP] AI intent failed, using rules fallback', err);

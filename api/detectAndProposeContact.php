@@ -90,7 +90,7 @@ $extractionPrompt = $rawInput;   // Just the raw text
 
 #region SECTION 5 — AI Request Execution
 
-$apiUrl = 'https://skyelighting.com/skyesoft/api/askOpenAI.php?type=skyebot&ai=true';
+$apiUrl = 'https://skyelighting.com/skyesoft/api/askOpenAI.php';
 
 $ch = curl_init($apiUrl);
 
