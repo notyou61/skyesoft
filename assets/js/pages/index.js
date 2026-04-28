@@ -1549,7 +1549,7 @@ window.SkyIndex = {
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
-        // 1. Explicit commands (preserves all your current behavior)
+        // 1. Explicit commands (preserve current behavior)
         if (
             normalized.startsWith('add ') ||
             normalized.startsWith('create ') ||
@@ -1560,22 +1560,27 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Signature / Paste detection (EOP core)
+        // 2. Signature / Paste detection (PRIMARY for EOP)
         if (this.isLikelySignature(text)) {
             return true;
         }
 
-        // 3. AI fallback (only if needed — keeps it fast)
+        // 3. Optional AI fallback (SAFE — will not break if missing)
         try {
-            const intent = await this.detectIntentAI(text);
-            return intent === 'contact_proposal';
+            if (typeof this.detectIntentAI === 'function') {
+                const intent = await this.detectIntentAI(text);
+                return intent === 'contact_proposal';
+            }
         } catch (e) {
-            console.warn('AI intent check failed, using rules only', e);
-            return false;
+            console.warn('[EOP] AI intent unavailable — using rules only', e);
         }
+
+        return false;
     },
 
-    // Lightweight signature detector (very effective for business cards, emails, signatures)
+    // ───────────────────────────────────────────────
+    // 🧠 Signature Detection (Improved)
+    // ───────────────────────────────────────────────
     isLikelySignature(text) {
         if (!text || typeof text !== 'string') return false;
 
@@ -1583,17 +1588,31 @@ window.SkyIndex = {
         const hasEmail   = /\S+@\S+\.\S+/.test(text);
         const hasWebsite = /\bwww\.\S+|\bhttps?:\/\//i.test(text);
         const hasZip     = /\b\d{5}(?:-\d{4})?\b/.test(text);
-        const hasAddress = /\b(?:Ave|St|Rd|Blvd|Ln|Dr|Suite|Ste|Peoria|Phoenix|Glendale|Scottsdale|AZ)\b/i.test(text);
+
+        const hasAddress = /\b(?:Ave|St|Rd|Blvd|Ln|Dr|Suite|Ste|Ct|Way|Plaza)\b/i.test(text);
+        const hasCity    = /\b(Phoenix|Peoria|Glendale|Scottsdale|Mesa|Tempe|Chandler)\b/i.test(text);
+        const hasState   = /\bAZ\b/i.test(text);
 
         const lines = text.split('\n').filter(l => l.trim().length > 3);
 
-        return lines.length >= 2 && (hasPhone || hasEmail || hasWebsite || hasZip || hasAddress);
+        const signalCount = [
+            hasPhone,
+            hasEmail,
+            hasWebsite,
+            hasZip,
+            hasAddress,
+            hasCity,
+            hasState
+        ].filter(Boolean).length;
+
+        return lines.length >= 2 && signalCount >= 2;
     },
 
     // ───────────────────────────────────────────────
-    // Proposal Flow Handler
+    // 📇 Proposal Flow Handler
     // ───────────────────────────────────────────────
     async handleContactProposal(rawText) {
+
         this.clearOutput();
         this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
 
@@ -1604,31 +1623,58 @@ window.SkyIndex = {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     input: rawText,
                     activitySessionId: activitySessionId,
                     mode: 'propose'
                 })
             });
 
+            // 🔴 IMPORTANT: Handle PHP crash returning HTML
+            const contentType = res.headers.get('content-type') || '';
+
+            if (!contentType.includes('application/json')) {
+                const text = await res.text();
+                console.error('[EOP] Non-JSON response:', text);
+
+                this.appendSystemLine('❌ Server error while analyzing contact.', 'error');
+                return;
+            }
+
             const data = await res.json();
 
+            // ✅ Proposed Contact
             if (data.status === 'proposed' && data.parsed) {
                 this.currentProposal = data;
                 this.renderProposedContact(data);
-            } 
-            else if (data.status === 'needs_parcel') {
-                this.appendSystemLine(`⚠️ ${data.message || 'Parcel number required'}`, 'warning');
-                if (data.location) {
-                    this.appendSystemLine(`📍 ${data.location.address}, ${data.location.city} ${data.location.state}`);
-                }
-            } 
-            else {
-                this.appendSystemLine(data.message || 'Could not process the contact information.', 'warning');
+                return;
             }
+
+            // ⚠ Parcel / Validation Requirement
+            if (data.status === 'needs_parcel') {
+                this.appendSystemLine(`⚠️ ${data.message || 'Parcel number required'}`, 'warning');
+
+                if (data.location) {
+                    this.appendSystemLine(
+                        `📍 ${data.location.address}, ${data.location.city} ${data.location.state}`,
+                        'system'
+                    );
+                }
+                return;
+            }
+
+            // ⚠ Generic fallback
+            this.appendSystemLine(
+                data.message || 'Could not process the contact information.',
+                'warning'
+            );
+
         } catch (err) {
             console.error('[EOP Proposal Error]', err);
-            this.appendSystemLine('❌ Failed to analyze contact. You can still use "add ..." command.', 'error');
+            this.appendSystemLine(
+                '❌ Failed to analyze contact. You can still use "add ..." command.',
+                'error'
+            );
         }
     },
     // #endregion
