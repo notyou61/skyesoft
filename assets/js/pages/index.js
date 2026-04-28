@@ -1545,11 +1545,15 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
+    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal) - AI First
+
+    // ───────────────────────────────────────────────
+    // Hybrid Intent Detection (AI Primary)
+    // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
-        // 1. Explicit commands (preserve current behavior)
+        // 1. Explicit commands (always respected)
         if (
             normalized.startsWith('add ') ||
             normalized.startsWith('create ') ||
@@ -1560,59 +1564,79 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Signature / Paste detection (PRIMARY for EOP)
-        if (this.isLikelySignature(text)) {
-            return true;
+        // 2. Quick regex pre-filter (very cheap, reduces AI calls)
+        if (this.isQuickSignatureHint(text)) {
+            // If it looks promising, let AI make the final call
+            return await this.detectIntentAI(text);
         }
 
-        // 3. Optional AI fallback (SAFE — will not break if missing)
-        try {
-            if (typeof this.detectIntentAI === 'function') {
-                const intent = await this.detectIntentAI(text);
-                return intent === 'contact_proposal';
-            }
-        } catch (e) {
-            console.warn('[EOP] AI intent unavailable — using rules only', e);
-        }
-
-        return false;
+        // 3. AI Intent Detection (Primary path for pasted signatures)
+        return await this.detectIntentAI(text);
     },
-
+    
     // ───────────────────────────────────────────────
-    // 🧠 Signature Detection (Improved)
+    // Lightweight Pre-Filter (Fast & Cheap)
     // ───────────────────────────────────────────────
-    isLikelySignature(text) {
+    isQuickSignatureHint(text) {
         if (!text || typeof text !== 'string') return false;
 
-        const hasPhone   = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasEmail   = /\S+@\S+\.\S+/.test(text);
-        const hasWebsite = /\bwww\.\S+|\bhttps?:\/\//i.test(text);
-        const hasZip     = /\b\d{5}(?:-\d{4})?\b/.test(text);
-
-        const hasAddress = /\b(?:Ave|St|Rd|Blvd|Ln|Dr|Suite|Ste|Ct|Way|Plaza)\b/i.test(text);
-        const hasCity    = /\b(Phoenix|Peoria|Glendale|Scottsdale|Mesa|Tempe|Chandler)\b/i.test(text);
-        const hasState   = /\bAZ\b/i.test(text);
-
+        const lower = text.toLowerCase();
         const lines = text.split('\n').filter(l => l.trim().length > 3);
 
-        const signalCount = [
-            hasPhone,
-            hasEmail,
-            hasWebsite,
-            hasZip,
-            hasAddress,
-            hasCity,
-            hasState
-        ].filter(Boolean).length;
+        // Must have multiple lines + at least one strong signal
+        if (lines.length < 2) return false;
 
-        return lines.length >= 2 && signalCount >= 2;
+        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        const hasEmail = /\S+@\S+\.\S+/.test(text);
+
+        return hasPhone || hasEmail;
     },
 
     // ───────────────────────────────────────────────
-    // 📇 Proposal Flow Handler
+    // AI-Powered Intent Detection (Main Brain)
+    // ───────────────────────────────────────────────
+    async detectIntentAI(text) {
+        if (!text) return false;
+
+        try {
+            const activitySessionId = this.getActivitySessionId();
+
+            const res = await fetch('/skyesoft/api/askOpenAI.php?type=skyebot&ai=true', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    userQuery: text,
+                    systemPrompt: `You are a smart contact detection assistant.
+                    Return ONLY JSON: {"isContact": true/false, "confidence": 0-100}
+
+                    Rules:
+                    - Return true if the text looks like an email signature, business card, or contact info (name + phone/email/title/company).
+                    - Be lenient but accurate.
+                    - Confidence should be high (>70) for clear signatures.`,
+                    activitySessionId: activitySessionId
+                })
+            });
+
+            if (!res.ok) throw new Error('AI intent failed');
+
+            const data = await res.json();
+            const intent = data.response ? JSON.parse(data.response) : data;
+
+            return (intent?.isContact === true && (intent?.confidence ?? 0) > 60);
+
+        } catch (err) {
+            console.warn('[EOP] AI intent check failed, falling back to rules', err);
+            
+            // Safe fallback to basic regex if AI is unavailable
+            return this.isQuickSignatureHint(text);
+        }
+    },
+
+    // ───────────────────────────────────────────────
+    // Proposal Flow Handler
     // ───────────────────────────────────────────────
     async handleContactProposal(rawText) {
-
         this.clearOutput();
         this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
 
@@ -1630,40 +1654,28 @@ window.SkyIndex = {
                 })
             });
 
-            // 🔴 IMPORTANT: Handle PHP crash returning HTML
             const contentType = res.headers.get('content-type') || '';
 
             if (!contentType.includes('application/json')) {
                 const text = await res.text();
                 console.error('[EOP] Non-JSON response:', text);
-
                 this.appendSystemLine('❌ Server error while analyzing contact.', 'error');
                 return;
             }
 
             const data = await res.json();
 
-            // ✅ Proposed Contact
             if (data.status === 'proposed' && data.parsed) {
                 this.currentProposal = data;
                 this.renderProposedContact(data);
                 return;
             }
 
-            // ⚠ Parcel / Validation Requirement
-            if (data.status === 'needs_parcel') {
-                this.appendSystemLine(`⚠️ ${data.message || 'Parcel number required'}`, 'warning');
-
-                if (data.location) {
-                    this.appendSystemLine(
-                        `📍 ${data.location.address}, ${data.location.city} ${data.location.state}`,
-                        'system'
-                    );
-                }
+            if (data.status === 'needs_parcel' || data.message) {
+                this.appendSystemLine(`⚠️ ${data.message || 'Additional info needed'}`, 'warning');
                 return;
             }
 
-            // ⚠ Generic fallback
             this.appendSystemLine(
                 data.message || 'Could not process the contact information.',
                 'warning'

@@ -41,7 +41,7 @@ $input = json_decode(file_get_contents('php://input'), true);
 $rawInput          = trim($input['input'] ?? '');
 $activitySessionId = $input['activitySessionId'] ?? 'no_session';
 
-if (!$rawInput) {
+if (empty($rawInput)) {
     jsonError('No input provided');
 }
 
@@ -49,19 +49,22 @@ if (!$rawInput) {
 
 #region SECTION 4 — AI Prompt Construction
 
-$prompt = <<<EOT
-Extract structured contact information from the pasted text.
+$systemPrompt = <<<EOT
+You are an expert at parsing email signatures and business card text for a CRM in Phoenix, Arizona.
 
-Return ONLY valid JSON. No commentary.
+Your job is to detect if the pasted text is a contact signature and extract clean structured data.
+
+Return ONLY valid JSON with this exact structure:
 
 {
   "intent": "contact_proposal",
-  "confidence": 90,
+  "confidence": 85,
   "parsed": {
-    "entity": { "name": "" },
+    "entity": { "name": "Company Name" },
     "contact": {
       "firstName": "",
       "lastName": "",
+      "salutation": "Mr.",
       "title": "",
       "primaryPhone": "",
       "email": ""
@@ -75,9 +78,17 @@ Return ONLY valid JSON. No commentary.
   }
 }
 
-Text:
-{$rawInput}
+Critical Rules:
+- If the text contains name + phone OR email OR title + company → treat as contact_proposal.
+- Be very aggressive at extracting from typical email signatures.
+- Common formats: Name, Title, Company, Phone, Email, Address.
+- Fix common issues: extra dashes, | separators, extra spaces, OCR errors.
+- Always normalize phone to (XXX) XXX-XXXX format.
+- Default state to AZ if Phoenix-metro cities are detected.
+- Infer company name from email domain if not explicitly stated.
 EOT;
+
+$extractionPrompt = "Parse this email signature or business card text into structured contact data:\n\n" . $rawInput;
 
 #endregion
 
@@ -92,7 +103,9 @@ curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
     CURLOPT_POSTFIELDS     => json_encode([
-        'userQuery'         => $prompt,
+        'userQuery'     => $extractionPrompt,
+        'systemPrompt'  => $systemPrompt,
+        'type'          => 'structured',
         'activitySessionId' => $activitySessionId
     ]),
     CURLOPT_TIMEOUT        => 20
@@ -116,13 +129,13 @@ if ($httpCode !== 200 || !$response) {
 #region SECTION 6 — AI Response Processing
 
 $start = strpos($response, '{');
-$end   = strrpos($response, '}');
+$end   = strrpos($response, '}') + 1;
 
-if ($start === false || $end === false) {
+if ($start === false || $end <= $start) {
     jsonError('Invalid AI response format');
 }
 
-$jsonStr = substr($response, $start, $end - $start + 1);
+$jsonStr = substr($response, $start, $end - $start);
 $aiData  = json_decode($jsonStr, true);
 
 #endregion
@@ -132,22 +145,103 @@ $aiData  = json_decode($jsonStr, true);
 if (!$aiData || ($aiData['intent'] ?? '') !== 'contact_proposal') {
     echo json_encode([
         'status'  => 'reject',
-        'message' => 'Not recognized as contact data'
+        'message' => 'Not recognized as a contact signature.'
     ]);
     exit;
 }
 
 #endregion
 
-#region SECTION 8 — Success Response
+#region SECTION 8 — Data Processing & Enhancement
+
+$parsed = $aiData['parsed'] ?? [];
+$parsed = normalizeParsed($parsed);
+$parsed = inferMissingFields($parsed);
+
+$missing = validateParsed($parsed);
+
+// Maricopa County parcel hint
+$needsParcel = false;
+$parcelMsg = '';
+if (!empty($parsed['location']['city'])) {
+    $city = strtolower($parsed['location']['city']);
+    if (str_contains($city, 'phoenix') || str_contains($city, 'peoria') ||
+        str_contains($city, 'glendale') || str_contains($city, 'scottsdale') ||
+        str_contains($city, 'tempe') || str_contains($city, 'mesa') ||
+        str_contains($city, 'chandler')) {
+        $needsParcel = true;
+        $parcelMsg = 'Maricopa County parcel lookup recommended.';
+    }
+}
+
+#endregion
+
+#region SECTION 9 — Success Response
 
 echo json_encode([
-    'status'            => 'proposed',
-    'confidence'        => $aiData['confidence'] ?? 85,
-    'parsed'            => $aiData['parsed'] ?? [],
-    'source'            => 'ai_eop',
-    'activitySessionId' => $activitySessionId,
-    'raw_preview'       => substr($rawInput, 0, 120)
+    'status'           => 'proposed',
+    'confidence'       => $aiData['confidence'] ?? 82,
+    'parsed'           => $parsed,
+    'source'           => 'ai_eop_signature',
+    'needs_parcel'     => $needsParcel,
+    'message'          => $parcelMsg,
+    'issues'           => !empty($missing) ? $missing : null,
+    'activitySessionId'=> $activitySessionId,
+    'raw_preview'      => substr($rawInput, 0, 250)
 ]);
 
 #endregion
+
+// =====================================================
+// Helper Functions
+// =====================================================
+
+function normalizeParsed(array $parsed): array
+{
+    if (!empty($parsed['contact']['email'])) {
+        $parsed['contact']['email'] = strtolower(trim($parsed['contact']['email']));
+    }
+
+    if (!empty($parsed['contact']['primaryPhone'])) {
+        $phone = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
+        if (strlen($phone) === 10) {
+            $parsed['contact']['primaryPhone'] = '(' . substr($phone,0,3) . ') ' .
+                                                 substr($phone,3,3) . '-' . substr($phone,6);
+        }
+    }
+
+    if (!empty($parsed['location']['state'])) {
+        $parsed['location']['state'] = strtoupper($parsed['location']['state']);
+    }
+
+    return $parsed;
+}
+
+function inferMissingFields(array $parsed): array
+{
+    // Infer company from email domain
+    if (empty($parsed['entity']['name']) && !empty($parsed['contact']['email'])) {
+        $domain = explode('@', $parsed['contact']['email'])[1] ?? '';
+        if ($domain) {
+            $company = explode('.', $domain)[0];
+            $parsed['entity']['name'] = ucwords(str_replace(['-', '_'], ' ', $company));
+        }
+    }
+
+    // Default salutation
+    if (empty($parsed['contact']['salutation'])) {
+        $parsed['contact']['salutation'] = 'Mr.';
+    }
+
+    return $parsed;
+}
+
+function validateParsed(array $parsed): array
+{
+    $missing = [];
+    if (empty($parsed['contact']['firstName'] ?? '')) $missing[] = 'firstName';
+    if (empty($parsed['contact']['lastName']  ?? '')) $missing[] = 'lastName';
+    if (empty($parsed['contact']['email']     ?? '')) $missing[] = 'email';
+    return $missing;
+}
+?>
