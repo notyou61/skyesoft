@@ -162,6 +162,7 @@ window.SkyIndex = {
     authState: null,
     commandSurfaceActive: false,
     idleState: null,
+    currentProposal: null,
     // #endregion
 
     // #region 🛠️ Command Output Helpers
@@ -1208,122 +1209,215 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 🚀 Command Router 
-    async handleCommand(text) {
+    // #region 📇 Proposed Contact Renderer
+    renderProposedContact(data) {
+        const parsed = data?.parsed || {};
+        const c = parsed.contact || {};
+        const e = parsed.entity || {};
+        const l = parsed.location || {};
 
-        const activitySessionId = this.getActivitySessionId();
-        console.log('🔑 Command using activitySessionId:', activitySessionId);
+        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unnamed Contact';
+        const title    = c.title ? `<div>${c.title}</div>` : '';
+        const company  = e.name ? `<div style="margin-top:6px;">🏢 ${e.name}</div>` : '';
+        
+        const addressParts = [
+            l.address,
+            l.city,
+            l.state ? l.state.toUpperCase() : '',
+            l.zip
+        ].filter(Boolean);
 
-        this.appendSystemLine(text, 'user');
+        const address = addressParts.length ? addressParts.join(' ') : '';
 
-        const normalized = (text || '').toString().trim().toLowerCase();
+        const html = `
+            <div class="contact-card proposed">
+                <div><strong>${fullName}</strong></div>
+                ${title}
+                ${company}
 
-        // ───────────────────────────────────────────────
-        // 📄 Code Reader Command
-        // ───────────────────────────────────────────────
-        if (normalized.startsWith('read ') || normalized.startsWith('open ')) {
-            const file = normalized
-                .replace(/^read\s+/, '')
-                .replace(/^open\s+/, '')
-                .trim();
+                <div>📞 ${c.primaryPhone || '(no phone)'}</div>
+                <div>✉ ${c.email || '(no email)'}</div>
 
-            await this.readCodeFile(file);
+                ${address ? `<div style="margin-top:6px;">📍 ${address}</div>` : ''}
+
+                <div style="margin-top:12px; display: flex; gap: 8px;">
+                    <button onclick="SkyIndex.handleProposalAction('accept')" class="btn-accept">✔ Accept</button>
+                    <button onclick="SkyIndex.handleProposalAction('edit')" class="btn-edit">✏ Edit</button>
+                    <button onclick="SkyIndex.handleProposalAction('decline')" class="btn-decline">❌ Decline</button>
+                </div>
+            </div>
+        `;
+
+        this.appendSystemHtml(html);
+    },
+    // #endregion
+
+    // #region 📇 Proposal Action Handler + Accept Flow
+    handleProposalAction(action) {
+        if (!this.currentProposal) {
+            this.appendSystemLine('⚠️ No active proposal found.', 'warning');
             return;
         }
 
-        // ───────────────────────────────────────────────
-        // 📇 CONTACT CREATION - EOP (Ease of Paste) UPGRADE
-        // ───────────────────────────────────────────────
-        if (await this.isContactCreationIntent(text, normalized)) {
-            console.log('🔍 EOP Contact Intent Detected → Proposal Flow');
-            await this.handleContactProposal(text);
+        switch (action) {
+            case 'decline':
+                this.appendSystemLine('❌ Contact proposal declined.', 'system');
+                this.currentProposal = null;
+                break;
+
+            case 'edit':
+                this.appendSystemLine('✏️ Edit mode coming soon...', 'system');
+                // Future: this.renderEditableProposal();
+                break;
+
+            case 'accept':
+                this.acceptProposedContact();
+                break;
+
+            default:
+                console.warn('[Proposal] Unknown action:', action);
+        }
+    },
+
+    async acceptProposedContact() {
+        const prop = this.currentProposal;
+        if (!prop?.parsed) {
+            this.appendSystemLine('⚠️ No proposal data to save.', 'error');
             return;
         }
 
-        // ───────────────────────────────────────────────
-        // 📇 Last Contact
-        // ───────────────────────────────────────────────
-        if (normalized === 'last contact') {
-            if (!this.lastContactId) {
-                this.appendSystemLine('No recent contact available.');
+        this.appendSystemLine('💾 Saving contact...', 'system');
+
+        try {
+            // --------------------------------------------------
+            // 🔹 Map proposal → DB schema
+            // --------------------------------------------------
+            const payload = this.mapProposalToDBSchema(prop.parsed);
+
+            // --------------------------------------------------
+            // 🔥 Enforce defaults / normalization
+            // --------------------------------------------------
+            payload.contactSalutation = payload.contactSalutation || 'Mr';
+
+            // --------------------------------------------------
+            // 🚨 Required field validation (client-side guard)
+            // --------------------------------------------------
+            const missing = [];
+
+            if (!payload.contactFirstName)  missing.push('First Name');
+            if (!payload.contactLastName)   missing.push('Last Name');
+            if (!payload.contactPrimaryPhone) missing.push('Phone');
+            if (!payload.contactEmail)      missing.push('Email');
+
+            if (missing.length) {
+                this.appendSystemLine(
+                    `⚠️ Missing required fields: ${missing.join(', ')}`,
+                    'warning'
+                );
                 return;
             }
-            return await this.handleCommand(`show ${this.lastContactId}`);
-        }
 
-        // ───────────────────────────────────────────────
-        // 📇 Show / List Contact
-        // ───────────────────────────────────────────────
-        if (normalized.startsWith('show ') || normalized.startsWith('list ')) {
+            // --------------------------------------------------
+            // 📡 Send to backend
+            // --------------------------------------------------
+            const res = await fetch('/skyesoft/api/createContact.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...payload,
+                    activitySessionId: this.getActivitySessionId()
+                })
+            });
 
-            this.clearOutput();
-            console.log('[CONTACT QUERY]', text);
+            // --------------------------------------------------
+            // 🔍 Safe JSON parsing (prevents "<" crash)
+            // --------------------------------------------------
+            let result;
+            const text = await res.text();
 
             try {
-                let location = this.lastLocation || { latitude: null, longitude: null };
-
-                if (location.latitude === null || location.longitude === null) {
-                    location = await this.getLocationSafe();
-                    this.lastLocation = location;
-                }
-
-                const res = await fetch('/skyesoft/api/getContacts.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        query: text,
-                        latitude: location.latitude,
-                        longitude: location.longitude,
-                        activitySessionId: activitySessionId
-                    })
-                });
-
-                const data = await res.json();
-
-                if (!data?.success || !Array.isArray(data.contacts) || data.contacts.length === 0) {
-                    return await this.executeAICommand(text, activitySessionId);
-                }
-
-                if (data.mode === 'single' && data.contacts.length > 0) {
-                    this.renderContactDetail(data.contacts[0]);
-                } else {
-                    this.appendSystemLine(`📇 ${data.contacts.length} contact(s) found`);
-                    this.renderContactsList(data.contacts);
-                }
-            } catch (err) {
-                console.error('[CONTACT FETCH ERROR]', err);
-                return await this.executeAICommand(text, activitySessionId);
-            }
-            return;
-        }
-
-        // ───────────────────────────────────────────────
-        // UI Actions
-        // ───────────────────────────────────────────────
-        let canonicalAction = null;
-        if (['cls', 'clear', 'reset'].includes(normalized)) canonicalAction = 'clear_screen';
-        else if (['logout', 'exit'].includes(normalized)) canonicalAction = 'logout';
-
-        if (canonicalAction) {
-            const handler = this.uiActionRegistry?.[canonicalAction];
-            if (typeof handler === 'function') {
-                await handler.call(this);
+                result = JSON.parse(text);
+            } catch (e) {
+                console.error('[Invalid JSON Response]', text);
+                this.appendSystemLine('❌ Server returned invalid response.', 'error');
                 return;
             }
-        }
 
-        // ───────────────────────────────────────────────
-        // AI Fallback
-        // ───────────────────────────────────────────────
-        await this.executeAICommand(text, activitySessionId);
+            // --------------------------------------------------
+            // ✅ Success handling
+            // --------------------------------------------------
+            if (result.success === true) {
+
+                this.appendSystemLine('✔ Contact Created', 'success');
+
+                this.renderContactResult(result);
+
+                // Clear proposal state
+                this.currentProposal = null;
+
+                // Track last contact
+                if (result.contact?.contactId) {
+                    this.lastContactId = result.contact.contactId;
+                }
+
+                return;
+            }
+
+            // --------------------------------------------------
+            // ⚠️ Known failure responses
+            // --------------------------------------------------
+            if (result.status === 'resolved_duplicate') {
+                this.renderContactResult(result);
+                this.currentProposal = null;
+                return;
+            }
+
+            if (result.status === 'reject') {
+                this.appendSystemLine(`⚠️ ${result.reason || 'Rejected'}`, 'warning');
+                return;
+            }
+
+            // --------------------------------------------------
+            // ❌ Generic failure
+            // --------------------------------------------------
+            this.appendSystemLine(
+                `❌ ${result.message || 'Save failed'}`,
+                'error'
+            );
+
+        } catch (err) {
+            console.error('[Accept Contact Error]', err);
+
+            this.appendSystemLine(
+                '❌ Failed to save contact. Check connection or server.',
+                'error'
+            );
+        }
+    },
+
+    mapProposalToDBSchema(parsed) {
+        const c = parsed.contact || {};
+        const e = parsed.entity || {};
+        const l = parsed.location || {};
+
+        return {
+            contactFirstName:    c.firstName,
+            contactLastName:     c.lastName,
+            contactSalutation: c.salutation || 'Mr',
+            contactTitle:        c.title,
+            contactPrimaryPhone: c.primaryPhone,
+            contactEmail:        c.email,
+            entityName:          e.name,
+            locationAddress:     l.address,
+            locationCity:        l.city,
+            locationState:       (l.state || 'AZ').toUpperCase(),
+            locationZip:         l.zip,
+        };
     },
     // #endregion
 
     // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
-    // ───────────────────────────────────────────────
-    // Hybrid Intent Detection (Rules + AI)
-    // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
@@ -1392,7 +1486,8 @@ window.SkyIndex = {
             const data = await res.json();
 
             if (data.status === 'proposed' && data.parsed) {
-                this.showProposalUI(data.parsed);
+                this.currentProposal = data;
+                this.renderProposedContact(data);
             } 
             else if (data.status === 'needs_parcel') {
                 this.appendSystemLine(`⚠️ ${data.message || 'Parcel number required'}`, 'warning');
