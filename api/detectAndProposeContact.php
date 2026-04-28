@@ -50,11 +50,9 @@ if (empty($rawInput)) {
 #region SECTION 4 — AI Prompt Construction
 
 $systemPrompt = <<<EOT
-You are an expert at parsing email signatures and business card text for a CRM in Phoenix, Arizona.
+You are a strict JSON-only contact extraction engine.
 
-Your job is to detect if the pasted text is a contact signature and extract clean structured data.
-
-Return ONLY valid JSON with this exact structure:
+You MUST return ONLY valid JSON. No explanations, no extra text, no markdown, no "Here is...", nothing else.
 
 {
   "intent": "contact_proposal",
@@ -62,32 +60,31 @@ Return ONLY valid JSON with this exact structure:
   "parsed": {
     "entity": { "name": "Company Name" },
     "contact": {
-      "firstName": "",
-      "lastName": "",
-      "salutation": "Mr.",
-      "title": "",
-      "primaryPhone": "",
-      "email": ""
+      "firstName": "Jennifer",
+      "lastName": "Hammond",
+      "salutation": "Ms.",
+      "title": "General Manager",
+      "primaryPhone": "(623) 977-0599",
+      "email": "ihop3080@romulusinc.com"
     },
     "location": {
-      "address": "",
-      "city": "",
+      "address": "10603 W Olive",
+      "city": "Peoria",
       "state": "AZ",
-      "zip": ""
+      "zip": "85345"
     }
   }
 }
 
-Critical Rules:
-- If the text contains name + phone OR email OR title + company → treat as contact_proposal.
-- Be very aggressive at extracting from typical email signatures.
-- Fix common issues: extra dashes, | separators, extra spaces, OCR errors.
-- Always normalize phone to (XXX) XXX-XXXX format.
-- Default state to AZ if Phoenix-metro cities are detected.
-- Infer company name from email domain if not explicitly stated.
+Rules:
+- Always return "intent": "contact_proposal" if there is any name + phone or email.
+- Be aggressive at extracting data from email signatures.
+- Fix formatting (remove extra dots, fix phone numbers, etc.).
+- Use (XXX) XXX-XXXX phone format.
+- Infer company from email if missing.
 EOT;
 
-$extractionPrompt = "Parse this email signature or business card text into structured contact data:\n\n" . $rawInput;
+$extractionPrompt = $rawInput;   // Just the raw text
 
 #endregion
 
