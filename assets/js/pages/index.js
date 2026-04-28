@@ -1545,15 +1545,15 @@ window.SkyIndex = {
     },
     // #endregion
 
-    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal) - AI First
+    // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
 
     // ───────────────────────────────────────────────
-    // Hybrid Intent Detection (AI Primary + Safe Fallback)
+    // Hybrid Intent Detection - AI Primary
     // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
-        // 1. Explicit commands (always honored)
+        // 1. Explicit commands
         if (
             normalized.startsWith('add ') ||
             normalized.startsWith('create ') ||
@@ -1564,33 +1564,28 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Quick pre-filter (cheap)
+        // 2. Quick filter
         if (!this.isQuickSignatureHint(text)) {
             return false;
         }
 
-        // 3. AI Intent Check (with robust parsing)
+        // 3. AI Intent Check (most reliable now)
         return await this.detectIntentAI(text);
     },
 
-    // ───────────────────────────────────────────────
-    // Fast Pre-Filter
-    // ───────────────────────────────────────────────
     isQuickSignatureHint(text) {
         if (!text || typeof text !== 'string') return false;
         const lines = text.split('\n').filter(l => l.trim().length > 3);
-        if (lines.length < 2) return false;
-
-        return /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) || 
-               /\S+@\S+\.\S+/.test(text);
+        return lines.length >= 2 && (
+            /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) ||
+            /\S+@\S+\.\S+/.test(text)
+        );
     },
 
     // ───────────────────────────────────────────────
-    // Robust AI Intent Detection
+    // Robust AI Intent Detector
     // ───────────────────────────────────────────────
     async detectIntentAI(text) {
-        if (!text) return false;
-
         try {
             const activitySessionId = this.getActivitySessionId();
 
@@ -1600,71 +1595,64 @@ window.SkyIndex = {
                 credentials: 'include',
                 body: JSON.stringify({
                     userQuery: text,
-                    systemPrompt: `You are a contact detection assistant. 
-Return ONLY valid JSON in this exact format, no extra text:
+                    systemPrompt: `You are a strict contact detector for a CRM.
+Return ONLY this exact JSON, nothing else:
 
-{"isContact": true/false, "confidence": 0-100}
+{"isContact": true/false, "confidence": 85}
 
-Rules:
-- Return true if this looks like an email signature, business card, or contact block (name + phone/email/title/company).
-- Be lenient but accurate.`,
+Return true if the text is an email signature, business card, or clear contact block (name + phone or email).`,
                     activitySessionId: activitySessionId
                 })
             });
 
-            if (!res.ok) throw new Error('AI request failed');
-
             const data = await res.json();
-            let responseText = data.response || data.text || JSON.stringify(data);
+            let raw = data.response || '';
 
-            // === ROBUST JSON EXTRACTION ===
-            let jsonMatch = responseText.match(/\{.*\}/s);
-            if (jsonMatch) {
+            // Extract JSON even if wrapped in text
+            const match = raw.match(/\{[\s\S]*?\}/);
+            if (match) {
                 try {
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    return (parsed.isContact === true && (parsed.confidence ?? 0) >= 60);
+                    const parsed = JSON.parse(match[0]);
+                    return parsed.isContact === true && (parsed.confidence ?? 60) >= 60;
                 } catch (e) {}
             }
 
-            // Fallback: simple keyword check on text response
-            const lower = responseText.toLowerCase();
-            return lower.includes('contact') || 
-                   lower.includes('signature') || 
-                   lower.includes('name') && (lower.includes('phone') || lower.includes('email'));
+            // Keyword fallback
+            const lower = raw.toLowerCase();
+            return lower.includes('name:') || 
+                   (lower.includes('phone') && lower.includes('email')) ||
+                   lower.includes('general manager');
 
         } catch (err) {
-            console.warn('[EOP] AI intent check failed, falling back to rules', err);
+            console.warn('[EOP] AI intent failed, using rules fallback', err);
             return this.isQuickSignatureHint(text);
         }
     },
 
     // ───────────────────────────────────────────────
-    // Proposal Flow Handler
+    // Proposal Handler
     // ───────────────────────────────────────────────
     async handleContactProposal(rawText) {
         this.clearOutput();
         this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
 
         try {
-            const activitySessionId = this.getActivitySessionId();
-
             const res = await fetch('/skyesoft/api/detectAndProposeContact.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     input: rawText,
-                    activitySessionId: activitySessionId,
+                    activitySessionId: this.getActivitySessionId(),
                     mode: 'propose'
                 })
             });
 
             const contentType = res.headers.get('content-type') || '';
-
             if (!contentType.includes('application/json')) {
                 const text = await res.text();
-                console.error('[EOP] Non-JSON response:', text);
-                this.appendSystemLine('❌ Server error while analyzing contact.', 'error');
+                console.error('[EOP] Non-JSON:', text);
+                this.appendSystemLine('❌ Server error analyzing contact.', 'error');
                 return;
             }
 
@@ -1676,24 +1664,14 @@ Rules:
                 return;
             }
 
-            if (data.status === 'needs_parcel' || data.message) {
-                this.appendSystemLine(`⚠️ ${data.message || 'Additional info needed'}`, 'warning');
-                return;
-            }
-
-            this.appendSystemLine(
-                data.message || 'Could not process the contact information.',
-                'warning'
-            );
+            this.appendSystemLine(data.message || 'Could not process contact.', 'warning');
 
         } catch (err) {
             console.error('[EOP Proposal Error]', err);
-            this.appendSystemLine(
-                '❌ Failed to analyze contact. You can still use "add ..." command.',
-                'error'
-            );
+            this.appendSystemLine('❌ Failed to analyze contact.', 'error');
         }
     },
+    
     // #endregion
 
     // #region 📇 Contact Result Renderer
