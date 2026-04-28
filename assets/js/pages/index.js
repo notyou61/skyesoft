@@ -1548,12 +1548,12 @@ window.SkyIndex = {
     // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal) - AI First
 
     // ───────────────────────────────────────────────
-    // Hybrid Intent Detection (AI Primary)
+    // Hybrid Intent Detection (AI Primary + Safe Fallback)
     // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
-        // 1. Explicit commands (always respected)
+        // 1. Explicit commands (always honored)
         if (
             normalized.startsWith('add ') ||
             normalized.startsWith('create ') ||
@@ -1564,36 +1564,29 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Quick regex pre-filter (very cheap, reduces AI calls)
-        if (this.isQuickSignatureHint(text)) {
-            // If it looks promising, let AI make the final call
-            return await this.detectIntentAI(text);
+        // 2. Quick pre-filter (cheap)
+        if (!this.isQuickSignatureHint(text)) {
+            return false;
         }
 
-        // 3. AI Intent Detection (Primary path for pasted signatures)
+        // 3. AI Intent Check (with robust parsing)
         return await this.detectIntentAI(text);
     },
-    
+
     // ───────────────────────────────────────────────
-    // Lightweight Pre-Filter (Fast & Cheap)
+    // Fast Pre-Filter
     // ───────────────────────────────────────────────
     isQuickSignatureHint(text) {
         if (!text || typeof text !== 'string') return false;
-
-        const lower = text.toLowerCase();
         const lines = text.split('\n').filter(l => l.trim().length > 3);
-
-        // Must have multiple lines + at least one strong signal
         if (lines.length < 2) return false;
 
-        const hasPhone = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
-        const hasEmail = /\S+@\S+\.\S+/.test(text);
-
-        return hasPhone || hasEmail;
+        return /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) || 
+               /\S+@\S+\.\S+/.test(text);
     },
 
     // ───────────────────────────────────────────────
-    // AI-Powered Intent Detection (Main Brain)
+    // Robust AI Intent Detection
     // ───────────────────────────────────────────────
     async detectIntentAI(text) {
         if (!text) return false;
@@ -1607,28 +1600,40 @@ window.SkyIndex = {
                 credentials: 'include',
                 body: JSON.stringify({
                     userQuery: text,
-                    systemPrompt: `You are a smart contact detection assistant.
-                    Return ONLY JSON: {"isContact": true/false, "confidence": 0-100}
+                    systemPrompt: `You are a contact detection assistant. 
+Return ONLY valid JSON in this exact format, no extra text:
 
-                    Rules:
-                    - Return true if the text looks like an email signature, business card, or contact info (name + phone/email/title/company).
-                    - Be lenient but accurate.
-                    - Confidence should be high (>70) for clear signatures.`,
+{"isContact": true/false, "confidence": 0-100}
+
+Rules:
+- Return true if this looks like an email signature, business card, or contact block (name + phone/email/title/company).
+- Be lenient but accurate.`,
                     activitySessionId: activitySessionId
                 })
             });
 
-            if (!res.ok) throw new Error('AI intent failed');
+            if (!res.ok) throw new Error('AI request failed');
 
             const data = await res.json();
-            const intent = data.response ? JSON.parse(data.response) : data;
+            let responseText = data.response || data.text || JSON.stringify(data);
 
-            return (intent?.isContact === true && (intent?.confidence ?? 0) > 60);
+            // === ROBUST JSON EXTRACTION ===
+            let jsonMatch = responseText.match(/\{.*\}/s);
+            if (jsonMatch) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    return (parsed.isContact === true && (parsed.confidence ?? 0) >= 60);
+                } catch (e) {}
+            }
+
+            // Fallback: simple keyword check on text response
+            const lower = responseText.toLowerCase();
+            return lower.includes('contact') || 
+                   lower.includes('signature') || 
+                   lower.includes('name') && (lower.includes('phone') || lower.includes('email'));
 
         } catch (err) {
             console.warn('[EOP] AI intent check failed, falling back to rules', err);
-            
-            // Safe fallback to basic regex if AI is unavailable
             return this.isQuickSignatureHint(text);
         }
     },

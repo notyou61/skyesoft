@@ -24,7 +24,7 @@ ini_set('display_errors', 0); // Prevent HTML output
 #region SECTION 2 — Helpers
 
 // JSON Error Response
-function jsonError($msg) {
+function jsonError(string $msg): void {
     echo json_encode([
         'status'  => 'error',
         'message' => $msg
@@ -81,7 +81,6 @@ Return ONLY valid JSON with this exact structure:
 Critical Rules:
 - If the text contains name + phone OR email OR title + company → treat as contact_proposal.
 - Be very aggressive at extracting from typical email signatures.
-- Common formats: Name, Title, Company, Phone, Email, Address.
 - Fix common issues: extra dashes, | separators, extra spaces, OCR errors.
 - Always normalize phone to (XXX) XXX-XXXX format.
 - Default state to AZ if Phoenix-metro cities are detected.
@@ -114,11 +113,11 @@ curl_setopt_array($ch, [
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
+// curl_close($ch);  // Removed — deprecated in PHP 8.4+ and no longer needed
+
 if ($response === false) {
     jsonError('cURL error: ' . curl_error($ch));
 }
-
-curl_close($ch);
 
 if ($httpCode !== 200 || !$response) {
     jsonError('AI service unavailable');
@@ -219,7 +218,6 @@ function normalizeParsed(array $parsed): array
 
 function inferMissingFields(array $parsed): array
 {
-    // Infer company from email domain
     if (empty($parsed['entity']['name']) && !empty($parsed['contact']['email'])) {
         $domain = explode('@', $parsed['contact']['email'])[1] ?? '';
         if ($domain) {
@@ -228,7 +226,6 @@ function inferMissingFields(array $parsed): array
         }
     }
 
-    // Default salutation
     if (empty($parsed['contact']['salutation'])) {
         $parsed['contact']['salutation'] = 'Mr.';
     }
