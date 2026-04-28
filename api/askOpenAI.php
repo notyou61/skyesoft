@@ -944,10 +944,11 @@ if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'])) {
 $intent     = null;
 $confidence = null;
 $query      = null;
+$systemPrompt = null;
 
 $root = dirname(__DIR__);
 
-// 🔧 Parse incoming JSON (CRITICAL FIX)
+// 🔧 Parse incoming JSON (CRITICAL)
 $rawInput = file_get_contents("php://input");
 $input    = json_decode($rawInput, true) ?? [];
 
@@ -957,39 +958,63 @@ if ($apiKey === null) {
     aiFail("OPENAI_API_KEY not available.");
 }
 
-// 🔎 Mode / Flags
-$type = $_GET["type"] ?? ($argv[1] ?? "narrative");
+// 🔎 Resolve Mode / Type (POST body has highest priority)
+$type = $input['type'] 
+     ?? $_POST['type'] 
+     ?? $_GET['type'] 
+     ?? ($argv[1] ?? "skyebot");
 
-$aiFlag =
-    ($_GET["ai"] ?? "false") === "true"
-    || (($argv[2] ?? "") === "ai=true");
+$isStructured = ($type === 'structured');
 
-if (!$aiFlag) {
-    error_log('[askOpenAI] AI flag missing — defaulting to enabled');
-    $aiFlag = true;
-}
+// Resolve systemPrompt (for structured mode)
+$systemPrompt = $input['systemPrompt'] 
+             ?? $_POST['systemPrompt'] 
+             ?? null;
 
-// 🧠 Resolve Query (JSON → POST → GET → CLI)
-$query =
-    $input["userQuery"]
-    ?? $_POST["userQuery"]
-    ?? $_GET["userQuery"]
-    ?? ($argv[3] ?? null);
+// 🧠 Resolve userQuery
+$query = $input['userQuery'] 
+      ?? $_POST['userQuery'] 
+      ?? $_GET['userQuery'] 
+      ?? ($argv[3] ?? null);
 
 // ❌ Validate
 if (!$query || !is_string($query)) {
-    aiFail("❌ userQuery required for skyebot mode.");
+    aiFail("❌ userQuery is required.");
 }
 
 // ✂️ Normalize
 $query = trim($query);
 
-// 📍 Optional Context (for future use)
+// 📍 Optional Context
 $latitude  = $input["latitude"]  ?? null;
 $longitude = $input["longitude"] ?? null;
 
-// 🧪 Debug (safe logging, remove later)
-error_log('[askOpenAI] Query: ' . $query);
+// Debug logging
+error_log("[askOpenAI] Mode: {$type} | Structured: " . ($isStructured ? 'YES' : 'NO'));
+error_log("[askOpenAI] Query length: " . strlen($query));
+
+#endregion
+
+#region SECTION 5.5 — Structured Mode (EOP / Machine-Readable JSON)
+
+if ($isStructured) {
+
+    $finalSystemPrompt = $systemPrompt 
+        ? $systemPrompt 
+        : "You are a precise, JSON-only assistant.";
+
+    $response = callOpenAI(
+        $query,                    // user content
+        $apiKey,
+        "gpt-4o-mini",             // fast + reliable for structured output
+        null
+    );
+
+    // Return RAW AI response (expected to be JSON)
+    header('Content-Type: application/json');
+    echo trim((string)$response);
+    exit;   // ← Critical: Do NOT go to skyebot wrapper
+}
 
 #endregion
 

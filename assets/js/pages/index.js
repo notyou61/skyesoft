@@ -1583,62 +1583,6 @@ window.SkyIndex = {
     },
 
     // ───────────────────────────────────────────────
-    // Robust AI Intent Detector
-    // ───────────────────────────────────────────────
-    async detectIntentAI(text) {
-        try {
-            const activitySessionId = this.getActivitySessionId();
-
-            const res = await fetch('/skyesoft/api/askOpenAI.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    userQuery: text,
-                    type: 'structured',
-                    systemPrompt: `You are a strict contact detector.
-
-    Return ONLY valid JSON.
-
-    {"isContact": true/false, "confidence": 85}
-
-    Rules:
-    - true if name + phone OR email exists
-    - true for email signatures or business cards
-    - false otherwise`,
-                    activitySessionId
-                })
-            });
-
-            const data = await res.json();
-
-            // ✅ EXPECTED: direct structured JSON
-            if (typeof data.isContact === 'boolean') {
-                return data.isContact === true && (data.confidence ?? 60) >= 60;
-            }
-
-            // ⚠️ TEMP fallback (remove once backend is fixed)
-            if (typeof data.response === 'string') {
-                const match = data.response.match(/\{[\s\S]*?\}/);
-                if (match) {
-                    try {
-                        const parsed = JSON.parse(match[0]);
-                        return parsed.isContact === true && (parsed.confidence ?? 60) >= 60;
-                    } catch {}
-                }
-            }
-
-            // 🚨 Hard fail (better than false positives)
-            console.warn('[EOP] Invalid structured AI response:', data);
-            return false;
-
-        } catch (err) {
-            console.warn('[EOP] AI intent failed, using rules fallback', err);
-            return this.isQuickSignatureHint(text);
-        }
-    },
-
-    // ───────────────────────────────────────────────
     // Proposal Handler
     // ───────────────────────────────────────────────
     async handleContactProposal(rawText) {
