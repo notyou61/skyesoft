@@ -50,41 +50,60 @@ if (empty($rawInput)) {
 #region SECTION 4 — AI Prompt Construction
 
 $systemPrompt = <<<EOT
-You are a strict JSON-only contact extraction engine.
+You are a strict data extraction engine.
 
-You MUST return ONLY valid JSON. No explanations, no extra text, no markdown, no "Here is...", nothing else.
+CRITICAL RULES:
+- Respond ONLY with valid JSON
+- Do NOT include explanations, text, markdown, or comments
+- Output must begin with { and end with }
+- If unsure, leave fields empty
+- Never summarize
+
+Return EXACTLY this structure:
 
 {
   "intent": "contact_proposal",
-  "confidence": 85,
+  "confidence": 90,
   "parsed": {
-    "entity": { "name": "Company Name" },
+    "entity": { "name": "" },
     "contact": {
-      "firstName": "Jennifer",
-      "lastName": "Hammond",
-      "salutation": "Ms.",
-      "title": "General Manager",
-      "primaryPhone": "(623) 977-0599",
-      "email": "ihop3080@romulusinc.com"
+      "firstName": "",
+      "lastName": "",
+      "salutation": "Mr",
+      "title": "",
+      "primaryPhone": "",
+      "email": ""
     },
     "location": {
-      "address": "10603 W Olive",
-      "city": "Peoria",
-      "state": "AZ",
-      "zip": "85345"
+      "address": "",
+      "city": "",
+      "state": "",
+      "zip": ""
     }
   }
 }
 
-Rules:
-- Always return "intent": "contact_proposal" if there is any name + phone or email.
-- Be aggressive at extracting data from email signatures.
-- Fix formatting (remove extra dots, fix phone numbers, etc.).
-- Use (XXX) XXX-XXXX phone format.
-- Infer company from email if missing.
+Extraction Rules:
+- Detect contact from messy email signatures or pasted text
+- Split full name into firstName / lastName
+- Default salutation to "Mr" if unknown
+- Normalize phone to (XXX) XXX-XXXX
+- Infer company from email domain if needed
+- Extract address, city, state, zip if present
+
+If no contact-like data exists, return:
+{
+  "intent": "none",
+  "confidence": 0,
+  "parsed": {}
+}
 EOT;
 
-$extractionPrompt = $rawInput;   // Just the raw text
+$extractionPrompt = <<<EOT
+Extract structured contact data from the following text:
+
+{$rawInput}
+EOT;
 
 #endregion
 
@@ -124,15 +143,22 @@ if ($httpCode !== 200 || !$response) {
 
 #region SECTION 6 — AI Response Processing
 
-$start = strpos($response, '{');
-$end   = strrpos($response, '}') + 1;
+// 🔍 Extract JSON safely from AI response
+preg_match('/\{.*\}/s', $response, $matches);
 
-if ($start === false || $end <= $start) {
+if (empty($matches[0])) {
+    error_log('[EOP] No JSON found in AI response: ' . $response);
     jsonError('Invalid AI response format');
 }
 
-$jsonStr = substr($response, $start, $end - $start);
-$aiData  = json_decode($jsonStr, true);
+// Attempt decode
+$aiData = json_decode($matches[0], true);
+
+// Validate structure
+if (!$aiData || !isset($aiData['parsed'])) {
+    error_log('[EOP] JSON decode failed or missing parsed: ' . $matches[0]);
+    jsonError('Invalid AI response format');
+}
 
 #endregion
 
