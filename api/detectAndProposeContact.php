@@ -164,7 +164,7 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 7 — Data Processing & Enhancement (Rebuilt: Geo → Parcel)
+#region SECTION 7 — Data Processing & Enhancement (Geo → Parcel FINAL)
 
 // --------------------------------------------------
 // 🔧 Normalize + Infer + Validate
@@ -197,11 +197,14 @@ error_log('[EOP ADDRESS] ' . $fullAddress);
 // --------------------------------------------------
 // 🌍 Geographic Resolution (Census)
 // --------------------------------------------------
+$geo = null;
+
 if (!empty($parsed['location']['address'])) {
 
     $geo = resolveGeographyFromAddress($fullAddress);
 
     if ($geo) {
+
         $meta['geo']        = $geo;
         $meta['geo_source'] = 'census';
 
@@ -217,6 +220,7 @@ if (!empty($parsed['location']['address'])) {
         }
 
     } else {
+
         $issues[] = 'geography_not_resolved';
         $meta['geo_error'] = 'Census lookup failed or no match found';
 
@@ -237,14 +241,17 @@ if (
     !empty($parsed['location']['county'])
 ) {
 
-    // Only attempt for Maricopa (expand later)
     if (strtolower($parsed['location']['county']) === 'maricopa') {
 
         $lookupAddress = $fullAddress;
 
         $meta['parcel_lookup_address'] = $lookupAddress;
 
+        error_log('[PARCEL LOOKUP] ' . $lookupAddress);
+
         $mca = lookupMaricopaParcel($lookupAddress);
+
+        error_log('[PARCEL RAW RESULT] ' . json_encode($mca));
 
         if ($mca && !empty($mca['apn'])) {
 
@@ -259,10 +266,22 @@ if (
             error_log('[PARCEL FOUND] ' . json_encode($parcel));
 
         } else {
+
+            // Only flag as issue if we EXPECTED a result
             $issues[] = 'parcel_not_found';
+
             error_log('[PARCEL FAIL] ' . $lookupAddress);
         }
     }
+}
+
+
+// --------------------------------------------------
+// 🧠 Validation Issues
+// --------------------------------------------------
+if (!empty($missing)) {
+    $issues[] = 'missing_required_fields';
+    $meta['missing'] = $missing;
 }
 
 #endregion
