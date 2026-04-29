@@ -207,6 +207,9 @@ if (!empty($parsed['location']['address']) &&
         $issues[] = 'geography_not_resolved';
         $meta['geo_error'] = 'Census lookup failed or no match found';
     }
+
+    error_log('[CENSUS RESULT] ' . json_encode($geo));
+
 }
 
 // Parcel Logic
@@ -234,6 +237,8 @@ echo json_encode([
     'activitySessionId'=> $activitySessionId,
     'raw_preview'      => substr($rawInput, 0, 250)
 ]);
+
+error_log('[EOP ADDRESS] ' . $fullAddress);
 
 #endregion
 
