@@ -400,31 +400,55 @@ function resolveGeographyFromAddress(string $address): ?array
 function lookupMaricopaParcel(string $address): ?array
 {
     // --------------------------------------------------
-    // TEMP STUB — Replace with real MCA integration later
+    // 🔹 Step 1: Normalize Address (critical)
     // --------------------------------------------------
+    $normalized = strtolower(trim($address));
+    $normalized = preg_replace('/[^a-z0-9\s]/', '', $normalized);
 
-    // Normalize for matching
-    $normalized = strtolower($address);
+    $query = urlencode($address);
 
-    // Known test case (your IHOP example)
-    if (str_contains($normalized, '10603 w olive')) {
-        return [
-            'apn' => '142-61-957',
-            'source' => 'mca_stub',
-            'confidence' => 100
-        ];
+    // --------------------------------------------------
+    // 🔹 Step 2: Request MCA search page (with timeout)
+    // --------------------------------------------------
+    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => 5,
+            'header'  => "User-Agent: Skyesoft/1.0\r\n"
+        ]
+    ]);
+
+    $html = @file_get_contents($url, false, $context);
+
+    if (!$html) {
+        error_log('[MCA] Request failed for: ' . $address);
+        return null;
     }
 
-    // Another test case (Camelback)
-    if (str_contains($normalized, '2400 e camelback')) {
-        return [
-            'apn' => '164-21-123',
-            'source' => 'mca_stub',
-            'confidence' => 100
-        ];
+    // --------------------------------------------------
+    // 🔹 Step 3: Extract ALL APNs (not just first match)
+    // --------------------------------------------------
+    preg_match_all('/\b\d{3}-\d{2}-\d{3}\b/', $html, $matches);
+
+    if (empty($matches[0])) {
+        error_log('[MCA] No APN found for: ' . $address);
+        return null;
     }
 
-    return null;
+    $apns = array_unique($matches[0]);
+
+    // --------------------------------------------------
+    // 🔹 Step 4: Confidence logic
+    // --------------------------------------------------
+    $confidence = count($apns) === 1 ? 100 : 80;
+
+    return [
+        'apn'        => $apns[0],   // best match (first for now)
+        'all_apns'   => $apns,      // keep for debugging
+        'source'     => 'mca_scrape',
+        'confidence' => $confidence
+    ];
 }
 
 #endregion
