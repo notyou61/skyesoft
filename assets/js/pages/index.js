@@ -280,6 +280,7 @@ window.SkyIndex = {
             output.appendChild(wrapper);
             output.scrollTop = output.scrollHeight;
         },
+        
 
         // #endregion
 
@@ -1548,12 +1549,14 @@ window.SkyIndex = {
     // #region 📇 EOP - Ease of Paste (Contact Intent + Proposal)
 
     // ───────────────────────────────────────────────
-    // Hybrid Intent Detection - AI Primary
+    // Hybrid Intent Detection — EOP Primary (Stable)
     // ───────────────────────────────────────────────
     async isContactCreationIntent(text, normalized) {
         if (!text) return false;
 
-        // 1. Explicit commands
+        // --------------------------------------------------
+        // 1. Explicit command triggers (highest confidence)
+        // --------------------------------------------------
         if (
             normalized.startsWith('add ') ||
             normalized.startsWith('create ') ||
@@ -1564,28 +1567,50 @@ window.SkyIndex = {
             return true;
         }
 
-        // 2. Quick filter
-        if (!this.isQuickSignatureHint(text)) {
-            return false;
+        // --------------------------------------------------
+        // 2. PRIMARY: Signature / paste detection (EOP)
+        // --------------------------------------------------
+        if (this.isQuickSignatureHint(text)) {
+            return true;
         }
 
-        // 3. AI Intent Check (most reliable now)
-        return await this.detectIntentAI(text);
+        // --------------------------------------------------
+        // 3. OPTIONAL: AI fallback (disabled for now)
+        // --------------------------------------------------
+        // if (this.detectIntentAI) {
+        //     try {
+        //         return await this.detectIntentAI(text);
+        //     } catch (err) {
+        //         console.warn('[Intent AI fallback failed]', err);
+        //     }
+        // }
+
+        return false;
     },
 
+    // --------------------------------------------------
+    // Signature Detection (EOP Heuristic)
+    // --------------------------------------------------
     isQuickSignatureHint(text) {
         if (!text || typeof text !== 'string') return false;
-        const lines = text.split('\n').filter(l => l.trim().length > 3);
-        return lines.length >= 2 && (
-            /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) ||
-            /\S+@\S+\.\S+/.test(text)
-        );
+
+        const lines = text.split('\n').filter(l => l.trim().length > 2);
+
+        // Must look like a pasted block
+        if (lines.length < 2) return false;
+
+        const hasPhone   = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text);
+        const hasEmail   = /\S+@\S+\.\S+/.test(text);
+        const hasAddress = /\d{2,}.*\b(AZ|TX|CA|FL|NY)\b.*\d{5}/i.test(text);
+
+        return hasPhone || hasEmail || hasAddress;
     },
 
     // ───────────────────────────────────────────────
-    // Proposal Handler
+    // Proposal Handler (EOP → Backend → UI)
     // ───────────────────────────────────────────────
     async handleContactProposal(rawText) {
+
         this.clearOutput();
         this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
 
@@ -1601,19 +1626,37 @@ window.SkyIndex = {
                 })
             });
 
+            // --------------------------------------------------
+            // 🔒 Ensure response is JSON (avoid "<" crash)
+            // --------------------------------------------------
             const contentType = res.headers.get('content-type') || '';
+
             if (!contentType.includes('application/json')) {
                 const text = await res.text();
-                console.error('[EOP] Non-JSON:', text);
+                console.error('[EOP] Non-JSON response:', text);
                 this.appendSystemLine('❌ Server error analyzing contact.', 'error');
                 return;
             }
 
             const data = await res.json();
 
+            // --------------------------------------------------
+            // ✅ Proposal success
+            // --------------------------------------------------
             if (data.status === 'proposed' && data.parsed) {
+
                 this.currentProposal = data;
+
                 this.renderProposedContact(data);
+
+                return;
+            }
+
+            // --------------------------------------------------
+            // ⚠️ Known fallback states
+            // --------------------------------------------------
+            if (data.status === 'reject') {
+                this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as contact data.'}`, 'warning');
                 return;
             }
 
@@ -1624,7 +1667,7 @@ window.SkyIndex = {
             this.appendSystemLine('❌ Failed to analyze contact.', 'error');
         }
     },
-    
+
     // #endregion
 
     // #region 📇 Contact Result Renderer
