@@ -418,42 +418,38 @@ function resolveGeographyFromAddress(string $address): ?array
 
 function lookupMaricopaParcel(string $address): ?array
 {
-    $query = urlencode($address);
-
     // --------------------------------------------------
-    // 🔹 Use MCA internal API (ArcGIS-based)
+    // 🔹 ArcGIS Feature Service Query
     // --------------------------------------------------
-    $url = "https://mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
-         . "?where=UPPER(SITE_ADDRESS)%20LIKE%20UPPER('%25{$query}%25')"
-         . "&outFields=APN,SITE_ADDRESS"
-         . "&returnGeometry=false"
-         . "&f=json";
+    $url = "https://gis.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 5,
-            'header'  => "User-Agent: Skyesoft/1.0\r\n"
-        ]
+    $params = http_build_query([
+        'where' => "UPPER(SITE_ADDRESS) LIKE UPPER('%{$address}%')",
+        'outFields' => 'APN,SITE_ADDRESS',
+        'returnGeometry' => 'false',
+        'f' => 'json'
     ]);
 
-    $response = @file_get_contents($url, false, $context);
+    $fullUrl = "{$url}?{$params}";
+
+    $response = @file_get_contents($fullUrl);
 
     if (!$response) {
-        error_log('[MCA API] Request failed');
+        error_log('[MCA ARCGIS] Request failed');
         return null;
     }
 
     $data = json_decode($response, true);
 
     if (empty($data['features'])) {
-        error_log('[MCA API] No features found for: ' . $address);
+        error_log('[MCA ARCGIS] No parcel match');
         return null;
     }
 
     $features = $data['features'];
 
     // --------------------------------------------------
-    // 🔹 Take best match (first for now)
+    // 🔹 Find best match (simple for now)
     // --------------------------------------------------
     $attr = $features[0]['attributes'] ?? null;
 
