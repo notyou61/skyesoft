@@ -243,7 +243,8 @@ if (
 
     if (strtolower($parsed['location']['county']) === 'maricopa') {
 
-        $lookupAddress = $fullAddress;
+        // 🔥 THE FIX: use Census canonical address
+        $lookupAddress = $geo['matchedAddress'] ?? $fullAddress;
 
         $meta['parcel_lookup_address'] = $lookupAddress;
 
@@ -266,10 +267,8 @@ if (
             error_log('[PARCEL FOUND] ' . json_encode($parcel));
 
         } else {
-
             // Only flag as issue if we EXPECTED a result
             $issues[] = 'parcel_not_found';
-
             error_log('[PARCEL FAIL] ' . $lookupAddress);
         }
     }
