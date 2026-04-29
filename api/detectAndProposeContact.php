@@ -183,11 +183,16 @@ if (!empty($parsed['location']['city']))    $parts[] = $parsed['location']['city
 if (!empty($parsed['location']['state']))   $parts[] = $parsed['location']['state'];
 if (!empty($parsed['location']['zip']))     $parts[] = $parsed['location']['zip'];
 
-$fullAddress = implode(', ', $parts);
+$fullAddress = trim(implode(' ', array_filter([
+    $parsed['location']['address'] ?? '',
+    $parsed['location']['city'] ?? '',
+    $parsed['location']['state'] ?? '',
+    $parsed['location']['zip'] ?? ''
+])));
 
-if (!empty($parsed['location']['address']) &&
-    !empty($parsed['location']['city']) &&
-    !empty($parsed['location']['state'])) {
+if (!empty($parsed['location']['address'])) {
+
+    error_log('[EOP ADDRESS] ' . $fullAddress);
 
     $geo = resolveGeographyFromAddress($fullAddress);
 
@@ -196,7 +201,7 @@ if (!empty($parsed['location']['address']) &&
         $meta['geo_source'] = 'census';
 
         if (!empty($geo['county'])) {
-            $parsed['location']['county'] = $geo['county'];
+            $parsed['location']['county'] = trim($geo['county']);
         }
         if (!empty($geo['state'])) {
             $parsed['location']['state'] = $geo['state'];
@@ -208,7 +213,9 @@ if (!empty($parsed['location']['address']) &&
         $meta['geo_error'] = 'Census lookup failed or no match found';
     }
 
-    error_log('[CENSUS RESULT] ' . json_encode($geo));
+    if (!$geo) {
+        error_log('[CENSUS FAIL] ' . $fullAddress);
+    }
 
 }
 
