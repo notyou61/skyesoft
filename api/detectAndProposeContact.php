@@ -408,50 +408,88 @@ function resolveGeographyFromAddress(string $address): ?array
 
 function lookupMaricopaParcel(string $address): ?array
 {
-    // Updated 2026 endpoint + field name
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-    // More flexible matching
-    $cleanAddress = strtoupper(trim($address));
-    // Remove commas for broader LIKE match if needed
-    $searchTerm = str_replace(',', '', $cleanAddress);
+    // Parse components from Census matchedAddress for better matching
+    $parts = [];
+    if (preg_match('/^(\d+)\s+(W|E|N|S)?\s*([A-Za-z\s]+?)\s+(AVE|RD|ST|DR|LN|WAY|BLVD|PL|CT| CIR)?,?\s*([A-Za-z\s]+?),\s*AZ/i', $address, $m)) {
+        $parts = [
+            'num'   => trim($m[1]),
+            'dir'   => trim($m[2] ?? ''),
+            'name'  => trim($m[3]),
+            'type'  => trim($m[4] ?? ''),
+            'city'  => trim($m[5])
+        ];
+    }
+
+    // Strategy 1: Component-based query (most reliable)
+    $whereClauses = [];
+    if (!empty($parts['num'])) {
+        $whereClauses[] = "PHYSICAL_STREET_NUM = '{$parts['num']}'";
+    }
+    if (!empty($parts['name'])) {
+        $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$parts['name']}%')";
+    }
+    if (!empty($parts['city'])) {
+        $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$parts['city']}')";
+    }
+
+    $where = implode(' AND ', $whereClauses);
 
     $params = http_build_query([
-        'where'          => "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$searchTerm}%')",
-        'outFields'      => 'APN,PHYSICAL_ADDRESS',
+        'where'          => $where,
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_STREET_NUM,PHYSICAL_STREET_NAME,PHYSICAL_CITY',
         'returnGeometry' => 'false',
         'f'              => 'json'
     ]);
 
     $fullUrl = "{$url}?{$params}";
 
+    error_log('[MCA QUERY] Component where: ' . $where);
+    error_log('[MCA FULL URL] ' . $fullUrl);
+
     $response = @file_get_contents($fullUrl);
 
     if (!$response) {
-        error_log('[MCA ARCGIS] Request failed - URL: ' . $fullUrl);
+        error_log('[MCA ARCGIS] Request failed');
         return null;
     }
 
     $data = json_decode($response, true);
 
     if (empty($data['features']) || !is_array($data['features'])) {
-        error_log('[MCA ARCGIS] No features returned for: ' . $address);
-        error_log('[MCA RAW] ' . substr($response, 0, 500));
+        error_log('[MCA ARCGIS] No features - trying fallback LIKE');
+        // Fallback: broad LIKE on PHYSICAL_ADDRESS
+        $clean = strtoupper(trim(str_replace(',', '', $address)));
+        $fallbackWhere = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$clean}%')";
+        
+        $params = http_build_query([
+            'where'          => $fallbackWhere,
+            'outFields'      => 'APN,PHYSICAL_ADDRESS',
+            'returnGeometry' => 'false',
+            'f'              => 'json'
+        ]);
+
+        $response = @file_get_contents("{$url}?{$params}");
+        $data = json_decode($response, true);
+    }
+
+    if (empty($data['features']) || !is_array($data['features'])) {
+        error_log('[MCA ARCGIS] Still no match for: ' . $address);
+        error_log('[MCA RAW] ' . substr($response ?? '', 0, 500));
         return null;
     }
 
-    // Take the first (best) match
     $attr = $data['features'][0]['attributes'] ?? null;
 
     if (!$attr || empty($attr['APN'])) {
-        error_log('[MCA ARCGIS] No APN in result');
         return null;
     }
 
     return [
         'apn'        => $attr['APN'],
         'source'     => 'mca_arcgis_mcassessor',
-        'confidence' => count($data['features']) === 1 ? 100 : 80,
+        'confidence' => 95,
         'matched'    => $attr['PHYSICAL_ADDRESS'] ?? $address
     ];
 }
