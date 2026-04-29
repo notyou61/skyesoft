@@ -107,37 +107,76 @@ EOT;
 
 #endregion
 
-#region SECTION 5 — AI Request Execution
+#region SECTION 5 — AI Request Execution (Direct OpenAI)
 
-$apiUrl = 'https://skyelighting.com/skyesoft/api/askOpenAI.php';
+// ─────────────────────────────────────────
+// 🌍 Load environment (Skyesoft standard)
+// ─────────────────────────────────────────
+if (!function_exists('skyesoftLoadEnv')) {
+    require_once __DIR__ . '/utils/envLoader.php';
+}
+skyesoftLoadEnv();
 
-$ch = curl_init($apiUrl);
+// --------------------------------------------------
+// 🔑 Retrieve API Key
+// --------------------------------------------------
+$apiKey = getenv("OPENAI_API_KEY");
+
+if (!$apiKey) {
+    jsonError('OPENAI_API_KEY not found');
+}
+
+// --------------------------------------------------
+// 🧠 Build OpenAI request payload
+// --------------------------------------------------
+$payload = [
+    "model" => "gpt-4.1-mini",
+    "messages" => [
+        ["role" => "system", "content" => $systemPrompt],
+        ["role" => "user", "content" => $extractionPrompt]
+    ],
+    "temperature" => 0
+];
+
+// --------------------------------------------------
+// 📡 Execute request
+// --------------------------------------------------
+$ch = curl_init("https://api.openai.com/v1/chat/completions");
 
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-    CURLOPT_POSTFIELDS     => json_encode([
-        'userQuery'     => $extractionPrompt,
-        'systemPrompt'  => $systemPrompt,
-        'type'          => 'structured',
-        'activitySessionId' => $activitySessionId
-    ]),
+    CURLOPT_HTTPHEADER     => [
+        "Content-Type: application/json",
+        "Authorization: Bearer $apiKey"
+    ],
+    CURLOPT_POSTFIELDS     => json_encode($payload),
     CURLOPT_TIMEOUT        => 20
 ]);
 
 $response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-// curl_close($ch);  // Removed — deprecated in PHP 8.4+ and no longer needed
 
 if ($response === false) {
-    jsonError('cURL error: ' . curl_error($ch));
+    error_log('[EOP] CURL ERROR: ' . curl_error($ch));
+    jsonError('AI request failed');
 }
 
-if ($httpCode !== 200 || !$response) {
-    jsonError('AI service unavailable');
+curl_close($ch);
+
+// --------------------------------------------------
+// 🔍 Extract message content from OpenAI response
+// --------------------------------------------------
+$decoded = json_decode($response, true);
+
+$content = $decoded['choices'][0]['message']['content'] ?? '';
+
+if (!$content) {
+    error_log('[EOP] Empty AI content: ' . $response);
+    jsonError('Invalid AI response format');
 }
+
+// IMPORTANT: overwrite response for SECTION 6
+$response = $content;
 
 #endregion
 
@@ -214,9 +253,7 @@ echo json_encode([
 
 #endregion
 
-// =====================================================
-// Helper Functions
-// =====================================================
+#region SECTION 10 - Helper Functions
 
 function normalizeParsed(array $parsed): array
 {
@@ -264,4 +301,5 @@ function validateParsed(array $parsed): array
     if (empty($parsed['contact']['email']     ?? '')) $missing[] = 'email';
     return $missing;
 }
-?>
+
+#endregion
