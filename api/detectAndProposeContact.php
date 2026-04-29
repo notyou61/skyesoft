@@ -230,50 +230,41 @@ if (!empty($parsed['location']['address'])) {
     error_log('[CENSUS RESULT] ' . json_encode($geo));
 }
 
-
 // --------------------------------------------------
 // 🏆 Parcel Resolution (Authoritative — AFTER Census)
 // --------------------------------------------------
+$parcel = null;
+
 if (
     !empty($parsed['location']['address']) &&
     !empty($parsed['location']['city']) &&
-    !empty($parsed['location']['state']) &&
-    !empty($parsed['location']['county'])
+    strtolower($parsed['location']['county'] ?? '') === 'maricopa'
 ) {
 
-    if (strtolower($parsed['location']['county']) === 'maricopa') {
+    $lookupAddress = $geo['matchedAddress'] ?? $fullAddress;
 
-        // 🔥 THE FIX: use Census canonical address
-        $lookupAddress = $geo['matchedAddress'] ?? $fullAddress;
+    $meta['parcel_lookup_address'] = $lookupAddress;
 
-        $meta['parcel_lookup_address'] = $lookupAddress;
+    error_log('[PARCEL LOOKUP] ' . $lookupAddress);
 
-        error_log('[PARCEL LOOKUP] ' . $lookupAddress);
+    $mca = lookupMaricopaParcel($lookupAddress);
 
-        $mca = lookupMaricopaParcel($lookupAddress);
+    error_log('[PARCEL RAW RESULT] ' . json_encode($mca));
 
-        error_log('[PARCEL RAW RESULT] ' . json_encode($mca));
+    if ($mca && !empty($mca['apn'])) {
+        $parcel = [
+            'apn'        => $mca['apn'],
+            'source'     => $mca['source'],
+            'confidence' => $mca['confidence'] ?? 100
+        ];
 
-        if ($mca && !empty($mca['apn'])) {
-
-            $parcel = [
-                'apn'        => $mca['apn'],
-                'source'     => $mca['source'] ?? 'mca',
-                'confidence' => $mca['confidence'] ?? 100
-            ];
-
-            $meta['parcel'] = $parcel;
-
-            error_log('[PARCEL FOUND] ' . json_encode($parcel));
-
-        } else {
-            // Only flag as issue if we EXPECTED a result
-            $issues[] = 'parcel_not_found';
-            error_log('[PARCEL FAIL] ' . $lookupAddress);
-        }
+        $meta['parcel'] = $parcel;
+        error_log('[PARCEL FOUND] APN: ' . $mca['apn']);
+    } else {
+        $issues[] = 'parcel_not_found';
+        error_log('[PARCEL FAIL] No match for ' . $lookupAddress);
     }
 }
-
 
 // --------------------------------------------------
 // 🧠 Validation Issues
@@ -417,16 +408,19 @@ function resolveGeographyFromAddress(string $address): ?array
 
 function lookupMaricopaParcel(string $address): ?array
 {
-    // --------------------------------------------------
-    // 🔹 ArcGIS Feature Service Query
-    // --------------------------------------------------
-    $url = "https://gis.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+    // Updated 2026 endpoint + field name
+    $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
+
+    // More flexible matching
+    $cleanAddress = strtoupper(trim($address));
+    // Remove commas for broader LIKE match if needed
+    $searchTerm = str_replace(',', '', $cleanAddress);
 
     $params = http_build_query([
-        'where' => "UPPER(SITE_ADDRESS) LIKE UPPER('%{$address}%')",
-        'outFields' => 'APN,SITE_ADDRESS',
+        'where'          => "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$searchTerm}%')",
+        'outFields'      => 'APN,PHYSICAL_ADDRESS',
         'returnGeometry' => 'false',
-        'f' => 'json'
+        'f'              => 'json'
     ]);
 
     $fullUrl = "{$url}?{$params}";
@@ -434,32 +428,31 @@ function lookupMaricopaParcel(string $address): ?array
     $response = @file_get_contents($fullUrl);
 
     if (!$response) {
-        error_log('[MCA ARCGIS] Request failed');
+        error_log('[MCA ARCGIS] Request failed - URL: ' . $fullUrl);
         return null;
     }
 
     $data = json_decode($response, true);
 
-    if (empty($data['features'])) {
-        error_log('[MCA ARCGIS] No parcel match');
+    if (empty($data['features']) || !is_array($data['features'])) {
+        error_log('[MCA ARCGIS] No features returned for: ' . $address);
+        error_log('[MCA RAW] ' . substr($response, 0, 500));
         return null;
     }
 
-    $features = $data['features'];
-
-    // --------------------------------------------------
-    // 🔹 Find best match (simple for now)
-    // --------------------------------------------------
-    $attr = $features[0]['attributes'] ?? null;
+    // Take the first (best) match
+    $attr = $data['features'][0]['attributes'] ?? null;
 
     if (!$attr || empty($attr['APN'])) {
+        error_log('[MCA ARCGIS] No APN in result');
         return null;
     }
 
     return [
         'apn'        => $attr['APN'],
-        'source'     => 'mca_arcgis',
-        'confidence' => count($features) === 1 ? 100 : 85
+        'source'     => 'mca_arcgis_mcassessor',
+        'confidence' => count($data['features']) === 1 ? 100 : 80,
+        'matched'    => $attr['PHYSICAL_ADDRESS'] ?? $address
     ];
 }
 
