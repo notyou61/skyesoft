@@ -418,18 +418,16 @@ function resolveGeographyFromAddress(string $address): ?array
 
 function lookupMaricopaParcel(string $address): ?array
 {
-    // --------------------------------------------------
-    // 🔹 Step 1: Normalize Address (critical)
-    // --------------------------------------------------
-    $normalized = strtolower(trim($address));
-    $normalized = preg_replace('/[^a-z0-9\s]/', '', $normalized);
-
     $query = urlencode($address);
 
     // --------------------------------------------------
-    // 🔹 Step 2: Request MCA search page (with timeout)
+    // 🔹 Use MCA internal API (ArcGIS-based)
     // --------------------------------------------------
-    $url = "https://mcassessor.maricopa.gov/search/property/?q={$query}";
+    $url = "https://mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query"
+         . "?where=UPPER(SITE_ADDRESS)%20LIKE%20UPPER('%25{$query}%25')"
+         . "&outFields=APN,SITE_ADDRESS"
+         . "&returnGeometry=false"
+         . "&f=json";
 
     $context = stream_context_create([
         'http' => [
@@ -438,35 +436,35 @@ function lookupMaricopaParcel(string $address): ?array
         ]
     ]);
 
-    $html = @file_get_contents($url, false, $context);
+    $response = @file_get_contents($url, false, $context);
 
-    if (!$html) {
-        error_log('[MCA] Request failed for: ' . $address);
+    if (!$response) {
+        error_log('[MCA API] Request failed');
         return null;
     }
 
-    // --------------------------------------------------
-    // 🔹 Step 3: Extract ALL APNs (not just first match)
-    // --------------------------------------------------
-    preg_match_all('/\b\d{3}-\d{2}-\d{3}\b/', $html, $matches);
+    $data = json_decode($response, true);
 
-    if (empty($matches[0])) {
-        error_log('[MCA] No APN found for: ' . $address);
+    if (empty($data['features'])) {
+        error_log('[MCA API] No features found for: ' . $address);
         return null;
     }
 
-    $apns = array_unique($matches[0]);
+    $features = $data['features'];
 
     // --------------------------------------------------
-    // 🔹 Step 4: Confidence logic
+    // 🔹 Take best match (first for now)
     // --------------------------------------------------
-    $confidence = count($apns) === 1 ? 100 : 80;
+    $attr = $features[0]['attributes'] ?? null;
+
+    if (!$attr || empty($attr['APN'])) {
+        return null;
+    }
 
     return [
-        'apn'        => $apns[0],   // best match (first for now)
-        'all_apns'   => $apns,      // keep for debugging
-        'source'     => 'mca_scrape',
-        'confidence' => $confidence
+        'apn'        => $attr['APN'],
+        'source'     => 'mca_arcgis',
+        'confidence' => count($features) === 1 ? 100 : 85
     ];
 }
 
