@@ -1,29 +1,16 @@
 <?php
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// -----------------------------------------------------
-// Purpose:
-//   STEP 1 — EOP Contact Proposal (AI Parsing)
-//
-// Description:
-//   Accepts raw pasted contact data → sends to AI →
-//   returns structured proposal JSON (no DB interaction)
-//
-// Notes:
-//   - No auth required (early pipeline stage)
-//   - No config dependencies
-//   - Must return JSON ONLY (no HTML errors)
 // =====================================================
 
 #region SECTION 1 — Runtime Configuration
 header('Content-Type: application/json');
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Prevent HTML output
+ini_set('display_errors', 0);
 #endregion
 
 #region SECTION 2 — Helpers
 
-// JSON Error Response
 function jsonError(string $msg): void {
     echo json_encode([
         'status'  => 'error',
@@ -99,50 +86,32 @@ If no contact-like data exists, return:
 }
 EOT;
 
-$extractionPrompt = <<<EOT
-Extract structured contact data from the following text:
-
-{$rawInput}
-EOT;
+$extractionPrompt = "Extract structured contact data from the following text:\n\n{$rawInput}";
 
 #endregion
 
-#region SECTION 5 — AI Request Execution (Direct OpenAI)
+#region SECTION 5 — AI Request Execution
 
-// ─────────────────────────────────────────
-// 🌍 Load environment (Skyesoft standard)
-// ─────────────────────────────────────────
 if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
 }
 skyesoftLoadEnv();
 
-// --------------------------------------------------
-// 🔑 Retrieve API Key
-// --------------------------------------------------
 $apiKey = getenv("OPENAI_API_KEY");
-
 if (!$apiKey) {
     jsonError('OPENAI_API_KEY not found');
 }
 
-// --------------------------------------------------
-// 🧠 Build OpenAI request payload
-// --------------------------------------------------
 $payload = [
-    "model" => "gpt-4.1-mini",
-    "messages" => [
+    "model"       => "gpt-4.1-mini",
+    "messages"    => [
         ["role" => "system", "content" => $systemPrompt],
-        ["role" => "user", "content" => $extractionPrompt]
+        ["role" => "user",   "content" => $extractionPrompt]
     ],
     "temperature" => 0
 ];
 
-// --------------------------------------------------
-// 📡 Execute request
-// --------------------------------------------------
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
-
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_RETURNTRANSFER => true,
@@ -155,55 +124,37 @@ curl_setopt_array($ch, [
 ]);
 
 $response = curl_exec($ch);
+curl_close($ch);
 
 if ($response === false) {
-    error_log('[EOP] CURL ERROR: ' . curl_error($ch));
     jsonError('AI request failed');
 }
 
-curl_close($ch);
-
-// --------------------------------------------------
-// 🔍 Extract message content from OpenAI response
-// --------------------------------------------------
 $decoded = json_decode($response, true);
-
 $content = $decoded['choices'][0]['message']['content'] ?? '';
 
 if (!$content) {
-    error_log('[EOP] Empty AI content: ' . $response);
     jsonError('Invalid AI response format');
 }
 
-// IMPORTANT: overwrite response for SECTION 6
-$response = $content;
-
-#endregion
-
-#region SECTION 6 — AI Response Processing
-
-error_log('[EOP RAW AI RESPONSE] ' . $response);
-
 // Extract JSON
-preg_match('/\{.*\}/s', $response, $matches);
+preg_match('/\{.*\}/s', $content, $matches);
 
 if (empty($matches[0])) {
-    error_log('[EOP] No JSON found');
     jsonError('Invalid AI response format');
 }
 
 $aiData = json_decode($matches[0], true);
 
 if (!$aiData || !isset($aiData['parsed'])) {
-    error_log('[EOP] JSON decode failed');
     jsonError('Invalid AI response format');
 }
 
 #endregion
 
-#region SECTION 7 — Intent Validation
+#region SECTION 6 — Intent Validation
 
-if (!$aiData || ($aiData['intent'] ?? '') !== 'contact_proposal') {
+if (($aiData['intent'] ?? '') !== 'contact_proposal') {
     echo json_encode([
         'status'  => 'reject',
         'message' => 'Not recognized as a contact signature.'
@@ -213,7 +164,7 @@ if (!$aiData || ($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 8 — Data Processing & Enhancement
+#region SECTION 7 — Data Processing & Enhancement
 
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
@@ -221,23 +172,56 @@ $parsed = inferMissingFields($parsed);
 
 $missing = validateParsed($parsed);
 
-// Maricopa County parcel hint
-$needsParcel = false;
-$parcelMsg = '';
-if (!empty($parsed['location']['city'])) {
-    $city = strtolower($parsed['location']['city']);
-    if (str_contains($city, 'phoenix') || str_contains($city, 'peoria') ||
-        str_contains($city, 'glendale') || str_contains($city, 'scottsdale') ||
-        str_contains($city, 'tempe') || str_contains($city, 'mesa') ||
-        str_contains($city, 'chandler')) {
-        $needsParcel = true;
-        $parcelMsg = 'Maricopa County parcel lookup recommended.';
+$issues = [];
+$meta   = [];
+$flags  = [];
+
+// Geographic Resolution
+$parts = [];
+if (!empty($parsed['location']['address'])) $parts[] = $parsed['location']['address'];
+if (!empty($parsed['location']['city']))    $parts[] = $parsed['location']['city'];
+if (!empty($parsed['location']['state']))   $parts[] = $parsed['location']['state'];
+if (!empty($parsed['location']['zip']))     $parts[] = $parsed['location']['zip'];
+
+$fullAddress = implode(', ', $parts);
+
+if (!empty($parsed['location']['address']) &&
+    !empty($parsed['location']['city']) &&
+    !empty($parsed['location']['state'])) {
+
+    $geo = resolveGeographyFromAddress($fullAddress);
+
+    if ($geo) {
+        $meta['geo'] = $geo;
+        $meta['geo_source'] = 'census';
+
+        if (!empty($geo['county'])) {
+            $parsed['location']['county'] = $geo['county'];
+        }
+        if (!empty($geo['state'])) {
+            $parsed['location']['state'] = $geo['state'];
+            $meta['geo_overrides'] = $meta['geo_overrides'] ?? [];
+            $meta['geo_overrides']['state'] = true;
+        }
+    } else {
+        $issues[] = 'geography_not_resolved';
+        $meta['geo_error'] = 'Census lookup failed or no match found';
     }
+}
+
+// Parcel Logic
+$needsParcel = false;
+$parcelMsg   = '';
+
+if (!empty($parsed['location']['county']) && strtolower($parsed['location']['county']) === 'maricopa') {
+    $needsParcel = true;
+    $parcelMsg   = 'Maricopa County parcel lookup recommended.';
+    $flags['needs_parcel'] = true;
 }
 
 #endregion
 
-#region SECTION 9 — Success Response
+#region SECTION 8 — Success Response
 
 echo json_encode([
     'status'           => 'proposed',
@@ -264,8 +248,8 @@ function normalizeParsed(array $parsed): array
     if (!empty($parsed['contact']['primaryPhone'])) {
         $phone = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
         if (strlen($phone) === 10) {
-            $parsed['contact']['primaryPhone'] = '(' . substr($phone,0,3) . ') ' .
-                                                 substr($phone,3,3) . '-' . substr($phone,6);
+            $parsed['contact']['primaryPhone'] = '(' . substr($phone, 0, 3) . ') ' .
+                                                 substr($phone, 3, 3) . '-' . substr($phone, 6);
         }
     }
 
@@ -278,16 +262,24 @@ function normalizeParsed(array $parsed): array
 
 function inferMissingFields(array $parsed): array
 {
-    if (empty($parsed['entity']['name']) && !empty($parsed['contact']['email'])) {
-        $domain = explode('@', $parsed['contact']['email'])[1] ?? '';
-        if ($domain) {
-            $company = explode('.', $domain)[0];
-            $parsed['entity']['name'] = ucwords(str_replace(['-', '_'], ' ', $company));
+    // Safely infer company name from email (avoid parser confusion)
+    if (empty($parsed['entity']['name'] ?? '') && !empty($parsed['contact']['email'] ?? '')) {
+        $email = $parsed['contact']['email'];
+        $atPos = strpos($email, '@');
+        
+        if ($atPos !== false) {
+            $domain = substr($email, $atPos + 1);
+            $dotPos = strpos($domain, '.');
+            
+            if ($dotPos !== false) {
+                $company = substr($domain, 0, $dotPos);
+                $parsed['entity']['name'] = ucwords(str_replace(['-', '_'], ' ', $company));
+            }
         }
     }
 
-    if (empty($parsed['contact']['salutation'])) {
-        $parsed['contact']['salutation'] = 'Mr.';
+    if (empty($parsed['contact']['salutation'] ?? '')) {
+        $parsed['contact']['salutation'] = 'Mr';
     }
 
     return $parsed;
@@ -300,6 +292,50 @@ function validateParsed(array $parsed): array
     if (empty($parsed['contact']['lastName']  ?? '')) $missing[] = 'lastName';
     if (empty($parsed['contact']['email']     ?? '')) $missing[] = 'email';
     return $missing;
+}
+
+function resolveGeographyFromAddress($address)
+{
+    if (!$address) return null;
+
+    $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress" .
+           "?address=" . urlencode($address) .
+           "&benchmark=Public_AR_Current" .
+           "&vintage=Current_Current" .
+           "&format=json";
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 5
+    ]);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        error_log('[CENSUS] CURL ERROR');
+        return null;
+    }
+
+    $data = json_decode($response, true);
+    $result = $data['result']['addressMatches'][0] ?? null;
+
+    if (!$result) {
+        return null;
+    }
+
+    $geo = $result['geographies'] ?? [];
+    $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
+    $state     = $geo['States'][0]['STUSAB'] ?? null;
+
+    $county = $countyRaw ? str_replace(' County', '', $countyRaw) : null;
+
+    return [
+        'county'         => $county,
+        'state'          => $state,
+        'matchedAddress' => $result['matchedAddress'] ?? null
+    ];
 }
 
 #endregion
