@@ -143,20 +143,20 @@ if ($httpCode !== 200 || !$response) {
 
 #region SECTION 6 — AI Response Processing
 
-// 🔍 Extract JSON safely from AI response
+error_log('[EOP RAW AI RESPONSE] ' . $response);
+
+// Extract JSON
 preg_match('/\{.*\}/s', $response, $matches);
 
 if (empty($matches[0])) {
-    error_log('[EOP] No JSON found in AI response: ' . $response);
+    error_log('[EOP] No JSON found');
     jsonError('Invalid AI response format');
 }
 
-// Attempt decode
 $aiData = json_decode($matches[0], true);
 
-// Validate structure
 if (!$aiData || !isset($aiData['parsed'])) {
-    error_log('[EOP] JSON decode failed or missing parsed: ' . $matches[0]);
+    error_log('[EOP] JSON decode failed');
     jsonError('Invalid AI response format');
 }
 
