@@ -1,6 +1,8 @@
 <?php
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
+// Version: 1.4.2
+// Last Updated: 2026-04-30
 // =====================================================
 
 #region SECTION 1 — Runtime Configuration
@@ -106,9 +108,9 @@ if (!$apiKey) {
 if (!$googleApiKey) {
     error_log('[ENV ERROR] GOOGLE_MAPS_BACKEND_API_KEY missing or empty');
 } elseif (strlen($googleApiKey) < 20) {
-    error_log('[ENV WARNING] GOOGLE_MAPS_BACKEND_API_KEY looks invalid (too short)');
+    error_log('[ENV WARNING] GOOGLE_MAPS_BACKEND_API_KEY looks invalid');
 } else {
-    error_log('[ENV OK] GOOGLE_MAPS_BACKEND_API_KEY loaded successfully');
+    error_log('[ENV OK] GOOGLE_MAPS_BACKEND_API_KEY loaded');
 }
 
 $payload = [
@@ -171,7 +173,7 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 7 — Data Processing & Enhancement (Google → Census → Parcel → Jurisdiction)
+#region SECTION 7 — Data Processing & Enhancement
 
 // --------------------------------------------------
 // 🔧 Normalize + Infer + Validate
@@ -187,8 +189,6 @@ $flags  = [];
 $meta   = [];
 $parcel = null;
 $jurisdiction = null;
-$mca = null;
-$googlePlace = null;
 
 
 // --------------------------------------------------
@@ -208,39 +208,48 @@ error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
 
 // --------------------------------------------------
-// 🌐 1. Google Places — Try Clean → Fallback to Full
+// 🌐 1. Google Place ID Acquisition
 // --------------------------------------------------
-$googleSuccess = false;
+$googleData = null;
+
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
 
-    // Primary attempt: sanitized address
-    $googlePlace = resolveGooglePlace($lookupAddress, $googleApiKey);
+    $googleData = validateLocationWithGoogle([
+        'address' => $lookupAddress,
+        'city'    => $parsed['location']['city'],
+        'state'   => $parsed['location']['state'],
+        'zip'     => $parsed['location']['zip'] ?? ''
+    ]);
 
-    if (!$googlePlace) {
-        // Fallback: try original full address (sometimes Google prefers it with business name)
-        $googlePlace = resolveGooglePlace($fullAddress, $googleApiKey);
+    if (empty($googleData['placeId'])) {
+        $googleData = validateLocationWithGoogle([
+            'address' => $fullAddress,
+            'city'    => $parsed['location']['city'],
+            'state'   => $parsed['location']['state'],
+            'zip'     => $parsed['location']['zip'] ?? ''
+        ]);
     }
 
-    if ($googlePlace) {
-        $parsed['location']['locationPlaceId']  = $googlePlace['placeId'];
-        $parsed['location']['latitude']         = $googlePlace['lat'] ?? null;
-        $parsed['location']['longitude']        = $googlePlace['lng'] ?? null;
-        $parsed['location']['formattedAddress'] = $googlePlace['formattedAddress'] ?? $fullAddress;
+    if (!empty($googleData['placeId'])) {
+        $parsed['location']['locationPlaceId']  = $googleData['placeId'];
+        $parsed['location']['latitude']         = $googleData['lat'] ?? null;
+        $parsed['location']['longitude']        = $googleData['lng'] ?? null;
+        $parsed['location']['formattedAddress'] = $googleData['address'] ?? $fullAddress;
 
-        $meta['google_place'] = $googlePlace;
-        $meta['google_source'] = 'places_findplacefromtext';
-        $googleSuccess = true;
+        $meta['google_place'] = $googleData;
+        $meta['google_source'] = 'geocode_json';
+    } else {
+        $issues[] = 'google_place_not_resolved';
+        $flags[]  = 'location_unverified';
     }
-}
-
-if (!$googleSuccess) {
-    $issues[] = 'google_place_not_resolved';
-    $flags[]  = 'location_unverified';
+} else {
+    $issues[] = 'google_place_skipped_incomplete_address';
+    $flags[]  = 'location_unverified_no_google';
 }
 
 
 // --------------------------------------------------
-// 🌍 2. Geographic Resolution (Census)
+// 🌍 2. Census
 // --------------------------------------------------
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
@@ -314,16 +323,8 @@ $meta['jurisdiction'] = $jurisdiction;
 
 
 // --------------------------------------------------
-// 🧠 FINAL VALIDATION — PlaceId is IMPORTANT but NOT blocking
+// 🧠 FINAL VALIDATION
 // --------------------------------------------------
-$hasPlaceId = !empty($parsed['location']['locationPlaceId'] ?? '');
-
-if (!$hasPlaceId) {
-    $issues[] = 'google_place_not_resolved';
-    $flags[]  = 'location_unverified';
-    // Do NOT add 'placeId_required' anymore
-}
-
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
@@ -338,14 +339,12 @@ if ($isMaricopa) {
 
 #region SECTION 8 — Status-Aware Success Response
 
-// In SECTION 8
 $status = 'proposed';
-
 if (!empty($missing)) {
     $status = 'reject';
-} elseif (!empty($issues) && $isMaricopa) {
-    $status = 'partial';           // Only Maricopa strict
-} elseif (count($issues) >= 3) {   // Too many issues overall
+} elseif ($isMaricopa && (empty($parcel) || empty($jurisdiction))) {
+    $status = 'partial';
+} elseif (count($issues) >= 4) {
     $status = 'partial';
 }
 
@@ -371,8 +370,7 @@ error_log("[EOP FINAL] Status: $status | PlaceID: " . ($parsed['location']['loca
 
 #region SECTION 9 - Helper Functions
 
-function normalizeParsed(array $parsed): array
-{
+function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
         $email = trim($parsed['contact']['email']);
         $parsed['contact']['email'] = strtolower($email);
@@ -397,8 +395,7 @@ function normalizeParsed(array $parsed): array
     return $parsed;
 }
 
-function inferMissingFields(array $parsed): array
-{
+function inferMissingFields(array $parsed): array {
     if (empty($parsed['entity']['name'] ?? '') && !empty($parsed['contact']['email'] ?? '')) {
         $email = $parsed['contact']['email'];
         $atPos = strpos($email, '@');
@@ -419,8 +416,7 @@ function inferMissingFields(array $parsed): array
     return $parsed;
 }
 
-function validateParsed(array $parsed): array
-{
+function validateParsed(array $parsed): array {
     $missing = [];
     if (empty($parsed['contact']['firstName'] ?? '')) $missing[] = 'firstName';
     if (empty($parsed['contact']['lastName']  ?? '')) $missing[] = 'lastName';
@@ -428,56 +424,25 @@ function validateParsed(array $parsed): array
     return $missing;
 }
 
-/**
- * Google Places — cURL consistent + richer fields
- */
-function resolveGooglePlace(string $address, string $apiKey): ?array
-{
-    if (empty($address) || empty($apiKey)) return null;
-
-    // Try with location bias toward Phoenix metro
-    $url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json" .
-           "?input=" . urlencode($address) .
-           "&inputtype=textquery" .
-           "&fields=place_id,geometry,formatted_address" .
-           "&locationbias=circle:50000@33.4484,-112.0740" .  // Bias toward Phoenix
-           "&key=" . $apiKey;
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_CONNECTTIMEOUT => 5
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false || $httpCode !== 200) {
-        error_log("[GOOGLE PLACES] HTTP $httpCode failed for: $address");
-        return null;
-    }
-
-    $data = json_decode($response, true);
-
-    if (($data['status'] ?? '') !== 'OK' || empty($data['candidates'][0])) {
-        error_log('[GOOGLE PLACES] No candidates | Status: ' . ($data['status'] ?? 'UNKNOWN') . ' | Query: ' . $address);
-        return null;
-    }
-
-    $candidate = $data['candidates'][0];
-
-    return [
-        'placeId'          => $candidate['place_id'],
-        'lat'              => $candidate['geometry']['location']['lat'] ?? null,
-        'lng'              => $candidate['geometry']['location']['lng'] ?? null,
-        'formattedAddress' => $candidate['formatted_address'] ?? null
-    ];
+function sanitizeAddressForLookup(string $input): string {
+    $clean = preg_replace('/\s+/', ' ', $input);
+    $clean = preg_replace('/#\s*\w+/i', '', $clean);
+    $clean = preg_replace('/\b(Suite|Ste|Unit|Apt|#)\b\.?\s*\w+/i', '', $clean);
+    $clean = preg_replace('/^[^0-9]*?(?=\d)/', '', $clean);
+    $clean = preg_replace('/\s+/', ' ', $clean);
+    return trim($clean);
 }
 
-function resolveGeographyFromAddress(string $address): ?array
-{
+function formatAPN(string $apnRaw): string {
+    $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
+    if (strlen($clean) === 13) {
+        return substr($clean, 0, 3) . '-' . substr($clean, 3, 2) . '-' .
+               substr($clean, 5, 3) . '-' . substr($clean, 8);
+    }
+    return $clean;
+}
+
+function resolveGeographyFromAddress(string $address): ?array {
     if (!$address) return null;
 
     $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress" .
@@ -515,8 +480,7 @@ function resolveGeographyFromAddress(string $address): ?array
     ];
 }
 
-function lookupMaricopaParcel(string $address): ?array
-{
+function lookupMaricopaParcel(string $address): ?array {
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
     $parts = [];
@@ -574,36 +538,56 @@ function resolveMaricopaJurisdiction(string $address): ?string {
 }
 
 /**
- * 🧼 sanitizeAddressForLookup
- * Cleans raw address input for Google / Census / Parcel lookup
+ * Reliable Google Geocoding for Place ID
  */
-function sanitizeAddressForLookup(string $input): string {
+function validateLocationWithGoogle(array $locationInput): array {
+    $queryParts = [
+        $locationInput['address'] ?? '',
+        $locationInput['city'] ?? '',
+        $locationInput['state'] ?? '',
+        $locationInput['zip'] ?? ''
+    ];
 
-    // Normalize whitespace early
-    $clean = preg_replace('/\s+/', ' ', $input);
+    $query = trim(implode(', ', array_filter($queryParts)));
+    if ($query === '') return ['placeId' => null];
 
-    // 🔴 Remove business/store identifiers like "#3080"
-    $clean = preg_replace('/#\s*\w+/i', '', $clean);
+    $apiKey = skyesoftGetEnv('GOOGLE_MAPS_BACKEND_API_KEY');
+    if (!$apiKey) return ['placeId' => null];
 
-    // 🔴 Remove common unit/suite identifiers
-    $clean = preg_replace('/\b(Suite|Ste|Unit|Apt|#)\b\.?\s*\w+/i', '', $clean);
+    $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' 
+        . urlencode($query) . '&key=' . $apiKey;
 
-    // 🔴 Remove leading business names (before first number)
-    // Example: "IHOP 10603 W Olive Ave" → "10603 W Olive Ave"
-    $clean = preg_replace('/^[^0-9]*?(?=\d)/', '', $clean);
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5
+    ]);
 
-    // Normalize again after removals
-    $clean = preg_replace('/\s+/', ' ', $clean);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    return trim($clean);
-}
-function formatAPN(string $apnRaw): string {
-    $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
-    if (strlen($clean) === 13) {
-        return substr($clean, 0, 3) . '-' . substr($clean, 3, 2) . '-' .
-               substr($clean, 5, 3) . '-' . substr($clean, 8);
+    if ($response === false || $httpCode !== 200) {
+        error_log("[Google Geocode] Failed HTTP $httpCode");
+        return ['placeId' => null];
     }
-    return $clean;
+
+    $data = json_decode($response, true);
+
+    if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
+        error_log('[Google Geocode] No results for: ' . $query);
+        return ['placeId' => null];
+    }
+
+    $result = $data['results'][0];
+
+    return [
+        'placeId' => $result['place_id'] ?? null,
+        'address' => $result['formatted_address'] ?? $query,
+        'lat'     => $result['geometry']['location']['lat'] ?? null,
+        'lng'     => $result['geometry']['location']['lng'] ?? null
+    ];
 }
 
 #endregion
