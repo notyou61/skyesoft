@@ -54,7 +54,7 @@ Return EXACTLY this structure:
     "contact": {
       "firstName": "",
       "lastName": "",
-      "salutation": "Mr",
+      "salutation": "",
       "title": "",
       "primaryPhone": "",
       "email": ""
@@ -156,17 +156,26 @@ $parsed = inferMissingFields($parsed);
 $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
 
-if (empty($parsed['contact']['salutation'])) {
+$existingSalutation = trim($parsed['contact']['salutation'] ?? '');
+
+// If AI gave us a real salutation, trust it
+if ($existingSalutation !== '') {
+    $parsed['contact']['salutation'] = $existingSalutation;
+    $parsed['contact']['salutationInferred'] = false;
+} 
+// Otherwise, let our infer function decide (with safe fallback)
+else {
     $salutation = inferSalutation($firstName, $lastName);
+    
     if ($salutation !== null) {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
     } else {
-        $parsed['contact']['salutationInferred'] = false;
+        $parsed['contact']['salutation'] = 'Mr';           // safe default
+        $parsed['contact']['salutationInferred'] = true;
     }
-} else {
-    $parsed['contact']['salutationInferred'] = false;
 }
+// ============================================================
 
 $missing = validateParsed($parsed);
 
@@ -302,8 +311,6 @@ if (!empty($missing)) {
     $status = 'reject';
 } elseif ($isMaricopa && (empty($parcel) || empty($jurisdiction))) {
     $status = 'partial';
-} elseif (count($issues) >= 4) {
-    $status = 'partial';
 }
 
 echo json_encode([
@@ -317,7 +324,9 @@ echo json_encode([
     'meta'         => !empty($meta) ? $meta : null,
     'issues'       => !empty($issues) ? $issues : null,
     'activitySessionId' => $activitySessionId,
-    'raw_preview'  => substr($rawInput, 0, 250)
+    'raw_preview'  => substr($rawInput, 0, 250),
+    'success' => true,
+    'placeIdResolved' => !empty($parsed['location']['locationPlaceId'])
 ]);
 
 #endregion
@@ -539,10 +548,53 @@ function validateLocationWithGoogle(array $locationInput): array {
 }
 
 function inferSalutation(string $firstName, string $lastName): ?string {
+
+    // 🔒 Guard — do not call AI with empty names
     $firstName = trim($firstName);
     $lastName  = trim($lastName);
-    if ($firstName === '' && $lastName === '') return null;
-    return 'Mr';
+
+    if ($firstName === '' && $lastName === '') {
+        return null;
+    }
+
+    $basePrompt = <<<PROMPT
+Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
+
+Respond with ONLY one of these values:
+Mr
+Ms
+
+Do not include punctuation or any other words.
+PROMPT;
+
+    $fullPrompt = injectStandingOrders($basePrompt);
+
+    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
+
+    if ($apiKey === null) {
+        error_log('[SALUTATION] Missing API key');
+        return null;
+    }
+
+    try {
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+    } catch (Throwable $e) {
+        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
+        return null;
+    }
+
+    if (!$response) {
+        return null;
+    }
+
+    // 🔧 HARD NORMALIZATION
+    $response = strtolower(trim($response));
+    $response = str_replace(['.', '"', "'"], '', $response);
+
+    if ($response === 'mr') return 'Mr';
+    if ($response === 'ms') return 'Ms';
+
+    return null;
 }
 
 #endregion
