@@ -331,7 +331,7 @@ echo json_encode([
 
 #endregion
 
-#region SECTION 10 - Helper Functions
+#region SECTION 9 - Helper Functions
 
 function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
