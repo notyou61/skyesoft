@@ -98,8 +98,17 @@ if (!function_exists('skyesoftLoadEnv')) {
 skyesoftLoadEnv();
 
 $apiKey = getenv("OPENAI_API_KEY");
+$googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_MAPS_BACKEND_API_KEY");
+
 if (!$apiKey) {
     jsonError('OPENAI_API_KEY not found');
+}
+if (!$googleApiKey) {
+    error_log('[ENV ERROR] GOOGLE_MAPS_BACKEND_API_KEY missing or empty');
+} elseif (strlen($googleApiKey) < 20) {
+    error_log('[ENV WARNING] GOOGLE_MAPS_BACKEND_API_KEY looks invalid (too short)');
+} else {
+    error_log('[ENV OK] GOOGLE_MAPS_BACKEND_API_KEY loaded successfully');
 }
 
 $payload = [
@@ -137,9 +146,7 @@ if (!$content) {
     jsonError('Invalid AI response format');
 }
 
-// Extract JSON
 preg_match('/\{.*\}/s', $content, $matches);
-
 if (empty($matches[0])) {
     jsonError('Invalid AI response format');
 }
@@ -164,7 +171,7 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 7 — Data Processing & Enhancement (Geo → Parcel FINAL)
+#region SECTION 7 — Data Processing & Enhancement (Google → Census → Parcel → Jurisdiction)
 
 // --------------------------------------------------
 // 🔧 Normalize + Infer + Validate
@@ -176,13 +183,16 @@ $parsed = inferMissingFields($parsed);
 $missing = validateParsed($parsed);
 
 $issues = [];
-$meta   = [];
 $flags  = [];
+$meta   = [];
 $parcel = null;
+$jurisdiction = null;
+$mca = null;
+$googlePlace = null;
 
 
 // --------------------------------------------------
-// 📍 Build Clean Address (Census-safe)
+// 📍 Build Clean Address
 // --------------------------------------------------
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
@@ -195,113 +205,145 @@ error_log('[EOP ADDRESS] ' . $fullAddress);
 
 
 // --------------------------------------------------
-// 🌍 Geographic Resolution (Census)
+// 🌐 1. Google Places (MANDATORY for ELC — PlaceId enforced)
+// --------------------------------------------------
+if (!empty($fullAddress) && strlen($fullAddress) > 10 && !empty($googleApiKey)) {
+    $googlePlace = resolveGooglePlace($fullAddress, $googleApiKey);
+
+    if ($googlePlace) {
+        $parsed['location']['locationPlaceId'] = $googlePlace['placeId'];
+        $parsed['location']['latitude']        = $googlePlace['lat'] ?? null;
+        $parsed['location']['longitude']       = $googlePlace['lng'] ?? null;
+        $parsed['location']['formattedAddress'] = $googlePlace['formattedAddress'] ?? $fullAddress; // NEW
+
+        $meta['google_place'] = $googlePlace;
+        $meta['google_source'] = 'places_findplacefromtext';
+    } else {
+        $issues[] = 'google_place_not_resolved';
+        $flags[]  = 'location_unverified';
+    }
+} elseif (!empty($fullAddress)) {
+    $issues[] = 'google_place_skipped_no_key';
+    $flags[]  = 'location_unverified_no_google';
+}
+
+
+// --------------------------------------------------
+// 🌍 2. Geographic Resolution (Census)
 // --------------------------------------------------
 $geo = null;
-
 if (!empty($parsed['location']['address'])) {
-
     $geo = resolveGeographyFromAddress($fullAddress);
 
     if ($geo) {
-
         $meta['geo']        = $geo;
         $meta['geo_source'] = 'census';
 
         if (!empty($geo['county'])) {
             $parsed['location']['county'] = trim($geo['county']);
         }
-
         if (!empty($geo['state'])) {
             $parsed['location']['state'] = $geo['state'];
-
-            $meta['geo_overrides'] = $meta['geo_overrides'] ?? [];
             $meta['geo_overrides']['state'] = true;
         }
-
     } else {
-
         $issues[] = 'geography_not_resolved';
-        $meta['geo_error'] = 'Census lookup failed or no match found';
-
-        error_log('[CENSUS FAIL] ' . $fullAddress);
     }
-
-    error_log('[CENSUS RESULT] ' . json_encode($geo));
 }
 
-// --------------------------------------------------
-// 🏆 Parcel Resolution (Authoritative — AFTER Census)
-// --------------------------------------------------
-$parcel = null;
 
-if (
-    !empty($parsed['location']['address']) &&
-    !empty($parsed['location']['city']) &&
-    strtolower($parsed['location']['county'] ?? '') === 'maricopa'
-) {
+// --------------------------------------------------
+// 🏆 3. Parcel Resolution (Maricopa Only)
+// --------------------------------------------------
+$county = strtoupper(trim($parsed['location']['county'] ?? ''));
+$state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
+$isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
+$meta['is_maricopa'] = $isMaricopa;
+
+if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
     $lookupAddress = $geo['matchedAddress'] ?? $fullAddress;
-
     $meta['parcel_lookup_address'] = $lookupAddress;
-
-    error_log('[PARCEL LOOKUP] ' . $lookupAddress);
 
     $mca = lookupMaricopaParcel($lookupAddress);
 
-    error_log('[PARCEL RAW RESULT] ' . json_encode($mca));
-
     if ($mca && !empty($mca['apn'])) {
+        $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
+
         $parcel = [
-            'apn'        => $mca['apn'],
+            'apnRaw'     => $apnRaw,
+            'apnDisplay' => $mca['apn'],
             'source'     => $mca['source'],
-            'confidence' => $mca['confidence'] ?? 100
+            'confidence' => 95
         ];
 
         $meta['parcel'] = $parcel;
-        error_log('[PARCEL FOUND] APN: ' . $mca['apn']);
+        $jurisdiction   = $mca['jurisdiction'] ?? null;
     } else {
         $issues[] = 'parcel_not_found';
-        error_log('[PARCEL FAIL] No match for ' . $lookupAddress);
     }
 }
 
+
 // --------------------------------------------------
-// 🧠 Validation Issues
+// 🏛️ 4. Jurisdiction (Authoritative Only)
 // --------------------------------------------------
+if ($isMaricopa && empty($jurisdiction)) {
+    $jurisdiction = resolveMaricopaJurisdiction($lookupAddress ?? $fullAddress);
+}
+
+if ($isMaricopa && empty($jurisdiction)) {
+    $issues[] = 'maricopa_jurisdiction_not_resolved';
+}
+
+$meta['jurisdiction'] = $jurisdiction;
+
+
+// --------------------------------------------------
+// 🧠 FINAL VALIDATION — Enforce PlaceId
+// --------------------------------------------------
+if (empty($parsed['location']['locationPlaceId'] ?? '')) {
+    $issues[] = 'placeId_required';
+}
+
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
 }
 
+if ($isMaricopa) {
+    if (empty($parcel))  $issues[] = 'maricopa_parcel_required';
+    if (empty($jurisdiction)) $issues[] = 'maricopa_jurisdiction_required';
+}
+
 #endregion
 
-#region SECTION 8 — Success Response (Updated: Parcel-Aware)
+#region SECTION 8 — Status-Aware Success Response
+
+$status = 'proposed';
+if (!empty($missing)) {
+    $status = 'reject';
+} elseif (!empty($issues)) {
+    $status = 'partial';
+}
 
 echo json_encode([
-    'status'     => 'proposed',
-    'confidence' => $aiData['confidence'] ?? 82,
-    // Core structured result
-    'parsed'     => $parsed,
-    // Data source
-    'source'     => 'ai_eop_signature',
-    // 🔑 NEW: authoritative parcel data (replaces needs_parcel)
-    'parcel'     => $parcel,
-    // 🔧 Flags (future-proof, keep even if empty)
-    'flags'      => !empty($flags) ? $flags : null,
-    // 🧠 Metadata (debug + enrichment visibility)
-    'meta'       => !empty($meta) ? $meta : null,
-    // ⚠ Issues (missing fields, lookup failures, etc.)
-    'issues'     => !empty($issues) ? $issues : (!empty($missing) ? $missing : null),
-    // Session tracking
+    'status'       => $status,
+    'confidence'   => $aiData['confidence'] ?? 82,
+    'parsed'       => $parsed,
+    'source'       => 'ai_eop_signature',
+    'parcel'       => $parcel,
+    'jurisdiction' => $jurisdiction,
+    'flags'        => !empty($flags) ? $flags : null,
+    'meta'         => !empty($meta) ? $meta : null,
+    'issues'       => !empty($issues) ? $issues : null,
     'activitySessionId' => $activitySessionId,
-    // Preview for UI
-    'raw_preview' => substr($rawInput, 0, 250)
+    'raw_preview'  => substr($rawInput, 0, 250)
 ]);
 
-// Debug logs (keep during development)
-error_log('[EOP ADDRESS] ' . ($fullAddress ?? 'N/A'));
-error_log('[EOP PARCEL] ' . json_encode($parcel));
+error_log("[EOP FINAL] Status: $status | PlaceID: " . ($parsed['location']['locationPlaceId'] ?? 'MISSING') .
+          " | Parcel: " . ($parcel ? 'YES' : 'NO') .
+          " | Jurisdiction: " . ($jurisdiction ?: 'null'));
 
 #endregion
 
@@ -310,19 +352,24 @@ error_log('[EOP PARCEL] ' . json_encode($parcel));
 function normalizeParsed(array $parsed): array
 {
     if (!empty($parsed['contact']['email'])) {
-        $parsed['contact']['email'] = strtolower(trim($parsed['contact']['email']));
+        $email = trim($parsed['contact']['email']);
+        $parsed['contact']['email'] = strtolower($email);
+        $parsed['contact']['emailNormalized'] = strtolower($email);
     }
 
     if (!empty($parsed['contact']['primaryPhone'])) {
-        $phone = preg_replace('/[^0-9]/', '', $parsed['contact']['primaryPhone']);
-        if (strlen($phone) === 10) {
-            $parsed['contact']['primaryPhone'] = '(' . substr($phone, 0, 3) . ') ' .
-                                                 substr($phone, 3, 3) . '-' . substr($phone, 6);
+        $phoneStr = $parsed['contact']['primaryPhone'];
+        $digits = preg_replace('/[^0-9]/', '', $phoneStr);
+
+        if (strlen($digits) === 10) {
+            $parsed['contact']['primaryPhone'] = '(' . substr($digits, 0, 3) . ') ' .
+                                                 substr($digits, 3, 3) . '-' . substr($digits, 6);
         }
+        $parsed['contact']['primaryPhoneRaw'] = $digits;
     }
 
     if (!empty($parsed['location']['state'])) {
-        $parsed['location']['state'] = strtoupper($parsed['location']['state']);
+        $parsed['location']['state'] = strtoupper(trim($parsed['location']['state']));
     }
 
     return $parsed;
@@ -330,15 +377,12 @@ function normalizeParsed(array $parsed): array
 
 function inferMissingFields(array $parsed): array
 {
-    // Safely infer company name from email (avoid parser confusion)
     if (empty($parsed['entity']['name'] ?? '') && !empty($parsed['contact']['email'] ?? '')) {
         $email = $parsed['contact']['email'];
         $atPos = strpos($email, '@');
-        
         if ($atPos !== false) {
             $domain = substr($email, $atPos + 1);
             $dotPos = strpos($domain, '.');
-            
             if ($dotPos !== false) {
                 $company = substr($domain, 0, $dotPos);
                 $parsed['entity']['name'] = ucwords(str_replace(['-', '_'], ' ', $company));
@@ -362,6 +406,52 @@ function validateParsed(array $parsed): array
     return $missing;
 }
 
+/**
+ * Google Places — cURL consistent + richer fields
+ */
+function resolveGooglePlace(string $address, string $apiKey): ?array
+{
+    if (empty($address) || empty($apiKey)) return null;
+
+    $url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json" .
+           "?input=" . urlencode($address) .
+           "&inputtype=textquery" .
+           "&fields=place_id,geometry,formatted_address" .   // ← improved
+           "&key=" . $apiKey;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 5
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($response === false || $httpCode !== 200) {
+        error_log("[GOOGLE PLACES] Request failed | HTTP $httpCode for: $address");
+        return null;
+    }
+
+    $data = json_decode($response, true);
+
+    if (($data['status'] ?? '') !== 'OK' || empty($data['candidates'][0])) {
+        error_log('[GOOGLE PLACES] No candidates | Status: ' . ($data['status'] ?? 'UNKNOWN'));
+        return null;
+    }
+
+    $candidate = $data['candidates'][0];
+
+    return [
+        'placeId'          => $candidate['place_id'],
+        'lat'              => $candidate['geometry']['location']['lat'] ?? null,
+        'lng'              => $candidate['geometry']['location']['lng'] ?? null,
+        'formattedAddress' => $candidate['formatted_address'] ?? null
+    ];
+}
+
 function resolveGeographyFromAddress(string $address): ?array
 {
     if (!$address) return null;
@@ -381,17 +471,12 @@ function resolveGeographyFromAddress(string $address): ?array
     $response = curl_exec($ch);
     curl_close($ch);
 
-    if ($response === false) {
-        error_log('[CENSUS] CURL ERROR');
-        return null;
-    }
+    if ($response === false) return null;
 
     $data = json_decode($response, true);
     $result = $data['result']['addressMatches'][0] ?? null;
 
-    if (!$result) {
-        return null;
-    }
+    if (!$result) return null;
 
     $geo = $result['geographies'] ?? [];
     $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
@@ -410,9 +495,8 @@ function lookupMaricopaParcel(string $address): ?array
 {
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-    // Parse components from Census matchedAddress for better matching
     $parts = [];
-    if (preg_match('/^(\d+)\s+(W|E|N|S)?\s*([A-Za-z\s]+?)\s+(AVE|RD|ST|DR|LN|WAY|BLVD|PL|CT| CIR)?,?\s*([A-Za-z\s]+?),\s*AZ/i', $address, $m)) {
+    if (preg_match('/^(\d+)\s+(W|E|N|S)?\s*([A-Za-z\s]+?)\s+(AVE|RD|ST|DR|LN|WAY|BLVD|PL|CT|CIR)?,?\s*([A-Za-z\s]+?),\s*AZ/i', $address, $m)) {
         $parts = [
             'num'   => trim($m[1]),
             'dir'   => trim($m[2] ?? ''),
@@ -422,76 +506,47 @@ function lookupMaricopaParcel(string $address): ?array
         ];
     }
 
-    // Strategy 1: Component-based query (most reliable)
     $whereClauses = [];
-    if (!empty($parts['num'])) {
-        $whereClauses[] = "PHYSICAL_STREET_NUM = '{$parts['num']}'";
-    }
-    if (!empty($parts['name'])) {
-        $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$parts['name']}%')";
-    }
-    if (!empty($parts['city'])) {
-        $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$parts['city']}')";
-    }
+    if (!empty($parts['num'])) $whereClauses[] = "PHYSICAL_STREET_NUM = '{$parts['num']}'";
+    if (!empty($parts['name'])) $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$parts['name']}%')";
+    if (!empty($parts['city'])) $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$parts['city']}')";
 
-    $where = implode(' AND ', $whereClauses);
+    $where = $whereClauses ? implode(' AND ', $whereClauses) : "1=1";
 
     $params = http_build_query([
         'where'          => $where,
-        'outFields'      => 'APN,PHYSICAL_ADDRESS,PHYSICAL_STREET_NUM,PHYSICAL_STREET_NAME,PHYSICAL_CITY',
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,JURISDICTION',
         'returnGeometry' => 'false',
         'f'              => 'json'
     ]);
 
-    $fullUrl = "{$url}?{$params}";
-
-    error_log('[MCA QUERY] Component where: ' . $where);
-    error_log('[MCA FULL URL] ' . $fullUrl);
-
-    $response = @file_get_contents($fullUrl);
-
-    if (!$response) {
-        error_log('[MCA ARCGIS] Request failed');
-        return null;
-    }
+    $response = @file_get_contents("{$url}?{$params}");
+    if (!$response) return null;
 
     $data = json_decode($response, true);
 
-    if (empty($data['features']) || !is_array($data['features'])) {
-        error_log('[MCA ARCGIS] No features - trying fallback LIKE');
-        // Fallback: broad LIKE on PHYSICAL_ADDRESS
+    if (empty($data['features'])) {
         $clean = strtoupper(trim(str_replace(',', '', $address)));
         $fallbackWhere = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$clean}%')";
-        
-        $params = http_build_query([
-            'where'          => $fallbackWhere,
-            'outFields'      => 'APN,PHYSICAL_ADDRESS',
-            'returnGeometry' => 'false',
-            'f'              => 'json'
-        ]);
-
+        $params = http_build_query(['where' => $fallbackWhere, 'outFields' => 'APN,PHYSICAL_ADDRESS,JURISDICTION', 'f' => 'json']);
         $response = @file_get_contents("{$url}?{$params}");
         $data = json_decode($response, true);
     }
 
-    if (empty($data['features']) || !is_array($data['features'])) {
-        error_log('[MCA ARCGIS] Still no match for: ' . $address);
-        error_log('[MCA RAW] ' . substr($response ?? '', 0, 500));
-        return null;
-    }
-
     $attr = $data['features'][0]['attributes'] ?? null;
-
-    if (!$attr || empty($attr['APN'])) {
-        return null;
-    }
+    if (!$attr || empty($attr['APN'])) return null;
 
     return [
-        'apn'        => $attr['APN'],
-        'source'     => 'mca_arcgis_mcassessor',
-        'confidence' => 95,
-        'matched'    => $attr['PHYSICAL_ADDRESS'] ?? $address
+        'apn'          => $attr['APN'],
+        'source'       => 'mca_arcgis_mcassessor',
+        'confidence'   => 95,
+        'matched'      => $attr['PHYSICAL_ADDRESS'] ?? $address,
+        'jurisdiction' => $attr['JURISDICTION'] ?? null
     ];
+}
+
+function resolveMaricopaJurisdiction(string $address): ?string {
+    return null; // TODO: dedicated layer
 }
 
 #endregion
