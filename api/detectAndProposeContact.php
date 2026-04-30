@@ -333,7 +333,7 @@ echo json_encode([
 
 #endregion
 
-#region SECTION 9 - Helper Functions
+#region SECTION  - Helper Functions
 
 // All required functions (self-contained)
 
