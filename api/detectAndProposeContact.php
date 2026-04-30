@@ -180,18 +180,25 @@ $parsed = inferMissingFields($parsed);
 // --------------------------------------------------
 // 🧠 Salutation Inference (AI — only if missing)
 // --------------------------------------------------
-$firstName = trim($parsed['contact']['firstName'] ?? '');
-$lastName  = trim($parsed['contact']['lastName'] ?? '');
+$firstName = $parsed['contact']['firstName'] ?? '';
+$lastName  = $parsed['contact']['lastName'] ?? '';
 
-if (empty($parsed['contact']['salutation'])) {
+$existingSalutation = $parsed['contact']['salutation'] ?? null;
+
+if (empty($existingSalutation)) {
+
     $salutation = inferSalutation($firstName, $lastName);
+
     if ($salutation !== null) {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
     } else {
-        $parsed['contact']['salutationInferred'] = false;
+        $parsed['contact']['salutation'] = null;
+        $parsed['contact']['salutationInferred'] = null;
     }
+
 } else {
+    $parsed['contact']['salutation'] = $existingSalutation;
     $parsed['contact']['salutationInferred'] = false;
 }
 
