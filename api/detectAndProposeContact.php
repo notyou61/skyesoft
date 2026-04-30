@@ -47,6 +47,7 @@ CRITICAL RULES:
 - Output must begin with { and end with }
 - If unsure, leave fields empty
 - Never summarize
+- DO NOT infer or guess values not explicitly present
 
 Return EXACTLY this structure:
 
@@ -58,7 +59,7 @@ Return EXACTLY this structure:
     "contact": {
       "firstName": "",
       "lastName": "",
-      "salutation": "Mr",
+      "salutation": "",
       "title": "",
       "primaryPhone": "",
       "email": ""
@@ -75,7 +76,8 @@ Return EXACTLY this structure:
 Extraction Rules:
 - Detect contact from messy email signatures or pasted text
 - Split full name into firstName / lastName
-- Default salutation to "Mr" if unknown
+- ONLY extract salutation if explicitly present (Mr, Ms, etc.)
+- Do NOT infer salutation
 - Normalize phone to (XXX) XXX-XXXX
 - Infer company from email domain if needed
 - Extract address, city, state, zip if present
@@ -168,9 +170,30 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #region SECTION 7 — Data Processing & Enhancement
 
+// --------------------------------------------------
+// 🔧 Normalize + Infer + Validate
+// --------------------------------------------------
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
+
+// --------------------------------------------------
+// 🧠 Salutation Inference (AI — only if missing)
+// --------------------------------------------------
+$firstName = trim($parsed['contact']['firstName'] ?? '');
+$lastName  = trim($parsed['contact']['lastName'] ?? '');
+
+if (empty($parsed['contact']['salutation'])) {
+    $salutation = inferSalutation($firstName, $lastName);
+    if ($salutation !== null) {
+        $parsed['contact']['salutation'] = $salutation;
+        $parsed['contact']['salutationInferred'] = true;
+    } else {
+        $parsed['contact']['salutationInferred'] = false;
+    }
+} else {
+    $parsed['contact']['salutationInferred'] = false;
+}
 
 $missing = validateParsed($parsed);
 
@@ -180,6 +203,10 @@ $meta   = [];
 $parcel = null;
 $jurisdiction = null;
 
+
+// --------------------------------------------------
+// 📍 Build Addresses
+// --------------------------------------------------
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
     $parsed['location']['city'] ?? '',
@@ -192,9 +219,14 @@ $lookupAddress = sanitizeAddressForLookup($fullAddress);
 error_log('[EOP ADDRESS RAW] ' . $fullAddress);
 error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
-// Google Place ID
+
+// --------------------------------------------------
+// 🌐 1. Google Place ID (Double Attempt)
+// --------------------------------------------------
 $googleData = null;
+
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
+
     $googleData = validateLocationWithGoogle([
         'address' => $lookupAddress,
         'city'    => $parsed['location']['city'],
@@ -212,35 +244,52 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
     }
 
     if (!empty($googleData['placeId'])) {
-        $parsed['location']['locationPlaceId']  = $googleData['placeId'];
-        $parsed['location']['latitude']         = $googleData['lat'] ?? null;
-        $parsed['location']['longitude']        = $googleData['lng'] ?? null;
-        $parsed['location']['formattedAddress'] = $googleData['address'] ?? $fullAddress;
+        $parsed['location']['locationPlaceId']   = $googleData['placeId'];
+        $parsed['location']['latitude']          = $googleData['lat'] ?? null;
+        $parsed['location']['longitude']         = $googleData['lng'] ?? null;
+        $parsed['location']['formattedAddress']  = $googleData['address'] ?? $fullAddress;
 
-        $meta['google_place'] = $googleData;
+        $meta['google_place']  = $googleData;
         $meta['google_source'] = 'geocode_json';
     } else {
         $issues[] = 'google_place_not_resolved';
         $flags[]  = 'location_unverified';
     }
+} else {
+    $issues[] = 'google_place_skipped_incomplete_address';
+    $flags[]  = 'location_unverified_no_google';
 }
 
-// Census, Parcel, Jurisdiction...
+
+// --------------------------------------------------
+// 🌍 2. Census
+// --------------------------------------------------
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
+
 if (!empty($censusAddress)) {
     $geo = resolveGeographyFromAddress($censusAddress);
+
     if ($geo) {
-        $meta['geo'] = $geo;
+        $meta['geo']        = $geo;
         $meta['geo_source'] = 'census';
-        if (!empty($geo['county'])) $parsed['location']['county'] = trim($geo['county']);
+
+        if (!empty($geo['county'])) {
+            $parsed['location']['county'] = trim($geo['county']);
+        }
         if (!empty($geo['state'])) {
             $parsed['location']['state'] = $geo['state'];
             $meta['geo_overrides']['state'] = true;
         }
+    } else {
+        $issues[] = 'geography_not_resolved';
     }
 }
 
+
+// --------------------------------------------------
+// 🏆 3. Parcel + Jurisdiction (Maricopa)
+// --------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
@@ -248,17 +297,22 @@ $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
+
     $parcelLookupAddress = $geo['matchedAddress'] ?? $lookupAddress;
+    $meta['parcel_lookup_address'] = $parcelLookupAddress;
+
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
     if ($mca && !empty($mca['apn'])) {
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
+
         $parcel = [
             'apnRaw'     => $apnRaw,
             'apnDisplay' => formatAPN($apnRaw),
             'source'     => $mca['source'],
             'confidence' => 95
         ];
+
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
     } else {
@@ -270,16 +324,24 @@ if ($isMaricopa && empty($jurisdiction)) {
     $jurisdiction = resolveMaricopaJurisdiction($lookupAddress);
 }
 
+if (!empty($jurisdiction)) {
+    $jurisdiction = ucwords(strtolower(trim($jurisdiction)));
+}
+
 $meta['jurisdiction'] = $jurisdiction;
 
+
+// --------------------------------------------------
+// 🧠 FINAL VALIDATION
+// --------------------------------------------------
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
 }
 
 if ($isMaricopa) {
-    if (empty($parcel))  $issues[] = 'maricopa_parcel_required';
-    if (empty($jurisdiction)) $issues[] = 'maricopa_jurisdiction_required';
+    if (empty($parcel))        $issues[] = 'maricopa_parcel_required';
+    if (empty($jurisdiction))  $issues[] = 'maricopa_jurisdiction_required';
 }
 
 #endregion
@@ -528,6 +590,56 @@ function validateLocationWithGoogle(array $locationInput): array {
         'lat'     => $result['geometry']['location']['lat'] ?? null,
         'lng'     => $result['geometry']['location']['lng'] ?? null
     ];
+}
+
+function inferSalutation(string $firstName, string $lastName): ?string {
+
+    // 🔒 Guard — do not call AI with empty names
+    $firstName = trim($firstName);
+    $lastName  = trim($lastName);
+
+    if ($firstName === '' && $lastName === '') {
+        return null;
+    }
+
+    $basePrompt = <<<PROMPT
+Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
+
+Respond with ONLY one of these values:
+Mr
+Ms
+
+Do not include punctuation or any other words.
+PROMPT;
+
+    $fullPrompt = injectStandingOrders($basePrompt);
+
+    $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
+
+    if ($apiKey === null) {
+        error_log('[SALUTATION] Missing API key');
+        return null;
+    }
+
+    try {
+        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+    } catch (Throwable $e) {
+        error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
+        return null;
+    }
+
+    if (!$response) {
+        return null;
+    }
+
+    // 🔧 HARD NORMALIZATION
+    $response = strtolower(trim($response));
+    $response = str_replace(['.', '"', "'"], '', $response);
+
+    if ($response === 'mr') return 'Mr';
+    if ($response === 'ms') return 'Ms';
+
+    return null;
 }
 
 #endregion
