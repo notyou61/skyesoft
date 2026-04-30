@@ -71,7 +71,6 @@ Return EXACTLY this structure:
 Extraction Rules:
 - Detect contact from messy email signatures or pasted text
 - Split full name into firstName / lastName
-- Default salutation to "Mr" if unknown
 - Normalize phone to (XXX) XXX-XXXX
 - Infer company from email domain if needed
 - Extract address, city, state, zip if present
@@ -171,7 +170,7 @@ else {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
     } else {
-        $parsed['contact']['salutation'] = 'Mr';           // safe default
+        $parsed['contact']['salutation'] = 'Mx';           // safe default
         $parsed['contact']['salutationInferred'] = true;
     }
 }
