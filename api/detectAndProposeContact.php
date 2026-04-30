@@ -170,12 +170,15 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #region SECTION 7 — Data Processing & Enhancement
 
+// --------------------------------------------------
+// 🔧 Normalize + Infer + Validate
+// --------------------------------------------------
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
 
 // --------------------------------------------------
-// 🧠 Salutation Inference (only if missing)
+// 🧠 Salutation Inference
 // --------------------------------------------------
 $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
@@ -200,6 +203,7 @@ $meta   = [];
 $parcel = null;
 $jurisdiction = null;
 
+
 // --------------------------------------------------
 // 📍 Build Addresses
 // --------------------------------------------------
@@ -215,7 +219,10 @@ $lookupAddress = sanitizeAddressForLookup($fullAddress);
 error_log('[EOP ADDRESS RAW] ' . $fullAddress);
 error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
-// Google Place ID
+
+// --------------------------------------------------
+// 🌐 Google Place ID
+// --------------------------------------------------
 $googleData = null;
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
     $googleData = validateLocationWithGoogle([
@@ -248,9 +255,13 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
     }
 }
 
-// Census + Parcel + Jurisdiction (simplified)
+
+// --------------------------------------------------
+// 🌍 Census
+// --------------------------------------------------
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
+
 if (!empty($censusAddress)) {
     $geo = resolveGeographyFromAddress($censusAddress);
     if ($geo) {
@@ -261,26 +272,45 @@ if (!empty($censusAddress)) {
     }
 }
 
+
+// --------------------------------------------------
+// 🏆 Parcel Resolution — HEAVY DEBUG
+// --------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
 $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
+error_log('[PARCEL CHECK] isMaricopa=' . ($isMaricopa ? 'YES' : 'NO') . 
+          ' | address=' . ($parsed['location']['address'] ?? 'MISSING') .
+          ' | city=' . ($parsed['location']['city'] ?? 'MISSING'));
+
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-    $parcelLookupAddress = $geo['matchedAddress'] ?? $lookupAddress;
+
+    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;   // ← Best source
+    $meta['parcel_lookup_address'] = $parcelLookupAddress;
+
+    error_log('[PARCEL INPUT] ' . $parcelLookupAddress);
+
     $mca = lookupMaricopaParcel($parcelLookupAddress);
+
+    error_log('[PARCEL OUTPUT] ' . json_encode($mca));
 
     if ($mca && !empty($mca['apn'])) {
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
+
         $parcel = [
             'apnRaw'     => $apnRaw,
             'apnDisplay' => formatAPN($apnRaw),
             'source'     => $mca['source'],
             'confidence' => 95
         ];
+
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
+    } else {
+        $issues[] = 'parcel_not_found';
     }
 }
 
@@ -294,14 +324,18 @@ if (!empty($jurisdiction)) {
 
 $meta['jurisdiction'] = $jurisdiction;
 
+
+// --------------------------------------------------
+// FINAL VALIDATION
+// --------------------------------------------------
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
 }
 
 if ($isMaricopa) {
-    if (empty($parcel)) $issues[] = 'maricopa_parcel_required';
-    if (empty($jurisdiction)) $issues[] = 'maricopa_jurisdiction_required';
+    if (empty($parcel))        $issues[] = 'maricopa_parcel_required';
+    if (empty($jurisdiction))  $issues[] = 'maricopa_jurisdiction_required';
 }
 
 #endregion
