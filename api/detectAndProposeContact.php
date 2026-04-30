@@ -272,9 +272,8 @@ if (!empty($censusAddress)) {
     }
 }
 
-
 // --------------------------------------------------
-// 🏆 Parcel Resolution — HEAVY DEBUG
+// 🏆 Parcel Resolution — HEAVY DEBUG + CLEANING
 // --------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -288,10 +287,18 @@ error_log('[PARCEL CHECK] isMaricopa=' . ($isMaricopa ? 'YES' : 'NO') .
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
 
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;   // ← Best source
+    // Clean address specifically for ArcGIS
+    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
+
+    // Remove USA and clean extra commas/spaces
+    $parcelLookupAddress = str_replace(', USA', '', $parcelLookupAddress);
+    $parcelLookupAddress = str_replace(', AZ,', ', AZ', $parcelLookupAddress);
+    $parcelLookupAddress = preg_replace('/\s+/', ' ', $parcelLookupAddress);
+    $parcelLookupAddress = trim($parcelLookupAddress);
+
     $meta['parcel_lookup_address'] = $parcelLookupAddress;
 
-    error_log('[PARCEL INPUT] ' . $parcelLookupAddress);
+    error_log('[PARCEL INPUT CLEANED] ' . $parcelLookupAddress);
 
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
@@ -309,8 +316,11 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
 
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
+
+        error_log('[PARCEL SUCCESS] APN: ' . $apnRaw);
     } else {
         $issues[] = 'parcel_not_found';
+        error_log('[PARCEL FAILED] No match found');
     }
 }
 
