@@ -1,7 +1,7 @@
 <?php
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// Version: 1.4.6
+// Version: 1.4.7
 // Last Updated: 2026-04-30
 // =====================================================
 
@@ -14,10 +14,7 @@ ini_set('display_errors', 0);
 #region SECTION 2 — Helpers
 
 function jsonError(string $msg): void {
-    echo json_encode([
-        'status'  => 'error',
-        'message' => $msg
-    ]);
+    echo json_encode(['status' => 'error', 'message' => $msg]);
     exit;
 }
 
@@ -37,7 +34,6 @@ if (empty($rawInput)) {
 #endregion
 
 #region SECTION 4 — AI Prompt Construction
-
 $systemPrompt = <<<EOT
 You are a strict data extraction engine.
 
@@ -47,7 +43,6 @@ CRITICAL RULES:
 - Output must begin with { and end with }
 - If unsure, leave fields empty
 - Never summarize
-- DO NOT infer or guess values not explicitly present
 
 Return EXACTLY this structure:
 
@@ -59,7 +54,7 @@ Return EXACTLY this structure:
     "contact": {
       "firstName": "",
       "lastName": "",
-      "salutation": "",
+      "salutation": "Mr",
       "title": "",
       "primaryPhone": "",
       "email": ""
@@ -76,8 +71,7 @@ Return EXACTLY this structure:
 Extraction Rules:
 - Detect contact from messy email signatures or pasted text
 - Split full name into firstName / lastName
-- ONLY extract salutation if explicitly present (Mr, Ms, etc.)
-- Do NOT infer salutation
+- Default salutation to "Mr" if unknown
 - Normalize phone to (XXX) XXX-XXXX
 - Infer company from email domain if needed
 - Extract address, city, state, zip if present
@@ -104,9 +98,7 @@ skyesoftLoadEnv();
 $apiKey = getenv("OPENAI_API_KEY");
 $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_MAPS_BACKEND_API_KEY");
 
-if (!$apiKey) {
-    jsonError('OPENAI_API_KEY not found');
-}
+if (!$apiKey) jsonError('OPENAI_API_KEY not found');
 
 $payload = [
     "model"       => "gpt-4.1-mini",
@@ -121,10 +113,7 @@ $ch = curl_init("https://api.openai.com/v1/chat/completions");
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER     => [
-        "Content-Type: application/json",
-        "Authorization: Bearer $apiKey"
-    ],
+    CURLOPT_HTTPHEADER     => ["Content-Type: application/json", "Authorization: Bearer $apiKey"],
     CURLOPT_POSTFIELDS     => json_encode($payload),
     CURLOPT_TIMEOUT        => 20
 ]);
@@ -132,37 +121,26 @@ curl_setopt_array($ch, [
 $response = curl_exec($ch);
 curl_close($ch);
 
-if ($response === false) {
-    jsonError('AI request failed');
-}
+if ($response === false) jsonError('AI request failed');
 
 $decoded = json_decode($response, true);
 $content = $decoded['choices'][0]['message']['content'] ?? '';
 
-if (!$content) {
-    jsonError('Invalid AI response format');
-}
+if (!$content) jsonError('Invalid AI response format');
 
 preg_match('/\{.*\}/s', $content, $matches);
-if (empty($matches[0])) {
-    jsonError('Invalid AI response format');
-}
+if (empty($matches[0])) jsonError('Invalid AI response format');
 
 $aiData = json_decode($matches[0], true);
 
-if (!$aiData || !isset($aiData['parsed'])) {
-    jsonError('Invalid AI response format');
-}
+if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format');
 
 #endregion
 
 #region SECTION 6 — Intent Validation
 
 if (($aiData['intent'] ?? '') !== 'contact_proposal') {
-    echo json_encode([
-        'status'  => 'reject',
-        'message' => 'Not recognized as a contact signature.'
-    ]);
+    echo json_encode(['status' => 'reject', 'message' => 'Not recognized as a contact signature.']);
     exit;
 }
 
@@ -170,16 +148,11 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #region SECTION 7 — Data Processing & Enhancement
 
-// --------------------------------------------------
-// 🔧 Normalize + Infer + Validate
-// --------------------------------------------------
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
 
-// --------------------------------------------------
-// 🧠 Salutation Inference
-// --------------------------------------------------
+// Salutation
 $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
 
@@ -203,10 +176,7 @@ $meta   = [];
 $parcel = null;
 $jurisdiction = null;
 
-
-// --------------------------------------------------
-// 📍 Build Addresses
-// --------------------------------------------------
+// Build Addresses
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
     $parsed['location']['city'] ?? '',
@@ -219,15 +189,9 @@ $lookupAddress = sanitizeAddressForLookup($fullAddress);
 error_log('[EOP ADDRESS RAW] ' . $fullAddress);
 error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
-
-// --------------------------------------------------
-// 🌐 1. Google Place ID Acquisition (Reliable + Clean)
-// --------------------------------------------------
+// Google Place ID
 $googleData = null;
-
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-
-    // Try 1: Sanitized address
     $googleData = validateLocationWithGoogle([
         'address' => $lookupAddress,
         'city'    => $parsed['location']['city'],
@@ -235,7 +199,6 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         'zip'     => $parsed['location']['zip'] ?? ''
     ]);
 
-    // Try 2: Original full address (often works better with business names like "IHOP")
     if (empty($googleData['placeId'])) {
         $googleData = validateLocationWithGoogle([
             'address' => $fullAddress,
@@ -249,10 +212,7 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         $parsed['location']['locationPlaceId']   = $googleData['placeId'];
         $parsed['location']['latitude']          = $googleData['lat'] ?? null;
         $parsed['location']['longitude']         = $googleData['lng'] ?? null;
-
-        // Clean USA suffix for downstream use (Census/Parcel)
-        $cleanFormatted = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
-        $parsed['location']['formattedAddress']  = trim($cleanFormatted);
+        $parsed['location']['formattedAddress']  = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
 
         $meta['google_place']  = $googleData;
         $meta['google_source'] = 'geocode_json';
@@ -260,17 +220,11 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         $issues[] = 'google_place_not_resolved';
         $flags[]  = 'location_unverified';
     }
-} else {
-    $issues[] = 'google_place_skipped_incomplete_address';
-    $flags[]  = 'location_unverified_no_google';
 }
 
-// --------------------------------------------------
-// 🌍 Census
-// --------------------------------------------------
+// Census
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
-
 if (!empty($censusAddress)) {
     $geo = resolveGeographyFromAddress($censusAddress);
     if ($geo) {
@@ -281,9 +235,7 @@ if (!empty($censusAddress)) {
     }
 }
 
-// --------------------------------------------------
-// 🏆 3. Parcel Resolution (Maricopa Only) — Robust Cleaning
-// --------------------------------------------------
+// Parcel + Jurisdiction
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
@@ -292,20 +244,13 @@ $meta['is_maricopa'] = $isMaricopa;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
 
-    // Use best available address and aggressively clean for ArcGIS
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] 
-                        ?? $geo['matchedAddress'] 
-                        ?? $lookupAddress;
-
-    // Clean for ArcGIS compatibility
+    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
     $parcelLookupAddress = str_replace(', USA', '', $parcelLookupAddress);
-    $parcelLookupAddress = str_replace(', AZ,', ', AZ', $parcelLookupAddress);
-    $parcelLookupAddress = preg_replace('/\s+/', ' ', $parcelLookupAddress);
-    $parcelLookupAddress = trim($parcelLookupAddress);
+    $parcelLookupAddress = trim(preg_replace('/\s+/', ' ', $parcelLookupAddress));
 
     $meta['parcel_lookup_address'] = $parcelLookupAddress;
 
-    error_log('[PARCEL INPUT CLEANED] ' . $parcelLookupAddress);
+    error_log('[PARCEL INPUT FINAL] ' . $parcelLookupAddress);
 
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
@@ -323,11 +268,8 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
 
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
-
-        error_log('[PARCEL SUCCESS] APN: ' . $apnRaw . ' | Jurisdiction: ' . ($jurisdiction ?? 'null'));
     } else {
         $issues[] = 'parcel_not_found';
-        error_log('[PARCEL FAILED] No match for input');
     }
 }
 
@@ -341,18 +283,14 @@ if (!empty($jurisdiction)) {
 
 $meta['jurisdiction'] = $jurisdiction;
 
-
-// --------------------------------------------------
-// FINAL VALIDATION
-// --------------------------------------------------
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
 }
 
 if ($isMaricopa) {
-    if (empty($parcel))        $issues[] = 'maricopa_parcel_required';
-    if (empty($jurisdiction))  $issues[] = 'maricopa_jurisdiction_required';
+    if (empty($parcel)) $issues[] = 'maricopa_parcel_required';
+    if (empty($jurisdiction)) $issues[] = 'maricopa_jurisdiction_required';
 }
 
 #endregion
@@ -384,9 +322,7 @@ echo json_encode([
 
 #endregion
 
-#region SECTION  - Helper Functions
-
-// All required functions (self-contained)
+#region SECTION 10 - Helper Functions
 
 function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
@@ -463,8 +399,12 @@ function formatAPN(string $apnRaw): string {
 
 function resolveGeographyFromAddress(string $address): ?array {
     if (!$address) return null;
-    $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=" . urlencode($address) .
-           "&benchmark=Public_AR_Current&vintage=Current_Current&format=json";
+
+    $url = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress" .
+           "?address=" . urlencode($address) .
+           "&benchmark=Public_AR_Current" .
+           "&vintage=Current_Current" .
+           "&format=json";
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
@@ -492,10 +432,59 @@ function resolveGeographyFromAddress(string $address): ?array {
 
 function lookupMaricopaParcel(string $address): ?array {
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
-    // ... (your full implementation as before)
-    // For brevity, assuming you have it - paste your full version if needed
-    // This is the stub that returns ?array
-    return null; // Replace with your full function
+
+    // Aggressive cleaning
+    $address = str_replace(', USA', '', trim($address));
+    $address = preg_replace('/\s+/', ' ', $address);
+
+    $parts = [];
+    if (preg_match('/^(\d+)\s+(W|E|N|S)?\s*([A-Za-z\s]+?)\s+(AVE|RD|ST|DR|LN|WAY|BLVD|PL|CT|CIR)?,?\s*([A-Za-z\s]+?),\s*AZ/i', $address, $m)) {
+        $parts = [
+            'num'   => trim($m[1]),
+            'dir'   => trim($m[2] ?? ''),
+            'name'  => trim($m[3]),
+            'type'  => trim($m[4] ?? ''),
+            'city'  => trim($m[5])
+        ];
+    }
+
+    $whereClauses = [];
+    if (!empty($parts['num'])) $whereClauses[] = "PHYSICAL_STREET_NUM = '{$parts['num']}'";
+    if (!empty($parts['name'])) $whereClauses[] = "UPPER(PHYSICAL_STREET_NAME) LIKE UPPER('%{$parts['name']}%')";
+    if (!empty($parts['city'])) $whereClauses[] = "UPPER(PHYSICAL_CITY) = UPPER('{$parts['city']}')";
+
+    $where = $whereClauses ? implode(' AND ', $whereClauses) : "1=1";
+
+    $params = http_build_query([
+        'where'          => $where,
+        'outFields'      => 'APN,PHYSICAL_ADDRESS,JURISDICTION',
+        'returnGeometry' => 'false',
+        'f'              => 'json'
+    ]);
+
+    $response = @file_get_contents("{$url}?{$params}");
+    if (!$response) return null;
+
+    $data = json_decode($response, true);
+
+    if (empty($data['features'])) {
+        $clean = strtoupper(trim(str_replace(',', '', $address)));
+        $fallbackWhere = "UPPER(PHYSICAL_ADDRESS) LIKE UPPER('%{$clean}%')";
+        $params = http_build_query(['where' => $fallbackWhere, 'outFields' => 'APN,PHYSICAL_ADDRESS,JURISDICTION', 'f' => 'json']);
+        $response = @file_get_contents("{$url}?{$params}");
+        $data = json_decode($response, true);
+    }
+
+    $attr = $data['features'][0]['attributes'] ?? null;
+    if (!$attr || empty($attr['APN'])) return null;
+
+    return [
+        'apn'          => $attr['APN'],
+        'source'       => 'mca_arcgis_mcassessor',
+        'confidence'   => 95,
+        'matched'      => $attr['PHYSICAL_ADDRESS'] ?? $address,
+        'jurisdiction' => $attr['JURISDICTION'] ?? null
+    ];
 }
 
 function resolveMaricopaJurisdiction(string $address): ?string {
@@ -552,16 +541,7 @@ function validateLocationWithGoogle(array $locationInput): array {
 function inferSalutation(string $firstName, string $lastName): ?string {
     $firstName = trim($firstName);
     $lastName  = trim($lastName);
-
-    if ($firstName === '' && $lastName === '') {
-        return null;
-    }
-
-    // Simple local fallback (avoid dependency on askOpenAI.php)
-    $fullName = strtolower($firstName . ' ' . $lastName);
-    if (str_contains($fullName, 'mrs') || str_contains($fullName, 'ms') || str_contains($fullName, 'miss')) {
-        return 'Ms';
-    }
+    if ($firstName === '' && $lastName === '') return null;
     return 'Mr';
 }
 
