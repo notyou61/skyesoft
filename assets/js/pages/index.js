@@ -1424,11 +1424,6 @@ window.SkyIndex = {
             const payload = this.mapProposalToDBSchema(prop.parsed);
 
             // --------------------------------------------------
-            // 🔥 Enforce defaults / normalization
-            // --------------------------------------------------
-            payload.contactSalutation = payload.contactSalutation || 'Mr';
-
-            // --------------------------------------------------
             // 🚨 Required field validation (client-side guard)
             // --------------------------------------------------
             const missing = [];
@@ -1533,7 +1528,8 @@ window.SkyIndex = {
         return {
             contactFirstName:    c.firstName,
             contactLastName:     c.lastName,
-            contactSalutation: c.salutation || 'Mr',
+            contactSalutation: c.salutation || null,
+            contactSalutationInferred: c.salutationInferred ?? null,
             contactTitle:        c.title,
             contactPrimaryPhone: c.primaryPhone,
             contactEmail:        c.email,

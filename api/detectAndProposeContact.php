@@ -418,10 +418,6 @@ function inferMissingFields(array $parsed): array {
         }
     }
 
-    if (empty($parsed['contact']['salutation'] ?? '')) {
-        $parsed['contact']['salutation'] = 'Mr';
-    }
-
     return $parsed;
 }
 
