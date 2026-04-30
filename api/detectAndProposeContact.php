@@ -153,26 +153,25 @@ $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
 
-// Salutation
+// ==================== SALUTATION INFERENCE ====================
 $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
 
 $existingSalutation = trim($parsed['contact']['salutation'] ?? '');
 
-// If AI gave us a real salutation, trust it
 if ($existingSalutation !== '') {
+    // AI gave us something — trust it
     $parsed['contact']['salutation'] = $existingSalutation;
     $parsed['contact']['salutationInferred'] = false;
-} 
-// Otherwise, let our infer function decide (with safe fallback)
-else {
+} else {
+    // AI left it empty → run our inference
     $salutation = inferSalutation($firstName, $lastName);
     
     if ($salutation !== null) {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
     } else {
-        $parsed['contact']['salutation'] = 'Ms';           // safe default
+        $parsed['contact']['salutation'] = 'Mr';        // safe default
         $parsed['contact']['salutationInferred'] = true;
     }
 }
