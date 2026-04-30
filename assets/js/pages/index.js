@@ -1608,29 +1608,31 @@ window.SkyIndex = {
 
     // ───────────────────────────────────────────────
     // Proposal Handler (EOP → Backend → UI)
+    // Updated to support proposed / partial / reject + rich metadata
     // ───────────────────────────────────────────────
-    async handleContactProposal(rawText) {
+    async handleContactProposal(rawText, incomingActivitySessionId = null) {
 
         this.clearOutput();
         this.appendSystemLine('🔍 Analyzing pasted contact information...', 'system');
 
         try {
+            const activitySessionId = incomingActivitySessionId || this.getActivitySessionId();
+
             const res = await fetch('/skyesoft/api/detectAndProposeContact.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     input: rawText,
-                    activitySessionId: this.getActivitySessionId(),
+                    activitySessionId: activitySessionId,
                     mode: 'propose'
                 })
             });
 
             // --------------------------------------------------
-            // 🔒 Ensure response is JSON (avoid "<" crash)
+            // 🔒 Ensure response is JSON
             // --------------------------------------------------
             const contentType = res.headers.get('content-type') || '';
-
             if (!contentType.includes('application/json')) {
                 const text = await res.text();
                 console.error('[EOP] Non-JSON response:', text);
@@ -1641,30 +1643,49 @@ window.SkyIndex = {
             const data = await res.json();
 
             // --------------------------------------------------
-            // ✅ Proposal success
+            // Error from backend
             // --------------------------------------------------
-            if (data.status === 'proposed' && data.parsed) {
-
-                this.currentProposal = data;
-
-                this.renderProposedContact(data);
-
+            if (data.status === 'error') {
+                this.appendSystemLine(`❌ ${data.message || 'Processing error'}`, 'error');
+                console.error('[EOP] Backend error:', data);
                 return;
             }
 
             // --------------------------------------------------
-            // ⚠️ Known fallback states
+            // Reject (not a contact)
             // --------------------------------------------------
             if (data.status === 'reject') {
                 this.appendSystemLine(`⚠️ ${data.message || 'Not recognized as contact data.'}`, 'warning');
                 return;
             }
 
-            this.appendSystemLine(data.message || 'Could not process contact.', 'warning');
+            // --------------------------------------------------
+            // Partial or Proposed — both can render
+            // --------------------------------------------------
+            if ((data.status === 'proposed' || data.status === 'partial') && data.parsed) {
+
+                this.currentProposal = data;   // Store full rich object
+
+                console.log('📇 Contact Proposal Received:', {
+                    status: data.status,
+                    hasParcel: !!data.parcel,
+                    hasPlaceId: !!data.parsed?.location?.locationPlaceId,
+                    issues: data.issues || []
+                });
+
+                this.renderProposedContact(data);
+                return;
+            }
+
+            // Fallback
+            this.appendSystemLine(
+                data.message || 'Could not process contact information.',
+                'warning'
+            );
 
         } catch (err) {
             console.error('[EOP Proposal Error]', err);
-            this.appendSystemLine('❌ Failed to analyze contact.', 'error');
+            this.appendSystemLine('❌ Failed to analyze contact information.', 'error');
         }
     },
 
@@ -1861,6 +1882,18 @@ window.SkyIndex = {
             const data = await res.json();
 
             // ───────────────────────────────────────────────
+            // 📇 CONTACT PROPOSAL (New — AI-driven signature detection)
+            // ───────────────────────────────────────────────
+            if (data?.type === 'contact_proposal' && data?.input) {
+                console.log('📇 AI detected contact signature — routing to proposal engine');
+
+                // Call your existing contact handling pipeline
+                await this.handleContactProposal(data.input, data.activitySessionId || activitySessionId);
+                
+                return;   // ← Important: stop further processing
+            }
+
+            // ───────────────────────────────────────────────
             // UI Action (authoritative)
             // ───────────────────────────────────────────────
             if (data?.type === 'ui_action') {
@@ -1877,7 +1910,7 @@ window.SkyIndex = {
             }
 
             // ───────────────────────────────────────────────
-            // Text / HTML Response
+            // Text / HTML Response (normal skyebot conversation)
             // ───────────────────────────────────────────────
             if (typeof data?.response === 'string' && data.response.trim()) {
                 const looksLikeHtml = data.response.includes('<div') ||

@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 // ======================================================================
 //  Skyesoft — askOpenAI.php
-//  Version: 1.3.2
-//  Last Updated: 2026-04-26
+//  Version: 1.3.3
+//  Last Updated: 2026-04-30
 //  Codex Tier: 3 — AI Augmentation / Prompt Orchestration
 //
 //  Role:
@@ -1289,46 +1289,84 @@ PROMPT;
 
 #region SECTION 8 — Output (EOP)
 
-// ───────────────────────────────────────────────
-// 🧾 Ensure Response Exists
-// ───────────────────────────────────────────────
 if (!isset($response) || trim((string)$response) === '') {
     error_log('[askOpenAI] EMPTY AI RESPONSE — forcing fallback');
     $response = "I'm here and ready — try asking that again.";
 }
+
+// ───────────────────────────────────────────────
+// 📇 CONTACT PROPOSAL ROUTING BRIDGE
+//    AI-detected contact signature → detectAndProposeContact.php
+// ───────────────────────────────────────────────
+$detectedIntent = strtolower(trim($intent ?? ''));
+
+if (
+    in_array($detectedIntent, ['contact_proposal', 'contact_propose'], true) &&
+    ($confidence ?? 0) >= 0.70 &&
+    !empty($query)
+) {
+
+    error_log("[askOpenAI] CONTACT_PROPOSAL detected (confidence: {$confidence}) — routing to pipeline");
+
+    echo json_encode([
+        "success"            => true,
+        "role"               => "askOpenAI",
+        "type"               => "contact_proposal",
+        "intent"             => $intent,
+        "intentConfidence"   => $confidence,
+        "input"              => $query,
+        "activitySessionId"  => $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+        "message"            => "Contact signature detected. Forwarding to proposal engine."
+    ], JSON_UNESCAPED_SLASHES);
+
+    // Still log the action for audit trail
+    $sessionContactId = $_SESSION["contactId"] ?? null;
+    if ($sessionContactId) {
+        try {
+            insertActionPrompt([
+                'contactId'        => $sessionContactId,
+                'promptText'       => $query,
+                'responseText'     => "[CONTACT_PROPOSAL_ROUTED]",
+                'intent'           => $intent,
+                'intentConfidence' => $confidence,
+                'activitySessionId'=> $activitySessionId ?? ($_SESSION['activitySessionId'] ?? session_id()),
+                'actionTypeId'     => 3,
+                'origin'           => ACTION_ORIGIN_USER
+            ], $db);
+        } catch (Throwable $e) {
+            error_log("[actions] contact_proposal logging: " . $e->getMessage());
+        }
+    }
+
+    session_write_close();
+    exit;
+}
+
+// ───────────────────────────────────────────────
+// Normal Output Path (Everything Else)
+// ───────────────────────────────────────────────
 
 // Safe preview logging
 $preview = function_exists('mb_substr')
     ? mb_substr((string)$response, 0, 300)
     : substr((string)$response, 0, 300);
 
-error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode([
-    'preview' => $preview
-]));
+error_log('ASK_OPENAI RESPONSE RAW: ' . json_encode(['preview' => $preview]));
 
-// ───────────────────────────────────────────────
-// 🔐 Session Context — Canonical Variable
-// ───────────────────────────────────────────────
+// Session Context
 $sessionContactId = $_SESSION["contactId"] ?? null;
-
 if (!empty($_SESSION['authenticated'])) {
     $_SESSION['lastActivity'] = time();
 }
 
-// 🔥 CANONICAL SESSION ID — Single Source of Truth
 $activitySessionId = $_SESSION['activitySessionId'] ?? session_id();
 
-// ───────────────────────────────────────────────
-// 📍 Location
-// ───────────────────────────────────────────────
+// Location
 $latitude  = is_numeric($input['latitude'] ?? null) ? (float)$input['latitude'] : null;
 $longitude = is_numeric($input['longitude'] ?? null) ? (float)$input['longitude'] : null;
 
-// ───────────────────────────────────────────────
-// 🧾 Action Logging (Prompt Layer)
-// ───────────────────────────────────────────────
+// Action Logging
 if ($sessionContactId && isset($response)) {
-
     try {
         insertActionPrompt([
             'contactId'        => $sessionContactId,
@@ -1342,18 +1380,14 @@ if ($sessionContactId && isset($response)) {
             'actionTypeId'     => 3,
             'origin'           => ACTION_ORIGIN_USER
         ], $db);
-
     } catch (Throwable $e) {
         error_log("[actions] insert failed in askOpenAI.php: " . $e->getMessage());
     }
 }
 
-// 🔥 Close session AFTER logging
 session_write_close();
 
-// ───────────────────────────────────────────────
-// 📤 Final Output
-// ───────────────────────────────────────────────
+// Final Output
 echo json_encode([
     "success"            => true,
     "role"               => $role ?? "askOpenAI",
@@ -1361,7 +1395,7 @@ echo json_encode([
     "narrativeGenerated" => $narrativeGenerated ?? false,
     "response"           => trim((string)$response),
     "reportUpdated"      => $reportPath ?? null,
-    "activitySessionId"  => $activitySessionId     // canonical
+    "activitySessionId"  => $activitySessionId
 ], JSON_UNESCAPED_SLASHES);
 
 exit;
