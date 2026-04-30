@@ -201,42 +201,46 @@ $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['zip'] ?? ''
 ])));
 
-$lookupAddress = sanitizeAddressForLookup($fullAddress);   // ← Your existing function
+$lookupAddress = sanitizeAddressForLookup($fullAddress);
 
 error_log('[EOP ADDRESS RAW] ' . $fullAddress);
 error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
 
 // --------------------------------------------------
-// 🌐 1. Google Places (Now uses sanitized address)
+// 🌐 1. Google Places — Try Clean → Fallback to Full
 // --------------------------------------------------
-if (
-    !empty($parsed['location']['address']) &&
-    !empty($parsed['location']['city']) &&
-    !empty($googleApiKey)
-) {
+$googleSuccess = false;
+if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
+
+    // Primary attempt: sanitized address
     $googlePlace = resolveGooglePlace($lookupAddress, $googleApiKey);
 
+    if (!$googlePlace) {
+        // Fallback: try original full address (sometimes Google prefers it with business name)
+        $googlePlace = resolveGooglePlace($fullAddress, $googleApiKey);
+    }
+
     if ($googlePlace) {
-        $parsed['location']['locationPlaceId']   = $googlePlace['placeId'];
-        $parsed['location']['latitude']          = $googlePlace['lat'] ?? null;
-        $parsed['location']['longitude']         = $googlePlace['lng'] ?? null;
-        $parsed['location']['formattedAddress']  = $googlePlace['formattedAddress'] ?? $fullAddress;
+        $parsed['location']['locationPlaceId']  = $googlePlace['placeId'];
+        $parsed['location']['latitude']         = $googlePlace['lat'] ?? null;
+        $parsed['location']['longitude']        = $googlePlace['lng'] ?? null;
+        $parsed['location']['formattedAddress'] = $googlePlace['formattedAddress'] ?? $fullAddress;
 
         $meta['google_place'] = $googlePlace;
         $meta['google_source'] = 'places_findplacefromtext';
-    } else {
-        $issues[] = 'google_place_not_resolved';
-        $flags[]  = 'location_unverified';
+        $googleSuccess = true;
     }
-} else {
-    $issues[] = 'google_place_skipped_incomplete_address';
-    $flags[]  = 'location_unverified_no_google';
+}
+
+if (!$googleSuccess) {
+    $issues[] = 'google_place_not_resolved';
+    $flags[]  = 'location_unverified';
 }
 
 
 // --------------------------------------------------
-// 🌍 2. Geographic Resolution (Census) — prefer Google’s formatted address
+// 🌍 2. Geographic Resolution (Census)
 // --------------------------------------------------
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
@@ -282,7 +286,7 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
 
         $parcel = [
             'apnRaw'     => $apnRaw,
-            'apnDisplay' => $mca['apn'],           // You can add formatAPN() later if desired
+            'apnDisplay' => formatAPN($apnRaw),
             'source'     => $mca['source'],
             'confidence' => 95
         ];
@@ -296,7 +300,7 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
 
 
 // --------------------------------------------------
-// 🏛️ 4. Jurisdiction (Authoritative Only)
+// 🏛️ 4. Jurisdiction
 // --------------------------------------------------
 if ($isMaricopa && empty($jurisdiction)) {
     $jurisdiction = resolveMaricopaJurisdiction($lookupAddress);
@@ -310,7 +314,7 @@ $meta['jurisdiction'] = $jurisdiction;
 
 
 // --------------------------------------------------
-// 🧠 FINAL VALIDATION — Enforce PlaceId
+// 🧠 FINAL VALIDATION
 // --------------------------------------------------
 if (empty($parsed['location']['locationPlaceId'] ?? '')) {
     $issues[] = 'placeId_required';
@@ -582,6 +586,14 @@ function sanitizeAddressForLookup(string $input): string {
     $clean = preg_replace('/\s+/', ' ', $clean);
 
     return trim($clean);
+}
+function formatAPN(string $apnRaw): string {
+    $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
+    if (strlen($clean) === 13) {
+        return substr($clean, 0, 3) . '-' . substr($clean, 3, 2) . '-' .
+               substr($clean, 5, 3) . '-' . substr($clean, 8);
+    }
+    return $clean;
 }
 
 #endregion
