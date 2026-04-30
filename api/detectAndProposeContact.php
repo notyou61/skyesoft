@@ -314,10 +314,14 @@ $meta['jurisdiction'] = $jurisdiction;
 
 
 // --------------------------------------------------
-// 🧠 FINAL VALIDATION
+// 🧠 FINAL VALIDATION — PlaceId is IMPORTANT but NOT blocking
 // --------------------------------------------------
-if (empty($parsed['location']['locationPlaceId'] ?? '')) {
-    $issues[] = 'placeId_required';
+$hasPlaceId = !empty($parsed['location']['locationPlaceId'] ?? '');
+
+if (!$hasPlaceId) {
+    $issues[] = 'google_place_not_resolved';
+    $flags[]  = 'location_unverified';
+    // Do NOT add 'placeId_required' anymore
 }
 
 if (!empty($missing)) {
@@ -334,10 +338,14 @@ if ($isMaricopa) {
 
 #region SECTION 8 — Status-Aware Success Response
 
+// In SECTION 8
 $status = 'proposed';
+
 if (!empty($missing)) {
     $status = 'reject';
-} elseif (!empty($issues)) {
+} elseif (!empty($issues) && $isMaricopa) {
+    $status = 'partial';           // Only Maricopa strict
+} elseif (count($issues) >= 3) {   // Too many issues overall
     $status = 'partial';
 }
 
@@ -427,16 +435,18 @@ function resolveGooglePlace(string $address, string $apiKey): ?array
 {
     if (empty($address) || empty($apiKey)) return null;
 
+    // Try with location bias toward Phoenix metro
     $url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json" .
            "?input=" . urlencode($address) .
            "&inputtype=textquery" .
-           "&fields=place_id,geometry,formatted_address" .   // ← improved
+           "&fields=place_id,geometry,formatted_address" .
+           "&locationbias=circle:50000@33.4484,-112.0740" .  // Bias toward Phoenix
            "&key=" . $apiKey;
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_TIMEOUT        => 10,
         CURLOPT_CONNECTTIMEOUT => 5
     ]);
 
@@ -445,14 +455,14 @@ function resolveGooglePlace(string $address, string $apiKey): ?array
     curl_close($ch);
 
     if ($response === false || $httpCode !== 200) {
-        error_log("[GOOGLE PLACES] Request failed | HTTP $httpCode for: $address");
+        error_log("[GOOGLE PLACES] HTTP $httpCode failed for: $address");
         return null;
     }
 
     $data = json_decode($response, true);
 
     if (($data['status'] ?? '') !== 'OK' || empty($data['candidates'][0])) {
-        error_log('[GOOGLE PLACES] No candidates | Status: ' . ($data['status'] ?? 'UNKNOWN'));
+        error_log('[GOOGLE PLACES] No candidates | Status: ' . ($data['status'] ?? 'UNKNOWN') . ' | Query: ' . $address);
         return null;
     }
 
