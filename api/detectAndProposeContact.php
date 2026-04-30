@@ -71,7 +71,8 @@ Return EXACTLY this structure:
 Extraction Rules:
 - Detect contact from messy email signatures or pasted text
 - Split full name into firstName / lastName
-- Default salutation to "Mr" if unknown
+- ONLY extract salutation if explicitly present (Mr, Ms, etc.)
+- Do NOT infer or guess salutation
 - Normalize phone to (XXX) XXX-XXXX
 - Infer company from email domain if needed
 - Extract address, city, state, zip if present
