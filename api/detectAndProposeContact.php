@@ -221,10 +221,13 @@ error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
 
 // --------------------------------------------------
-// 🌐 Google Place ID
+// 🌐 1. Google Place ID Acquisition (Reliable + Clean)
 // --------------------------------------------------
 $googleData = null;
+
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
+
+    // Try 1: Sanitized address
     $googleData = validateLocationWithGoogle([
         'address' => $lookupAddress,
         'city'    => $parsed['location']['city'],
@@ -232,6 +235,7 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         'zip'     => $parsed['location']['zip'] ?? ''
     ]);
 
+    // Try 2: Original full address (often works better with business names like "IHOP")
     if (empty($googleData['placeId'])) {
         $googleData = validateLocationWithGoogle([
             'address' => $fullAddress,
@@ -245,7 +249,10 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         $parsed['location']['locationPlaceId']   = $googleData['placeId'];
         $parsed['location']['latitude']          = $googleData['lat'] ?? null;
         $parsed['location']['longitude']         = $googleData['lng'] ?? null;
-        $parsed['location']['formattedAddress']  = $googleData['address'] ?? $fullAddress;
+
+        // Clean USA suffix for downstream use (Census/Parcel)
+        $cleanFormatted = str_replace(', USA', '', $googleData['address'] ?? $fullAddress);
+        $parsed['location']['formattedAddress']  = trim($cleanFormatted);
 
         $meta['google_place']  = $googleData;
         $meta['google_source'] = 'geocode_json';
@@ -253,8 +260,10 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         $issues[] = 'google_place_not_resolved';
         $flags[]  = 'location_unverified';
     }
+} else {
+    $issues[] = 'google_place_skipped_incomplete_address';
+    $flags[]  = 'location_unverified_no_google';
 }
-
 
 // --------------------------------------------------
 // 🌍 Census
@@ -273,7 +282,7 @@ if (!empty($censusAddress)) {
 }
 
 // --------------------------------------------------
-// 🏆 Parcel Resolution — HEAVY DEBUG + CLEANING
+// 🏆 3. Parcel Resolution (Maricopa Only) — Robust Cleaning
 // --------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
@@ -281,16 +290,14 @@ $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
-error_log('[PARCEL CHECK] isMaricopa=' . ($isMaricopa ? 'YES' : 'NO') . 
-          ' | address=' . ($parsed['location']['address'] ?? 'MISSING') .
-          ' | city=' . ($parsed['location']['city'] ?? 'MISSING'));
-
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
 
-    // Clean address specifically for ArcGIS
-    $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
+    // Use best available address and aggressively clean for ArcGIS
+    $parcelLookupAddress = $parsed['location']['formattedAddress'] 
+                        ?? $geo['matchedAddress'] 
+                        ?? $lookupAddress;
 
-    // Remove USA and clean extra commas/spaces
+    // Clean for ArcGIS compatibility
     $parcelLookupAddress = str_replace(', USA', '', $parcelLookupAddress);
     $parcelLookupAddress = str_replace(', AZ,', ', AZ', $parcelLookupAddress);
     $parcelLookupAddress = preg_replace('/\s+/', ' ', $parcelLookupAddress);
@@ -317,10 +324,10 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
 
-        error_log('[PARCEL SUCCESS] APN: ' . $apnRaw);
+        error_log('[PARCEL SUCCESS] APN: ' . $apnRaw . ' | Jurisdiction: ' . ($jurisdiction ?? 'null'));
     } else {
         $issues[] = 'parcel_not_found';
-        error_log('[PARCEL FAILED] No match found');
+        error_log('[PARCEL FAILED] No match for input');
     }
 }
 
