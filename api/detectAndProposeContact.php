@@ -192,7 +192,7 @@ $googlePlace = null;
 
 
 // --------------------------------------------------
-// 📍 Build Clean Address
+// 📍 Build Addresses
 // --------------------------------------------------
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
@@ -201,20 +201,27 @@ $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['zip'] ?? ''
 ])));
 
-error_log('[EOP ADDRESS] ' . $fullAddress);
+$lookupAddress = sanitizeAddressForLookup($fullAddress);   // ← Your existing function
+
+error_log('[EOP ADDRESS RAW] ' . $fullAddress);
+error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
 
 // --------------------------------------------------
-// 🌐 1. Google Places (MANDATORY for ELC — PlaceId enforced)
+// 🌐 1. Google Places (Now uses sanitized address)
 // --------------------------------------------------
-if (!empty($fullAddress) && strlen($fullAddress) > 10 && !empty($googleApiKey)) {
-    $googlePlace = resolveGooglePlace($fullAddress, $googleApiKey);
+if (
+    !empty($parsed['location']['address']) &&
+    !empty($parsed['location']['city']) &&
+    !empty($googleApiKey)
+) {
+    $googlePlace = resolveGooglePlace($lookupAddress, $googleApiKey);
 
     if ($googlePlace) {
-        $parsed['location']['locationPlaceId'] = $googlePlace['placeId'];
-        $parsed['location']['latitude']        = $googlePlace['lat'] ?? null;
-        $parsed['location']['longitude']       = $googlePlace['lng'] ?? null;
-        $parsed['location']['formattedAddress'] = $googlePlace['formattedAddress'] ?? $fullAddress; // NEW
+        $parsed['location']['locationPlaceId']   = $googlePlace['placeId'];
+        $parsed['location']['latitude']          = $googlePlace['lat'] ?? null;
+        $parsed['location']['longitude']         = $googlePlace['lng'] ?? null;
+        $parsed['location']['formattedAddress']  = $googlePlace['formattedAddress'] ?? $fullAddress;
 
         $meta['google_place'] = $googlePlace;
         $meta['google_source'] = 'places_findplacefromtext';
@@ -222,18 +229,20 @@ if (!empty($fullAddress) && strlen($fullAddress) > 10 && !empty($googleApiKey)) 
         $issues[] = 'google_place_not_resolved';
         $flags[]  = 'location_unverified';
     }
-} elseif (!empty($fullAddress)) {
-    $issues[] = 'google_place_skipped_no_key';
+} else {
+    $issues[] = 'google_place_skipped_incomplete_address';
     $flags[]  = 'location_unverified_no_google';
 }
 
 
 // --------------------------------------------------
-// 🌍 2. Geographic Resolution (Census)
+// 🌍 2. Geographic Resolution (Census) — prefer Google’s formatted address
 // --------------------------------------------------
 $geo = null;
-if (!empty($parsed['location']['address'])) {
-    $geo = resolveGeographyFromAddress($fullAddress);
+$censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
+
+if (!empty($censusAddress)) {
+    $geo = resolveGeographyFromAddress($censusAddress);
 
     if ($geo) {
         $meta['geo']        = $geo;
@@ -262,17 +271,18 @@ $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-    $lookupAddress = $geo['matchedAddress'] ?? $fullAddress;
-    $meta['parcel_lookup_address'] = $lookupAddress;
 
-    $mca = lookupMaricopaParcel($lookupAddress);
+    $parcelLookupAddress = $geo['matchedAddress'] ?? $lookupAddress;
+    $meta['parcel_lookup_address'] = $parcelLookupAddress;
+
+    $mca = lookupMaricopaParcel($parcelLookupAddress);
 
     if ($mca && !empty($mca['apn'])) {
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
 
         $parcel = [
             'apnRaw'     => $apnRaw,
-            'apnDisplay' => $mca['apn'],
+            'apnDisplay' => $mca['apn'],           // You can add formatAPN() later if desired
             'source'     => $mca['source'],
             'confidence' => 95
         ];
@@ -289,7 +299,7 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
 // 🏛️ 4. Jurisdiction (Authoritative Only)
 // --------------------------------------------------
 if ($isMaricopa && empty($jurisdiction)) {
-    $jurisdiction = resolveMaricopaJurisdiction($lookupAddress ?? $fullAddress);
+    $jurisdiction = resolveMaricopaJurisdiction($lookupAddress);
 }
 
 if ($isMaricopa && empty($jurisdiction)) {
@@ -347,7 +357,7 @@ error_log("[EOP FINAL] Status: $status | PlaceID: " . ($parsed['location']['loca
 
 #endregion
 
-#region SECTION 10 - Helper Functions
+#region SECTION 9 - Helper Functions
 
 function normalizeParsed(array $parsed): array
 {
@@ -547,6 +557,31 @@ function lookupMaricopaParcel(string $address): ?array
 
 function resolveMaricopaJurisdiction(string $address): ?string {
     return null; // TODO: dedicated layer
+}
+
+/**
+ * 🧼 sanitizeAddressForLookup
+ * Cleans raw address input for Google / Census / Parcel lookup
+ */
+function sanitizeAddressForLookup(string $input): string {
+
+    // Normalize whitespace early
+    $clean = preg_replace('/\s+/', ' ', $input);
+
+    // 🔴 Remove business/store identifiers like "#3080"
+    $clean = preg_replace('/#\s*\w+/i', '', $clean);
+
+    // 🔴 Remove common unit/suite identifiers
+    $clean = preg_replace('/\b(Suite|Ste|Unit|Apt|#)\b\.?\s*\w+/i', '', $clean);
+
+    // 🔴 Remove leading business names (before first number)
+    // Example: "IHOP 10603 W Olive Ave" → "10603 W Olive Ave"
+    $clean = preg_replace('/^[^0-9]*?(?=\d)/', '', $clean);
+
+    // Normalize again after removals
+    $clean = preg_replace('/\s+/', ' ', $clean);
+
+    return trim($clean);
 }
 
 #endregion
