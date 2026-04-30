@@ -1,7 +1,7 @@
 <?php
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// Version: 1.4.2
+// Version: 1.4.5
 // Last Updated: 2026-04-30
 // =====================================================
 
@@ -105,13 +105,6 @@ $googleApiKey = skyesoftGetEnv("GOOGLE_MAPS_BACKEND_API_KEY") ?? getenv("GOOGLE_
 if (!$apiKey) {
     jsonError('OPENAI_API_KEY not found');
 }
-if (!$googleApiKey) {
-    error_log('[ENV ERROR] GOOGLE_MAPS_BACKEND_API_KEY missing or empty');
-} elseif (strlen($googleApiKey) < 20) {
-    error_log('[ENV WARNING] GOOGLE_MAPS_BACKEND_API_KEY looks invalid');
-} else {
-    error_log('[ENV OK] GOOGLE_MAPS_BACKEND_API_KEY loaded');
-}
 
 $payload = [
     "model"       => "gpt-4.1-mini",
@@ -175,9 +168,6 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #region SECTION 7 — Data Processing & Enhancement
 
-// --------------------------------------------------
-// 🔧 Normalize + Infer + Validate
-// --------------------------------------------------
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
@@ -190,10 +180,6 @@ $meta   = [];
 $parcel = null;
 $jurisdiction = null;
 
-
-// --------------------------------------------------
-// 📍 Build Addresses
-// --------------------------------------------------
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
     $parsed['location']['city'] ?? '',
@@ -206,14 +192,9 @@ $lookupAddress = sanitizeAddressForLookup($fullAddress);
 error_log('[EOP ADDRESS RAW] ' . $fullAddress);
 error_log('[EOP ADDRESS CLEAN] ' . $lookupAddress);
 
-
-// --------------------------------------------------
-// 🌐 1. Google Place ID Acquisition
-// --------------------------------------------------
+// Google Place ID
 $googleData = null;
-
 if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-
     $googleData = validateLocationWithGoogle([
         'address' => $lookupAddress,
         'city'    => $parsed['location']['city'],
@@ -242,41 +223,24 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
         $issues[] = 'google_place_not_resolved';
         $flags[]  = 'location_unverified';
     }
-} else {
-    $issues[] = 'google_place_skipped_incomplete_address';
-    $flags[]  = 'location_unverified_no_google';
 }
 
-
-// --------------------------------------------------
-// 🌍 2. Census
-// --------------------------------------------------
+// Census, Parcel, Jurisdiction...
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
-
 if (!empty($censusAddress)) {
     $geo = resolveGeographyFromAddress($censusAddress);
-
     if ($geo) {
-        $meta['geo']        = $geo;
+        $meta['geo'] = $geo;
         $meta['geo_source'] = 'census';
-
-        if (!empty($geo['county'])) {
-            $parsed['location']['county'] = trim($geo['county']);
-        }
+        if (!empty($geo['county'])) $parsed['location']['county'] = trim($geo['county']);
         if (!empty($geo['state'])) {
             $parsed['location']['state'] = $geo['state'];
             $meta['geo_overrides']['state'] = true;
         }
-    } else {
-        $issues[] = 'geography_not_resolved';
     }
 }
 
-
-// --------------------------------------------------
-// 🏆 3. Parcel Resolution (Maricopa Only)
-// --------------------------------------------------
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
@@ -284,22 +248,17 @@ $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-
     $parcelLookupAddress = $geo['matchedAddress'] ?? $lookupAddress;
-    $meta['parcel_lookup_address'] = $parcelLookupAddress;
-
     $mca = lookupMaricopaParcel($parcelLookupAddress);
 
     if ($mca && !empty($mca['apn'])) {
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
-
         $parcel = [
             'apnRaw'     => $apnRaw,
             'apnDisplay' => formatAPN($apnRaw),
             'source'     => $mca['source'],
             'confidence' => 95
         ];
-
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
     } else {
@@ -307,24 +266,12 @@ if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['loc
     }
 }
 
-
-// --------------------------------------------------
-// 🏛️ 4. Jurisdiction
-// --------------------------------------------------
 if ($isMaricopa && empty($jurisdiction)) {
     $jurisdiction = resolveMaricopaJurisdiction($lookupAddress);
 }
 
-if ($isMaricopa && empty($jurisdiction)) {
-    $issues[] = 'maricopa_jurisdiction_not_resolved';
-}
-
 $meta['jurisdiction'] = $jurisdiction;
 
-
-// --------------------------------------------------
-// 🧠 FINAL VALIDATION
-// --------------------------------------------------
 if (!empty($missing)) {
     $issues[] = 'missing_required_fields';
     $meta['missing'] = $missing;
@@ -362,10 +309,6 @@ echo json_encode([
     'raw_preview'  => substr($rawInput, 0, 250)
 ]);
 
-error_log("[EOP FINAL] Status: $status | PlaceID: " . ($parsed['location']['locationPlaceId'] ?? 'MISSING') .
-          " | Parcel: " . ($parcel ? 'YES' : 'NO') .
-          " | Jurisdiction: " . ($jurisdiction ?: 'null'));
-
 #endregion
 
 #region SECTION 9 - Helper Functions
@@ -390,6 +333,10 @@ function normalizeParsed(array $parsed): array {
 
     if (!empty($parsed['location']['state'])) {
         $parsed['location']['state'] = strtoupper(trim($parsed['location']['state']));
+    }
+
+    if (isset($parsed['contact']['title']) && trim($parsed['contact']['title']) === '') {
+        $parsed['contact']['title'] = null;
     }
 
     return $parsed;
@@ -435,6 +382,9 @@ function sanitizeAddressForLookup(string $input): string {
 
 function formatAPN(string $apnRaw): string {
     $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
+    if (strlen($clean) === 8) {
+        return substr($clean, 0, 3) . '-' . substr($clean, 3, 2) . '-' . substr($clean, 5);
+    }
     if (strlen($clean) === 13) {
         return substr($clean, 0, 3) . '-' . substr($clean, 3, 2) . '-' .
                substr($clean, 5, 3) . '-' . substr($clean, 8);
@@ -452,11 +402,7 @@ function resolveGeographyFromAddress(string $address): ?array {
            "&format=json";
 
     $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 5
-    ]);
-
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5]);
     $response = curl_exec($ch);
     curl_close($ch);
 
@@ -464,12 +410,11 @@ function resolveGeographyFromAddress(string $address): ?array {
 
     $data = json_decode($response, true);
     $result = $data['result']['addressMatches'][0] ?? null;
-
     if (!$result) return null;
 
     $geo = $result['geographies'] ?? [];
     $countyRaw = $geo['Counties'][0]['NAME'] ?? null;
-    $state     = $geo['States'][0]['STUSAB'] ?? null;
+    $state = $geo['States'][0]['STUSAB'] ?? null;
 
     $county = $countyRaw ? str_replace(' County', '', $countyRaw) : null;
 
@@ -534,12 +479,9 @@ function lookupMaricopaParcel(string $address): ?array {
 }
 
 function resolveMaricopaJurisdiction(string $address): ?string {
-    return null; // TODO: dedicated layer
+    return null;
 }
 
-/**
- * Reliable Google Geocoding for Place ID
- */
 function validateLocationWithGoogle(array $locationInput): array {
     $queryParts = [
         $locationInput['address'] ?? '',
@@ -569,14 +511,12 @@ function validateLocationWithGoogle(array $locationInput): array {
     curl_close($ch);
 
     if ($response === false || $httpCode !== 200) {
-        error_log("[Google Geocode] Failed HTTP $httpCode");
         return ['placeId' => null];
     }
 
     $data = json_decode($response, true);
 
     if (($data['status'] ?? '') !== 'OK' || empty($data['results'][0])) {
-        error_log('[Google Geocode] No results for: ' . $query);
         return ['placeId' => null];
     }
 
