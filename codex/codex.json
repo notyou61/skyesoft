@@ -4497,32 +4497,29 @@
                 "State is derived from the sequence of actions, not mutation.",
                 "Multiple actions may reference the same entity across time to represent lifecycle."
                 ],
-
                 "dataAlignment": {
-                "tblActionTypes": {
-                    "requiredColumns": [
-                    "action_type_id",
-                    "crud_class",
-                    "action_name",
-                    "is_active",
-                    "created_unix"
-                    ]
+                    "tblActionTypes": {
+                        "requiredColumns": [
+                        "action_type_id",
+                        "crud_class",
+                        "action_name",
+                        "is_active",
+                        "created_unix"
+                        ]
+                    },
+                    "tblActions": {
+                        "requirements": [
+                        "All actions must be stored as new records.",
+                        "No UPDATE or DELETE operations are permitted on action records.",
+                        "tblActions serves as the authoritative event ledger."
+                        ]
+                    }
                 },
-                "tblActions": {
-                    "requirements": [
-                    "All actions must be stored as new records.",
-                    "No UPDATE or DELETE operations are permitted on action records.",
-                    "tblActions serves as the authoritative event ledger."
-                    ]
-                }
-                },
-
                 "enforcement": {
                 "notes": "Any mutation or deletion of action records constitutes a structural violation.",
                 "auditedBy": "repositoryAuditor",
                 "violationSeverity": "structural"
                 },
-
                 "relationships": {
                 "references": [
                     "sessionAuditStandard",
@@ -4531,7 +4528,6 @@
                 ],
                 "governedBy": "constitution.articleIII"
                 },
-
                 "summary": {
                 "text": "Skyesoft records reality as a sequence of immutable actions. CRUD defines the meaning of those actions, not how data is physically stored or modified."
                 }
