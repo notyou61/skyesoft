@@ -551,47 +551,77 @@ function validateLocationWithGoogle(array $locationInput): array {
 
 function inferSalutation(string $firstName, string $lastName): ?string {
 
+    // 🔒 Normalize input
     $firstName = trim($firstName);
     $lastName  = trim($lastName);
 
+    error_log('[SALUTATION INPUT] firstName=' . $firstName . ' lastName=' . $lastName);
+
     if ($firstName === '' && $lastName === '') {
+        error_log('[SALUTATION] Empty name — skipping');
         return null;
     }
 
+    // 🧠 Stronger classification prompt
     $prompt = <<<PROMPT
-Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
+Classify the gender based ONLY on the first name.
 
-Respond with ONLY one of these values:
+First Name: "{$firstName}"
+
+Rules:
+- If typically female → return: Ms
+- If typically male → return: Mr
+- If uncertain → return: Mr
+
+Respond with ONLY:
 Mr
 Ms
 
-Do not include punctuation or any other words.
+Do not explain.
 PROMPT;
 
+    // 🔑 API Key
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
     if ($apiKey === null) {
-        error_log('[SALUTATION] Missing API key');
+        error_log('[SALUTATION ERROR] Missing API key');
         return null;
     }
 
+    error_log('[SALUTATION] API key found');
+
+    // 🌐 Call OpenAI
     try {
         $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
+        error_log('[SALUTATION RAW RESPONSE] ' . var_export($response, true));
     } catch (Throwable $e) {
         error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
         return null;
     }
 
     if (!$response) {
+        error_log('[SALUTATION ERROR] Empty AI response');
         return null;
     }
 
-    $response = strtolower(trim($response));
-    $response = str_replace(['.', '"', "'"], '', $response);
+    // 🔧 Normalize response
+    $normalized = strtolower(trim($response));
+    $normalized = str_replace(['.', '"', "'", "\n", "\r"], '', $normalized);
 
-    if ($response === 'mr') return 'Mr';
-    if ($response === 'ms') return 'Ms';
+    error_log('[SALUTATION NORMALIZED] ' . $normalized);
 
+    // ✅ Flexible matching (fixes strict failure)
+    if (str_contains($normalized, 'ms')) {
+        error_log('[SALUTATION RESULT] Ms');
+        return 'Ms';
+    }
+
+    if (str_contains($normalized, 'mr')) {
+        error_log('[SALUTATION RESULT] Mr');
+        return 'Mr';
+    }
+
+    error_log('[SALUTATION ERROR] Unable to classify response');
     return null;
 }
 
