@@ -6,7 +6,7 @@
 // Status: Production Ready for UI
 // =====================================================
 
-#region SECTION 1 — Runtime Configuration
+#region SECTION 01 — ⚙️ Runtime Configuration
 
 header('Content-Type: application/json');
 
@@ -23,7 +23,7 @@ require_once __DIR__ . '/askOpenAI.php';
 
 #endregion
 
-#region SECTION 2 — Helpers
+#region SECTION 02 — 🧰 Helper Functions
 
 function jsonError(string $msg): void {
     echo json_encode(['status' => 'error', 'message' => $msg]);
@@ -32,7 +32,7 @@ function jsonError(string $msg): void {
 
 #endregion
 
-#region SECTION 3 — Input Resolution
+#region SECTION 03 — 📥 Input Resolution
 
 $input = json_decode(file_get_contents('php://input'), true);
 
@@ -45,7 +45,7 @@ if (empty($rawInput)) {
 
 #endregion
 
-#region SECTION 4 — AI Prompt Construction
+#region SECTION 04 — 🧠 AI Prompt Construction
 $systemPrompt = <<<EOT
 You are a strict data extraction engine.
 
@@ -85,7 +85,7 @@ $extractionPrompt = "Extract structured contact data from the following text:\n\
 
 #endregion
 
-#region SECTION 5 — AI Request Execution
+#region SECTION 05 — 🤖 AI Request Execution
 
 if (!function_exists('skyesoftLoadEnv')) {
     require_once __DIR__ . '/utils/envLoader.php';
@@ -134,7 +134,7 @@ if (!$aiData || !isset($aiData['parsed'])) jsonError('Invalid AI response format
 
 #endregion
 
-#region SECTION 6 — Intent Validation
+#region SECTION 06 — 🔍 Intent Validation
 
 if (($aiData['intent'] ?? '') !== 'contact_proposal') {
     echo json_encode(['status' => 'reject', 'message' => 'Not recognized as a contact signature.']);
@@ -143,7 +143,35 @@ if (($aiData['intent'] ?? '') !== 'contact_proposal') {
 
 #endregion
 
-#region SECTION 7 — Data Processing & Enhancement
+#region SECTION 07 - 📞 Assign Primary + Secondary Phones
+
+$phones = extractPhones($rawInput);
+
+// Prefer "Cell" as primary if label exists
+if (stripos($rawInput, 'cell') !== false && count($phones) >= 2) {
+    [$phones[0], $phones[1]] = [$phones[1], $phones[0]];
+}
+
+if (!empty($phones)) {
+
+    // Set primary ONLY if missing
+    if (empty($parsed['contact']['primaryPhoneRaw']) && isset($phones[0])) {
+        $parsed['contact']['primaryPhone']    = $phones[0]['formatted'];
+        $parsed['contact']['primaryPhoneRaw'] = $phones[0]['raw'];
+    }
+
+    // Set secondary safely
+    if (isset($phones[1]) && empty($parsed['contact']['secondaryPhoneRaw'])) {
+        if ($phones[1]['raw'] !== ($parsed['contact']['primaryPhoneRaw'] ?? null)) {
+            $parsed['contact']['secondaryPhone']    = $phones[1]['formatted'];
+            $parsed['contact']['secondaryPhoneRaw'] = $phones[1]['raw'];
+        }
+    }
+}
+
+#endregion
+
+#region SECTION 08 — 🧩 Data Processing & Enrichment
 
 $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
@@ -288,7 +316,7 @@ if ($isMaricopa) {
 
 #endregion
 
-#region SECTION 8 — Status-Aware Success Response
+#region SECTION 09 — ✅ Status & Legitimacy Response
 
 $legitimacy = assessContactLegitimacy($parsed, $meta, $issues ?? []);
 
@@ -317,8 +345,9 @@ echo json_encode([
 
 #endregion
 
-#region SECTION 9 — Helper Functions
+#region SECTION 10 — 🛠️ Internal Utilities
 
+// 🧩 normalizeParsed — standardize parsed contact structure
 function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
         $email = trim($parsed['contact']['email']);
@@ -346,7 +375,7 @@ function normalizeParsed(array $parsed): array {
 
     return $parsed;
 }
-
+// 🧠 inferMissingFields — infer missing contact fields
 function inferMissingFields(array $parsed): array {
     if (empty($parsed['entity']['name'] ?? '') && !empty($parsed['contact']['email'] ?? '')) {
         $email = $parsed['contact']['email'];
@@ -362,7 +391,7 @@ function inferMissingFields(array $parsed): array {
     }
     return $parsed;
 }
-
+// 🔍 validateParsed — validate required parsed fields
 function validateParsed(array $parsed): array {
     $missing = [];
     if (empty($parsed['contact']['firstName'] ?? '')) $missing[] = 'firstName';
@@ -377,7 +406,7 @@ function validateParsed(array $parsed): array {
 
     return $missing;
 }
-
+// 🧼 sanitizeAddressForLookup — clean address for lookup
 function sanitizeAddressForLookup(string $input): string {
     $clean = preg_replace('/\s+/', ' ', $input);
     $clean = preg_replace('/#\s*\w+/i', '', $clean);
@@ -386,7 +415,7 @@ function sanitizeAddressForLookup(string $input): string {
     $clean = preg_replace('/\s+/', ' ', $clean);
     return trim($clean);
 }
-
+// 🏷️ formatAPN — format parcel number
 function formatAPN(string $apnRaw): string {
     $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($apnRaw));
     if (strlen($clean) === 8) {
@@ -398,7 +427,7 @@ function formatAPN(string $apnRaw): string {
     }
     return $clean;
 }
-
+// 🗺️ resolveGeographyFromAddress — resolve county/state from address
 function resolveGeographyFromAddress(string $address): ?array {
     if (!$address) return null;
 
@@ -431,7 +460,7 @@ function resolveGeographyFromAddress(string $address): ?array {
         'matchedAddress' => $result['matchedAddress'] ?? null
     ];
 }
-
+// 🧾 lookupMaricopaParcel — fetch Maricopa parcel data
 function lookupMaricopaParcel(string $address): ?array {
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
@@ -487,11 +516,11 @@ function lookupMaricopaParcel(string $address): ?array {
         'jurisdiction' => $attr['JURISDICTION'] ?? null
     ];
 }
-
+// 🏛️ resolveMaricopaJurisdiction — resolve city jurisdiction
 function resolveMaricopaJurisdiction(string $address): ?string {
     return null;
 }
-
+// 📍 validateLocationWithGoogle — resolve placeId and coordinates
 function validateLocationWithGoogle(array $locationInput): array {
     $queryParts = [
         $locationInput['address'] ?? '',
@@ -538,10 +567,7 @@ function validateLocationWithGoogle(array $locationInput): array {
         'lng'     => $result['geometry']['location']['lng'] ?? null
     ];
 }
-
-/**
- * FINAL LEGITIMACY GATE — Production Hardened
- */
+// ✅ assessContactLegitimacy — evaluate contact against acceptance rules
 function assessContactLegitimacy(array $parsed, array $meta, array $issues): array {
     $failures = [];
     $warnings = [];
@@ -632,6 +658,33 @@ function assessContactLegitimacy(array $parsed, array $meta, array $issues): arr
         'warnings' => [],
         'readyForCommit' => true
     ];
+}
+// 📞 extractPhones — parse all phone numbers
+function extractPhones(string $input): array {
+
+    // Find all phone-like patterns
+    preg_match_all('/\(?\d{3}\)?[\s\.\-]?\d{3}[\.\-]?\d{4}/', $input, $matches);
+
+    $phones = [];
+
+    foreach ($matches[0] as $raw) {
+
+        // Normalize
+        $digits = preg_replace('/\D/', '', $raw);
+
+        if (strlen($digits) === 10) {
+            $phones[] = [
+                'formatted' => sprintf('(%s) %s-%s',
+                    substr($digits, 0, 3),
+                    substr($digits, 3, 3),
+                    substr($digits, 6, 4)
+                ),
+                'raw' => $digits
+            ];
+        }
+    }
+
+    return $phones;
 }
 
 #endregion
