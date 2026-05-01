@@ -5,8 +5,8 @@
                   "notes":  "Footer standardization and card metadata alignment"
               },
     "system":  {
-                   "siteVersion":  "0.9.1213",
-                   "lastUpdateUnix":  1777638830,
+                   "siteVersion":  "0.9.1214",
+                   "lastUpdateUnix":  1777639375,
                    "updateOccurred":  true,
                    "commitHash":  "87ee4a83",
                    "state":  "dev"

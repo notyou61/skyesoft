@@ -551,7 +551,6 @@ function validateLocationWithGoogle(array $locationInput): array {
 
 function inferSalutation(string $firstName, string $lastName): ?string {
 
-    // 🔒 Guard — do not call AI with empty names
     $firstName = trim($firstName);
     $lastName  = trim($lastName);
 
@@ -559,7 +558,7 @@ function inferSalutation(string $firstName, string $lastName): ?string {
         return null;
     }
 
-    $basePrompt = <<<PROMPT
+    $prompt = <<<PROMPT
 Given the name "{$firstName} {$lastName}", infer the most likely professional salutation.
 
 Respond with ONLY one of these values:
@@ -569,8 +568,6 @@ Ms
 Do not include punctuation or any other words.
 PROMPT;
 
-    $fullPrompt = injectStandingOrders($basePrompt);
-
     $apiKey = skyesoftGetEnv("OPENAI_API_KEY");
 
     if ($apiKey === null) {
@@ -579,7 +576,7 @@ PROMPT;
     }
 
     try {
-        $response = callOpenAI($fullPrompt, $apiKey, 'gpt-4.1');
+        $response = callOpenAI($prompt, $apiKey, 'gpt-4.1');
     } catch (Throwable $e) {
         error_log('[SALUTATION AI ERROR] ' . $e->getMessage());
         return null;
@@ -589,7 +586,6 @@ PROMPT;
         return null;
     }
 
-    // 🔧 HARD NORMALIZATION
     $response = strtolower(trim($response));
     $response = str_replace(['.', '"', "'"], '', $response);
 
