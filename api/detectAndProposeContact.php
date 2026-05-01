@@ -6,11 +6,21 @@
 // =====================================================
 
 #region SECTION 1 — Runtime Configuration
+
 header('Content-Type: application/json');
 
+// 🔧 Error visibility (browser)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
+
+// 🔥 FORCE FILE LOGGING (THIS IS WHAT YOU NEED)
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/debug.log');
+
+// 🧪 Confirm logging is working
+error_log('=== DEBUG START detectAndProposeContact ===');
+
 #endregion
 
 #region SECTION 2 — Helpers
