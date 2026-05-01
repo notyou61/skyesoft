@@ -562,7 +562,7 @@ function validateLocationWithGoogle(array $locationInput): array {
     ];
 }
 
-function inferSalutation(string $firstName, string $lastName): ?string {
+function inferSalutation1(string $firstName, string $lastName): ?string {
 
     // 🔒 Normalize input
     $firstName = trim($firstName);
