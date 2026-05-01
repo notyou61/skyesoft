@@ -168,13 +168,13 @@ if ($existingSalutation !== '') {
 } else {
     // AI left it empty → run our inference
     $salutation = inferSalutation($firstName, $lastName);
-    
+
     if ($salutation !== null) {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
     } else {
-        $parsed['contact']['salutation'] = 'Mr';        // safe default
-        $parsed['contact']['salutationInferred'] = true;
+        $parsed['contact']['salutation'] = null;
+        $parsed['contact']['salutationInferred'] = null;
     }
 }
 // ============================================================
