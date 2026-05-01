@@ -21,6 +21,9 @@ ini_set('error_log', __DIR__ . '/debug.log');
 // 🧪 Confirm logging is working
 error_log('=== DEBUG START detectAndProposeContact ===');
 
+// 🔥 ADD THIS RIGHT HERE (GLOBAL DEPENDENCIES)
+require_once __DIR__ . '/askOpenAI.php';
+
 #endregion
 
 #region SECTION 2 — Helpers
