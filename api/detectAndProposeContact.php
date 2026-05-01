@@ -1,27 +1,24 @@
 <?php
 // =====================================================
 // Skyesoft — detectAndProposeContact.php
-// Version: 1.4.7
-// Last Updated: 2026-04-30
+// Version: 1.5.0
+// Last Updated: 2026-05-01
+// Status: Production Ready for UI
 // =====================================================
 
 #region SECTION 1 — Runtime Configuration
 
 header('Content-Type: application/json');
 
-// 🔧 Error visibility (browser)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
-// 🔥 FORCE FILE LOGGING (THIS IS WHAT YOU NEED)
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/debug.log');
 
-// 🧪 Confirm logging is working
-error_log('=== DEBUG START detectAndProposeContact ===');
+error_log('=== DEBUG START detectAndProposeContact v1.5.0 ===');
 
-// 🔥 ADD THIS RIGHT HERE (GLOBAL DEPENDENCIES)
 require_once __DIR__ . '/askOpenAI.php';
 
 #endregion
@@ -81,22 +78,6 @@ Return EXACTLY this structure:
       "zip": ""
     }
   }
-}
-
-Extraction Rules:
-- Detect contact from messy email signatures or pasted text
-- Split full name into firstName / lastName
-- ONLY extract salutation if explicitly present (Mr, Ms, etc.)
-- Do NOT infer or guess salutation
-- Normalize phone to (XXX) XXX-XXXX
-- Infer company from email domain if needed
-- Extract address, city, state, zip if present
-
-If no contact-like data exists, return:
-{
-  "intent": "none",
-  "confidence": 0,
-  "parsed": {}
 }
 EOT;
 
@@ -168,20 +149,17 @@ $parsed = $aiData['parsed'] ?? [];
 $parsed = normalizeParsed($parsed);
 $parsed = inferMissingFields($parsed);
 
-// ==================== SALUTATION INFERENCE ====================
+// Salutation inference
 $firstName = trim($parsed['contact']['firstName'] ?? '');
 $lastName  = trim($parsed['contact']['lastName'] ?? '');
 
 $existingSalutation = trim($parsed['contact']['salutation'] ?? '');
 
 if ($existingSalutation !== '') {
-    // AI gave us something — trust it
     $parsed['contact']['salutation'] = $existingSalutation;
     $parsed['contact']['salutationInferred'] = false;
 } else {
-    // AI left it empty → run our inference
     $salutation = inferSalutation($firstName, $lastName);
-
     if ($salutation !== null) {
         $parsed['contact']['salutation'] = $salutation;
         $parsed['contact']['salutationInferred'] = true;
@@ -190,7 +168,6 @@ if ($existingSalutation !== '') {
         $parsed['contact']['salutationInferred'] = null;
     }
 }
-// ============================================================
 
 $missing = validateParsed($parsed);
 
@@ -200,7 +177,7 @@ $meta   = [];
 $parcel = null;
 $jurisdiction = null;
 
-// Build Addresses
+// Address handling
 $fullAddress = trim(implode(' ', array_filter([
     $parsed['location']['address'] ?? '',
     $parsed['location']['city'] ?? '',
@@ -246,7 +223,7 @@ if (!empty($googleApiKey) && !empty($parsed['location']['address']) && !empty($p
     }
 }
 
-// Census
+// Census + Parcel + Jurisdiction (unchanged)
 $geo = null;
 $censusAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
 if (!empty($censusAddress)) {
@@ -259,7 +236,6 @@ if (!empty($censusAddress)) {
     }
 }
 
-// Parcel + Jurisdiction
 $county = strtoupper(trim($parsed['location']['county'] ?? ''));
 $state  = strtoupper(trim($parsed['location']['state'] ?? ''));
 
@@ -267,29 +243,22 @@ $isMaricopa = ($county === 'MARICOPA' && $state === 'AZ');
 $meta['is_maricopa'] = $isMaricopa;
 
 if ($isMaricopa && !empty($parsed['location']['address']) && !empty($parsed['location']['city'])) {
-
     $parcelLookupAddress = $parsed['location']['formattedAddress'] ?? $lookupAddress;
     $parcelLookupAddress = str_replace(', USA', '', $parcelLookupAddress);
     $parcelLookupAddress = trim(preg_replace('/\s+/', ' ', $parcelLookupAddress));
 
     $meta['parcel_lookup_address'] = $parcelLookupAddress;
 
-    error_log('[PARCEL INPUT FINAL] ' . $parcelLookupAddress);
-
     $mca = lookupMaricopaParcel($parcelLookupAddress);
-
-    error_log('[PARCEL OUTPUT] ' . json_encode($mca));
 
     if ($mca && !empty($mca['apn'])) {
         $apnRaw = preg_replace('/[^A-Za-z0-9]/', '', $mca['apn']);
-
         $parcel = [
             'apnRaw'     => $apnRaw,
             'apnDisplay' => formatAPN($apnRaw),
             'source'     => $mca['source'],
             'confidence' => 95
         ];
-
         $meta['parcel'] = $parcel;
         $jurisdiction   = $mca['jurisdiction'] ?? null;
     } else {
@@ -321,11 +290,11 @@ if ($isMaricopa) {
 
 #region SECTION 8 — Status-Aware Success Response
 
-$status = 'proposed';
-if (!empty($missing)) {
-    $status = 'reject';
-} elseif ($isMaricopa && (empty($parcel) || empty($jurisdiction))) {
-    $status = 'partial';
+$legitimacy = assessContactLegitimacy($parsed, $meta, $issues ?? []);
+
+$status = $legitimacy['status'];
+if ($status === 'accepted') {
+    $status = 'proposed';
 }
 
 echo json_encode([
@@ -338,6 +307,8 @@ echo json_encode([
     'flags'        => !empty($flags) ? $flags : null,
     'meta'         => !empty($meta) ? $meta : null,
     'issues'       => !empty($issues) ? $issues : null,
+    'legitimacy'   => $legitimacy,
+
     'activitySessionId' => $activitySessionId,
     'raw_preview'  => substr($rawInput, 0, 250),
     'success' => true,
@@ -346,7 +317,7 @@ echo json_encode([
 
 #endregion
 
-#region SECTION 9 - Helper Functions
+#region SECTION 9 — Helper Functions
 
 function normalizeParsed(array $parsed): array {
     if (!empty($parsed['contact']['email'])) {
@@ -396,7 +367,14 @@ function validateParsed(array $parsed): array {
     $missing = [];
     if (empty($parsed['contact']['firstName'] ?? '')) $missing[] = 'firstName';
     if (empty($parsed['contact']['lastName']  ?? '')) $missing[] = 'lastName';
-    if (empty($parsed['contact']['email']     ?? '')) $missing[] = 'email';
+
+    $hasEmail = !empty($parsed['contact']['email'] ?? '');
+    $hasPhone = !empty($parsed['contact']['primaryPhoneRaw'] ?? '');
+
+    if (!$hasEmail && !$hasPhone) {
+        $missing[] = 'contactMethod';
+    }
+
     return $missing;
 }
 
@@ -457,7 +435,6 @@ function resolveGeographyFromAddress(string $address): ?array {
 function lookupMaricopaParcel(string $address): ?array {
     $url = "https://gis.mcassessor.maricopa.gov/arcgis/rest/services/Parcels/MapServer/0/query";
 
-    // Aggressive cleaning
     $address = str_replace(', USA', '', trim($address));
     $address = preg_replace('/\s+/', ' ', $address);
 
@@ -559,6 +536,101 @@ function validateLocationWithGoogle(array $locationInput): array {
         'address' => $result['formatted_address'] ?? $query,
         'lat'     => $result['geometry']['location']['lat'] ?? null,
         'lng'     => $result['geometry']['location']['lng'] ?? null
+    ];
+}
+
+/**
+ * FINAL LEGITIMACY GATE — Production Hardened
+ */
+function assessContactLegitimacy(array $parsed, array $meta, array $issues): array {
+    $failures = [];
+    $warnings = [];
+
+    // 1. Structural
+    if (empty($parsed['contact']['firstName']) || empty($parsed['contact']['lastName'])) {
+        $failures[] = 'missing_name';
+    }
+
+    $hasEmail = !empty($parsed['contact']['email']);
+    $hasPhone = !empty($parsed['contact']['primaryPhoneRaw']);
+
+    if (!$hasEmail && !$hasPhone) {
+        $failures[] = 'missing_contact_method';
+    }
+
+    if (empty($parsed['location']['address']) || empty($parsed['location']['city']) || empty($parsed['location']['state'])) {
+        $failures[] = 'missing_location_core';
+    }
+
+    // 2. Critical Location & Maricopa Rules
+    if (empty($parsed['location']['locationPlaceId'])) {
+        $failures[] = 'missing_placeId';
+    }
+
+    if (!empty($meta['is_maricopa'])) {
+        if (empty($meta['parcel'])) {
+            $failures[] = 'missing_parcel';
+        }
+        if (empty($meta['jurisdiction'])) {
+            $failures[] = 'missing_jurisdiction';
+        }
+    }
+
+    // 3. Identity Sanity (improved)
+    $invalidNames = ['test', 'admin', 'user', 'unknown', 'dummy', 'sample'];
+    $firstLower = strtolower(trim($parsed['contact']['firstName'] ?? ''));
+    if (strlen($firstLower) < 2 || in_array($firstLower, $invalidNames)) {
+        $failures[] = 'invalid_name';
+    }
+
+    // 4. Format validation
+    if ($hasEmail && !filter_var($parsed['contact']['email'], FILTER_VALIDATE_EMAIL)) {
+        $failures[] = 'invalid_email';
+    }
+    if ($hasPhone && !preg_match('/^\d{10}$/', $parsed['contact']['primaryPhoneRaw'])) {
+        $warnings[] = 'invalid_phone_format';
+    }
+
+    // 5. Issue mapping
+    foreach ($issues as $issue) {
+        if (in_array($issue, ['missing_required_fields'])) {
+            $failures[] = $issue;
+        }
+    }
+
+    // Deduplicate
+    $failures = array_values(array_unique($failures));
+    $warnings = array_values(array_unique($warnings));
+
+    // Severity for UI
+    $severity = !empty($failures) ? 'critical' : (!empty($warnings) ? 'warning' : 'none');
+
+    if (!empty($failures)) {
+        return [
+            'status'   => 'reject',
+            'severity' => $severity,
+            'failures' => $failures,
+            'warnings' => $warnings,
+            'readyForCommit' => false
+        ];
+    }
+
+    if (!empty($warnings)) {
+        return [
+            'status'   => 'partial',
+            'severity' => $severity,
+            'failures' => [],
+            'warnings' => $warnings,
+            'readyForCommit' => false
+        ];
+    }
+
+    return [
+        'status'   => 'accepted',
+        'severity' => $severity,
+        'failures' => [],
+        'warnings' => [],
+        'readyForCommit' => true
     ];
 }
 

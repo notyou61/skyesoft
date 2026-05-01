@@ -5272,6 +5272,7 @@
                         "reject",
                         "partial",
                         "proposed",
+                        "accepted",
                         "resolved_duplicate",
                         "resolved_conflict"
                     ],
@@ -5311,6 +5312,85 @@
                         "Duplicate contacts must not be inserted.",
                         "All commit operations must follow ELC creation standards."
                     ]
+                    },
+                    "acceptanceGate": {
+                        "description": "Defines the final legitimacy gate that all proposed contacts must pass prior to commitPhase. This gate evaluates structural validity, location legitimacy, identity quality, duplication rules, and entity validity to determine if a contact is eligible for acceptance.",
+                        "evaluationOrder": [
+                            "structuralValidity",
+                            "locationLegitimacy",
+                            "identityValidation",
+                            "duplicateEvaluation",
+                            "entityValidation",
+                            "issueReview"
+                        ],
+                        "rules": {
+                            "structuralValidity": [
+                            "contactFirstName and contactLastName must be present",
+                            "At least one contact method must exist (contactEmail OR contactPrimaryPhone)",
+                            "locationAddress, locationCity, and locationState must be present",
+                            "Failure results in reject status"
+                            ],
+                            "locationLegitimacy": [
+                            "locationPlaceId must be resolved via Google Places",
+                            "location must include city, state, and zip from validated source",
+                            "Census must resolve state and county",
+                            "If state = 'AZ' AND county = 'Maricopa', parcel and jurisdiction must be resolved",
+                            "If locationPlaceId is missing, status must be partial and commit is blocked"
+                            ],
+                            "identityValidation": [
+                            "contactEmail must pass format validation when present",
+                            "contactPrimaryPhone must be normalized to numeric format when present",
+                            "contactFirstName and contactLastName must represent a valid human identity",
+                            "Clearly invalid or placeholder names must result in reject status"
+                            ],
+                            "duplicateEvaluation": [
+                            "Duplicate detection must occur within the entity scope",
+                            "Exact match (entityId + locationId + firstName + lastName) must resolve as resolved_duplicate",
+                            "Secondary match (entityId + email OR phone) must trigger conflict or review",
+                            "Duplicate contacts must not be inserted",
+                            "Duplicates are considered properly resolved, not an error condition"
+                            ],
+                            "entityValidation": [
+                            "Entity must be resolved or resolvable prior to acceptance",
+                            "Entity must not be marked inactive or invalid",
+                            "Entity reuse is required when a match exists",
+                            "Failure results in reject or conflict status"
+                            ],
+                            "issueReview": [
+                            "Blocking issues (missing_required_fields, placeId_required) must result in reject or partial",
+                            "Non-blocking issues may result in partial status",
+                            "All issues must be surfaced in the proposal response",
+                            "Commit is only allowed when no blocking issues are present"
+                            ]
+                        },
+                        "decisionMapping": {
+                            "proposed": [
+                            "All structural requirements satisfied",
+                            "Location validated with locationPlaceId",
+                            "Identity valid and normalized",
+                            "No duplicate conflict requiring review",
+                            "Entity valid",
+                            "No blocking issues present"
+                            ],
+                            "partial": [
+                            "Missing non-critical data",
+                            "Location validation incomplete (no placeId)",
+                            "Weak identity signals",
+                            "Requires user confirmation before commit"
+                            ],
+                            "reject": [
+                            "Missing required structural fields",
+                            "Invalid or unresolvable location",
+                            "Invalid identity",
+                            "Entity cannot be resolved",
+                            "Critical validation failures"
+                            ]
+                        },
+                        "commitEligibility": [
+                            "Only contacts with status = 'accepted' or 'resolved_new' may proceed to commitPhase",
+                            "Contacts with status = 'partial' must be reviewed and corrected before commit",
+                            "Contacts with status = 'reject' must not proceed to commitPhase"
+                        ]
                     },
                     "notes": [
                     "This model extends the pipelineModel by formalizing the proposeStage validation behavior.",
