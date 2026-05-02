@@ -90,38 +90,41 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
         error_log('[logAuthAction ERROR] ' . $e->getMessage());
     }
 }
-// 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
-// Note: This is a simplified version focused on auth-related logging
-function getContactName(?int $contactId): array {
 
-    if ($contactId === null) {
+// 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
+function getContactName($contactId): array {
+    // Accept string/int/null and sanitize
+    if ($contactId === null || $contactId === '' || $contactId === false || $contactId === 'null') {
+        return ['firstName' => null, 'lastName' => null];
+    }
+
+    $contactId = filter_var($contactId, FILTER_VALIDATE_INT);
+    if ($contactId === false) {
+        error_log('[getContactName] Invalid contactId: ' . var_export($contactId, true));
         return ['firstName' => null, 'lastName' => null];
     }
 
     try {
         $pdo = getPDO();
-
         $stmt = $pdo->prepare("
-            SELECT contactFirstName, contactLastName
-            FROM tblContacts
-            WHERE contactId = :id
-            LIMIT 1
+            SELECT contactFirstName, contactLastName 
+            FROM tblContacts 
+            WHERE contactId = :id LIMIT 1
         ");
-
         $stmt->execute([':id' => $contactId]);
 
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return [
             'firstName' => $row['contactFirstName'] ?? null,
-            'lastName'  => $row['contactLastName'] ?? null
+            'lastName'  => $row['contactLastName']  ?? null
         ];
-
     } catch (Throwable $e) {
-        error_log('[NAME RESOLVE ERROR] ' . $e->getMessage());
+        error_log('[getContactName ERROR] ' . $e->getMessage());
         return ['firstName' => null, 'lastName' => null];
     }
 }
+
 // 🔐 getLastAuthAction() — Fetch last auth action for a user (login/logout)
 function getLastAuthAction(PDO $pdo, int $contactId): ?string
 {
