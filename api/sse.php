@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // ======================================================================
 // Skyesoft — sse.php
-// Version: 1.5.4
+// Version: 1.5.5
 // Real-Time Projection Engine - Production Stable (DB Activity + Geo)
 // ======================================================================
 
@@ -28,9 +28,6 @@ require_once __DIR__ . '/dbConnect.php';
 // ─────────────────────────────────────────
 $activitySessionId = session_id();   // ← CANONICAL VARIABLE
 
-// ─────────────────────────────────────────
-// 🧠 Snapshot current session state
-// ─────────────────────────────────────────
 $initialSession = [
     'authenticated' => !empty($_SESSION['authenticated']),
     'contactId'     => $_SESSION['contactId'] ?? null,
@@ -73,7 +70,7 @@ if ($isSnapshot) {
 
     $payload["auth"]      = $auth;
     $payload["streamId"]  = "snapshot";
-    $payload["activitySessionId"] = session_id();   // ← updated
+    $payload["activitySessionId"] = session_id();
 
     session_write_close();
 
@@ -177,62 +174,12 @@ while (true) {
 
         $lastSecond = $now;
 
-        // === CRITICAL: Use existing session — do NOT start again ===
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();   // Only if truly needed (should be rare)
-        }
-
-        $activitySessionId = session_id();
-
-        // ... rest of your loop logic stays exactly the same ...
-
-        // At the end of the iteration:
-        session_write_close();   // Keep this
-
-        // ... build and send payload ...
-    }
-
-    usleep(100000);
-}
-
-#endregion
-
-#region 🚀 SECTION 4 — STREAM INITIALIZATION
-
-$streamId = bin2hex(random_bytes(8));
-$lastPing = 0;
-$lastSecond = 0;
-
-#endregion
-
-#region 🔄 SECTION 5 — STREAM LOOP
-
-while (true) {
-
-    if (connection_aborted()) {
-        break;
-    }
-
-    $now = time();
-
-    // Keepalive ping
-    if (($now - $lastPing) >= 15) {
-        echo ": ping\n\n";
-        if (function_exists('ob_flush')) @ob_flush();
-        @flush();
-        $lastPing = $now;
-    }
-
-    // 1Hz data update
-    if ($now > $lastSecond) {
-
-        $lastSecond = $now;
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
+        // Resume existing session safely — NEVER start after headers have been sent
+        if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        $activitySessionId = session_id();   // ← refresh after possible regenerate
+        $activitySessionId = session_id();
 
         // 🔒 HARD STOP — Session already logged out
         if (!empty($_SESSION['idleLogoutComplete']) && $_SESSION['idleLogoutComplete'] === true) {
@@ -257,16 +204,15 @@ while (true) {
             $payload["idle"]        = $idle;
             $payload["forceLogout"] = true;
             $payload["streamId"]    = $streamId;
-            $payload["activitySessionId"] = session_id();   // ← updated
+            $payload["activitySessionId"] = session_id();
 
             echo "data: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n\n";
 
             if (function_exists('ob_flush')) @ob_flush();
             @flush();
 
-            continue; // 🔥 skip entire loop logic
+            continue;
         }
-
 
         // Single source of truth for auth
         $wasAuthenticated = !empty($_SESSION['authenticated']);
@@ -371,7 +317,6 @@ while (true) {
 
             $_SESSION['idleLogoutComplete'] = true;
 
-            // 🔄 FORCE STATE TRANSITION (same frame)
             $auth = [
                 'authenticated' => false,
                 'contactId'     => null,
@@ -383,19 +328,14 @@ while (true) {
 
             $idle = null;
 
-            // Get geo from session (captured at login)
             $latitude  = $_SESSION['latitude']  ?? null;
             $longitude = $_SESSION['longitude'] ?? null;
 
-            // Log ONCE (authoritative audit trail)
-            // 🔒 Prevent duplicate logout entries
             if ($pdo instanceof PDO) {
                 try {
-
                     $lastAction = getLastAuthAction($pdo, $contactIdForLog);
 
                     if ($lastAction !== 'auth.logout') {
-
                         logAuthAction($pdo, "auth.logout", $contactIdForLog, [
                             "actionOrigin" => "idle_timeout",
                             "ip"           => safeIp(),
@@ -404,18 +344,13 @@ while (true) {
                             "longitude"    => $longitude,
                             "sessionId"    => $sessionIdForLog
                         ]);
-
                     }
-
                 } catch (Throwable $e) {
                     error_log('[SSE IDLE LOGOUT ERROR] ' . $e->getMessage());
                 }
             }
 
-            // 🔔 SIGNAL ONLY (client will handle UI)
             $forceLogout = true;
-
-            // Prevent re-trigger
             $contactIdForLog = null;
         }
 
@@ -425,34 +360,27 @@ while (true) {
         // 📦 BUILD & SEND PAYLOAD (AUTHORITATIVE)
         // ─────────────────────────────────────────
 
-        // Context for downstream modules (read-only)
         $SKYE_CONTEXT = ['auth' => $auth];
 
-        // Get dynamic system data
         $payload = require __DIR__ . "/getDynamicData.php";
 
-        // 🔐 Attach core state (server authoritative)
         $payload["auth"]      = $auth;
         $payload["idle"]      = $idle;
         $payload["streamId"]  = $streamId;
-        $payload["activitySessionId"] = $activitySessionId;   // ← CANONICAL
+        $payload["activitySessionId"] = $activitySessionId;
 
-        // 🔔 Apply force logout signal (if triggered earlier)
         if (!empty($forceLogout)) {
             $payload["forceLogout"] = true;
         }
 
-        // Encode safely
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
-        // Send SSE frame
         if ($json !== false && $json !== '') {
             echo "data: {$json}\n\n";
 
             if (function_exists('ob_flush')) {
                 @ob_flush();
             }
-
             @flush();
         }
     }
