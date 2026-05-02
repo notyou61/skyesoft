@@ -141,8 +141,59 @@ $lastActivityCache = [
     'value'     => null
 ];
 
-define('SKYESOFT_IDLE_TIMEOUT', 900);   // Change to 900 in production
+define('SKYESOFT_IDLE_TIMEOUT', 900);
 $idleTimeoutSeconds = SKYESOFT_IDLE_TIMEOUT;
+
+#endregion
+
+#region 🚀 SECTION 4 — STREAM INITIALIZATION
+
+$streamId = bin2hex(random_bytes(8));
+$lastPing = 0;
+$lastSecond = 0;
+
+#endregion
+
+#region 🔄 SECTION 5 — STREAM LOOP
+
+while (true) {
+
+    if (connection_aborted()) {
+        break;
+    }
+
+    $now = time();
+
+    // Keepalive ping
+    if (($now - $lastPing) >= 15) {
+        echo ": ping\n\n";
+        if (function_exists('ob_flush')) @ob_flush();
+        @flush();
+        $lastPing = $now;
+    }
+
+    // 1Hz data update
+    if ($now > $lastSecond) {
+
+        $lastSecond = $now;
+
+        // === CRITICAL: Use existing session — do NOT start again ===
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();   // Only if truly needed (should be rare)
+        }
+
+        $activitySessionId = session_id();
+
+        // ... rest of your loop logic stays exactly the same ...
+
+        // At the end of the iteration:
+        session_write_close();   // Keep this
+
+        // ... build and send payload ...
+    }
+
+    usleep(100000);
+}
 
 #endregion
 
