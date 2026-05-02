@@ -6,35 +6,61 @@ declare(strict_types=1);
 // Centralized action logging (ELC-compliant, consistent)
 // ============================================================
 
+// 🧾 logAction() — User action logger (name → ID resolved)
 function logAction(PDO $db, array $p): void
 {
     try {
 
-        // 🔐 Ensure session exists
+        // 🔐 Ensure session
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        // 🔕 Skip logging when requested
+        // 🔕 Suppress logging
         if (!empty($p['suppressLog'])) {
             return;
         }
 
-        // --- Required
-        $type   = (int)($p['type'] ?? 0);
-        $intent = (string)($p['intent'] ?? '');
-        $prompt = (string)($p['prompt'] ?? '');
+        // --- Required (NEW MODEL)
+        $actionName = trim((string)($p['actionName'] ?? ''));
+        $intent     = trim((string)($p['intent'] ?? ''));
+        $prompt     = trim((string)($p['prompt'] ?? ''));
 
-        if ($type <= 0 || $intent === '' || $prompt === '') {
-            error_log('logAction: missing required fields.');
+        if ($actionName === '' || $intent === '' || $prompt === '') {
+            error_log('logAction: missing required fields (actionName, intent, prompt).');
             return;
         }
 
-        // --- Optional (safe normalization)
+        // --- Resolve actionTypeId (cached)
+        static $actionCache = [];
+
+        if (!isset($actionCache[$actionName])) {
+
+            $stmt = $db->prepare("
+                SELECT actionTypeId 
+                FROM tblActionTypes 
+                WHERE actionName = :name 
+                LIMIT 1
+            ");
+            $stmt->execute(['name' => $actionName]);
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                error_log("logAction: invalid actionName '{$actionName}'");
+                return;
+            }
+
+            $actionCache[$actionName] = (int)$row['actionTypeId'];
+        }
+
+        $actionTypeId = $actionCache[$actionName];
+
+        // --- Optional normalization
         $contactId = !empty($p['contactId']) ? (int)$p['contactId'] : null;
 
         $allowedOrigins = [1, 2, 3];
-        $origin = in_array(($p['origin'] ?? 1), $allowedOrigins)
+        $origin = in_array(($p['origin'] ?? 1), $allowedOrigins, true)
             ? (int)$p['origin']
             : 1;
 
@@ -45,11 +71,11 @@ function logAction(PDO $db, array $p): void
             : null;
 
         // 🔒 truncate response
-        $response = $response
-            ? (function_exists('mb_substr')
+        if ($response) {
+            $response = function_exists('mb_substr')
                 ? mb_substr($response, 0, 10000)
-                : substr($response, 0, 10000))
-            : null;
+                : substr($response, 0, 10000);
+        }
 
         $confidence = isset($p['confidence']) ? (float)$p['confidence'] : 1.00;
         $lat        = $p['lat'] ?? null;
@@ -58,16 +84,17 @@ function logAction(PDO $db, array $p): void
         $ip = $_SERVER['REMOTE_ADDR']     ?? null;
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        // 🔥 CANONICAL ACTIVITY SESSION ID — Single Source of Truth
+        // 🔥 Canonical session ID
         $activitySessionId = session_id();
 
+        // --- Insert
         $stmt = $db->prepare("
             INSERT INTO tblActions (
                 actionTypeId,
                 contactId,
                 actionOrigin,
                 actionUnix,
-                activitySessionId,           /* New canonical column */
+                activitySessionId,
                 promptText,
                 responseText,
                 intent,
@@ -77,7 +104,7 @@ function logAction(PDO $db, array $p): void
                 longitude,
                 userAgent
             ) VALUES (
-                :type,
+                :actionTypeId,
                 :contactId,
                 :origin,
                 UNIX_TIMESTAMP(),
@@ -94,7 +121,7 @@ function logAction(PDO $db, array $p): void
         ");
 
         $stmt->execute([
-            'type'              => $type,
+            'actionTypeId'      => $actionTypeId,
             'contactId'         => $contactId,
             'origin'            => $origin,
             'activitySessionId' => $activitySessionId,
@@ -110,6 +137,5 @@ function logAction(PDO $db, array $p): void
 
     } catch (Throwable $e) {
         error_log('[logAction ERROR] ' . $e->getMessage());
-        return;
     }
 }

@@ -42,7 +42,12 @@ function insertActionPrompt(array $entry, ?PDO $db): void {
     $userAgent  = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
     $origin     = $entry['origin'] ?? ACTION_ORIGIN_SYSTEM;
-    $actionTypeId = $entry['actionTypeId'] ?? 3;
+    $actionTypeId = $entry['actionTypeId'] ?? null;
+
+    if (!$actionTypeId) {
+        error_log('[actions] Missing actionTypeId');
+        return;
+    }
 
     // Truncate
     $promptText = function_exists('mb_substr')

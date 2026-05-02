@@ -4412,124 +4412,124 @@
             },
             "crudActionClassificationStandard": {
                 "title": {
-                "icon": 16,
-                "text": "CRUD Action Classification Standard"
+                    "icon": 16,
+                    "text": "CRUD Action Classification Standard"
                 },
                 "tier": 2,
                 "type": "Behavioral / Data Intent Standard",
                 "hierarchyOrder": 4,
-                "version": "1.0.0",
-
+                "version": "1.1.0",
                 "preamble": {
-                "icon": 7,
-                "text": "This Standard defines the interpretation of CRUD classifications within Skyesoft’s immutable, append-only architecture. All system activity is recorded as new action entries. CRUD classifications describe the intent and effect of an action, not physical database operations."
+                    "icon": 7,
+                    "text": "This Standard defines the interpretation of CRUD classifications within Skyesoft’s immutable, append-only architecture. All system activity is recorded as new action entries. CRUD classifications describe the intent of user actions and their conceptual effect on system state, not internal database operations or system processes."
                 },
-
                 "corePrinciple": {
-                "text": "All actions are INSERT operations. CRUD defines meaning, not mechanics."
+                    "text": "All actions are INSERT operations. CRUD defines user intent and meaning, not system mechanics."
                 },
-
+                "userActionRule": {
+                    "text": "Only intentional user actions are recorded in tblActions. System-level operations, internal processing, and automatic responses must not be recorded as actions."
+                },
                 "definitions": {
 
-                "create": {
+                    "create": {
                     "label": "CREATE",
                     "icon": 67,
-                    "description": "Represents the introduction of a new event or state into the system.",
+                    "description": "Represents a user initiating a new event, request, or state.",
                     "examples": [
-                    "User login",
-                    "User logout",
-                    "Prompt received",
-                    "Contact created",
-                    "Permit submitted"
+                        "User logs in",
+                        "User submits a prompt",
+                        "User accepts a proposed contact",
+                        "User initiates a workflow"
                     ],
-                    "definition": "A CREATE action records that something has occurred. All actions are physically created as new records."
-                },
+                    "definition": "A CREATE action records that a user intentionally initiated a new action or event within the system."
+                    },
 
-                "read": {
+                    "read": {
                     "label": "READ",
                     "icon": 12,
-                    "description": "Represents the retrieval or observation of system state without altering it.",
+                    "description": "Represents a user retrieving or viewing information without altering system state.",
                     "examples": [
-                    "Asking the time",
-                    "Viewing permit status",
-                    "Loading dashboard data"
+                        "User opens a report",
+                        "User views a dashboard",
+                        "User checks permit status"
                     ],
-                    "definition": "A READ action records that information was requested or observed. No system state is changed."
-                },
+                    "definition": "A READ action records that a user requested or consumed information. No state change occurs."
+                    },
 
-                "update": {
+                    "update": {
                     "label": "UPDATE",
                     "icon": 24,
-                    "description": "Represents the correction or supersession of previously recorded information, captured as a new action.",
+                    "description": "Represents a user modifying, correcting, or making a decision that changes the interpretation of existing information.",
                     "examples": [
-                    "Permit status changed",
-                    "Contact information revised",
-                    "Correction of an error (e.g., modifying an incorrect date)"
+                        "User declines a proposed contact",
+                        "User acknowledges a prompt or result",
+                        "User corrects previously entered data"
                     ],
-                    "definition": "An UPDATE action records that prior information was incorrect or outdated and has been replaced by a new authoritative value. The original record remains unchanged; the new record defines the current state."
-                },
+                    "definition": "An UPDATE action records that a user changed the state or interpretation of existing information through an explicit decision or correction."
+                    },
 
-                "delete": {
+                    "delete": {
                     "label": "DELETE",
                     "icon": 59,
-                    "description": "Represents logical invalidation or deactivation of an entity.",
+                    "description": "Represents a user invalidating or deactivating an entity.",
                     "examples": [
-                    "Contact archived",
-                    "Permit voided",
-                    "Record marked inactive"
+                        "User archives a contact",
+                        "User voids a permit",
+                        "User marks a record as inactive"
                     ],
-                    "definition": "A DELETE action does not remove data. It records that a prior entity is no longer valid or active."
-                }
+                    "definition": "A DELETE action records that a user has declared an entity no longer valid or active. No data is physically removed."
+                    }
                 },
-
                 "nonDestructiveRule": {
-                "rules": [
+                    "rules": [
                     "No records are physically deleted.",
                     "No records are overwritten.",
                     "All state changes are represented by new action entries."
-                ]
+                    ]
                 },
-
                 "interpretationNotes": [
-                "Login and logout are both CREATE actions (independent events).",
-                "Actions do not modify prior actions.",
-                "Corrections are recorded as UPDATE actions, not edits.",
-                "State is derived from the sequence of actions, not mutation.",
-                "Multiple actions may reference the same entity across time to represent lifecycle."
+                    "Login and logout are both CREATE actions (independent user events).",
+                    "User prompts are CREATE actions.",
+                    "Viewing reports or data is a READ action.",
+                    "Accepting a proposal is a CREATE action (user initiates creation of a new entity).",
+                    "Declining or acknowledging is an UPDATE action (user decision affecting state).",
+                    "System operations (queries, parsing, validation, database inserts) are not actions.",
+                    "State is derived from the sequence of user actions, not system mutations."
                 ],
                 "dataAlignment": {
                     "tblActionTypes": {
-                        "requiredColumns": [
+                    "requiredColumns": [
                         "action_type_id",
                         "crud_class",
                         "action_name",
                         "is_active",
                         "created_unix"
-                        ]
+                    ]
                     },
                     "tblActions": {
-                        "requirements": [
+                    "requirements": [
+                        "All actions must represent intentional user behavior.",
                         "All actions must be stored as new records.",
                         "No UPDATE or DELETE operations are permitted on action records.",
-                        "tblActions serves as the authoritative event ledger."
-                        ]
+                        "tblActions serves as the authoritative user action ledger."
+                    ]
                     }
                 },
                 "enforcement": {
-                "notes": "Any mutation or deletion of action records constitutes a structural violation.",
-                "auditedBy": "repositoryAuditor",
-                "violationSeverity": "structural"
+                    "notes": "Logging system-level events or mutating action records constitutes a structural violation.",
+                    "auditedBy": "repositoryAuditor",
+                    "violationSeverity": "structural"
                 },
                 "relationships": {
-                "references": [
+                    "references": [
                     "sessionAuditStandard",
                     "dataIntentStandard",
                     "repositoryStandard"
-                ],
-                "governedBy": "constitution.articleIII"
+                    ],
+                    "governedBy": "constitution.articleIII"
                 },
                 "summary": {
-                "text": "Skyesoft records reality as a sequence of immutable actions. CRUD defines the meaning of those actions, not how data is physically stored or modified."
+                    "text": "Skyesoft records user intent as a sequence of immutable actions. CRUD defines the meaning of those user actions, not internal system behavior or database operations."
                 }
             },
             "contactCreationELC": {
