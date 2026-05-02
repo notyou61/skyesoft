@@ -89,6 +89,7 @@ function logAuthAction(PDO $pdo, string $actionKey, ?int $contactId, array $meta
     }
 }
 // 🔐 logAction() — Core logger (from actionLogger.php, adapted for auth)
+// Note: This is a simplified version focused on auth-related logging
 function getContactName(?int $contactId): array {
 
     if ($contactId === null) {
@@ -119,6 +120,7 @@ function getContactName(?int $contactId): array {
         return ['firstName' => null, 'lastName' => null];
     }
 }
+// 🔐 getLastAuthAction() — Fetch last auth action for a user (login/logout)
 function getLastAuthAction(PDO $pdo, int $contactId): ?string
 {
     $stmt = $pdo->prepare("
