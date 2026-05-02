@@ -81,115 +81,90 @@ if ($action === "check") {
 
 #endregion
 
-#region SECTION 5 — LOGIN
+#region SECTION 5 — 🔐 LOGIN
+if ($input['action'] === 'login') {
 
-if ($action === "login") {
+    $username = trim($input['username'] ?? '');
+    $password = trim($input['password'] ?? '');
 
-    $username = trim((string)($input["username"] ?? ""));
-    $password = trim((string)($input["password"] ?? ""));
-
-    $latitude  = is_numeric($input["latitude"] ?? null) ? (float)$input["latitude"] : null;
-    $longitude = is_numeric($input["longitude"] ?? null) ? (float)$input["longitude"] : null;
-
-    if ($username === "" || $password === "") {
-        jsonOut(false, "Missing credentials.");
+    if (!$username || !$password) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Missing credentials.'
+        ]);
+        exit;
     }
 
-    $pdo = getPDO();
-
-    // --- Fetch user
-    $stmt = $pdo->prepare("
-        SELECT contactId, contactEmail, passwordHash, isActive
-        FROM tblContacts
-        WHERE contactEmail = :email
-        LIMIT 1
-    ");
-    $stmt->execute(["email" => $username]);
+    // 🔍 Lookup user
+    $stmt = $db->prepare("SELECT * FROM tblContacts WHERE contactEmail = :email LIMIT 1");
+    $stmt->execute(['email' => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (
-        !$user ||
-        (int)($user["isActive"] ?? 0) !== 1 ||
-        !password_verify($password, (string)($user["passwordHash"] ?? ""))
-    ) {
-        logAuthAction($pdo, "auth.login.fail", $user['contactId'] ?? null, [
-            "username"  => $username,
-            "ip"        => safeIp(),
-            "ua"        => safeUserAgent(),
-            "activitySessionId" => session_id()   // still using current session for failed login
+    if (!$user || !password_verify($password, $user['passwordHash'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid credentials.'
         ]);
-
-        jsonOut(false, $user ? "Invalid password." : "User not found.");
+        exit;
     }
 
-    // 🔥 SECURITY: Regenerate session on successful login
-    session_regenerate_id(true);
+    // ✅ Start session
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
-    // 🔗 Authoritative Session Identity
-    $activitySessionId = session_id();   // ← Update after regeneration
+    $_SESSION['authenticated'] = true;
+    $_SESSION['contactId']     = $user['contactId'];
+    $_SESSION['username']      = $user['contactEmail'];
 
-    $contactId = (int)$user["contactId"];
-
-    // --- Store session data
-    $_SESSION["authenticated"] = true;
-    $_SESSION["contactId"]     = $contactId;
-    $_SESSION["username"]      = $user["contactEmail"];
-    $_SESSION["lastActivity"]  = time();
-    $_SESSION["latitude"]      = $latitude;
-    $_SESSION["longitude"]     = $longitude;
-
-    // --- Log success
-    logAuthAction($pdo, "auth.login", $contactId, [
-        "username"       => $user["contactEmail"],
-        "ip"             => safeIp(),
-        "ua"             => safeUserAgent(),
-        "latitude"       => $latitude,
-        "longitude"      => $longitude,
-        "activitySessionId" => $activitySessionId,
-        "actionOrigin"   => 1
+    // 🔥 LOG ACTION (NEW MODEL)
+    logAction($db, [
+        'actionName' => 'auth.session.login',
+        'contactId'  => $user['contactId'],
+        'intent'     => 'ui_login',
+        'prompt'     => $username,
+        'response'   => 'login_success',
+        'confidence' => 1.00,
+        'lat'        => $input['latitude'] ?? null,
+        'lng'        => $input['longitude'] ?? null
     ]);
 
-    session_write_close();
-
     echo json_encode([
-        "success"          => true,
-        "activitySessionId" => $activitySessionId
-    ], JSON_UNESCAPED_SLASHES);
-
+        'success' => true,
+        'username' => $user['contactEmail']
+    ]);
     exit;
 }
-
 #endregion
 
-#region SECTION 6 — LOGOUT
+#region SECTION 6 — 🔓 LOGOUT
+if ($input['action'] === 'logout') {
 
-if ($action === "logout") {
-
-    $contactId = $_SESSION["contactId"] ?? null;
-    $username  = $_SESSION["username"] ?? null;
-
-    $pdo = getPDO();
-
-    if ($pdo && $contactId) {
-        logAuthAction($pdo, "auth.logout", (int)$contactId, [
-            "username"       => $username,
-            "ip"             => safeIp(),
-            "ua"             => safeUserAgent(),
-            "activitySessionId" => $activitySessionId,
-            "actionOrigin"   => 1
-        ]);
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
 
+    $contactId = $_SESSION['contactId'] ?? null;
+
+    // 🔥 LOG ACTION (BEFORE DESTROY)
+    logAction($db, [
+        'actionName' => 'auth.session.logout',
+        'contactId'  => $contactId,
+        'intent'     => 'ui_logout',
+        'prompt'     => 'logout',
+        'response'   => 'logout_success',
+        'confidence' => 1.00
+    ]);
+
+    // Destroy session
     $_SESSION = [];
     session_destroy();
 
-    if (ini_get("session.use_cookies")) {
-        setcookie(session_name(), '', time() - 42000, '/', '', false, true);
-    }
-
-    jsonOut(true);
+    echo json_encode([
+        'success' => true
+    ]);
+    exit;
 }
-
 #endregion
 
 #region SECTION 7 — INVALID
